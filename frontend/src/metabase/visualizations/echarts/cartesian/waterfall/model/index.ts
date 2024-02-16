@@ -147,7 +147,7 @@ export function getWaterfallChartModel(
   );
   const total = getWaterfallTotal(rows, cardColumns);
   const { dataset: waterfallDataset, negativeTranslation } =
-    getWaterfallDataset(rows, cardColumns, settings);
+    getWaterfallDataset(rows, cardColumns, settings, baseChartModel.xAxisModel);
 
   const waterfallChartModel: WaterfallChartModel = {
     ...baseChartModel,

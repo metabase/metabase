@@ -9,6 +9,8 @@ import type {
   SeriesModel,
   XAxisModel,
   YAxisModel,
+  DimensionModel,
+  TimeSeriesInterval,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -19,6 +21,7 @@ import type {
   StackType,
   DatasetColumn,
   RowValue,
+  RawSeries,
 } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -26,6 +29,12 @@ import {
   getMetricDisplayValueGetter,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { getObjectEntries, getObjectKeys } from "metabase/lib/objects";
+import {
+  computeTimeseriesDataInverval,
+  minTimeseriesUnit,
+} from "metabase/visualizations/lib/timeseries";
+import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -449,7 +458,9 @@ export function getYAxesModels(
 }
 
 export function getXAxisModel(
-  column: DatasetColumn,
+  dimensionModel: DimensionModel,
+  rawSeries: RawSeries,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): XAxisModel {
@@ -461,13 +472,77 @@ export function getXAxisModel(
 
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
-      column,
-      ...(settings.column?.(column) ?? {}),
+      column: dimensionModel.column,
+      ...(settings.column?.(dimensionModel.column) ?? {}),
       noRange: isHistogram,
     });
 
+  const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
+
+  const timeSeriesInterval = getTimeSeriesXAxisInterval(
+    xValues,
+    rawSeries,
+    dimensionModel,
+  );
+  const numericInterval = getNumericXAxisInterval(
+    xValues,
+    dimensionModel,
+    settings,
+  );
   return {
     formatter,
     label,
+    timeSeriesInterval,
+    numericInterval,
   };
+}
+
+// We should always have results_timezone, but just in case we fallback to UTC
+export const DEFAULT_TIMEZONE = "Etc/UTC";
+
+function getTimezone(rawSeries: RawSeries) {
+  const { results_timezone } = rawSeries[0].data;
+  return results_timezone || DEFAULT_TIMEZONE;
+}
+
+export function getTimeSeriesXAxisInterval(
+  xValues: RowValue[],
+  rawSeries: RawSeries,
+  dimensionModel: DimensionModel,
+): TimeSeriesInterval {
+  // We need three pieces of information to define a timeseries range:
+  // 1. interval - it's really the "unit": month, day, etc
+  // 2. count - how many intervals per tick?
+  // 3. timezone - what timezone are values in? days vary in length by timezone
+  const unit = minTimeseriesUnit(
+    dimensionModel.columns.map(column => column.unit),
+  );
+  const timezone = getTimezone(rawSeries);
+  const { count, interval } = (computeTimeseriesDataInverval(xValues, unit) ?? {
+    count: 1,
+    interval: "day",
+  }) as Pick<TimeSeriesInterval, "count" | "interval">;
+  return { count, interval, timezone };
+}
+
+export function getNumericXAxisInterval(
+  xValues: RowValue[],
+  dimensionModel: DimensionModel,
+  settings: ComputedVisualizationSettings,
+) {
+  if (
+    ["linear", "log", "pow", "histogram"].includes(
+      // @ts-expect-error x axis scale value can be undefined
+      settings["graph.x_axis.scale"],
+    )
+  ) {
+    return undefined;
+  }
+
+  const binningInfo = dimensionModel.column.binning_info;
+  if (binningInfo) {
+    return binningInfo.bin_width;
+  }
+
+  return computeNumericDataInverval(xValues);
 }

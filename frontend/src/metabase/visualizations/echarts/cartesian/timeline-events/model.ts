@@ -197,7 +197,7 @@ export const getTimelineEventsModel = (
 
   const timelineEventsByUnitStart = groupEventsByUnitStart(
     timelineEvents,
-    chartModel.dimensionModel.column.unit ?? "day", // TODO: compute binning unit for native questions
+    chartModel.xAxisModel.timeSeriesInterval?.interval,
   );
 
   const chartMeasurements = getChartMeasurements(

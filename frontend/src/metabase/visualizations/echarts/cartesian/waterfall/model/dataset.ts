@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import type { RowValues } from "metabase-types/api";
 import {
   assertMultiMetricColumns,
   type CartesianChartColumns,
@@ -7,16 +6,41 @@ import {
 import { isNumber } from "metabase/lib/types";
 
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { XAxisModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import type { RowValues } from "metabase-types/api";
 import {
   WATERFALL_EMPTY_VALUE,
   type WaterfallDataset,
   type WaterfallEmptyValue,
 } from "../types";
 
+const getTotalTimeSeriesXValue = (
+  lastDimensionValue: string | number | Date | null,
+  xAxisModel: XAxisModel,
+) => {
+  const { timeSeriesInterval } = xAxisModel;
+  if (timeSeriesInterval == null) {
+    return null;
+  }
+  const { interval, count } = timeSeriesInterval;
+
+  if (!isAbsoluteDateTimeUnit(interval)) {
+    return null;
+  }
+
+  if (interval === "quarter") {
+    return dayjs(lastDimensionValue).add(3, "month").toISOString();
+  }
+
+  return dayjs(lastDimensionValue).add(count, interval).toISOString();
+};
+
 export function getWaterfallDataset(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
   settings: ComputedVisualizationSettings,
+  xAxisModel: XAxisModel,
 ) {
   const columns = assertMultiMetricColumns(cardColumns);
   const dataset: WaterfallDataset = [];
@@ -98,8 +122,16 @@ export function getWaterfallDataset(
       );
     }
 
-    const lastDate = dayjs(lastDimensionValue);
-    dimension = lastDate.add(1, "day").toISOString();
+    const totalTimeSeriesXValue = getTotalTimeSeriesXValue(
+      lastDimensionValue,
+      xAxisModel,
+    );
+
+    if (totalTimeSeriesXValue == null) {
+      throw Error("Missing total time series x value for waterfall chart");
+    }
+
+    dimension = totalTimeSeriesXValue;
   }
 
   dataset.push({

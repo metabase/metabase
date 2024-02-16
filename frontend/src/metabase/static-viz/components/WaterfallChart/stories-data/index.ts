@@ -22,6 +22,8 @@ import dataLabelsMixed from "./data-labels-mixed.json";
 import powYScale from "./pow-y-scale.json";
 import powYScaleNegativeOnly from "./pow-y-scale-negative-only.json";
 import powYScaleMixed from "./pow-y-scale-mixed.json";
+import nativeTimeSeriesQuarter from "./native-time-series-quarter.json";
+import structuredTimeSeriesYear from "./structured-time-series-year.json";
 
 export const data = {
   timeseriesXScale,
@@ -48,4 +50,6 @@ export const data = {
   powYScale,
   powYScaleNegativeOnly,
   powYScaleMixed,
+  nativeTimeSeriesQuarter,
+  structuredTimeSeriesYear,
 };

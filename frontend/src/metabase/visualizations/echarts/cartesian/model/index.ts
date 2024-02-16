@@ -71,11 +71,8 @@ export const getCartesianChartModel = (
 ): CartesianChartModel => {
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
-
   const cardsColumns = getCardsColumns(rawSeries, settings);
-
   const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
-
   const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
@@ -112,7 +109,9 @@ export const getCartesianChartModel = (
   const insights = rawSeries.flatMap(series => series.data.insights ?? []);
 
   const xAxisModel = getXAxisModel(
-    dimensionModel.column,
+    dimensionModel,
+    rawSeries,
+    dataset,
     settings,
     renderingContext,
   );
