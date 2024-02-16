@@ -1,5 +1,6 @@
 import type {
   ConcreteFieldReference,
+  DatasetColumn,
   FieldReference,
   NativeParameterDimensionTarget,
   ParameterTarget,
@@ -12,8 +13,8 @@ import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/Dimension";
 import Dimension from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
-import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 export function isParameterVariableTarget(
   target: ParameterTarget,
@@ -40,19 +41,34 @@ export function getParameterTargetField(
   target: ParameterTarget,
   question: Question,
 ) {
-  if (isDimensionTarget(target)) {
-    const query = question.query();
-    const { isNative } = Lib.queryDisplayInfo(query);
-    const metadata = question.metadata();
+  if (!isDimensionTarget(target)) {
+    return null;
+  }
+
+  const fieldRef = target[1];
+  const query = question.query();
+  const stageIndex = -1;
+  const { isNative } = Lib.queryDisplayInfo(query);
+
+  if (isNative) {
     const dimension = Dimension.parseMBQL(
-      target[1],
-      metadata,
-      isNative ? (question.legacyQuery() as NativeQuery) : undefined,
+      fieldRef,
+      question.metadata(),
+      question.legacyQuery() as NativeQuery,
     );
     return dimension?.field();
   }
 
-  return null;
+  const table = question.legacyQueryTable();
+  const fields = table?.fields ?? [];
+  const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    stageIndex,
+    fields as DatasetColumn[],
+    [fieldRef as FieldReference],
+  );
+
+  return fields[fieldIndex];
 }
 
 export function buildDimensionTarget(
