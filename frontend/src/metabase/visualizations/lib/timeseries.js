@@ -55,7 +55,7 @@ const TIMESERIES_INTERVALS = [
   { interval: "hour", count: 12, testFn: d => d.hours() % 12 }, // (12) 12 hours
   { interval: "day", count: 1, testFn: d => d.hours() }, // (13) 1 day
   { interval: "week", count: 1, testFn: d => d.day() }, // (14) 1 week
-  { interval: "month", count: 1, testFn: d => d.date() }, // (15) 1 months
+  { interval: "month", count: 1, testFn: d => d.date() }, // (15) 1 month
   { interval: "month", count: 3, testFn: d => d.month() % 3 }, // (16) 3 months / 1 quarter
   { interval: "year", count: 1, testFn: d => d.month() }, // (17) 1 year
   { interval: "year", count: 5, testFn: d => d.year() % 5 }, // (18) 5 year
@@ -144,7 +144,7 @@ function expectedTickCount(interval, timeRangeMilliseconds) {
   );
 }
 
-/// Get the appropriate tick interval option option from the TIMESERIES_INTERVALS above based on the xAxis bucketing
+/// Get the appropriate tick interval option from the TIMESERIES_INTERVALS above based on the xAxis bucketing
 /// and the max number of ticks we want to show (itself calculated from chart width).
 function timeseriesTicksInterval(
   xInterval,
