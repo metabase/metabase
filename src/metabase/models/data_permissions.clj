@@ -509,10 +509,10 @@
                  db-id     :db-id
                  schema    :schema
                  table-id  :table-id}]
-       (let [schema         (or schema "")
-             path           (if table-id
-                              [group-id db-id perm-type schema table-id]
-                              [group-id db-id perm-type])]
+       (let [schema (or schema "")
+             path   (if table-id
+                      [group-id db-id perm-type schema table-id]
+                      [group-id db-id perm-type])]
          (assoc-in graph path value)))
      {}
      data-perms)))
