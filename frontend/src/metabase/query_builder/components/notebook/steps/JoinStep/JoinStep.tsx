@@ -66,7 +66,7 @@ export function JoinStep({
     selectedLHSColumn,
   );
 
-  const isStartedFromModel = Boolean(sourceQuestion?.isDataset?.());
+  const isStartedFromModel = Boolean(sourceQuestion?.type?.() === "model");
 
   const handleStrategyChange = (nextStrategy: Lib.JoinStrategy) => {
     setStrategy(nextStrategy);

@@ -56,7 +56,7 @@ export function normalizeCacheTTL(value) {
 }
 
 export function hasQuestionCacheSection(question) {
-  const type = question.type() ?? "question";
+  const type = question.type();
 
   return (
     type === "question" &&

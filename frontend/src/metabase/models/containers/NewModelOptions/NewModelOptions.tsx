@@ -65,7 +65,6 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
               to={Urls.newQuestion({
                 mode: "query",
                 creationType: "custom_question",
-                dataset: true,
                 cardType: "model",
                 collectionId,
               })}
@@ -82,7 +81,6 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
                 mode: "query",
                 type: "native",
                 creationType: "native_question",
-                dataset: true,
                 cardType: "model",
                 collectionId,
               })}

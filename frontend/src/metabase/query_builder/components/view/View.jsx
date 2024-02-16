@@ -249,7 +249,7 @@ class View extends Component {
     // This check makes it hide the editor in this particular case
     // More details: https://github.com/metabase/metabase/pull/20161
     const { isEditable } = Lib.queryDisplayInfo(question.query());
-    if (question.isDataset() && !isEditable) {
+    if (question.type() === "model" && !isEditable) {
       return null;
     }
 

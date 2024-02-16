@@ -119,7 +119,7 @@ async function setup({
   shouldStartAdHocQuestion,
 }: SetupOpts) {
   const isSavedCard = "id" in card;
-  const isModel = (card as Card).dataset;
+  const isModel = (card as Card).type === "model";
 
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
@@ -453,8 +453,10 @@ describe("QB Actions > updateQuestion", () => {
 
         describe(questionType, () => {
           it("un-marks new ad-hoc question as model", async () => {
-            const { result } = await setup({ card: getCard() });
-            expect(result.card.dataset).toBe(false);
+            const card = getCard();
+            const { result } = await setup({ card });
+            expect(card.type).toBe("model");
+            expect(result.card.type).toBe("question");
           });
 
           it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
@@ -674,7 +676,7 @@ describe("QB Actions > updateQuestion", () => {
         ...opts,
         card: cardWithTags,
         originalCard,
-        queryBuilderMode: (card as Card).dataset ? "dataset" : "view",
+        queryBuilderMode: (card as Card).type === "model" ? "dataset" : "view",
       });
 
       return {

@@ -47,7 +47,7 @@ const ViewFooter = ({
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hasDataPermission = isEditable;
   const hideChartSettings = result.error && !hasDataPermission;
-  const type = question.type() ?? "question";
+  const type = question.type();
 
   return (
     <ViewFooterRoot

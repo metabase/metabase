@@ -6,9 +6,7 @@ import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
 import * as Urls from "metabase/lib/urls";
-import Questions, {
-  getIcon as getQuestionIcon,
-} from "metabase/entities/questions";
+import Questions, { getIcon } from "metabase/entities/questions";
 
 import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
@@ -59,7 +57,7 @@ function ModelUsageDetails({ model, questions, hasNewQuestionLink }: Props) {
             to={Urls.question(question.card())}
             aria-label={question.displayName() ?? ""}
           >
-            <Icon name={getQuestionIcon(question.card()).name as IconName} />
+            <Icon name={getIcon(question.card()).name as IconName} />
             <CardTitle>{question.displayName()}</CardTitle>
           </CardListItem>
         </li>

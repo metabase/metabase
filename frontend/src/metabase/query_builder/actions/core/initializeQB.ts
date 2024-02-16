@@ -295,8 +295,17 @@ async function handleQBInit(
 
   if (
     isSavedCard(card) &&
-    !card?.dataset &&
+    card.type !== "model" &&
     location.pathname?.startsWith("/model")
+  ) {
+    dispatch(setErrorPage(NOT_FOUND_ERROR));
+    return;
+  }
+
+  if (
+    isSavedCard(card) &&
+    card.type !== "metric" &&
+    location.pathname?.startsWith("/metric")
   ) {
     dispatch(setErrorPage(NOT_FOUND_ERROR));
     return;
@@ -333,7 +342,7 @@ async function handleQBInit(
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
 
   if (question.isSaved()) {
-    const type = question.type() ?? "question";
+    const type = question.type();
 
     if (type === "question") {
       question = question.lockDisplay();

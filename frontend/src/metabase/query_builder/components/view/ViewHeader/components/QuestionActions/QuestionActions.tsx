@@ -91,13 +91,14 @@ export const QuestionActions = ({
     ? color("brand")
     : undefined;
 
+  const isQuestion = question.type() === "question";
+  const isModel = question.type() === "model";
+  const isMetric = question.type() === "metric";
+  const isModelOrMetric = isModel || isMetric;
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
   const canAppend = canUpload && canWrite && !!question._card.based_on_upload;
-  const type = question.type() || "question";
-  const isModel = type === "model";
-  const isModelOrMetric = isModel || type === "metric";
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -181,7 +182,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (!isModel) {
+  if (isQuestion) {
     extraButtons.push({
       title: t`Add to dashboard`,
       icon: "add_to_dash",
@@ -197,7 +198,7 @@ export const QuestionActions = ({
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
     });
-    if (type === "question") {
+    if (isQuestion) {
       extraButtons.push({
         title: t`Turn into a model`,
         icon: "model",

@@ -111,20 +111,17 @@ describe("getQuestionsImplicitCacheTTL", () => {
 
 describe("hasQuestionCacheSection", () => {
   function setup({
-    isDataset = false,
     type = "question",
     isCachingEnabled = true,
     canWrite = true,
     lastQueryStart = null,
   }: {
-    isDataset?: boolean;
     type?: CardType;
     isCachingEnabled?: boolean;
     canWrite?: boolean;
     lastQueryStart?: string | null;
   }) {
     const card = createMockCard({
-      dataset: isDataset,
       type,
       can_write: canWrite,
       last_query_start: lastQueryStart,
@@ -137,7 +134,7 @@ describe("hasQuestionCacheSection", () => {
   }
 
   it("should not have the cache section for models", () => {
-    const question = setup({ isDataset: true, type: "model" });
+    const question = setup({ type: "model" });
     expect(hasQuestionCacheSection(question)).toBe(false);
   });
 

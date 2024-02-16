@@ -96,20 +96,20 @@ const COLLECTIONS = [
 const CARD_IN_ROOT_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
-  dataset: true,
+  type: "model",
 });
 
 const CARD_IN_PUBLIC_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
-  dataset: true,
+  type: "model",
   collection: COLLECTION,
 });
 
 const CARD_IN_PERSONAL_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Card in a personal collection",
-  dataset: true,
+  type: "model",
   collection: PERSONAL_COLLECTION,
 });
 

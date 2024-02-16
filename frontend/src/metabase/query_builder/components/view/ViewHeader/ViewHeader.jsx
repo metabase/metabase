@@ -120,7 +120,8 @@ export function ViewTitleHeader(props) {
 
   const { isNative } = Lib.queryDisplayInfo(query);
   const isSaved = question.isSaved();
-  const isDataset = question.isDataset();
+  const isModelOrMetric =
+    question.type() === "model" || question.type() === "metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
 
   const onQueryChange = useCallback(
@@ -151,7 +152,7 @@ export function ViewTitleHeader(props) {
         <ViewTitleHeaderRightSide
           {...props}
           isSaved={isSaved}
-          isDataset={isDataset}
+          isModelOrMetric={isModelOrMetric}
           isNative={isNative}
           isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
@@ -223,9 +224,8 @@ function SavedQuestionLeftSide(props) {
   const [showSubHeader, setShowSubHeader] = useState(true);
 
   const hasLastEditInfo = question.lastEditInfo() != null;
-  const isDataset = question.isDataset();
   const type = question.type();
-  const isModelOrMetric = isDataset || type === "metric";
+  const isModelOrMetric = type === "model" || type === "metric";
 
   const onHeaderChange = useCallback(
     name => {
@@ -236,7 +236,8 @@ function SavedQuestionLeftSide(props) {
     [question, onSave],
   );
 
-  const renderDataSource = QuestionDataSource.shouldRender(props) && !isDataset;
+  const renderDataSource =
+    QuestionDataSource.shouldRender(props) && type === "question";
   const renderLastEdit = hasLastEditInfo && isAdditionalInfoVisible;
 
   useEffect(() => {
@@ -254,7 +255,7 @@ function SavedQuestionLeftSide(props) {
       showSubHeader={showSubHeader}
     >
       <ViewHeaderMainLeftContentContainer>
-        <SavedQuestionHeaderButtonContainer isDataset={isDataset}>
+        <SavedQuestionHeaderButtonContainer isModelOrMetric={isModelOrMetric}>
           <HeadBreadcrumbs
             divider={<HeaderDivider>/</HeaderDivider>}
             parts={[
@@ -278,7 +279,7 @@ function SavedQuestionLeftSide(props) {
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          {QuestionDataSource.shouldRender(props) && !isDataset && (
+          {QuestionDataSource.shouldRender(props) && !isModelOrMetric && (
             <StyledQuestionDataSource
               question={question}
               isObjectDetail={isObjectDetail}
@@ -372,7 +373,7 @@ ViewTitleHeaderRightSide.propTypes = {
   question: PropTypes.object.isRequired,
   result: PropTypes.object,
   queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
-  isDataset: PropTypes.bool,
+  isModelOrMetric: PropTypes.bool,
   isSaved: PropTypes.bool,
   isNative: PropTypes.bool,
   isRunnable: PropTypes.bool,
@@ -411,7 +412,7 @@ function ViewTitleHeaderRightSide(props) {
     isBookmarked,
     toggleBookmark,
     isSaved,
-    isDataset,
+    isModelOrMetric,
     isRunnable,
     isRunning,
     isNativeEditorOpen,
@@ -442,10 +443,10 @@ function ViewTitleHeaderRightSide(props) {
     canExploreResults(question) &&
     MetabaseSettings.get("enable-nested-queries");
 
-  // Models can't be saved. But changing anything about the model will prompt the user
-  // to save it as a new question (based on that model). In other words, at this point
-  // the `dataset` field is set to false.
-  const hasSaveButton = !isDataset && !!isDirty && isActionListVisible;
+  // Models and metrics can't be saved. But changing anything about the model/metric will prompt the user
+  // to save it as a new question (based on that model/metric). In other words, at this point
+  // the `type` field is set to "question".
+  const hasSaveButton = !isModelOrMetric && !!isDirty && isActionListVisible;
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =

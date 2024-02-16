@@ -24,7 +24,7 @@ import { checkNotNull } from "metabase/lib/types";
 
 import ActionCreatorModal from "./ActionCreatorModal";
 
-const MODEL = createMockCard({ id: 1, type: "model", dataset: true });
+const MODEL = createMockCard({ id: 1, type: "model" });
 const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;
 const ACTION = createMockQueryAction({ model_id: MODEL.id });
 const ACTION_NOT_FOUND_ID = 999;

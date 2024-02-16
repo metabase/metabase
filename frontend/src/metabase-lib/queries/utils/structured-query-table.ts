@@ -26,9 +26,10 @@ export function getStructuredQueryTable(
     return getNestedCardTable(question);
   }
 
-  // 3. The query's question is a saved dataset.
-  const isDataset = question.isDataset() && question.isSaved();
-  if (isDataset) {
+  // 3. The query's question is a saved model or metric
+  const type = question.type();
+  const isModelOrMetric = type === "model" || type === "metric";
+  if (isModelOrMetric && question.isSaved()) {
     return getDatasetTable(legacyQuery);
   }
 

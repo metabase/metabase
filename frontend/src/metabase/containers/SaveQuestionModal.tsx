@@ -31,7 +31,7 @@ import type Question from "metabase-lib/Question";
 import "./SaveQuestionModal.css";
 
 const getLabels = (question: Question, showSaveType: boolean) => {
-  const type = question.type() ?? "question";
+  const type = question.type();
 
   if (type === "question") {
     return {
@@ -184,7 +184,7 @@ export const SaveQuestionModal = ({
         : question.collectionId(),
     saveType:
       originalQuestion &&
-      !originalQuestion.isDataset() &&
+      originalQuestion.type() === "question" &&
       originalQuestion.canWrite()
         ? "overwrite"
         : "create",
