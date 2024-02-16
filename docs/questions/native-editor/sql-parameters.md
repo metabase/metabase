@@ -16,20 +16,28 @@ Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a v
 
 Field Filter, a special type of filter, have a [slightly different syntax](#field-filter-syntax).
 
-This example defines a **Text** variable called `cat`:
+This example defines a **Text** variable called `category`:
 
-```
-SELECT count(*)
-FROM products
-WHERE category = {% raw %}{{cat}}{% endraw %}
+```sql
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+WHERE
+  category = {{category}}
+{% endraw %}
 ```
 
 Metabase will read the variable and attach a filter widget to the query, which people can use to change the value inserted into the `cat` variable with quotes. So if someone entered "Gizmo" into the filter widget, the query Metabase would run would be:
 
-```
-SELECT count(*)
-FROM products
-WHERE category = 'Gizmo'
+```sql
+SELECT
+  count(*)
+FROM
+  products
+WHERE
+  category = 'Gizmo'
 ```
 
 If you're writing a native MongoDB query, your query would look more like this, with the `cat` variable being defined inside of the `match` clause.
@@ -86,20 +94,28 @@ To make a clause optional in your native query, type `[[brackets around a {% raw
 
 In this example, if no value is given to `cat`, then the query will just select all the rows from the `products` table. But if `cat` does have a value, like "Widget", then the query will only grab the products with a category type of Widget:
 
-```
-SELECT count(*)
-FROM products
-[[WHERE category = {% raw %}{{cat}}{% endraw %}]]
+```sql
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products [[WHERE category = {{category}}]]
+{% endraw %}
 ```
 
 To use multiple optional clauses, you must include at least one regular `WHERE` clause followed by optional clauses, each starting with `AND`:
 
-```
-SELECT count(*)
-FROM products
-WHERE true
-  [[AND id = {% raw %}{{id}}{% endraw %}]]
-  [[AND {% raw %}{{category}}{% endraw %}]]
+```sql
+{% raw %}
+SELECT
+  count(*)
+FROM
+  products
+WHERE
+  TRUE
+  [[AND id = {{id}}]
+  [[AND {{category}}]]
+{% endraw %}
 ```
 
 That last clause uses a Field filter (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel.
@@ -139,23 +155,30 @@ In the variables sidebar, you can set a default value for your variable. This va
 
 ## Setting complex default values in the query
 
-You can also define default values directly in your query by enclosing a comment inside the end brackets of an optional parameter:
+You can also define default values directly in your query by enclosing comment syntax inside the end brackets of an optional parameter.
 
 ```
-WHERE column = [[ {% raw %}{{ your_parameter }}{% endraw %} #]]your_default_value
+WHERE column = [[ {% raw %}{{ your_parameter }}{% endraw %} --]] your_default_value
 ```
 
-This is useful when defining complex default values (for example, if your default value is a function like `CURRENT_DATE`).
+The comment will "activate" whenever you pass a value to `your_parameter`.
 
-Here's a PostgreSQL example that sets the default value of a Date filter to the current date using `CURRENT_DATE()`:
+This is useful when defining complex default values (for example, if your default value is a function like `CURRENT_DATE`). Here's a PostgreSQL example that sets the default value of a Date filter to the current date using `CURRENT_DATE`:
 
 ```
-SELECT *
-FROM accounts
-{% raw %}WHERE DATE(created_at) = [[ {{dateOfCreation}} #]]CURRENT_DATE{% endraw %}
+{% raw %}
+SELECT
+  *
+FROM
+  orders
+WHERE
+  DATE(created_at) = [[ {{dateOfCreation}} --]] CURRENT_DATE
+{% endraw %}
 ```
 
-Note that the hash (`#`) used to comment the text might need to be replaced by the comment syntax specific to the database you're using. Some databases use double-dashes (`--`) as comment syntax.
+If you pass a value to the variable, the `WHERE` clause runs, including the comment syntax that comments out the default `CURRENT_DATE` function.
+
+Note that the hash (`--`) used to comment the text might need to be replaced by the comment syntax specific to the database you're using.
 
 ## The Field Filter variable type
 
@@ -189,10 +212,15 @@ Let's say you want to create a Field Filter that filters the `People` table by s
 
 The syntax for Field Filters differs from a Text, Number, or Date variable.
 
-```
-SELECT *
-FROM PEOPLE
-WHERE {%raw%}{{state}}{%endraw%}
+```sql
+{% raw %}
+SELECT
+  *
+FROM
+  PEOPLE
+WHERE
+  {{state}}
+{% endraw %}
 ```
 
 Then, in the side panel, select the "Field Filter" variable type, and choose which field to map your variable to (in this case, `State`).

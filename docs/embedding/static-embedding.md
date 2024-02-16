@@ -148,8 +148,6 @@ Your embedding secret key is used to sign JWTs for all of your [embedding URLs](
 
 This key is shared across all static embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
 
-**Regenerate key** will create a new secret key, and break any embedding URLs that used the old key.
-
 ## Resizing dashboards to fit their content
 
 Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automatically sized vertically to fit their contents you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
