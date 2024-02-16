@@ -10,6 +10,8 @@ class SaveStatus extends Component {
   constructor(props, context) {
     super(props, context);
 
+    this.state = { showSavingingTimeout: null };
+
     _.bindAll(this, "setSaving", "setSaved", "setSaveError", "clear");
   }
 
@@ -18,12 +20,19 @@ class SaveStatus extends Component {
   };
 
   notify = undo => {
+    clearTimeout(this.state.showSavingingTimeout);
     this.unnotify();
     this.props.notify({ id: "save-status", ...undo });
   };
 
   setSaving() {
-    this.notify({ icon: "info", message: t`Saving...` });
+    clearTimeout(this.state.showSavingingTimeout);
+    // don't show saving status until after 1 second has elapsed
+    // this avoids quick showing / hiding / then showing a toast again
+    const timeout = setTimeout(() => {
+      this.notify({ icon: "info", message: t`Saving...`, timeout: null });
+    }, 1000);
+    this.setState({ showSavingingTimeout: timeout });
   }
 
   setSaved() {
