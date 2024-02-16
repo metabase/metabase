@@ -307,11 +307,13 @@
       (doseq [[id update-map] [[sandbox-id {:field_id 1}]
                                [sandbox-id {:type :full}]
                                [sandbox-id {:type nil}]
+                               ;; this one should be ok, but toucan doesn't give the hook enough info to know better
+                               [full-id {:type nil}]
                                [full-id {:type :sandbox}]
                                [sandbox-id {:hash_key "another-hash"}]
                                [sandbox-id {:hash_key nil}]
                                [full-id {:hash_key "random-hash"}]
-                               ; not even if it keeps type / hash consistency
+                               ;; not even if it keeps type / hash consistency
                                [sandbox-id {:type :full, :hash_key nil}]
                                [full-id {:type :sandbox, :hash_key "random-hash"}]]]
         (is (thrown-with-msg? ExceptionInfo
@@ -321,7 +323,6 @@
     (testing "The model hooks permits mention of the existing values"
       (doseq [[id update-map] [[full-id {:field_id (mt/id :venues :id)}]
                                [sandbox-id {:type :sandbox}]
-                               [full-id {:type nil}]
                                [full-id {:type :full}]
                                [sandbox-id {:hash_key "random-hash"}]
                                [full-id {:hash_key nil}]
