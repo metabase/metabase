@@ -20,6 +20,7 @@ import barFullyNullDimension37902 from "./bar-fully-null-dimension-37902.json";
 import autoYSplit from "./auto-y-split.json";
 import messedUpAxis from "./messed-up-axis.json";
 import goalLineOutOfBounds37848 from "./goal-line-out-of-bounds-37848.json";
+import goalLineUnderSeries38824 from "./goal-line-under-series-38824.json";
 import goalVerySmall from "./goal-very-small.json";
 import goalBetweenExtentAndChartBound from "./goal-between-extent-and-chart-bound.json";
 import goalLineDisabled from "./goal-line-disabled.json";
@@ -64,6 +65,7 @@ export const data = {
   autoYSplit,
   messedUpAxis,
   goalLineOutOfBounds37848,
+  goalLineUnderSeries38824,
   goalVerySmall,
   goalBetweenExtentAndChartBound,
   goalLineDisabled,
