@@ -1381,7 +1381,7 @@
 
 (t/deftest ^:parallel normalize-fragment-filter-test
   (t/is (= [:!=
-            [:expression "expr"]
+            [:expression "expr" {:base-type :type/Date}]
             [:field 66302 {:base-type :type/DateTime}]]
            (mbql.normalize/normalize-fragment
                [:query :filter]
