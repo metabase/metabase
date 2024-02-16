@@ -1,14 +1,16 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, renderWithProviders, screen } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Lib from "metabase-lib";
 import {
   createSampleDatabase,
   PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { FieldInfo } from "./FieldInfo";
+import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import { QueryColumnInfo, TableColumnInfo } from "./ColumnInfo";
 
 const state = createMockState({
   entities: createMockEntitiesState({
@@ -20,9 +22,18 @@ const metadata = getMetadata(state);
 
 function setup(field) {
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES]);
-  return renderWithProviders(<FieldInfo field={field} />, {
+  return renderWithProviders(<TableColumnInfo field={field} />, {
     storeInitialState: state,
   });
+}
+
+function setupMLv2(table, column) {
+  const query = createQuery();
+  const columns = Lib.visibleColumns(query, 0);
+  const findColumn = columnFinder(query, columns);
+  const col = findColumn(table, column);
+
+  return render(<QueryColumnInfo query={query} stageIndex={-1} column={col} />);
 }
 
 describe("FieldInfo", () => {
@@ -43,6 +54,26 @@ describe("FieldInfo", () => {
   it("should show a placeholder for a dimension with no description", () => {
     const field = metadata.field(PRODUCTS.CREATED_AT);
     setup(field);
+
+    expect(screen.getByText("No description")).toBeInTheDocument();
+  });
+});
+
+describe("FieldInfo (MLv2)", () => {
+  it("should show the given dimension's semantic type name", async () => {
+    setupMLv2("PRODUCTS", "CATEGORY");
+
+    expect(await screen.findByText("Category")).toBeInTheDocument();
+  });
+
+  it("should display the given dimension's description", async () => {
+    setupMLv2("PRODUCTS", "CATEGORY");
+
+    expect(await screen.findByText("The type of product.")).toBeInTheDocument();
+  });
+
+  it("should show a placeholder for a dimension with no description", () => {
+    setupMLv2("PRODUCTS", "CREATED_AT");
 
     expect(screen.getByText("No description")).toBeInTheDocument();
   });
