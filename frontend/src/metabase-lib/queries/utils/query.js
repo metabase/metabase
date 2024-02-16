@@ -105,8 +105,7 @@ export const updateField = (query, index, field) =>
   setFieldsClause(query, FIELD.updateField(query.fields, index, field));
 export const removeField = (query, index) =>
   setFieldsClause(query, FIELD.removeField(query.fields, index));
-export const clearFields = query =>
-  setFieldsClause(query, FIELD.clearFields(query.fields));
+const clearFields = query => setFieldsClause(query);
 
 // EXPRESSIONS
 
