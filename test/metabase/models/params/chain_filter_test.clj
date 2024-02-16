@@ -481,7 +481,7 @@
         (testing "should created a full FieldValues when constraints is `nil`"
           ;; warm up the cache
           (chain-filter categories.name nil)
-          (with-redefs [params.field-values/create-advanced-field-values! (fn [& _args]
+          (with-redefs [params.field-values/prepare-advanced-field-values (fn [& _args]
                                                                             (assert false "Should not be called"))]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
@@ -493,7 +493,7 @@
           (field-values/clear-advanced-field-values-for-field! field-id)
           ;; warm up the cache
           (chain-filter categories.name {venues.price 4})
-          (with-redefs [params.field-values/create-advanced-field-values! (fn [& _args]
+          (with-redefs [params.field-values/prepare-advanced-field-values (fn [& _args]
                                                                             (assert false "Should not be called"))]
             (is (= {:values          [["Japanese"] ["Steakhouse"]]
                     :has_more_values false}

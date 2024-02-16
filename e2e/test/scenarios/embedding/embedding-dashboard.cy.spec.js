@@ -207,7 +207,8 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       goToTab("Tab 2");
 
-      dashboardParametersContainer().within(() => {
+      dashboardParametersContainer().should("not.exist");
+      cy.findByTestId("embed-frame").within(() => {
         cy.findByText("Id").should("not.exist");
         cy.findByText("Name").should("not.exist");
         cy.findByText("Source").should("not.exist");
