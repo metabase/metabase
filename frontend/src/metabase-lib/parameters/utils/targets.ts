@@ -7,11 +7,11 @@ import type {
   ParameterTextTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
+  VariableTarget,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import * as Lib from "metabase-lib";
-import type { TemplateTagDimension } from "metabase-lib/Dimension";
-import Dimension from "metabase-lib/Dimension";
+import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
@@ -51,8 +51,8 @@ export function getParameterTargetField(
   const { isNative } = Lib.queryDisplayInfo(query);
 
   if (isNative) {
-    const dimension = Dimension.parseMBQL(
-      fieldRef,
+    const dimension = TemplateTagDimension.parseMBQL(
+      fieldRef as VariableTarget,
       question.metadata(),
       question.legacyQuery() as NativeQuery,
     );
