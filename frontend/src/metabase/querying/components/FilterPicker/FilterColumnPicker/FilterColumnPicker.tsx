@@ -7,11 +7,15 @@ import {
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
 
-import { Icon } from "metabase/ui";
+import { DelayGroup, Icon } from "metabase/ui";
 import type { IconName } from "metabase/ui";
 
 import * as Lib from "metabase-lib";
 
+import {
+  QueryColumnInfoIcon,
+  HoverParent,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { ColumnListItem, SegmentListItem } from "../types";
 import { StyledAccordionList } from "./FilterColumnPicker.styled";
 
@@ -66,6 +70,8 @@ export function FilterColumnPicker({
       const columnItems = Lib.getColumnsFromColumnGroup(group).map(column => ({
         ...Lib.displayInfo(query, stageIndex, column),
         column,
+        query,
+        stageIndex,
       }));
 
       const includeSegments = groupInfo.isSourceTable;
@@ -102,21 +108,25 @@ export function FilterColumnPicker({
   };
 
   return (
-    <StyledAccordionList
-      sections={sections}
-      onChange={handleSelect}
-      onChangeSection={handleSectionChange}
-      itemIsSelected={checkItemIsSelected}
-      renderItemName={renderItemName}
-      renderItemDescription={omitItemDescription}
-      renderItemIcon={renderItemIcon}
-      // disable scrollbars inside the list
-      style={{ overflow: "visible" }}
-      maxHeight={Infinity}
-      // Compat with E2E tests around MLv1-based components
-      // Prefer using a11y role selectors
-      itemTestId="dimension-list-item"
-    />
+    <DelayGroup>
+      <StyledAccordionList
+        sections={sections}
+        onChange={handleSelect}
+        onChangeSection={handleSectionChange}
+        itemIsSelected={checkItemIsSelected}
+        renderItemWrapper={renderItemWrapper}
+        renderItemName={renderItemName}
+        renderItemDescription={omitItemDescription}
+        renderItemIcon={renderItemIcon}
+        renderItemExtra={renderItemExtra}
+        // disable scrollbars inside the list
+        style={{ overflow: "visible" }}
+        maxHeight={Infinity}
+        // Compat with E2E tests around MLv1-based components
+        // Prefer using a11y role selectors
+        itemTestId="dimension-list-item"
+      />
+    </DelayGroup>
   );
 }
 
@@ -136,4 +146,24 @@ function renderItemIcon(item: ColumnListItem | SegmentListItem) {
   if (item.column) {
     return <Icon name={getColumnIcon(item.column)} size={18} />;
   }
+}
+
+function renderItemWrapper(content: React.ReactNode) {
+  return <HoverParent>{content}</HoverParent>;
+}
+
+function renderItemExtra(item: ColumnListItem | SegmentListItem) {
+  if (isSegmentListItem(item)) {
+    return null;
+  }
+
+  const { query, stageIndex, column } = item;
+  return (
+    <QueryColumnInfoIcon
+      query={query}
+      stageIndex={stageIndex}
+      column={column}
+      position="right"
+    />
+  );
 }
