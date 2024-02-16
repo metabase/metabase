@@ -97,8 +97,9 @@ export const useLLMIndicator: TUseLLMIndicator = ({ question }) => {
             >
               <Icon
                 name="star_filled"
-                color="#ffff00"
-                stroke="#000000"
+                className="text-brand"
+                // color="#ffff00"
+                // stroke="#000000"
                 onClick={handleClick}
                 style={{ verticalAlign: "middle", cursor: "pointer" }}
                 size={24}
