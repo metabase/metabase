@@ -8,10 +8,13 @@ import { color } from "metabase/lib/colors";
 import { Button, Collapse, Flex, Icon, type ButtonProps } from "metabase/ui";
 import { BrowseGrid } from "./BrowseApp.styled";
 
+export const ModelCardLink = styled(Link)`
+  margin: 0.5rem 0;
+`;
+
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
   padding-bottom: 1rem;
-  margin: 0.5rem 0;
 
   height: 9rem;
   display: flex;
@@ -88,7 +91,7 @@ export const CollectionExpandCollapseContainer = styled(Flex)`
   justify-content: flex-start;
   align-items: center;
   grid-column: 1 / -1;
-  margin: 0.5rem 0;
+  margin: 1rem 0;
 `;
 
 export const CollectionHeaderToggle = styled(Button)<
@@ -101,8 +104,11 @@ export const CollectionHeaderToggle = styled(Button)<
   border: none;
   background-color: transparent;
   overflow: unset;
-  &:hover div {
-    color: ${color("brand")};
+  &:hover {
+    background-color: inherit;
+    div {
+      color: ${color("brand")};
+    }
   }
 `;
 

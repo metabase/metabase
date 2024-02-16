@@ -3,7 +3,6 @@ import { c, msgid } from "ttag";
 import type { Card, SearchResult } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
-import Link from "metabase/core/components/Link";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
 
@@ -23,6 +22,7 @@ import {
   ContainerExpandCollapseButton,
   FixedSizeIcon,
   ModelCard,
+  ModelCardLink,
   MultilineEllipsified,
 } from "./BrowseModels.styled";
 import { LastEdited } from "./LastEdited";
@@ -142,7 +142,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const timestamp = model.last_edited_at ?? model.created_at ?? "";
 
   return (
-    <Link
+    <ModelCardLink
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
       key={model.id}
       to={Urls.model(model as unknown as Partial<Card>)}
@@ -158,7 +158,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
         </Title>
         <LastEdited editorFullName={lastEditorFullName} timestamp={timestamp} />
       </ModelCard>
-    </Link>
+    </ModelCardLink>
   );
 };
 
