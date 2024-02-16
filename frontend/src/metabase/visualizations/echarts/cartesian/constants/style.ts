@@ -12,6 +12,7 @@ export const CHART_STYLE = {
     weight: 600,
     size: 12,
     offset: 4,
+    zIndex: 10,
   },
   axisName: {
     size: 14,
