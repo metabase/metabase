@@ -101,7 +101,7 @@
   :export?    true)
 
 (defsetting custom-homepage
-  (deferred-tru "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. To revert to the default Metabase homepage, simply turn off the toggle.")
+  (deferred-tru "Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.")
   :default    false
   :type       :boolean
   :audit      :getter
@@ -260,7 +260,7 @@
     :else landing-page))
 
 (defsetting landing-page
-  (deferred-tru "Default page to show people when they log in.")
+  (deferred-tru "Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.")
   :visibility :public
   :export?    true
   :type       :string
