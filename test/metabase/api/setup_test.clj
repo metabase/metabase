@@ -111,7 +111,7 @@
                                                            :trial    false})]
         (let [license-token random-fake-token]
           (with-setup! {:license_token license-token}
-            (testing "Creating a new admin user should set the `admin-email` Setting"
+            (testing "Should set the premium-embedding-token"
               (is (= license-token (premium-features/premium-embedding-token))))))))))
 
 
