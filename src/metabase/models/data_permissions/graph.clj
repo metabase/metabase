@@ -398,15 +398,19 @@
 
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly."
-  [graph]
-  (doseq [[group-id group-changes] graph]
-    (doseq [[db-id db-changes] group-changes
-            [perm-type new-perms] db-changes]
-      (case perm-type
-        :data       (update-db-level-data-access-permissions! group-id db-id new-perms)
-        :download   (update-db-level-download-permissions! group-id db-id new-perms)
-        :data-model (update-db-level-metadata-permissions! group-id db-id new-perms)
-        :details    (update-details-perms! group-id db-id new-perms)))))
+  ([graph]
+   (doseq [[group-id group-changes] graph]
+     (doseq [[db-id db-changes] group-changes
+             [perm-type new-perms] db-changes]
+       (case perm-type
+         :data       (update-db-level-data-access-permissions! group-id db-id new-perms)
+         :download   (update-db-level-download-permissions! group-id db-id new-perms)
+         :data-model (update-db-level-metadata-permissions! group-id db-id new-perms)
+         :details    (update-details-perms! group-id db-id new-perms)))))
+
+  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ([ks :- [:vector :any] new-value]
+   (update-data-perms-graph!* (assoc-in (-> api-graph :groups) ks new-value))))
 
 (mu/defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally validates the revision number,
