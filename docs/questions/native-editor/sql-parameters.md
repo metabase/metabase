@@ -157,7 +157,7 @@ In the variables sidebar, you can set a default value for your variable. This va
 
 You can also define default values directly in your query by enclosing comment syntax inside the end brackets of an optional parameter.
 
-```
+```sql
 WHERE column = [[ {% raw %}{{ your_parameter }}{% endraw %} --]] your_default_value
 ```
 
@@ -165,7 +165,7 @@ The comment will "activate" whenever you pass a value to `your_parameter`.
 
 This is useful when defining complex default values (for example, if your default value is a function like `CURRENT_DATE`). Here's a PostgreSQL example that sets the default value of a Date filter to the current date using `CURRENT_DATE`:
 
-```
+```sql
 {% raw %}
 SELECT
   *
@@ -290,20 +290,29 @@ The reason is that field filters generate SQL based on the mapped field; Metabas
 
 Your main query should be aware of all the tables that your Field Filter variable is pointing to, otherwise you'll get a SQL syntax error. For example, let's say that your main query includes a field filter like this:
 
-```
-SELECT *
-FROM ORDERS
-WHERE {% raw %}{{ product_category }}{% endraw %}
+```sql
+{% raw %}
+SELECT
+  *
+FROM
+  ORDERS
+WHERE
+  {{ product_category }}
+{% endraw %}
 ```
 
 Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
 
-```
-SELECT *
-FROM ORDERS
-JOIN PRODUCTS
-ON ORDERS.product_id = PRODUCTS.id
-WHERE {% raw %}{{ product_category }}{% endraw %}
+```sql
+{% raw %}
+SELECT
+  *
+FROM
+  ORDERS
+  JOIN PRODUCTS ON ORDERS.product_id = PRODUCTS.id
+WHERE
+  {{ product_category }}
+{% endraw %}
 ```
 
 ### SQL syntax
