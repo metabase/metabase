@@ -4,12 +4,10 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
-import ModalContent from "metabase/components/ModalContent";
 import { Form, FormProvider } from "metabase/forms";
 import { Group } from "metabase/ui";
 import { apiGetCardSummary } from "metabase/query_builder/actions";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
@@ -39,6 +37,7 @@ import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
+import { Flex, Modal } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import type { CollectionId } from "metabase-types/api";
 
@@ -222,30 +221,31 @@ export const SaveQuestionModal = ({
       : t`What is the name of your model?`;
 
   return (
-    <CreateCollectionOnTheGo>
-      {({ resumedValues }) => (
-        <ModalContent
-          data-testid="save-question-modal"
-          id="SaveQuestionModal"
-          title={title}
-          onClose={onClose}
-        >
-          <FormProvider
-            initialValues={{
-              ...initialValues,
-              ...{},
-              ...resumedValues,
-            }}
-            onSubmit={handleSubmit}
-            validationSchema={SAVE_QUESTION_SCHEMA}
-            enableReinitialize
-          >
-            {({ values, setFieldValue, validateForm }) => (
-              <Form>
+    <Modal.Root size="md" onClose={onClose} opened={true}>
+      <Modal.Overlay />
+      <FormProvider
+        initialValues={{
+          ...initialValues,
+          ...{},
+        }}
+        onSubmit={handleSubmit}
+        validationSchema={SAVE_QUESTION_SCHEMA}
+        enableReinitialize
+      >
+        {({ values, setFieldValue, validateForm }) => (
+          <Modal.Content>
+            <Modal.Header>
+              <Modal.Title>{title}</Modal.Title>
+              <Flex align="center" gap="sm">
                 <LLMIndicator
                   setFieldValue={setFieldValue}
                   validateForm={validateForm}
                 />
+                <Modal.CloseButton />
+              </Flex>
+            </Modal.Header>
+            <Modal.Body>
+              <Form>
                 {showSaveType && (
                   <FormRadio
                     name="saveType"
@@ -294,10 +294,10 @@ export const SaveQuestionModal = ({
                   <FormSubmitButton title={t`Save`} primary />
                 </FormFooter>
               </Form>
-            )}
-          </FormProvider>
-        </ModalContent>
-      )}
-    </CreateCollectionOnTheGo>
+            </Modal.Body>
+          </Modal.Content>
+        )}
+      </FormProvider>
+    </Modal.Root>
   );
 };
