@@ -24,7 +24,6 @@ import {
   isCompatibleAggregationOperatorForField,
 } from "metabase-lib/operators/utils";
 import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
-import { isSegment } from "metabase-lib/queries/utils/filter";
 import * as Q from "metabase-lib/queries/utils/query";
 import { TYPE } from "metabase-lib/types/constants";
 import { createLookupByProperty } from "metabase-lib/utils";
@@ -72,10 +71,6 @@ export interface FilterSection {
 export interface DimensionOption {
   dimension: Dimension;
 }
-
-// type guards for determining data types
-export const isSegmentOption = (content: any): content is SegmentOption =>
-  content?.filter && isSegment(content.filter);
 
 export interface SegmentOption {
   name: string;
@@ -636,14 +631,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   // DIMENSION OPTIONS
-  _keyForFK(source, destination) {
-    if (source && destination) {
-      return `${source.id},${destination.id}`;
-    }
-
-    return null;
-  }
-
   dimensionOptions(
     dimensionFilter: DimensionFilterFn = _dimension => true,
   ): DimensionOptions {
@@ -848,30 +835,6 @@ class StructuredQuery extends AtomicQuery {
   rootQuery(): StructuredQuery {
     return this;
   }
-
-  /**
-   * Returns the "last" nested query that is already summarized, or `null` if none are
-   * */
-  lastSummarizedQuery = _.once((): StructuredQuery | null | undefined => {
-    if (this.hasAggregations() || !this.canNest()) {
-      return this;
-    } else {
-      const sourceQuery = this.sourceQuery();
-      return sourceQuery ? sourceQuery.lastSummarizedQuery() : null;
-    }
-  });
-
-  /**
-   * Returns the "last" nested query that is already summarized, or the query itself.
-   * Used in "view mode" to effectively ignore post-aggregation filter stages
-   */
-  topLevelQuery = _.once((): StructuredQuery => {
-    if (!this.canNest()) {
-      return this;
-    } else {
-      return this.lastSummarizedQuery() || this;
-    }
-  });
 
   /**
    * returns the corresponding {Dimension} in the sourceQuery, if any

@@ -69,39 +69,6 @@ describe("StructuredQuery nesting", () => {
     });
   });
 
-  describe("topLevelQuery", () => {
-    it("should return the query if it's summarized", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery();
-      expect(q.topLevelQuery().legacyQuery()).toEqual({
-        "source-table": ORDERS_ID,
-      });
-    });
-    it("should return the query if it's not summarized", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery().aggregate(["count"]);
-      expect(q.topLevelQuery().legacyQuery()).toEqual({
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-      });
-    });
-    it("should return last stage if none are summarized", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery().nest();
-      expect(q.topLevelQuery().legacyQuery()).toEqual({
-        "source-query": { "source-table": ORDERS_ID },
-      });
-    });
-    it("should return last summarized stage if any is summarized", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery().aggregate(["count"]).nest();
-      expect(q.topLevelQuery().legacyQuery()).toEqual({
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-      });
-    });
-  });
-
   describe("model question", () => {
     it("should not include implicit join dimensions when the underyling question has an explicit join", () => {
       const fields = [
