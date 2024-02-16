@@ -172,7 +172,7 @@ export const buildEChartsWaterfallSeries = (
           WATERFALL_END_2_KEY,
         ],
       },
-      zlevel: CHART_STYLE.series.zIndex,
+      z: CHART_STYLE.series.zIndex,
     },
     {
       id: WATERFALL_LABELS_SERIES_ID,
@@ -199,7 +199,7 @@ export const buildEChartsWaterfallSeries = (
       id: WATERFALL_TOTAL_KEY,
       type: "bar",
       barWidth,
-      zlevel: CHART_STYLE.series.zIndex + 10,
+      z: CHART_STYLE.series.zIndex,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_TOTAL_KEY],
       encode: {
         y: WATERFALL_TOTAL_KEY,
