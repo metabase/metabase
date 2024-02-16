@@ -1,17 +1,17 @@
 import { t } from "ttag";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { Icon } from "metabase/ui";
 import {
   LoadingAndErrorContainer,
   LoadingAndErrorContent,
   LoadingAndErrorTitle,
 } from "./MainNavbar.styled";
 
-export function NavbarLoadingView() {
+export function NavbarErrorView() {
   return (
     <LoadingAndErrorContainer>
       <LoadingAndErrorContent>
-        <LoadingSpinner />
-        <LoadingAndErrorTitle>{t`Loading…`}</LoadingAndErrorTitle>
+        <Icon name="warning" size={32} />
+        <LoadingAndErrorTitle>{t`An error occurred`}</LoadingAndErrorTitle>
       </LoadingAndErrorContent>
     </LoadingAndErrorContainer>
   );

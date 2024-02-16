@@ -9,6 +9,7 @@ import {
   useRecentItemListQuery,
 } from "metabase/common/hooks";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
+import type { UseEntityListQueryResult } from "metabase/common/hooks/use-entity-list-query";
 import type Database from "metabase-lib/metadata/Database";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
@@ -22,22 +23,21 @@ export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
-  const { data: databases, isLoading: isDatabasesLoading } =
-    useDatabaseListQuery();
-  const { data: recentItems, isLoading: isRecentItemsLoading } =
-    useRecentItemListQuery({ reload: true });
-  const { data: popularItems, isLoading: isPopularItemsLoading } =
-    usePopularItemListQuery({ reload: true });
+  const databases = useDatabaseListQuery();
+  const recentItems = useRecentItemListQuery({ reload: true });
+  const popularItems = usePopularItemListQuery({ reload: true });
+  const { isLoading, error } = getRequestState(
+    user,
+    databases,
+    recentItems,
+    popularItems,
+  );
 
-  if (
-    !user ||
-    isLoading(
-      user,
-      isDatabasesLoading,
-      isRecentItemsLoading,
-      isPopularItemsLoading,
-    )
-  ) {
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (!user || isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -45,33 +45,42 @@ export const HomeContent = (): JSX.Element | null => {
     return <EmbedMinimalHomepage onDismiss={update} />;
   }
 
-  if (isPopularSection(user, recentItems, popularItems)) {
+  if (isPopularSection(user, recentItems.data, popularItems.data)) {
     return <HomePopularSection />;
   }
 
-  if (isRecentSection(user, recentItems)) {
+  if (isRecentSection(user, recentItems.data)) {
     return <HomeRecentSection />;
   }
 
-  if (isXraySection(databases, isXrayEnabled)) {
+  if (isXraySection(databases.data, isXrayEnabled)) {
     return <HomeXraySection />;
   }
 
   return null;
 };
 
-const isLoading = (
-  user: User,
-  isDatabasesLoading: boolean,
-  isRecentItemsLoading: boolean,
-  isPopularItemsLoading: boolean,
-): boolean => {
-  if (!user.has_question_and_dashboard) {
-    return isDatabasesLoading;
+const getRequestState = (
+  user: User | null,
+  databases: UseEntityListQueryResult<Database>,
+  recentItems: UseEntityListQueryResult<RecentItem>,
+  popularItems: UseEntityListQueryResult<PopularItem>,
+): { isLoading: boolean; error: unknown } => {
+  if (!user) {
+    return { isLoading: true, error: null };
+  } else if (!user.has_question_and_dashboard) {
+    return { isLoading: databases.data == null, error: databases.error };
   } else if (user.is_installer || !isWithinWeeks(user.first_login, 1)) {
-    return isDatabasesLoading || isRecentItemsLoading;
+    const isLoading = databases.data == null || recentItems.data == null;
+    const error = databases.error || recentItems.error;
+    return { isLoading, error };
   } else {
-    return isDatabasesLoading || isRecentItemsLoading || isPopularItemsLoading;
+    const isLoading =
+      databases.data == null ||
+      recentItems.data == null ||
+      popularItems.data == null;
+    const error = databases.error || recentItems.error || popularItems.error;
+    return { isLoading, error };
   }
 };
 
