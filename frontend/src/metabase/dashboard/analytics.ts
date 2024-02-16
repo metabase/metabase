@@ -1,5 +1,5 @@
 import { trackSchemaEvent } from "metabase/lib/analytics";
-import type { DashboardId } from "metabase-types/api";
+import type { DashboardId, DashboardWidth } from "metabase-types/api";
 
 const DASHBOARD_SCHEMA_VERSION = "1-1-3";
 
@@ -14,6 +14,17 @@ export const trackExportDashboardToPDF = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
     event: "dashboard_pdf_exported",
     dashboard_id: dashboardId,
+  });
+};
+
+export const trackDashboardWidthChange = (
+  dashboardId: DashboardId,
+  width: DashboardWidth,
+) => {
+  trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
+    event: "dashboard_width_toggled",
+    dashboard_id: dashboardId,
+    full_width: width === "full",
   });
 };
 
