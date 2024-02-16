@@ -39,6 +39,14 @@ export const getAllUploads = (state: State) => Object.values(state.upload);
 export const hasActiveUploads = (state: State) =>
   getAllUploads(state).some(upload => upload.status === "in-progress");
 
+export interface UploadFileProps {
+  file: File;
+  collectionId?: CollectionId;
+  tableId?: TableId;
+  modelId?: CardId;
+  reloadQuestionData?: boolean;
+}
+
 export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
   ({
@@ -47,13 +55,7 @@ export const uploadFile = createThunkAction(
       tableId,
       modelId,
       reloadQuestionData,
-    }: {
-      file: File;
-      collectionId?: CollectionId;
-      tableId?: TableId;
-      modelId?: CardId;
-      reloadQuestionData?: boolean;
-    }) =>
+    }: UploadFileProps) =>
     async (dispatch: Dispatch) => {
       const id = Date.now();
 
