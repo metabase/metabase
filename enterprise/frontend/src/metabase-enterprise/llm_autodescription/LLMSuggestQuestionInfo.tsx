@@ -88,9 +88,13 @@ export const LLMSuggestQuestionInfo = ({
   if (loading) {
     return (
       <Flex justify="flex-end">
-        <Tooltip label={t`Generating descriptions`} position="top-end">
-          <Button variant="unstyled" p="xs" style={{ cursor: "wait" }}>
-            <Icon name="ai" className="pulseicon" size={16} />
+        <Tooltip
+          label={t`Generating descriptions`}
+          className="llm-pulse-icon"
+          position="top-end"
+        >
+          <Button variant="unstyled" p="xs">
+            <Icon name="ai" size={16} />
           </Button>
         </Tooltip>
       </Flex>

@@ -63,6 +63,7 @@
   }
 }
 
-.pulseicon {
+.llm-pulse-icon {
   animation: pulse 1s infinite;
+  cursor: wait;
 }

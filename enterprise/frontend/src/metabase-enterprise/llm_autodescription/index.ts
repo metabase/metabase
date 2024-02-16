@@ -1,11 +1,8 @@
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
 
-import { LLMSuggestQuestionInfo } from "./use-llm-question-name-description";
-import { useLLMDashboardDescription } from "./use-llm-dashboard-description";
+import { LLMSuggestQuestionInfo } from "./LLMSuggestQuestionInfo";
 
 if (hasPremiumFeature("llm_autodescription")) {
-  PLUGIN_LLM_AUTODESCRIPTION.useLLMDashboardDescription =
-    useLLMDashboardDescription;
   PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo = LLMSuggestQuestionInfo;
 }
