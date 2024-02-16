@@ -5824,6 +5824,108 @@ databaseChangeLog:
             sql: >-
               DROP VIEW IF EXISTS v_content;
 
+      id: v50.2024-02-16T16:00:00
+      author: piranha
+      comment: 'Effective caching #36847'
+      changes:
+        - createTable:
+            tableName: cache_config
+            remarks: Cache Configuration
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  remarks: Name of an entity model
+                  type: varchar(32)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_id
+                  remarks: ID of the said entity
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: collection_id
+                  remarks: '(denormalized) id of a collection of an entity this references'
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_cache_config_ref_collection_id
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the config was inserted
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the config was updated (by a user action or by a run)
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strategy
+                  remarks: caching strategy name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config
+                  remarks: caching strategy configuration
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  remarks: payload for strategies needing to keep some data between runs
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: next_run_at
+                  remarks: Keeps next time to run for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-02-16T16:00:01
+      author: piranha
+      comment: 'Effective caching #36847'
+      rollback: # will be removed with the table
+      changes:
+        - addUniqueConstraint:
+            remarks: Unique config for cache_config (model, model_id)
+            tableName: cache_config
+            constraintName: idx_cache_config_unique_model
+            columnNames: model, model_id
+
+  - changeSet:
+      id: v50.2024-02-16T16:00:02
+      author: piranha
+      comment: 'Effective caching #36847'
+      rollback: # will be removed with the table
+      changes:
+        - createIndex:
+            tableName: cache_config
+            indexName: idx_cache_config_collection_id
+            columns:
+              column:
+                name: collection_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

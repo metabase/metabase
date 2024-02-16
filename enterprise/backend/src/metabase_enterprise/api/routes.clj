@@ -12,6 +12,7 @@
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes :as audit-app]
    [metabase-enterprise.billing.api.routes :as billing]
+   [metabase-enterprise.caching.api :as caching]
    [metabase-enterprise.content-verification.api.routes
     :as content-verification]
    [metabase-enterprise.llm.api :as llm.api]
@@ -47,4 +48,7 @@
     (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))
    (compojure/context
     "/autodescribe" []
-    (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))))
+    (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))
+   (compojure/context
+    "/caching" []
+    (ee.api.common/+require-premium-feature :cache-granular-controls (deferred-tru "Caching") caching/routes))))
