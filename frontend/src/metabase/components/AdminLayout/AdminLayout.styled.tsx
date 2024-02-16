@@ -1,9 +1,5 @@
 import styled from "@emotion/styled";
-import {
-  breakpointMaxSmall,
-  breakpointMaxMedium,
-} from "metabase/styled-components/theme";
-import SaveStatus from "metabase/components/SaveStatus";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const AdminWrapper = styled.div<{ headerHeight?: number }>`
   height: ${props =>
@@ -12,18 +8,6 @@ export const AdminWrapper = styled.div<{ headerHeight?: number }>`
   flex-direction: column;
   padding-left: 2rem;
   position: relative;
-`;
-
-export const AdminNotifications = styled.div`
-  position: absolute;
-  top: 2rem;
-  right: 2rem;
-`;
-
-export const AdminSaveStatus = styled(SaveStatus)`
-  ${breakpointMaxMedium} {
-    margin-bottom: 2rem;
-  }
 `;
 
 export const AdminMain = styled.div`

@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 
-import type * as React from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -47,12 +46,10 @@ interface UploadSettingProps {
   updateSettings: (
     settings: Record<string, string | number | boolean | null>,
   ) => Promise<void>;
-  saveStatusRef: React.RefObject<{
-    setSaving: () => void;
-    setSaved: () => void;
-    setSaveError: (msg: string) => void;
-    clear: () => void;
-  }>;
+  setSaving: () => void;
+  setSaved: () => void;
+  setSaveError: (msg: string) => void;
+  clearSaved: () => void;
 }
 
 const mapStateToProps = (state: State) => ({
@@ -88,7 +85,9 @@ export function UploadSettingsView({
   databases,
   settings,
   updateSettings,
-  saveStatusRef,
+  setSaving,
+  setSaved,
+  clearSaved,
 }: UploadSettingProps) {
   const [dbId, setDbId] = useState<number | null>(
     settings.uploads_database_id ?? null,
@@ -118,15 +117,11 @@ export function UploadSettingsView({
   const showError = (msg: string) => {
     setErrorMessage(msg);
     setTimeout(() => setErrorMessage(null), FEEDBACK_TIMEOUT);
-    saveStatusRef?.current?.clear();
-  };
-
-  const showSaving = () => {
-    saveStatusRef?.current?.setSaving();
+    clearSaved();
   };
 
   const handleEnableUploads = async () => {
-    showSaving();
+    setSaving();
     return updateSettings({
       "uploads-enabled": true,
       "uploads-database-id": dbId,
@@ -136,14 +131,14 @@ export function UploadSettingsView({
       .then(() => {
         setSchemaName(schemaName);
         setTablePrefix(tablePrefix);
-        saveStatusRef?.current?.setSaved();
+        setSaved();
         dispatch(Databases.actions.invalidateLists());
       })
       .catch(() => showError(enableErrorMessage));
   };
 
   const handleDisableUploads = () => {
-    showSaving();
+    setSaving();
     return updateSettings({
       "uploads-enabled": false,
       "uploads-database-id": null,
@@ -154,7 +149,7 @@ export function UploadSettingsView({
         setDbId(null);
         setSchemaName(null);
         setTablePrefix(null);
-        saveStatusRef?.current?.setSaved();
+        setSaved();
       })
       .catch(() => showError(disableErrorMessage));
   };

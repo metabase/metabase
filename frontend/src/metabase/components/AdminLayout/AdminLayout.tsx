@@ -1,6 +1,4 @@
 import {
-  AdminSaveStatus,
-  AdminNotifications,
   AdminSidebar,
   AdminWrapper,
   AdminMain,
@@ -10,14 +8,12 @@ import {
 interface AdminLayoutProps {
   sidebar: React.ReactNode;
   children: React.ReactNode;
-  saveStatusRef?: React.RefObject<any>;
   headerHeight?: number;
 }
 
 export function AdminLayout({
   sidebar,
   children,
-  saveStatusRef,
   headerHeight,
 }: AdminLayoutProps) {
   return (
@@ -27,9 +23,6 @@ export function AdminLayout({
           {sidebar}
         </AdminSidebar>
         <AdminContent data-testid="admin-layout-content">
-          <AdminNotifications role="status">
-            <AdminSaveStatus ref={saveStatusRef} />
-          </AdminNotifications>
           {children}
         </AdminContent>
       </AdminMain>
