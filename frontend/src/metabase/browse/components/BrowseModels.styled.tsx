@@ -66,10 +66,10 @@ export const CollectionHeaderContainer = styled(Flex)`
   display: flex;
   padding-top: 1rem;
   align-items: center;
-  gap: 0.25rem;
 `;
 
 export const CollectionHeaderLink = styled(Link)`
+  display: flex;
   &:hover {
     color: ${color("brand")};
   }

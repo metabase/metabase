@@ -64,18 +64,18 @@ export const ModelGroup = ({
             name={areSomeModelsShown ? "chevrondown" : "chevronright"}
           />
         </CollectionHeaderToggle>
-        <FixedSizeIcon {...icon} />
-        <Title
-          size="1rem"
-          lh="1rem"
-          ml=".25rem"
-          mr="1rem"
-          color={color("text-dark")}
-        >
-          <CollectionHeaderLink to={Urls.collection(collection)}>
+        <CollectionHeaderLink to={Urls.collection(collection)}>
+          <FixedSizeIcon {...icon} />
+          <Title
+            size="1rem"
+            lh="1rem"
+            ml=".25rem"
+            mr="1rem"
+            color={color("text-dark")}
+          >
             {getCollectionName(collection)}
-          </CollectionHeaderLink>
-        </Title>
+          </Title>
+        </CollectionHeaderLink>
         <CollectionSummary>
           {c("{0} is the number of models in a collection").ngettext(
             msgid`${models.length} model`,
