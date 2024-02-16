@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 

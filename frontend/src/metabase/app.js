@@ -38,8 +38,6 @@ import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
-import { getStore } from "./store";
-
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
@@ -50,6 +48,8 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
 import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
+
+import { getStore } from "./store";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
