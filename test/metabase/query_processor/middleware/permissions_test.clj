@@ -222,49 +222,6 @@
   (testing "Query action permissions"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
-<<<<<<< HEAD
-        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-        (let [query  (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
-              check! (fn [query]
-                       (qp.store/with-metadata-provider (mt/id)
-                         (qp.perms/check-query-action-permissions* query)))]
-          (t2.with-temp/with-temp [Collection collection]
-            (t2.with-temp/with-temp [Card {model-id :id} {:collection_id (u/the-id collection)
-                                                          :dataset_query query}]
-              (testing "are granted by default"
-                (check! query))
-              (testing "are revoked without access to the model"
-                (binding [qp.perms/*card-id* model-id]
-                  (is (thrown-with-msg?
-                       ExceptionInfo
-                       #"You do not have permissions to view Card [\d,]+"
-                       (check! query)))))
-              ;; Are revoked with DB access blocked: requires EE, see test in
-              ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj
-              (testing "are granted with access to the model"
-                (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path (u/the-id collection))})
-                          qp.perms/*card-id* model-id]
-                  (check! query))))))))))
-
-(deftest ^:parallel end-to-end-test
-  (testing (str "Make sure it works end-to-end: make sure bound `*current-user-id*` and `*current-user-permissions-set*` "
-                "are used to permissions check queries")
-    (binding [api/*current-user-id*              (mt/user->id :rasta)
-              api/*current-user-permissions-set* (delay #{})]
-      (is (=? {:status   :failed
-               :class    (partial = clojure.lang.ExceptionInfo)
-               :error    "You do not have permissions to run this query."
-               :ex-data  {:required-permissions #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))}
-                          :actual-permissions   #{}
-                          :permissions-error?   true
-                          :type                 qp.error-type/missing-required-permissions}}
-              (qp/process-query
-               (qp/userland-query
-                {:database (mt/id)
-                 :type     :query
-                 :query    {:source-table (mt/id :venues)
-                            :limit        1}})))))))
-=======
         (mt/with-no-data-perms-for-all-users!
          (let [query  (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
                check! (fn [query]
@@ -287,7 +244,6 @@
                  (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path (u/the-id collection))})
                            qp.perms/*card-id* model-id]
                    (check! query)))))))))))
->>>>>>> 689c0caa7b (Update permissions QP middleware to use data-permissions APIs (#38158))
 
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
@@ -334,35 +290,19 @@
                                          (mt/rows
                                           (qp/process-query (:dataset_query card-2)))))))
 
-                              (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
-                                (is (= expected
-                                       (mt/rows
-                                        (qp/process-query (mt/mbql-query nil
-                                                            {:source-table (format "card__%d" card-1-id)}))))))
+                             (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
+                               (is (= expected
+                                      (mt/rows
+                                       (qp/process-query (mt/mbql-query nil
+                                                           {:source-table (format "card__%d" card-1-id)}))))))
 
-                              (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
-                                (is (= expected
-                                       (mt/rows
-<<<<<<< HEAD
-                                        (qp/process-query (:dataset_query card-2)))))))
-
-                            (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
-                              (is (= expected
-                                     (mt/rows
-                                      (qp/process-query (mt/mbql-query nil
-                                                          {:source-table (format "card__%d" card-1-id)}))))))
-
-                            (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
-                              (is (= expected
-                                     (mt/rows
-                                      (qp/process-query
-                                       (qp/userland-query
-                                        (mt/mbql-query nil
-                                          {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))))
-=======
-                                        (qp/process-userland-query (mt/mbql-query nil
-                                                                     {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))))
->>>>>>> 689c0caa7b (Update permissions QP middleware to use data-permissions APIs (#38158))
+                             (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
+                               (is (= expected
+                                      (mt/rows
+                                       (qp/process-query
+                                        (qp/userland-query
+                                         (mt/mbql-query nil
+                                           {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
