@@ -22,7 +22,9 @@ export const ResponsiveEChartsRenderer = ExplicitSize({
     ...echartsRenderedProps
   }: ResponsiveEChartsRendererProps) => {
     useEffect(() => {
-      onResize(width, height);
+      if (width != null && height != null) {
+        onResize(width, height);
+      }
     }, [width, height, onResize]);
 
     if (!width || !height) {

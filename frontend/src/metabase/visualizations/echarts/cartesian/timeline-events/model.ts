@@ -1,47 +1,19 @@
-import type { Dayjs, OpUnitType } from "dayjs";
+import type { OpUnitType } from "dayjs";
 import dayjs from "dayjs";
 import _ from "underscore";
-import type { RowValue, TimelineEvent } from "metabase-types/api";
+import type { TimelineEvent } from "metabase-types/api";
 import type {
   BaseCartesianChartModel,
-  ChartDataset,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import type {
   DateRange,
-  TimelineEventGroup,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/utils/layout";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { ChartMeasurements } from "../option/types";
-
-const tryGetDate = (rowValue: RowValue): Dayjs | null => {
-  if (typeof rowValue === "boolean") {
-    return null;
-  }
-  const date = dayjs(rowValue);
-  return date.isValid() ? date : null;
-};
-
-const getXAxisRange = (dataset: ChartDataset): DateRange | null => {
-  if (dataset.length === 0) {
-    return null;
-  }
-
-  // Assume the dataset is sorted
-  const minDate = tryGetDate(dataset[0][X_AXIS_DATA_KEY]);
-  const maxDate = tryGetDate(dataset[dataset.length - 1][X_AXIS_DATA_KEY]);
-
-  if (minDate == null || maxDate == null) {
-    return null;
-  }
-
-  return [minDate, maxDate];
-};
 
 const getDayWidth = (
   range: DateRange,
@@ -179,7 +151,7 @@ export const getTimelineEventsModel = (
     return null;
   }
 
-  const dimensionRange = getXAxisRange(chartModel.dataset);
+  const dimensionRange = chartModel.xAxisModel.timeSeriesInterval?.range;
   if (!dimensionRange) {
     return null;
   }

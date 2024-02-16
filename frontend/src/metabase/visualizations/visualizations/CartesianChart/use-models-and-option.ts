@@ -72,6 +72,10 @@ export function useModelsAndOption({
   );
 
   const option = useMemo(() => {
+    if (width === 0 || height === 0) {
+      return {};
+    }
+
     switch (card.display) {
       case "waterfall":
         return getWaterfallChartOption(

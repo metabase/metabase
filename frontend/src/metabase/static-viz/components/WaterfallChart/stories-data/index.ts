@@ -24,6 +24,7 @@ import powYScale from "./pow-y-scale.json";
 import powYScaleNegativeOnly from "./pow-y-scale-negative-only.json";
 import powYScaleMixed from "./pow-y-scale-mixed.json";
 import nativeTimeSeriesQuarter from "./native-time-series-quarter.json";
+import nativeTimeSeriesWithGaps from "./native-time-series-with-gaps.json";
 import structuredTimeSeriesYear from "./structured-time-series-year.json";
 
 export const data = {
@@ -53,5 +54,6 @@ export const data = {
   powYScaleNegativeOnly,
   powYScaleMixed,
   nativeTimeSeriesQuarter,
+  nativeTimeSeriesWithGaps,
   structuredTimeSeriesYear,
 };

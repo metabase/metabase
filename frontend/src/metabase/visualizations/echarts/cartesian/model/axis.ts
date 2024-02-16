@@ -1,6 +1,8 @@
 import d3 from "d3";
 import _ from "underscore";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import type {
   AxisFormatter,
   DataKey,
@@ -12,6 +14,7 @@ import type {
   YAxisModel,
   DimensionModel,
   TimeSeriesInterval,
+  DateRange,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -38,7 +41,6 @@ import {
   computeTimeseriesDataInverval,
   minTimeseriesUnit,
 } from "metabase/visualizations/lib/timeseries";
-import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isDate } from "metabase-lib/types/utils/isa";
 
@@ -508,19 +510,12 @@ export function getXAxisModel(
       ? getTimeSeriesXAxisInterval(xValues, rawSeries, dimensionModel)
       : undefined;
 
-  const numericInterval = getNumericXAxisInterval(
-    xValues,
-    dimensionModel,
-    settings,
-  );
-
   const axisType = getXAxisEChartsType(dimensionModel, settings);
 
   return {
     formatter,
     label,
     timeSeriesInterval,
-    numericInterval,
     axisType,
   };
 }
@@ -532,6 +527,30 @@ function getTimezone(rawSeries: RawSeries) {
   const { results_timezone } = rawSeries[0].data;
   return results_timezone || DEFAULT_TIMEZONE;
 }
+
+const tryGetDate = (rowValue: RowValue): Dayjs | null => {
+  if (typeof rowValue === "boolean") {
+    return null;
+  }
+  const date = dayjs(rowValue);
+  return date.isValid() ? date : null;
+};
+
+const getXAxisDateRange = (xValues: RowValue[]): DateRange | undefined => {
+  if (xValues.length === 0) {
+    return undefined;
+  }
+
+  // Assume the dataset is sorted
+  const minDate = tryGetDate(xValues[0]);
+  const maxDate = tryGetDate(xValues[xValues.length - 1]);
+
+  if (minDate == null || maxDate == null) {
+    return undefined;
+  }
+
+  return [minDate, maxDate];
+};
 
 export function getTimeSeriesXAxisInterval(
   xValues: RowValue[],
@@ -550,27 +569,15 @@ export function getTimeSeriesXAxisInterval(
     count: 1,
     interval: "day",
   }) as Pick<TimeSeriesInterval, "count" | "interval">;
-  return { count, interval, timezone };
-}
 
-export function getNumericXAxisInterval(
-  xValues: RowValue[],
-  dimensionModel: DimensionModel,
-  settings: ComputedVisualizationSettings,
-) {
-  if (
-    ["linear", "log", "pow", "histogram"].includes(
-      // @ts-expect-error x axis scale value can be undefined
-      settings["graph.x_axis.scale"],
-    )
-  ) {
-    return undefined;
+  const range = getXAxisDateRange(xValues);
+  let lengthInIntervals = 0;
+
+  if (range) {
+    const [min, max] = range;
+    // A single date counts as one interval
+    lengthInIntervals = Math.max(1, Math.ceil(max.diff(min, interval) / count));
   }
 
-  const binningInfo = dimensionModel.column.binning_info;
-  if (binningInfo) {
-    return binningInfo.bin_width;
-  }
-
-  return computeNumericDataInverval(xValues);
+  return { count, interval, timezone, lengthInIntervals, range };
 }

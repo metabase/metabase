@@ -6,9 +6,8 @@ import type {
 import type { DatasetOption } from "echarts/types/dist/shared";
 import type {
   BaseCartesianChartModel,
-  ChartDataset,
   DataKey,
-  SeriesModel,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -41,15 +40,48 @@ type WaterfallSeriesOptions =
   | RegisteredSeriesOption["bar"]
   | RegisteredSeriesOption["candlestick"];
 
-const barWidth = "60%";
+const DEFAULT_BAR_WIDTH = `60%`;
+
+// Ensures bars are not too wide when there are just a few
+const getBarWidthPercent = (barsCount: number) => 1 / (1.4 * barsCount);
+
+const getBarWidth = (
+  xAxisModel: XAxisModel,
+  chartMeasurements: ChartMeasurements,
+  settings: ComputedVisualizationSettings,
+) => {
+  if (
+    settings["graph.x_axis.scale"] !== "timeseries" ||
+    !xAxisModel.timeSeriesInterval
+  ) {
+    return DEFAULT_BAR_WIDTH;
+  }
+
+  let dataPointsCount = xAxisModel.timeSeriesInterval.lengthInIntervals + 1;
+  if (settings["waterfall.show_total"]) {
+    dataPointsCount += 1;
+  }
+  return Math.max(
+    5,
+    (chartMeasurements.bounds.right - chartMeasurements.bounds.left) *
+      getBarWidthPercent(dataPointsCount),
+  );
+};
 
 export const buildEChartsWaterfallSeries = (
-  seriesModel: SeriesModel,
-  dataset: ChartDataset,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): WaterfallSeriesOptions[] => {
+  const { seriesModels, transformedDataset: dataset } = chartModel;
+  const [seriesModel] = seriesModels;
+  const barWidth = getBarWidth(
+    chartModel.xAxisModel,
+    chartMeasurements,
+    settings,
+  );
+
   const buildLabelOption = (key: DataKey) => ({
     ...buildEChartsLabelOptions(
       seriesModel,
@@ -148,6 +180,7 @@ export const buildEChartsWaterfallSeries = (
         x: X_AXIS_DATA_KEY,
       },
       label: buildLabelOption(WATERFALL_VALUE_KEY),
+      animationDuration: 0,
     },
   ];
 
@@ -165,6 +198,7 @@ export const buildEChartsWaterfallSeries = (
       itemStyle: {
         color: settings["waterfall.total_color"],
       },
+      animationDuration: 0,
     });
   }
 
@@ -198,8 +232,7 @@ export const getWaterfallChartOption = (
     : null;
 
   const dataSeriesOptions = buildEChartsWaterfallSeries(
-    chartModel.seriesModels[0],
-    chartModel.transformedDataset,
+    chartModel,
     settings,
     chartMeasurements,
     renderingContext,

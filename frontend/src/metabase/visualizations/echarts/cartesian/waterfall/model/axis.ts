@@ -37,13 +37,37 @@ export const getWaterfallXAxisModel = (
     if (
       !hasTotal ||
       settings["graph.x_axis.scale"] !== "timeseries" ||
-      areBooleanXValues
+      areBooleanXValues ||
+      !xAxisModel.timeSeriesInterval
     ) {
       return xAxisModel.formatter(value);
     }
+    const dateValue = dayjs(value);
 
-    if (dayjs(value).isAfter(dayjs(lastXValue))) {
+    const totalBucketStart = dayjs(lastXValue).add(
+      xAxisModel.timeSeriesInterval?.count,
+      // @ts-expect-error daysjs
+      xAxisModel.timeSeriesInterval?.interval,
+    );
+
+    if (
+      dateValue.isSame(
+        totalBucketStart,
+        // @ts-expect-error daysjs
+        xAxisModel.timeSeriesInterval?.interval,
+      )
+    ) {
       return t`Total`;
+    } else if (
+      dateValue.isAfter(
+        totalBucketStart,
+        // @ts-expect-error daysjs
+        xAxisModel.timeSeriesInterval?.interval,
+      )
+    ) {
+      // If ECharts decides that tick after the Total value should be rendered
+      // we intentionally hide it
+      return " ";
     }
 
     return xAxisModel.formatter(value);

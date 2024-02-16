@@ -1,7 +1,11 @@
-import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { DatetimeUnit } from "metabase-types/api";
+import type {
+  CartesianChartDateTimeAbsoluteUnit,
+  TimeSeriesInterval,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 
-const getApproximateUnitDurationMs = (unit: DatetimeUnit) => {
+const getApproximateUnitDurationMs = (
+  unit: CartesianChartDateTimeAbsoluteUnit,
+) => {
   switch (unit) {
     case "ms":
       return 1;
@@ -12,7 +16,6 @@ const getApproximateUnitDurationMs = (unit: DatetimeUnit) => {
     case "hour":
       return 60 * 60 * 1000;
     case "day":
-    case "default":
       return 24 * 60 * 60 * 1000;
     case "week":
       return 7 * 24 * 60 * 60 * 1000;

@@ -1,10 +1,11 @@
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
+import type { Dayjs } from "dayjs";
 import type { Insight } from "metabase-types/api/insight";
 
 import type {
   CardId,
   DatasetColumn,
-  DatetimeUnit,
+  DateTimeAbsoluteUnit,
   RowValue,
 } from "metabase-types/api";
 import type {
@@ -83,10 +84,19 @@ export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
 export type AxisFormatter = (value: RowValue) => string;
 
+export type DateRange = [Dayjs, Dayjs];
+
+export type CartesianChartDateTimeAbsoluteUnit =
+  | DateTimeAbsoluteUnit
+  | "second"
+  | "ms";
+
 export type TimeSeriesInterval = {
   count: number;
-  interval: DatetimeUnit;
+  interval: CartesianChartDateTimeAbsoluteUnit;
   timezone: string;
+  lengthInIntervals: number;
+  range?: DateRange;
 };
 
 export type XAxisModel = {
@@ -94,7 +104,6 @@ export type XAxisModel = {
   formatter: AxisFormatter;
   axisType: OptionAxisType;
   canBrush?: boolean;
-  numericInterval?: number;
   timeSeriesInterval?: TimeSeriesInterval;
 };
 
