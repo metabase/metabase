@@ -13,7 +13,6 @@ import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { isTemplateTagReference } from "metabase-lib/references";
 
 export function isParameterVariableTarget(
@@ -50,6 +49,7 @@ export function getParameterTargetField(
   const metadata = question.metadata();
   const stageIndex = -1;
 
+  // native queries
   if (isTemplateTagReference(fieldRef)) {
     const dimension = TemplateTagDimension.parseMBQL(
       fieldRef,
@@ -59,14 +59,29 @@ export function getParameterTargetField(
     return dimension?.field();
   }
 
-  const table = metadata.table(getQuestionVirtualTableId(question.id()));
-  const fields = table?.fields ?? [];
+  // check that the column can be accessed from the query
+  const columns = Lib.visibleColumns(query, stageIndex);
+  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    stageIndex,
+    columns,
+    [fieldRef],
+  );
+  if (columnIndex < 0) {
+    return null;
+  }
+
+  // get the corresponding Field instance
+  const fields = metadata.fieldsList();
   const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
     fields.map(field => Lib.fromLegacyColumn(query, stageIndex, field)),
     [fieldRef],
   );
+  if (fieldIndex < 0) {
+    return null;
+  }
 
   return fields[fieldIndex];
 }
