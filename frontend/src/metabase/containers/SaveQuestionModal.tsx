@@ -140,12 +140,8 @@ export const SaveQuestionModal = ({
   );
 
   const collectionId = canonicalCollectionId(initialValues.collection_id);
-  const questionWithCollectionId = question.setCollectionId(collectionId);
-
-  const { LLMIndicator } =
-    PLUGIN_LLM_AUTODESCRIPTION.useLLMQuestionTitleAndDescription({
-      question: questionWithCollectionId,
-    });
+  const questionWithCollectionId: Question =
+    question.setCollectionId(collectionId);
 
   const handleOverwrite = useCallback(
     async (originalQuestion: Question) => {
@@ -224,10 +220,7 @@ export const SaveQuestionModal = ({
     <Modal.Root onClose={onClose} opened={true}>
       <Modal.Overlay />
       <FormProvider
-        initialValues={{
-          ...initialValues,
-          ...{},
-        }}
+        initialValues={initialValues}
         onSubmit={handleSubmit}
         validationSchema={SAVE_QUESTION_SCHEMA}
         enableReinitialize
@@ -237,7 +230,8 @@ export const SaveQuestionModal = ({
             <Modal.Header>
               <Modal.Title>{title}</Modal.Title>
               <Flex align="center" gap="sm">
-                <LLMIndicator
+                <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
+                  question={questionWithCollectionId}
                   setFieldValue={setFieldValue}
                   validateForm={validateForm}
                 />

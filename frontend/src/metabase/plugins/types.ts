@@ -66,18 +66,18 @@ export type TUseLLMDashboardDescription = ({
 };
 
 export type TLLMIndicatorProps = {
-  setFieldValue: (name: string, value: string) => void;
-  validateForm: (values?: any) => void;
+  question: Question;
+  setFieldValue: (field: string, value: string) => void;
+  validateForm: (values?: Record<string, boolean>) => void;
 };
 
-export type TUseLLMIndicator = ({ question }: { question: Question }) => {
-  LLMIndicator: ({
-    setFieldValue,
-    validateForm,
-  }: TLLMIndicatorProps) => JSX.Element | null;
-};
+export type TLLMSuggestQuestionInfo = ({
+  question,
+  setFieldValue,
+  validateForm,
+}: TLLMIndicatorProps) => JSX.Element | null;
 
 export type PluginLLMAutoDescription = {
   useLLMDashboardDescription: TUseLLMDashboardDescription;
-  useLLMQuestionTitleAndDescription: TUseLLMIndicator;
+  LLMSuggestQuestionInfo: TLLMSuggestQuestionInfo;
 };

@@ -161,9 +161,7 @@ export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
     loading: false,
     SuggestDescriptionButton: () => null,
   }),
-  useLLMQuestionTitleAndDescription: () => ({
-    LLMIndicator: () => null,
-  }),
+  LLMSuggestQuestionInfo: () => null,
 };
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
