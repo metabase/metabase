@@ -40,15 +40,6 @@ const getYAxisTicksWidth = (
     valuesToMeasure.push(...customRangeValues);
   }
 
-  if (!settings["graph.y_axis.auto_range"]) {
-    const customRangeValues = [
-      settings["graph.y_axis.min"],
-      settings["graph.y_axis.max"],
-    ].filter(isNotNull);
-
-    valuesToMeasure.push(...customRangeValues);
-  }
-
   if (settings["graph.show_goal"] && settings["graph.goal_value"] != null) {
     valuesToMeasure.push(settings["graph.goal_value"]);
   }
