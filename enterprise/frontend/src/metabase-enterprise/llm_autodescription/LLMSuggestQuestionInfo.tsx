@@ -52,10 +52,7 @@ export const LLMSuggestQuestionInfo = ({
 
     const resultsMetadata = getResultsMetadata(state);
     const isResultDirty = getIsResultDirty(state);
-    const cleanQuery = Lib.dropStageIfEmpty(
-      questionWithVizSettings.query(),
-      -1,
-    );
+    const cleanQuery = Lib.dropEmptyStages(questionWithVizSettings.query());
     questionWithVizSettings
       .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
