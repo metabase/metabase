@@ -59,19 +59,6 @@ export function getParameterTargetField(
     return dimension?.field();
   }
 
-  // check that the column can be accessed from the query
-  const columns = Lib.visibleColumns(query, stageIndex);
-  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
-    query,
-    stageIndex,
-    columns,
-    [fieldRef],
-  );
-  if (columnIndex < 0) {
-    return null;
-  }
-
-  // get the corresponding deprecated Field class instance
   const fields = metadata.fieldsList();
   const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
