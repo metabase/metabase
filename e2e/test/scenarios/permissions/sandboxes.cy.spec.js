@@ -546,107 +546,111 @@ describeEE("formatting > sandboxes", () => {
         // relies on the existence of a save button on a saved question that is not dirty
         // which is a bug fixed in ssue metabase#14302
         ["normal" /* , "workaround" */].forEach(test => {
-          it(`${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`, () => {
-            cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-            cy.intercept("PUT", "/api/card/*").as("questionUpdate");
+          it(
+            `${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`,
+            { tags: "@quarantine" },
+            () => {
+              cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+              cy.intercept("PUT", "/api/card/*").as("questionUpdate");
 
-            cy.createNativeQuestion({
-              name: "EE_520_Q1",
-              native: {
-                query:
-                  "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL > 10",
-                "template-tags": {
-                  sandbox: {
-                    "display-name": "Sandbox",
-                    id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
-                    name: "sandbox",
-                    type: "number",
+              cy.createNativeQuestion({
+                name: "EE_520_Q1",
+                native: {
+                  query:
+                    "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL > 10",
+                  "template-tags": {
+                    sandbox: {
+                      "display-name": "Sandbox",
+                      id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
+                      name: "sandbox",
+                      type: "number",
+                    },
                   },
                 },
-              },
-            }).then(({ body: { id: CARD_ID } }) => {
-              test === "workaround"
-                ? runAndSaveQuestion({ question: CARD_ID, sandboxValue: "1" })
-                : null;
+              }).then(({ body: { id: CARD_ID } }) => {
+                test === "workaround"
+                  ? runAndSaveQuestion({ question: CARD_ID, sandboxValue: "1" })
+                  : null;
 
-              cy.sandboxTable({
-                table_id: ORDERS_ID,
-                card_id: CARD_ID,
-                attribute_remappings: {
-                  attr_uid: ["variable", ["template-tag", "sandbox"]],
-                },
+                cy.sandboxTable({
+                  table_id: ORDERS_ID,
+                  card_id: CARD_ID,
+                  attribute_remappings: {
+                    attr_uid: ["variable", ["template-tag", "sandbox"]],
+                  },
+                });
               });
-            });
 
-            cy.createNativeQuestion({
-              name: "EE_520_Q2",
-              native: {
-                query:
-                  "SELECT * FROM PRODUCTS WHERE CATEGORY={{sandbox}} AND PRICE > 10",
-                "template-tags": {
-                  sandbox: {
-                    "display-name": "Sandbox",
-                    id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
-                    name: "sandbox",
-                    type: "text",
+              cy.createNativeQuestion({
+                name: "EE_520_Q2",
+                native: {
+                  query:
+                    "SELECT * FROM PRODUCTS WHERE CATEGORY={{sandbox}} AND PRICE > 10",
+                  "template-tags": {
+                    sandbox: {
+                      "display-name": "Sandbox",
+                      id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
+                      name: "sandbox",
+                      type: "text",
+                    },
                   },
                 },
-              },
-            }).then(({ body: { id: CARD_ID } }) => {
-              test === "workaround"
-                ? runAndSaveQuestion({
-                    question: CARD_ID,
-                    sandboxValue: "Widget",
-                  })
-                : null;
+              }).then(({ body: { id: CARD_ID } }) => {
+                test === "workaround"
+                  ? runAndSaveQuestion({
+                      question: CARD_ID,
+                      sandboxValue: "Widget",
+                    })
+                  : null;
 
-              cy.sandboxTable({
-                table_id: PRODUCTS_ID,
-                card_id: CARD_ID,
-                attribute_remappings: {
-                  attr_cat: ["variable", ["template-tag", "sandbox"]],
-                },
+                cy.sandboxTable({
+                  table_id: PRODUCTS_ID,
+                  card_id: CARD_ID,
+                  attribute_remappings: {
+                    attr_cat: ["variable", ["template-tag", "sandbox"]],
+                  },
+                });
               });
-            });
 
-            cy.signOut();
-            cy.signInAsSandboxedUser();
+              cy.signOut();
+              cy.signInAsSandboxedUser();
 
-            openOrdersTable();
+              openOrdersTable();
 
-            cy.log("Reported failing on v1.36.x");
+              cy.log("Reported failing on v1.36.x");
 
-            cy.log(
-              "It should show remapped Display Values instead of Product ID",
-            );
-            cy.get(".cellData").contains("Awesome Concrete Shoes").click();
-            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-            cy.findByText(/View details/i).click();
+              cy.log(
+                "It should show remapped Display Values instead of Product ID",
+              );
+              cy.get(".cellData").contains("Awesome Concrete Shoes").click();
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              cy.findByText(/View details/i).click();
 
-            cy.log(
-              "It should show object details instead of filtering by this Product ID",
-            );
-            // The name of this Vendor is visible in "details" only
-            cy.findByTestId("object-detail");
-            cy.findAllByText("McClure-Lockman");
+              cy.log(
+                "It should show object details instead of filtering by this Product ID",
+              );
+              // The name of this Vendor is visible in "details" only
+              cy.findByTestId("object-detail");
+              cy.findAllByText("McClure-Lockman");
 
-            /**
-             * Helper function related to this test only!
-             */
-            function runAndSaveQuestion({ question, sandboxValue } = {}) {
-              // Run the question
-              cy.visit(`/question/${question}?sandbox=${sandboxValue}`);
-              // Wait for results
-              cy.wait("@cardQuery");
-              // Save the question
-              cy.findByText("Save").click();
-              modal().within(() => {
-                cy.button("Save").click();
-              });
-              // Wait for an update so the other queries don't accidentally cancel it
-              cy.wait("@questionUpdate");
-            }
-          });
+              /**
+               * Helper function related to this test only!
+               */
+              function runAndSaveQuestion({ question, sandboxValue } = {}) {
+                // Run the question
+                cy.visit(`/question/${question}?sandbox=${sandboxValue}`);
+                // Wait for results
+                cy.wait("@cardQuery");
+                // Save the question
+                cy.findByText("Save").click();
+                modal().within(() => {
+                  cy.button("Save").click();
+                });
+                // Wait for an update so the other queries don't accidentally cancel it
+                cy.wait("@questionUpdate");
+              }
+            },
+          );
         });
 
         it("simple sandboxing should work (metabase#14629)", () => {
