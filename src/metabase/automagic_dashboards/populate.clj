@@ -22,11 +22,11 @@
 
 (def ^Long default-card-width
   "Default card width."
-  6)
+  12)
 
 (def ^Long default-card-height
   "Default card height"
-  4)
+  6)
 
 (defn create-collection!
   "Create and return a new collection."
