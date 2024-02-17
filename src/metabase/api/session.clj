@@ -27,7 +27,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [throttle.core :as throttle]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [ring.util.response :as response])
   (:import
    (com.unboundid.util LDAPSDKException)
    (java.util UUID)))
@@ -204,6 +205,15 @@
   (api/check-exists? Session metabase-session-id)
   (t2/delete! Session :id metabase-session-id)
   (mw.session/clear-session-cookie api/generic-204-no-content))
+
+(api/defendpoint POST "/logout"
+  "Logout."
+  [:as {:keys [metabase-session-id]}]
+  (api/check-exists? Session metabase-session-id)
+  (t2/delete! Session :id metabase-session-id)
+  (mw.session/clear-session-cookie api/generic-204-no-content)
+  (log/fatal "LOGGIN OUT ON SAML:")
+  (response/redirect "http://localhost:9090/realms/master/protocol/saml?SAMLRequest=fVE9b8IwEN37KyLvIcGkKVgkNBJCikQ7tLRDl8jYB1iK7dTnVPz8JoFItAOLJT%2B9j3t3y9VZ18EPOFTWZGQ6iUkARlipzDEjH7tNOCer%2FGGJXNcN29qjbf0bfLeAPlh3jzLcD8qT9w2LotoKXp8seraIF3HkgNcaI83Rg4saZ70Vto56NxKU64woWc0eKRxmCxmmMBdhklAI5ylPQ3hKU5HuJRwk7ciILZQGPTc%2BIzSmSRjTcJru6JTRBZslXyT4HGvQvkZXzCDrozLSOsMsR4XMcA3IvGDvxcuWdUTGEcH1JW4lzX3N2ITkw2bYMJ3LNXi%2B5wjL6Ba9UF47k3IdbKzT3N937xElw8NAZaC5qgspHSCS3HdLfx5zJsLqa9bFPr8e6r3jdo1KI%2BGc336qjbO6Klp%2FAuOVGI5XFeMGLl7%2F5CP45%2Fj5Lw%3D%3D&RelayState=aHR0cDovL2xvY2FsaG9zdDozMDAwLw%3D%3D"))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.

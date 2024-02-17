@@ -99,12 +99,14 @@ export const logout = createAsyncThunk(
   LOGOUT,
   async (redirectUrl: string | undefined, { dispatch, rejectWithValue }) => {
     try {
-      await deleteSession();
-      dispatch(clearCurrentUser());
-      await dispatch(refreshLocale()).unwrap();
-      trackLogout();
-      dispatch(push(Urls.login(redirectUrl)));
-      reload(); // clears redux state and browser caches
+      const {'saml-logout-url': samlLogoutUrl} = await deleteSession();
+      console.log("samlLogoutUrl", samlLogoutUrl);
+      // dispatch(clearCurrentUser());
+      // await dispatch(refreshLocale()).unwrap();
+      // trackLogout();
+      // window.location.href=samlLogoutUrl;
+      // dispatch(push(rdu));
+      // reload(); // clears redux state and browser caches
     } catch (error) {
       return rejectWithValue(error);
     }
