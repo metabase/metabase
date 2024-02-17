@@ -16,13 +16,14 @@ export function getPivotColumnSplit(question) {
         return [];
       }
 
+      const nonEmptyFieldRefs = fieldRefs.filter(fieldRef => fieldRef != null);
       const breakoutIndexes = Lib.findColumnIndexesFromLegacyRefs(
         query,
         stageIndex,
         breakoutColumns,
-        fieldRefs,
+        nonEmptyFieldRefs,
       );
-      return fieldRefs
+      return nonEmptyFieldRefs
         .map((_, fieldIndex) => breakoutIndexes[fieldIndex])
         .filter(breakoutIndex => breakoutIndex >= 0);
     },
