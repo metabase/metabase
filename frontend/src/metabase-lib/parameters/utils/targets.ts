@@ -14,6 +14,7 @@ import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { isTemplateTagReference } from "metabase-lib/references";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 export function isParameterVariableTarget(
   target: ParameterTarget,
@@ -59,18 +60,22 @@ export function getParameterTargetField(
     return dimension?.field();
   }
 
-  const fields = metadata.fieldsList();
-  const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
+  // check that the column can be accessed from the query
+  const columns = Lib.visibleColumns(query, stageIndex);
+  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
-    fields.map(field => Lib.fromLegacyColumn(query, stageIndex, field)),
+    columns,
     [fieldRef],
   );
-  if (fieldIndex < 0) {
+  if (columnIndex < 0) {
     return null;
   }
 
-  return fields[fieldIndex];
+  const column = columns[columnIndex];
+  const tableId = getQuestionVirtualTableId(question.id());
+  const { fieldId } = Lib.fieldValuesSearchInfo(query, column);
+  return metadata.field(fieldId, tableId) ?? metadata.field(fieldId);
 }
 
 export function buildDimensionTarget(
