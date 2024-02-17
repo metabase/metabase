@@ -9,6 +9,13 @@ export function getPivotColumnSplit(question) {
     Lib.breakoutColumn(query, stageIndex, breakout),
   );
 
+  if (breakoutColumns.length === 0) {
+    return {
+      pivot_rows: [],
+      pivot_cols: [],
+    };
+  }
+
   const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
     setting,
     fieldRefs => {
