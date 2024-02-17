@@ -1,1 +1,2 @@
-export * from "./TableSimple";
+export * from "./TableScrollable";
+export * from "./TablePaginated";

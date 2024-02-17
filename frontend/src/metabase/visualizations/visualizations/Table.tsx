@@ -46,7 +46,7 @@ import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/data
 import { isNative } from "metabase-lib/queries/utils/card";
 
 import type { ColumnSettingDefinition, VisualizationProps } from "../types";
-import { TableSimple } from "../components/TableSimple";
+import { TableScrollable, TablePaginated } from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 
 interface TableProps extends VisualizationProps {
@@ -83,6 +83,14 @@ class Table extends Component<TableProps, TableState> {
 
   static settings = {
     ...columnSettings({ hidden: true }),
+    "table.is_paginated": {
+      section: t`Display`,
+      title: t`Paginate results`,
+      widget: "toggle",
+      inline: true,
+      default: true,
+      dashboard: true,
+    },
     "table.pivot": {
       section: t`Columns`,
       title: t`Pivot table`,
@@ -402,12 +410,22 @@ class Table extends Component<TableProps, TableState> {
     }
   };
 
+  getTableComponent() {
+    const { isDashboard, settings } = this.props;
+
+    if (isDashboard) {
+      return settings["table.is_paginated"] ? TablePaginated : TableScrollable;
+    }
+
+    return TableInteractive;
+  }
+
   render() {
     const { series, isDashboard, settings } = this.props;
     const { data } = this.state;
     const isPivoted = Table.isPivoted(series, settings);
     const areAllColumnsHidden = data?.cols.length === 0;
-    const TableComponent = isDashboard ? TableSimple : TableInteractive;
+    const TableComponent = this.getTableComponent();
 
     if (!data) {
       return null;
