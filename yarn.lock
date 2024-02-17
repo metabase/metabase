@@ -12518,12 +12518,7 @@ image-size@^1.0.0:
   dependencies:
     queue "6.0.2"
 
-immer@^9.0.16:
-  version "9.0.17"
-  resolved "https://registry.yarnpkg.com/immer/-/immer-9.0.17.tgz#7cfe8fbb8b461096444e9da7a5ec4a67c6c4adf4"
-  integrity sha512-+hBruaLSQvkPfxRiTLK/mi4vLH+/VQS6z2KJahdoxlleFOI8ARqzOF17uy12eFDlqWmPoygwc5evgwcp+dlHhg==
-
-immer@^9.0.17:
+immer@^9.0.16, immer@^9.0.17:
   version "9.0.21"
   resolved "https://registry.yarnpkg.com/immer/-/immer-9.0.21.tgz#1e025ea31a40f24fb064f1fef23e931496330176"
   integrity sha512-bc4NBHqOqSfRW7POMkHd51LvClaeMXpm8dx0e8oE2GORbq5aRK7Bxl4FyzVLdGtLmvLKL7BTDBG5ACQm4HWjTA==
@@ -19946,8 +19941,7 @@ source-map-js@^0.6.2:
 
 source-map-js@^1.0.1, source-map-js@^1.0.2:
   version "1.0.2"
-  resolved "https://registry.yarnpkg.com/source-map-js/-/source-map-js-1.0.2.tgz#adbc361d9c62df380125e7f161f71c826f1e490c"
-  integrity sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==
+  resolved "git+https://github.com/7rulnik/source-map-js#6e5dfccf75f84f619d3646188aef7ef7cf8f6376"
 
 source-map-loader@^4.0.1:
   version "4.0.1"
