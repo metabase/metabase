@@ -47,7 +47,6 @@ export function getParameterTargetField(
   const fieldRef = target[1];
   const query = question.query();
   const metadata = question.metadata();
-  const stageIndex = -1;
 
   // native queries
   if (isTemplateTagReference(fieldRef)) {
@@ -59,18 +58,13 @@ export function getParameterTargetField(
     return dimension?.field();
   }
 
-  const fields = metadata.fieldsList();
-  const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
-    query,
-    stageIndex,
-    fields.map(field => Lib.fromLegacyColumn(query, stageIndex, field)),
-    [fieldRef],
-  );
-  if (fieldIndex < 0) {
-    return null;
+  if (isConcreteFieldReference(fieldRef)) {
+    const fieldId = fieldRef[1];
+    const tableId = Lib.sourceTableOrCardId(query);
+    return metadata.field(fieldId, tableId) ?? metadata.field(fieldId);
   }
 
-  return fields[fieldIndex];
+  return null;
 }
 
 export function buildDimensionTarget(
