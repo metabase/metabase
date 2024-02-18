@@ -131,9 +131,7 @@ export const getMetadata: (
       Object.values(tables).map(t => [t.id, createTable(t, metadata)]),
     );
     metadata.fields = Object.fromEntries(
-      Object.values(fields)
-        .filter(f => f.uniqueId != null)
-        .map(f => [f.uniqueId, createField(f, metadata)]),
+      Object.values(fields).map(f => [f.uniqueId, createField(f, metadata)]),
     );
     metadata.segments = Object.fromEntries(
       Object.values(segments).map(s => [s.id, createSegment(s, metadata)]),
