@@ -14,6 +14,7 @@ import type {
   SeriesModel,
   Datum,
   BaseCartesianChartModel,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -24,10 +25,12 @@ import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
+  ORIGINAL_DATUM_INDEX_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
+import { tryGetDate } from "../utils/time-series";
 
 /**
  * Sums two metric column values.
@@ -325,6 +328,97 @@ export const applyVisualizationSettingsDataTransformations = (
       },
     },
   ]);
+};
+
+export const interpolateContinuousXValues = (
+  dataset: ChartDataset,
+  axisModel: XAxisModel,
+  settings: ComputedVisualizationSettings,
+  width: number = screen.width,
+) => {
+  if (settings["graph.x_axis.scale"] === "ordinal") {
+    return dataset;
+  }
+
+  if (
+    settings["graph.x_axis.scale"] === "timeseries" &&
+    axisModel.timeSeriesInterval != null
+  ) {
+    const { lengthInIntervals, count, interval } = axisModel.timeSeriesInterval;
+
+    const interpolatedDataset: ChartDataset = [];
+
+    let intervalsPerPixel = Math.ceil(lengthInIntervals / width);
+    intervalsPerPixel = Math.max(intervalsPerPixel, 1);
+
+    dataset.forEach((datum, i) => {
+      interpolatedDataset.push({
+        ...datum,
+        [ORIGINAL_DATUM_INDEX_KEY]: i,
+      });
+
+      const nextX = tryGetDate(dataset[i + 1]?.[X_AXIS_DATA_KEY] ?? null);
+
+      if (!nextX) {
+        return;
+      }
+      let currentX = tryGetDate(datum[X_AXIS_DATA_KEY]);
+
+      while (
+        currentX != null &&
+        currentX.add(count * intervalsPerPixel, interval).isBefore(nextX)
+      ) {
+        currentX = currentX.add(count * intervalsPerPixel, interval);
+
+        interpolatedDataset.push({
+          [X_AXIS_DATA_KEY]: currentX.format("YYYY-MM-DD"),
+        });
+      }
+    });
+
+    return interpolatedDataset;
+  }
+
+  if (
+    settings["graph.x_axis.scale"] === "linear" &&
+    axisModel.timeSeriesInterval != null
+  ) {
+    const { lengthInIntervals, count, interval } = axisModel.timeSeriesInterval;
+
+    const interpolatedDataset: ChartDataset = [];
+
+    let intervalsPerPixel = Math.ceil(lengthInIntervals / width);
+    intervalsPerPixel = Math.max(intervalsPerPixel, 1);
+
+    dataset.forEach((datum, i) => {
+      interpolatedDataset.push({
+        ...datum,
+        [ORIGINAL_DATUM_INDEX_KEY]: i,
+      });
+
+      const nextX = tryGetDate(dataset[i + 1]?.[X_AXIS_DATA_KEY] ?? null);
+
+      if (!nextX) {
+        return;
+      }
+      let currentX = tryGetDate(datum[X_AXIS_DATA_KEY]);
+
+      while (
+        currentX != null &&
+        currentX.add(count * intervalsPerPixel, interval).isBefore(nextX)
+      ) {
+        currentX = currentX.add(count * intervalsPerPixel, interval);
+
+        interpolatedDataset.push({
+          [X_AXIS_DATA_KEY]: currentX.format("YYYY-MM-DD"),
+        });
+      }
+    });
+
+    return interpolatedDataset;
+  }
+
+  return dataset;
 };
 
 export const sortDataset = (

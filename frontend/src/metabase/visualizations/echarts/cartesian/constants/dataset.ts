@@ -7,3 +7,5 @@ export const NEGATIVE_STACK_TOTAL_DATA_KEY = `${NULL_CHAR}_negativeStackTotal`;
 
 // Key of x-axis values
 export const X_AXIS_DATA_KEY = `${NULL_CHAR}_x`;
+
+export const ORIGINAL_DATUM_INDEX_KEY = `${NULL_CHAR}_original_index`;

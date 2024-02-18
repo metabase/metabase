@@ -34,7 +34,10 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  ORIGINAL_DATUM_INDEX_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isStructured } from "metabase-lib/queries/utils/card";
 import Question from "metabase-lib/Question";
 import {
@@ -243,7 +246,11 @@ export const getSeriesHoverData = (
     return;
   }
 
-  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
+  const originalIndex = chartModel.transformedDataset[dataIndex][
+    ORIGINAL_DATUM_INDEX_KEY
+  ] as number;
+
+  const data = getEventColumnsData(chartModel, seriesIndex, originalIndex);
   const target = (event.event.event.target ?? undefined) as Element | undefined;
 
   // TODO: For some reason ECharts sometimes trigger series mouse move element with the root SVG as target
@@ -254,13 +261,13 @@ export const getSeriesHoverData = (
 
   const stackedTooltipModel =
     settings["graph.tooltip_type"] === "series_comparison"
-      ? getStackedTooltipModel(chartModel, settings, seriesIndex, dataIndex)
+      ? getStackedTooltipModel(chartModel, settings, seriesIndex, originalIndex)
       : undefined;
 
   return {
     settings,
     index: seriesIndex,
-    datumIndex: dataIndex,
+    datumIndex: originalIndex,
     event: event.event.event,
     element: target,
     data,
@@ -322,10 +329,12 @@ export const getSeriesClickData = (
   if (seriesIndex < 0 || dataIndex == null) {
     return;
   }
+  const originalIndex = chartModel.transformedDataset[dataIndex][
+    ORIGINAL_DATUM_INDEX_KEY
+  ] as number;
+  const datum = chartModel.dataset[originalIndex];
 
-  const datum = chartModel.dataset[dataIndex];
-
-  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
+  const data = getEventColumnsData(chartModel, seriesIndex, originalIndex);
   const dimensions = getEventDimensions(
     chartModel,
     datum,

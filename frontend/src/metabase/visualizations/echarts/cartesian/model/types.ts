@@ -1,4 +1,3 @@
-import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 import type { Dayjs } from "dayjs";
 import type { Insight } from "metabase-types/api/insight";
 
@@ -99,13 +98,34 @@ export type TimeSeriesInterval = {
   range?: DateRange;
 };
 
-export type XAxisModel = {
+export type NumericInterval = {
+  range: [number, number];
+  lengthInIntervals: number;
+};
+
+export type BaseXAxisModel = {
   label?: string;
   formatter: AxisFormatter;
-  axisType: OptionAxisType;
   canBrush?: boolean;
-  timeSeriesInterval?: TimeSeriesInterval;
 };
+
+export type OrdinalXAxisModel = BaseXAxisModel & {
+  isHistogram: boolean;
+};
+
+export type NumericXAxisModel = BaseXAxisModel & {
+  numericInterval: NumericInterval;
+  function: "linear" | "pow" | "log";
+};
+
+export type TimeSeriesXAxisModel = BaseXAxisModel & {
+  timeSeriesInterval: TimeSeriesInterval;
+};
+
+export type XAxisModel =
+  | OrdinalXAxisModel
+  | NumericXAxisModel
+  | TimeSeriesXAxisModel;
 
 export type YAxisModel = {
   seriesKeys: DataKey[];

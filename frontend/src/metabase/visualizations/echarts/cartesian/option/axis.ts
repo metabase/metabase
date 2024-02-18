@@ -18,7 +18,6 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/option/types";
-import { getTimeSeriesMinInterval } from "metabase/visualizations/echarts/cartesian/utils/time-series";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -110,12 +109,7 @@ export const buildDimensionAxis = (
   renderingContext: RenderingContext,
 ): AxisBaseOption => {
   const { getColor } = renderingContext;
-  const { axisType, formatter, timeSeriesInterval } = xAxisModel;
-
-  const boundaryGap =
-    axisType === "value" || axisType === "log"
-      ? undefined
-      : ([0.02, 0.02] as [number, number]);
+  const { formatter } = xAxisModel;
 
   const nameGap = getAxisNameGap(
     chartMeasurements.ticksDimensions.xTicksHeight,
@@ -133,11 +127,11 @@ export const buildDimensionAxis = (
     axisTick: {
       show: false,
     },
-    boundaryGap,
+    boundaryGap: [0.02, 0.02],
     splitLine: {
       show: false,
     },
-    type: axisType,
+    type: "category",
     axisLabel: {
       margin:
         CHART_STYLE.axisTicksMarginX +
@@ -154,10 +148,6 @@ export const buildDimensionAxis = (
         color: getColor("border"),
       },
     },
-    minInterval:
-      timeSeriesInterval != null
-        ? getTimeSeriesMinInterval(timeSeriesInterval)
-        : undefined,
   } as AxisBaseOption;
 };
 

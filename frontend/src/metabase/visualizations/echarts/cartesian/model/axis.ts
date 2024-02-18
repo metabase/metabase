@@ -1,6 +1,5 @@
 import d3 from "d3";
 import _ from "underscore";
-import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 import type {
   AxisFormatter,
   DataKey,
@@ -40,7 +39,6 @@ import {
   minTimeseriesUnit,
 } from "metabase/visualizations/lib/timeseries";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { isDate } from "metabase-lib/types/utils/isa";
 import { tryGetDate } from "../utils/time-series";
 
 const KEYS_TO_COMPARE = new Set([
@@ -464,26 +462,6 @@ export function getYAxesModels(
   };
 }
 
-export const getXAxisEChartsType = (
-  dimensionModel: DimensionModel,
-  settings: ComputedVisualizationSettings,
-): OptionAxisType => {
-  // Relative time scale charts have numeric dimensions but should use category scale
-  const isDimensionColumnDate = isDate(dimensionModel.column);
-
-  switch (settings["graph.x_axis.scale"]) {
-    case "timeseries":
-      return "time";
-    case "linear":
-    case "pow":
-      return isDimensionColumnDate ? "category" : "value";
-    case "log":
-      return isDimensionColumnDate ? "category" : "log";
-    default:
-      return "category";
-  }
-};
-
 export function getXAxisModel(
   dimensionModel: DimensionModel,
   rawSeries: RawSeries,
@@ -491,6 +469,8 @@ export function getXAxisModel(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): XAxisModel {
+  const isHistogram = settings["graph.x_axis.scale"] === "histogram";
+
   const label = settings["graph.x_axis.labels_enabled"]
     ? settings["graph.x_axis.title_text"]
     : undefined;
@@ -499,24 +479,33 @@ export function getXAxisModel(
     renderingContext.formatValue(value, {
       column: dimensionModel.column,
       ...(settings.column?.(dimensionModel.column) ?? {}),
-      noRange: settings["graph.x_axis.scale"] === "histogram",
+      noRange: isHistogram,
     });
+
+  const axisBaseModel = {
+    formatter,
+    label,
+    isHistogram,
+  };
+
+  if (settings["graph.x_axis.scale"] === "ordinal" || isHistogram) {
+    return axisBaseModel;
+  }
 
   const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
 
-  const timeSeriesInterval =
-    settings["graph.x_axis.scale"] === "timeseries"
-      ? getTimeSeriesXAxisInterval(xValues, rawSeries, dimensionModel)
-      : undefined;
+  if (settings["graph.x_axis.scale"] === "timeseries") {
+    return {
+      ...axisBaseModel,
+      timeSeriesInterval: getTimeSeriesXAxisInterval(
+        xValues,
+        rawSeries,
+        dimensionModel,
+      ),
+    };
+  }
 
-  const axisType = getXAxisEChartsType(dimensionModel, settings);
-
-  return {
-    formatter,
-    label,
-    timeSeriesInterval,
-    axisType,
-  };
+  return axisBaseModel;
 }
 
 // We should always have results_timezone, but just in case we fallback to UTC

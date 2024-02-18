@@ -17,6 +17,7 @@ import {
   getSortedSeriesModels,
   applyVisualizationSettingsDataTransformations,
   sortDataset,
+  interpolateContinuousXValues as interpolateXValues,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getXAxisModel,
@@ -95,7 +96,6 @@ export const getCartesianChartModel = (
       dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
   }
   dataset = sortDataset(dataset, settings["graph.x_axis.scale"]);
-
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
@@ -127,7 +127,11 @@ export const getCartesianChartModel = (
 
   return {
     dataset,
-    transformedDataset,
+    transformedDataset: interpolateXValues(
+      transformedDataset,
+      xAxisModel,
+      settings,
+    ),
     seriesModels,
     columnByDataKey,
     dimensionModel,
