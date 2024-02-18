@@ -2,10 +2,10 @@ import * as ML from "cljs/metabase.lib.js";
 import type {
   DatasetColumn,
   DatasetQuery,
-  Field,
   FieldReference,
 } from "metabase-types/api";
 import type { ColumnMetadata, Query } from "./types";
+import type Field from "./metadata/Field";
 
 export function areLegacyQueriesEqual(
   query1: DatasetQuery,

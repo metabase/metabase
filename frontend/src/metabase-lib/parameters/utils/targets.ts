@@ -59,11 +59,12 @@ export function getParameterTargetField(
     return dimension?.field();
   }
 
-  const fields = metadata.fieldsList();
+  // remove broken field instances created for field values without any field properties
+  const fields = metadata.fieldsList().filter(field => field.id != null);
   const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
-    fields.map(field => field.getPlainObject()),
+    fields.map(field => Lib.fromLegacyColumn(query, stageIndex, field)),
     [fieldRef],
   );
   if (fieldIndex < 0) {
