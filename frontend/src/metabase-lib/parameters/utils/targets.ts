@@ -59,9 +59,9 @@ export function getParameterTargetField(
   }
 
   if (isConcreteFieldReference(fieldRef)) {
-    const fieldIdName = fieldRef[1];
+    const fieldId = fieldRef[1];
     const tableId = Lib.sourceTableOrCardId(query);
-    return metadata.field(fieldIdName, tableId) ?? metadata.field(fieldIdName);
+    return metadata.field(fieldId, tableId) ?? metadata.field(fieldId);
   }
 
   return null;
