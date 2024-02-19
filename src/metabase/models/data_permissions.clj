@@ -285,6 +285,29 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
+
+(mu/defn full-db-permission-for-user :- PermissionValue
+  "Returns the effective *db-level* permission value for a given user, permission type, and database ID. If the user
+  has multiple permissions for the given type in different groups, they are coalesced into a single value. The
+  db-level permission is the *most* restrictive table-level permission within that schema."
+  [user-id perm-type database-id]
+  (when (not= :model/Table (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
+                    {perm-type (Permissions perm-type)})))
+  (if (is-superuser? user-id)
+    (most-permissive-value perm-type)
+    ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
+    ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
+    ;; restrictive group permission.
+    (let [perm-values (most-restrictive-per-group
+                       perm-type
+                       (->> (get-permissions user-id perm-type database-id)
+                            (map #(set/rename-keys % {:group_id :group-id
+                                                      :perm_value :value}))
+                            (map #(select-keys % [:group-id :value]))))]
+      (or (coalesce perm-type perm-values)
+          (least-permissive-value perm-type)))))
+
 (mu/defn schema-permission-for-user :- PermissionValue
   "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
   schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a

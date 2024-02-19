@@ -12,6 +12,7 @@
             DashboardCard Database Metric PermissionsGroup
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.model-index :as model-index]
    [metabase.models.moderation-review :as moderation-review]
@@ -630,7 +631,7 @@
           (model-index/add-values! model-index-2)
 
           (testing "Indexed entities returned if a non-admin user has full data perms and collection access"
-            (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas :all :native :all}}}
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :write}}}
               (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
                                  :name           "Rome"
                                  :model_id       (:id root-model)
@@ -645,29 +646,30 @@
                             (search! "rom" :rasta))))))
 
           (testing "Indexed entities are not returned if a user doesn't have full data perms for the DB"
-            (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas :none :native :none}}}
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :none :native :none}}}
               (is (= #{}
                      (into #{} (comp relevant-1 (map (juxt :name normalize)))
                            (search! "rom" :rasta)))))
 
-            (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas :all :native :none}}}
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :none}}}
               (is (= #{}
                      (into #{} (comp relevant-1 (map (juxt :name normalize)))
                            (search! "rom" :rasta)))))
 
             (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
-              (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas {"PUBLIC" {id-1 :all
-                                                                                       id-2 :all
-                                                                                       id-3 :all
-                                                                                       id-4 :none}}}}}
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas {"PUBLIC" {id-1 :all
+                                                                                        id-2 :all
+                                                                                        id-3 :all
+                                                                                        id-4 :none}}}}}
                 (is (= #{}
                        (into #{} (comp relevant-1 (map (juxt :name normalize)))
                              (search! "rom" :rasta))))))
 
-            (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas :block :native :none}}}
-              (is (= #{}
-                     (into #{} (comp relevant-1 (map (juxt :name normalize)))
-                           (search! "rom" :rasta))))))
+            (mt/with-additional-premium-features #{:advanced-permissions}
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :block :native :none}}}
+                (is (= #{}
+                       (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                             (search! "rom" :rasta)))))))
 
           (testing "Indexed entities are not returned if a user doesn't have root collection access"
             (mt/with-non-admin-groups-no-root-collection-perms
@@ -811,10 +813,10 @@
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
     (mt/with-temp [Database {db-id :id} {}
                    Table    table {:db_id db-id}]
-      (perms/revoke-data-perms! (perms-group/all-users) db-id)
-      (is (= []
+      (mt/with-no-data-perms-for-all-users!
+        (is (= []
              (binding [*search-request-results-database-id* db-id]
-               (search-request-data :rasta :q (:name table))))))))
+               (search-request-data :rasta :q (:name table)))))))))
 
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
@@ -823,22 +825,23 @@
                    Table                      table {:name "RoundTable" :db_id db-id}
                    PermissionsGroup           {group-id :id} {}
                    PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
-      (perms/revoke-data-perms! (perms-group/all-users) db-id (:schema table) (:id table))
-      (perms/grant-permissions! group-id (perms/table-read-path table))
-      (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "RoundTable")]
-               (binding [*search-request-results-database-id* db-id]
-                 (search-request-data user :q "RoundTable"))))))))
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-table-permission! group-id table :perms/data-access :unrestricted)
+        (do-test-users [user [:crowberto :rasta]]
+          (is (= [(default-table-search-row "RoundTable")]
+                 (binding [*search-request-results-database-id* db-id]
+                   (search-request-data user :q "RoundTable")))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
     (mt/with-temp [Database                   {db-id :id} {}
                    Table                      table {:name "RoundTable", :db_id db-id}]
-      (perms/revoke-data-perms! (perms-group/all-users) db-id (:schema table) (:id table))
-      (is (= []
-             (filter #(= (:name %) "RoundTable")
-                     (binding [*search-request-results-database-id* db-id]
-                       (search-request-data :rasta :q "RoundTable"))))))))
+      (mt/with-restored-data-perms-for-group! (:id (perms-group/all-users))
+        (data-perms/set-table-permission! (perms-group/all-users) table :perms/data-access :no-self-service)
+        (is (= []
+               (filter #(= (:name %) "RoundTable")
+                       (binding [*search-request-results-database-id* db-id]
+                         (search-request-data :rasta :q "RoundTable")))))))))
 
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
