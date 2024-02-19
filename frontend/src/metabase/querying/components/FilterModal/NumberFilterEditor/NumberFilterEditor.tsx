@@ -10,6 +10,7 @@ import * as Lib from "metabase-lib";
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { InfoIcon, HoverParent } from "../InfoIcon.styled";
 import type { FilterEditorProps } from "../types";
 
 export function NumberFilterEditor({
@@ -74,37 +75,40 @@ export function NumberFilterEditor({
   };
 
   return (
-    <Grid grow>
-      <Grid.Col span="auto">
-        <Flex h="100%" align="center" gap="sm">
-          <Icon name={columnIcon} />
-          <FilterColumnName
+    <HoverParent>
+      <Grid grow>
+        <Grid.Col span="auto">
+          <Flex h="100%" align="center" gap="sm">
+            <InfoIcon query={query} stageIndex={stageIndex} column={column} />
+            <Icon name={columnIcon} />
+            <FilterColumnName
+              query={query}
+              stageIndex={stageIndex}
+              column={column}
+              isSearching={isSearching}
+            />
+            <FilterOperatorPicker
+              value={operator}
+              options={availableOptions}
+              onChange={handleOperatorChange}
+            />
+          </Flex>
+        </Grid.Col>
+        <Grid.Col span={4}>
+          <NumberValueInput
             query={query}
             stageIndex={stageIndex}
             column={column}
-            isSearching={isSearching}
+            values={values}
+            valueCount={valueCount}
+            hasMultipleValues={hasMultipleValues}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
           />
-          <FilterOperatorPicker
-            value={operator}
-            options={availableOptions}
-            onChange={handleOperatorChange}
-          />
-        </Flex>
-      </Grid.Col>
-      <Grid.Col span={4}>
-        <NumberValueInput
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          values={values}
-          valueCount={valueCount}
-          hasMultipleValues={hasMultipleValues}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-        />
-      </Grid.Col>
-    </Grid>
+        </Grid.Col>
+      </Grid>
+    </HoverParent>
   );
 }
 
