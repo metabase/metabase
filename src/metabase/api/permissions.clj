@@ -11,6 +11,7 @@
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.db.query :as mdb.query]
    [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group
@@ -34,30 +35,24 @@
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api/defendpoint GET "/graph"
-  "Fetch a graph of all v1 Permissions (excludes v2 query and data permissions)."
+  "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
-  (perms/data-perms-graph))
+  (data-perms.graph/api-graph))
 
 (api/defendpoint GET "/graph/db/:db-id"
-  "Fetch a graph of all v1 Permissions for db-id `db-id` (excludes v2 query and data permissions)."
+  "Fetch a graph of all Permissions for db-id `db-id`."
   [db-id]
   {db-id ms/PositiveInt}
   (api/check-superuser)
-  (perms/data-graph-for-db db-id))
+  (data-perms.graph/api-graph {:db-id db-id}))
 
 (api/defendpoint GET "/graph/group/:group-id"
-  "Fetch a graph of all v1 Permissions for group-id `group-id` (excludes v2 query and data permissions)."
+  "Fetch a graph of all Permissions for group-id `group-id`."
   [group-id]
   {group-id ms/PositiveInt}
   (api/check-superuser)
-  (perms/data-graph-for-group group-id))
-
-(api/defendpoint GET "/graph-v2"
-  "Fetch a graph of all v2 Permissions (excludes v1 data permissions)."
-  []
-  (api/check-superuser)
-  (perms/data-perms-graph-v2))
+  (data-perms.graph/api-graph {:group-id group-id}))
 
 (defenterprise upsert-sandboxes!
   "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
@@ -102,7 +97,7 @@
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
     (t2/with-transaction [_conn]
-      (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
+      (data-perms.graph/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
       (let [sandbox-updates        (:sandboxes graph)
             sandboxes              (when sandbox-updates
                                      (upsert-sandboxes! sandbox-updates))
@@ -110,7 +105,7 @@
             impersonations         (when impersonation-updates
                                      (insert-impersonations! impersonation-updates))]
         (merge {:revision (perms-revision/latest-id)}
-               (when-not skip-graph {:groups (:groups (perms/data-perms-graph))})
+               (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {}))})
                (when sandboxes {:sandboxes sandboxes})
                (when impersonations {:impersonations impersonations}))))))
 
