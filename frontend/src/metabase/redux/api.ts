@@ -8,9 +8,27 @@ import type {
   RegenerateApiKeyResponse,
 } from "metabase-types/api/admin";
 
+// TODO: move to util file
 const LIST_ID = "LIST" as const;
+
+function getListTag<T extends string>(tagType: T) {
+  return { type: tagType, id: LIST_ID } as const;
+}
+
+function providesList<R extends { id: string | number }[], T extends string>(
+  resultsWithIds: R | undefined,
+  tagType: T,
+) {
+  const listTag = getListTag(tagType);
+  return resultsWithIds
+    ? [listTag, ...resultsWithIds.map(({ id }) => ({ type: tagType, id }))]
+    : [listTag];
+}
+// end utils
+
 const API_KEY_TAG = "ApiKey" as const;
-const LIST_TAG = { type: API_KEY_TAG, id: LIST_ID };
+const LIST_TAG = getListTag(API_KEY_TAG);
+const COUNT_TAG = { type: API_KEY_TAG, id: "COUNT" as const };
 
 // Define a service using a base URL and expected endpoints
 export const ApiKeysApi = createApi({
@@ -20,13 +38,11 @@ export const ApiKeysApi = createApi({
   endpoints: builder => ({
     list: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,
-      providesTags: result =>
-        result
-          ? [...result.map(({ id }) => ({ type: API_KEY_TAG, id })), LIST_TAG]
-          : [LIST_TAG],
+      providesTags: result => providesList(result, API_KEY_TAG),
     }),
     count: builder.query<number, void>({
       query: () => `/api/api-key/count`,
+      // TODO: invalide on create, delete
     }),
     create: builder.mutation<CreateApiKeyResponse, CreateApiKeyInput>({
       query: input => ({
@@ -34,14 +50,14 @@ export const ApiKeysApi = createApi({
         url: `/api/api-key`,
         body: input,
       }),
-      invalidatesTags: [LIST_TAG],
+      invalidatesTags: [LIST_TAG, COUNT_TAG],
     }),
     delete: builder.mutation<void, number>({
       query: id => ({
         method: "DELETE",
         url: `/api/api-key/${id}`,
       }),
-      invalidatesTags: [LIST_TAG],
+      invalidatesTags: [LIST_TAG, COUNT_TAG],
     }),
     edit: builder.mutation<void, EditApiKeyInput>({
       query: ({ id, ...body }) => ({
