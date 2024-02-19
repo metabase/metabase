@@ -5,11 +5,14 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
+   [metabase.public-settings.premium-features
+    :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.task :as task]
+   [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -38,13 +41,11 @@
      [:schedule [:map
                  [:type keyword?]
                  [:updated_at some?]
-                 [:schedule string?]]]
+                 [:schedule u.cron/CronScheduleString]]]
      [:query    [:map
                  [:type keyword?]
                  [:updated_at some?]
                  [:payload [:maybe any?]]
-                 [:database_id int?]
-                 [:table_id int?]
                  [:field_id int?]
                  [:aggregation [:enum "max" "count"]]
                  [:schedule string?]]]]]))
@@ -164,22 +165,29 @@
                                                        :next_run_at next-run}))))
 
 (defn- refresh-query-configs []
-  (let [now (t/offset-date-time)]
-    (doseq [item (t2/select :model/CacheConfig :strategy :query {:where [:or
-                                                                         [:= :next_run_at nil]
-                                                                         [:<= :next_run_at [:now]]]})
+  (let [now     (t/offset-date-time)
+        configs (t2/select :model/CacheConfig :strategy :query {:where [:or
+                                                                        [:= :next_run_at nil]
+                                                                        [:<= :next_run_at [:now]]]})
+        fields  (m/index-by :id
+                            (t2/select :model/Field :id [:in (map #(-> % :config :field_id) configs)]))
+        tables  (m/index-by :id
+                            (t2/select :model/Table :id [:in (map :table_id (vals fields))]))]
+    (doseq [item configs
             :let [config   (:config item)
+                  field    (get fields (:field_id config))
+                  table    (get tables (:table_id field))
                   cron     (-> (cron/cron-schedule (:schedule config))
                                cron/finalize)
                   ;; needed by the tests, or the cron will use it's own current date
                   _        (.setStartTime ^MutableTrigger cron (t/java-date))
                   next-run (-> (.getFireTimeAfter ^MutableTrigger cron (t/java-date (t/offset-date-time)))
                                (t/offset-date-time (t/zone-offset)))
-                  query    {:database (:database_id config)
+                  query    {:database (:db_id table)
                             :type     :query
-                            :query    {:source-table (:table_id config)
+                            :query    {:source-table (:table_id field)
                                        :aggregation  [(:aggregation config)
-                                                      [:field (:field_id config) nil]]}}
+                                                      [:field (:id field) nil]]}}
                   result   (-> (qp/process-query query) :data :rows ffirst)]]
       (when (not= result (:payload item))
         (t2/update! :model/CacheConfig {:id (:id item)} {:updated_at  now
