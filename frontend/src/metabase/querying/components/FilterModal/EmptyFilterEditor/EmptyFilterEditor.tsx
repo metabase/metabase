@@ -4,6 +4,7 @@ import { Flex, Text, Icon } from "metabase/ui";
 
 import * as Lib from "metabase-lib";
 import type { FilterEditorProps } from "../types";
+import { InfoIcon, HoverParent } from "../InfoIcon.styled";
 
 export function EmptyFilterEditor({
   query,
@@ -19,11 +20,14 @@ export function EmptyFilterEditor({
   }, [column]);
 
   return (
-    <Flex direction="row" align="center" gap="sm" py="1rem">
-      <Icon name={columnIcon} />
-      <Text color="text-dark" weight="bold">
-        {columnInfo.displayName}
-      </Text>
-    </Flex>
+    <HoverParent>
+      <Flex direction="row" align="center" gap="sm" py="1rem">
+        <InfoIcon query={query} stageIndex={stageIndex} column={column} />
+        <Icon name={columnIcon} />
+        <Text color="text-dark" weight="bold">
+          {columnInfo.displayName}
+        </Text>
+      </Flex>
+    </HoverParent>
   );
 }
