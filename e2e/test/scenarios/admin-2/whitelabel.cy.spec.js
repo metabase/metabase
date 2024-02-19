@@ -5,6 +5,7 @@ import {
   popover,
   restore,
   setTokenFeatures,
+  undoToast,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -113,7 +114,7 @@ describeEE("formatting > whitelabel", () => {
         },
         { force: true },
       );
-      cy.findByRole("main").findByText("Saved");
+      undoToast().findByText("Saved");
       cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
         base64Url => {
           const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
