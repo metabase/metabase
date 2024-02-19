@@ -43,6 +43,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
+   [metabase.test.util.public-settings]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.random :as u.random]
@@ -986,15 +987,16 @@
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))]
-    (perms.test-util/with-no-data-perms-for-all-users!
-      (perms.test-util/with-restored-perms!
-        (perms.test-util/with-restored-data-perms!
-          ;; TODO: stop ignoring exceptions here! (But this is vestigial code, so hopefully will be deleted soon
-          ;; anyway...)
-          (u/ignore-exceptions
-            (@#'perms/update-group-permissions! all-users-group-id graph))
-          (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
-          (f))))))
+    (metabase.test.util.public-settings/with-additional-premium-features #{:advanced-permissions}
+      (perms.test-util/with-no-data-perms-for-all-users!
+        (perms.test-util/with-restored-perms!
+          (perms.test-util/with-restored-data-perms!
+            ;; TODO: stop ignoring exceptions here! (But this is vestigial code, so hopefully will be deleted soon
+            ;; anyway...)
+            (u/ignore-exceptions
+              (@#'perms/update-group-permissions! all-users-group-id graph))
+            (data-perms.graph/update-data-perms-graph! {all-users-group-id graph})
+            (f)))))))
 
 (defmacro with-all-users-data-perms-graph!
   "Runs `body` with data perms for the All Users group temporarily set to the values in `graph`."
