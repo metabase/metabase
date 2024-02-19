@@ -220,12 +220,15 @@
            (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`."))))))
     (if (pos? @retry-counter)
       (log/warnf "Migration lock was acquired after %d retries." @retry-counter)
-      (log/info "No migration lock found.\nLMigration lock acquired."))))
+      (do (log/info "No migration lock found.")
+          (log/info "Migration lock acquired.")))))
 
 (defn- assert-locked [liquibase]
   (when-not (.hasChangeLogLock (lock-service liquibase))
     ;; TODO not sure this is the right exception class to use
     (throw (LockException. "The Liquibase lock must be taken before executing this operation"))))
+
+(def ^:private ^:dynamic *lock-depth* 0)
 
 (defn run-in-scope-locked
   "Run function `f` in a scope on the Liquibase instance `liquibase`.
@@ -247,10 +250,13 @@
                  (reify Scope$ScopedRunner
                    (run [_]
                      (wait-for-migration-lock liquibase)
+                     (assert-locked liquibase)
                      (try
-                       (f)
+                       (binding [*lock-depth* (inc *lock-depth*)]
+                         (f))
                        (finally
-                         (.releaseLock (lock-service liquibase)))))))))
+                         (when (zero? *lock-depth*)
+                           (.releaseLock (lock-service liquibase))))))))))
 
 (defmacro with-scope-locked
   "Run `body` in a scope on the Liquibase instance `liquibase`.
@@ -316,37 +322,38 @@
   ;; between the next two lines, but we accept the risk of blocking in that latter case rather than complicating things
   ;; further.
   (release-lock-if-needed! liquibase)
+  ;; This implicitly clears the lock, so it needs to execute first.
+  (.clearCheckSums liquibase)
   (with-scope-locked liquibase
-   (.clearCheckSums liquibase)
-   (when (seq (unrun-migrations data-source))
-     (let [change-log     (.getDatabaseChangeLog liquibase)
-           fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
-                                (.getChangeSets change-log))
-           exec-listener  (proxy [AbstractChangeExecListener] []
-                            (willRun [^ChangeSet change-set _database-change-log _database _run-status]
-                              (when (instance? ChangeSet change-set)
-                                (log/info (format "Start executing migration with id %s" (.getId change-set)))))
+    (when (seq (unrun-migrations data-source))
+      (let [change-log     (.getDatabaseChangeLog liquibase)
+            fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
+                                 (.getChangeSets change-log))
+            exec-listener  (proxy [AbstractChangeExecListener] []
+                             (willRun [^ChangeSet change-set _database-change-log _database _run-status]
+                               (when (instance? ChangeSet change-set)
+                                 (log/info (format "Start executing migration with id %s" (.getId change-set)))))
 
-                            (runFailed [^ChangeSet change-set _database-change-log _database ^Exception e]
-                              (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
+                             (runFailed [^ChangeSet _change-set _database-change-log _database ^Exception e]
+                               (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
 
-                            (ran [change-set _database-change-log _database ^ChangeSet$ExecType exec-type]
-                              (when (instance? ChangeSet change-set)
-                                (condp = exec-type
-                                  ChangeSet$ExecType/EXECUTED
-                                  (log/info (u/format-color 'green "[SUCCESS]"))
+                             (ran [change-set _database-change-log _database ^ChangeSet$ExecType exec-type]
+                               (when (instance? ChangeSet change-set)
+                                 (condp = exec-type
+                                   ChangeSet$ExecType/EXECUTED
+                                   (log/info (u/format-color 'green "[SUCCESS]"))
 
-                                  ChangeSet$ExecType/FAILED
-                                  (log/error (u/format-color 'red "[ERROR]"))
+                                   ChangeSet$ExecType/FAILED
+                                   (log/error (u/format-color 'red "[ERROR]"))
 
-                                  (log/info (format "[%s]" (.name exec-type)))))))]
-       (try
-         (doseq [^ChangeSet change-set (.getChangeSets change-log)]
-           (.setFailOnError change-set false))
-         (update-with-change-log liquibase {:exec-listener exec-listener})
-         (finally
-           (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
-             (.setFailOnError change-set fail-on-error?))))))))
+                                   (log/info (format "[%s]" (.name exec-type)))))))]
+        (try
+          (doseq [^ChangeSet change-set (.getChangeSets change-log)]
+            (.setFailOnError change-set false))
+          (update-with-change-log liquibase {:exec-listener exec-listener})
+          (finally
+            (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
+              (.setFailOnError change-set fail-on-error?))))))))
 
 (def ^:private legacy-migrations-file "migrations/000_legacy_migrations.yaml")
 (def ^:private update-migrations-file "migrations/001_update_migrations.yaml")
