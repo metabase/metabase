@@ -20,8 +20,6 @@ By default, Trends will display increases as green (i.e., "good") and decreases 
 
 ## Adding comparisons
 
-You can compare the aggregate value to multiple time periods, like comparing this month (December) to the last month (November), and to the previous (October).
-
 ![Add comparison to a trend chart](../../images/add-comparison.png)
 
 To add a comparison, click on the **gear** icon in the lower left (next to Visualization). In the **Data** tab in the left sidebar, click **Add comparison**. You can select from:
