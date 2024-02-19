@@ -50,6 +50,8 @@
 /resources/frontend_client/embed.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
+/resources/frontend_client/embedding-example.html
+/resources/embedding-sdk/dist/
 /resources/i18n/*.edn
 /resources/instance_analytics.zip
 /resources/license-backend-third-party.txt
@@ -106,3 +108,5 @@ modules/drivers/*/.lsp/*
 .clj-kondo/metosin/malli-types-clj
 
 .github/static-viz-sources.yaml
+
+/frontend/src/embedding-sdk/example-nodejs-backend/node_modules/

@@ -2,7 +2,7 @@
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
   (:require
-   [compojure.core :refer [context defroutes GET]]
+   [compojure.core :refer [context defroutes GET OPTIONS]]
    [compojure.route :as route]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.routes :as api]
@@ -43,6 +43,12 @@
        (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
   (GET "*" [] index/embed))
 
+(defroutes ^:private embedding-example-routes
+  (GET ["/question/:token.:export-format", :export-format api.dataset/export-format-regex]
+       [token export-format]
+       (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
+  (GET "*" [] index/embedding-example))
+
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
   (or (some-> (resolve 'ee.sso.routes/routes) var-get)
       (fn [_ respond _]
@@ -62,6 +68,8 @@
                 {:status 503 :body {:status "Error getting app-db connection"}}))
          {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
   ;; ^/api/ -> All other API routes
+  (OPTIONS "*" [] {:status 200 :body "hello cors"})
+
   (context "/api" [] (fn [& args]
                        ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
                        ;;
@@ -79,5 +87,7 @@
   (context "/public" [] public-routes)
   ;; ^/emebed/ -> Embed frontend and download routes
   (context "/embed" [] embed-routes)
+  ;; ^/embedding-example/ -> Embed frontend and download routes
+  (context "/embedding-example" [] embedding-example-routes)
   ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
   (GET "*" [] index/index))

@@ -26,7 +26,9 @@
   (try
     (sso.i/sso-get req)
     (catch Throwable e
-      (log/error #_e (trs "Error returning SSO entry point"))
+      (log/error e (trs "Error returning SSO entry point"))
+      ;; Optionally, you can also log the stack trace or more details if needed
+      (log/error (str "Stack trace: " (.printStackTrace e)))
       (throw e))))
 
 (defn- sso-error-page [^Throwable e]

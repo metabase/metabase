@@ -19,7 +19,7 @@ export const refreshSiteSettings = createAsyncThunk(
 );
 
 export const settings = createReducer(
-  { values: window.MetabaseBootstrap, loading: false },
+  { values: window.MetabaseBootstrap || {}, loading: false },
   builder => {
     builder.addCase(refreshSiteSettings.pending, state => {
       state.loading = true;

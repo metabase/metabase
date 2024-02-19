@@ -45,10 +45,11 @@ export function registerVisualization(visualization: Visualization) {
     );
   }
   if (visualizations.has(identifier)) {
-    throw new Error(
-      t`Visualization with that identifier is already registered: ` +
-        visualization.name,
-    );
+    return;
+    // throw new Error(
+    //   t`Visualization with that identifier is already registered: ` +
+    //     visualization.name,
+    // );
   }
   visualizations.set(identifier, visualization);
   for (const alias of visualization.aliases || []) {

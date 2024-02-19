@@ -1,0 +1,38 @@
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.disabled,
+:local(.disabled) {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.faded,
+:local(.faded) {
+  opacity: 0.4;
+}
+.fade-in-hover:hover {
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+.MB-lightBG {
+  background-color: var(--color-bg-light);
+}
+
+.circle {
+  border-radius: 99px;
+}
+
+.undefined {
+  border: 1px solid red !important;
+}
+
+.no-outline * {
+  outline: none;
+}
+
+.outline-none {
+  outline: none;
+}

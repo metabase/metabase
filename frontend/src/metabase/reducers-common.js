@@ -12,6 +12,7 @@ import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
 
 /* user */
 import { currentUser } from "metabase/redux/user";
+import { tokenReducer } from "metabase/public/reducers";
 
 export default {
   // global reducers
@@ -25,4 +26,6 @@ export default {
   entities,
   upload,
   auth,
+
+  public: tokenReducer,
 };

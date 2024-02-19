@@ -8,12 +8,14 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response])
   (:import
    (java.net URLEncoder)))
@@ -75,40 +77,62 @@
                                                      (group-names->ids group-names)
                                                      (all-mapped-group-ids))))))
 
+(defn- set-jwt-session-cookies
+  [request session redirect-url]
+  (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT"))))
+
 (defn- login-jwt-user
-  [jwt {{redirect :return_to} :params, :as request}]
+  [jwt {{redirect :return_to} :params
+        :as                   request}]
   (let [redirect-url (or redirect (URLEncoder/encode "/"))]
     (sso-utils/check-sso-redirect redirect-url)
-    (let [jwt-data     (try
-                         (jwt/unsign jwt (sso-settings/jwt-shared-secret)
-                                     {:max-age three-minutes-in-seconds})
-                         (catch Throwable e
-                           (throw (ex-info (ex-message e)
-                                           (assoc (ex-data e) :status-code 401)
-                                           e))))
-          login-attrs  (jwt-data->login-attributes jwt-data)
-          email        (get jwt-data (jwt-attribute-email))
-          first-name   (get jwt-data (jwt-attribute-firstname))
-          last-name    (get jwt-data (jwt-attribute-lastname))
-          user         (fetch-or-create-user! first-name last-name email login-attrs)
-          session      (api.session/create-session! :sso user (request.u/device-info request))]
+    (let [jwt-data    (try
+                        (jwt/unsign jwt (sso-settings/jwt-shared-secret)
+                                    {:max-age three-minutes-in-seconds})
+                        (catch Throwable e
+                          (throw (ex-info (ex-message e)
+                                          (assoc (ex-data e) :status-code 401)
+                                          e))))
+          login-attrs (jwt-data->login-attributes jwt-data)
+          email       (get jwt-data (jwt-attribute-email))
+          first-name  (get jwt-data (jwt-attribute-firstname))
+          last-name   (get jwt-data (jwt-attribute-lastname))
+          user        (fetch-or-create-user! first-name last-name email login-attrs)
+          session     (api.session/create-session! :sso user (request.u/device-info request))]
       (sync-groups! user jwt-data)
-      (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT"))))))
+      {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
 (defn- check-jwt-enabled []
   (api/check (sso-settings/jwt-enabled)
     [400 (tru "JWT SSO has not been enabled and/or configured")]))
 
 (defmethod sso.i/sso-get :jwt
-  [{{:keys [jwt redirect]} :params, :as request}]
+  [{{:keys [jwt redirect token]
+     :or   {token false}} :params
+    :as                                             request}]
+  (validation/check-embedding-enabled)
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
-  (if jwt
-    (login-jwt-user jwt request)
-    (let [idp (sso-settings/jwt-identity-provider-uri)
-          return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
-      (response/redirect (str idp (when redirect
-                                   (str return-to-param redirect)))))))
+  (log/info {:jwt      jwt
+             :redirect redirect
+             :token    token})
+  (when jwt
+    (let [{:keys [session redirect-url jwt-data]} (login-jwt-user jwt request)]
+      (log/info {:jwt          jwt
+                 :session      session
+                 :redirect-url redirect-url})
+      (if token
+        (do
+          (log/info "Setting JWT session token as " session)
+          (response/response {:id  (:id session)
+                              :exp (:exp jwt-data)
+                              :iat (:iat jwt-data)}))
+        (do 
+          (log/info "Setting JWT session cookies")
+          (set-jwt-session-cookies request session redirect-url)
+          (let [idp             (sso-settings/jwt-identity-provider-uri)
+                return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
+            (response/redirect (str idp (when redirect (str return-to-param redirect))))))))))
 
 (defmethod sso.i/sso-post :jwt
   [_]

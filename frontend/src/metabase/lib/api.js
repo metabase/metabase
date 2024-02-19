@@ -32,18 +32,24 @@ const DEFAULT_OPTIONS = {
 
 export class Api extends EventEmitter {
   basename = "";
+  apiKey = "";
+  sessionToken = "";
+
+  onBeforeRequest;
 
   GET;
   POST;
   PUT;
   DELETE;
 
-  constructor() {
+  constructor(basename) {
     super();
     this.GET = this._makeMethod("GET", { retry: true });
     this.DELETE = this._makeMethod("DELETE", {});
     this.POST = this._makeMethod("POST", { hasBody: true, retry: true });
     this.PUT = this._makeMethod("PUT", { hasBody: true });
+
+    this.basename = basename || "";
   }
 
   _makeMethod(method, creatorOptions = {}) {
@@ -59,6 +65,10 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
+        if (this.onBeforeRequest) {
+          await this.onBeforeRequest();
+        }
+
         const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
         const data = { ...rawData };
@@ -88,6 +98,14 @@ export class Api extends EventEmitter {
 
         if (options.formData && options.fetch) {
           delete headers["Content-Type"];
+        }
+
+        if (this.apiKey) {
+          headers["x-api-key"] = this.apiKey;
+        }
+
+        if (this.sessionToken) {
+          headers["X-Metabase-Session"] = this.sessionToken;
         }
 
         if (isWithinIframe()) {
