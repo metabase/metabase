@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -46,11 +47,9 @@
                           [:unit [:enum "hours" "minutes" "seconds" "days"]]]]
               [:schedule [:map
                           [:type keyword?]
-                          [:schedule string?]]]
+                          [:schedule u.cron/CronScheduleString]]]
               [:query    [:map
                           [:type keyword?]
-                          [:database_id int?]
-                          [:table_id int?]
                           [:field_id int?]
                           [:aggregation [:enum "max" "count"]]
                           [:schedule string?]]]]]}

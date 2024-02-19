@@ -363,9 +363,7 @@
                      :model/CacheConfig c4  {:model    "question"
                                              :model_id (:id card4)
                                              :strategy :query
-                                             :config   {:database_id (mt/id)
-                                                        :table_id    (mt/id :venues)
-                                                        :field_id    (mt/id :venues :id)
+                                             :config   {:field_id    (mt/id :venues :id)
                                                         :aggregation "max"
                                                         :schedule    "0 0/2 * * * ? *"}}]
         (let [t     (fn [seconds]
