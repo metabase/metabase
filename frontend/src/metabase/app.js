@@ -1,3 +1,4 @@
+// Dummy comment to trigger CI
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 import { GoogleOAuthProvider } from "metabase/oauth";
