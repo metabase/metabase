@@ -30,7 +30,7 @@ To prevent people from editing the embedding URL to get access to other parts of
 your_metabase_embedding_url/your_signed_jwt?filter=true
 ```
 
-The signed JWT is generated using your [Metabase secret key](#regenerating-the-secret-key). The secret key tells Metabase that the request for filtered data can be trusted, so it's safe to display the results at the new embedding URL. Note that this secret key is shared for all static embeds, so whoever has access to that key will have access to all embedded artifacts.
+The signed JWT is generated using your [Metabase secret key](#regenerating-the-static-embedding-secret-key). The secret key tells Metabase that the request for filtered data can be trusted, so it's safe to display the results at the new embedding URL. Note that this secret key is shared for all static embeds, so whoever has access to that key will have access to all embedded artifacts.
 
 If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/questions/drill-through) and [self-service querying](../questions/query-builder/introduction.md), see [Interactive embedding](./interactive-embedding.md).
 
@@ -65,7 +65,7 @@ Once you've made a question or dashboard [embeddable](#making-a-question-or-dash
 
 1. Go to the question or dashboard > **sharing icon** > **Embed**.
 2. Make any changes and copy the code.
-3. Optional: [Preview the server code](#previewing-the-frontend-code-for-an-embed).
+3. Optional: [Preview the server code](#previewing-the-code-for-an-embed)
 4. Add the code to server code that builds your website.
 5. Optional: [Preview the frontend code](#previewing-the-frontend-code-for-an-embed).
 6. Add the frontend code to the HTML file where you want your static embed to appear.
