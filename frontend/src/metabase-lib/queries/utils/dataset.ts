@@ -1,4 +1,5 @@
 import _ from "underscore";
+import cloneDeep from "lodash.clonedeep";
 import type {
   DatasetColumn,
   DatasetData,
@@ -55,11 +56,11 @@ export function findColumnIndexForColumnSetting(
       [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
         query,
         stageIndex,
-        // we make a structured clone to unfreeze objects as
+        // we make a deep clone to unfreeze objects as
         // cljs adds a unique id to every object
         // and it's not possible with frozen objects
-        structuredClone(columns),
-        [structuredClone(normalizedFieldRef)],
+        cloneDeep(columns),
+        [cloneDeep(normalizedFieldRef)],
       );
     }
 
