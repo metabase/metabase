@@ -189,8 +189,7 @@
                                                 accept?)
                                     (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
           change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
-      (liquibase/with-scope-locked
-       liquibase
+      (liquibase/with-scope-locked liquibase
        ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
        ;; and initializing checksums so that they match the ones generated in production.
        (.listUnrunChangeSets liquibase nil (LabelExpression.))
