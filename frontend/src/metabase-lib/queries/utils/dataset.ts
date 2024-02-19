@@ -55,8 +55,11 @@ export function findColumnIndexForColumnSetting(
       [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
         query,
         stageIndex,
-        columns,
-        [normalizedFieldRef],
+        // we make a structured clone to unfreeze objects as
+        // cljs adds a unique id to every object
+        // and it's not possible with frozen objects
+        structuredClone(columns),
+        [structuredClone(normalizedFieldRef)],
       );
     }
 
