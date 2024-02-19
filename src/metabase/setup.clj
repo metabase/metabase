@@ -1,3 +1,4 @@
+;; Dummy comment to trigger CI
 (ns metabase.setup
   (:require
    [environ.core :as env]
