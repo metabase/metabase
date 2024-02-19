@@ -7,9 +7,10 @@ import {
   FormSubmitButton,
   FormErrorMessage,
 } from "metabase/forms";
-import { ApiKeysApi } from "metabase/services";
+import { ApiKeysApi } from "metabase/redux/api";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 import type { ApiKey } from "metabase-types/api";
+
 
 export const DeleteApiKeyModal = ({
   onClose,
@@ -20,11 +21,13 @@ export const DeleteApiKeyModal = ({
   refreshList: () => void;
   apiKey: ApiKey;
 }) => {
+  const [deleteApiKey] = ApiKeysApi.useDeleteMutation();
+
   const handleDelete = useCallback(async () => {
-    await ApiKeysApi.delete({ id: apiKey.id });
-    refreshList();
+    await deleteApiKey(apiKey.id);
+    refreshList(); // TODO: see if we can remove this..
     onClose();
-  }, [refreshList, onClose, apiKey.id]);
+  }, [refreshList, onClose, apiKey.id, deleteApiKey]);
 
   return (
     <Modal

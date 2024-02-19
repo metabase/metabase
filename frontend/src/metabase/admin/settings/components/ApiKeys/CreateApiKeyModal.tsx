@@ -9,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { ApiKeysApi } from "metabase/services";
+import { ApiKeysApi } from "metabase/redux/api";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 
 import { SecretKeyModal } from "./SecretKeyModal";
@@ -23,16 +23,16 @@ export const CreateApiKeyModal = ({
   refreshList: () => void;
 }) => {
   const [modal, setModal] = useState<"create" | "secretKey">("create");
-  const [secretKey, setSecretKey] = useState<string>("");
+  const [createApiKey, response] = ApiKeysApi.useCreateMutation();
+  const secretKey = response?.data?.unmasked_key || "";
 
   const handleSubmit = useCallback(
     async vals => {
-      const response = await ApiKeysApi.create(vals);
-      setSecretKey(response.unmasked_key);
+      await createApiKey(vals);
       setModal("secretKey");
-      refreshList();
+      refreshList(); // TODO: remove in favor of redux handling this automatically
     },
-    [refreshList],
+    [createApiKey, refreshList],
   );
 
   if (modal === "secretKey") {
