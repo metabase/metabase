@@ -28,12 +28,10 @@ const RegenerateKeyModal = ({
   apiKey,
   setModal,
   setSecretKey,
-  refreshList,
 }: {
   apiKey: ApiKey;
   setModal: (name: EditModalName) => void;
   setSecretKey: (key: string) => void;
-  refreshList: () => void;
 }) => {
   const [regenerateApiKey] = ApiKeysApi.useRegenerateMutation();
   const handleRegenerate = useCallback(async () => {
@@ -43,8 +41,7 @@ const RegenerateKeyModal = ({
     }
     setSecretKey(result.data.unmasked_key);
     setModal("secretKey");
-    refreshList();
-  }, [apiKey.id, refreshList, setModal, setSecretKey, regenerateApiKey]);
+  }, [apiKey.id, setModal, setSecretKey, regenerateApiKey]);
 
   return (
     <Modal
@@ -96,11 +93,9 @@ const RegenerateKeyModal = ({
 
 export const EditApiKeyModal = ({
   onClose,
-  refreshList,
   apiKey,
 }: {
   onClose: () => void;
-  refreshList: () => void;
   apiKey: ApiKey;
 }) => {
   const [modal, setModal] = useState<EditModalName>("edit");
@@ -114,10 +109,9 @@ export const EditApiKeyModal = ({
         group_id: vals.group_id,
         name: vals.name,
       });
-      refreshList();
       onClose();
     },
-    [onClose, refreshList, editApiKey],
+    [onClose, editApiKey],
   );
 
   if (modal === "secretKey") {
@@ -130,7 +124,6 @@ export const EditApiKeyModal = ({
         apiKey={apiKey}
         setModal={setModal}
         setSecretKey={setSecretKey}
-        refreshList={refreshList}
       />
     );
   }
