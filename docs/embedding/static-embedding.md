@@ -126,7 +126,7 @@ Settings include:
 - Font\*
 - Download data (questions only)\*
 
-\* Available on [Pro](https://www.metabase/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 When you make changes to the embed's appearance, Metabase will highlight the changes it made to the code.
 

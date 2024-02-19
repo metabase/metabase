@@ -162,7 +162,7 @@ You can preview appearance settings from your question or dashboard's [embedded 
 | `font`\*                                  | [font name](../configuring-metabase/fonts.md) |
 | `hide_download_button`\* (questions only) | true, false                                   |
 
-\* Available on [Pro](https://www.metabase/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 ## Maximum request size
 
