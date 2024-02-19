@@ -318,7 +318,14 @@ CombinedBarTimeSeriesDifferentGranularityWithBreakout.args = {
 
 export const NumericXAxisIncludesZero37082 = Template.bind({});
 NumericXAxisIncludesZero37082.args = {
-  rawSeries: data.numbericXAxisIncludesZero37082 as any,
+  rawSeries: data.numericXAxisIncludesZero37082 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const LongDimensionNameCutOff37420 = Template.bind({});
+LongDimensionNameCutOff37420.args = {
+  rawSeries: data.longDimensionNameCutOff37420 as any,
   dashcardSettings: {},
   renderingContext,
 };
