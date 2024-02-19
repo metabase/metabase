@@ -14,7 +14,7 @@ import {
   createMockCollectionItem,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import CollectionContent from "metabase/collections/containers/CollectionContent";
+import { CollectionContent } from "metabase/collections/components/CollectionContent";
 import {
   setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,

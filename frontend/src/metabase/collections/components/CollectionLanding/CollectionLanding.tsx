@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { extractCollectionId } from "metabase/lib/urls";
-import CollectionContent from "../../containers/CollectionContent";
+import { isNotNull } from "metabase/lib/types";
+import { CollectionContent } from "../CollectionContent";
 
 export interface CollectionLandingProps {
   params: CollectionLandingParams;
@@ -16,11 +17,14 @@ const CollectionLanding = ({
   children,
 }: CollectionLandingProps) => {
   const collectionId = extractCollectionId(slug);
-  const isRoot = collectionId === "root";
+
+  if (!isNotNull(collectionId)) {
+    return null;
+  }
 
   return (
     <>
-      <CollectionContent isRoot={isRoot} collectionId={collectionId} />
+      <CollectionContent collectionId={collectionId} />
       {children}
     </>
   );
