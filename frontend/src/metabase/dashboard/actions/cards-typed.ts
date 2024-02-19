@@ -17,7 +17,11 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
-import { trackCardCreated, trackQuestionReplaced } from "../analytics";
+import {
+  trackCardCreated,
+  trackQuestionReplaced,
+  trackSectionAdded,
+} from "../analytics";
 import type { SectionLayout } from "../sections";
 import { getDashCardById, getDashboardId } from "../selectors";
 import {
@@ -129,6 +133,7 @@ export const addSectionToDashboard =
       );
 
     dispatch(_addManyDashCards(sectionDashcards));
+    trackSectionAdded(dashId, sectionLayout.id);
   };
 
 type AddCardToDashboardOpts = NewDashCardOpts & {
