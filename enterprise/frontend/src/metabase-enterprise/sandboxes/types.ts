@@ -1,10 +1,7 @@
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
-import type {
-  RequestsState,
-  RequestState,
-} from "metabase-types/store/requests";
+import type { RequestsState, RequestState } from "metabase-types/store";
 
 export type GroupTableAccessPolicyParams = { groupId: string; tableId: string };
 

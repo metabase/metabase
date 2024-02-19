@@ -45,7 +45,7 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import type { State } from "metabase-types/store";
+import type { State, RequestState } from "metabase-types/store";
 import NewItemMenu from "metabase/containers/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { serializeCardForUrl } from "metabase/lib/card";
@@ -294,20 +294,18 @@ export const setup = async ({
 
 const waitForLoadingRequests = async (getState: () => State) => {
   await waitFor(() => {
-    expect(areRequestsLoading(getState())).toBe(false);
+    const requests = getRequests(getState());
+    const areRequestsLoading = requests.some(request => request.loading);
+    expect(areRequestsLoading).toBe(false);
   });
 };
 
-const areRequestsLoading = (state: State): boolean => {
-  const groups = Object.values(state.requests);
-
-  const requests = groups.flatMap(group =>
+const getRequests = (state: State): RequestState[] => {
+  return Object.values(state.requests).flatMap(group =>
     Object.values(group).flatMap(entity =>
       Object.values(entity).flatMap(request => Object.values(request)),
     ),
   );
-
-  return requests.some(request => request.loading);
 };
 
 export const startNewNotebookModel = async () => {
