@@ -59,8 +59,6 @@ const metadata = createMockMetadata({
 
 const ordersTable = metadata.table(ORDERS_ID);
 
-const ordersIdField = ["field", ORDERS.ID, { "base-type": "type/BigInteger" }];
-
 function makeDatasetQuery(query = {}) {
   return {
     type: "query",
@@ -383,36 +381,6 @@ describe("StructuredQuery", () => {
           ).toEqual(["rows", "count", "distinct", "cum-count", "min", "max"]);
         });
 
-        it('shows "avg" aggregation when having a numeric custom field', () => {
-          const query = makeQueryWithoutNumericFields().addExpression(
-            "custom_numeric_field",
-            // Expression: case([ID] = 1, 11, 99)
-            ["case", [[["=", ordersIdField, 1], 11]], { default: 99 }],
-          );
-
-          expect(
-            query.aggregationOperators().map(processAggregationOperator),
-          ).not.toEqual(
-            query
-              .table()
-              .aggregationOperators()
-              .map(processAggregationOperator),
-          );
-          expect(query.aggregationOperators().map(getShortName)).toEqual([
-            "rows",
-            "count",
-            "sum",
-            "avg",
-            "median",
-            "distinct",
-            "cum-sum",
-            "cum-count",
-            "stddev",
-            "min",
-            "max",
-          ]);
-        });
-
         it("shows aggregation operators for linked tables fields", () => {
           const queryWithoutNumericFields = makeQueryWithLinkedTable();
           const operators = queryWithoutNumericFields.aggregationOperators();
@@ -450,17 +418,6 @@ describe("StructuredQuery", () => {
         const short = "avg";
 
         expect(query.aggregationOperator(short)).toBeUndefined();
-      });
-
-      it("can find `avg` aggregation when having a numeric custom field on table without numeric fields", () => {
-        const query = makeQueryWithoutNumericFields().addExpression(
-          "custom_numeric_field",
-          // Expression: case([ID] = 1, 11, 99)
-          ["case", [[["=", ordersIdField, 1], 11]], { default: 99 }],
-        );
-        const short = "avg";
-
-        expect(query.aggregationOperator(short)).not.toBeUndefined();
       });
     });
   });

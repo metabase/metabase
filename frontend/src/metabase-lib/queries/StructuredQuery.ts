@@ -10,7 +10,6 @@ import type {
   Aggregation,
   DatabaseId,
   DatasetQuery,
-  ExpressionClause,
   Filter,
   TableId,
   StructuredDatasetQuery,
@@ -26,7 +25,6 @@ import {
   isCompatibleAggregationOperatorForField,
 } from "metabase-lib/operators/utils";
 import { TYPE } from "metabase-lib/types/constants";
-import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
 import { createLookupByProperty } from "metabase-lib/utils";
 import {
@@ -496,25 +494,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeFilter, arguments);
   }
 
-  // EXPRESSIONS
-  expressions = _.once((): ExpressionClause => {
-    return Q.getExpressions(this.legacyQuery({ useStructuredQuery: true }));
-  });
-
-  addExpression(name, expression) {
-    const uniqueName = getUniqueExpressionName(this.expressions(), name);
-
-    let query = this._updateQuery(Q.addExpression, [uniqueName, expression]);
-
-    // extra logic for adding expressions in fields clause
-    // TODO: push into query/expression?
-    if (query._hasFields() && query.isRaw()) {
-      query = query.addField(["expression", uniqueName]);
-    }
-
-    return query;
-  }
-
   // FIELDS
   fields() {
     // FIMXE: implement field functions in query lib
@@ -612,19 +591,6 @@ class StructuredQuery extends AtomicQuery {
       : [];
   });
 
-  expressionDimensions = _.once((): Dimension[] => {
-    return Object.entries(this.expressions()).map(
-      ([expressionName, _expression]) => {
-        return new ExpressionDimension(
-          expressionName,
-          null,
-          this._metadata,
-          this,
-        );
-      },
-    );
-  });
-
   aggregationDimensions = _.once(() => {
     return this.aggregations().map(aggregation =>
       aggregation.aggregationDimension(),
@@ -645,7 +611,6 @@ class StructuredQuery extends AtomicQuery {
     } else if (this._hasFields()) {
       return this.fieldDimensions();
     } else {
-      const expressions = this.expressionDimensions();
       const table = this.tableDimensions();
 
       const sorted = _.chain(table)
@@ -666,7 +631,7 @@ class StructuredQuery extends AtomicQuery {
         .sortBy(d => d.field().position)
         .value();
 
-      return [...sorted, ...expressions];
+      return sorted;
     }
   });
 

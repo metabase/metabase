@@ -1,6 +1,5 @@
 import * as A from "./aggregation";
 import * as F from "./filter";
-import * as E from "./expression";
 import * as FIELD from "./field";
 
 // AGGREGATION
@@ -57,15 +56,6 @@ export const updateField = (query, index, field) =>
 export const removeField = (query, index) =>
   setFieldsClause(query, FIELD.removeField(query.fields, index));
 
-// EXPRESSIONS
-
-export const getExpressions = query => E.getExpressions(query.expressions);
-export const addExpression = (query, name, expression) =>
-  setExpressionClause(
-    query,
-    E.addExpression(query.expressions, name, expression),
-  );
-
 // we can enforce various constraints in these functions:
 
 function setAggregationClause(query, aggregationClause) {
@@ -76,12 +66,6 @@ function setFilterClause(query, filterClause) {
 }
 function setFieldsClause(query, fieldsClause) {
   return setClause("fields", query, fieldsClause);
-}
-function setExpressionClause(query, expressionClause) {
-  if (expressionClause && Object.keys(expressionClause).length === 0) {
-    expressionClause = null;
-  }
-  return setClause("expressions", query, expressionClause);
 }
 
 function setClause(clauseName, query, clause) {
