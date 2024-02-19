@@ -5,6 +5,7 @@ import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
@@ -19,7 +20,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { Stack, Group, Radio } from "metabase/ui";
+import { Group, Radio, Stack } from "metabase/ui";
 import type { SettingValue } from "metabase-types/api";
 
 const testParentheses: TestConfig<string | null | undefined> = {
@@ -75,14 +76,15 @@ export const SettingsLdapFormView = ({
       placeholder: setting.is_env_setting
         ? t`Using ${setting.env_name}`
         : setting.placeholder || setting.default,
+      default: setting.default,
       required: setting.required,
       autoFocus: setting.autoFocus,
     }));
   }, [settings]);
 
   const attributeValues = useMemo(() => {
-    return getAttributeValues(settingValues);
-  }, [settingValues]);
+    return getAttributeValues(settings, settingValues);
+  }, [settings, settingValues]);
 
   const handleSubmit = useCallback(
     values => {
@@ -111,6 +113,17 @@ export const SettingsLdapFormView = ({
               [t`LDAP`],
             ]}
           />
+          <Stack spacing="0.75rem" m="2.5rem 0">
+            <SettingHeader
+              id="ldap-user-provisioning-enabled?"
+              setting={settings["ldap-user-provisioning-enabled?"]}
+            />
+            <FormSwitch
+              id="ldap-user-provisioning-enabled?"
+              name={fields["ldap-user-provisioning-enabled?"].name}
+              defaultChecked={fields["ldap-user-provisioning-enabled?"].default}
+            />
+          </Stack>
           <FormSection title={"Server Settings"}>
             <Stack spacing="md">
               <FormTextInput {...fields["ldap-host"]} />
@@ -176,6 +189,9 @@ export const SettingsLdapFormView = ({
 };
 
 const LDAP_ATTRS = [
+  // User Provision Settings
+  "ldap-user-provisioning-enabled?",
+
   // Server Settings
   "ldap-host",
   "ldap-port",
@@ -199,8 +215,20 @@ const LDAP_ATTRS = [
   "ldap-sync-admin-group",
 ];
 
-const getAttributeValues = (values: SettingValues) => {
-  return Object.fromEntries(LDAP_ATTRS.map(key => [key, values[key]]));
+const DEFAULTABLE_LDAP_ATTRS = new Set(["ldap-user-provisioning-enabled?"]);
+
+const getAttributeValues = (
+  settings: Record<string, LdapFormSettingElement>,
+  values: SettingValues,
+) => {
+  return Object.fromEntries(
+    LDAP_ATTRS.map(key => [
+      key,
+      DEFAULTABLE_LDAP_ATTRS.has(key)
+        ? values[key] ?? settings[key]?.default
+        : values[key],
+    ]),
+  );
 };
 
 const mapDispatchToProps = {

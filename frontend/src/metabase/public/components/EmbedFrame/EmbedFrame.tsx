@@ -13,10 +13,15 @@ import {
   ParametersFixedWidthContainer,
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import { parseHashOptions } from "metabase/lib/browser";
-import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
+import {
+  initializeIframeResizer,
+  isSmallScreen,
+  isWithinIframe,
+} from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { setOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/selectors/settings";
 import type Question from "metabase-lib/Question";
@@ -29,21 +34,21 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import "./EmbedFrame.css";
 import type { FooterVariant } from "./EmbedFrame.styled";
 import {
-  Root,
-  ContentContainer,
-  Header,
-  Body,
-  ParametersWidgetContainer,
-  Footer,
   ActionButtonsContainer,
-  TitleAndDescriptionContainer,
-  Separator,
+  Body,
+  ContentContainer,
   DashboardTabsContainer,
+  Footer,
+  Header,
+  ParametersWidgetContainer,
+  Root,
+  Separator,
+  TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import LogoBadge from "./LogoBadge";
-import "./EmbedFrame.css";
 
 type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 
@@ -109,11 +114,27 @@ function EmbedFrame({
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
 }: Props) {
-  const [hasInnerScroll, setInnerScroll] = useState(true);
+  const [hasFrameScroll, setHasFrameScroll] = useState(true);
+  const [hasInnerScroll, setHasInnerScroll] = useState(
+    document.documentElement.scrollTop > 0,
+  );
 
   useMount(() => {
-    initializeIframeResizer(() => setInnerScroll(false));
+    initializeIframeResizer(() => setHasFrameScroll(false));
   });
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setHasInnerScroll(document.documentElement.scrollTop > 0);
+    };
+
+    document.addEventListener("scroll", handleScroll, {
+      capture: false,
+      passive: true,
+    });
+
+    return () => document.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const dispatch = useDispatch();
   useEffect(() => {
@@ -138,19 +159,27 @@ function EmbedFrame({
   const finalName = titled ? name : null;
 
   const hasParameters = Array.isArray(parameters) && parameters.length > 0;
+  const visibleParameters = hasParameters
+    ? getVisibleParameters(parameters, hiddenParameterSlugs)
+    : [];
+  const hasVisibleParameters = visibleParameters.length > 0;
 
   const hasHeader = Boolean(finalName || hasParameters);
+  const isParameterPanelSticky =
+    !!dashboard &&
+    theme !== "transparent" && // https://github.com/metabase/metabase/pull/38766#discussion_r1491549200
+    isParametersWidgetContainersSticky(visibleParameters.length);
 
   return (
     <Root
-      hasScroll={hasInnerScroll}
+      hasScroll={hasFrameScroll}
       isBordered={bordered}
       className={cx("EmbedFrame", className, {
         [`Theme--${theme}`]: !!theme,
       })}
       data-testid="embed-frame"
     >
-      <ContentContainer hasScroll={hasInnerScroll}>
+      <ContentContainer>
         {hasHeader && (
           <Header className="EmbedFrame-header">
             {finalName && (
@@ -178,33 +207,38 @@ function EmbedFrame({
               </DashboardTabsContainer>
             )}
             <Separator />
-            {hasParameters && (
-              <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
-                <ParametersFixedWidthContainer
-                  data-testid="fixed-width-filters"
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  <SyncedParametersList
-                    question={question}
-                    dashboard={dashboard}
-                    parameters={getValuePopulatedParameters({
-                      parameters,
-                      values: _.isEmpty(draftParameterValues)
-                        ? parameterValues
-                        : draftParameterValues,
-                    })}
-                    setParameterValue={setParameterValue}
-                    hideParameters={hideParameters}
-                    setParameterValueToDefault={setParameterValueToDefault}
-                    enableParameterRequiredBehavior={
-                      enableParameterRequiredBehavior
-                    }
-                  />
-                  {dashboard && <FilterApplyButton />}
-                </ParametersFixedWidthContainer>
-              </ParametersWidgetContainer>
-            )}
           </Header>
+        )}
+        {hasVisibleParameters && (
+          <ParametersWidgetContainer
+            embedFrameTheme={theme}
+            hasScroll={hasInnerScroll}
+            isSticky={isParameterPanelSticky}
+            data-testid="dashboard-parameters-widget-container"
+          >
+            <ParametersFixedWidthContainer
+              data-testid="fixed-width-filters"
+              isFixedWidth={dashboard?.width === "fixed"}
+            >
+              <SyncedParametersList
+                question={question}
+                dashboard={dashboard}
+                parameters={getValuePopulatedParameters({
+                  parameters,
+                  values: _.isEmpty(draftParameterValues)
+                    ? parameterValues
+                    : draftParameterValues,
+                })}
+                setParameterValue={setParameterValue}
+                hideParameters={hideParameters}
+                setParameterValueToDefault={setParameterValueToDefault}
+                enableParameterRequiredBehavior={
+                  enableParameterRequiredBehavior
+                }
+              />
+              {dashboard && <FilterApplyButton />}
+            </ParametersFixedWidthContainer>
+          </ParametersWidgetContainer>
         )}
         <Body>{children}</Body>
       </ContentContainer>
@@ -220,6 +254,16 @@ function EmbedFrame({
       )}
     </Root>
   );
+}
+
+function isParametersWidgetContainersSticky(parameterCount: number) {
+  if (!isSmallScreen()) {
+    return true;
+  }
+
+  // Sticky header with more than 5 parameters
+  // takes too much space on small screens
+  return parameterCount <= 5;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

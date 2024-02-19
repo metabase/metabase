@@ -116,7 +116,10 @@ export function DashboardHeaderComponent({
           <span>{editWarning}</span>
         </EditWarning>
       )}
-      <HeaderContainer isSidebarOpen={isSidebarOpen}>
+      <HeaderContainer
+        isFixedWidth={dashboard?.width === "fixed"}
+        isSidebarOpen={isSidebarOpen}
+      >
         <HeaderRow
           className={cx("QueryBuilder-section", headerClassName)}
           data-testid="dashboard-header"

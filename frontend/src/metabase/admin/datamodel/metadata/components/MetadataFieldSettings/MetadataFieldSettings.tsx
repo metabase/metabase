@@ -95,6 +95,7 @@ const MetadataFieldSettings = ({
 
   return (
     <AdminLayout
+      headerHeight={53}
       sidebar={
         <FieldSidebar
           database={database}

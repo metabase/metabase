@@ -29,6 +29,16 @@ const elements = [
     type: "boolean",
   },
   {
+    key: "ldap-user-provisioning-enabled?",
+    value: null,
+    is_env_setting: false,
+    env_name: "MB_LDAP_USER_PROVISIONING_ENABLED",
+    display_name: "User Provisioning",
+    description:
+      "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\ndon't have one.",
+    default: true,
+  },
+  {
     placeholder: "ldap.yourdomain.org",
     key: "ldap-host",
     value: null,
@@ -237,6 +247,7 @@ describe("SettingsLdapForm", () => {
     });
 
     const ATTRS = {
+      "ldap-user-provisioning-enabled?": false,
       "ldap-host": "example.com",
       "ldap-port": "123",
       "ldap-security": "ssl",
@@ -254,6 +265,7 @@ describe("SettingsLdapForm", () => {
       "ldap-sync-admin-group": true,
     };
 
+    userEvent.click(screen.getByLabelText(/User Provisioning/));
     userEvent.type(
       await screen.findByRole("textbox", { name: /LDAP Host/ }),
       ATTRS["ldap-host"],

@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { connect } from "react-redux";
 import { usePrevious } from "react-use";
-import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
@@ -11,24 +9,16 @@ import CollectionEmptyState from "metabase/collections/components/CollectionEmpt
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
-import { getIsBookmarked } from "metabase/collections/selectors";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
-import Bookmark from "metabase/entities/bookmarks";
-import Collection from "metabase/entities/collections";
-import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useToggle } from "metabase/hooks/use-toggle";
-import { uploadFile } from "metabase/redux/uploads";
-import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getSetting } from "metabase/selectors/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { ModelUploadModal } from "../components/ModelUploadModal";
-import UploadOverlay from "../components/UploadOverlay";
+import { ModelUploadModal } from "../ModelUploadModal";
+import UploadOverlay from "../UploadOverlay";
 
 import {
   CollectionEmptyContent,
@@ -51,33 +41,7 @@ const ALL_MODELS = [
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
-function mapStateToProps(state, props) {
-  const uploadDbId = getSetting(state, "uploads-database-id");
-  const uploadsEnabled = getSetting(state, "uploads-enabled");
-  const canUploadToDb =
-    uploadDbId &&
-    Databases.selectors
-      .getObject(state, {
-        entityId: uploadDbId,
-      })
-      ?.canUpload();
-
-  return {
-    isAdmin: getUserIsAdmin(state),
-    isBookmarked: getIsBookmarked(state, props),
-    isNavbarOpen: getIsNavbarOpen(state),
-    uploadsEnabled,
-    canUploadToDb,
-  };
-}
-
-const mapDispatchToProps = {
-  createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
-  deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
-  uploadFile,
-};
-
-function CollectionContent({
+export function CollectionContentView({
   databases,
   bookmarks,
   collection,
@@ -388,21 +352,3 @@ function CollectionContent({
     </Search.ListLoader>
   );
 }
-
-export default _.compose(
-  Bookmark.loadList(),
-  Databases.loadList(),
-  Collection.loadList({
-    query: {
-      tree: true,
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-    },
-    loadingAndErrorWrapper: false,
-  }),
-  Collection.load({
-    id: (_, props) => props.collectionId,
-    reload: true,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(CollectionContent);

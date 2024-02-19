@@ -12,16 +12,16 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-import CollectionContent from "metabase/collections/containers/CollectionContent";
+import { CollectionContent } from "metabase/collections/components/CollectionContent";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
 } from "metabase-types/api/mocks";
 import {
-  createMockUpload,
-  createMockState,
   createMockSettingsState,
+  createMockState,
+  createMockUpload,
 } from "metabase-types/store/mocks";
 
 import { FileUploadStatus } from "./FileUploadStatus";
