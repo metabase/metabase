@@ -235,7 +235,10 @@
   [^Liquibase liquibase f]
 
   (when (.hasChangeLogLock (lock-service liquibase))
-    (throw (Exception. "Taking a nested lock, please clean this up")))
+    ;; In production it's better to just take the lock again, it is re-entrant.
+    ;; Fail in dev and CI in order to clean up the code flow.
+    (when-not config/is-prod?
+      (throw (LockException. "Attempted to take a Liquibase lock, but we already are holding it."))))
 
   (let [database      (.getDatabase liquibase)
         scope-objects {(.name Scope$Attr/database)         database
