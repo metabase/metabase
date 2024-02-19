@@ -3,7 +3,7 @@ import { assocIn } from "icepick";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
-import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getComputedSettings,
   getSettingsWidgets,
@@ -65,7 +65,7 @@ function normalizeColumnSettings(columnSettings) {
     // if the key is a reference, normalize the mbql syntax
     const newColumnKey =
       refOrName === "ref"
-        ? JSON.stringify(["ref", normalizeFieldRef(fieldRef)])
+        ? JSON.stringify(["ref", normalize(fieldRef)])
         : oldColumnKey;
     newColumnSettings[newColumnKey] = columnSettings[oldColumnKey];
   }
