@@ -19,7 +19,11 @@ import {
 } from "metabase/lib/dashboard_grid";
 
 import type { SectionLayout } from "../sections";
-import { trackCardCreated, trackQuestionReplaced } from "../analytics";
+import {
+  trackCardCreated,
+  trackQuestionReplaced,
+  trackSectionAdded,
+} from "../analytics";
 import { getDashCardById, getDashboardId } from "../selectors";
 import {
   createDashCard,
@@ -129,6 +133,7 @@ export const addSectionToDashboard =
       );
 
     dispatch(_addManyDashCards(sectionDashcards));
+    trackSectionAdded(dashId, sectionLayout.id);
   };
 
 type AddCardToDashboardOpts = NewDashCardOpts & {
