@@ -61,7 +61,7 @@ Note that [Block](#block-access) access is unavailable for individual tables/sch
 
 {% include plans-blockquote.html feature="Impersonation access" %}
 
-> For now, impersonation access is only available for PostgreSQL, and Snowflake.
+> For now, impersonation access is only available for PostgreSQL, Redshift, and Snowflake.
 
 **Impersonation access** allows you to associate user attributes with database-defined roles and their privileges. Metabase queries made by people with attributes that you define will respect the grants given to the database roles.
 
@@ -75,12 +75,15 @@ Connection impersonation does not apply to users in the Metabase admins group, a
 
 ### Setting up connection impersonation
 
+> **For impersonation to work for Redshift databases, the user account Metabase uses to [connect to your Redshift database](../databases/connections/redshift.md) must be a superuser, as Metabase will need to be able to run the [SET SESSION AUTHORIZATION](https://docs.aws.amazon.com/redshift/latest/dg/r_SET_SESSION_AUTHORIZATION) command, which can only be run by a database superuser.
+
 **In your database:**
 
-- Create a new role.
+- Create a new role (in Redshift, this would be a new user).
 - Grant that role privileges.
 
 For exactly how to create a new role in your database and grant that role privileges, you'll need to consult your database's documentation. We also have some docs on [users, roles, and privileges](../databases/users-roles-privileges.md) that can help you get started.
+
 
 **In your Metabase:**
 
