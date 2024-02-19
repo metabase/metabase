@@ -25,7 +25,6 @@
     :refer [Database protected-password]]
    [metabase.models.field :refer [Field readable-fields-only]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
