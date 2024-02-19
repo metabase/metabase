@@ -1,32 +1,30 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
-import { Component } from "react";
-import { jt, t } from "ttag";
-import _ from "underscore";
-
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
+import Input from "metabase/core/components/Input";
+import Link from "metabase/core/components/Link";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import UserAvatar from "metabase/components/UserAvatar";
-import Input from "metabase/core/components/Input";
-import Link from "metabase/core/components/Link";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+import _ from "underscore";
+import cx from "classnames";
+import { AddRow } from "./AddRow";
+import { Component } from "react";
+import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
+import { KEYCODE_ENTER } from "metabase/lib/keyboard";
+import { Stack, Text, Group, Button, Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import {
   isDefaultGroup,
   isAdminGroup,
   getGroupNameLocalized,
 } from "metabase/lib/groups";
-import { KEYCODE_ENTER } from "metabase/lib/keyboard";
+import { jt, t } from "ttag";
 import { useListApiKeyQuery } from "metabase/redux/api";
-import { Stack, Text, Group, Button, Icon } from "metabase/ui";
-
-import { AddRow } from "./AddRow";
-import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
