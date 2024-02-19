@@ -24,6 +24,14 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
     styles: (theme, _, { size = "md" }) => ({
       ...getSelectInputOverrides(theme, size),
       ...getSelectItemsOverrides(theme, size),
+      // For epic (metabase#38699)
+      dropdown: {
+        ">div": {
+          maxHeight: "none !important",
+        },
+        padding: 0,
+        overflow: "auto",
+      },
     }),
   },
 });

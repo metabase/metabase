@@ -182,6 +182,7 @@ class SettingsEditor extends Component {
     }
     return (
       <SettingsSection
+        tabs={activeSection.tabs}
         settingElements={activeSection.settings}
         settingValues={settingValues}
         derivedSettingValues={derivedSettingValues}

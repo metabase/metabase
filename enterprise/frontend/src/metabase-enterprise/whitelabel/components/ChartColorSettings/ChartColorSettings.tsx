@@ -3,10 +3,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Button from "metabase/core/components/Button";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { useCurrentRef } from "metabase/hooks/use-current-ref";
 import { color } from "metabase/lib/colors";
+import { Button } from "metabase/ui";
 import ColorResetModal from "metabase-enterprise/whitelabel/components/ColorResetModal";
 
 import {
@@ -129,7 +129,7 @@ const ChartColorTable = ({
         ))}
       </TableBody>
       <TableFooter>
-        <Button primary onClick={onGenerate}>{t`Generate chart colors`}</Button>
+        <Button onClick={onGenerate}>{t`Generate chart colors`}</Button>
       </TableFooter>
     </div>
   );

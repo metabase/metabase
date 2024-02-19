@@ -5,7 +5,7 @@ import { jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 
-import { settingToFormFieldId, getEnvVarDocsUrl } from "./../../settings/utils";
+import { getEnvVarDocsUrl, settingToFormFieldId } from "./../../settings/utils";
 import SettingHeader from "./SettingHeader";
 import {
   SettingContent,
@@ -18,9 +18,9 @@ import { SettingInput } from "./widgets/SettingInput";
 import SettingNumber from "./widgets/SettingNumber";
 import SettingPassword from "./widgets/SettingPassword";
 import SettingRadio from "./widgets/SettingRadio";
-import SettingSelect from "./widgets/SettingSelect";
 import SettingText from "./widgets/SettingText";
 import SettingToggle from "./widgets/SettingToggle";
+import SettingSelect from "./widgets/deprecated/SettingSelect";
 
 const SETTING_WIDGET_MAP = {
   string: SettingInput,
@@ -30,6 +30,7 @@ const SETTING_WIDGET_MAP = {
   radio: SettingRadio,
   boolean: SettingToggle,
   text: SettingText,
+  hidden: () => null,
 };
 
 export default class SettingsSetting extends Component {

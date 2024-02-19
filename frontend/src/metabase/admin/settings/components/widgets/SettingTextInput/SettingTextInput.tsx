@@ -1,17 +1,9 @@
 import cx from "classnames";
+import { useEffect, useState } from "react";
 
-import { SettingInputBlurChange } from "./SettingInput.styled";
+import { TextInput } from "metabase/ui";
 
-const getValue = (value: string, type: string) => {
-  if (type === "number") {
-    const numericValue = parseFloat(value);
-    return isNaN(numericValue) ? null : numericValue;
-  }
-
-  return value;
-};
-
-type Value = string | number | null;
+type Value = string | null;
 
 export interface SettingInputProps {
   setting: {
@@ -25,45 +17,46 @@ export interface SettingInputProps {
   fireOnChange?: boolean;
   errorMessage?: string;
   id?: string;
-  type?: string;
+  type: "text" | "password";
   normalize?: (value: Value) => Value;
 }
 
 const identity = (value: Value) => value;
 
-/**
- * @deprecated use SettingTextInput instead
- */
-export const SettingInput = ({
+export const SettingTextInput = ({
   setting,
   onChange,
   autoFocus,
   errorMessage,
-  fireOnChange,
   id,
   type = "text",
   normalize = identity,
 }: SettingInputProps) => {
+  const [valueState, setValueState] = useState<string>(setting.value ?? "");
   const changeHandler = (e: { target: HTMLInputElement }) => {
-    const value = getValue(e.target.value, type);
-    onChange(normalize(value));
+    const value = e.target.value;
+    if (value !== (setting.value ?? "")) {
+      onChange(normalize(value));
+    }
   };
 
+  useEffect(() => {
+    setValueState(setting.value ?? "");
+  }, [setting.value]);
+
   return (
-    <SettingInputBlurChange
+    <TextInput
       className={cx({
         SettingsInput: type !== "password",
         SettingsPassword: type === "password",
       })}
-      normalize={normalize}
-      size="large"
       error={!!errorMessage}
       id={id}
       type={type}
-      value={setting.value || ""}
+      onChange={event => setValueState(event.target.value)}
+      value={valueState}
       placeholder={setting.placeholder}
-      onChange={fireOnChange ? changeHandler : undefined}
-      onBlurChange={!fireOnChange ? changeHandler : undefined}
+      onBlur={changeHandler}
       autoFocus={autoFocus}
     />
   );

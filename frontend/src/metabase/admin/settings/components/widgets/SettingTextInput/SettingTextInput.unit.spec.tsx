@@ -1,14 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { SettingInput } from "./SettingInput";
+import { SettingTextInput } from "./SettingTextInput";
 
-type Value = string | number | null;
+type Value = string | null;
 
 interface SetupOpts {
   setting: Setting;
   value: Value;
-  type: string;
+  type: "text" | "password";
   normalize?: (value: Value) => Value;
 }
 
@@ -24,7 +24,7 @@ interface Setting {
 function setup({ setting, value, type, normalize }: SetupOpts) {
   const onChange = jest.fn();
   render(
-    <SettingInput
+    <SettingTextInput
       setting={{ ...setting, value: String(value) }}
       onChange={onChange}
       type={type}
@@ -35,22 +35,7 @@ function setup({ setting, value, type, normalize }: SetupOpts) {
   return { onChange };
 }
 
-describe("SettingInput", () => {
-  it("when type=number should allow decimal values", () => {
-    const setting = {
-      key: "test",
-      value: "100",
-      default: "100",
-      placeholder: "numeric value",
-    };
-    const { onChange } = setup({ setting, value: 100, type: "number" });
-
-    userEvent.type(screen.getByPlaceholderText("numeric value"), ".25");
-    userEvent.tab(); // blur
-
-    expect(onChange).toHaveBeenCalledWith(100.25);
-  });
-
+describe("SettingTextInput (metabase/ui)", () => {
   describe("normalize value (metabase#25482)", () => {
     const setting = {
       key: "landing-page",
@@ -93,17 +78,6 @@ describe("SettingInput", () => {
       userEvent.clear(input);
       input.blur();
       expect(onChange).toHaveBeenCalledWith(null);
-    });
-
-    it("should call onChange with number", () => {
-      const value = "1";
-      const { onChange } = setup({ setting, value, type: "number", normalize });
-
-      const input = screen.getByDisplayValue(value);
-      userEvent.clear(input);
-      userEvent.type(input, "2");
-      input.blur();
-      expect(onChange).toHaveBeenCalledWith(2);
     });
 
     it("should not call onChange when blurring without changing anything", () => {

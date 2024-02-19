@@ -123,7 +123,7 @@ describe("getSeriesWithColors", () => {
     it("should assign colors from whitelabel colors", () => {
       const seriesWithColors = getSeriesWithColors(
         settings,
-        getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        getPalette({ accent0: "#123456", summarize: "#ffffff" }),
         singleCardSeries,
       );
 

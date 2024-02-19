@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 
-import SettingSelect from "../SettingSelect";
+import { SettingSelect } from "../SettingSelect";
 
 export const Root = styled.div`
   display: flex;
@@ -24,7 +24,6 @@ export const WidgetContainer = styled.div`
 
 export const StyledSettingSelect = styled(SettingSelect)`
   width: 125px;
-  min-height: 45.5px; // should match SettingInput height
   margin-top: 12px;
 `;
 

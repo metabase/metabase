@@ -9,6 +9,7 @@ import type {
 
 export type SettingElement = {
   key?: SettingKey;
+  tab?: string;
   display_name?: string;
   type?: string;
   description?: string;
@@ -16,6 +17,7 @@ export type SettingElement = {
   searchProp?: string;
   placeholder?: string;
   options?: { value: SettingValue; name: string }[];
+  value?: SettingValue;
   defaultValue?: SettingValue;
   required?: boolean;
   autoFocus?: boolean;
