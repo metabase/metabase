@@ -321,6 +321,9 @@ class Table extends Component<TableProps, TableState> {
 
   _updateData({ series, settings, metadata }: VisualizationProps) {
     const [{ card, data }] = series;
+    // construct a Question that is in-sync with query results
+    const question = new Question(card, metadata);
+    const query = question.query();
 
     if (Table.isPivoted(series, settings)) {
       const pivotIndex = _.findIndex(
@@ -347,7 +350,7 @@ class Table extends Component<TableProps, TableState> {
             columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
         )
         .map(columnSetting =>
-          findColumnIndexForColumnSetting(cols, columnSetting),
+          findColumnIndexForColumnSetting(cols, columnSetting, query),
         )
         .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
 
@@ -357,10 +360,8 @@ class Table extends Component<TableProps, TableState> {
           rows: rows.map(row => columnIndexes.map(i => row[i])),
           results_timezone,
         },
-
-        // construct a Question that is in-sync with query results
-        // cache it here for performance reasons
-        question: new Question(card, metadata),
+        // cache question for performance reasons
+        question,
       });
     }
   }
