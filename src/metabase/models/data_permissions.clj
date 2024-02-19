@@ -395,7 +395,7 @@
                             [:data_permissions :p]   [:= :p.group_id :pg.id]]
                      :where [:and
                              [:= :pgm.user_id user-id]
-                             [:= :p.perm_type (u/qualified-name :perms/manage-table-metadata)]
+                             [:= :p.perm_type (u/qualified-name perm-type)]
                              [:= :p.perm_value (u/qualified-name value)]]}))))
 
 (defn- admin-permission-graph
@@ -501,7 +501,7 @@
                                        (when perm-type [:= :perm_type (u/qualified-name perm-type)])
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
-                                       (when-not audit? [:not [:= :db_id config/audit-db-id]])]})]
+                                       (when-not audit? [:not= :db_id config/audit-db-id])]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
