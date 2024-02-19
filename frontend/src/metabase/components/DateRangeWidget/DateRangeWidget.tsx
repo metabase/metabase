@@ -8,8 +8,8 @@ interface DateRangeWidgetProps {
   onClose: () => void;
 }
 
-const DateRangeWidget = ({ value, ...props }: DateRangeWidgetProps) => {
-  const defaultedValue =
+export const DateRangeWidget = ({ value, ...props }: DateRangeWidgetProps) => {
+  const initialValue =
     value == null
       ? `${moment().format("YYYY-MM-DD")}~${moment().format("YYYY-MM-DD")}`
       : value;
@@ -17,11 +17,9 @@ const DateRangeWidget = ({ value, ...props }: DateRangeWidgetProps) => {
   return (
     <DateAllOptionsWidget
       {...props}
-      value={defaultedValue}
+      value={value}
+      initialValue={initialValue}
       disableOperatorSelection
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateRangeWidget;

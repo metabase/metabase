@@ -230,32 +230,16 @@ export const updateQuestion = (
     const currentDependencies = currentQuestion
       ? [
           ...currentQuestion.dependentMetadata(),
-          ...currentQuestion
-            .legacyQuery({ useStructuredQuery: true })
-            .dependentMetadata(),
+          ...Lib.dependentMetadata(currentQuestion.query()),
         ]
       : [];
     const nextDependencies = [
       ...newQuestion.dependentMetadata(),
-      ...newQuestion
-        .legacyQuery({ useStructuredQuery: true })
-        .dependentMetadata(),
+      ...Lib.dependentMetadata(newQuestion.query()),
     ];
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
         await dispatch(loadMetadataForCard(newQuestion.card()));
-      }
-
-      // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
-      const question = getQuestion(getState()) as Question;
-      const questionWithDefaultQuery = question.setDefaultQuery();
-      if (!questionWithDefaultQuery.isEqual(question)) {
-        await dispatch({
-          type: UPDATE_QUESTION,
-          payload: {
-            card: questionWithDefaultQuery.setDefaultDisplay().card(),
-          },
-        });
       }
     } catch (e) {
       // this will fail if user doesn't have data permissions but thats ok

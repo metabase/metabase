@@ -195,7 +195,7 @@ describe("Database", () => {
       });
 
       expect(question.databaseId()).toBe(database.id);
-      expect(question.tableId()).toBe(table.id);
+      expect(question.legacyQueryTableId()).toBe(table.id);
     });
   });
 

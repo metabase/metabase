@@ -118,7 +118,7 @@ export function getComparisonDashboardUrl(
   questionWithFilters: Question,
 ) {
   const questionId = question.id();
-  const tableId = question.tableId();
+  const tableId = question.legacyQueryTableId();
   const filterQuery = questionWithFilters.datasetQuery();
   const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
   const cellQuery = filter

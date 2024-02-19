@@ -1745,17 +1745,16 @@
                          transient_name))
                   (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
                          comparison-description))
-                  (is (= (take 10
-                               [{:group-name nil, :card-name "SOURCE by CITY"}
-                                {:group-name nil, :card-name "SOURCE by CITY"}
-                                {:group-name nil, :card-name "SOURCE by NAME"}
-                                {:group-name nil, :card-name "SOURCE by NAME"}
-                                {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                                {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
-                                {:group-name nil, :card-name "Distinct values"}
-                                {:group-name nil, :card-name "Distinct values"}
-                                {:group-name nil, :card-name "Null values"}
-                                {:group-name nil, :card-name "Null values"}])
+                  (is (= [{:group-name nil, :card-name "SOURCE by CITY"}
+                          {:group-name nil, :card-name "SOURCE by CITY"}
+                          {:group-name nil, :card-name "SOURCE by NAME"}
+                          {:group-name nil, :card-name "SOURCE by NAME"}
+                          {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                          {:group-name nil, :card-name "Distinct values"}
+                          {:group-name nil, :card-name "Distinct values"}
+                          {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
+                          {:group-name nil, :card-name "Null values"}
+                          {:group-name nil, :card-name "Null values"}]
                          (->> comparison-dashcards
                               (take 10)
                               (map (fn [dashcard]
@@ -1765,3 +1764,19 @@
                           {:group-name (get-in dashcard [:visualization_settings :text])
                            :card-name  (get-in dashcard [:card :name])})
                         comparison-dashcards))))))))))
+
+(deftest source-fields-are-populated-for-aggregations-38618-test
+  (testing "X-ray aggregates (metrics) with source fields in external tables should properly fill in `:source-field` (#38618)"
+    (mt/dataset test-data
+      (let [dashcard  (->> (magic/automagic-analysis (t2/select-one Table :id (mt/id :reviews)) {:show :all})
+                           :dashcards
+                           (filter (fn [dashcard]
+                                     (= "Distinct Product ID"
+                                        (get-in dashcard [:card :name]))))
+                           first)
+            aggregate (get-in dashcard [:card :dataset_query :query :aggregation])]
+        (testing "Fields requiring a join should have :source-field populated in the aggregate."
+          (is (= [["distinct" [:field (mt/id :products :id)
+                               ;; This should be present vs. nil (value before issue)
+                               {:source-field (mt/id :reviews :product_id)}]]]
+                 aggregate)))))))

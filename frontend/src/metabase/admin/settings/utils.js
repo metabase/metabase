@@ -10,6 +10,7 @@ export const prepareAnalyticsValue = setting =>
 
 export const settingToFormField = setting => ({
   name: setting.key,
+  label: setting.display_name,
   description: setting.description,
   placeholder: setting.is_env_setting
     ? t`Using ${setting.env_name}`

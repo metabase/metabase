@@ -123,7 +123,7 @@ export function isNativeDashCard(dashcard: QuestionDashboardCard) {
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
 // info text about parameter mapping in the card itself or as a tooltip.
 export function showVirtualDashCardInfoText(
-  dashcard: QuestionDashboardCard,
+  dashcard: DashboardCard,
   isMobile: boolean,
 ) {
   if (isVirtualDashCard(dashcard)) {

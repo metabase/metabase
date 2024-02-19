@@ -10,8 +10,8 @@ import {
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { Icon } from "metabase/ui";
-import DateSingleWidget from "metabase/components/DateSingleWidget";
-import DateRangeWidget from "metabase/components/DateRangeWidget";
+import { DateSingleWidget } from "metabase/components/DateSingleWidget";
+import { DateRangeWidget } from "metabase/components/DateRangeWidget";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
@@ -19,8 +19,8 @@ import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 import { TextWidget } from "metabase/components/TextWidget";
 import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
-import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
-import StringInputWidget from "metabase/parameters/components/widgets/StringInputWidget";
+import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
+import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import {
   getNumberParameterArity,
   getStringParameterArity,
@@ -34,15 +34,6 @@ import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { areParameterValuesIdentical } from "metabase-lib/parameters/utils/parameter-values";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterValueWidget.css";
-
-const DATE_WIDGETS = {
-  "date/single": DateSingleWidget,
-  "date/range": DateRangeWidget,
-  "date/relative": DateRelativeWidget,
-  "date/month-year": DateMonthYearWidget,
-  "date/quarter-year": DateQuarterYearWidget,
-  "date/all-options": DateAllOptionsWidget,
-};
 
 class ParameterValueWidget extends Component {
   static propTypes = {
@@ -276,11 +267,28 @@ function Widget({
   };
 
   if (isDateParameter(parameter)) {
-    const DateWidget = DATE_WIDGETS[parameter.type];
+    const DateWidget = {
+      "date/single": DateSingleWidget,
+      "date/range": DateRangeWidget,
+      "date/relative": DateRelativeWidget,
+      "date/month-year": DateMonthYearWidget,
+      "date/quarter-year": DateQuarterYearWidget,
+      "date/all-options": DateAllOptionsWidget,
+    }[parameter.type];
+
     return (
-      <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
+      <DateWidget
+        value={value}
+        initialValue={value}
+        defaultValue={parameter.default}
+        required={parameter.required}
+        setValue={setValue}
+        onClose={onPopoverClose}
+      />
     );
-  } else if (isTextWidget(parameter)) {
+  }
+
+  if (isTextWidget(parameter)) {
     return (
       <TextWidget
         value={value}
@@ -292,7 +300,9 @@ function Widget({
         focusChanged={onFocusChanged}
       />
     );
-  } else if (isNumberParameter(parameter)) {
+  }
+
+  if (isNumberParameter(parameter)) {
     const arity = getNumberParameterArity(parameter);
     return (
       <NumberInputWidget
@@ -303,9 +313,12 @@ function Widget({
         autoFocus
         placeholder={isEditing ? t`Enter a default value…` : undefined}
         label={getParameterWidgetTitle(parameter)}
+        parameter={parameter}
       />
     );
-  } else if (isFieldWidget(parameter)) {
+  }
+
+  if (isFieldWidget(parameter)) {
     return (
       <ParameterFieldWidget
         target={target}
@@ -313,7 +326,6 @@ function Widget({
         parameters={parameters}
         question={question}
         dashboard={dashboard}
-        placeholder={placeholder}
         value={normalizedValue}
         fields={parameter.fields}
         setValue={setValueOrDefault}
@@ -330,6 +342,7 @@ function Widget({
       placeholder={isEditing ? t`Enter a default value…` : undefined}
       arity={getStringParameterArity(parameter)}
       label={getParameterWidgetTitle(parameter)}
+      parameter={parameter}
     />
   );
 }

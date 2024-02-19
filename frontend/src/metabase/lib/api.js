@@ -9,6 +9,7 @@ import { isTest } from "metabase/env";
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
 
+// eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
 const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
 
 let ANTI_CSRF_TOKEN = null;
@@ -90,6 +91,7 @@ export class Api extends EventEmitter {
         }
 
         if (isWithinIframe()) {
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
           headers["X-Metabase-Embedded"] = "true";
         }
 

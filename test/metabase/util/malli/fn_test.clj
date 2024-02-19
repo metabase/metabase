@@ -252,14 +252,14 @@
                     (.resetMeta {:instrument/always true}))]
             (is (true? (mu.fn/instrument-ns? n)))))))))
 
-(deftest instrumentation-can-be-omitted
+(deftest ^:parallel instrumentation-can-be-omitted
   (testing "omission in macroexpansion"
     (testing "returns a simple fn*"
-      (with-redefs [mu.fn/instrument-ns? (constantly false)]
+      (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly false)]
         (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
           (is (= expansion '(fn* ([] "foo")))))))
     (testing "returns an instrumented fn"
-      (with-redefs [mu.fn/instrument-ns? (constantly true)]
+      (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
           (is (= (take 2 expansion)
                  '(let* [&f (clojure.core/fn [] "foo")]
@@ -271,7 +271,7 @@
            (catch Exception e
              (is (=? {:type ::mu.fn/invalid-output} (ex-data e)))))))
   (testing "when instrument-ns? returns false, unvalidated form is emitted"
-    (with-redefs [mu.fn/instrument-ns? (constantly false)]
+    (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly false)]
       ;; we have to use eval here because `mu.fn/fn` is expanded at _read_ time and we want to change the
       ;; expansion via [[mu.fn/instrument-ns?]]. So that's why we call eval here. Could definitely use some
       ;; macroexpansion tests as well.

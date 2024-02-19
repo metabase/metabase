@@ -363,8 +363,12 @@
                      :joins           {::sequence normalize-join}}
    ;; we smuggle metadata for datasets and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
-   :info            {:metadata/dataset-metadata identity}
+   :info            {:metadata/dataset-metadata identity
+                     ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
+                     :visualization-settings    identity
+                     :context                   maybe-normalize-token}
    :parameters      {::sequence normalize-query-parameter}
+   ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
    :viz-settings    maybe-normalize-token})
@@ -879,10 +883,18 @@
         (set/rename-keys {:query :native}))
     (remove-empty-clauses source-query [:query])))
 
+(defn- remove-empty-clauses-in-parameter [parameter]
+  (merge
+   ;; don't remove `value: nil` from a parameter, the FE code (`haveParametersChanged`) is extremely dumb and will
+   ;; consider the parameter to have changed and thus the query to be 'dirty' if we do this.
+   (select-keys parameter [:value])
+   (remove-empty-clauses-in-map parameter [:parameters ::sequence])))
+
 (def ^:private path->special-remove-empty-clauses-fn
-  {:native identity
-   :query  {:source-query remove-empty-clauses-in-source-query
-            :joins        {::sequence remove-empty-clauses-in-join}}
+  {:native       identity
+   :query        {:source-query remove-empty-clauses-in-source-query
+                  :joins        {::sequence remove-empty-clauses-in-join}}
+   :parameters   {::sequence remove-empty-clauses-in-parameter}
    :viz-settings identity})
 
 (defn- remove-empty-clauses

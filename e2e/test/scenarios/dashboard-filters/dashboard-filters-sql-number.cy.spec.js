@@ -86,7 +86,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     filterWidget().click();
 
-    addWidgetNumberFilter("4.6");
+    addWidgetNumberFilter("4.6", { buttonLabel: "Update filter" });
 
     cy.get(".Card").within(() => {
       cy.findByText("Ergonomic Linen Toucan");

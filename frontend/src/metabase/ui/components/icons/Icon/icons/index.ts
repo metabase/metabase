@@ -211,6 +211,8 @@ import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
 import model_component from "./model.svg?component";
 import model_source from "./model.svg?source";
+import model_with_badge_component from "./model_with_badge.svg?component";
+import model_with_badge_source from "./model_with_badge.svg?source";
 import moon_component from "./moon.svg?component";
 import moon_source from "./moon.svg?source";
 import move_component from "./move.svg?component";
@@ -784,6 +786,10 @@ export const Icons = {
   model: {
     component: model_component,
     source: model_source,
+  },
+  model_with_badge: {
+    component: model_with_badge_component,
+    source: model_with_badge_source,
   },
   moon: {
     component: moon_component,

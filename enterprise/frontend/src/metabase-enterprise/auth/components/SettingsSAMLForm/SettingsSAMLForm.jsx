@@ -11,15 +11,16 @@ import {
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
+  FormSwitch,
   FormTextarea,
   FormTextInput,
 } from "metabase/forms";
 import { Stack } from "metabase/ui";
 import MetabaseSettings from "metabase/lib/settings";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
-
 import { updateSamlSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import {
   SAMLFormCaption,
   SAMLFormFooter,
@@ -79,7 +80,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               [t`SAML`],
             ]}
           />
-          <h2 className="mb3">{t`Set up SAML-based SSO`}</h2>
+          <h2 className="mb2">{t`Set up SAML-based SSO`}</h2>
           <SAMLFormCaption>
             {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
               <ExternalLink
@@ -87,8 +88,19 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               >{t`documentation`}</ExternalLink>
             )}.`}
           </SAMLFormCaption>
+          <Stack spacing="0.75rem" m="2.5rem 0">
+            <SettingHeader
+              id="saml-user-provisioning-enabled?"
+              setting={settings["saml-user-provisioning-enabled?"]}
+            />
+            <FormSwitch
+              id="saml-user-provisioning-enabled?"
+              name={fields["saml-user-provisioning-enabled?"].name}
+            />
+          </Stack>
           <SAMLFormSection>
             <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
+            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
 
             <FormTextInput
@@ -123,7 +135,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormSection>
 
           <SAMLFormSection>
+            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             <h3 className="mb0">{t`Tell Metabase about your identity provider`}</h3>
+            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             <p className="mb4 mt1 text-medium">{t`Metabase will need the following info about your provider.`}</p>
             <Stack gap="md">
               <FormTextInput
@@ -173,6 +187,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           <SAMLFormSection wide>
             <h3 className="mb0">{t`Synchronize group membership with your SSO`}</h3>
             <p className="mb4 mt1 text-medium">
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
                be added to based on the SSO group they're in.`}
             </p>
@@ -212,6 +227,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
 // 1) Our `settingValues` has settings unrelated to SAML, which was previously sifted by collecting only those matching inline field names in our form.
 // 2) Some values should be replaced by defaults.
 const IS_SAML_ATTR_DEFAULTABLE = {
+  "saml-user-provisioning-enabled?": true,
   "saml-attribute-email": true,
   "saml-attribute-firstname": true,
   "saml-attribute-lastname": true,

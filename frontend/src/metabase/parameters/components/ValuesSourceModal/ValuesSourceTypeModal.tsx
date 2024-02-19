@@ -414,7 +414,7 @@ const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
 };
 
 const getSupportedFields = (question: Question) => {
-  const fields = question.composeThisQuery()?.table()?.fields ?? [];
+  const fields = question.composeThisQuery()?.legacyQueryTable()?.fields ?? [];
   return fields.filter(field => field.isString());
 };
 

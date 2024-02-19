@@ -66,8 +66,7 @@ export const removeBreakout = (query, index) =>
 /**
  * @deprecated use MLv2
  */
-export const clearBreakouts = query =>
-  setBreakoutClause(query, B.clearBreakouts(query.breakout));
+const clearBreakouts = query => setBreakoutClause(query);
 
 // FILTER
 
@@ -88,10 +87,6 @@ export { getFilterClause } from "./filter";
 export const getJoins = query => J.getJoins(query.joins);
 export const addJoin = (query, join) =>
   setJoinClause(query, J.addJoin(query.joins, join));
-export const updateJoin = (query, index, join) =>
-  setJoinClause(query, J.updateJoin(query.joins, index, join));
-export const removeJoin = (query, index) =>
-  setJoinClause(query, J.removeJoin(query.joins, index));
 
 // ORDER_BY
 
@@ -100,8 +95,7 @@ const updateOrderBy = (query, index, orderBy) =>
   setOrderByClause(query, O.updateOrderBy(query["order-by"], index, orderBy));
 const removeOrderBy = (query, index) =>
   setOrderByClause(query, O.removeOrderBy(query["order-by"], index));
-const clearOrderBy = query =>
-  setOrderByClause(query, O.clearOrderBy(query["order-by"]));
+const clearOrderBy = query => setOrderByClause(query);
 
 // FIELD
 export const addField = (query, field) =>
@@ -110,8 +104,7 @@ export const updateField = (query, index, field) =>
   setFieldsClause(query, FIELD.updateField(query.fields, index, field));
 export const removeField = (query, index) =>
   setFieldsClause(query, FIELD.removeField(query.fields, index));
-export const clearFields = query =>
-  setFieldsClause(query, FIELD.clearFields(query.fields));
+const clearFields = query => setFieldsClause(query);
 
 // EXPRESSIONS
 

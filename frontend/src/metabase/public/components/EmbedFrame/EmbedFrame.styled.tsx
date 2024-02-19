@@ -5,7 +5,10 @@ import {
   breakpointMinSmall,
   breakpointMinLarge,
   breakpointMinMedium,
+  space,
+  breakpointMaxSmall,
 } from "metabase/styled-components/theme";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 export const Root = styled.div<{
   hasScroll: boolean;
@@ -33,13 +36,11 @@ export const Root = styled.div<{
     `}
 `;
 
-export const ContentContainer = styled.div<{ hasScroll: boolean }>`
+export const ContentContainer = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
   position: relative;
-
-  overflow-y: ${props => props.hasScroll && "auto"};
 `;
 
 export const Header = styled.header`
@@ -47,16 +48,27 @@ export const Header = styled.header`
   flex-direction: column;
 `;
 
-export const TitleAndDescriptionContainer = styled.div`
-  padding: 0.5rem 0.5rem 0 0.5rem;
+export const TitleAndDescriptionContainer = styled(FullWidthContainer)`
+  margin-top: 0.5rem;
 
   ${breakpointMinSmall} {
-    padding: 1rem 1rem 0 1rem;
+    margin-top: 1rem;
   }
 
   ${breakpointMinLarge} {
-    padding: 1.5rem 1.5rem 0 1.5rem;
+    margin-top: 1.5rem;
   }
+`;
+
+export const DashboardTabsContainer = styled(FullWidthContainer)`
+  ${breakpointMaxSmall} {
+    padding-left: 0;
+    padding-right: 0;
+  }
+`;
+
+export const Separator = styled.div`
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const Body = styled.main`
@@ -89,19 +101,54 @@ const footerVariantStyles = {
   `,
 };
 
-export const ParametersWidgetContainer = styled.div`
-  display: flex;
-  align-items: flex-start;
-
-  padding: 0.5rem;
-
-  ${breakpointMinSmall} {
-    padding: 0.5rem 1rem 1rem 1rem;
+function getParameterPanelBackgroundColor(theme?: string) {
+  if (theme === "night") {
+    return color("bg-black");
   }
-
-  ${breakpointMinLarge} {
-    padding: 0.5rem 1.5rem 1.5rem 1.5rem;
+  if (theme === "transparent") {
+    return "transparent";
   }
+  return color("white");
+}
+
+function getParameterPanelBorderColor(theme?: string) {
+  if (theme === "night") {
+    return color("bg-dark");
+  }
+  if (theme === "transparent") {
+    return "transparent";
+  }
+  return color("border");
+}
+
+export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  embedFrameTheme?: string;
+  hasScroll: boolean;
+  isSticky: boolean;
+}>`
+  padding-top: ${space(1)};
+  padding-bottom: ${space(1)};
+
+  ${props =>
+    props.hasScroll &&
+    css`
+      border-bottom: 1px solid
+        ${getParameterPanelBorderColor(props.embedFrameTheme)};
+    `}
+
+  ${props =>
+    props.isSticky &&
+    css`
+      position: sticky;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 3;
+
+      background-color: ${getParameterPanelBackgroundColor(
+        props.embedFrameTheme,
+      )};
+    `}
 `;
 
 export const Footer = styled.footer<{ variant: FooterVariant }>`

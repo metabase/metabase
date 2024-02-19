@@ -282,9 +282,6 @@ const orders_count_by_id_question = new Question(
 describe("Question", () => {
   describe("CREATED WITH", () => {
     describe("new Question(alreadyDefinedCard, metadata)", () => {
-      it("isn't empty", () => {
-        expect(orders_raw_question.isEmpty()).toBe(false);
-      });
       it("has an id", () => {
         expect(orders_raw_question.id()).toBe(orders_raw_card.id);
       });
@@ -729,36 +726,42 @@ describe("Question", () => {
         });
       });
 
-      // @uladzimirdev
-      // This test is not correct, it was designed to verify changes of columns
-      // from viz settings, but it works differently in reality:
-      // table.columns are not updated with the Column title
-      // I don't see any other way to update cols, especially both name and fieldref
-      // except an explicit "as 'num'" alias in the sql query
-      // eslint-disable-next-line jest/no-disabled-tests
-      it.skip("should handle the mutation of extraneous column props", () => {
+      it("should handle the mutation of extraneous column props", () => {
+        const updatedColumn = {
+          display_name: "num with mutated display_name",
+          source: "native",
+          field_ref: [
+            "field",
+            "foo",
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          name: "foo",
+          base_type: "type/Float",
+        };
         question._syncNativeQuerySettings({
           data: {
-            cols: [
-              {
-                display_name: "num with mutated display_name",
-                source: "native",
-                field_ref: [
-                  "field",
-                  "foo",
-                  {
-                    "base-type": "type/Float",
-                  },
-                ],
-                name: "foo",
-                base_type: "type/Float",
-              },
-              ...cols.slice(1),
-            ],
+            cols: [updatedColumn, ...cols.slice(1)],
           },
         });
 
-        expect(question.updateSettings).not.toHaveBeenCalled();
+        expect(question.updateSettings).toHaveBeenCalledWith({
+          "table.columns": [
+            ...vizSettingCols.slice(1),
+            {
+              enabled: true,
+              fieldRef: [
+                "field",
+                "foo",
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+              name: "foo",
+            },
+          ],
+        });
       });
 
       it("should handle the mutation of a field_ref on an existing column", () => {
@@ -828,7 +831,7 @@ describe("Question", () => {
       expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
     });
 
-    it("should return skip with with FK target field which are not FKs semantically", () => {
+    it("should skip FK field targets which are not FKs semantically", () => {
       const question = base_question.setResultsMetadata({
         columns: [{ fk_target_field_id: 5 }],
       });

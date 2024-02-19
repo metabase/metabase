@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import Label from "metabase/components/type/Label";
 import { color, lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
@@ -19,10 +18,6 @@ export const SelectedOption = styled(PermissionsSelectOption)`
   &:hover {
     color: ${color("filter")};
   }
-`;
-
-export const PermissionsSelectText = styled(Label)`
-  flex-grow: 1;
 `;
 
 export const OptionsList = styled.ul`

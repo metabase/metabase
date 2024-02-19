@@ -4,6 +4,7 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.db.util :as mdb.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
@@ -12,7 +13,7 @@
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.models.permissions :as perms]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -297,12 +298,6 @@
       [400 "If remapped values are specified, they must be specified for all field values"])
     has-human-readable-values?))
 
-(defn- update-field-values! [field-value-id update-map]
-  (api/check-500 (pos? (t2/update! FieldValues field-value-id update-map))))
-
-(defn- create-field-values! [field-or-id update-map]
-  (t2/insert! FieldValues (assoc update-map :type :full :field_id (u/the-id field-or-id))))
-
 (api/defendpoint POST "/:id/values"
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
@@ -314,13 +309,12 @@
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                 "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
     (let [human-readable-values? (validate-human-readable-pairs value-pairs)
-          update-map  {:values                (map first value-pairs)
-                       :human_readable_values (when human-readable-values?
-                                                (map second value-pairs))}]
-      (t2/with-transaction [_conn]
-        (if-let [field-value-id (t2/select-one-pk FieldValues, :field_id id :type :full)]
-          (update-field-values! field-value-id update-map)
-          (create-field-values! field update-map)))))
+          update-map             {:values                (map first value-pairs)
+                                  :human_readable_values (when human-readable-values?
+                                                           (map second value-pairs))}
+          updated-pk             (mdb.u/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+                                   (constantly update-map))]
+      (api/check-500 (pos? updated-pk))))
   {:status :success})
 
 (api/defendpoint POST "/:id/rescan_values"
