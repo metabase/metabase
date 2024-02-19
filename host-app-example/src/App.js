@@ -8,8 +8,8 @@ const config = {
   metabaseInstanceUrl:
     process.env.REACT_APP_METABASE_INSTANCE_URL || "http://localhost:3000",
   font: "Lato",
-  jwtProviderUri: process.env.REACT_APP_JWT_PROVIDER_URI,
-  apiKey: process.env.REACT_APP_API_KEY,
+  // jwtProviderUri: process.env.REACT_APP_JWT_PROVIDER_URI,
+  apiKey: "mb_//WK5lK5krDurdyjO/ZcoYQi50gTvUekNxFMR9N+HJk=",
 };
 
 const App = () => (
