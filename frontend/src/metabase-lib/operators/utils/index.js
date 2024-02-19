@@ -110,15 +110,6 @@ export function getAggregationOperators(database, fields) {
     );
 }
 
-export function isCompatibleAggregationOperatorForField(
-  aggregationOperator,
-  field,
-) {
-  return aggregationOperator.validFieldsFilters.every(
-    filter => filter([field]).length === 1,
-  );
-}
-
 export function isEqualsOperator(operator) {
   return !!operator && operator.name === "=";
 }

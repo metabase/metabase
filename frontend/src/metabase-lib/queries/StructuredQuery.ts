@@ -19,10 +19,7 @@ import {
   DISPLAY_QUOTES,
   format as formatExpression,
 } from "metabase-lib/expressions/format";
-import {
-  getAggregationOperators,
-  isCompatibleAggregationOperatorForField,
-} from "metabase-lib/operators/utils";
+import { getAggregationOperators } from "metabase-lib/operators/utils";
 import { TYPE } from "metabase-lib/types/constants";
 import * as Q from "metabase-lib/queries/utils/query";
 import { createLookupByProperty } from "metabase-lib/utils";
@@ -267,13 +264,9 @@ class StructuredQuery extends AtomicQuery {
       //
       // A real solution would have a `dimensionOptions` method instead of `fieldOptions` which would
       // enable filtering based on dimension properties.
-      const compatibleDimensions = this.expressionDimensions().filter(d =>
-        isCompatibleAggregationOperatorForField(aggregation, d.field()),
-      );
       return new DimensionOptions({
         ...fieldOptions,
         dimensions: _.uniq([
-          ...compatibleDimensions,
           ...fieldOptions.dimensions.filter(
             d => !(d instanceof ExpressionDimension),
           ),
@@ -506,7 +499,7 @@ class StructuredQuery extends AtomicQuery {
 
   // DIMENSIONS
   dimensions(): Dimension[] {
-    return [...this.expressionDimensions(), ...this.tableDimensions()];
+    return this.tableDimensions();
   }
 
   tableDimensions = _.once((): Dimension[] => {
