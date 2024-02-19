@@ -18,7 +18,7 @@ export interface ColorSettingsProps {
   onChange?: (colors: Record<string, string>) => void;
 }
 
-const ColorSettings = ({
+export const ColorSettings = ({
   initialColors,
   originalColors,
   onChange,
@@ -67,6 +67,3 @@ const ColorSettings = ({
     </SettingRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorSettings;
