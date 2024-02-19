@@ -12,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -135,13 +136,27 @@
   ;; It's basically a N+1 operation where N is the number of tables in the database
   (if (driver/database-supports? driver :table-privileges nil)
     (let [schema+table-with-select-privileges (schema+table-with-select-privileges driver conn)]
-      (fn [{schema :schema table :name ttype :type}]
-        ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
-        ;; table on postgres, so we need to use the select method on them
-        (if (#{[:redshift "EXTERNAL TABLE"] [:postgres "FOREIGN TABLE"]}
-             [driver ttype])
-          (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-          (contains? schema+table-with-select-privileges [schema table]))))
+      (fn [{schema :schema table :name ttype :type :as table-info}]
+        (let [check-by-querying-fn #(sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)]
+          ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
+          ;; table on postgres, so we need to use the select method on them
+          (cond
+           (#{[:redshift "EXTERNAL TABLE"] [:postgres "FOREIGN TABLE"]}
+            [driver ttype])
+           (check-by-querying-fn)
+
+           ;; fast checking with table privileges is an experimental feature
+           ;; so in case it gives false result we'll double check using the old method to make
+           ;; sure we does not have false positives.
+           (not (contains? schema+table-with-select-privileges [schema table]))
+           (u/prog1 (check-by-querying-fn)
+             (when <>
+               (log/warn (str "Fast privilege check using :table-privileges gives false positive result. "
+                              "The table is still marked as selectable. "
+                              "Please open an issue with detail about this table, if possible.")
+                         {:table table-info})))
+
+           :else true))))
     (fn [{schema :schema table :name}]
       (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table))))
 
