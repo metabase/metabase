@@ -173,29 +173,51 @@ export const ModelGroup = ({
                 />
               ))}
             </CollectionCollapse>
-            <CollectionExpandCollapseContainer>
-              {!areAllModelsShown &&
-                belowFold.length &&
-                `${aboveFold.length} of ${models.length}`}
-              {belowFold.length && (
-                <ContainerExpandCollapseButton
-                  styles={noTransform}
-                  lh="inherit"
-                  p="0"
-                  onClick={toggleAllModelsShown}
-                >
-                  {areAllModelsShown
-                    ? c("For a button that collapses a list of models")
-                        .t`Show less`
-                    : c("For a button that expands a list of models")
-                        .t`Show all`}
-                </ContainerExpandCollapseButton>
-              )}
-            </CollectionExpandCollapseContainer>
+            <ShowMoreFooter
+              hasMoreModels={belowFold.length > 0}
+              shownModelsCount={aboveFold.length}
+              allModelsCount={models.length}
+              showAll={areAllModelsShown}
+              onClick={toggleAllModelsShown}
+            />
           </>
         )}
       </CollectionCollapse>
     </>
+  );
+};
+
+const ShowMoreFooter = ({
+  hasMoreModels,
+  shownModelsCount,
+  allModelsCount,
+  onClick,
+  showAll,
+}: {
+  hasMoreModels: boolean;
+  shownModelsCount: number;
+  allModelsCount: number;
+  showAll: boolean;
+  onClick: () => void;
+}) => {
+  if (!hasMoreModels) {
+    return null;
+  }
+
+  return (
+    <CollectionExpandCollapseContainer>
+      {!showAll && `${shownModelsCount} of ${allModelsCount}`}
+      <ContainerExpandCollapseButton
+        styles={noTransform}
+        lh="inherit"
+        p="0"
+        onClick={onClick}
+      >
+        {showAll
+          ? c("For a button that collapses a list of models").t`Show less`
+          : c("For a button that expands a list of models").t`Show all`}
+      </ContainerExpandCollapseButton>
+    </CollectionExpandCollapseContainer>
   );
 };
 
