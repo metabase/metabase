@@ -371,6 +371,12 @@
         values     (map vals results)]
     (into values [col-titles])))
 
+(defn- parse-csv-results
+  [results]
+  (if (map? results)
+    (throw (ex-info "Error in CSV export" results))
+    (csv/read-csv results)))
+
 (deftest basic-export-test
   (do-test!
     "A simple export of a table succeeds"
@@ -509,7 +515,7 @@
     :assertions {:csv (fn [results]
                         (is (= [["ID" "ID" "NAME"]
                                 ["1" "1" "Red Medicine"]]
-                               (csv/read-csv results))))
+                               (parse-csv-results results))))
 
                  :json (fn [results]
                          ;; Second ID field is omitted since each col is stored in a JSON object rather than an array.
