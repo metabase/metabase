@@ -1,13 +1,18 @@
 import {
   createNewTab,
   dashboardGrid,
+  describeWithSnowplow,
   editDashboard,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   findDashCardAction,
   getDashboardCard,
   getDashboardCards,
   goToTab,
   menu,
   modal,
+  resetSnowplow,
   restore,
   saveDashboard,
   selectDashboardFilter,
@@ -23,10 +28,12 @@ const CATEGORY_FILTER = createMockParameter({
   type: "string/=",
 });
 
-describe("scenarios > dashboard cards > sections", () => {
+describeWithSnowplow("scenarios > dashboard cards > sections", () => {
   beforeEach(() => {
+    resetSnowplow();
     restore();
     cy.signInAsAdmin();
+    enableTracking();
 
     cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
 
@@ -36,12 +43,20 @@ describe("scenarios > dashboard cards > sections", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
   });
 
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
   it("should add sections and select a question for an empty card", () => {
     editDashboard();
 
     getDashboardCards().should("have.length", 1);
     addSection("KPIs w/ large chart below");
     getDashboardCards().should("have.length", 7);
+    expectGoodSnowplowEvent({
+      event: "dashboard_section_added",
+      section_layout: "kpi_chart_below",
+    });
 
     cy.findByPlaceholderText("Heading").type("This is a heading");
     selectQuestion("Orders, Count");
@@ -50,6 +65,10 @@ describe("scenarios > dashboard cards > sections", () => {
     getDashboardCards().should("have.length", 0);
     addSection("KPI grid");
     getDashboardCards().should("have.length", 5);
+    expectGoodSnowplowEvent({
+      event: "dashboard_section_added",
+      section_layout: "kpi_grid",
+    });
 
     selectQuestion("Orders, Count, Grouped by Created At (year)");
 

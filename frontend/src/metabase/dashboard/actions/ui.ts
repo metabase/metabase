@@ -6,6 +6,7 @@ import type {
   Dispatch,
   GetState,
 } from "metabase-types/store";
+import { trackDashboardWidthChange } from "../analytics";
 import { getDashboardId, getSidebar } from "../selectors";
 import { closeAutoApplyFiltersToast } from "./parameters";
 import { setDashboardAttributes } from "./core";
@@ -13,7 +14,10 @@ import { setDashboardAttributes } from "./core";
 export const setDashboardWidth =
   (width: DashboardWidth) => (dispatch: Dispatch, getState: GetState) => {
     const id = getDashboardId(getState());
-    dispatch(setDashboardAttributes({ id, attributes: { width } }));
+    if (id) {
+      dispatch(setDashboardAttributes({ id, attributes: { width } }));
+      trackDashboardWidthChange(id, width);
+    }
   };
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";

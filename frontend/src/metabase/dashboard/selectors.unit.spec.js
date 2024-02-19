@@ -12,13 +12,18 @@ import {
 import {
   createMockCard,
   createMockDashboardCard,
+  createMockField,
   createMockHeadingDashboardCard,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
 import Field from "metabase-lib/metadata/Field";
 import { SIDEBAR_NAME } from "./constants";
 
-const STATE = {
+const STATE = createMockState({
   dashboard: {
     dashboardId: 0,
     dashboards: {
@@ -55,20 +60,11 @@ const STATE = {
     },
     sidebar: {},
   },
-  entities: {
-    databases: {},
-    schemas: {},
-    tables: {},
-    fields: {
-      1: { id: 1 },
-      2: { id: 2 },
-    },
-    metrics: {},
-    segments: {},
-    questions: {},
-  },
+  entities: createMockEntitiesState({
+    fields: [createMockField({ id: 1 }), createMockField({ id: 2 })],
+  }),
   settings: createMockSettingsState(),
-};
+});
 
 describe("dashboard/selectors", () => {
   describe("getParameters", () => {

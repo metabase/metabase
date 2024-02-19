@@ -1,32 +1,5 @@
 import _ from "underscore";
 
-import { add, update, remove } from "./util";
-
-// returns canonical list of Fields, with nulls removed
-function getFields(fields) {
-  return (fields || []).filter(b => b != null);
-}
-
-// turns a list of Fields into the canonical FieldClause
-function getFieldClause(fields) {
-  fields = getFields(fields);
-  if (fields.length === 0) {
-    return undefined;
-  } else {
-    return fields;
-  }
-}
-
-export function addField(fields, newField) {
-  return getFieldClause(add(getFields(fields), newField));
-}
-export function updateField(fields, index, updatedField) {
-  return getFieldClause(update(getFields(fields), index, updatedField));
-}
-export function removeField(fields, index) {
-  return getFieldClause(remove(getFields(fields), index));
-}
-
 // Metadata field "values" type is inconsistent
 // https://github.com/metabase/metabase/issues/3417
 export function getFieldValues(field) {
