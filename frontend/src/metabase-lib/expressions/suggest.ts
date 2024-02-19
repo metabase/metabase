@@ -32,6 +32,7 @@ export type Suggestion = {
   icon: string | null | undefined;
   order: number;
   range?: [number, number];
+  column?: Lib.ColumnMetadata;
 };
 
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
@@ -167,6 +168,7 @@ export function suggest({
             index: targetOffset,
             icon: getColumnIcon(column),
             order: 2,
+            column,
             ...column,
           };
         },

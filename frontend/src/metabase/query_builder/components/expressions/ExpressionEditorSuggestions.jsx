@@ -158,7 +158,7 @@ function ExpressionEditorSuggestionsListItem({
         <QueryColumnInfoIcon
           query={query}
           stageIndex={stageIndex}
-          column={suggestion}
+          column={suggestion.column}
           position="right"
         />
       </ExpressionListItem>
