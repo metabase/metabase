@@ -8,7 +8,6 @@ import { chain, updateIn } from "icepick";
 import { t } from "ttag";
 import type {
   Aggregation,
-  Breakout,
   DatabaseId,
   DatasetQuery,
   ExpressionClause,
@@ -30,11 +29,12 @@ import { TYPE } from "metabase-lib/types/constants";
 import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
 import { createLookupByProperty } from "metabase-lib/utils";
-import Dimension, {
+import {
   FieldDimension,
   ExpressionDimension,
   AggregationDimension,
 } from "metabase-lib/Dimension";
+import type { Dimension } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
@@ -44,11 +44,10 @@ import type Segment from "../metadata/Segment";
 import type Database from "../metadata/Database";
 import type Question from "../Question";
 import type Table from "../metadata/Table";
-import Field from "../metadata/Field";
+import type Field from "../metadata/Field";
 
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
-import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 
 type DimensionFilterFn = (dimension: Dimension) => boolean;
@@ -197,10 +196,6 @@ class StructuredQuery extends AtomicQuery {
     return this.aggregations().length > 0;
   }
 
-  hasBreakouts() {
-    return this.breakouts().length > 0;
-  }
-
   _hasFields() {
     return this.fields().length > 0;
   }
@@ -212,21 +207,6 @@ class StructuredQuery extends AtomicQuery {
    */
   aggregate(aggregation: Aggregation): StructuredQuery {
     return this.addAggregation(aggregation);
-  }
-
-  /**
-   * @returns alias for addBreakout
-   */
-  breakout(breakout: Breakout | Dimension | Field): StructuredQuery {
-    if (breakout instanceof Field) {
-      breakout = breakout.dimension();
-    }
-
-    if (breakout instanceof Dimension) {
-      breakout = breakout.mbql();
-    }
-
-    return this.addBreakout(breakout);
   }
 
   /**
@@ -334,10 +314,10 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @returns true if the query has no aggregation or breakouts
+   * @returns true if the query has no aggregation
    */
   isRaw() {
-    return !this.hasAggregations() && !this.hasBreakouts();
+    return !this.hasAggregations();
   }
 
   formatExpression(expression, { quotes = DISPLAY_QUOTES, ...options } = {}) {
@@ -372,80 +352,8 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeAggregation, arguments);
   }
 
-  // BREAKOUTS
-
-  /**
-   * @returns An array of MBQL @type {Breakout}s.
-   */
-  breakouts = _.once((): BreakoutWrapper[] => {
-    if (this.legacyQuery({ useStructuredQuery: true }) == null) {
-      return [];
-    }
-
-    return Q.getBreakouts(this.legacyQuery({ useStructuredQuery: true })).map(
-      (breakout, index) => new BreakoutWrapper(breakout, index, this),
-    );
-  });
-
-  /**
-   * @param includedBreakout The breakout to include in the options even if it's already used. If true, include all options.
-   * @param fieldFilter An option @type {Field} predicate to filter out options
-   * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
-   */
-  breakoutOptions(
-    includedBreakout?: any,
-    fieldFilter: FieldFilterFn = () => true,
-  ): DimensionOptions {
-    // the collection of field dimensions
-    const breakoutDimensions =
-      includedBreakout === true
-        ? []
-        : this.breakouts()
-            .filter(breakout => !_.isEqual(breakout, includedBreakout))
-            .map(breakout => breakout.dimension());
-
-    function filter(dimension: Dimension) {
-      return (
-        fieldFilter(dimension.field()) &&
-        !breakoutDimensions.some(breakoutDimension =>
-          breakoutDimension.isSameBaseDimension(dimension),
-        )
-      );
-    }
-
-    return this.dimensionOptions(filter);
-  }
-
-  /**
-   * @returns whether a new breakout can be added or not
-   */
-  canAddBreakout() {
-    return this.breakoutOptions().count > 0;
-  }
-
   canNest(): boolean {
     return Boolean(this._database()?.hasFeature("nested-queries"));
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with the provided MBQL @type {Breakout} added.
-   */
-  addBreakout(_breakout: Breakout) {
-    return this._updateQuery(Q.addBreakout, arguments);
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with the MBQL @type {Breakout} updated at the provided index.
-   */
-  updateBreakout(_index: number, _breakout: Breakout) {
-    return this._updateQuery(Q.updateBreakout, arguments);
-  }
-
-  /**
-   * @returns {StructuredQuery} new query with the breakout at the provided index removed.
-   */
-  removeBreakout(_index: number) {
-    return this._updateQuery(Q.removeBreakout, arguments);
   }
 
   // FILTERS
@@ -484,11 +392,6 @@ class StructuredQuery extends AtomicQuery {
     includeAppliedSegments = false,
   ): FilterSection[] {
     const queries = this.queries().slice(-stages);
-
-    // allow post-aggregation filtering
-    if (queries.length < stages && this.canNest() && this.hasBreakouts()) {
-      queries.push(queries[queries.length - 1].nest());
-    }
 
     queries.reverse();
     const sections = [].concat(
@@ -722,10 +625,6 @@ class StructuredQuery extends AtomicQuery {
     );
   });
 
-  breakoutDimensions = _.once(() => {
-    return this.breakouts().map(breakout => this.parseFieldReference(breakout));
-  });
-
   aggregationDimensions = _.once(() => {
     return this.aggregations().map(aggregation =>
       aggregation.aggregationDimension(),
@@ -741,10 +640,8 @@ class StructuredQuery extends AtomicQuery {
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
   // NOTE: these will not have the correct columnName() if there are duplicates
   columnDimensions = _.once((): Dimension[] => {
-    if (this.hasAggregations() || this.hasBreakouts()) {
-      const aggregations = this.aggregationDimensions();
-      const breakouts = this.breakoutDimensions();
-      return [...breakouts, ...aggregations];
+    if (this.hasAggregations()) {
+      return this.aggregationDimensions();
     } else if (this._hasFields()) {
       return this.fieldDimensions();
     } else {

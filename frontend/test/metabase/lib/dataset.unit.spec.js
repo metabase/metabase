@@ -68,32 +68,6 @@ describe("metabase/util/dataset", () => {
       expect(newQuestion.setting("graph.metrics")).toMatchObject(["sum"]);
     });
 
-    it("Adding a breakout should not affect graph.metrics", () => {
-      const prevQuestion = productsTable
-        .legacyQuery({
-          aggregation: [["sum", ["field", PRODUCTS.PRICE, null]], ["count"]],
-          breakout: [["field", PRODUCTS.CATEGORY, null]],
-        })
-        .question()
-        .setSettings({
-          "graph.metrics": ["count", "sum"],
-        });
-
-      const newQuestion = prevQuestion
-        .legacyQuery({ useStructuredQuery: true })
-        .breakout(["field", PRODUCTS.VENDOR, null])
-        .question()
-        .syncColumnsAndSettings(prevQuestion);
-
-      expect(newQuestion.setting("graph.metrics")).toMatchObject([
-        "count",
-        "sum",
-      ]);
-      expect(
-        newQuestion.legacyQuery({ useStructuredQuery: true }).columns(),
-      ).toHaveLength(4);
-    });
-
     it("removes columns from table.columns when a column is removed from a query", () => {
       const prevQuestion = productsTable
         .legacyQuery({
