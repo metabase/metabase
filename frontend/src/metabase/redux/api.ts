@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 
 import type {
   ApiKey,
@@ -8,23 +8,7 @@ import type {
   RegenerateApiKeyResponse,
 } from "metabase-types/api/admin";
 
-// TODO: move to util file
-const LIST_ID = "LIST" as const;
-
-function getListTag<T extends string>(tagType: T) {
-  return { type: tagType, id: LIST_ID } as const;
-}
-
-function providesList<R extends { id: string | number }[], T extends string>(
-  resultsWithIds: R | undefined,
-  tagType: T,
-) {
-  const listTag = getListTag(tagType);
-  return resultsWithIds
-    ? [listTag, ...resultsWithIds.map(({ id }) => ({ type: tagType, id }))]
-    : [listTag];
-}
-// end utils
+import { customBaseQuery, getListTag, providesList } from "./api-utils";
 
 const API_KEY_TAG = "ApiKey" as const;
 const LIST_TAG = getListTag(API_KEY_TAG);
@@ -34,7 +18,7 @@ const COUNT_TAG = { type: API_KEY_TAG, id: "COUNT" as const };
 export const ApiKeysApi = createApi({
   reducerPath: "apiKeys",
   tagTypes: [API_KEY_TAG],
-  baseQuery: fetchBaseQuery(),
+  baseQuery: customBaseQuery,
   endpoints: builder => ({
     list: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,

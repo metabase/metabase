@@ -235,7 +235,7 @@ export class Api extends EventEmitter {
     data,
     options,
   ) {
-    const controller = new AbortController();
+    const controller = options.controller || new AbortController();
     options.cancelled?.then(() => controller.abort());
 
     const requestUrl = new URL(this.basename + url, location.origin);
