@@ -29,32 +29,6 @@ export function normalizeFieldRef(fieldRef: FieldReference) {
   return dimension && dimension.mbql();
 }
 
-export function findColumnIndexForColumnSettings(
-  columns: DatasetColumn[],
-  columnSettings: TableColumnOrderSetting[],
-  query: Lib.Query,
-) {
-  const fieldRefs = columnSettings
-    .map(columnSetting =>
-      columnSetting.fieldRef
-        ? normalizeFieldRef(columnSetting.fieldRef)
-        : undefined,
-    )
-    .filter((fieldRef): fieldRef is FieldReference => fieldRef != null);
-
-  const stageIndex = -1;
-  const indexes = Lib.findColumnIndexesFromLegacyRefs(
-    query,
-    stageIndex,
-    // we make a structured clone to unfreeze objects
-    // cljs adds a unique id to every object, but it's not possible with frozen objects
-    structuredClone(columns),
-    structuredClone(fieldRefs),
-  );
-
-  return indexes;
-}
-
 export function findColumnIndexForColumnSetting(
   columns: DatasetColumn[],
   columnSetting: TableColumnOrderSetting,

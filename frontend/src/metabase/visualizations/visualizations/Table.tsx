@@ -42,7 +42,7 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
-import { findColumnIndexForColumnSettings } from "metabase-lib/queries/utils/dataset";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import { isNative } from "metabase-lib/queries/utils/card";
 
 import type { ColumnSettingDefinition, VisualizationProps } from "../types";
@@ -344,16 +344,15 @@ class Table extends Component<TableProps, TableState> {
     } else {
       const { cols, rows, results_timezone } = data;
       const columnSettings = settings["table.columns"];
-      const enabledColumnSettings = (columnSettings || []).filter(
-        columnSetting =>
-          columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
-      );
-
-      const columnIndexes = findColumnIndexForColumnSettings(
-        cols,
-        enabledColumnSettings,
-        query,
-      ).filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
+      const columnIndexes = (columnSettings || [])
+        .filter(
+          columnSetting =>
+            columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
+        )
+        .map(columnSetting =>
+          findColumnIndexForColumnSetting(cols, columnSetting, query),
+        )
+        .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
 
       this.setState({
         data: {
