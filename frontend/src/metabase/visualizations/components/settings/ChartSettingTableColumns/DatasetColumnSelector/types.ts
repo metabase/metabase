@@ -9,3 +9,8 @@ export type ColumnItem = {
   column: DatasetColumn;
   settingIndex: number;
 };
+
+export type DragColumnProps = {
+  oldIndex: number;
+  newIndex: number;
+};

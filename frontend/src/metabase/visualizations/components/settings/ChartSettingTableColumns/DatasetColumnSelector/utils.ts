@@ -3,7 +3,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import type { DatasetColumn } from "metabase-types/api";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type { ColumnSetting, EditWidgetData } from "../types";
-import type { ColumnItem } from "./types";
+import type { ColumnItem, DragColumnProps } from "./types";
 
 export function getColumnItems(
   query: Lib.Query,
@@ -47,6 +47,24 @@ export function getColumnItems(
     };
   });
 }
+
+export const moveColumnInSettings = (
+  columnItems: ColumnItem[],
+  settings: ColumnSetting[],
+  { oldIndex, newIndex }: DragColumnProps,
+) => {
+  const adjustedOldIndex = columnItems[oldIndex].settingIndex;
+  const adjustedNewIndex = columnItems[newIndex].settingIndex;
+
+  const newSettings = [...settings];
+  newSettings.splice(
+    adjustedNewIndex,
+    0,
+    newSettings.splice(adjustedOldIndex, 1)[0],
+  );
+
+  return newSettings;
+};
 
 export function getEditWidgetData({ column }: ColumnItem): EditWidgetData {
   return {

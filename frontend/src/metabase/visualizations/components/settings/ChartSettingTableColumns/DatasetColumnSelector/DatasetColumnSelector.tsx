@@ -7,8 +7,12 @@ import type {
 import { ChartSettingOrderedItems } from "../../ChartSettingOrderedItems";
 import { toggleColumnInSettings } from "../utils";
 import type { ColumnSetting, EditWidgetData } from "../types";
-import { getColumnItems, getEditWidgetData } from "./utils";
-import type { ColumnItem } from "./types";
+import {
+  getColumnItems,
+  getEditWidgetData,
+  moveColumnInSettings,
+} from "./utils";
+import type { ColumnItem, DragColumnProps } from "./types";
 
 interface DatasetColumnSelectorProps {
   query: Lib.Query;
@@ -45,6 +49,10 @@ export const DatasetColumnSelector = ({
     onChange(toggleColumnInSettings(columnItem, settings, false));
   };
 
+  const handleDragColumn = (props: DragColumnProps) => {
+    onChange(moveColumnInSettings(columnItems, settings, props));
+  };
+
   const handleEditColumn = (
     columnItem: ColumnItem,
     targetElement: HTMLElement,
@@ -63,7 +71,7 @@ export const DatasetColumnSelector = ({
             onEnable={handleEnableColumn}
             onRemove={handleDisableColumn}
             onEdit={handleEditColumn}
-            onSortEnd={() => 0}
+            onSortEnd={handleDragColumn}
           />
         </div>
       )}
