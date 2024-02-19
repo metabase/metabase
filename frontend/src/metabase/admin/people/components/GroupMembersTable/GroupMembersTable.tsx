@@ -59,10 +59,10 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const { isLoading: loading, data } = ApiKeysApi.useListQuery();
-  const apiKeys = useMemo(() => {
-    return data?.filter(apiKey => apiKey.group.id === group.id) ?? [];
-  }, [data, group.id]);
+  const { isLoading, data: apiKeys } = ApiKeysApi.useListQuery();
+  const groupApiKeys = useMemo(() => {
+    return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
+  }, [apiKeys, group.id]);
 
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
@@ -93,8 +93,8 @@ function GroupMembersTable({
     [groupMemberships],
   );
 
-  if (loading) {
-    return <LoadingAndErrorWrapper loading={loading} />;
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading={isLoading} />;
   }
 
   return (
@@ -108,7 +108,7 @@ function GroupMembersTable({
             onDone={handleAddUser}
           />
         )}
-        {apiKeys?.map((apiKey: ApiKey) => (
+        {groupApiKeys?.map((apiKey: ApiKey) => (
           <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
         ))}
         {groupUsers.map((user: IUser) => {

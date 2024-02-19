@@ -1,5 +1,5 @@
 import { jt, t } from "ttag";
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -117,12 +117,7 @@ export const ManageApiKeys = () => {
   const [modal, setModal] = useState<Modal>(null);
   const [activeApiKey, setActiveApiKey] = useState<null | ApiKey>(null);
 
-  const {
-    data: apiKeys,
-    error,
-    isLoading,
-    refetch,
-  } = ApiKeysApi.useListQuery();
+  const { data: apiKeys, error, isLoading } = ApiKeysApi.useListQuery();
 
   const sortedApiKeys = useMemo(() => {
     if (!apiKeys) {
@@ -132,11 +127,6 @@ export const ManageApiKeys = () => {
   }, [apiKeys]);
 
   const handleClose = () => setModal(null);
-
-  // TODO: not so sure about this...? seems wrong
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
 
   const tableIsEmpty = !isLoading && !error && apiKeys?.length === 0;
 
