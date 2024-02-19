@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -87,7 +88,7 @@
       (doseq [group [(perms-group/all-users)
                      (perms-group/admin)]]
         (testing (format "Group = %s" (pr-str (:name group)))
-          (group-has-full-access? (u/the-id group) (perms/data-perms-path database-id)))))))
+          (is (group-has-full-access? (u/the-id group) (perms/data-perms-path database-id))))))))
 
 (deftest add-remove-from-admin-group-test
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
@@ -114,7 +115,7 @@
 (deftest data-graph-for-group-check-all-groups-test
   (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
     (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
-      (let [graph (perms/data-graph-for-group group-id)]
+      (let [graph (data-perms.graph/api-graph {:group-id group-id})]
         (is (mc/validate pos-int? (:revision graph)))
         (is (perm-test-util/validate-graph-api-groups (:groups graph)))
         (is (= #{group-id} (set (keys (:groups graph)))))))))
@@ -127,7 +128,7 @@
         dbs-in-perms (set (keep perm-object->db perm-objects))]
     (doseq [db-id (t2/select-fn-set :id :model/Database)]
       (testing (str "testing data-graph-for-db with db-id: [" db-id "].")
-        (let [graph (perms/data-graph-for-db db-id)]
+        (let [graph (data-perms.graph/api-graph {:db-id db-id})]
           (is (mc/validate pos-int? (:revision graph)))
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
           ;; Only check this for dbs with permissions

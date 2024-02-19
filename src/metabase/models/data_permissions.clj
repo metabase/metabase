@@ -5,6 +5,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -12,7 +13,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-    (clojure.lang PersistentVector)))
+   (clojure.lang PersistentVector)))
 
 (set! *warn-on-reflection* true)
 
@@ -177,7 +178,10 @@
 
 (mu/defn database-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID. If the user has
-  multiple permissions for the given type in different groups, they are coalesced into a single value."
+  multiple permissions for the given type in different groups, they are coalesced into a single value.
+
+  For permissions which can be set at the table-level or the database-level, this function will return the database-level
+  permission if the user has it."
   [user-id perm-type database-id]
   (when (not= :model/Database (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
@@ -378,6 +382,22 @@
       (= (coalesce :perms/data-access perm-values)
          :block))))
 
+(mu/defn user-has-any-perms-of-type? :- :boolean
+  "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
+  group, for at least one database or table."
+  [user-id perm-type]
+  (or (is-superuser? user-id)
+      (let [value (most-permissive-value perm-type)]
+        (t2/exists? :model/DataPermissions
+                    {:select [[:p.perm_value :value]]
+                     :from [[:permissions_group_membership :pgm]]
+                     :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                            [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                     :where [:and
+                             [:= :pgm.user_id user-id]
+                             [:= :p.perm_type (u/qualified-name perm-type)]
+                             [:= :p.perm_value (u/qualified-name value)]]}))))
+
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"
   [& {:keys [db-id perm-type]}]
@@ -454,19 +474,22 @@
 
 ;;; ---------------------------------------- Fetching the data permissions graph --------------------------------------
 
-(comment
-  ;; General hierarchy of the data access permissions graph
-  {#_:group-id 1
-   {#_:db-id 1
-    {#_:perm-type :perms/data-access
-     {#_:schema-name "PUBLIC"
-      {#_:table-id 1 :unrestricted}}}}})
+(def ^:private Graph
+  [:map-of [:int {:title "group-id" :min 0}]
+   [:map-of [:int {:title "db-id" :min 0}]
+    [:map-of PermissionType
+     [:or
+      PermissionValue
+      [:map-of [:string {:title "schema"}]
+       [:map-of
+        [:int {:title "table-id" :min 0}]
+        PermissionValue]]]]]])
 
-(defn data-permissions-graph
+(mu/defn data-permissions-graph :- Graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
   for permission enforcement, as it will read much more data than necessary."
-  [& {:keys [group-id db-id perm-type]}]
+  [& {:keys [group-id db-id perm-type audit?]}]
   (let [data-perms (t2/select [:model/DataPermissions
                                [:perm_type :type]
                                [:group_id :group-id]
@@ -475,9 +498,10 @@
                                [:schema_name :schema]
                                [:table_id :table-id]]
                               {:where [:and
+                                       (when perm-type [:= :perm_type (u/qualified-name perm-type)])
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
-                                       (when perm-type [:= :perm_type (u/qualified-name perm-type)])]})]
+                                       (when-not audit? [:not= :db_id config/audit-db-id])]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
@@ -485,10 +509,10 @@
                  db-id     :db-id
                  schema    :schema
                  table-id  :table-id}]
-       (let [schema   (or schema "")
-             path     (if table-id
-                        [group-id db-id perm-type schema table-id]
-                        [group-id db-id perm-type])]
+       (let [schema (or schema "")
+             path   (if table-id
+                      [group-id db-id perm-type schema table-id]
+                      [group-id db-id perm-type])]
          (assoc-in graph path value)))
      {}
      data-perms)))
@@ -591,13 +615,16 @@
             (when (not= values #{existing-db-perm-value})
               ;; If we're setting any table permissions to a value that is different from the database-level permission,
               ;; we need to replace it with individual permission rows for every table in the database instead.
+              ;; If the database-level permission was previously `:block`, we set the tables to `:no-self-service`.
               (let [other-tables    (t2/select :model/Table {:where [:and
                                                                      [:= :db_id db-id]
                                                                      [:not [:in :id table-ids]]]})
                     other-new-perms (map (fn [table]
                                            {:perm_type   perm-type
                                             :group_id    group-id
-                                            :perm_value  existing-db-perm-value
+                                            :perm_value  (if (= :block existing-db-perm-value)
+                                                           :no-self-service
+                                                           existing-db-perm-value)
                                             :db_id       db-id
                                             :table_id    (:id table)
                                             :schema_name (:schema table)})
