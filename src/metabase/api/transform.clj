@@ -14,10 +14,12 @@
   {db-id          ms/PositiveInt
    schema         ms/NonBlankString
    transform-name ms/NonBlankString}
-  (api/check-403 (data-perms/full-schema-permission-for-user api/*current-user-id*
-                                                             :perms/data-access
-                                                             db-id
-                                                             schema))
+  (api/check-403
+   (= (data-perms/full-schema-permission-for-user api/*current-user-id*
+                                                  :perms/data-access
+                                                  db-id
+                                                  schema)
+      :unrestricted))
   (->> @tf.specs/transform-specs
        (m/find-first (comp #{transform-name} :name))
        (tf/apply-transform! db-id schema)))
