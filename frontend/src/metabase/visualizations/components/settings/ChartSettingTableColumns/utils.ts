@@ -1,7 +1,8 @@
+import * as Lib from "metabase-lib";
 import type { TableColumnOrderSetting } from "metabase-types/api";
 import type { ColumnItem, ColumnSetting } from "./types";
 
-export function getColumnSettings(
+export function getSettings(
   settings: TableColumnOrderSetting[],
 ): ColumnSetting[] {
   return settings.reduce((settings: ColumnSetting[], setting) => {
@@ -14,6 +15,28 @@ export function getColumnSettings(
     }
     return settings;
   }, []);
+}
+
+export function getSettingIndexes(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+  settings: ColumnSetting[],
+) {
+  const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    stageIndex,
+    columns,
+    settings.map(setting => setting.fieldRef),
+  );
+
+  return columnIndexes.reduce(
+    (settingIndexes: number[], columnIndex, settingIndex) => {
+      settingIndexes[columnIndex] = settingIndex;
+      return settingIndexes;
+    },
+    [],
+  );
 }
 
 export function toggleColumnInSettings(

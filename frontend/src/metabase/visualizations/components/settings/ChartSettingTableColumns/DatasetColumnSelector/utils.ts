@@ -2,6 +2,7 @@ import * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { DatasetColumn } from "metabase-types/api";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { getSettingIndexes } from "../utils";
 import type { ColumnSetting, EditWidgetData } from "../types";
 import type { ColumnItem, DragColumnProps } from "./types";
 
@@ -15,19 +16,11 @@ export function getColumnItems(
     Lib.fromLegacyColumn(query, stageIndex, column),
   );
 
-  const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+  const settingIndexes = getSettingIndexes(
     query,
     stageIndex,
     columns,
-    settings.map(setting => setting.fieldRef),
-  );
-
-  const settingIndexes = columnIndexes.reduce(
-    (settingIndexes: number[], columnIndex, settingIndex) => {
-      settingIndexes[columnIndex] = settingIndex;
-      return settingIndexes;
-    },
-    [],
+    settings,
   );
 
   return columns.map((column, columnIndex) => {

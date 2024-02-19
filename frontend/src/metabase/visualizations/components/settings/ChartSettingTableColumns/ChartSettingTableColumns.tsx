@@ -4,7 +4,7 @@ import type {
 } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import { DatasetColumnSelector } from "./DatasetColumnSelector";
-import { getColumnSettings } from "./utils";
+import { getSettings } from "./utils";
 import type { EditWidgetData } from "./types";
 
 interface ChartSettingTableColumnsProps {
@@ -26,7 +26,7 @@ export const ChartSettingTableColumns = ({
 }: ChartSettingTableColumnsProps) => {
   const query = question.query();
   const stageIndex = -1;
-  const settings = getColumnSettings(value);
+  const settings = getSettings(value);
 
   return (
     <DatasetColumnSelector
