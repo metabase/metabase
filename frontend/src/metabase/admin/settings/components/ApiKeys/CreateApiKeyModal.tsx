@@ -15,13 +15,7 @@ import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
-export const CreateApiKeyModal = ({
-  onClose,
-  refreshList,
-}: {
-  onClose: () => void;
-  refreshList: () => void;
-}) => {
+export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
   const [modal, setModal] = useState<"create" | "secretKey">("create");
   const [createApiKey, response] = ApiKeysApi.useCreateMutation();
   const secretKey = response?.data?.unmasked_key || "";
@@ -30,9 +24,8 @@ export const CreateApiKeyModal = ({
     async vals => {
       await createApiKey(vals);
       setModal("secretKey");
-      refreshList(); // TODO: remove in favor of redux handling this automatically
     },
-    [createApiKey, refreshList],
+    [createApiKey],
   );
 
   if (modal === "secretKey") {

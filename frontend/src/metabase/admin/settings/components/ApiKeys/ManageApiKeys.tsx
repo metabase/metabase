@@ -138,7 +138,6 @@ export const ManageApiKeys = () => {
     <>
       <ApiKeyModals
         onClose={handleClose}
-        refreshList={refetch}
         modal={modal}
         activeApiKey={activeApiKey}
       />
@@ -179,37 +178,23 @@ export const ManageApiKeys = () => {
 
 function ApiKeyModals({
   onClose,
-  refreshList,
   modal,
   activeApiKey,
 }: {
   onClose: () => void;
-  refreshList: () => void;
   modal: Modal;
   activeApiKey: ApiKey | null;
 }) {
   if (modal === "create") {
-    return <CreateApiKeyModal onClose={onClose} refreshList={refreshList} />;
+    return <CreateApiKeyModal onClose={onClose} />;
   }
 
   if (modal === "edit" && activeApiKey) {
-    return (
-      <EditApiKeyModal
-        onClose={onClose}
-        refreshList={refreshList}
-        apiKey={activeApiKey}
-      />
-    );
+    return <EditApiKeyModal onClose={onClose} apiKey={activeApiKey} />;
   }
 
   if (modal === "delete" && activeApiKey) {
-    return (
-      <DeleteApiKeyModal
-        apiKey={activeApiKey}
-        onClose={onClose}
-        refreshList={refreshList}
-      />
-    );
+    return <DeleteApiKeyModal apiKey={activeApiKey} onClose={onClose} />;
   }
 
   return null;
