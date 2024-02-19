@@ -216,7 +216,7 @@ export const SaveQuestionModal = ({
             enableReinitialize
           >
             {({ values, setFieldValue, validateForm }) => (
-              <Modal.Content p="md">
+              <Modal.Content p="md" data-testid="save-question-modal">
                 <Modal.Header>
                   <Modal.Title>{title}</Modal.Title>
                   <Flex align="center" gap="sm">
