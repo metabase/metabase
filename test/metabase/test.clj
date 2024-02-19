@@ -251,7 +251,7 @@
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
   with-non-admin-groups-no-collection-perms
-  with-all-users-data-perms-graph
+  with-all-users-data-perms-graph!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
