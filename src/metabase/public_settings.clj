@@ -130,15 +130,6 @@
   :default    false
   :audit      :never)
 
-(defsetting browse-collection-prefs
-  (deferred-tru "User's preferences related to collections in Browse data")
-  :user-local :only
-  :export?    true
-  :visibility :authenticated
-  :type       :string
-  :default    ""
-  :audit      :never)
-
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
