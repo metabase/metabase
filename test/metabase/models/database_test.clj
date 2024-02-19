@@ -1,6 +1,6 @@
 (ns metabase.models.database-test
   (:require
-   [cheshire.core :refer [decode encode]]
+   [cheshire.core :refer [parse-string generate-string]]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
@@ -21,7 +21,9 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.redact :refer [redact]]
    [toucan2.core :as t2]
+   [toucan2.tools.after-select :refer [after-select]]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -68,34 +70,35 @@
           (is (= nil
                  (trigger-for-db db-id))))))))
 
+(defn- ->Database [m]
+  ;; The tests are not intended to cover the database features or how details are normalized.
+  ;; We abuse the dynamic variable used to prevent infinite recursion to skip normalization completely.
+  (binding [database/*normalizing-details* true]
+    (-> (mi/instance Database m) after-select (dissoc :features))))
+
 (deftest can-read-database-setting-test
-  (let [encode-decode (fn [obj] (decode (encode obj)))
-        pg-db         (mi/instance
-                       Database
+  (let [pg-db         (->Database
                        {:description nil
                         :name        "testpg"
-                        :details     {}
                         :settings    {:database-enable-actions      true  ; visibility: :public
                                       :unaggregated-query-row-limit 2000} ; visibility: :authenticated
                         :id          3})]
     (testing "authenticated users should see settings with authenticated visibility"
       (mw.session/with-current-user
         (mt/user->id :rasta)
-        (is (= {"description" nil
-                "name"        "testpg"
-                "settings"    {"database-enable-actions"      true
-                               "unaggregated-query-row-limit" 2000}
-                "id"          3
-                "details"     (encode-decode database/protected-db-details)}
-               (encode-decode pg-db)))))
+        (is (= {:description nil
+                :name        "testpg"
+                :settings    {:database-enable-actions      true
+                              :unaggregated-query-row-limit 2000}
+                :id          3}
+               (redact pg-db)))))
     (testing "non-authenticated users shouldn't see settings with authenticated visibility"
       (mw.session/with-current-user nil
-        (is (= {"description" nil
-                "name"        "testpg"
-                "settings"    {"database-enable-actions" true}
-                "id"          3
-                "details"     (encode-decode database/protected-db-details)}
-               (encode-decode pg-db)))))))
+        (is (= {:description nil
+                :name        "testpg"
+                :settings    {:database-enable-actions true}
+                :id          3}
+               (redact pg-db)))))))
 
 (deftest driver-supports-actions-and-database-enable-actions-test
   (mt/test-drivers #{:sqlite}
@@ -114,11 +117,9 @@
              (t2/update! Database (:id database) {:engine :sqlite})))))))
 
 (deftest ^:parallel sensitive-data-redacted-test
-  (let [encode-decode (fn [obj] (decode (encode obj)))
-        project-id    "random-project-id" ; the actual value here doesn't seem to matter
+  (let [project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
-        pg-db         (mi/instance
-                       Database
+        pg-db         (->Database
                        {:description nil
                         :name        "testpg"
                         :engine      :postgres
@@ -138,8 +139,7 @@
                                       :tunnel-private-key-passphrase "Password1234"}
                         :settings    {:database-enable-actions true}
                         :id          3})
-        bq-db         (mi/instance
-                       Database
+        bq-db         (->Database
                        {:description nil
                         :name        "testbq"
                         :details     {:use-service-account  nil
@@ -155,71 +155,71 @@
         (mw.session/with-current-user
           (mt/user->id :rasta)
           (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider {:database pg-db})
-            (is (= {"description" nil
-                    "name"        "testpg"
-                    "engine"      "postgres"
-                    "settings"    {"database-enable-actions" true}
-                    "id"          3
-                    "details"     (encode-decode database/protected-db-details)}
-                   (encode-decode pg-db))))
-          (is (= {"description" nil
-                  "name"        "testbq"
-                  "id"          2
-                  "engine"      "bigquery-cloud-sdk"
-                  "settings"    {"database-enable-actions" true}
-                  "details"     (encode-decode database/protected-db-details)}
-                 (encode-decode bq-db)))))
+            (is (= {:description nil
+                    :name        "testpg"
+                    :engine      :postgres
+                    :settings    {:database-enable-actions true}
+                    :id          3
+                    :details     database/protected-db-details}
+                   (redact pg-db))))
+          (is (= {:description nil
+                  :name        "testbq"
+                  :id          2
+                  :engine      :bigquery-cloud-sdk
+                  :settings    {:database-enable-actions true}
+                  :details     database/protected-db-details}
+                 (redact bq-db)))))
 
       (testing "details are obfuscated for admin users"
         (mw.session/with-current-user
           (mt/user->id :crowberto)
-          (is (= {"description" nil
-                  "name"        "testpg"
-                  "engine"      "postgres"
-                  "details"     {"tunnel-user"                   "a-tunnel-user"
-                                 "dbname"                        "mydb"
-                                 "host"                          "localhost"
-                                 "tunnel-auth-option"            "ssh-key"
-                                 "tunnel-private-key-passphrase" "**MetabasePass**"
-                                 "additional-options"            nil
-                                 "tunnel-port"                   22
-                                 "user"                          "metabase"
-                                 "tunnel-private-key"            "**MetabasePass**"
-                                 "ssl"                           false
-                                 "tunnel-enabled"                true
-                                 "port"                          5432
-                                 "password"                      "**MetabasePass**"
-                                 "tunnel-host"                   "localhost"}
-                  "settings"    {"database-enable-actions" true}
-                  "id"          3}
-                 (encode-decode pg-db)))
-          (is (= {"description" nil
-                  "name"        "testbq"
-                  "details"     {"use-service-account"  nil
-                                 "dataset-id"           "office_checkins"
-                                 "service-account-json" "**MetabasePass**"
-                                 "use-jvm-timezone"     false
-                                 "project-id"           project-id}
-                  "id"          2
-                  "settings"    {"database-enable-actions" true}
-                  "engine"      "bigquery-cloud-sdk"}
-                 (encode-decode bq-db)))))
+          (is (= {:description nil
+                  :name        "testpg"
+                  :engine      :postgres
+                  :details     {:tunnel-user                   "a-tunnel-user"
+                                :dbname                        "mydb"
+                                :host                          "localhost"
+                                :tunnel-auth-option            "ssh-key"
+                                :tunnel-private-key-passphrase "**MetabasePass**"
+                                :additional-options            nil
+                                :tunnel-port                   22
+                                :user                          "metabase"
+                                :tunnel-private-key            "**MetabasePass**"
+                                :ssl                           false
+                                :tunnel-enabled                true
+                                :port                          5432
+                                :password                      "**MetabasePass**"
+                                :tunnel-host                   "localhost"}
+                  :settings    {:database-enable-actions true}
+                  :id          3}
+                 (redact pg-db)))
+          (is (= {:description nil
+                  :name        "testbq"
+                  :details     {:use-service-account  nil
+                                :dataset-id           "office_checkins"
+                                :service-account-json "**MetabasePass**"
+                                :use-jvm-timezone     false
+                                :project-id           "random-project-id"}
+                  :id          2
+                  :settings    {:database-enable-actions true}
+                  :engine      :bigquery-cloud-sdk}
+                 (redact bq-db)))))
 
       (testing "We avoid adding or removing the redacted fields"
-        (let [redact (fn [m] (encode-decode (mi/instance :model/Database m)))]
-          (is (= {"id" 1 "name" "testbg"}
+        (let [redact (fn [m] (redact (->Database m)))]
+          (is (= {:id 1 :name "testbg"}
                  (redact {:id 1 :name "testbg"})))
-          (is (= {"id" 1 "name" "testbg" "details" (encode-decode database/protected-db-details)}
+          (is (= {:id 1 :name "testbg" :details database/protected-db-details}
                  (redact {:id 1 :name "testbg" :details {}})))
-          (is (= {"id" 1 "name" "testbg" "settings" (encode-decode database/protected-db-settings)}
-                 (redact {:id 1 :name "testbg" :settings "not-a-map"})))
-          (is (= {"id" 1 "name" "testbg" "settings" {}}
+          (is (= {:id 1 :name "testbg" :settings database/protected-db-settings}
+                 (redact {:id 1 :name "testbg" :settings ["not-a-map"]})))
+          (is (= {:id 1 :name "testbg" :settings {}}
                  (redact {:id 1 :name "testbg" :settings {}})))
-          (is (= {"id" 1
-                  "name" "testbg"
-                  "details" (encode-decode database/protected-db-details)
-                  "settings" (encode-decode database/protected-db-settings)}
-                 (redact {:id 1 :name "testbg" :details {} :settings "not-a-map"}))))))))
+          (is (= {:id 1
+                  :name "testbg"
+                  :details database/protected-db-details
+                  :settings database/protected-db-settings}
+                 (redact {:id 1 :name "testbg" :details {} :settings ["not-a-map"]}))))))))
 
 ;; register a dummy "driver" for the sole purpose of running sensitive-fields-test
 (driver/register! :test-sensitive-driver, :parent #{:h2})

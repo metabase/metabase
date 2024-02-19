@@ -17,10 +17,10 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
+   [metabase.util.redact :as redact]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
-
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -122,7 +122,13 @@
       (and (driver.impl/registered? driver)
            (:details database)
            (not *normalizing-details*))
-      normalize-details)))
+      normalize-details
+
+      (:details database)
+      (update :details redact/mark-sensitive :db/details :db database)
+
+      (:settings database)
+      (update :settings redact/mark-sensitive :db/settings))))
 
 (defn- delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
@@ -322,44 +328,28 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-(defn- redact-db-details [db]
-  (if (not (mi/can-write? db))
-    (u/assoc-existing db :details protected-db-details)
-    (m/update-existing db :details (fn [details]
-                                     (reduce
-                                      #(m/update-existing %1 %2 (constantly protected-password))
-                                      details
-                                      (sensitive-fields-for-db db))))))
+;; Remove the `details` for any User without write perms for the DB.
+;; Users with write perms can see the `details` but remove anything resembling a password.
+;; No one gets to see this in an API response!
+(defmethod redact/redact* :db/details
+  [{:keys [db]} details]
+  (if-not (mi/can-write? db)
+      protected-db-details
+      (reduce (fn [m k] (u/assoc-existing m k protected-password))
+              details
+              (sensitive-fields-for-db db))))
 
-(defn- redact-settings [settings]
+;; Remove settings that the User doesn't have read perms for.
+(defmethod redact/redact* :db/settings
+  [_ settings]
   (if-not (or (nil? settings) (map? settings))
     protected-db-settings
-    (m/filter-keys
-     (fn [setting-name]
-       (try
-         ;; This will throw if we cannot resolve the setting, i.e. there is no corresponding defsetting.
-         (setting/can-read-setting? setting-name (setting/current-user-readable-visibilities))
-         (catch Throwable e
-           ;; There is an known issue with exception is ignored when render API response (#32822)
-           ;; If you see this error, you probably need to define a setting for `setting-name`.
-           ;; But ideally, we should resolve the above issue, and remove this try/catch
-           (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
-           ;; let's be conservative and hide it by defaults, if you want to see it,
-           ;; you need to define it :)
-           false)))
-     settings)))
-
-(methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
-  Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
-  an API response!
-
-  Also remove settings that the User doesn't have read perms for."
-  [db json-generator]
-  (next-method
-   (-> (redact-db-details db)
-       (m/update-existing :settings redact-settings))
-   json-generator))
+    (let [readable-visibilities (setting/current-user-readable-visibilities)]
+      (m/filter-keys
+       (fn [setting-name]
+         ;; This will throw if we cannot resolve the setting, i.e. we don't have a corresponding `defsetting`.
+         (setting/can-read-setting? setting-name readable-visibilities))
+       settings))))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 

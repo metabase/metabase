@@ -5,6 +5,8 @@
    [cheshire.factory]
    [cheshire.generate :as json.generate]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
+   [metabase.util.redact :as redact]
    [ring.middleware.json :as ring.json]
    [ring.util.io :as rui]
    [ring.util.response :as response])
@@ -80,7 +82,12 @@
    (fn [^OutputStream output-stream]
      (with-open [output-writer   (OutputStreamWriter. output-stream StandardCharsets/UTF_8)
                  buffered-writer (BufferedWriter. output-writer)]
-       (json/generate-stream response-seq buffered-writer opts)))))
+       (try
+         (json/generate-stream (redact/redact response-seq) buffered-writer opts)
+         (catch Throwable e
+           ;; There is an known issue with exception is ignored when render API response (#32822)
+           (log/error e "Error converting response into JSON, likely due to redact* logic or a Toucan to-json hook.")
+           (throw e)))))))
 
 (defn- wrap-streamed-json-response* [opts response]
   (if-let [json-response (and (coll? (:body response))
