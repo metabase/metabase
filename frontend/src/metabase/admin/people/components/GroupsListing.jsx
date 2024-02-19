@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -23,7 +22,7 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { ApiKeysApi } from "metabase/services";
+import { ApiKeysApi } from "metabase/redux/api";
 import { Stack, Text, Group, Button, Icon } from "metabase/ui";
 
 import { AddRow } from "./AddRow";
@@ -275,10 +274,10 @@ function GroupsTable({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const { loading, value: apiKeys } = useAsync(() => ApiKeysApi.list(), []);
+  const { isLoading, data: apiKeys } = ApiKeysApi.useListQuery();
 
-  if (loading) {
-    return <LoadingAndErrorWrapper loading={loading} />;
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading={isLoading} />;
   }
 
   return (
