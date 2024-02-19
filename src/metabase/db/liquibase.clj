@@ -200,13 +200,16 @@
       (catch Exception e
         (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
 
-(defn- wait-for-migration-lock-to-be-cleared
+(defn- lock-service ^LockService [^Liquibase liquibase]
+  (.getLockService (LockServiceFactory/getInstance) (.getDatabase liquibase)))
+
+(defn- wait-for-migration-lock
   "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times. There's a
   chance the lock will end up clearing up so we can run migrations normally."
   [^Liquibase liquibase]
   (let [retry-counter (volatile! 0)]
     (u/auto-retry 5
-      (when (migration-lock-exists? liquibase)
+      (when-not (.acquireLock (lock-service liquibase))
         (Thread/sleep 2000)
         (vswap! retry-counter inc)
         (throw
@@ -216,8 +219,13 @@
            " "
            (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`."))))))
     (if (pos? @retry-counter)
-      (log/warnf "Migration lock was cleared after %d retries." @retry-counter)
-      (log/info "No migration lock found."))))
+      (log/warnf "Migration lock was acquired after %d retries." @retry-counter)
+      (log/info "No migration lock found.\nLMigration lock acquired."))))
+
+(defn- assert-locked [liquibase]
+  (when-not (.hasChangeLogLock (lock-service liquibase))
+    ;; TODO not sure this is the right exception class to use
+    (throw (LockException. "The Liquibase lock must be taken before executing this operation"))))
 
 (defn run-in-scope-locked
   "Run function `f` in a scope on the Liquibase instance `liquibase`.
@@ -225,18 +233,21 @@
    Clojure). This function initializes the database and the resource accessor which are often required.
    The underlying locks are re-entrant, so it is safe to nest these blocks."
   [^Liquibase liquibase f]
-  (let [database (.getDatabase liquibase)
-        ^LockService lock-service (.getLockService (LockServiceFactory/getInstance) database)
-        scope-objects {(.name Scope$Attr/database) database
+
+  (when (.hasChangeLogLock (lock-service liquibase))
+    (throw (Exception. "Taking a nested lock, please clean this up")))
+
+  (let [database      (.getDatabase liquibase)
+        scope-objects {(.name Scope$Attr/database)         database
                        (.name Scope$Attr/resourceAccessor) (.getResourceAccessor liquibase)}]
     (Scope/child ^Map scope-objects
                  (reify Scope$ScopedRunner
                    (run [_]
-                     (.waitForLock lock-service)
+                     (wait-for-migration-lock liquibase)
                      (try
                        (f)
                        (finally
-                         (.releaseLock lock-service))))))))
+                         (.releaseLock (lock-service liquibase)))))))))
 
 (defmacro with-scope-locked
   "Run `body` in a scope on the Liquibase instance `liquibase`.
@@ -254,7 +265,6 @@
   (if (seq (unrun-migrations data-source))
     (do
      (log/info (trs "Database has unrun migrations. Checking if migration lock is taken..."))
-     (wait-for-migration-lock-to-be-cleared liquibase)
      (with-scope-locked liquibase
       ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
       ;; sure something still needs to be done...
@@ -273,12 +283,13 @@
     (log/info (trs "No unrun migrations found."))))
 
 (defn update-with-change-log
-  "Run update with the change log instances in `liquibase`."
+  "Run update with the change log instances in `liquibase`. Must be called within a scope holding the liquibase lock."
   ([liquibase]
    (update-with-change-log liquibase {}))
   ([^Liquibase liquibase
     {:keys [^List change-set-filters exec-listener]
      :or {change-set-filters []}}]
+   (assert-locked liquibase)
    (let [change-log     (.getDatabaseChangeLog liquibase)
          database       (.getDatabase liquibase)
          log-iterator   (ChangeLogIterator. change-log ^"[Lliquibase.changelog.filter.ChangeSetFilter;" (into-array ChangeSetFilter change-set-filters))
@@ -297,7 +308,11 @@
   #3295."
   [^Liquibase liquibase :- (ms/InstanceOfClass Liquibase)
    ^DataSource data-source :- (ms/InstanceOfClass DataSource)]
-  ;; have to do this before clear the checksums else it will wait for locks to be released
+  ;; We should have already released the lock before consolidating the changelog, but include this statement again
+  ;; here to avoid depending on that non-local implementation detail. It is possible that the lock has been taken
+  ;; again by another process before we reach this, and it's even possible that we lose yet *another* race again
+  ;; between the next two lines, but we accept the risk of blocking in that latter case rather than complicating things
+  ;; further.
   (release-lock-if-needed! liquibase)
   (with-scope-locked liquibase
    (.clearCheckSums liquibase)
@@ -347,15 +362,15 @@
    liquibase :- (ms/InstanceOfClass Liquibase)]
   (let [liquibase-table-name (changelog-table-name conn)
         conn-spec            {:connection conn}]
-    (with-scope-locked liquibase
-      (when-not (fresh-install? conn)
-        ;; Skip mutating the table if the filenames are already correct. It assumes we have never moved the boundary
-        ;; between the two files, i.e. that update-migrations start from v45.
-        (when-not (= #{legacy-migrations-file update-migrations-file}
-                     (->> (str "SELECT DISTINCT(FILENAME) AS filename FROM " liquibase-table-name)
-                          (jdbc/query conn-spec)
-                          (into #{} (map :filename))))
-          (log/info "Updating liquibase table to reflect consolidated changeset filenames")
+    (when-not (fresh-install? conn)
+      ;; Skip mutating the table if the filenames are already correct. It assumes we have never moved the boundary
+      ;; between the two files, i.e. that update-migrations still start from v45.
+      (when-not (= #{legacy-migrations-file update-migrations-file}
+                   (->> (str "SELECT DISTINCT(FILENAME) AS filename FROM " liquibase-table-name)
+                        (jdbc/query conn-spec)
+                        (into #{} (map :filename))))
+        (log/info "Updating liquibase table to reflect consolidated changeset filenames")
+        (with-scope-locked liquibase
           (jdbc/execute!
            conn-spec
            [(format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)

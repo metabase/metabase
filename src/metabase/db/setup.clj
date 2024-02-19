@@ -74,10 +74,13 @@
     (log/info (trs "Setting up Liquibase..."))
     (liquibase/with-liquibase [liquibase conn]
       (try
+        ;; Consolidating the changeset requires the lock, so we may need to release it first.
        (when (= :force direction)
          (liquibase/release-lock-if-needed! liquibase))
+        ;; Releasing the locks does not depend on the changesets, so we skip this step as it might require locking.
        (when-not (= :release-locks direction)
          (liquibase/consolidate-liquibase-changesets! conn liquibase))
+
        (log/info (trs "Liquibase is ready."))
        (case direction
          :up            (liquibase/migrate-up-if-needed! liquibase data-source)
