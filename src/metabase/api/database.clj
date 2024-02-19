@@ -92,8 +92,7 @@
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [dbs :- [:maybe [:sequential :map]]]
   (for [db dbs]
-    (assoc db :native_permissions (if (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                        (perms/adhoc-native-query-path (u/the-id db)))
+    (assoc db :native_permissions (if (data-perms/database-permission-for-user api/*current-user-id* :perms/native-query-editing (u/the-id db))
                                     :write
                                     :none))))
 
