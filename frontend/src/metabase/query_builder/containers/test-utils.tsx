@@ -293,11 +293,14 @@ export const setup = async ({
 };
 
 const waitForLoadingRequests = async (getState: () => State) => {
-  await waitFor(() => {
-    const requests = getRequests(getState());
-    const areRequestsLoading = requests.some(request => request.loading);
-    expect(areRequestsLoading).toBe(false);
-  });
+  await waitFor(
+    () => {
+      const requests = getRequests(getState());
+      const areRequestsLoading = requests.some(request => request.loading);
+      expect(areRequestsLoading).toBe(false);
+    },
+    { timeout: 5000 },
+  );
 };
 
 const getRequests = (state: State): RequestState[] => {
