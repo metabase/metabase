@@ -36,6 +36,7 @@
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter :as chain-filter]
@@ -480,7 +481,6 @@
 
             (testing "should return restricted if user doesn't have permission to view the models"
               (mt/with-no-data-perms-for-all-users!
-                (perms/revoke-data-perms! (perms-group/all-users) database-id)
                 (is (= #{{:restricted true} {:url "https://metabase.com"}}
                      (set (link-card-info-from-resp
                            (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard)))))))))))))
@@ -586,7 +586,7 @@
     (mt/with-temp-copy-of-db
       (perms.test-util/with-no-data-perms-for-all-users!
         (perms.test-util/with-perm-for-group-and-table!
-            (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted
+          (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted
           (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
                          Card          {card-id :id}      {:name "Dashboard Test Card"}
                          DashboardCard {_ :id}            {:dashboard_id       dashboard-id
@@ -2870,16 +2870,14 @@
       (mt/with-premium-features #{:advanced-permissions}
         (mt/with-temp-copy-of-db
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
-                                            {:schemas :block})
-            (is (= "You don't have permissions to do that."
-                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
-                        (mt/user-http-request :rasta :get 403))))
-            (testing "search"
+            (mt/with-no-data-perms-for-all-users!
               (is (= "You don't have permissions to do that."
-                     (->> (chain-filter-search-url (:id dashboard) (:category-name param-keys) "BBQ")
-                          (mt/user-http-request :rasta :get 403)))))))))))
+                     (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                          (mt/user-http-request :rasta :get 403))))
+              (testing "search"
+                (is (= "You don't have permissions to do that."
+                       (->> (chain-filter-search-url (:id dashboard) (:category-name param-keys) "BBQ")
+                            (mt/user-http-request :rasta :get 403))))))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
@@ -3346,8 +3344,8 @@
         (mt/with-temp-copy-of-db
           (perms.test-util/with-no-data-perms-for-all-users!
             (is (= "You don't have permissions to do that."
-               (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
-                         :filtered [%venues.price] :filtering [%categories.name]))))))))))
+                 (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
+                           :filtered [%venues.price] :filtering [%categories.name]))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
@@ -4001,10 +3999,10 @@
                                                      {:parameters {"id" 1}}))
                             "Execution and data permissions should be enough")
 
-                        (perms/update-data-perms-graph! [group-id (mt/id) :data]
-                                                        {:schemas :block})
-                        (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
-                                                        {:schemas :block})
+                        (data-perms.graph/update-data-perms-graph!* [group-id (mt/id) :data]
+                                                                    {:schemas :block})
+                        (data-perms.graph/update-data-perms-graph!* [(:id (perms-group/all-users)) (mt/id) :data]
+                                                                    {:schemas :block})
                         (is (partial= {:message "You don't have permissions to do that."}
                                       (mt/user-http-request :rasta :post 403 execute-path
                                                             {:parameters {"id" 1}}))
@@ -4110,19 +4108,20 @@
                       (mt/user-http-request :rasta :get 200
                                             (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
             (testing "Return values with no self-service (#26874)"
-              (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-              (is (=? {:values (comp #(contains? % ["African"]) set)}
-                      (mt/user-http-request :rasta :get 200
-                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+                (is (=? {:values (comp #(contains? % ["African"]) set)}
+                        (mt/user-http-request :rasta :get 200
+                                              (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values"))))))
             (testing "Return values for admin"
-              (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
-                                              {:schemas :block})
+              (data-perms.graph/update-data-perms-graph!* [(:id (perms-group/all-users)) (mt/id) :data]
+                                                          {:schemas :block})
               (is (=? {:values (comp #(contains? % ["African"]) set)}
                       (mt/user-http-request :crowberto :get 200
                                             (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
             (testing "Don't return with block perms."
-              (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
-                                              {:schemas :block})
+              (data-perms.graph/update-data-perms-graph!* [(:id (perms-group/all-users)) (mt/id) :data]
+                                                          {:schemas :block})
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403
                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))))
