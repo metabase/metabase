@@ -65,10 +65,9 @@ Once you've made a question or dashboard [embeddable](#making-a-question-or-dash
 
 1. Go to the question or dashboard > **sharing icon** > **Embed**.
 2. Make any changes and copy the code.
-3. Optional: [Preview the server code](#previewing-the-code-for-an-embed)
-4. Add the code to server code that builds your website.
-5. Optional: [Preview the frontend code](#previewing-the-frontend-code-for-an-embed).
-6. Add the frontend code to the HTML file where you want your static embed to appear.
+3. [Preview the code](#previewing-the-code-for-an-embed)
+4. Add the code to the server code that builds your website.
+6. Add the frontend code to the code that generates the page where you want the embedded item to appear.
 
 For more examples, see our [reference apps repo](https://github.com/metabase/embedding-reference-apps).
 
@@ -78,7 +77,7 @@ For more examples, see our [reference apps repo](https://github.com/metabase/emb
 2. Click **Code**.
 3. In the top code block, you'll find the sample code for your web server. You'll also find the iframe snippet to plug into your HTML template or single page app.
 
-When you make changes to the style, appearance, or parameter preview settings, the server code sample will update as well. Make sure to copy these changes to your actual server code.
+When you make changes to the style, appearance, or parameter preview settings, Metabase will update the code and highlight the changes. Make sure to copy these changes to your actual server code.
 
 ![Code samples for embedding](./images/05-code.png)
 
@@ -136,7 +135,7 @@ For global appearance settings, such as the colors and fonts used across your en
 
 ![Powered by Metabase](./images/powered-by-metabase.png)
 
-The banner appears on static embeds created with Metabase's open-source version. To remove the banner, you'll need to upgrade to a [Pro](https://www.metabase/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
+The banner appears on static embeds created with Metabase's open-source version. To remove the banner, you'll need to upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
 
 ## Regenerating the static embedding secret key
 
