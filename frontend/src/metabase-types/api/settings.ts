@@ -199,7 +199,6 @@ export interface Settings {
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
   "bcc-enabled?": boolean;
-  "browse-collection-prefs": string | null;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;

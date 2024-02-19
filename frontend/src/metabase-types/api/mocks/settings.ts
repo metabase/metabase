@@ -143,7 +143,6 @@ export const createMockSettings = (
   "application-name": "Metabase",
   "available-fonts": [],
   "available-locales": null,
-  "browse-collection-prefs": null,
   "bcc-enabled?": true,
   "cloud-gateway-ips": null,
   "custom-formatting": {},
