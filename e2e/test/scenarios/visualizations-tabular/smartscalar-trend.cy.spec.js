@@ -184,11 +184,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
 
     cy.button("Add comparison").click();
-    cy.findByTestId("comparison-list")
-      .children()
-      .should("have.length", 2)
-      .last()
-      .click();
+    cy.findByTestId("comparison-list").children().should("have.length", 2);
     menu().findByText("months ago").click();
     cy.findAllByTestId("scalar-previous-value")
       .children()
@@ -201,11 +197,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       });
 
     cy.button("Add comparison").click();
-    cy.findByTestId("comparison-list")
-      .children()
-      .should("have.length", 3)
-      .last()
-      .click();
+    cy.findByTestId("comparison-list").children().should("have.length", 3);
     menu().findByText("Previous value").click();
     cy.findAllByTestId("scalar-previous-value")
       .children()
