@@ -1,3 +1,4 @@
+// Dummy comment to trigger CI
 import "regenerator-runtime/runtime";
 
 // Use of classList.add and .remove in Background and FitViewPort Hocs requires
