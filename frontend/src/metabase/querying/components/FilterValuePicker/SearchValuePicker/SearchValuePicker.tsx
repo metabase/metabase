@@ -54,6 +54,11 @@ export function SearchValuePicker({
     }
   };
 
+  const handleCreate = (searchValue: string) => {
+    onChange([...selectedValues, searchValue]);
+    return searchValue;
+  };
+
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
@@ -63,13 +68,14 @@ export function SearchValuePicker({
       searchValue={searchValue}
       placeholder={placeholder}
       shouldCreate={shouldCreate}
-      getCreateLabel={query => t`New ${query}`}
+      getCreateLabel={searchValue => t`New ${searchValue}`}
       creatable
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       onChange={onChange}
       onSearchChange={handleSearchChange}
+      onCreate={handleCreate}
     />
   );
 }

@@ -368,6 +368,26 @@ describe("StringFilterValuePicker", () => {
 
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
     });
+
+    it("should allow free-form input without waiting for search results", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        searchValues: {
+          "a@b.com": createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["testa@b.com"]],
+          }),
+        },
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Search by Email"), "a@b.com");
+      userEvent.hover(screen.getByText("New a@b.com"));
+      userEvent.click(screen.getByText("New a@b.com"));
+      expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
+    });
   });
 
   describe("no values", () => {
