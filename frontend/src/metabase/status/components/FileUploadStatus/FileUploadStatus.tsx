@@ -79,7 +79,10 @@ const FileUploadStatusContent = ({
     { id: collectionId, enabled: !isEmpty(collectionId) },
   );
 
-  if (!isVisible || tableLoading || collectionLoading) {
+  const isLoading = !!(tableLoading || collectionLoading);
+  const hasData = !!(table || collection);
+
+  if (!isVisible || (isLoading && !hasData)) {
     return null;
   }
 
