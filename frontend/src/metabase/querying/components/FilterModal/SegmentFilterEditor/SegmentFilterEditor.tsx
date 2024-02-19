@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import { Flex, Grid, MultiSelect, Text, Icon } from "metabase/ui";
+import { InfoIcon, HoverParent } from "../InfoIcon.styled";
 
 import type { SegmentItem } from "../types";
 
@@ -29,26 +30,29 @@ export function SegmentFilterEditor({
   };
 
   return (
-    <Grid grow>
-      <Grid.Col span="auto">
-        <Flex h="100%" align="center" gap="sm">
-          <Icon name="filter" />
-          <Text color="text-dark" weight="bold">
-            {t`Filter down to a segment`}
-          </Text>
-        </Flex>
-      </Grid.Col>
-      <Grid.Col span={4}>
-        <MultiSelect
-          data={data}
-          value={value}
-          placeholder={t`Filter segments`}
-          nothingFound={t`No matching segment found.`}
-          aria-label={t`Filter segments`}
-          searchable
-          onChange={handleChange}
-        />
-      </Grid.Col>
-    </Grid>
+    <HoverParent>
+      <Grid grow>
+        <Grid.Col span="auto">
+          <Flex h="100%" align="center" gap="sm">
+            <InfoIcon query={query} stageIndex={stageIndex} column={column} />
+            <Icon name="filter" />
+            <Text color="text-dark" weight="bold">
+              {t`Filter down to a segment`}
+            </Text>
+          </Flex>
+        </Grid.Col>
+        <Grid.Col span={4}>
+          <MultiSelect
+            data={data}
+            value={value}
+            placeholder={t`Filter segments`}
+            nothingFound={t`No matching segment found.`}
+            aria-label={t`Filter segments`}
+            searchable
+            onChange={handleChange}
+          />
+        </Grid.Col>
+      </Grid>
+    </HoverParent>
   );
 }
