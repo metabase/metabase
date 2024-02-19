@@ -11,7 +11,6 @@ import { ApiKeysApi } from "metabase/redux/api";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 import type { ApiKey } from "metabase-types/api";
 
-
 export const DeleteApiKeyModal = ({
   onClose,
   apiKey,

@@ -35,10 +35,7 @@ const RegenerateKeyModal = ({
 }) => {
   const [regenerateApiKey] = ApiKeysApi.useRegenerateMutation();
   const handleRegenerate = useCallback(async () => {
-    const result = await regenerateApiKey(apiKey.id);
-    if ("error" in result) {
-      throw result.error;
-    }
+    const result = await regenerateApiKey(apiKey.id).unwrap();
     setSecretKey(result.data.unmasked_key);
     setModal("secretKey");
   }, [apiKey.id, setModal, setSecretKey, regenerateApiKey]);
@@ -108,7 +105,7 @@ export const EditApiKeyModal = ({
         id: vals.id,
         group_id: vals.group_id,
         name: vals.name,
-      });
+      }).unwrap();
       onClose();
     },
     [onClose, editApiKey],
