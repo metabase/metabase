@@ -1,3 +1,4 @@
+// Dummy comment to trigger CI
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 
@@ -74,7 +75,7 @@ function _init(reducers, getRoutes, callback) {
 
   let root;
   ReactDOM.render(
-    <Provider store={store} ref={ref => (root = ref)}>
+    <Provider store={store} ref={(ref) => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
         <ThemeProvider theme={theme}>
           <Router history={history}>{routes}</Router>
@@ -90,7 +91,7 @@ function _init(reducers, getRoutes, callback) {
 
   store.dispatch(refreshSiteSettings());
 
-  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
+  PLUGIN_APP_INIT_FUCTIONS.forEach((init) => init({ root }));
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;
