@@ -15,20 +15,17 @@ import { ApiKeysApi } from "metabase/redux/api";
 
 export const DeleteApiKeyModal = ({
   onClose,
-  refreshList,
   apiKey,
 }: {
   onClose: () => void;
-  refreshList: () => void;
   apiKey: ApiKey;
 }) => {
   const [deleteApiKey] = ApiKeysApi.useDeleteMutation();
 
   const handleDelete = useCallback(async () => {
     await deleteApiKey(apiKey.id);
-    refreshList(); // TODO: see if we can remove this..
     onClose();
-  }, [refreshList, onClose, apiKey.id, deleteApiKey]);
+  }, [onClose, apiKey.id, deleteApiKey]);
 
   return (
     <Modal

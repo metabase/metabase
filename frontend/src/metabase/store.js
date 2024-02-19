@@ -2,13 +2,13 @@ import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import { routerReducer as routing, routerMiddleware } from "react-router-redux";
 import promise from "redux-promise";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
-import { apiKeysApi } from "./redux/api";
+import { ApiKeysApi } from "./redux/api";
 
 export function getStore(reducers, history, intialState) {
   const reducer = combineReducers({
     ...reducers,
     routing,
-    [apiKeysApi.reducerPath]: apiKeysApi.reducer, // TODO: move
+    [ApiKeysApi.reducerPath]: ApiKeysApi.reducer, // TODO: move
   });
 
   return configureStore({
@@ -19,7 +19,7 @@ export function getStore(reducers, history, intialState) {
         immutableCheck: false,
         serializableCheck: false,
       })
-        .concat(apiKeysApi.middleware)
+        .concat(ApiKeysApi.middleware)
         .concat([
           promise,
           ...(history ? [routerMiddleware(history)] : []),
