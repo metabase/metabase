@@ -20,8 +20,13 @@ export function ExtraEditButtonsMenu({ dashboard }: ExtraEditButtonsMenuProps) {
 
   const handleToggleWidth = (event: React.ChangeEvent<HTMLInputElement>) => {
     const nextWidth = event.currentTarget.checked ? "full" : "fixed";
-    dispatch(setDashboardAttributes({ id, attributes: { width: nextWidth } }));
-    trackDashboardWidthChange(id, nextWidth);
+
+    if (id) {
+      dispatch(
+        setDashboardAttributes({ id, attributes: { width: nextWidth } }),
+      );
+      trackDashboardWidthChange(id, nextWidth);
+    }
   };
 
   return (
