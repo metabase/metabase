@@ -388,6 +388,25 @@ describe("StringFilterValuePicker", () => {
       userEvent.click(screen.getByText("New a@b.com"));
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
+
+    it("should not be able to create duplicates with free-form input", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["a@b.com"],
+        searchValues: {
+          "a@b.com": createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["testa@b.com"]],
+          }),
+        },
+      });
+
+      userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
+      expect(screen.queryByText("New a@b.com")).not.toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 
   describe("no values", () => {
