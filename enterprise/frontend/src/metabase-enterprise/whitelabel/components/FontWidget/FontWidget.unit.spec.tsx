@@ -11,7 +11,7 @@ describe("FontWidget", () => {
     const props = getProps();
 
     render(<FontWidget {...props} />);
-    userEvent.click(screen.getByText("Lato"));
+    clickSelect("Lato");
     userEvent.click(screen.getByText("Lora"));
 
     expect(props.onChange).toHaveBeenCalledWith("Lora");
@@ -26,7 +26,7 @@ describe("FontWidget", () => {
     });
 
     render(<FontWidget {...props} />);
-    userEvent.click(screen.getByText("Lora"));
+    clickSelect("Lora");
     userEvent.click(screen.getByText("Custom…"));
 
     expect(props.onChange).toHaveBeenCalledWith("Lato");
@@ -41,7 +41,7 @@ describe("FontWidget", () => {
     });
 
     render(<FontWidget {...props} />);
-    userEvent.click(screen.getByText("Custom…"));
+    clickSelect("Custom…");
     userEvent.click(screen.getByText("Lora"));
 
     expect(props.onChange).toHaveBeenCalledWith("Lora");
@@ -71,3 +71,9 @@ const getSettingValues = (
   "application-font-files": null,
   ...opts,
 });
+
+function clickSelect(text: string) {
+  const input = screen.getByRole("searchbox");
+  expect(input).toHaveValue(text);
+  userEvent.click(input);
+}
