@@ -1,17 +1,22 @@
 import { t } from "ttag";
-import { Icon } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
+import { color } from "metabase/lib/colors";
 import {
   LoadingAndErrorContainer,
   LoadingAndErrorContent,
-  LoadingAndErrorTitle,
 } from "./MainNavbar.styled";
 
 export function NavbarErrorView() {
   return (
     <LoadingAndErrorContainer>
       <LoadingAndErrorContent>
-        <Icon name="warning" size={32} />
-        <LoadingAndErrorTitle>{t`An error occurred`}</LoadingAndErrorTitle>
+        <Icon name="warning" size={24} />
+        <Text
+          fw={400}
+          mt="0.5rem"
+          color={color("text-light")}
+          size="lg"
+        >{t`An error occurred`}</Text>
       </LoadingAndErrorContent>
     </LoadingAndErrorContainer>
   );
