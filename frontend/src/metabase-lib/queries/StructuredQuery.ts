@@ -5,20 +5,19 @@
  */
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
-import { t } from "ttag";
 import type {
   Aggregation,
   DatabaseId,
   DatasetQuery,
   Filter,
-  TableId,
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
+  TableId,
 } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import {
-  format as formatExpression,
   DISPLAY_QUOTES,
+  format as formatExpression,
 } from "metabase-lib/expressions/format";
 import {
   getAggregationOperators,
@@ -27,12 +26,8 @@ import {
 import { TYPE } from "metabase-lib/types/constants";
 import * as Q from "metabase-lib/queries/utils/query";
 import { createLookupByProperty } from "metabase-lib/utils";
-import {
-  FieldDimension,
-  ExpressionDimension,
-  AggregationDimension,
-} from "metabase-lib/Dimension";
 import type { Dimension } from "metabase-lib/Dimension";
+import { ExpressionDimension, FieldDimension } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
@@ -384,48 +379,6 @@ class StructuredQuery extends AtomicQuery {
     });
   }
 
-  topLevelFilterFieldOptionSections(
-    filter = null,
-    stages = 2,
-    includeAppliedSegments = false,
-  ): FilterSection[] {
-    const queries = this.queries().slice(-stages);
-
-    queries.reverse();
-    const sections = [].concat(
-      ...queries.map(q =>
-        q.filterFieldOptionSections(filter, undefined, includeAppliedSegments),
-      ),
-    );
-
-    // special logic to only show aggregation dimensions for post-aggregation dimensions
-    if (queries.length > 1) {
-      const summarySection = {
-        name: t`Summaries`,
-        icon: "sum",
-        items: [],
-      };
-      // only include aggregation dimensions
-      summarySection.items = sections[0].items.filter(item => {
-        if (item.dimension) {
-          const sourceDimension = queries[0].dimensionForSourceQuery(
-            item.dimension,
-          );
-
-          if (sourceDimension) {
-            return sourceDimension instanceof AggregationDimension;
-          }
-        }
-
-        return true;
-      });
-      sections.shift();
-      sections.push(summarySection);
-    }
-
-    return sections;
-  }
-
   /**
    * @returns @type {DimensionOptions} that can be used in filters.
    */
@@ -653,60 +606,11 @@ class StructuredQuery extends AtomicQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);
   }
 
-  // NESTING
-  nest(): StructuredQuery {
-    return this._updateQuery(query => ({
-      "source-query": query,
-    }));
-  }
-
-  /**
-   * The (wrapped) source query, if any
-   */
-  sourceQuery = _.once((): StructuredQuery | null | undefined => {
-    const sourceQuery = this.legacyQuery({ useStructuredQuery: true })?.[
-      "source-query"
-    ];
-
-    if (sourceQuery) {
-      return new NestedStructuredQuery(
-        this._originalQuestion,
-        { ...this.datasetQuery(), query: sourceQuery },
-        this,
-      );
-    } else {
-      return null;
-    }
-  });
-
   /**
    * Returns the "first" of the nested queries, or this query it not nested
    */
   rootQuery(): StructuredQuery {
     return this;
-  }
-
-  /**
-   * returns the corresponding {Dimension} in the sourceQuery, if any
-   */
-  dimensionForSourceQuery(dimension: Dimension): Dimension | null | undefined {
-    if (dimension instanceof FieldDimension) {
-      const sourceQuery = this.sourceQuery();
-
-      if (sourceQuery) {
-        const fieldIdOrName = dimension.fieldIdOrName();
-
-        const columnIndex = sourceQuery
-          .columns()
-          .findIndex(c => c.id === fieldIdOrName || c.name === fieldIdOrName);
-
-        if (columnIndex >= 0) {
-          return sourceQuery.columnDimensions()[columnIndex];
-        }
-      }
-    }
-
-    return null;
   }
 
   /**
@@ -722,38 +626,12 @@ class StructuredQuery extends AtomicQuery {
     return this.rootQuery().table();
   });
 
-  setSourceQuery(
-    sourceQuery: StructuredQuery | StructuredQueryObject,
-  ): StructuredQuery {
-    if (sourceQuery instanceof StructuredQuery) {
-      if (this.sourceQuery() === sourceQuery) {
-        return this;
-      }
-
-      sourceQuery = sourceQuery.legacyQuery({ useStructuredQuery: true });
-    }
-
-    // TODO: if the source query is modified in ways that make the parent query invalid we should "clean" those clauses
-    return this._updateQuery(query =>
-      chain(query)
-        .dissoc("source-table")
-        .assoc("source-query", sourceQuery)
-        .value(),
-    );
-  }
-
   queries() {
-    const queries = [];
-
-    for (let query = this; query; query = query.sourceQuery()) {
-      queries.unshift(query);
-    }
-
-    return queries;
+    return [this];
   }
 
   getQueryStageIndex() {
-    return this.queries().length - 1;
+    return 0;
   }
 
   // INTERNAL
@@ -774,30 +652,3 @@ class StructuredQuery extends AtomicQuery {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StructuredQuery;
-
-class NestedStructuredQuery extends StructuredQuery {
-  _parent: StructuredQuery;
-
-  constructor(question, datasetQuery, parent) {
-    super(question, datasetQuery);
-    this._parent = parent;
-  }
-
-  setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
-    return new NestedStructuredQuery(
-      this._originalQuestion,
-      datasetQuery,
-      this._parent,
-    );
-  }
-
-  rootQuery = _.once((): StructuredQuery => {
-    return this.parentQuery().rootQuery();
-  });
-
-  parentQuery() {
-    return this._parent.setSourceQuery(
-      this.legacyQuery({ useStructuredQuery: true }),
-    );
-  }
-}
