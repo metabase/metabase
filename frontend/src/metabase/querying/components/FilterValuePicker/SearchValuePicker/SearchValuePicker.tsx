@@ -13,7 +13,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  nothingFound?: string;
+  shouldCreate: (query: string) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
 }
@@ -24,14 +24,14 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
-  nothingFound,
+  shouldCreate,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const { value: fieldValues = initialFieldValues, loading } = useAsync(
+  const { value: fieldValues = initialFieldValues } = useAsync(
     () => getSearchValues(fieldId, searchFieldId, searchQuery),
     [fieldId, searchFieldId, searchQuery],
   );
@@ -54,7 +54,6 @@ export function SearchValuePicker({
     }
   };
 
-  const isSearched = searchQuery.length > 0 && !loading;
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
@@ -63,7 +62,9 @@ export function SearchValuePicker({
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
-      nothingFound={isSearched ? nothingFound : null}
+      shouldCreate={shouldCreate}
+      getCreateLabel={query => t`New ${query}`}
+      creatable
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
