@@ -1,11 +1,11 @@
 import type { IconName } from "metabase/ui";
-import type { DatasetColumn } from "metabase-types/api";
-import type { ColumnSetting } from "../types";
+import type { DatasetColumn, FieldReference } from "metabase-types/api";
 
 export type ColumnItem = {
   name: string;
+  fieldRef: FieldReference;
   enabled: boolean;
   icon: IconName;
   column: DatasetColumn;
-  setting?: ColumnSetting;
+  settingIndex: number;
 };

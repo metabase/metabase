@@ -8,9 +8,13 @@ import type { ColumnItem } from "./types";
 export function getColumnItems(
   query: Lib.Query,
   stageIndex: number,
-  columns: DatasetColumn[],
+  legacyColumns: DatasetColumn[],
   settings: ColumnSetting[],
 ): ColumnItem[] {
+  const columns = legacyColumns.map(column =>
+    Lib.fromLegacyColumn(query, stageIndex, column),
+  );
+
   const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
@@ -27,22 +31,26 @@ export function getColumnItems(
   );
 
   return columns.map((column, columnIndex) => {
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    const legacyColumn = legacyColumns[columnIndex];
     const settingIndex = settingIndexes[columnIndex];
     const setting = settings[settingIndex];
 
     return {
-      name: "",
-      enabled: setting?.enabled ?? true,
-      icon: getColumnIcon(Lib.fromLegacyColumn(query, stageIndex, column)),
-      column,
+      name: columnInfo.name,
+      fieldRef: Lib.legacyRef(query, stageIndex, column),
+      enabled: setting.enabled,
+      icon: getColumnIcon(column),
+      column: legacyColumn,
       setting,
+      settingIndex,
     };
   });
 }
 
-export const getEditWidgetData = ({ column }: ColumnItem): EditWidgetData => {
+export function getEditWidgetData({ column }: ColumnItem): EditWidgetData {
   return {
     id: "column_settings",
     props: { initialKey: getColumnKey(column) },
   };
-};
+}

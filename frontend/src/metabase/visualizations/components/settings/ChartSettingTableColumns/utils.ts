@@ -1,5 +1,5 @@
 import type { TableColumnOrderSetting } from "metabase-types/api";
-import type { ColumnSetting } from "./types";
+import type { ColumnItem, ColumnSetting } from "./types";
 
 export function getColumnSettings(
   settings: TableColumnOrderSetting[],
@@ -14,4 +14,21 @@ export function getColumnSettings(
     }
     return settings;
   }, []);
+}
+
+export function toggleColumnInSettings(
+  { name, fieldRef, settingIndex }: ColumnItem,
+  settings: ColumnSetting[],
+  isEnabled: boolean,
+): ColumnSetting[] {
+  const newSettings = [...settings];
+
+  if (settingIndex >= 0) {
+    const setting = newSettings[settingIndex];
+    newSettings[settingIndex] = { ...setting, enabled: isEnabled };
+  } else {
+    newSettings.push({ name, fieldRef, enabled: isEnabled });
+  }
+
+  return newSettings;
 }

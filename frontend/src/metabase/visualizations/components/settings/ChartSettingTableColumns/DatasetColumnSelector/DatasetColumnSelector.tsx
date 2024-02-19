@@ -5,9 +5,10 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import { ChartSettingOrderedItems } from "../../ChartSettingOrderedItems";
+import { toggleColumnInSettings } from "../utils";
 import type { ColumnSetting, EditWidgetData } from "../types";
-import type { ColumnItem } from "./types";
 import { getColumnItems, getEditWidgetData } from "./utils";
+import type { ColumnItem } from "./types";
 
 interface DatasetColumnSelectorProps {
   query: Lib.Query;
@@ -25,6 +26,7 @@ export const DatasetColumnSelector = ({
   columns,
   settings,
   getColumnName,
+  onChange,
   onShowWidget,
 }: DatasetColumnSelectorProps) => {
   const columnItems = useMemo(() => {
@@ -33,6 +35,14 @@ export const DatasetColumnSelector = ({
 
   const getItemName = (columnItem: ColumnItem) => {
     return getColumnName(columnItem.column);
+  };
+
+  const handleEnableColumn = (columnItem: ColumnItem) => {
+    onChange(toggleColumnInSettings(columnItem, settings, true));
+  };
+
+  const handleDisableColumn = (columnItem: ColumnItem) => {
+    onChange(toggleColumnInSettings(columnItem, settings, false));
   };
 
   const handleEditColumn = (
@@ -50,6 +60,8 @@ export const DatasetColumnSelector = ({
             items={columnItems}
             getItemName={getItemName}
             distance={5}
+            onEnable={handleEnableColumn}
+            onRemove={handleDisableColumn}
             onEdit={handleEditColumn}
             onSortEnd={() => 0}
           />

@@ -6,6 +6,10 @@ export type ColumnSetting = {
   fieldRef: FieldReference;
 };
 
+export type ColumnItem = ColumnSetting & {
+  settingIndex: number;
+};
+
 export type EditWidgetData = {
   id: string;
   props: EditWidgetProps;
