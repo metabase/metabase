@@ -13,6 +13,8 @@ import {
 import { useSearchListQuery } from "metabase/common/hooks";
 import type { CollectionId, TableId, CardId } from "metabase-types/api";
 
+import { findLastEditedCollectionItem } from "./utils";
+
 enum UploadMode {
   append = "append",
   create = "create",
@@ -45,6 +47,18 @@ export function ModelUploadModal({
   const uploadableModels = useMemo(
     () => models.data?.filter(model => !!model.based_on_upload) ?? [],
     [models.data],
+  );
+
+  useEffect(
+    function setDefaultTableId() {
+      if (!uploadableModels?.length) {
+        return;
+      }
+
+      const latestModel = findLastEditedCollectionItem(uploadableModels);
+      setTableId(Number(latestModel.based_on_upload));
+    },
+    [uploadableModels],
   );
 
   const handleUpload = () => {
@@ -93,6 +107,7 @@ export function ModelUploadModal({
         <Radio.Group
           value={uploadMode}
           onChange={(val: UploadMode) => setUploadMode(val)}
+          pl="1px"
         >
           <Radio label={t`Create a new model`} value={UploadMode.create} />
           <Radio
