@@ -351,3 +351,7 @@ export const PLUGIN_DASHBOARD_HEADER = {
 export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
 };
+
+export const PLUGIN_BUILD = {
+  isEEBuild: () => false,
+};
