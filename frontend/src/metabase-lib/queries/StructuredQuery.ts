@@ -189,10 +189,6 @@ class StructuredQuery extends AtomicQuery {
     return this.aggregations().length > 0;
   }
 
-  _hasFields() {
-    return this.fields().length > 0;
-  }
-
   // ALIASES: allows
 
   /**
@@ -345,10 +341,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeAggregation, arguments);
   }
 
-  canNest(): boolean {
-    return Boolean(this._database()?.hasFeature("nested-queries"));
-  }
-
   // FILTERS
 
   /**
@@ -447,12 +439,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeFilter, arguments);
   }
 
-  // FIELDS
-  fields() {
-    // FIMXE: implement field functions in query lib
-    return this.legacyQuery({ useStructuredQuery: true }).fields || [];
-  }
-
   // DIMENSION OPTIONS
   dimensionOptions(
     dimensionFilter: DimensionFilterFn = _dimension => true,
@@ -538,19 +524,11 @@ class StructuredQuery extends AtomicQuery {
     );
   });
 
-  fieldDimensions = _.once(() => {
-    return this.fields().map((fieldClause, _index) =>
-      this.parseFieldReference(fieldClause),
-    );
-  });
-
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
   // NOTE: these will not have the correct columnName() if there are duplicates
   columnDimensions = _.once((): Dimension[] => {
     if (this.hasAggregations()) {
       return this.aggregationDimensions();
-    } else if (this._hasFields()) {
-      return this.fieldDimensions();
     } else {
       const table = this.tableDimensions();
 
@@ -604,34 +582,6 @@ class StructuredQuery extends AtomicQuery {
 
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);
-  }
-
-  /**
-   * Returns the "first" of the nested queries, or this query it not nested
-   */
-  rootQuery(): StructuredQuery {
-    return this;
-  }
-
-  /**
-   * returns the original Table object at the beginning of the nested queries
-   */
-  rootTable = _.once((): Table => {
-    const question = this.question();
-    const questionTableId = question?.legacyQueryTableId();
-    if (questionTableId != null) {
-      return this.metadata().table(questionTableId);
-    }
-
-    return this.rootQuery().table();
-  });
-
-  queries() {
-    return [this];
-  }
-
-  getQueryStageIndex() {
-    return 0;
   }
 
   // INTERNAL
