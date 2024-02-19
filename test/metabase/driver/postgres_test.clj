@@ -28,6 +28,7 @@
    [metabase.models.secret :as secret]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -428,7 +429,7 @@
                                :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
                                :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
                                :metabase.query-processor.util.add-alias-info/position      1}]
-              compile-res    (qp/compile
+              compile-res    (qp.compile/compile
                               {:database 1
                                :type     :query
                                :query    {:source-table 1
@@ -459,7 +460,7 @@
     (testing "json breakouts and order bys have alias coercion"
       (qp.store/with-metadata-provider json-alias-mock-metadata-provider
         (let [field-ordinary [:field 1 nil]
-              only-order     (qp/compile
+              only-order     (qp.compile/compile
                               {:database 1
                                :type     :query
                                :query    {:source-table 1
@@ -962,7 +963,7 @@
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
-(deftest exception-test
+(deftest ^:parallel exception-test
   (mt/test-driver :postgres
     (testing (str "If the DB throws an exception, is it properly returned by the query processor? Is it status "
                   ":failed? (#9942)")
@@ -981,11 +982,11 @@
         (catch Throwable e
           (is (= "ERROR: column \"adsasdasd\" does not exist\n  Position: 20"
                  (try
-                   (.. e getCause getMessage)
+                   (-> e ex-cause ex-message)
                    (catch Throwable e
                      e)))))))))
 
-(deftest pgobject-test
+(deftest ^:parallel pgobject-test
   (mt/test-driver :postgres
     (testing "Make sure PGobjects are decoded correctly"
       (let [results (qp/process-query (mt/native-query {:query "SELECT pg_sleep(0.1) AS sleep;"}))]
@@ -1001,7 +1002,7 @@
                    :name         "sleep"}]
                  (mt/cols results))))))))
 
-(deftest id-field-parameter-test
+(deftest ^:parallel id-field-parameter-test
   (mt/test-driver :postgres
     (testing "We should be able to filter a PK column with a String value -- should get parsed automatically (#13263)"
       (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
@@ -1102,7 +1103,7 @@
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
-                 (some-> (qp/compile query) :query pretty-sql))))))))
+                 (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
@@ -1122,7 +1123,7 @@
                           "LIMIT"
                           "  1"]
                   :params nil}
-                 (-> (qp/compile query)
+                 (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :postgres %)))))))))))
 
 (deftest postgres-ssl-connectivity-test
@@ -1240,7 +1241,7 @@
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                  [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                   (set (driver/current-user-table-privileges driver/*driver* (mt/db))))))]
+                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
            (jdbc/execute! conn-spec (str
                                      "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"

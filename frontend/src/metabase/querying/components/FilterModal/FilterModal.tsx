@@ -10,7 +10,6 @@ import { SEARCH_KEY } from "./constants";
 import {
   addSegmentFilters,
   appendStageIfAggregated,
-  dropStageIfEmpty,
   findColumnFilters,
   findVisibleFilters,
   getGroupItems,
@@ -77,7 +76,7 @@ export function FilterModal({
   };
 
   const handleSubmit = () => {
-    onSubmit(dropStageIfEmpty(query));
+    onSubmit(Lib.dropEmptyStages(query));
     onClose();
   };
 

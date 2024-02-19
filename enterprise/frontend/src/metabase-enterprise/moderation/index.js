@@ -13,6 +13,7 @@ import {
   MODERATION_STATUS,
   getStatusIcon,
   getModerationTimelineEvents,
+  getQuestionIcon,
   verifyItem,
   removeReview,
   isItemVerified,
@@ -28,6 +29,7 @@ if (hasPremiumFeature("content_verification")) {
     ModerationReviewBanner,
     ModerationStatusIcon,
     getStatusIcon,
+    getQuestionIcon,
     getModerationTimelineEvents,
     getMenuItems: (model, isModerator, reload) => {
       const id = model.id();

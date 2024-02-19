@@ -193,7 +193,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (t2/select [FieldValues :field_id :values], :field_id id))
+  (t2/select [FieldValues :field_id :values], :field_id id :type :full))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
   "Recusively find the field id for a nested field name, return nil if not found.
@@ -232,8 +232,8 @@
   [fields]
   ;; In 44 we added a new concept of Advanced FieldValues, so FieldValues are no longer have an one-to-one relationship
   ;; with Field. See the doc in [[metabase.models.field-values]] for more.
-  ;; Adding an explicity filter by :type =:full for FieldValues here bc I believe this hydration does not concern
-  ;; the new Advanced FieldValues.
+  ;; We filter down to only :type =:full values, as they contain configured labels which must be preserved. The Advanced
+  ;; FieldValues can then be regenerated without loss given these Full entities.
   (let [id->field-values (select-field-id->instance fields FieldValues :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))

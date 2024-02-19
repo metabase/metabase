@@ -416,7 +416,7 @@ describe("ViewHeader", () => {
 describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", () => {
     const { question, onOpenModal } = setupAdHoc();
-    const tableName = question.table().displayName();
+    const tableName = question.legacyQueryTable().displayName();
 
     fireEvent.click(screen.getByText(tableName));
 

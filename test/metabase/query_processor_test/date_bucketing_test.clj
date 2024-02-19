@@ -29,6 +29,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -697,13 +698,14 @@
                                   [46 47 40 60 7]))
 
                (sad-toucan-incidents-with-bucketing :week :eastern))))))
-  ;; Setting the JVM timezone will change how the datetime results are displayed but don't impact the calculation of the
-  ;; begin/end of the week
+  ;; Setting database timezone id will change how the datetime results are displayed, unless report timezone is set.
+  ;; If so, the report timezone takes precedence and result values are formatted according to that. Overriding
+  ;; database timezone id has no impact on beginning/end of week during calculation.
   ;;
   ;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
   ;; timezone (TIMEZONE FIXME)
-  (testing "JVM timezone set to Pacific"
-    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :bigquery-cloud-sdk})
+  (testing "Database timezone override set to Pacific"
+    (mt/test-drivers (mt/normal-drivers-except #{:sparksql})
       (is (= (cond
                (= :sqlite driver/*driver*)
                (results-by-week u.date/parse
@@ -725,7 +727,7 @@
                (results-by-week u.date/parse
                                 (format-in-timezone-fn :pacific)
                                 [46 47 40 60 7]))
-             (mt/with-system-timezone-id (timezone :pacific)
+             (mt/with-database-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :week :pacific)))))))
 
 (deftest group-by-week-of-year-test
@@ -1178,7 +1180,7 @@
                 "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date)"
                 ")")
            (:query
-            (qp/compile
+            (qp.compile/compile
              (mt/mbql-query checkins
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
@@ -1197,10 +1199,67 @@
                   "LIMIT 1048575")
              (sql.qp-test-util/pretty-sql
               (:query
-               (qp/compile
+               (qp.compile/compile
                 (mt/mbql-query checkins
                   {:filter   [:time-interval $date -4 :month]
                    :breakout [!day.date]})))))))))
+
+(deftest ^:parallel native-query-datetime-filter-test
+  (testing "Field Filters with datetime values should behave like gui questions (#33492)"
+    (are [native-type native-value mbql-filter expected-row-count]
+        (let [mbql-rows (-> (mt/mbql-query orders {:fields [$created_at]
+                                                   :filter mbql-filter
+                                                   :order-by [[:asc $created_at]]})
+                            qp/process-query
+                            mt/rows)
+              native-rows (-> (mt/native-query {:query (str "SELECT created_at "
+                                                            "FROM orders "
+                                                            "WHERE {{date}} "
+                                                            "ORDER BY created_at")
+                                                :template-tags {"date"
+                                                                {:name "date"
+                                                                 :display-name "Date"
+                                                                 :type :dimension
+                                                                 :widget-type native-type
+                                                                 :dimension (mt/$ids !minute.orders.created_at)}}
+                                                :parameters [{:type native-type
+                                                              :name "date"
+                                                              :target [:dimension [:template-tag "date"]]
+                                                              :value native-value}]})
+                              qp/process-query
+                              mt/rows)]
+          (is (= expected-row-count (count native-rows)))
+          (is (= mbql-rows native-rows)))
+
+        :date/range
+        "2020-03-04~2020-03-04"
+        [:between !day.created_at "2020-03-04" "2020-03-04"]
+        13
+
+        :date/range
+        "2020-03-04T07:19:00~2020-03-04T07:20:00"
+        [:between !minute.created_at "2020-03-04T07:19:00" "2020-03-04T07:20:00"]
+        2
+
+        :date/all-options
+        "2020-03-04~2020-03-04"
+        [:between !day.created_at "2020-03-04" "2020-03-04"]
+        13
+
+        :date/all-options
+        "2020-03-04T07:19:00~2020-03-04T07:20:00"
+        [:between !minute.created_at "2020-03-04T07:19:00" "2020-03-04T07:20:00"]
+        2
+
+        :date/single
+        "2020-03-04"
+        [:= !day.created_at "2020-03-04"]
+        13
+
+        :date/single
+        "2020-03-04T07:20:00"
+        [:= !minute.created_at "2020-03-04T07:20"]
+        2)))
 
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"

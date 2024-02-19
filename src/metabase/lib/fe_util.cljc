@@ -3,7 +3,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -12,7 +11,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
@@ -112,14 +110,6 @@
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
-(defn- foreign-key-items
-  [columns]
-  (for [column columns
-        :let [fk-target (:fk-target-field-id column)]
-        :when (and (integer? fk-target)
-                   (lib.types.isa/foreign-key? column))]
-    {:type :field, :id fk-target}))
-
 (defn- query-dependents
   [metadata-providerable query-or-join]
   (let [base-stage (first (:stages query-or-join))
@@ -137,17 +127,9 @@
          {:type :field, :id id}))
      ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       (let [card-metadata (lib.metadata/card metadata-providerable card-id)]
-         (->> (:result-metadata card-metadata)
-              (map u/normalize-map)
-              foreign-key-items
-              ;; the FE code mentions this, but #36974 doesn't
-              #_(cons {:type :question, :id card-id})
-              (cons {:type :table, :id (str "card__" card-id)}))))
+       [{:type :table, :id (str "card__" card-id)}])
      (when-let [table-id (:source-table base-stage)]
-       (->> (lib.metadata/fields metadata-providerable table-id)
-            foreign-key-items
-            (cons {:type :table, :id table-id})))
+       [{:type :table, :id table-id}])
      (for [stage (:stages query-or-join)
            join (:joins stage)
            dependent (query-dependents metadata-providerable join)]

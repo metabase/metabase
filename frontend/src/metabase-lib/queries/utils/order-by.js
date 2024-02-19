@@ -1,4 +1,4 @@
-import { update, remove, clear } from "./util";
+import { update, remove } from "./util";
 
 // returns canonical list of OrderBys, with nulls removed
 export function getOrderBys(breakout) {
@@ -20,7 +20,4 @@ export function updateOrderBy(breakout, index, updatedOrderBy) {
 }
 export function removeOrderBy(breakout, index) {
   return getOrderByClause(remove(getOrderBys(breakout), index));
-}
-export function clearOrderBy(breakout) {
-  return getOrderByClause(clear());
 }

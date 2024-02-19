@@ -18,6 +18,7 @@ export const getLogoUrl = (state: EnterpriseState) =>
 export const getLoadingMessage = (state: EnterpriseState) =>
   LOADING_MESSAGE_BY_SETTING[getSetting(state, "loading-message")];
 
+// eslint-disable-next-line no-literal-metabase-strings -- This is a Metabase string we want to keep. It's used for comparison.
 const DEFAULT_APPLICATION_NAME = "Metabase";
 export const getIsWhiteLabeling = (state: EnterpriseState) =>
   getApplicationName(state) !== DEFAULT_APPLICATION_NAME;

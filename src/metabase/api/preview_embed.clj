@@ -40,7 +40,7 @@
   {token ms/NonBlankString}
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed/run-query-for-card-with-params-async
+    (api.embed/process-query-for-card-with-params
       :export-format    :api
       :card-id          card-id
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
@@ -66,7 +66,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (api.embed/dashcard-results-async
+    (api.embed/process-query-for-dashcard
       :export-format    :api
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id
@@ -81,13 +81,13 @@
   {token ms/NonBlankString}
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed/run-query-for-card-with-params-async
+    (api.embed/process-query-for-card-with-params
       :export-format    :api
       :card-id          card-id
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
       :query-params     query-params
-      :qp-runner        qp.pivot/run-pivot-query)))
+      :qp               qp.pivot/run-pivot-query)))
 
 (api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
@@ -99,7 +99,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (api.embed/dashcard-results-async
+    (api.embed/process-query-for-dashcard
       :export-format    :api
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id
@@ -107,6 +107,6 @@
       :embedding-params embedding-params
       :token-params     token-params
       :query-params     query-params
-      :qp-runner        qp.pivot/run-pivot-query)))
+      :qp               qp.pivot/run-pivot-query)))
 
 (api/define-routes)

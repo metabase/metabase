@@ -152,17 +152,21 @@ describe("scenarios > dashboard > filters > text/category", () => {
     );
 
     // Updates the filter value
-    selectDefaultValueFromPopover("Twitter");
+    selectDefaultValueFromPopover("Twitter", { buttonLabel: "Update filter" });
     saveDashboard();
     ensureDashboardCardHasText("37.65");
 
     // Resets the value back by clicking widget icon
-    toggleFilterWidgetValues(["Google", "Organic"]);
+    toggleFilterWidgetValues(["Google", "Organic"], {
+      buttonLabel: "Update filter",
+    });
     resetFilterWidgetToDefault();
     filterWidget().findByText("Twitter");
 
     // Removing value resets back to default
-    toggleFilterWidgetValues(["Twitter"]);
+    toggleFilterWidgetValues(["Twitter"], {
+      buttonLabel: "Set to default",
+    });
     filterWidget().findByText("Twitter");
   });
 });

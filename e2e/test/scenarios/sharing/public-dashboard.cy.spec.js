@@ -8,6 +8,8 @@ import {
   createPublicDashboardLink,
   dashboardParametersContainer,
   goToTab,
+  assertDashboardFixedWidth,
+  assertDashboardFullWidth,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -218,7 +220,8 @@ describe("scenarios > public > dashboard", () => {
 
     goToTab(tab2.name);
 
-    dashboardParametersContainer().within(() => {
+    dashboardParametersContainer().should("not.exist");
+    cy.findByTestId("embed-frame").within(() => {
       cy.findByText(textFilter.name).should("not.exist");
       cy.findByText(unusedFilter.name).should("not.exist");
     });
@@ -230,7 +233,7 @@ describe("scenarios > public > dashboard", () => {
     });
 
     // new dashboards should default to 'fixed' width
-    cy.findByTestId("dashboard-grid").should("have.css", "max-width", "1048px");
+    assertDashboardFixedWidth();
 
     // toggle full-width
     cy.get("@dashboardId").then(id => {
@@ -241,10 +244,6 @@ describe("scenarios > public > dashboard", () => {
       visitPublicDashboard(id);
     });
 
-    cy.findByTestId("dashboard-grid").should(
-      "not.have.css",
-      "max-width",
-      "1048px",
-    );
+    assertDashboardFullWidth();
   });
 });

@@ -18,6 +18,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
@@ -351,7 +352,7 @@
                   :where  [:<= [:raw "rownum"] [:inline 100]]})
                (#'sql.qp/mbql->honeysql
                 :oracle
-                (qp/preprocess
+                (qp.preprocess/preprocess
                  (mt/mbql-query venues
                    {:source-table $$venues
                     :order-by     [[:asc $id]]

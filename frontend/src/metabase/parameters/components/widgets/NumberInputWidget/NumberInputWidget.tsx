@@ -8,9 +8,10 @@ import {
   WidgetRoot,
   WidgetLabel,
   Footer,
-  UpdateButton,
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import type { Parameter } from "metabase-types/api";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 
 export type NumberInputWidgetProps = {
   value: number[] | undefined;
@@ -21,11 +22,10 @@ export type NumberInputWidgetProps = {
   autoFocus?: boolean;
   placeholder?: string;
   label?: string;
+  parameter?: Partial<Pick<Parameter, "required" | "default">>;
 };
 
-const OPTIONS: any[] = [];
-
-function NumberInputWidget({
+export function NumberInputWidget({
   value,
   setValue,
   className,
@@ -34,11 +34,12 @@ function NumberInputWidget({
   autoFocus,
   placeholder = t`Enter a number`,
   label,
+  parameter = {},
 }: NumberInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
     useState<(number | undefined)[]>(arrayValue);
-  const hasValueChanged = !_.isEqual(arrayValue, unsavedArrayValue);
+
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
   const allValuesSet = unsavedArrayValue.every(_.isNumber);
   const isValid =
@@ -69,7 +70,7 @@ function NumberInputWidget({
             onChange={newValue => {
               setUnsavedArrayValue(newValue);
             }}
-            options={OPTIONS}
+            options={[]}
             placeholder={placeholder}
           />
         </TokenFieldWrapper>
@@ -97,16 +98,18 @@ function NumberInputWidget({
         ))
       )}
       <Footer>
-        <UpdateButton disabled={!isValid || !hasValueChanged} onClick={onClick}>
-          {arrayValue.length ? t`Update filter` : t`Add filter`}
-        </UpdateButton>
+        <UpdateFilterButton
+          value={value}
+          unsavedValue={unsavedArrayValue}
+          defaultValue={parameter.default}
+          isValueRequired={parameter.required ?? false}
+          isValid={isValid}
+          onClick={onClick}
+        />
       </Footer>
     </WidgetRoot>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NumberInputWidget;
 
 function normalize(value: number[] | undefined): number[] {
   if (Array.isArray(value)) {

@@ -8,7 +8,7 @@
    [metabase.api.embed-test :as embed-test]
    [metabase.models :refer [Card Dashboard DashboardCard]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
@@ -148,14 +148,14 @@
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
-(deftest preserve-thread-bindings-test
+(deftest ^:parallel preserve-thread-bindings-test
   (testing "Bindings established outside the `streaming-response` should be preserved inside the body"
     (with-open [os (java.io.ByteArrayOutputStream.)]
       (let [streaming-response (binding [*number-of-cans* 2]
-                                 (qp.streaming/streaming-response [{:keys [rff context]} :json]
+                                 (qp.streaming/streaming-response [rff :json]
                                    (let [metadata {:cols [{:name "num_cans", :base_type :type/Integer}]}
                                          rows     [[*number-of-cans*]]]
-                                     (qp.context/reducef rff context metadata rows))))
+                                     (qp.pipeline/*reduce* rff metadata rows))))
             complete-promise   (promise)]
         (server.protocols/respond streaming-response
                                   {:response      (reify HttpServletResponse
@@ -380,6 +380,7 @@
                              :limit        2}}
 
      :assertions {:csv  (fn [results]
+                          (is (string? results))
                           ;; CSVs round decimals to 2 digits without viz-settings
                           (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                   ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
@@ -393,6 +394,7 @@
                                  (parse-json-results results))))
 
                   :xlsx (fn [results]
+                          (is (bytes? results))
                           (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                   [1.0 "Red Medicine" 4.0 "10.06460000° N" "165.37400000° W" 3.0]
                                   [2.0 "Stout Burgers & Beers" 11.0 "34.09960000° N" "118.32900000° W" 2.0]]

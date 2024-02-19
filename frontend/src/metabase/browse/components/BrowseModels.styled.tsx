@@ -1,13 +1,11 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import {
-  breakpointMinMedium,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
-import { Group } from "metabase/ui";
+import { Flex, Group, Icon } from "metabase/ui";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { BrowseGrid } from "./BrowseApp.styled";
 
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
@@ -49,26 +47,10 @@ export const MultilineEllipsified = styled(Ellipsified)`
   padding-bottom: 1px;
 `;
 
-export const GridContainer = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: 1.5rem 1rem;
-  margin-top: 1rem;
-  width: 100%;
+export const ModelGrid = styled(BrowseGrid)``;
 
-  ${breakpointMinSmall} {
-    padding-bottom: 1rem;
-  }
-  ${breakpointMinMedium} {
-    padding-bottom: 3rem;
-  }
-`;
-
-export const CollectionHeaderContainer = styled.div`
+export const CollectionHeaderContainer = styled(Flex)`
   grid-column: 1 / -1;
-  align-items: center;
-  padding-top: 1rem;
-  margin-right: 1rem;
   &:not(:first-of-type) {
     border-top: 1px solid #f0f0f0;
   }
@@ -83,4 +65,16 @@ export const CollectionHeaderLink = styled(Link)`
 export const CollectionHeaderGroup = styled(Group)`
   position: relative;
   top: 0.5rem;
+`;
+
+export const BannerModelIcon = styled(Icon)`
+  color: ${color("text-dark")};
+  margin-right: 0.5rem;
+  min-width: 16px;
+  min-height: 16px;
+`;
+
+export const BannerCloseButton = styled(IconButtonWrapper)`
+  color: ${color("text-light")};
+  margin-left: auto;
 `;

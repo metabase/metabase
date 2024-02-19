@@ -823,6 +823,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`mode`,
         // TODO: This is the only place that's not easy to replace the application name.
+        // eslint-disable-next-line no-literal-metabase-strings -- Hard to replace the application name because it's not a React component
         description: t`Optional. The default is "ISO".
 - ISO: Week 1 starts on the Monday before the first Thursday of January.
 - US: Week 1 starts on Jan 1. All other weeks start on Sunday.

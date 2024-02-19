@@ -12,6 +12,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.binning :as binning]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
@@ -185,7 +186,7 @@
                                              :condition    [:= $product-id &Products.products.id]
                                              :fields       [&Products.products.price]}]
                                    :fields [[:field %id {:base-type :type/BigInteger}]]})
-              source-metadata   (qp/query->expected-cols source-card-query)
+              source-metadata   (qp.preprocess/query->expected-cols source-card-query)
               query             (-> (lib/query meta/metadata-provider source-card-query)
                                     lib/append-stage
                                     (lib/aggregate (lib/count)))

@@ -22,6 +22,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test
     :as string-extracts-test]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as fingerprint]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -393,7 +394,7 @@
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
-                 (some-> (qp/compile query) :query pretty-sql))))))
+                 (some-> (qp.compile/compile query) :query pretty-sql))))))
 
     (testing "trunc-with-format should not cast a field if it is already a DATETIME"
       (is (= ["SELECT STR_TO_DATE(DATE_FORMAT(CAST(`field` AS datetime), '%Y'), '%Y')"]
@@ -476,7 +477,7 @@
           (let [table  (t2/select-one Table :db_id (u/id (mt/db)) :name "json")]
             (sync/sync-table! table)
             (let [field (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")
-                  compile-res (qp/compile
+                  compile-res (qp.compile/compile
                                {:database (u/the-id (mt/db))
                                 :type     :query
                                 :query    {:source-table (u/the-id table)
@@ -697,9 +698,7 @@
                                    (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                      [spec [:mysql new-connection-details]]
                                      (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                       (driver/current-user-table-privileges driver/*driver*
-                                                                             (assoc (mt/db) :name "test table privileges db"
-                                                                                    :details new-connection-details))))))]
+                                       (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec {})))))]
           (try
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"

@@ -21,6 +21,8 @@ export type DashboardCard =
   | QuestionDashboardCard
   | VirtualDashboardCard;
 
+export type DashboardWidth = "full" | "fixed";
+
 export interface Dashboard {
   id: DashboardId;
   created_at: string;
@@ -48,7 +50,7 @@ export interface Dashboard {
   public_uuid: string | null;
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
-  width: "full" | "fixed";
+  width: DashboardWidth;
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;

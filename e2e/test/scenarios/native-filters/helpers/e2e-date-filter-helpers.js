@@ -71,5 +71,5 @@ export function setAdHocFilter({
     cy.findByText(/^Include/).click();
   }
 
-  cy.button("Update filter").click();
+  cy.button("Add filter").click();
 }

@@ -6,10 +6,12 @@
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -60,7 +62,10 @@
    final-col-metadata
    insights-col-metadata))
 
-(defn- insights-xform [orig-metadata record! rf]
+(mu/defn ^:private insights-xform :- fn?
+  [orig-metadata :- [:maybe :map]
+   record!       :- ifn?
+   rf            :- ifn?]
   (qp.reducible/combine-additional-reducing-fns
    rf
    [(qr/insights-rf orig-metadata)]
@@ -74,9 +79,10 @@
                      :results_metadata {:columns metadata}
                      :insights         insights)))))))
 
-(defn record-and-return-metadata!
-  "Post-processing middleware that records metadata about the columns returned when running the query."
-  [{{:keys [skip-results-metadata?]} :middleware, :as query} rff]
+(mu/defn record-and-return-metadata! :- ::qp.schema/rff
+  "Post-processing middleware that records metadata about the columns returned when running the query. Returns an rff."
+  [{{:keys [skip-results-metadata?]} :middleware, :as query} :- ::qp.schema/query
+   rff                                                       :- ::qp.schema/rff]
   (if skip-results-metadata?
     rff
     (let [record! (partial record-metadata! query)]
