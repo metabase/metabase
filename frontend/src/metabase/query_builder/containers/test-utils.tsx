@@ -294,12 +294,11 @@ export const setup = async ({
 
 const waitForLoadingRequests = async (getState: () => State) => {
   await waitFor(() => {
-    expect(areRequestsLoading(getState)).toBe(false);
+    expect(areRequestsLoading(getState())).toBe(false);
   });
 };
 
-const areRequestsLoading = (getState: () => State): boolean => {
-  const state = getState();
+const areRequestsLoading = (state: State): boolean => {
   const groups = Object.values(state.requests);
 
   const requests = groups.flatMap(group =>
