@@ -13,6 +13,7 @@
             PermissionsGroupMembership
             User]]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -25,7 +26,7 @@
 ;;;; Graph-related stuff
 
 (defn- test-db-perms [group-id]
-  (get-in (perms/data-perms-graph) [:groups group-id (mt/id) :data]))
+  (get-in (data-perms.graph/api-graph) [:groups group-id (mt/id) :data]))
 
 (defn- api-test-db-perms [group-id]
   (into {}
@@ -42,34 +43,16 @@
                              "the API"
                              api-test-db-perms}]
       (testing (str message "\n"))
-      (mt/with-temp [PermissionsGroup {group-id :id} {}
-                     Permissions      _ {:group_id group-id
-                                         :object   (perms/database-block-perms-path (mt/id))}]
+      (mt/with-temp [PermissionsGroup {group-id :id} {}]
+        (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
         (is (= {:schemas :block}
-               (perms group-id)))
-        (testing (str "\nBlock perms and data perms shouldn't exist together at the same time, but if they do for some "
-                      "reason, then the graph endpoint should ignore the data perms.")
-          (doseq [path [(perms/data-perms-path (mt/id))
-                        (perms/data-perms-path (mt/id) "public")
-                        (perms/data-perms-path (mt/id) "public" (mt/id :venues))]]
-            (testing (format "\nPath = %s" (pr-str path))
-              (mt/with-temp [Permissions _ {:group_id group-id
-                                            :object   path}]
-                (is (= (merge {:schemas :block}
-                              ;; block perms won't affect the value of `:native`; if a given group has both
-                              ;; `/db/1/` and `/block/db/1/` then the graph will come back with `:native
-                              ;; :write` and `:schemas :block`. This state isn't normally allowed, but the
-                              ;; graph code doesn't currently correct it if it happens. Not sure it's worth
-                              ;; the extra code complexity since it should never happen in the first place.
-                              (when (= path (perms/data-perms-path (mt/id)))
-                                {:native :write}))
-                       (perms group-id)))))))))))
+               (perms group-id)))))))
 
 (defn- grant-block-perms! [group-id]
-  (perms/update-data-perms-graph! [group-id (mt/id) :data] {:schemas :block}))
+  (data-perms.graph/update-data-perms-graph! [group-id (mt/id) :data] {:schemas :block}))
 
 (defn- api-grant-block-perms! [group-id]
-  (let [current-graph (perms/data-perms-graph)
+  (let [current-graph (data-perms.graph/api-graph)
         new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
         result        (mt/with-premium-features #{:advanced-permissions}
                         (mt/user-http-request :crowberto :put 200 "permissions/graph" new-graph))]
@@ -81,7 +64,7 @@
     (testing (str "fails when a group has a block permission set, and the instance doesn't have the "
                   ":advanced-permissions premium feature enabled")
       (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
-        (let [current-graph (perms/data-perms-graph)
+        (let [current-graph (data-perms.graph/api-graph)
               new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
               result        (mt/with-premium-features #{} ; disable premium features
                               (mt/user-http-request :crowberto :put 402 "permissions/graph" new-graph))]
@@ -104,21 +87,24 @@
                    (test-db-perms group-id))))
           (testing "group has no existing permissions"
             (mt/with-model-cleanup [Permissions]
-              (grant! group-id)
-              (is (= {:schemas :block}
-                     (test-db-perms group-id)))))
+              (mt/with-restored-data-perms-for-group! group-id
+                (grant! group-id)
+                (is (= {:schemas :block}
+                       (test-db-perms group-id))))))
           (testing "group has existing data permissions... :block should remove them"
             (mt/with-model-cleanup [Permissions]
-              (perms/grant-full-data-permissions! group-id (mt/id))
-              (grant! group-id)
-              (is (= {:schemas :block}
-                     (test-db-perms group-id)))
-              (is (= #{(perms/database-block-perms-path (mt/id))}
-                     (t2/select-fn-set :object Permissions {:where [:and
-                                                                    [:or
-                                                                     [:like :object "/block/%"]
-                                                                     [:like :object "/db/%"]]
-                                                                    [:= :group_id group-id]]}))))))))))
+              (mt/with-restored-data-perms-for-group! group-id
+                (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :unrestricted)
+                (grant! group-id)
+                (is (= {:schemas :block}
+                       (test-db-perms group-id)))
+                (is (= #{:block}
+                       (t2/select-fn-set :perm_value
+                                         :model/DataPermissions
+                                         {:where [:and
+                                                  [:= :db_id (mt/id)]
+                                                  [:= :group_id group-id]
+                                                  [:= :perm_type (u/qualified-name :perms/data-access)]]})))))))))))
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
@@ -133,29 +119,28 @@
           (is (not (t2/exists? GroupTableAccessPolicy :group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
- (testing "granting data permissions should delete existing block permissions"
-   (mt/with-temp [PermissionsGroup {group-id :id} {}
-                  Permissions      _ {:group_id group-id :object (perms/database-block-perms-path (mt/id))}]
+ (testing "granting data permissions for a table should delete existing block permissions"
+   (mt/with-temp [PermissionsGroup {group-id :id} {}]
+     (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
      (is (= {:schemas :block}
             (test-db-perms group-id)))
-     (perms/update-data-perms-graph! [group-id (mt/id) :data :schemas] {"public" {(mt/id :venues) {:read :all}}})
-     (is (= {:schemas {"public" {(mt/id :venues) {:read :all}}}}
+     (data-perms/set-table-permission! group-id (mt/id :venues) :perms/data-access :unrestricted)
+     (is (= {:schemas {"PUBLIC" {(mt/id :venues) :all}}}
             (test-db-perms group-id))))))
 
 (deftest update-graph-disallow-native-query-perms-test
   (testing "Disallow block permissions + native query permissions"
-    (mt/with-temp [PermissionsGroup {group-id :id} {}
-                   Permissions      _ {:group_id group-id, :object (perms/data-perms-path (mt/id))}]
+    (mt/with-temp [PermissionsGroup {group-id :id} {}]
       (testing "via the fn"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              ;; TODO -- this error message is totally garbage, fix this
              #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
              ;; #"DB permissions with a valid combination of values for :native and :schemas"
-             (perms/update-data-perms-graph! [group-id (mt/id) :data]
-                                             {:schemas :block, :native :write}))))
+             (data-perms.graph/update-data-perms-graph! [group-id (mt/id) :data]
+                                                        {:schemas :block, :native :write}))))
       (testing "via the API"
-        (let [current-graph (perms/data-perms-graph)
+        (let [current-graph (data-perms.graph/api-graph)
               new-graph     (assoc-in current-graph
                                       [:groups group-id (mt/id) :data]
                                       {:schemas :block, :native :write})]
@@ -165,11 +150,10 @@
 
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
-    (mt/with-temp [Database    {db-id :id} {}
-                   Permissions _ {:group_id (u/the-id (perms-group/all-users))
-                                  :object   (perms/database-block-perms-path db-id)}]
+    (mt/with-temp [Database    {db-id :id} {}]
+      (data-perms/set-database-permission! (u/the-id (perms-group/all-users)) db-id :perms/data-access :block)
       (letfn [(perms-exist? []
-                (t2/exists? Permissions :object (perms/database-block-perms-path db-id)))]
+                (t2/exists? :model/DataPermissions :db_id db-id :perm_value :block))]
         (is (perms-exist?))
         (t2/delete! Database :id db-id)
         (is (not (perms-exist?)))))))

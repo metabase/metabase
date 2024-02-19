@@ -6,11 +6,12 @@
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -76,23 +77,41 @@
                          :expected    table-col-base-type
                          :actual      (:base_type col)}))))))
 
+(defn- merge-sandbox-into-graph
+  "Merges a single sandboxing policy into the permissions graph. If perms were previously set at the DB-level, we need
+to make sure that perms for all other tables in that DB are set at the table-level in the updated graph."
+  [graph group-id table-id db-id schema]
+  (let [db-perm        (get-in graph [group-id db-id :data :schemas])
+        tables        (when (keyword? db-perm)
+                        (t2/select [:model/Table :id :db_id :schema]
+                                   {:where [:= :db_id db-id]}))
+        granular-graph (if tables
+                         (reduce
+                          (fn [g {:keys [id schema]}]
+                            (assoc-in g [group-id db-id :data :schemas (or schema "") id] db-perm))
+                          (m/dissoc-in graph [group-id db-id :data :schemas])
+                          tables)
+                         graph)]
+    (assoc-in granular-graph
+              [group-id db-id :data :schemas (or schema "") table-id]
+              {:query :segmented, :read :all})))
+
 (defenterprise add-sandboxes-to-permissions-graph
   "Augment a provided permissions graph with active sandboxing policies."
   :feature :sandboxes
-  [graph]
-  (m/deep-merge
-   graph
-   (let [sandboxes (t2/select :model/GroupTableAccessPolicy
-                              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
-                               :from [[:sandboxes :s]]
-                               :join [[:metabase_table :t] [:= :s.table_id :t.id]]})]
-     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
-               (assoc-in acc
-                         [group_id db_id :data :schemas schema table_id]
-                         {:query :segmented
-                          :read :all}))
-             {}
-             sandboxes))))
+  [graph & {:keys [group-id db-id audit?]}]
+  (let [sandboxes (t2/select :model/GroupTableAccessPolicy
+                             {:select [:s.group_id :s.table_id :t.db_id :t.schema]
+                              :from [[:sandboxes :s]]
+                              :join [[:metabase_table :t] [:= :s.table_id :t.id]]
+                              :where [:and
+                                      (when group-id [:= :s.group_id group-id])
+                                      (when db-id [:= :t.db_id db-id])
+                                      (when-not audit? [:not [:= :t.db_id config/audit-db-id]])]})]
+    (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
+              (merge-sandbox-into-graph acc group_id table_id db_id schema))
+            graph
+            sandboxes)))
 
 (mu/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
@@ -139,22 +158,23 @@
   if this does not exist, the sandbox will not be created."
   :feature :sandboxes
   [sandboxes]
-  (for [sandbox sandboxes]
-    (if-let [id (:id sandbox)]
-      ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
-      ;; This allows existing values to be "cleared" by being set to nil
-      (do
-        (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-          (t2/update! GroupTableAccessPolicy
-                      id
-                      (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-        (t2/select-one GroupTableAccessPolicy :id id))
-      (let [expected-permission-path (perms/table-sandboxed-query-path (:table_id sandbox))]
-        (when-let [permission-path-id (t2/select-one-fn :id Permissions :object expected-permission-path)]
-          (first (t2/insert-returning-instances! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id))))))))
+  (doall
+   (for [sandbox sandboxes]
+     (if-let [id (:id sandbox)]
+       ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
+       ;; This allows existing values to be "cleared" by being set to nil
+       (do
+         (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
+           (t2/update! GroupTableAccessPolicy
+                       id
+                       (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
+         (t2/select-one GroupTableAccessPolicy :id id))
+       (first (t2/insert-returning-instances! GroupTableAccessPolicy sandbox))))))
 
 (t2/define-before-insert :model/GroupTableAccessPolicy
-  [gtap]
+  [{:keys [table_id group_id], :as gtap}]
+  (let [db-id (database/table-id->database-id table_id)]
+    (data-perms/set-database-permission! group_id db-id :perms/native-query-editing :no))
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 
