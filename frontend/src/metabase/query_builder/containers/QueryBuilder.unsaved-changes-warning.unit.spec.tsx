@@ -40,7 +40,6 @@ registerVisualizations();
 
 describe("QueryBuilder - unsaved changes warning", () => {
   afterEach(() => {
-    fetchMock.flush();
     jest.resetAllMocks();
   });
 

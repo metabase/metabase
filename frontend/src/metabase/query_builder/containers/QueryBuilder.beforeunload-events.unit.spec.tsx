@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { callMockEvent } from "__support__/events";
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
@@ -26,7 +25,6 @@ registerVisualizations();
 
 describe("QueryBuilder - beforeunload events", () => {
   afterEach(() => {
-    fetchMock.flush();
     jest.resetAllMocks();
   });
 
