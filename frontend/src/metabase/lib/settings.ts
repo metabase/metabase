@@ -349,10 +349,6 @@ class MetabaseSettings {
     return latest && latest.version;
   }
 
-  isEnterprise() {
-    return false;
-  }
-
   /**
    * @deprecated use getSetting(state, "is-metabot-enabled")
    */
