@@ -45,6 +45,7 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import type { State } from "metabase-types/store";
 import NewItemMenu from "metabase/containers/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { serializeCardForUrl } from "metabase/lib/card";
@@ -252,7 +253,11 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const { container, history } = renderWithProviders(
+  const {
+    store: { getState },
+    container,
+    history,
+  } = renderWithProviders(
     <Route>
       <Route path="/" component={TestHome} />
       <Route path="/model">
@@ -278,13 +283,32 @@ export const setup = async ({
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  await waitForLoadingRequests(getState);
 
   return {
     container,
     history: checkNotNull(history),
     mockEventListener,
   };
+};
+
+const waitForLoadingRequests = async (getState: () => State) => {
+  await waitFor(() => {
+    expect(areRequestsLoading(getState)).toBe(false);
+  });
+};
+
+const areRequestsLoading = (getState: () => State): boolean => {
+  const state = getState();
+  const groups = Object.values(state.requests);
+
+  const requests = groups.flatMap(group =>
+    Object.values(group).flatMap(entity =>
+      Object.values(entity).flatMap(request => Object.values(request)),
+    ),
+  );
+
+  return requests.some(request => request.loading);
 };
 
 export const startNewNotebookModel = async () => {
