@@ -30,7 +30,8 @@ import {
 import type Database from "metabase-lib/metadata/Database";
 
 import type { MainNavbarProps, SelectedItem } from "../types";
-import NavbarLoadingView from "../NavbarLoadingView";
+import { NavbarLoadingView } from "../NavbarLoadingView";
+import { NavbarErrorView } from "../NavbarErrorView";
 
 import MainNavbarView from "./MainNavbarView";
 
@@ -60,7 +61,8 @@ interface Props extends MainNavbarProps {
   rootCollection: Collection;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
-  allLoading: boolean;
+  allError: boolean;
+  allFetched: boolean;
   logout: () => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
@@ -80,7 +82,8 @@ function MainNavbarContainer({
   collections = [],
   rootCollection,
   hasDataAccess,
-  allLoading,
+  allError,
+  allFetched,
   location,
   params,
   openNavbar,
@@ -153,7 +156,11 @@ function MainNavbarContainer({
     return null;
   }, [modal, closeModal, onChangeLocation]);
 
-  if (allLoading) {
+  if (allError) {
+    return <NavbarErrorView />;
+  }
+
+  if (!allFetched) {
     return <NavbarLoadingView />;
   }
 
