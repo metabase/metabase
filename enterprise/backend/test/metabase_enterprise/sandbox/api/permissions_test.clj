@@ -56,7 +56,7 @@
                {:updated-db-perms (fn []
                                     {:native :none, :schemas {:PUBLIC {(mt/id :venues) {:query :all}}}})
                 :expected-perms   (fn []
-                                    {:schemas {:PUBLIC {(mt/id :venues) {:query "all"}}}})}}]
+                                    {:schemas {:PUBLIC {(mt/id :venues) "all"}}})}}]
         (met/with-gtaps! {:gtaps {:venues {}}}
           (testing message
             (testing "sanity check"
@@ -105,9 +105,9 @@
                                 [:card_id              nil?]
                                 [:permission_id        nil?]
                                 [:attribute_remappings nil?]]]
-                       (t2/select GroupTableAccessPolicy
-                                  :group_id (u/the-id &group)
-                                  :table_id (u/the-id db-2-table)))))
+                              (t2/select GroupTableAccessPolicy
+                                         :group_id (u/the-id &group)
+                                         :table_id (u/the-id db-2-table)))))
                 (testing "GTAP for same table, other group should not be affected"
                   (is (malli= [:tuple
                                [:map
@@ -117,7 +117,7 @@
                                 [:card_id              nil?]
                                 [:permission_id        nil?]
                                 [:attribute_remappings nil?]]]
-                       (t2/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
+                              (t2/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
 
 (deftest grant-sandbox-perms-dont-delete-gtaps-test
   (testing "PUT /api/permissions/graph"
@@ -125,12 +125,12 @@
       (mt/with-temp-copy-of-db
         (t2.with-temp/with-temp [GroupTableAccessPolicy _ {:group_id (u/the-id (perms-group/all-users))
                                                            :table_id (mt/id :venues)}]
-          (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
-                graph'   (assoc-in graph (db-graph-keypath (perms-group/all-users))
-                                   {:schemas
-                                    {"PUBLIC"
-                                     {(mt/id :venues)
-                                      {:read :all, :query :segmented}}}})]
+          (let [graph  (mt/user-http-request :crowberto :get 200 "permissions/graph")
+                graph' (assoc-in graph (db-graph-keypath (perms-group/all-users))
+                                 {:schemas
+                                  {"PUBLIC"
+                                   {(mt/id :venues)
+                                    {:read :all, :query :segmented}}}})]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')
             (testing "GTAP should not have been deleted"
               (is (t2/exists? GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
