@@ -17,7 +17,7 @@ const ColorSettingsWidget = ({
 
   return (
     <ColorSettings
-      initialColors={setting.value}
+      colorsSettingValue={setting.value}
       originalColors={originalColors}
       onChange={onChangeDebounced}
     />
