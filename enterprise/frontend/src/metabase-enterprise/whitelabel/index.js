@@ -147,7 +147,6 @@ if (hasPremiumFeature("whitelabel")) {
             key: "application-name",
             tab: "conceal-metabase",
             display_name: t`Application Name`,
-            // type: "string",
             widget: SettingTextInput,
           },
           {
