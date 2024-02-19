@@ -1,6 +1,5 @@
 import { jt, t } from "ttag";
-import { useEffect, useState } from "react";
-import { useAsyncFn } from "react-use";
+import { useEffect, useState, useMemo } from "react";
 
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -9,12 +8,11 @@ const { fontFamilyMonospace } = getThemeOverrides();
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import { ApiKeysApi } from "metabase/services";
-
 import type { ApiKey } from "metabase-types/api";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { ApiKeysApi } from "metabase/redux/api";
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
@@ -119,24 +117,34 @@ export const ManageApiKeys = () => {
   const [modal, setModal] = useState<Modal>(null);
   const [activeApiKey, setActiveApiKey] = useState<null | ApiKey>(null);
 
-  const [{ value: apiKeys, loading, error }, refreshList] = useAsyncFn(
-    (): Promise<ApiKey[]> => ApiKeysApi.list(),
-    [],
-  );
+  const {
+    data: apiKeys,
+    error,
+    isLoading,
+    refetch,
+  } = ApiKeysApi.useListQuery();
+
+  const sortedApiKeys = useMemo(() => {
+    if (!apiKeys) {
+      return;
+    }
+    return [...apiKeys].sort((a, b) => a.name.localeCompare(b.name));
+  }, [apiKeys]);
 
   const handleClose = () => setModal(null);
 
+  // TODO: not so sure about this...? seems wrong
   useEffect(() => {
-    refreshList();
-  }, [refreshList]);
+    refetch();
+  }, [refetch]);
 
-  const tableIsEmpty = !loading && !error && apiKeys?.length === 0;
+  const tableIsEmpty = !isLoading && !error && apiKeys?.length === 0;
 
   return (
     <>
       <ApiKeyModals
         onClose={handleClose}
-        refreshList={refreshList}
+        refreshList={refetch}
         modal={modal}
         activeApiKey={activeApiKey}
       />
@@ -164,9 +172,9 @@ export const ManageApiKeys = () => {
           >{t`Create API Key`}</Button>
         </Group>
         <ApiKeysTable
-          loading={loading}
-          error={error}
-          apiKeys={apiKeys?.sort((a, b) => a.name.localeCompare(b.name))}
+          loading={isLoading}
+          error={error as any}
+          apiKeys={sortedApiKeys}
           setActiveApiKey={setActiveApiKey}
           setModal={setModal}
         />

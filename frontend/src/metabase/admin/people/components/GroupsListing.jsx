@@ -5,7 +5,6 @@ import _ from "underscore";
 import cx from "classnames";
 
 import { jt, t } from "ttag";
-import { useAsync } from "react-use";
 import Link from "metabase/core/components/Link";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { Stack, Text, Group, Button, Icon } from "metabase/ui";
@@ -16,7 +15,7 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { ApiKeysApi } from "metabase/services";
+import { ApiKeysApi } from "metabase/redux/api";
 
 import Input from "metabase/core/components/Input";
 import ModalContent from "metabase/components/ModalContent";
@@ -278,10 +277,10 @@ function GroupsTable({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const { loading, value: apiKeys } = useAsync(() => ApiKeysApi.list(), []);
+  const { isLoading, data: apiKeys } = ApiKeysApi.useListQuery();
 
-  if (loading) {
-    return <LoadingAndErrorWrapper loading={loading} />;
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading={isLoading} />;
   }
 
   return (

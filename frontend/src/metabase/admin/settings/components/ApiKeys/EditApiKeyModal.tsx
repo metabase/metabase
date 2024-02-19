@@ -15,8 +15,7 @@ import {
 import { getThemeOverrides } from "metabase/ui/theme";
 const { fontFamilyMonospace } = getThemeOverrides();
 
-import { ApiKeysApi } from "metabase/services";
-
+import { ApiKeysApi } from "metabase/redux/api";
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
@@ -33,12 +32,16 @@ const RegenerateKeyModal = ({
   setSecretKey: (key: string) => void;
   refreshList: () => void;
 }) => {
+  const [regenerateApiKey] = ApiKeysApi.useRegenerateMutation();
   const handleRegenerate = useCallback(async () => {
-    const result = await ApiKeysApi.regenerate({ id: apiKey.id });
-    setSecretKey(result.unmasked_key);
+    const result = await regenerateApiKey(apiKey.id);
+    if ("error" in result) {
+      throw result.error;
+    }
+    setSecretKey(result.data.unmasked_key);
     setModal("secretKey");
     refreshList();
-  }, [apiKey.id, refreshList, setModal, setSecretKey]);
+  }, [apiKey.id, refreshList, setModal, setSecretKey, regenerateApiKey]);
 
   return (
     <Modal
@@ -99,10 +102,11 @@ export const EditApiKeyModal = ({
 }) => {
   const [modal, setModal] = useState<EditModalName>("edit");
   const [secretKey, setSecretKey] = useState<string>("");
+  const [editApiKey] = ApiKeysApi.useEditMutation();
 
   const handleSubmit = useCallback(
     async vals => {
-      await ApiKeysApi.edit({
+      await editApiKey({
         id: vals.id,
         group_id: vals.group_id,
         name: vals.name,
@@ -110,7 +114,7 @@ export const EditApiKeyModal = ({
       refreshList();
       onClose();
     },
-    [onClose, refreshList],
+    [onClose, refreshList, editApiKey],
   );
 
   if (modal === "secretKey") {

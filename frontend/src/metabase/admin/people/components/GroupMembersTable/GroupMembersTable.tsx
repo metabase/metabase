@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useAsync } from "react-use";
 import { Tooltip, Text, Icon } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { getFullName } from "metabase/lib/user";
@@ -12,7 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import User from "metabase/entities/users";
 
-import { ApiKeysApi } from "metabase/services";
+import { ApiKeysApi } from "metabase/redux/api";
 import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import type { State } from "metabase-types/store";
@@ -60,14 +59,10 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const { loading, value: apiKeys } = useAsync(async () => {
-    const apiKeys = await (ApiKeysApi.list() as Promise<ApiKey[]>);
-    const filteredApiKeys = apiKeys?.filter(
-      (apiKey: ApiKey) => apiKey.group.id === group.id,
-    );
-
-    return filteredApiKeys ?? [];
-  }, [group.id]);
+  const { isLoading: loading, data } = ApiKeysApi.useListQuery();
+  const apiKeys = useMemo(() => {
+    return data?.filter(apiKey => apiKey.group.id === group.id) ?? [];
+  }, [data, group.id]);
 
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
