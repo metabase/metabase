@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { setDashboardAttributes } from "metabase/dashboard/actions";
+import { trackDashboardWidthChange } from "metabase/dashboard/analytics";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { getDashboardId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -20,6 +21,7 @@ export function ExtraEditButtonsMenu({ dashboard }: ExtraEditButtonsMenuProps) {
   const handleToggleWidth = (event: React.ChangeEvent<HTMLInputElement>) => {
     const nextWidth = event.currentTarget.checked ? "full" : "fixed";
     dispatch(setDashboardAttributes({ id, attributes: { width: nextWidth } }));
+    trackDashboardWidthChange(id, nextWidth);
   };
 
   return (
