@@ -450,9 +450,9 @@
                                              (csv/read-csv results))))
 
                               :json (fn [results]
-                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
-                                              ["1" "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" "3"]]
-                                             (parse-json-results results))))
+                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                             ["1" "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" "3"]]
+                                            (parse-json-results results))))
 
                               :xlsx (fn [results]
                                       (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
