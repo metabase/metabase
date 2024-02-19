@@ -56,10 +56,14 @@ export const ModelGrid = styled(BrowseGrid)``;
 
 export const CollectionHeaderContainer = styled(Flex)`
   grid-column: 1 / -1;
-  margin-left: -2.25rem;
   display: flex;
   align-items: center;
-  margin-top: 0.5rem;
+  border-top: 1px solid ${color("border")};
+  margin-top: 0.75rem;
+  :first-of-type {
+    margin-top: 1rem;
+    border-top: none;
+  }
 `;
 
 export const CollectionHeaderLink = styled(Link)`
@@ -100,8 +104,8 @@ export const CollectionHeaderToggle = styled(Button)<
 >`
   padding: 10px;
   position: relative;
-  top: 6px;
-  margin-top: 1rem;
+  margin-left: -2rem;
+  margin-top: 0.75rem;
   border: none;
   background-color: transparent;
   overflow: unset;
@@ -131,9 +135,9 @@ export const BannerModelIcon = styled(FixedSizeIcon)`
   margin-right: 0.5rem;
 `;
 
-export const CollectionHeader = styled.div<{ index: number }>`
+export const CollectionHeaderDiv = styled.div`
   display: flex;
   width: 100%;
   padding-top: 1.5rem;
-  ${({ index }) => index > 0 && `border-top: 1px solid ${color("border")};`}
+  padding-bottom: 0.75rem;
 `;

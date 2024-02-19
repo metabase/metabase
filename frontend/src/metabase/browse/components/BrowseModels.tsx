@@ -1,15 +1,14 @@
 import { t } from "ttag";
+import { useState } from "react";
 
-import NoResults from "assets/img/no_results.svg";
-import type { useSearchListQuery } from "metabase/common/hooks";
+import type { SearchResult, CollectionId } from "metabase-types/api";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
-import { Box } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import { getCollectionViewPreferences, groupModels } from "../utils";
 
-import { groupModels } from "../utils";
-
+import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "../constants";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import { ModelGrid } from "./BrowseModels.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
@@ -23,6 +22,9 @@ export const BrowseModels = ({
   const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
+  const [collectionViewPreferences, setCollectionViewPreferences] = useState(
+    getCollectionViewPreferences,
+  );
 
   if (error || isLoading) {
     return (
@@ -34,6 +36,36 @@ export const BrowseModels = ({
     );
   }
 
+  const handleToggleCollectionExpand = (collectionId: CollectionId) => {
+    const newPreferences = {
+      ...collectionViewPreferences,
+      [collectionId]: {
+        expanded: !collectionViewPreferences?.[collectionId]?.expanded,
+        showAll: !!collectionViewPreferences?.[collectionId]?.showAll,
+      },
+    };
+    setCollectionViewPreferences(newPreferences);
+    localStorage.setItem(
+      BROWSE_MODELS_LOCALSTORAGE_KEY,
+      JSON.stringify(newPreferences),
+    );
+  };
+
+  const handleToggleCollectionShowAll = (collectionId: CollectionId) => {
+    const newPreferences = {
+      ...collectionViewPreferences,
+      [collectionId]: {
+        expanded: collectionViewPreferences?.[collectionId]?.expanded ?? false,
+        showAll: !collectionViewPreferences?.[collectionId]?.showAll,
+      },
+    };
+    setCollectionViewPreferences(newPreferences);
+    localStorage.setItem(
+      BROWSE_MODELS_LOCALSTORAGE_KEY,
+      JSON.stringify(newPreferences),
+    );
+  };
+
   const groupsOfModels = groupModels(models, localeCode);
 
   if (models.length) {
@@ -41,14 +73,24 @@ export const BrowseModels = ({
       <>
         <ModelExplanationBanner />
         <ModelGrid role="grid">
-          {groupsOfModels.map((groupOfModels, index) => (
-            <ModelGroup
-              models={groupOfModels}
-              key={`modelgroup-${groupOfModels[0].collection.id}`}
-              localeCode={localeCode}
-              index={index}
-            />
-          ))}
+          {groupsOfModels.map(groupOfModels => {
+            const collectionId = groupOfModels[0].collection.id;
+            return (
+              <ModelGroup
+                expanded={!!collectionViewPreferences?.[collectionId]?.expanded}
+                showAll={!!collectionViewPreferences?.[collectionId]?.showAll}
+                toggleExpanded={() =>
+                  handleToggleCollectionExpand(collectionId)
+                }
+                toggleShowAll={() =>
+                  handleToggleCollectionShowAll(collectionId)
+                }
+                models={groupOfModels}
+                key={`modelgroup-${groupOfModels[0].collection.id}`}
+                localeCode={localeCode}
+              />
+            );
+          })}
         </ModelGrid>
       </>
     );
