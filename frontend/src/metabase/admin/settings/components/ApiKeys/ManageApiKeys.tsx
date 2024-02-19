@@ -7,7 +7,6 @@ import { EditApiKeyModal } from "./EditApiKeyModal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
-import { formatMaskedKey } from "./utils";
 import { getThemeOverrides } from "metabase/ui/theme";
 import { t } from "ttag";
 import { useListApiKeyQuery } from "metabase/redux/api";
