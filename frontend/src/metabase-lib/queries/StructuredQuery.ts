@@ -500,18 +500,6 @@ class StructuredQuery extends AtomicQuery {
     return this.legacyQuery({ useStructuredQuery: true }).fields || [];
   }
 
-  addField(_name, _expression) {
-    return this._updateQuery(Q.addField, arguments);
-  }
-
-  updateField(_index, _field) {
-    return this._updateQuery(Q.updateField, arguments);
-  }
-
-  removeField(_name) {
-    return this._updateQuery(Q.removeField, arguments);
-  }
-
   // DIMENSION OPTIONS
   dimensionOptions(
     dimensionFilter: DimensionFilterFn = _dimension => true,

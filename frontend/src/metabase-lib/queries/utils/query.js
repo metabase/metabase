@@ -1,6 +1,5 @@
 import * as A from "./aggregation";
 import * as F from "./filter";
-import * as FIELD from "./field";
 
 // AGGREGATION
 /**
@@ -48,14 +47,6 @@ export const canAddFilter = query => F.canAddFilter(query.filter);
 
 export { getFilterClause } from "./filter";
 
-// FIELD
-export const addField = (query, field) =>
-  setFieldsClause(query, FIELD.addField(query.fields, field));
-export const updateField = (query, index, field) =>
-  setFieldsClause(query, FIELD.updateField(query.fields, index, field));
-export const removeField = (query, index) =>
-  setFieldsClause(query, FIELD.removeField(query.fields, index));
-
 // we can enforce various constraints in these functions:
 
 function setAggregationClause(query, aggregationClause) {
@@ -63,9 +54,6 @@ function setAggregationClause(query, aggregationClause) {
 }
 function setFilterClause(query, filterClause) {
   return setClause("filter", query, filterClause);
-}
-function setFieldsClause(query, fieldsClause) {
-  return setClause("fields", query, fieldsClause);
 }
 
 function setClause(clauseName, query, clause) {
