@@ -391,7 +391,7 @@
                           (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                   ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
                                   ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
-                                 (csv/read-csv results))))
+                                 (parse-csv-results results))))
 
                   :json (fn [results]
                           (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
@@ -426,7 +426,7 @@
     :assertions {:csv (fn [results]
                         (is (= [["Name" "ID" "Category ID" "Price"]
                                 ["Red Medicine" "1" "4" "3"]]
-                               (csv/read-csv results))))
+                               (parse-csv-results results))))
 
                  :json (fn [results]
                          (is (= [["Name" "ID" "Category ID" "Price"]
@@ -453,7 +453,7 @@
                  :assertions {:csv  (fn [results]
                                       (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
                                               ["1" "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" "3"]]
-                                             (csv/read-csv results))))
+                                             (parse-csv-results results))))
 
                               :json (fn [results]
                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
@@ -495,7 +495,7 @@
      :assertions {:csv (fn [results]
                          (is (= [["ID" "Name" "Category ID" "Categories → Name"]
                                  ["1" "Red Medicine" "4" "Asian"]]
-                                (csv/read-csv results))))
+                                (parse-csv-results results))))
 
                   :json (fn [results]
                           (is (= [["ID" "Name" "Category ID" "Categories → Name"]
@@ -508,26 +508,27 @@
                                  (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest native-query-test
-  (do-test!
-   "A native query can be exported succesfully, and duplicate fields work in CSV/XLSX"
-   {:query (mt/native-query {:query "SELECT id, id, name FROM venues LIMIT 1;"})
+  (mt/with-full-data-perms-for-all-users!
+    (do-test!
+     "A native query can be exported succesfully, and duplicate fields work in CSV/XLSX"
+     {:query (mt/native-query {:query "SELECT id, id, name FROM venues LIMIT 1;"})
 
-    :assertions {:csv (fn [results]
-                        (is (= [["ID" "ID" "NAME"]
-                                ["1" "1" "Red Medicine"]]
-                               (parse-csv-results results))))
+      :assertions {:csv (fn [results]
+                          (is (= [["ID" "ID" "NAME"]
+                                  ["1" "1" "Red Medicine"]]
+                                 (parse-csv-results results))))
 
-                 :json (fn [results]
-                         ;; Second ID field is omitted since each col is stored in a JSON object rather than an array.
-                         ;; TODO we should be able to include the second column if it is renamed.
-                         (is (= [["ID" "NAME"]
-                                 ["1" "Red Medicine"]]
-                                (parse-json-results results))))
+                   :json (fn [results]
+                           ;; Second ID field is omitted since each col is stored in a JSON object rather than an array.
+                           ;; TODO we should be able to include the second column if it is renamed.
+                           (is (= [["ID" "NAME"]
+                                   ["1" "Red Medicine"]]
+                                  (parse-json-results results))))
 
-                 :xlsx (fn [results]
-                         (is (= [["ID" "ID" "NAME"]
-                                 [1.0 1.0 "Red Medicine"]]
-                                (xlsx-test/parse-xlsx-results results))))}}))
+                   :xlsx (fn [results]
+                           (is (= [["ID" "ID" "NAME"]
+                                   [1.0 1.0 "Red Medicine"]]
+                                  (xlsx-test/parse-xlsx-results results))))}})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
