@@ -32,31 +32,19 @@ export function findColumnIndexForColumnSetting(
 ) {
   const fieldRef = columnSetting.fieldRef;
   // NOTE: need to normalize field refs because they may be old style [fk->, 1, 2]
-  const normalizedFieldRef = fieldRef ? normalize(fieldRef) : undefined;
+  const normalizedFieldRef = normalize(fieldRef);
   // first try to find by fieldRef
-  if (normalizedFieldRef != null) {
-    let columnIndex: number;
-
-    if (!query) {
-      // TODO: remove once migration is completed
-      // throw new Error("query is required to find column index");
-
-      columnIndex = legacyFindColumnIndexForColumnSetting(
-        columns,
-        normalizedFieldRef,
-      );
-    } else {
-      const stageIndex = -1;
-      [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
-        query,
-        stageIndex,
-        // we make a structured clone to unfreeze objects as
-        // cljs adds a unique id to every object
-        // and it's not possible with frozen objects
-        structuredClone(columns),
-        [structuredClone(normalizedFieldRef)],
-      );
-    }
+  if (normalizedFieldRef != null && query) {
+    const stageIndex = -1;
+    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      // we make a structured clone to unfreeze objects as
+      // cljs adds a unique id to every object
+      // and it's not possible with frozen objects
+      structuredClone(columns),
+      [structuredClone(normalizedFieldRef)],
+    );
 
     if (columnIndex >= 0) {
       return columnIndex;
@@ -64,20 +52,6 @@ export function findColumnIndexForColumnSetting(
   }
   // if that fails, find by column name
   return _.findIndex(columns, col => col.name === columnSetting.name);
-}
-
-function legacyFindColumnIndexForColumnSetting(
-  columns: DatasetColumn[],
-  normalizedFieldRef: FieldReference,
-) {
-  const dimension = Dimension.parseMBQL(normalizedFieldRef);
-  const index = dimension
-    ? _.findIndex(columns, col =>
-        dimension.isSameBaseDimension(fieldRefForColumn(col)),
-      )
-    : -1;
-
-  return index;
 }
 
 export function findColumnSettingIndexForColumn(
