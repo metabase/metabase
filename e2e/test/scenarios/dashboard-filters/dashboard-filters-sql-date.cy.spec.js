@@ -107,12 +107,12 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Relative Date":

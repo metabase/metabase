@@ -18,7 +18,8 @@ interface Props {
 
 function ModelRelationships({ model, mainTable }: Props) {
   const relatedTables = useMemo(() => {
-    const tablesMainTablePointsTo = model.table()?.foreignTables() || [];
+    const tablesMainTablePointsTo =
+      model.legacyQueryTable()?.foreignTables() || [];
     const tablesPointingToMainTable = mainTable?.connectedTables() || [];
     return _.uniq(
       [...tablesMainTablePointsTo, ...tablesPointingToMainTable],

@@ -14,6 +14,9 @@ import { Setup } from "./components/Setup";
 import type { SetupStep } from "./types";
 
 async function setup({ step = "welcome" }: { step?: SetupStep } = {}) {
+  localStorage.clear();
+  jest.clearAllMocks();
+
   const state = createMockState({
     setup: createMockSetupState({
       step,
@@ -24,6 +27,7 @@ async function setup({ step = "welcome" }: { step?: SetupStep } = {}) {
   });
 
   fetchMock.post("path:/api/util/password_check", { valid: true });
+  fetchMock.post("path:/api/setup", {});
 
   renderWithProviders(<Setup />, { storeInitialState: state });
 
@@ -88,6 +92,20 @@ describe("setup", () => {
         expectSectionToHaveLabel("Add your data", "4");
         expectSectionToHaveLabel("Usage data preferences", "5");
       });
+
+      it("should not set the flag for the embedding homepage", async () => {
+        await setupForUsageQuestion();
+        selectUsageReason("self-service-analytics");
+        clickNextStep();
+
+        screen.getByText("I'll add my data later").click();
+
+        screen.getByRole("button", { name: "Finish" }).click();
+
+        await screen.findByRole("link", { name: "Take me to Metabase" });
+
+        expect(localStorage.getItem("showEmbedHomepage")).toBeNull();
+      });
     });
 
     describe("when selecting 'Embedding'", () => {
@@ -104,6 +122,18 @@ describe("setup", () => {
         );
 
         expectSectionToHaveLabel("Usage data preferences", "4");
+      });
+
+      it("should set the flag for the embed homepage in the local storage", async () => {
+        await setupForUsageQuestion();
+        selectUsageReason("embedding");
+        clickNextStep();
+
+        screen.getByRole("button", { name: "Finish" }).click();
+
+        await screen.findByRole("link", { name: "Take me to Metabase" });
+
+        expect(localStorage.getItem("showEmbedHomepage")).toBe("true");
       });
     });
 
@@ -123,6 +153,20 @@ describe("setup", () => {
         expectSectionToHaveLabel("Add your data", "4");
         expectSectionToHaveLabel("Usage data preferences", "5");
       });
+
+      it("should set the flag for the embed homepage in the local storage", async () => {
+        await setupForUsageQuestion();
+        selectUsageReason("both");
+        clickNextStep();
+
+        screen.getByText("I'll add my data later").click();
+
+        screen.getByRole("button", { name: "Finish" }).click();
+
+        await screen.findByRole("link", { name: "Take me to Metabase" });
+
+        expect(localStorage.getItem("showEmbedHomepage")).toBe("true");
+      });
     });
 
     describe("when selecting 'Not sure yet'", () => {
@@ -140,6 +184,20 @@ describe("setup", () => {
 
         expectSectionToHaveLabel("Add your data", "4");
         expectSectionToHaveLabel("Usage data preferences", "5");
+      });
+
+      it("should not set the flag for the embedding homepage", async () => {
+        await setupForUsageQuestion();
+        selectUsageReason("self-service-analytics");
+        clickNextStep();
+
+        screen.getByText("I'll add my data later").click();
+
+        screen.getByRole("button", { name: "Finish" }).click();
+
+        await screen.findByRole("link", { name: "Take me to Metabase" });
+
+        expect(localStorage.getItem("showEmbedHomepage")).toBeNull();
       });
     });
   });

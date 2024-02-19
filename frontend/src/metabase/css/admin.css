@@ -224,14 +224,6 @@
   color: white !important;
 }
 
-.SaveStatus {
-  line-height: 1;
-}
-
-.SaveStatus:last-child {
-  border-right: none !important;
-}
-
 .SettingsInput {
   width: 400px;
 }

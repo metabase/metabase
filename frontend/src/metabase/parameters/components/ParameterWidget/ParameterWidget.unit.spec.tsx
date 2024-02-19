@@ -60,7 +60,11 @@ describe("ParameterWidget", () => {
     userEvent.type(textInput, "{backspace}".repeat(text.length));
     expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
 
-    userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    userEvent.click(
+      screen.getByRole("button", { name: "Add filter" }),
+      undefined,
+      { skipPointerEventsCheck: true },
+    );
     expect(setValue).not.toHaveBeenCalled();
   });
 
@@ -85,7 +89,11 @@ describe("ParameterWidget", () => {
     userEvent.type(textInput, "{backspace}".repeat(text.length));
     expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
 
-    userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    userEvent.click(
+      screen.getByRole("button", { name: "Add filter" }),
+      undefined,
+      { skipPointerEventsCheck: true },
+    );
     expect(setValue).not.toHaveBeenCalled();
   });
 });

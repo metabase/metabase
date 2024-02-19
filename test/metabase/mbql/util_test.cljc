@@ -231,42 +231,42 @@
 
 (t/deftest ^:parallel desugar-time-interval-with-expression-test
   (t/is (= [:between
-            [:expression "CC"]
+            [:expression "CC" {:temporal-unit :month}]
             [:relative-datetime 1 :month]
             [:relative-datetime 2 :month]]
            (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] 2 :month]))
         "`time-interval` with value > 1 or < -1 should generate a `between` clause")
   (t/is (= [:between
-            [:expression "CC"]
+            [:expression "CC" {:temporal-unit :month}]
             [:relative-datetime 0 :month]
             [:relative-datetime 2 :month]]
            (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] 2 :month {:include-current true}]))
         "test the `include-current` option -- interval should start or end at `0` instead of `1`")
   (t/is (= [:=
-            [:expression "CC"]
+            [:expression "CC" {:temporal-unit :month}]
             [:relative-datetime 1 :month]]
            (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] 1 :month]))
         "`time-interval` with value = 1 should generate an `=` clause")
   (t/is (= [:=
-            [:expression "CC"]
+            [:expression "CC" {:temporal-unit :week}]
             [:relative-datetime -1 :week]]
            (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] -1 :week]))
         "`time-interval` with value = -1 should generate an `=` clause")
   (t/testing "`include-current` option"
     (t/is (= [:between
-              [:expression "CC"]
+              [:expression "CC" {:temporal-unit :month}]
               [:relative-datetime 0 :month]
               [:relative-datetime 1 :month]]
              (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] 1 :month {:include-current true}]))
           "interval with value = 1 should generate a `between` clause")
     (t/is (= [:between
-              [:expression "CC"]
+              [:expression "CC" {:temporal-unit :day}]
               [:relative-datetime -1 :day]
               [:relative-datetime 0 :day]]
              (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] -1 :day {:include-current true}]))
           "`include-current` option -- interval with value = 1 should generate a `between` clause"))
   (t/is (= [:=
-            [:expression "CC"]
+            [:expression "CC" {:temporal-unit :week}]
             [:relative-datetime 0 :week]]
            (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] :current :week]))
         "keywords like `:current` should work correctly"))
@@ -463,7 +463,7 @@
 
   (t/testing :time-interval
     (t/is (= [:!=
-              [:expression "CC"]
+              [:expression "CC" {:temporal-unit :week}]
               [:relative-datetime 0 :week]]
              (mbql.u/negate-filter-clause [:time-interval [:expression "CC"] :current :week]))))
 
@@ -819,3 +819,9 @@
     ;; `:minute` doesn't make sense for a DATE
     (t/is (= [:field "t" {:base-type :type/Date}]
              (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :minute)))))
+
+(t/deftest desugar-time-interval-expression-test
+  (t/is (= [:=
+            [:expression "Date" {:temporal-unit :quarter}]
+            [:relative-datetime 0 :quarter]]
+           (mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))

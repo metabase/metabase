@@ -72,7 +72,9 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
-      FieldFilter.selectFilterValueFromList("Gadget");
+      FieldFilter.selectFilterValueFromList("Gadget", {
+        buttonLabel: "Add filter",
+      });
     });
 
     it("should be able to use a structured question source with a text tag", () => {
@@ -96,7 +98,9 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
-      FieldFilter.selectFilterValueFromList("Gadget");
+      FieldFilter.selectFilterValueFromList("Gadget", {
+        buttonLabel: "Add filter",
+      });
     });
 
     it("should be able to use a structured question source without saving the question", () => {

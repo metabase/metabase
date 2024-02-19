@@ -22,7 +22,8 @@ interface NotebookStepsProps {
 }
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
-  const isNew = !readOnly && !question.table();
+  const query = question.query();
+  const isNew = !readOnly && !Lib.sourceTableOrCardId(query);
 
   if (isNew) {
     return {

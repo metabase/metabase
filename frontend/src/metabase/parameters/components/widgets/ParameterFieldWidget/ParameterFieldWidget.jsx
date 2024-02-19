@@ -8,8 +8,8 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import {
   WidgetRoot,
   Footer,
-  UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import {
   getFilterArgumentFormatOptions,
@@ -24,7 +24,6 @@ const propTypes = {
   isEditing: PropTypes.bool.isRequired,
   parameter: PropTypes.object.isRequired,
   parameters: PropTypes.array.isRequired,
-  placeholder: PropTypes.string.isRequired,
   setValue: PropTypes.func.isRequired,
   value: PropTypes.oneOfType([
     PropTypes.string,
@@ -41,7 +40,6 @@ export default function ParameterFieldWidget({
   fields,
   parameter,
   parameters,
-  placeholder = t`Enter a value...`,
   question,
   dashboard,
 }) {
@@ -50,7 +48,6 @@ export default function ParameterFieldWidget({
   const { numFields = 1, multi = false, verboseName } = operator || {};
   const isEqualsOp = isEqualsOperator(operator);
   const disableSearch = operator && isFuzzyOperator(operator);
-  const hasValue = Array.isArray(value) ? value.length > 0 : value != null;
 
   const supportsMultipleValues =
     multi && !parameter.hasVariableTemplateTagTarget;
@@ -103,14 +100,14 @@ export default function ParameterFieldWidget({
         })}
       </div>
       <Footer>
-        <UpdateButton
-          disabled={!isValid}
-          onClick={() => {
-            setValue(unsavedValue);
-          }}
-        >
-          {hasValue ? t`Update filter` : t`Add filter`}
-        </UpdateButton>
+        <UpdateFilterButton
+          value={value}
+          unsavedValue={unsavedValue}
+          defaultValue={parameter.default}
+          isValueRequired={parameter.required ?? false}
+          isValid={isValid}
+          onClick={() => setValue(unsavedValue)}
+        />
       </Footer>
     </WidgetRoot>
   );

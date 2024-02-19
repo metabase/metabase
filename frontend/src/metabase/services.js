@@ -137,9 +137,7 @@ export async function runQuestionQuery(
     );
   };
 
-  const datasetQueries = question
-    .atomicQueries()
-    .map(query => query.datasetQuery());
+  const datasetQueries = [question.datasetQuery()];
 
   return Promise.all(datasetQueries.map(getDatasetQueryResult));
 }

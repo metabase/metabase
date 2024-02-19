@@ -315,9 +315,9 @@
   (mongo.qp/mbql->native query))
 
 (defmethod driver/execute-reducible-query :mongo
-  [_ query context respond]
+  [_ query _context respond]
   (mongo.connection/with-mongo-client [_ (lib.metadata/database (qp.store/metadata-provider))]
-    (mongo.execute/execute-reducible-query query context respond)))
+    (mongo.execute/execute-reducible-query query respond)))
 
 (defmethod driver/substitute-native-parameters :mongo
   [driver inner-query]

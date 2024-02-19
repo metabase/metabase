@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import NumberInputWidget from "./NumberInputWidget";
+import { createMockParameter } from "metabase-types/api/mocks";
+import { NumberInputWidget } from "./NumberInputWidget";
 
 const mockSetValue = jest.fn();
+const mockParameter = createMockParameter();
 
 describe("NumberInputWidget", () => {
   beforeEach(() => {
@@ -12,7 +14,13 @@ describe("NumberInputWidget", () => {
 
   describe("arity of 1", () => {
     it("should render an input populated with a value", () => {
-      render(<NumberInputWidget value={[123]} setValue={mockSetValue} />);
+      render(
+        <NumberInputWidget
+          value={[123]}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const textbox = screen.getByRole("textbox");
       expect(textbox).toBeInTheDocument();
@@ -20,7 +28,13 @@ describe("NumberInputWidget", () => {
     });
 
     it("should render an empty input", () => {
-      render(<NumberInputWidget value={undefined} setValue={mockSetValue} />);
+      render(
+        <NumberInputWidget
+          value={undefined}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const textbox = screen.getByRole("textbox");
       expect(textbox).toBeInTheDocument();
@@ -28,7 +42,13 @@ describe("NumberInputWidget", () => {
     });
 
     it("should render a disabled update button, until the value is changed", () => {
-      render(<NumberInputWidget value={[123]} setValue={mockSetValue} />);
+      render(
+        <NumberInputWidget
+          value={[123]}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const button = screen.getByRole("button", { name: "Update filter" });
       expect(button).toBeInTheDocument();
@@ -39,7 +59,13 @@ describe("NumberInputWidget", () => {
     });
 
     it("should let you update the input with a new value", () => {
-      render(<NumberInputWidget value={[123]} setValue={mockSetValue} />);
+      render(
+        <NumberInputWidget
+          value={[123]}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const textbox = screen.getByRole("textbox");
       userEvent.clear(textbox);
@@ -50,7 +76,13 @@ describe("NumberInputWidget", () => {
     });
 
     it("should let you update the input with an undefined value", () => {
-      render(<NumberInputWidget value={[1]} setValue={mockSetValue} />);
+      render(
+        <NumberInputWidget
+          value={[1]}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const textbox = screen.getByRole("textbox");
       const button = screen.getByRole("button", { name: "Update filter" });
@@ -67,6 +99,7 @@ describe("NumberInputWidget", () => {
           arity={2}
           value={[123, 456]}
           setValue={mockSetValue}
+          parameter={mockParameter}
         />,
       );
 
@@ -84,6 +117,7 @@ describe("NumberInputWidget", () => {
           arity={2}
           value={[123, 456]}
           setValue={mockSetValue}
+          parameter={mockParameter}
         />,
       );
 
@@ -99,6 +133,7 @@ describe("NumberInputWidget", () => {
           arity={2}
           value={undefined}
           setValue={mockSetValue}
+          parameter={mockParameter}
         />,
       );
 
@@ -118,6 +153,7 @@ describe("NumberInputWidget", () => {
           arity={2}
           value={[123, 456]}
           setValue={mockSetValue}
+          parameter={mockParameter}
         />,
       );
 
@@ -139,6 +175,7 @@ describe("NumberInputWidget", () => {
           arity="n"
           value={[1, 2, 3, 4]}
           setValue={mockSetValue}
+          parameter={mockParameter}
         />,
       );
 
@@ -152,6 +189,7 @@ describe("NumberInputWidget", () => {
           arity="n"
           value={undefined}
           setValue={mockSetValue}
+          parameter={mockParameter}
         />,
       );
 
@@ -168,7 +206,12 @@ describe("NumberInputWidget", () => {
 
     it("should be unsettable", () => {
       render(
-        <NumberInputWidget arity="n" value={[1, 2]} setValue={mockSetValue} />,
+        <NumberInputWidget
+          arity="n"
+          value={[1, 2]}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
       );
 
       const input = screen.getByRole("textbox");

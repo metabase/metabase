@@ -361,7 +361,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       closeSidebar,
       databases,
       collection,
-      setDashboardAttribute,
     } = this.props;
 
     const canEdit = dashboard.can_write;
@@ -511,7 +510,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       buttons.push(
         <ExtraEditButtonsMenu
           key="extra-options-button"
-          setDashboardAttribute={setDashboardAttribute}
           dashboard={dashboard}
         />,
       );

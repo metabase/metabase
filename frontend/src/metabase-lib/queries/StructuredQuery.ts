@@ -27,7 +27,6 @@ import {
   isCompatibleAggregationOperatorForField,
 } from "metabase-lib/operators/utils";
 import { TYPE } from "metabase-lib/types/constants";
-import { isSegment } from "metabase-lib/queries/utils/filter";
 import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
 import { createLookupByProperty } from "metabase-lib/utils";
@@ -52,8 +51,6 @@ import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 
-import { getStructuredQueryTable } from "./utils/structured-query-table";
-
 type DimensionFilterFn = (dimension: Dimension) => boolean;
 export type FieldFilterFn = (filter: Field) => boolean;
 
@@ -74,10 +71,6 @@ export interface FilterSection {
 export interface DimensionOption {
   dimension: Dimension;
 }
-
-// type guards for determining data types
-export const isSegmentOption = (content: any): content is SegmentOption =>
-  content?.filter && isSegment(content.filter);
 
 export interface SegmentOption {
   name: string;
@@ -195,7 +188,9 @@ class StructuredQuery extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   table = _.once((): Table | null => {
-    return getStructuredQueryTable(this.question(), this);
+    const question = this.question();
+    const metadata = question.metadata();
+    return metadata.table(this._sourceTableId());
   });
 
   hasAggregations() {
@@ -636,14 +631,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   // DIMENSION OPTIONS
-  _keyForFK(source, destination) {
-    if (source && destination) {
-      return `${source.id},${destination.id}`;
-    }
-
-    return null;
-  }
-
   dimensionOptions(
     dimensionFilter: DimensionFilterFn = _dimension => true,
   ): DimensionOptions {
@@ -850,30 +837,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * Returns the "last" nested query that is already summarized, or `null` if none are
-   * */
-  lastSummarizedQuery = _.once((): StructuredQuery | null | undefined => {
-    if (this.hasAggregations() || !this.canNest()) {
-      return this;
-    } else {
-      const sourceQuery = this.sourceQuery();
-      return sourceQuery ? sourceQuery.lastSummarizedQuery() : null;
-    }
-  });
-
-  /**
-   * Returns the "last" nested query that is already summarized, or the query itself.
-   * Used in "view mode" to effectively ignore post-aggregation filter stages
-   */
-  topLevelQuery = _.once((): StructuredQuery => {
-    if (!this.canNest()) {
-      return this;
-    } else {
-      return this.lastSummarizedQuery() || this;
-    }
-  });
-
-  /**
    * returns the corresponding {Dimension} in the sourceQuery, if any
    */
   dimensionForSourceQuery(dimension: Dimension): Dimension | null | undefined {
@@ -901,7 +864,7 @@ class StructuredQuery extends AtomicQuery {
    */
   rootTable = _.once((): Table => {
     const question = this.question();
-    const questionTableId = question?.tableId();
+    const questionTableId = question?.legacyQueryTableId();
     if (questionTableId != null) {
       return this.metadata().table(questionTableId);
     }

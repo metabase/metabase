@@ -207,7 +207,8 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       goToTab("Tab 2");
 
-      dashboardParametersContainer().within(() => {
+      dashboardParametersContainer().should("not.exist");
+      cy.findByTestId("embed-frame").within(() => {
         cy.findByText("Id").should("not.exist");
         cy.findByText("Name").should("not.exist");
         cy.findByText("Source").should("not.exist");
@@ -224,7 +225,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
       getDashboardFilter("Name").click();
       toggleRequiredParameter();
       sidebar().findByText("Default value").next().click();
-      addWidgetStringFilter("Ferne Rosenbaum");
+      addWidgetStringFilter("Ferne Rosenbaum", {
+        buttonLabel: "Update filter",
+      });
       saveDashboard();
 
       // Check that parameter visibility is correct

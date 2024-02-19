@@ -10,6 +10,7 @@
    [metabase.lib.native :as lib-native]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -169,7 +170,7 @@
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
-      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp/compile (mt/mbql-query checkins)))}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
         (let [query (assoc (mt/mbql-query nil
                              {:source-table (format "card__%d" card-id)})
                            :parameters [{:type   :date/all-options
@@ -194,7 +195,7 @@
       (mt/dataset airports
         (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX')"
                 :params nil}
-               (qp/compile-and-splice-parameters
+               (qp.compile/compile-and-splice-parameters
                 {:type       :native
                  :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                               :template-tags {"country"
@@ -213,7 +214,7 @@
     (testing "Comma-separated numbers"
       (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp/compile-and-splice-parameters
+             (qp.compile/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
                             :template-tags {"price"
@@ -233,7 +234,7 @@
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2, 3)"
               :params []}
-             (qp/compile-and-splice-parameters
+             (qp.compile/compile-and-splice-parameters
               {:type :native
                :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
                         :template-tags {"number_comma"
@@ -252,7 +253,7 @@
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2)"
               :params []}
-             (qp/compile-and-splice-parameters
+             (qp.compile/compile-and-splice-parameters
               {:type :native
                :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
                         :template-tags {"number_comma"
@@ -271,7 +272,7 @@
       (mt/dataset airports
                   (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
                           :params nil}
-                         (qp/compile-and-splice-parameters
+                         (qp.compile/compile-and-splice-parameters
                           {:type       :native
                            :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
                                         :template-tags {"country"
@@ -290,7 +291,7 @@
     (testing "Multi-line comments"
       (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp/compile-and-splice-parameters
+             (qp.compile/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ {{price}}"
                             :template-tags {"price"
@@ -462,7 +463,7 @@
     (mt/dataset test-data
       (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"
               :params []}
-             (qp/compile-and-splice-parameters
+             (qp.compile/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT NOW() - INTERVAL '{{n}} DAYS'"
                             :template-tags {"n"
