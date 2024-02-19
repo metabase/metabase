@@ -2,8 +2,6 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.models.permissions
-    :as ee.perms]
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
     :as ee.qp.perms]
    [metabase.api.dataset :as api.dataset]
@@ -20,12 +18,13 @@
 (defn- do-with-download-perms!
   [db-or-id graph f]
   (let [all-users-group-id (u/the-id (perms-group/all-users))
-        db-id              (u/the-id db-or-id)]
+        db-id              (u/the-id db-or-id)
+        revision           (:revision (data-perms.graph/api-graph))]
     (mt/with-premium-features #{:advanced-permissions}
       (perms.test-util/with-restored-perms!
         (perms.test-util/with-restored-data-perms!
-          (ee.perms/update-db-download-permissions! all-users-group-id db-id graph)
-          (data-perms.graph/update-data-perms-graph! {all-users-group-id {db-id {:download graph}}})
+          (data-perms.graph/update-data-perms-graph! {:revision revision
+                                                      :groups   {all-users-group-id {db-id {:download graph}}}})
           (f))))))
 
 (defmacro ^:private with-download-perms!

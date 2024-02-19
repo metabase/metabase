@@ -63,7 +63,7 @@
               :perms/data-access           :no-self-service
               :perms/download-results      :one-million-rows
               :perms/manage-table-metadata :no}
-             (-> (data-perms/data-permissions-graph :db-id perms/audit-db-id)
+             (-> (data-perms/data-permissions-graph :db-id perms/audit-db-id :audit? true)
                  (get-in [(u/the-id (perms-group/all-users)) perms/audit-db-id])))))
 
     (testing "Audit DB does not have scheduled syncs"
