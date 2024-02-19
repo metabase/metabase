@@ -331,6 +331,8 @@
            (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
              (.setFailOnError change-set fail-on-error?))))))))
 
+(def ^:private legacy-migrations-file "migrations/000_legacy_migrations.yaml")
+(def ^:private update-migrations-file "migrations/001_update_migrations.yaml")
 
 (mu/defn consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.
@@ -344,15 +346,22 @@
   [conn :- (ms/InstanceOfClass java.sql.Connection)
    liquibase :- (ms/InstanceOfClass Liquibase)]
   (let [liquibase-table-name (changelog-table-name conn)
-        statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
+        conn-spec            {:connection conn}]
     (with-scope-locked liquibase
-     (when-not (fresh-install? conn)
-       (jdbc/execute!
-        {:connection conn}
-        [statement
-         "v00.00-000" "migrations/001_update_migrations.yaml"
-         "v45.00-001" "migrations/000_legacy_migrations.yaml"
-         "migrations/001_update_migrations.yaml"])))))
+      (when-not (fresh-install? conn)
+        ;; Skip mutating the table if the filenames are already correct. It assumes we have never moved the boundary
+        ;; between the two files, i.e. that update-migrations start from v45.
+        (when-not (= #{legacy-migrations-file update-migrations-file}
+                     (->> (str "SELECT DISTINCT(FILENAME) AS filename FROM " liquibase-table-name)
+                          (jdbc/query conn-spec)
+                          (into #{} (map :filename))))
+          (log/info "Updating liquibase table to reflect consolidated changeset filenames")
+          (jdbc/execute!
+           conn-spec
+           [(format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)
+            "v00.00-000" update-migrations-file
+            "v45.00-001" legacy-migrations-file
+            update-migrations-file]))))))
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
