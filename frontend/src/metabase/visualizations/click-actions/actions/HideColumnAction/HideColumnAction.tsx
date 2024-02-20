@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { onUpdateVisualizationSettings } from "metabase/query_builder/actions";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
+import { findColumnSettingIndexForColumn } from "metabase-lib/queries/utils/dataset";
 
 export const HideColumnAction: LegacyDrill = ({
   question,
@@ -34,18 +35,13 @@ export const HideColumnAction: LegacyDrill = ({
       default: true,
       action: () => {
         const columnSettings = settings?.["table.columns"] ?? [];
-        const columnSettingsCopy = [...columnSettings];
-        const query = question.query();
-        const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
-          query,
-          -1,
-          [column],
-          columnSettings.map(setting => setting.fieldRef),
-        );
-        const columnSettingIndex = columnIndexes.findIndex(
-          columnIndex => columnIndex >= 0,
+        const columnSettingIndex = findColumnSettingIndexForColumn(
+          question.query(),
+          columnSettings,
+          column,
         );
 
+        const columnSettingsCopy = [...columnSettings];
         if (columnSettingIndex >= 0) {
           columnSettingsCopy[columnSettingIndex] = {
             ...columnSettingsCopy[columnSettingIndex],

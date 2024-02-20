@@ -57,7 +57,7 @@ export function findColumnIndexForColumnSetting(
 export function findColumnSettingIndexForColumn(
   query: Lib.Query,
   columnSettings: TableColumnOrderSetting[],
-  column: DatasetColumn,
+  column: Lib.ColumnMetadata | DatasetColumn,
 ) {
   // ignore settings without fieldRef but preserve indexes
   const items = columnSettings.flatMap((item, settingIndex) => {

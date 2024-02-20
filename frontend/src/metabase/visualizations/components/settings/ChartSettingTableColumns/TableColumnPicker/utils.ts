@@ -1,5 +1,6 @@
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
+import { findColumnSettingIndexForColumn } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   DatasetColumn,
@@ -13,62 +14,47 @@ import type { ColumnItem, DragColumnProps } from "./types";
 export function getColumnItems(
   query: Lib.Query,
   stageIndex: number,
-  legacyColumns: DatasetColumn[],
-  settings: TableColumnOrderSetting[],
+  columns: DatasetColumn[],
+  columnSettings: TableColumnOrderSetting[],
 ): ColumnItem[] {
-  const columns = legacyColumns.map(column =>
-    Lib.fromLegacyColumn(query, stageIndex, column),
-  );
-
-  const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
-    query,
-    stageIndex,
-    columns,
-    settings.map(setting => setting.fieldRef),
-  );
-
-  const settingIndexes = columnIndexes.reduce(
-    (settingIndexes: number[], columnIndex, settingIndex) => {
-      settingIndexes[columnIndex] = settingIndex;
-      return settingIndexes;
-    },
-    [],
-  );
-
-  const columnItems = columns.map((column, columnIndex) => {
+  const columnItems = columns.map(legacyColumn => {
+    const column = Lib.fromLegacyColumn(query, stageIndex, legacyColumn);
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    const legacyColumn = legacyColumns[columnIndex];
-    const settingIndex = settingIndexes[columnIndex];
-    const setting = settings[settingIndex];
+    const columnSettingIndex = findColumnSettingIndexForColumn(
+      query,
+      columnSettings,
+      column,
+    );
+    const columnSetting = columnSettings[columnSettingIndex];
 
     return {
       name: columnInfo.name,
       fieldRef: Lib.legacyRef(query, stageIndex, column),
-      enabled: setting ? setting.enabled : true,
+      enabled: columnSetting ? columnSetting.enabled : true,
       icon: getColumnIcon(column),
       column: legacyColumn,
-      settingIndex,
+      columnSettingIndex: columnSettingIndex,
     };
   });
 
   return [
     ...columnItems
-      .filter(({ settingIndex }) => settingIndex >= 0)
-      .sort((a, b) => a.settingIndex - b.settingIndex),
-    ...columnItems.filter(({ settingIndex }) => settingIndex < 0),
+      .filter(({ columnSettingIndex }) => columnSettingIndex >= 0)
+      .sort((a, b) => a.columnSettingIndex - b.columnSettingIndex),
+    ...columnItems.filter(({ columnSettingIndex }) => columnSettingIndex < 0),
   ];
 }
 
 export function toggleColumnInSettings(
-  { name, fieldRef, settingIndex }: ColumnItem,
-  settings: TableColumnOrderSetting[],
+  { name, fieldRef, columnSettingIndex }: ColumnItem,
+  columnSettings: TableColumnOrderSetting[],
   isEnabled: boolean,
 ): TableColumnOrderSetting[] {
-  const newSettings = [...settings];
+  const newSettings = [...columnSettings];
 
-  if (settingIndex >= 0) {
-    const setting = newSettings[settingIndex];
-    newSettings[settingIndex] = { ...setting, enabled: isEnabled };
+  if (columnSettingIndex >= 0) {
+    const setting = newSettings[columnSettingIndex];
+    newSettings[columnSettingIndex] = { ...setting, enabled: isEnabled };
   } else {
     newSettings.push({ name, fieldRef, enabled: isEnabled });
   }
@@ -78,13 +64,13 @@ export function toggleColumnInSettings(
 
 export const moveColumnInSettings = (
   columnItems: ColumnItem[],
-  settings: TableColumnOrderSetting[],
+  columnSettings: TableColumnOrderSetting[],
   { oldIndex, newIndex }: DragColumnProps,
 ) => {
-  const adjustedOldIndex = columnItems[oldIndex].settingIndex;
-  const adjustedNewIndex = columnItems[newIndex].settingIndex;
+  const adjustedOldIndex = columnItems[oldIndex].columnSettingIndex;
+  const adjustedNewIndex = columnItems[newIndex].columnSettingIndex;
 
-  const newSettings = [...settings];
+  const newSettings = [...columnSettings];
   newSettings.splice(
     adjustedNewIndex,
     0,

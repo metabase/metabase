@@ -27,7 +27,7 @@ export function findMatchingColumn(
 export function findColumnIndexesFromLegacyRefs(
   query: Query,
   stageIndex: number,
-  columns: ColumnMetadata[] | DatasetColumn[],
+  columns: (ColumnMetadata | DatasetColumn)[],
   fieldRefs: FieldReference[],
 ): number[] {
   return ML.find_column_indexes_from_legacy_refs(

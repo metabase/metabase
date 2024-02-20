@@ -7,7 +7,7 @@ export type ColumnItem = {
   enabled: boolean;
   icon: IconName;
   column: DatasetColumn;
-  settingIndex: number;
+  columnSettingIndex: number;
 };
 
 export type DragColumnProps = {

@@ -21,7 +21,7 @@ interface TableColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
   columns: DatasetColumn[];
-  settings: TableColumnOrderSetting[];
+  columnSettings: TableColumnOrderSetting[];
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[]) => void;
   onShowWidget: (config: EditWidgetData, targetElement: HTMLElement) => void;
@@ -31,29 +31,29 @@ export const TableColumnPicker = ({
   query,
   stageIndex,
   columns,
-  settings,
+  columnSettings,
   getColumnName,
   onChange,
   onShowWidget,
 }: TableColumnPickerProps) => {
   const columnItems = useMemo(() => {
-    return getColumnItems(query, stageIndex, columns, settings);
-  }, [query, stageIndex, columns, settings]);
+    return getColumnItems(query, stageIndex, columns, columnSettings);
+  }, [query, stageIndex, columns, columnSettings]);
 
   const getItemName = (columnItem: ColumnItem) => {
     return getColumnName(columnItem.column);
   };
 
   const handleEnableColumn = (columnItem: ColumnItem) => {
-    onChange(toggleColumnInSettings(columnItem, settings, true));
+    onChange(toggleColumnInSettings(columnItem, columnSettings, true));
   };
 
   const handleDisableColumn = (columnItem: ColumnItem) => {
-    onChange(toggleColumnInSettings(columnItem, settings, false));
+    onChange(toggleColumnInSettings(columnItem, columnSettings, false));
   };
 
   const handleDragColumn = (props: DragColumnProps) => {
-    onChange(moveColumnInSettings(columnItems, settings, props));
+    onChange(moveColumnInSettings(columnItems, columnSettings, props));
   };
 
   const handleEditColumn = (
