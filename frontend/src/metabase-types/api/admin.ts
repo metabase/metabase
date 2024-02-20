@@ -1,22 +1,3 @@
-export type CreateApiKeyInput = {
-  name: string;
-  group_id: string;
-};
-
-export type CreateApiKeyResponse = {
-  unmasked_key: string;
-};
-
-export type RegenerateApiKeyResponse = {
-  unmasked_key: string;
-};
-
-export type EditApiKeyInput = {
-  id: number;
-  group_id: string;
-  name: string;
-};
-
 export type ApiKey = {
   name: string;
   id: number;
@@ -32,4 +13,25 @@ export type ApiKey = {
     id: number;
     common_name: string;
   };
+};
+
+export type CreateApiKeyInput = {
+  name: string;
+  group_id: string;
+};
+
+export type CreateApiKeyResponse = {
+  unmasked_key: string;
+};
+
+export type UpdateApiKeyInput = {
+  id: number;
+  group_id: string;
+  name: string;
+};
+
+export type UpdateApiKeyOutput = void;
+
+export type RegenerateApiKeyResponse = {
+  unmasked_key: string;
 };

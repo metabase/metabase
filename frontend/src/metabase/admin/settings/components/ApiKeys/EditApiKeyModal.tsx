@@ -36,7 +36,7 @@ const RegenerateKeyModal = ({
   const [regenerateApiKey] = ApiKeysApi.useRegenerateMutation();
   const handleRegenerate = useCallback(async () => {
     const result = await regenerateApiKey(apiKey.id).unwrap();
-    setSecretKey(result.data.unmasked_key);
+    setSecretKey(result.unmasked_key);
     setModal("secretKey");
   }, [apiKey.id, setModal, setSecretKey, regenerateApiKey]);
 
@@ -97,18 +97,18 @@ export const EditApiKeyModal = ({
 }) => {
   const [modal, setModal] = useState<EditModalName>("edit");
   const [secretKey, setSecretKey] = useState<string>("");
-  const [editApiKey] = ApiKeysApi.useEditMutation();
+  const [updateApiKey] = ApiKeysApi.useUpdateMutation();
 
   const handleSubmit = useCallback(
     async vals => {
-      await editApiKey({
+      await updateApiKey({
         id: vals.id,
         group_id: vals.group_id,
         name: vals.name,
       }).unwrap();
       onClose();
     },
-    [onClose, editApiKey],
+    [onClose, updateApiKey],
   );
 
   if (modal === "secretKey") {
