@@ -6,7 +6,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [metabase.util.log :as log]))
@@ -296,7 +296,7 @@
                             {:source-table (data/id table)
                              :aggregation  [[:count]]
                              :filter       [:= [:field-id (data/id table field)] 1]})
-          {:keys [query]} (qp/compile mbql-query)
+          {:keys [query]} (qp.compile/compile mbql-query)
           ;; preserve stuff like cast(1 AS datetime) in the resulting query
           query           (str/replace query (re-pattern #"= (.*)(?:1)(.*)") (format "= $1{{%s}}$2" (name field)))]
       {:query query})))
@@ -308,7 +308,7 @@
                             {:source-table (data/id table)
                              :aggregation  [[:count]]
                              :filter       [:= [:field-id (data/id table field)] 1]})
-          {:keys [query]} (qp/compile mbql-query)
+          {:keys [query]} (qp.compile/compile mbql-query)
           query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
       {:query query})))
 

@@ -1,6 +1,13 @@
 import { useState } from "react";
+
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
+
 import type { RelativeDatePickerValue } from "../types";
+
+import { CurrentDatePicker } from "./CurrentDatePicker";
+import { DateIntervalPicker } from "./DateIntervalPicker";
+import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
+import { TabList } from "./RelativeDatePicker.styled";
 import { DEFAULT_VALUE, TABS } from "./constants";
 import {
   getDirection,
@@ -8,10 +15,6 @@ import {
   isOffsetIntervalValue,
   setDirection,
 } from "./utils";
-import { CurrentDatePicker } from "./CurrentDatePicker";
-import { DateIntervalPicker } from "./DateIntervalPicker";
-import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
-import { TabList } from "./RelativeDatePicker.styled";
 
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;

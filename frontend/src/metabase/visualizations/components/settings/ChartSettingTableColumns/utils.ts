@@ -1,14 +1,17 @@
 import { t } from "ttag";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { IconName } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
+import { getIconForField } from "metabase-lib/metadata/utils/fields";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+
 import type {
   ColumnGroupItem,
   ColumnMetadataItem,
@@ -87,9 +90,14 @@ export const getQueryColumnSettingItems = (
 export const getDatasetColumnSettingItems = (
   datasetColumns: DatasetColumn[],
   columnSettings: ColumnSetting[],
+  question?: Question,
 ): ColumnSettingItem[] => {
   const datasetIndexes = columnSettings.map(columnSetting =>
-    findColumnIndexForColumnSetting(datasetColumns, columnSetting),
+    findColumnIndexForColumnSetting(
+      datasetColumns,
+      columnSetting,
+      question?.query(),
+    ),
   );
 
   return columnSettings.reduce(

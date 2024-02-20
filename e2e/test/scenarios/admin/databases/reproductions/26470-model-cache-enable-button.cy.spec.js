@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { restore } from "e2e/support/helpers";
 
 describe("issue 26470", { tags: "@external" }, () => {
   beforeEach(() => {

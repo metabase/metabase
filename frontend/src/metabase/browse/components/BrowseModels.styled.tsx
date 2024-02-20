@@ -1,14 +1,13 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import {
-  breakpointMinMedium,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
+
 import Card from "metabase/components/Card";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
-import { Flex, Grid, Group, Icon } from "metabase/ui";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { color } from "metabase/lib/colors";
+import { Flex, Group, Icon } from "metabase/ui";
+
+import { BrowseGrid } from "./BrowseApp.styled";
 
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
@@ -50,20 +49,7 @@ export const MultilineEllipsified = styled(Ellipsified)`
   padding-bottom: 1px;
 `;
 
-export const GridContainer = styled(Grid)`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: 1.5rem 1rem;
-  margin: 0;
-  width: 100%;
-
-  ${breakpointMinSmall} {
-    padding-bottom: 2.5rem;
-  }
-  ${breakpointMinMedium} {
-    padding-bottom: 3rem;
-  }
-`;
+export const ModelGrid = styled(BrowseGrid)``;
 
 export const CollectionHeaderContainer = styled(Flex)`
   grid-column: 1 / -1;

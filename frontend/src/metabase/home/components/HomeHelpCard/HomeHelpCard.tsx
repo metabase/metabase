@@ -1,11 +1,13 @@
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
+
 import { CardIcon, CardRoot, CardTitle } from "./HomeHelpCard.styled";
 
 export const HomeHelpCard = (): JSX.Element | null => {

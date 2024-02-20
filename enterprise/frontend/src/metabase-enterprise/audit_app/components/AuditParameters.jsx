@@ -1,7 +1,7 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
-
+import { Component } from "react";
 import _ from "underscore";
+
 import Button from "metabase/core/components/Button";
 
 import { AuditParametersInput } from "./AuditParameters.styled";

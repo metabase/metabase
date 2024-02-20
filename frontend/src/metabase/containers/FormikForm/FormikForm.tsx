@@ -1,12 +1,14 @@
+import type { FormikErrors, FormikHelpers } from "formik";
+import { Formik } from "formik";
+import { assocIn, getIn, merge } from "icepick";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { assocIn, getIn, merge } from "icepick";
 
-import type { FormikErrors, FormikHelpers } from "formik";
-import { Formik } from "formik";
-
+import type { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
+import type { GenericErrorResponse } from "metabase/lib/errors";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 import type {
   BaseFieldValues,
   FormFieldDefinition,
@@ -15,12 +17,8 @@ import type {
   PopulatedFormObject,
 } from "metabase-types/forms";
 
-import type { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
-
-import type { GenericErrorResponse } from "metabase/lib/errors";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-
 import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
+
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
 

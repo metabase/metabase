@@ -1,29 +1,28 @@
-import { IndexRoute, Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import { IndexRoute, Route } from "react-router";
 
+import { setupEnterpriseTest } from "__support__/enterprise";
+import { callMockEvent } from "__support__/events";
+import {
+  setupDatabaseEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { setupEnterpriseTest } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { checkNotNull } from "metabase/lib/types";
 import type { Engine } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockEngineSource,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import {
-  setupDatabaseEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/lib/types";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
-import { callMockEvent } from "__support__/events";
 import DatabaseEditApp from "./DatabaseEditApp";
 
 const ENGINES_MOCK: Record<string, Engine> = {

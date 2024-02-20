@@ -1,10 +1,10 @@
 import * as Lib from "metabase-lib";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import { getParameterOperatorName } from "metabase-lib/parameters/utils/operators";
 import {
   getParameterType,
   getParameterSubType,
 } from "metabase-lib/parameters/utils/parameter-type";
-import { getParameterOperatorName } from "metabase-lib/parameters/utils/operators";
+import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 export function fieldFilterForParameter(parameter) {
   const type = getParameterType(parameter);

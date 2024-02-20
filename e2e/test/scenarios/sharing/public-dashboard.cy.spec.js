@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitDashboard,
@@ -11,8 +12,6 @@ import {
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -220,7 +219,8 @@ describe("scenarios > public > dashboard", () => {
 
     goToTab(tab2.name);
 
-    dashboardParametersContainer().within(() => {
+    dashboardParametersContainer().should("not.exist");
+    cy.findByTestId("embed-frame").within(() => {
       cy.findByText(textFilter.name).should("not.exist");
       cy.findByText(unusedFilter.name).should("not.exist");
     });

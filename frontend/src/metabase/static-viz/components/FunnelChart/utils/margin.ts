@@ -3,6 +3,7 @@ import {
   measureTextWidth,
   measureTextHeight,
 } from "metabase/static-viz/lib/text";
+
 import type { FunnelDatum, FunnelSettings } from "../types";
 
 export const calculateMargin = (

@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import cx from "classnames";
+import { Component } from "react";
+
 import { CopyWidgetButton } from "./CopyWidget.styled";
 
 export default class CopyWidget extends Component {

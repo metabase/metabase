@@ -1,5 +1,6 @@
 import PopularItems from "metabase/entities/popular-items";
 import type { PopularItem } from "metabase-types/api";
+
 import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,

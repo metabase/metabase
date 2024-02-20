@@ -3,12 +3,10 @@ import { t, ngettext, msgid } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-
-import * as Urls from "metabase/lib/urls";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-
-import type Field from "metabase-lib/metadata/Field";
+import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/Question";
+import type Field from "metabase-lib/metadata/Field";
 
 import {
   SchemaHeader,

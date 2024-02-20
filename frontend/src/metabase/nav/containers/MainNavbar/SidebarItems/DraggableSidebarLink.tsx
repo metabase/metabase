@@ -1,5 +1,5 @@
-import type { SidebarLinkProps } from "./SidebarLink";
 import { DragIcon, StyledSidebarLink } from "./DraggableSidebarLink.styled";
+import type { SidebarLinkProps } from "./SidebarLink";
 
 import "./sortable.css";
 

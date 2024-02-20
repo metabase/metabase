@@ -1,5 +1,6 @@
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type Question from "metabase-lib/Question";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
 import { DetailsTable } from "./ObjectDetailsTable";
@@ -19,6 +20,7 @@ export interface ObjectDetailBodyProps {
     [key: number]: { status: number; value: number };
   };
   followForeignKey?: (fk: ForeignKey) => void;
+  question?: Question;
 }
 
 export function ObjectDetailBody({
@@ -32,6 +34,7 @@ export function ObjectDetailBody({
   tableForeignKeys,
   tableForeignKeyReferences,
   followForeignKey,
+  question,
 }: ObjectDetailBodyProps): JSX.Element {
   const showRelationships =
     hasRelationships &&
@@ -47,6 +50,7 @@ export function ObjectDetailBody({
         settings={settings}
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
+        question={question}
       />
       {showRelationships && (
         <Relationships

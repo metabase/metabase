@@ -1,6 +1,9 @@
 import { DropTarget } from "react-dnd";
+
 import { canonicalCollectionId } from "metabase/collections/utils";
+
 import DropArea from "./DropArea";
+
 import { MoveableDragTypes } from ".";
 
 const CollectionDropTarget = DropTarget(

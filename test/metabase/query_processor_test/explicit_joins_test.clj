@@ -13,6 +13,8 @@
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -356,7 +358,7 @@
                                    {:source-table "card__3"
                                     :limit        3})
                   [cid cuser-id ccount cuser-id2 ccount2] (->> top-card-query
-                                                               qp/query->expected-cols
+                                                               qp.preprocess/query->expected-cols
                                                                (map :name))
                   cid2 (str cid "_2")
                   col-data-fn   (juxt            :id       :name     :source_alias)
@@ -543,7 +545,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "we should be able to use a SQL question as a source query in a Join"
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                                        [(mt/native-query (qp/compile (mt/mbql-query venues)))])
+                                        [(mt/native-query (qp.compile/compile (mt/mbql-query venues)))])
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
                 [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
                (mt/formatted-rows [int identity int int int identity int 4.0 4.0 int]

@@ -1,7 +1,7 @@
-import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
-import type { NativeDatasetQuery } from "./query";
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
+import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
+import type { NativeDatasetQuery } from "./query";
 import type { UserId, UserInfo } from "./user";
 
 export interface WritebackParameter extends Parameter {

@@ -1,10 +1,12 @@
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
 import Alerts from "metabase/entities/alerts";
 import Users from "metabase/entities/users";
 import { getUserIsAdmin } from "metabase/selectors/user";
+
 import AuditNotificationEditModal from "../../components/AuditNotificationEditModal";
 
 const mapStateToProps = (state, { alert }) => ({

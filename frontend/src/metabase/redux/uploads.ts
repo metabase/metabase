@@ -1,19 +1,17 @@
 import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
-import { CardApi, MetabaseApi } from "metabase/services";
-import { runQuestionQuery } from "metabase/query_builder/actions";
 import Collections from "metabase/entities/collections";
-
-import type { Dispatch, State } from "metabase-types/store";
-import type { CardId, CollectionId, TableId } from "metabase-types/api";
-import type { FileUploadState } from "metabase-types/store/upload";
-
 import {
   createAction,
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
+import { runQuestionQuery } from "metabase/query_builder/actions";
+import { CardApi, MetabaseApi } from "metabase/services";
+import type { CardId, CollectionId, TableId } from "metabase-types/api";
+import type { Dispatch, State } from "metabase-types/store";
+import type { FileUploadState } from "metabase-types/store/upload";
 
 export const UPLOAD_FILE_TO_COLLECTION = "metabase/collection/UPLOAD_FILE";
 export const UPLOAD_FILE_START = "metabase/collection/UPLOAD_FILE_START";
@@ -39,6 +37,14 @@ export const getAllUploads = (state: State) => Object.values(state.upload);
 export const hasActiveUploads = (state: State) =>
   getAllUploads(state).some(upload => upload.status === "in-progress");
 
+export interface UploadFileProps {
+  file: File;
+  collectionId?: CollectionId;
+  tableId?: TableId;
+  modelId?: CardId;
+  reloadQuestionData?: boolean;
+}
+
 export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
   ({
@@ -47,13 +53,7 @@ export const uploadFile = createThunkAction(
       tableId,
       modelId,
       reloadQuestionData,
-    }: {
-      file: File;
-      collectionId?: CollectionId;
-      tableId?: TableId;
-      modelId?: CardId;
-      reloadQuestionData?: boolean;
-    }) =>
+    }: UploadFileProps) =>
     async (dispatch: Dispatch) => {
       const id = Date.now();
 

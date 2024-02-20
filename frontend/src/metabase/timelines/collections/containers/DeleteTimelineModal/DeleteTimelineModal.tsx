@@ -1,11 +1,13 @@
 import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
+
 import Timelines from "metabase/entities/timelines";
+import * as Urls from "metabase/lib/urls";
+import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
 import type { Timeline } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
+
 import type { ModalParams } from "../../types";
 
 interface DeleteTimelineModalProps {

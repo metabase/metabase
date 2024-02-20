@@ -1,14 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
+
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toggle from "metabase/core/components/Toggle";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
-import type Table from "metabase-lib/metadata/Table";
 import type Field from "metabase-lib/metadata/Field";
+import type Table from "metabase-lib/metadata/Table";
+import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
+
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
-import useFilterFields from "./use-filter-fields";
+
 import {
   SectionRoot,
   SectionHeader,
@@ -24,6 +26,7 @@ import {
   FieldListHeader,
   FieldListTitle,
 } from "./ParameterLinkedFilters.styled";
+import useFilterFields from "./use-filter-fields";
 
 export interface ParameterLinkedFiltersProps {
   parameter: Parameter;

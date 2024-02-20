@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import type { TimelinePanelProps } from "./TimelinePanel";
 import TimelinePanel from "./TimelinePanel";
 

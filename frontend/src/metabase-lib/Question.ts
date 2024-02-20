@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+import _ from "underscore";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
@@ -23,18 +23,18 @@ import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
+  CardDisplayType,
   CardType,
   CollectionId,
   DatabaseId,
-  DatasetQuery,
-  DatasetData,
-  TableId,
-  Parameter as ParameterObject,
-  ParameterValues,
-  ParameterId,
-  VisualizationSettings,
-  CardDisplayType,
   Dataset,
+  DatasetData,
+  DatasetQuery,
+  Parameter as ParameterObject,
+  ParameterId,
+  ParameterValues,
+  TableId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 // TODO: remove these dependencies
@@ -594,9 +594,14 @@ class Question {
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
+      const hasColumn =
+        findColumnIndexForColumnSetting(cols, colSetting, this.query()) >= 0;
       const isMutatingColumn =
-        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
+        findColumnIndexForColumnSetting(
+          addedColumns,
+          colSetting,
+          this.query(),
+        ) >= 0;
       return hasColumn && !isMutatingColumn;
     });
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;
@@ -720,13 +725,19 @@ class Question {
 
   databaseId(): DatabaseId | null {
     const query = this.query();
-    const databaseId = Lib.databaseID(query);
-    return databaseId;
+    return Lib.databaseID(query);
   }
 
   legacyQueryTable(): Table | null {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-    return query && typeof query.table === "function" ? query.table() : null;
+    const query = this.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+    if (isNative) {
+      return this.legacyQuery().table();
+    } else {
+      const tableId = Lib.sourceTableOrCardId(query);
+      const metadata = this.metadata();
+      return metadata.table(tableId);
+    }
   }
 
   legacyQueryTableId(): TableId | null {

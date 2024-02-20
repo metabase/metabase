@@ -1,4 +1,5 @@
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
+
 import { SmartScalar } from "../SmartScalar";
 
 const Placeholder = ({ text }: { text: string }) => {

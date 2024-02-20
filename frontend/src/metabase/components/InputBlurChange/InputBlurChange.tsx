@@ -1,7 +1,8 @@
 import type * as React from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import _ from "underscore";
 import { useUnmount } from "react-use";
+import _ from "underscore";
+
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 

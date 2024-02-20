@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { NumberInput } from "metabase/ui";
 
 export const NumberInputStyled = styled(NumberInput)`

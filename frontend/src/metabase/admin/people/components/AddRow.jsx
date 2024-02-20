@@ -1,7 +1,7 @@
-import { forwardRef } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { forwardRef } from "react";
+import { t } from "ttag";
 
 export const AddRow = forwardRef(function AddRow(
   {

@@ -1053,7 +1053,7 @@
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/run-query-for-dashcard-async
+  (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
              {:dashboard-id dashboard-id
@@ -1072,7 +1072,7 @@
    card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
    export-format api.dataset/ExportFormat}
-  (m/mapply qp.dashboard/run-query-for-dashcard-async
+  (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              request-parameters
              {:dashboard-id  dashboard-id
@@ -1098,12 +1098,12 @@
    dashcard-id  ms/PositiveInt
    card-id      ms/PositiveInt
    parameters   [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/run-query-for-dashcard-async
+  (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
              {:dashboard-id dashboard-id
               :card-id      card-id
               :dashcard-id  dashcard-id
-              :qp-runner    qp.pivot/run-pivot-query})))
+              :qp           qp.pivot/run-pivot-query})))
 
 (api/define-routes)

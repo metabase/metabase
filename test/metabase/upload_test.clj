@@ -272,11 +272,11 @@
 
 (defn csv-file-with
   "Create a temp csv file with the given content and return the file"
-  ([rows]
+  (^File [rows]
    (csv-file-with rows "test"))
-  ([rows file-prefix]
+  (^File [rows file-prefix]
    (csv-file-with rows file-prefix io/writer))
-  ([rows file-prefix writer-fn]
+  (^File [rows file-prefix writer-fn]
    (let [contents (str/join "\n" rows)
          csv-file (doto (File/createTempFile file-prefix ".csv")
                     (.deleteOnExit))]

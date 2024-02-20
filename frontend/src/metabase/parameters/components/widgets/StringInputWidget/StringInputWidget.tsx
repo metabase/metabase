@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { isString, isEmpty } from "underscore";
 
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
   WidgetRoot,
   WidgetLabel,
@@ -10,7 +11,6 @@ import {
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
-import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 
 type StringInputWidgetProps = {
   value: string[] | undefined;

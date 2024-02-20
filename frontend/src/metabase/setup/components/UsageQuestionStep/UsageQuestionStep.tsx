@@ -1,9 +1,11 @@
-import { t } from "ttag";
 import { useState } from "react";
+import { t } from "ttag";
+
+import Button from "metabase/core/components/Button";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Divider, Radio, Stack, Text } from "metabase/ui";
-import Button from "metabase/core/components/Button";
 import type { UsageReason } from "metabase-types/api";
+
 import { selectStep, submitUsageReason } from "../../actions";
 import {
   getIsSetupCompleted,

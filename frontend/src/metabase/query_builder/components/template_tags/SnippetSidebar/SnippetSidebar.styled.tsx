@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { Icon } from "metabase/ui";
+
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const SidebarIcon = styled(Icon)`
   color: ${color("text-light")};

@@ -16,4 +16,3 @@ export const remove = (items, index) => [
   ...items.slice(0, index),
   ...items.slice(index + 1),
 ];
-export const clear = () => [];

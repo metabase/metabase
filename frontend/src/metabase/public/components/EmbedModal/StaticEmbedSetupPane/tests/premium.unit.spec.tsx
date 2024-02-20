@@ -1,5 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { FONTS_MOCK_VALUES, getMockResource, setup } from "./setup";

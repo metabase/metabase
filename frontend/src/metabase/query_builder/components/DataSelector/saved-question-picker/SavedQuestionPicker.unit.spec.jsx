@@ -1,14 +1,16 @@
 import fetchMock from "fetch-mock";
+
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+
 import SavedQuestionPicker from "./SavedQuestionPicker";
 
 const CURRENT_USER = {

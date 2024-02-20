@@ -6,9 +6,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-source-metadata
     :as add-source-metadata]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -40,7 +40,7 @@
                                         (qp.store/metadata-provider)
                                         meta/metadata-provider)
        (results-metadata
-        (qp/query->expected-cols
+        (qp.preprocess/query->expected-cols
          (lib.tu.macros/mbql-query venues
            {:fields (for [id field-ids] [:field id nil])
             :limit  1})))))))
@@ -221,7 +221,7 @@
       (is (= (letfn [(metadata-with-count-field-ref [field-ref]
                        (concat
                         (venues-source-metadata :price)
-                        (let [[count-col] (results-metadata (qp/query->expected-cols
+                        (let [[count-col] (results-metadata (qp.preprocess/query->expected-cols
                                                              (lib.tu.macros/mbql-query venues
                                                                {:aggregation [[:count]]})))]
                           [(-> count-col
@@ -276,7 +276,7 @@
                                   :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
                 :source-metadata (concat
                                   (let [[lat-col]   (venues-source-metadata :latitude)
-                                        [count-col] (results-metadata (qp/query->expected-cols
+                                        [count-col] (results-metadata (qp.preprocess/query->expected-cols
                                                                        (lib.tu.macros/mbql-query venues
                                                                          {:aggregation [[:count]]})))]
                                     [(assoc lat-col :field_ref [:field
@@ -359,9 +359,9 @@
                                               :order-by     [[:asc $id]]
                                               :limit        2}})
           metadata          (qp.store/with-metadata-provider meta/metadata-provider
-                              (qp/query->expected-cols query))
+                              (qp.preprocess/query->expected-cols query))
           ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
-          ;; `qp/query->expected-cols`
+          ;; `qp.preprocess/query->expected-cols`
           expected-metadata (for [col metadata]
                               (cond-> (merge (results-col col) (select-keys col [:source_alias]))
                                 ;; for some reason this middleware returns temporal fields with a `:default` unit,

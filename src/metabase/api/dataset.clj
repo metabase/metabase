@@ -19,6 +19,7 @@
    [metabase.models.query :as query]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -46,12 +47,11 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(defn- run-query-async
+(mu/defn ^:private run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
-   & {:keys [context export-format qp-runner]
+   & {:keys [context export-format]
       :or   {context       :ad-hoc
-             export-format :api
-             qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
+             export-format :api}}]
   (span/with-span!
     {:name "run-query-async"}
     (when (and (not= (:type query) "internal")
@@ -75,14 +75,17 @@
                            (:dataset source-card)
                            (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
       (binding [qp.perms/*card-id* source-card-id]
-        (qp.streaming/streaming-response [{:keys [rff context]} export-format]
-                                         (qp-runner query info rff context))))))
+        (qp.streaming/streaming-response [rff export-format]
+          (qp/process-query (update query :info merge info) rff))))))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database [:maybe :int]}
-  (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
+  (run-streaming-query
+   (-> query
+       (update-in [:middleware :js-int-to-string?] (fnil identity true))
+       qp/userland-query-with-default-constraints)))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -130,20 +133,18 @@
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
                          (update :table.columns mbql.normalize/normalize)
                          mb.viz/db->norm)
-        query        (-> (assoc query
-                                :async? true
-                                :viz-settings viz-settings)
+        query        (-> query
+                         (assoc :viz-settings viz-settings)
                          (dissoc :constraints)
                          (update :middleware #(-> %
                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                   (assoc :process-viz-settings? true
                                                          :skip-results-metadata? true
                                                          :format-rows? false))))]
-    (run-query-async
-     query
+    (run-streaming-query
+     (qp/userland-query query)
      :export-format export-format
-     :context       (export-format->context export-format)
-     :qp-runner     qp/process-query-and-save-execution!)))
+     :context       (export-format->context export-format))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
@@ -170,7 +171,7 @@
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
           prettify (partial driver/prettify-native-form driver)
-          compiled (qp/compile-and-splice-parameters query)]
+          compiled (qp.compile/compile-and-splice-parameters query)]
       (cond-> compiled
         (not (false? pretty)) (update :query prettify)))))
 
@@ -183,13 +184,11 @@
   (api/read-check Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
-    (qp.streaming/streaming-response [{:keys [rff context]} :api]
+    (qp.streaming/streaming-response [rff :api]
       (qp.pivot/run-pivot-query (assoc query
-                                       :async? true
-                                       :constraints (qp.constraints/default-query-constraints))
-                                info
-                                rff
-                                context))))
+                                       :constraints (qp.constraints/default-query-constraints)
+                                       :info        info)
+                                rff))))
 
 (defn- parameter-field-values
   [field-ids query]

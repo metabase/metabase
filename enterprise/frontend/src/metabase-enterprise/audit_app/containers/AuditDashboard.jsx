@@ -1,15 +1,15 @@
 /* eslint-disable react/prop-types */
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { getMetadata } from "metabase/selectors/metadata";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import { getMetadata } from "metabase/selectors/metadata";
+
+import { AuditMode } from "../lib/mode";
 
 const DashboardWithData = DashboardData(Dashboard);
-
-import { getAccentColors } from "metabase/lib/colors/groups";
-import { AuditMode } from "../lib/mode";
 
 const AuditDashboard = ({ cards, ...props }) => (
   <DashboardWithData

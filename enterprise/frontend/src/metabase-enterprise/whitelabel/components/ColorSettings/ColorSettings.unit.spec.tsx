@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { color, colors } from "metabase/lib/colors/palette";
+
 import ColorSettings from "./ColorSettings";
 
 describe("ColorSettings", () => {

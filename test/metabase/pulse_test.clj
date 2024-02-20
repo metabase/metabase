@@ -17,7 +17,6 @@
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.pulse.util :as pu]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -836,16 +835,6 @@
                     (count (:message email-data))))
              (is (email-body? (first (:message email-data))))
              (is (attachment? (second (:message email-data)))))))))))
-
-(deftest dont-run-async-test
-  (testing "even if Card is saved as `:async?` we shouldn't run the query async"
-    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                        :type     :query
-                                                        :query    {:source-table (mt/id :venues)}
-                                                        :async?   true}}]
-      (is (=? {:card   map?
-               :result map?}
-              (pu/execute-card {:creator_id (mt/user->id :rasta)} card))))))
 
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."

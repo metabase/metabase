@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { alpha } from "metabase/lib/colors";
 
 export type BorderSide = "top" | "right" | "bottom" | "left";

@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import type { SearchFilterDropdown } from "metabase/search/types";
-import { UserNameDisplay } from "metabase/search/components/UserNameDisplay";
+
 import {
   SearchUserPicker,
   SearchUserPickerContainer,
 } from "metabase/search/components/SearchUserPicker";
+import { UserNameDisplay } from "metabase/search/components/UserNameDisplay";
+import type { SearchFilterDropdown } from "metabase/search/types";
 import {
   stringifyUserIdArray,
   parseUserIdArray,

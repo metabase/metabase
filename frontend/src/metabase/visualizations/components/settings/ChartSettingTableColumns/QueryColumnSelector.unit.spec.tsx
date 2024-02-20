@@ -1,5 +1,8 @@
-import { assocIn } from "icepick";
 import userEvent from "@testing-library/user-event";
+import { assocIn } from "icepick";
+
+import { renderWithProviders, screen } from "__support__/ui";
+import { createQuery } from "metabase-lib/test-helpers";
 import type {
   DatasetColumn,
   DatasetQuery,
@@ -14,8 +17,7 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createQuery } from "metabase-lib/test-helpers";
+
 import { QueryColumnSelector } from "./QueryColumnSelector";
 
 const QUERY: DatasetQuery = {
