@@ -9,6 +9,7 @@ import { createMockEmbedState } from "./embed";
 import { createMockMetabotState } from "./metabot";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
+import { createMockRequestsState } from "./requests";
 import { createMockRoutingState } from "./routing";
 import { createMockSettingsState } from "./settings";
 import { createMockSetupState } from "./setup";
@@ -28,6 +29,7 @@ export const createMockState = (
   metabot: createMockMetabotState(),
   parameters: createMockParametersState(),
   qb: createMockQueryBuilderState(),
+  requests: createMockRequestsState(),
   routing: createMockRoutingState(),
   settings: createMockSettingsState(),
   setup: createMockSetupState(),
