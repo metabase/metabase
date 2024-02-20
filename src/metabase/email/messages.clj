@@ -306,10 +306,10 @@
         context (merge (common-context)
                        {:emailType  "notification"
                         :logoHeader true
-                        :first-name first_name}
-                       (if (public-settings/anon-tracking-enabled)
-                         {:link (str "https://metabase.com/feedback/creator?context=" blob)}
-                         {:link "https://metabase.com/feedback/creator"})
+                        :first-name first_name
+                        :link (if (public-settings/anon-tracking-enabled)
+                                (str "https://metabase.com/feedback/creator?context=" blob)
+                                "https://metabase.com/feedback/creator")}
                        (when-not (premium-features/is-hosted?)
                          {:self-hosted (str "<p style= \"font-weight: 500; font-size: 0.875em; line-height: 1.375em;\">"
                                         "<i>(This email is sent directly from "
