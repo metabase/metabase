@@ -627,7 +627,7 @@
              (mt/with-log-messages-for-level ['metabase.models.params :error]
                (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))))))))
 
-(deftest dashboard-param-link-to-a-field-without-full-field-values-test
+#_(deftest dashboard-param-link-to-a-field-without-full-field-values-test
   (testing "GET /api/dashboard/:id"
     (t2.with-temp/with-temp
       [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
@@ -649,6 +649,32 @@
                  (into {} (for [[field-id m] response]
                             [field-id (update m :values (partial take 3))])))))))))
 
+(deftest param-values-not-fetched-on-load-test
+  (testing "Param values are not needed on initial dashboard load and should not be fetched. #38826"
+    (t2.with-temp/with-temp
+        [:model/Dashboard {dashboard-id :id} {:name       "Test Dashboard"
+                                              :parameters [{:name      "FOO"
+                                                            :id        "foo"
+                                                            :type      :string/=
+                                                            :sectionId "string"}]}
+         :model/Card {card-id :id} {:name "Dashboard Test Card"}
+         :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                 :card_id            card-id
+                                 :parameter_mappings [{:card_id      card-id
+                                                       :parameter_id "foo"
+                                                       :target       [:dimension
+                                                                      [:field (mt/id :venues :name) nil]]}]}]
+        (let [dashboard-load-a (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
+              _                (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
+              dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
+              param-values     (mt/user-http-request :rasta :get 200 (format "dashboard/%s/params/%s/values" dashboard-id "foo"))]
+          (testing "The initial dashboard-load doesn't fetch parameter values (#38826)"
+            (is (some? (:param_values dashboard-load-a)))
+            (is (nil? (:param_values dashboard-load-b))))
+          (testing "Request to values endpoint triggers computation of field values if missing."
+            (is (= ["20th Century Cafe" "25°" "33 Taps"]
+                   (take 3 (apply concat (:values param-values))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -666,11 +692,11 @@
 
         (testing "PUT response"
           (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                               {:name        "My Cool Dashboard"
-                                                :description "Some awesome description"
-                                                :cache_ttl   1234
-                                                ;; these things should fail to update
-                                                :creator_id  (mt/user->id :trashbird)})
+                                                   {:name        "My Cool Dashboard"
+                                                    :description "Some awesome description"
+                                                    :cache_ttl   1234
+                                                    ;; these things should fail to update
+                                                    :creator_id  (mt/user->id :trashbird)})
                 get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
             (is (=? (merge dashboard-defaults {:name           "My Cool Dashboard"
                                                :dashcards      []
