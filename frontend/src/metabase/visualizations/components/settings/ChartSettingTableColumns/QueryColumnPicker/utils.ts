@@ -19,8 +19,7 @@ function getGroupsWithColumns(
 ) {
   const groups = Lib.groupColumns(columns);
 
-  return groups.map(group => {
-    const groupInfo = Lib.displayInfo(query, stageIndex, group);
+  return groups.map((group, groupIndex) => {
     const columnItems = Lib.getColumnsFromColumnGroup(group).map(column => {
       const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
@@ -32,12 +31,16 @@ function getGroupsWithColumns(
       };
     });
 
+    const groupInfo = Lib.displayInfo(query, stageIndex, group);
+    const isFirst = groupIndex === 0;
+    const isSelected = columnItems.every(columnItem => columnItem.isSelected);
+
     return {
       columnItems,
       displayName:
         groupInfo.fkReferenceName || groupInfo.displayName || t`Question`,
-      isSelected: columnItems.every(columnItem => columnItem.isSelected),
-      isDisabled: columnItems.some(columnItem => columnItem.isDisabled),
+      isSelected,
+      isDisabled: isFirst && isSelected,
     };
   });
 }

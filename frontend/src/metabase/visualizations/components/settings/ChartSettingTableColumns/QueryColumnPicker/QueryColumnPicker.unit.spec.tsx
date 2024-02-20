@@ -81,4 +81,19 @@ describe("QueryColumnPicker", () => {
     expect(categoryColumn).not.toBeChecked();
     expect(vendorColumn).not.toBeChecked();
   });
+
+  it("should allow to search for columns", () => {
+    setup();
+    userEvent.type(screen.getByPlaceholderText("Search for a column…"), "a");
+
+    const taxColumn = screen.getByRole("checkbox", { name: "Tax" });
+    const categoryColumn = screen.getByRole("checkbox", { name: "Total" });
+    const vendorColumn = screen.queryByRole("checkbox", { name: "Vendor" });
+    expect(taxColumn).toBeInTheDocument();
+    expect(categoryColumn).toBeInTheDocument();
+    expect(vendorColumn).not.toBeInTheDocument();
+
+    userEvent.click(categoryColumn);
+    expect(categoryColumn).toBeChecked();
+  });
 });
