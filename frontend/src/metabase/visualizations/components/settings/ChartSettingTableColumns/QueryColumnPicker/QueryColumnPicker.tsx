@@ -61,7 +61,9 @@ export const QueryColumnPicker = ({
                 variant="stacked"
                 size="xs"
                 label={
-                  <Text fw={700} ml="0.375rem" lh="1rem">{t`Remove all`}</Text>
+                  <Text fw={700} ml="0.375rem" lh="1rem">
+                    {groupItem.isSelected ? t`Remove all` : t`Add all`}
+                  </Text>
                 }
                 checked={groupItem.isSelected}
                 onClick={() => handleGroupToggle(groupItem)}

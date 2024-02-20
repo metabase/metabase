@@ -30,7 +30,7 @@ export const ChartSettingTableColumns = ({
   const query = question.query();
   const stageIndex = -1;
   const settings = useMemo(() => getColumnSettings(value), [value]);
-  const [isEditingQuery] = useState(false);
+  const [isEditingQuery] = useState(true);
 
   const handleQueryChange = (query: Lib.Query) => {
     onChange(value, question.setQuery(query));
