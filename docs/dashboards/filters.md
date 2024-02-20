@@ -23,7 +23,7 @@ Instead of creating duplicate dashboards, you can add filter widgets to let peop
 - [Configure your filter](#editing-a-filter).
 - **Save** your changes.
 
-### Filter types
+## Filter types
 
 You can choose from a number of filter types:
 
@@ -35,7 +35,7 @@ You can choose from a number of filter types:
 
 The type of filter you choose will determine how the filter works, as well as which fields you’ll be able to filter your cards by:
 
-#### Time filters
+### Time filters
 
 When picking a Time filter, Metabase will prompt you to pick a specific type of filter widget:
 
@@ -48,7 +48,7 @@ When picking a Time filter, Metabase will prompt you to pick a specific type of 
 
 Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the query builder, choose All options.
 
-#### Location filters
+### Location filters
 
 There are four types of Location filters to choose from:
 
@@ -57,11 +57,11 @@ There are four types of Location filters to choose from:
 - ZIP or Postal Code
 - Country
 
-#### ID filter
+### ID filter
 
 The ID filter provides a simple input box where you can type the ID of a user, order, etc.
 
-#### Number filter
+### Number filter
 
 You can choose from:
 
@@ -71,7 +71,7 @@ You can choose from:
 - Greater than or equal to
 - Less than or equal to
 
-#### Text or category filter
+### Text or category filter
 
 A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
 
@@ -105,6 +105,15 @@ If you're trying to connect a filter to a card with a native/SQL questions, you'
 ## Wiring up dashboard filters to text cards
 
 You can even wire up filters to text cards, but only if [the text card includes a variable](./introduction.md#including-variables-in-text-cards).
+
+## Requiring a filter
+
+You can tell Metabase to require a filter so that people _must_ filter the dashboard by a certain column on a card. If you require a filter, you'll also need to supply a default value for that filter.
+
+You might want to require a filter value if:
+
+- Your unfiltered dashboard contains questions that pull lots of data, as enforcing filtered data can prevent people from inadvertently querying tons of data and running up your data warehouse costs.
+- The questions on your dashboard don't make sense without a filter. For example, if you create a dashboard intended to view data relevant to a specific customer (as opposed to all customers), you can require a customer ID so that the dashboard only loads data for a particular customer.
 
 ## Editing a filter
 
