@@ -40,21 +40,21 @@ export function ValuesSourceSettings({
     <>
       <Radio.Group value={queryType} onChange={onChangeQueryType}>
         <Stack spacing="xs">
-          <RadioLine
+          <RadioContainer
             ownValue="list"
             selectedValue={queryType}
             label={t`Dropdown list`}
             disableEdit={disableEdit}
             onEditClick={openModal}
           />
-          <RadioLine
+          <RadioContainer
             ownValue="search"
             selectedValue={queryType}
             label={t`Search box`}
             disableEdit={disableEdit}
             onEditClick={openModal}
           />
-          <RadioLine
+          <RadioContainer
             ownValue="none"
             selectedValue={queryType}
             label={t`Input box`}
@@ -79,7 +79,7 @@ function hasLinkedFilters({ filteringParameters }: Parameter) {
   return filteringParameters != null && filteringParameters.length > 0;
 }
 
-function RadioLine({
+function RadioContainer({
   selectedValue,
   ownValue,
   label,

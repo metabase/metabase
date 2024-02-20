@@ -220,7 +220,7 @@ class TagEditorParamInner extends Component<Props> {
     const isDimension = tag.type === "dimension";
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
-    const hasWidgetOptions = widgetOptions?.length > 0;
+    const hasWidgetOptions = widgetOptions.length > 0;
 
     return (
       <TagContainer data-testid={`tag-editor-variable-${tag.name}`}>
@@ -297,7 +297,7 @@ function VariableTypeSelect(props: {
 }) {
   return (
     <InputContainer>
-      <ContainerLabel>{t`Variable type`}</ContainerLabel>
+      <ContainerLabel smallPaddingBottom>{t`Variable type`}</ContainerLabel>
       <Select
         value={props.value}
         placeholder={t`Select…`}
@@ -394,7 +394,7 @@ function FilterWidgetTypeSelect({
 
   return (
     <InputContainer>
-      <ContainerLabel>
+      <ContainerLabel smallPaddingBottom>
         {t`Filter widget type`}
         {hasNoWidgetType && <ErrorSpan>({t`required`})</ErrorSpan>}
       </ContainerLabel>
