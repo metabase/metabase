@@ -39,10 +39,9 @@ export function getColumnItems(
     return {
       name: columnInfo.name,
       fieldRef: Lib.legacyRef(query, stageIndex, column),
-      enabled: setting.enabled,
+      enabled: setting ? setting.enabled : true,
       icon: getColumnIcon(column),
       column: legacyColumn,
-      setting,
       settingIndex,
     };
   });

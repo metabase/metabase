@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { t } from "ttag";
+import { Button } from "metabase/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -30,27 +32,38 @@ export const ChartSettingTableColumns = ({
   const query = question.query();
   const stageIndex = -1;
   const settings = useMemo(() => getColumnSettings(value), [value]);
-  const [isEditingQuery] = useState(true);
+  const [isEditingQuery, setIsEditingQuery] = useState(false);
 
   const handleQueryChange = (query: Lib.Query) => {
     onChange(value, question.setQuery(query));
   };
 
-  return isEditingQuery ? (
-    <QueryColumnPicker
-      query={query}
-      stageIndex={stageIndex}
-      onChange={handleQueryChange}
-    />
-  ) : (
-    <TableColumnPicker
-      query={query}
-      stageIndex={stageIndex}
-      columns={columns}
-      settings={settings}
-      getColumnName={getColumnName}
-      onChange={onChange}
-      onShowWidget={onShowWidget}
-    />
+  return (
+    <div>
+      <Button
+        pl="0"
+        variant="subtle"
+        onClick={() => setIsEditingQuery(!isEditingQuery)}
+      >
+        {isEditingQuery ? t`Done picking columns` : t`Add or remove columns`}
+      </Button>
+      {isEditingQuery ? (
+        <QueryColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          onChange={handleQueryChange}
+        />
+      ) : (
+        <TableColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          columns={columns}
+          settings={settings}
+          getColumnName={getColumnName}
+          onChange={onChange}
+          onShowWidget={onShowWidget}
+        />
+      )}
+    </div>
   );
 };
