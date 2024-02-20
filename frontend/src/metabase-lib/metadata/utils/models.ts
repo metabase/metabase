@@ -164,7 +164,9 @@ function getFieldFromColumnVizSetting(
   columns: DatasetColumn[],
   columnMetadata: QueryField[],
 ) {
-  const fieldRef = columnVizSetting.fieldRef;
+  // We have some corrupted visualization settings where both names are mixed
+  // We should settle on `fieldRef`, make it required and remove `field_ref`
+  const fieldRef = columnVizSetting.fieldRef || columnVizSetting.field_ref;
   return (
     columns.find(column => isSameField(column.field_ref, fieldRef)) ||
     columnMetadata.find(column => isSameField(column.field_ref, fieldRef))

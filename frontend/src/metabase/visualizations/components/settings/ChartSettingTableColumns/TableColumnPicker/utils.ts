@@ -1,6 +1,6 @@
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
-import { findColumnSettingIndexForColumn } from "metabase-lib/queries/utils/dataset";
+import { findColumnSettingIndexesForColumns } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   DatasetColumn,
@@ -17,14 +17,17 @@ export function getColumnItems(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ): ColumnItem[] {
-  const columnItems = columns.map(datasetColumn => {
+  const settingIndexByColumnIndex = findColumnSettingIndexesForColumns(
+    query,
+    stageIndex,
+    columns,
+    columnSettings,
+  );
+
+  const columnItems = columns.map((datasetColumn, columnIndex) => {
     const column = Lib.fromLegacyColumn(query, stageIndex, datasetColumn);
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    const columnSettingIndex = findColumnSettingIndexForColumn(
-      query,
-      columnSettings,
-      datasetColumn,
-    );
+    const columnSettingIndex = settingIndexByColumnIndex[columnIndex];
     const columnSetting = columnSettings[columnSettingIndex];
 
     return {
@@ -33,7 +36,7 @@ export function getColumnItems(
       enabled: columnSetting ? columnSetting.enabled : true,
       icon: getColumnIcon(column),
       column: datasetColumn,
-      columnSettingIndex: columnSettingIndex,
+      columnSettingIndex,
     };
   });
 

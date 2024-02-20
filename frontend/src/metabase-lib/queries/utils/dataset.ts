@@ -52,22 +52,46 @@ export function findColumnIndexForColumnSetting(
       return columnIndex;
     }
   }
+
   // if that fails, find by column name
   return _.findIndex(columns, col => col.name === columnSetting.name);
 }
 
-export function findColumnSettingIndexForColumn(
+type FieldRefWithIndex = {
+  fieldRef: FieldReference;
+  originalIndex: number;
+};
+
+export function findColumnSettingIndexesForColumns(
   query: Lib.Query,
+  stageIndex: number,
+  columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
-  column: DatasetColumn,
 ) {
-  const stageIndex = -1;
-  const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
-    query,
-    stageIndex,
-    [column],
-    columnSettings.map(({ fieldRef }) => fieldRef),
+  const fieldRefs = columnSettings.reduce(
+    (fieldRefs: FieldRefWithIndex[], { fieldRef }, originalIndex) => {
+      if (fieldRef != null) {
+        fieldRefs.push({ fieldRef, originalIndex });
+      }
+      return fieldRefs;
+    },
+    [],
   );
 
-  return columnIndexes.findIndex(columnIndex => columnIndex >= 0);
+  const columnIndexByFieldRefIndex = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    stageIndex,
+    columns,
+    fieldRefs.map(({ fieldRef }) => fieldRef),
+  );
+
+  return columnIndexByFieldRefIndex.reduce(
+    (settingIndexes: number[], columnIndex, fieldRefIndex) => {
+      if (columnIndex >= 0) {
+        settingIndexes[columnIndex] = fieldRefs[fieldRefIndex].originalIndex;
+      }
+      return settingIndexes;
+    },
+    new Array(columns.length).fill(-1),
+  );
 }
