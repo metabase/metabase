@@ -9,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { ApiKeysApi } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/redux/api-key";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 
 import { SecretKeyModal } from "./SecretKeyModal";

@@ -10,7 +10,7 @@ import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { ApiKeysApi } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/redux/api-key";
 import { Tooltip, Text, Icon } from "metabase/ui";
 import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
 import type { State } from "metabase-types/store";
