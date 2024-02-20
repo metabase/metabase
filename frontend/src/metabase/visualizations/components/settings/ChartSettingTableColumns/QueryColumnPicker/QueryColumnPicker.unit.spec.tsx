@@ -102,6 +102,24 @@ describe("QueryColumnPicker", () => {
     expect(vendorColumn).not.toBeChecked();
   });
 
+  it("should not allow to remove the last column from the data source", () => {
+    setup();
+    const [orderGroup, firstColumn, ...otherColumns] =
+      screen.getAllByRole("checkbox");
+    expect(orderGroup).toBeChecked();
+    expect(orderGroup).toBeDisabled();
+
+    otherColumns.forEach(column => userEvent.click(column));
+    expect(firstColumn).toBeChecked();
+    expect(firstColumn).toBeDisabled();
+    expect(orderGroup).toBeEnabled();
+    expect(orderGroup).not.toBeChecked();
+
+    userEvent.click(orderGroup);
+    expect(firstColumn).toBeChecked();
+    expect(firstColumn).toBeEnabled();
+  });
+
   it("should allow to search for columns", () => {
     setup();
     userEvent.type(screen.getByPlaceholderText("Search for a column…"), "a");
