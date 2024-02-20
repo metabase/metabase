@@ -646,7 +646,7 @@
               _                (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
               dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
               param-values     (mt/user-http-request :rasta :get 200 (format "dashboard/%s/params/%s/values" dashboard-id "foo"))]
-          (testing "The initial dashboard-load doesn't fetch parameter values (#38826)"
+          (testing "The initial dashboard-load fetches parameter values only if they already exist (#38826)"
             (is (some? (:param_values dashboard-load-a)))
             (is (nil? (:param_values dashboard-load-b))))
           (testing "Request to values endpoint triggers computation of field values if missing."
