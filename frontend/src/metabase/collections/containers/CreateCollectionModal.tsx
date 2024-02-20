@@ -46,7 +46,12 @@ function CreateCollectionModal({
   );
 
   return (
-    <Modal.Root opened onClose={onClose ?? (() => undefined)} size="lg">
+    <Modal.Root
+      opened
+      onClose={onClose ?? (() => undefined)}
+      size="lg"
+      data-testid="new-collection-modal"
+    >
       <Modal.Content p="md">
         <Modal.Header>
           <Modal.Title>{t`New collection`}</Modal.Title>
