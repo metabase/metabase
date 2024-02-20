@@ -51,9 +51,9 @@ describeEE("official collections", () => {
       cy.visit("/collection/root");
 
       openNewCollectionItemFlowFor("collection");
-      modal().within(() => {
+      cy.findByTestId("new-collection-modal").then(modal => {
         assertNoCollectionTypeInput();
-        cy.icon("close").click();
+        cy.findByLabelText("Close").click();
       });
 
       openCollection("First collection");
