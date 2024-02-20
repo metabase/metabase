@@ -141,6 +141,7 @@ function ExpressionEditorSuggestionsListItem({
         isHighlighted={isHighlighted}
         className="hover-parent hover--inherit"
         data-ignore-outside-clicks
+        data-testid="expression-suggestions-list-item"
       >
         <Icon
           name={icon}
