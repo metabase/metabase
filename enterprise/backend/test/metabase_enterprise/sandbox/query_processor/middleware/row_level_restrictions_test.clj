@@ -374,16 +374,17 @@
         (mt/with-temp [Collection collection {}
                        Card       card        {:collection_id (u/the-id collection)}]
           (mt/with-group [group]
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (perms/grant-collection-read-permissions! group collection)
-            (mt/with-test-user :rasta
-              (binding [qp.perms/*card-id* (u/the-id card)]
-                (is (= 1
-                       (count (mt/rows
-                               (qp/process-query {:database (mt/id)
-                                                  :type     :query
-                                                  :query    {:source-table (mt/id :venues)
-                                                             :limit        1}})))))))))))))
+            (mt/with-no-data-perms-for-all-users!
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+              (perms/grant-collection-read-permissions! group collection)
+              (mt/with-test-user :rasta
+                (binding [qp.perms/*card-id* (u/the-id card)]
+                  (is (= 1
+                         (count (mt/rows
+                                 (qp/process-query {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (mt/id :venues)
+                                                               :limit        1}}))))))))))))))
 
 (deftest e2e-test-14
   (mt/test-drivers (e2e-test-drivers)
