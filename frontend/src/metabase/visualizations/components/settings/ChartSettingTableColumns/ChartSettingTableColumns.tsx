@@ -9,13 +9,14 @@ import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import { QueryColumnPicker } from "./QueryColumnPicker";
 import { TableColumnPicker } from "./TableColumnPicker";
-import { getColumnSettings } from "./utils";
+import { canEditQuery, getColumnSettings } from "./utils";
 import type { EditWidgetData } from "./types";
 
 interface ChartSettingTableColumnsProps {
   value: TableColumnOrderSetting[];
   columns: DatasetColumn[];
   question: Question;
+  isDashboard?: boolean;
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[], question?: Question) => void;
   onShowWidget: (config: EditWidgetData, targetElement: HTMLElement) => void;
@@ -25,6 +26,7 @@ export const ChartSettingTableColumns = ({
   value,
   columns,
   question,
+  isDashboard,
   getColumnName,
   onChange,
   onShowWidget,
@@ -32,6 +34,7 @@ export const ChartSettingTableColumns = ({
   const query = question.query();
   const stageIndex = -1;
   const settings = useMemo(() => getColumnSettings(value), [value]);
+  const hasEditButton = canEditQuery(query, isDashboard);
   const [isEditingQuery, setIsEditingQuery] = useState(false);
 
   const handleQueryChange = (query: Lib.Query) => {
@@ -40,13 +43,15 @@ export const ChartSettingTableColumns = ({
 
   return (
     <div>
-      <Button
-        pl="0"
-        variant="subtle"
-        onClick={() => setIsEditingQuery(!isEditingQuery)}
-      >
-        {isEditingQuery ? t`Done picking columns` : t`Add or remove columns`}
-      </Button>
+      {hasEditButton && (
+        <Button
+          pl="0"
+          variant="subtle"
+          onClick={() => setIsEditingQuery(!isEditingQuery)}
+        >
+          {isEditingQuery ? t`Done picking columns` : t`Add or remove columns`}
+        </Button>
+      )}
       {isEditingQuery ? (
         <QueryColumnPicker
           query={query}

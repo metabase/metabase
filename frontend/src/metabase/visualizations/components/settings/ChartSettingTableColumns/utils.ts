@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import type { TableColumnOrderSetting } from "metabase-types/api";
 import type { ColumnSetting } from "./types";
 
@@ -14,4 +15,9 @@ export function getColumnSettings(
     }
     return settings;
   }, []);
+}
+
+export function canEditQuery(query: Lib.Query, isDashboard?: boolean) {
+  const { isNative, isEditable } = Lib.queryDisplayInfo(query);
+  return !isNative && isEditable && !isDashboard;
 }
