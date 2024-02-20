@@ -10,7 +10,6 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 const { ORDERS } = SAMPLE_DATABASE;

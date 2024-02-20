@@ -7,7 +7,6 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-
 const { admin } = USERS;
 
 describe("static visualizations", () => {

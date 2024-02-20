@@ -9,7 +9,6 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-
 const {
   ORDERS,
   ORDERS_ID,
