@@ -5,7 +5,12 @@ export function getColumnGroupItems(
   query: Lib.Query,
   stageIndex: number,
 ): ColumnGroupItem[] {
-  const columns = Lib.visibleColumns(query, stageIndex);
+  const aggregations = Lib.aggregations(query, stageIndex);
+  const breakouts = Lib.breakouts(query, stageIndex);
+  const columns =
+    aggregations.length > 0 || breakouts.length > 0
+      ? Lib.returnedColumns(query, stageIndex)
+      : Lib.visibleColumns(query, stageIndex);
   const groups = Lib.groupColumns(columns);
 
   return groups.map(group => {

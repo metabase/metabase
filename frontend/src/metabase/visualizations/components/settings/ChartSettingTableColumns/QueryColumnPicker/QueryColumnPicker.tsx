@@ -66,6 +66,7 @@ export const QueryColumnPicker = ({
                   </Text>
                 }
                 checked={groupItem.isSelected}
+                disabled={groupItem.isDisabled}
                 onClick={() => handleGroupToggle(groupItem)}
               />
             </Box>
