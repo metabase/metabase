@@ -13,9 +13,8 @@ import {
 } from "metabase-types/store/mocks";
 
 import { Setup } from "./components/Setup";
-import type { SetupStep } from "./types";
 
-async function setup({ step = "welcome" }: { step?: SetupStep } = {}) {
+async function setup({ step = 0 }: { step?: number } = {}) {
   localStorage.clear();
   jest.clearAllMocks();
 

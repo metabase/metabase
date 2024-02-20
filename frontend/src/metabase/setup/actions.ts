@@ -23,6 +23,7 @@ import {
   getIsTrackingAllowed,
   getLocale,
   getSetupToken,
+  getSteps,
   getUsageReason,
   getUser,
 } from "./selectors";
@@ -68,8 +69,18 @@ export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
   },
 );
 
-export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
-export const selectStep = createAction<SetupStep>(SELECT_STEP);
+export const selectStepByIndex = createAction<number>(
+  "metabase/setup/SELECT_STEP_BY_INDEX",
+);
+
+export const selectStep = createAsyncThunk(
+  "metabase/setup/SELECT_STEP",
+  (stepKey: SetupStep, thunkApi) => {
+    const steps = getSteps(thunkApi.getState() as State);
+    const stepIndex = steps.findIndex(step => step.key === stepKey);
+    thunkApi.dispatch(selectStepByIndex(stepIndex));
+  },
+);
 
 export const UPDATE_LOCALE = "metabase/setup/UPDATE_LOCALE";
 export const updateLocale = createAsyncThunk(

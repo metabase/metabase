@@ -8,7 +8,9 @@ import type { SetupStep } from "./types";
 const DEFAULT_LOCALES: LocaleData[] = [];
 
 export const getStep = (state: State): SetupStep => {
-  return state.setup.step;
+  const index = state.setup.step;
+  const steps = getSteps(state);
+  return steps[index].key;
 };
 
 export const getLocale = (state: State): Locale | undefined => {
@@ -80,7 +82,7 @@ export const getIsEmailConfigured = (state: State): boolean => {
 
 export const getSteps = (state: State) => {
   const usageReason = getUsageReason(state);
-  const activeStep = getStep(state);
+  const activeStepIndex = state.setup.step;
 
   const steps: { key: SetupStep; isActiveStep: boolean }[] = [
     { key: "welcome" as const },
@@ -94,9 +96,9 @@ export const getSteps = (state: State) => {
     { key: "completed" as const },
   ]
     .filter(isNotFalsy)
-    .map(({ key }) => ({
+    .map(({ key }, index) => ({
       key,
-      isActiveStep: activeStep === key,
+      isActiveStep: activeStepIndex === index,
     }));
 
   return steps;
