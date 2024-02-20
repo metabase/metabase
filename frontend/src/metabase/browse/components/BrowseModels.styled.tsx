@@ -1,11 +1,13 @@
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
+
 import Card from "metabase/components/Card";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { Button, Collapse, Flex, Icon, type ButtonProps } from "metabase/ui";
+
 import { BrowseGrid } from "./BrowseApp.styled";
 
 export const ModelCardLink = styled(Link)`

@@ -1,16 +1,17 @@
-import { t, c, msgid } from "ttag";
 import { useMemo } from "react";
+import { t, c, msgid } from "ttag";
+
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+import { Box, Icon, Title } from "metabase/ui";
 import type {
   Card,
   SearchResult,
   CollectionEssentials,
 } from "metabase-types/api";
-import * as Urls from "metabase/lib/urls";
 
-import { Box, Icon, Title } from "metabase/ui";
-
-import { color } from "metabase/lib/colors";
 import { getCollectionName, sortModels, getIcon } from "../utils";
+
 import {
   CollectionCollapse,
   CollectionExpandCollapseContainer,

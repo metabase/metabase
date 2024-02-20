@@ -1,14 +1,17 @@
-import { t } from "ttag";
 import { useState } from "react";
+import { t } from "ttag";
 
-import type { SearchResult, CollectionId } from "metabase-types/api";
-
+import NoResults from "assets/img/no_results.svg";
+import type { useSearchListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
-import { getCollectionViewPreferences, groupModels } from "../utils";
+import { Box } from "metabase/ui";
+import type { SearchResult, CollectionId } from "metabase-types/api";
 
 import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "../constants";
+import { getCollectionViewPreferences, groupModels } from "../utils";
+
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import { ModelGrid } from "./BrowseModels.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";

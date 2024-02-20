@@ -3,6 +3,8 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import type { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 import { Box, Icon, Title } from "metabase/ui";
 
 import { CenteredEmptyState } from "./BrowseApp.styled";

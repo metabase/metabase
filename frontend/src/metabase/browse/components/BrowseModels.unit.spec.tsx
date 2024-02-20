@@ -1,13 +1,16 @@
 import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
+import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockModelResult,
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
-import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "../constants";
+
 import { BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {

@@ -8,16 +8,14 @@ import {
   isRootCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
-
 import { entityForObject } from "metabase/lib/schema";
-
+import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import type { IconName } from "metabase/ui";
 import type {
   CollectionEssentials,
   SearchResult,
   CollectionId,
 } from "metabase-types/api";
-import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import type { IconName } from "metabase/ui";
 
 import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "./constants";
 
