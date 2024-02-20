@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import type Question from "metabase-lib/Question";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -25,6 +26,7 @@ export interface DatasetColumnSelectorProps {
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[]) => void;
   onShowWidget: (config: EditWidgetConfig, targetElement: HTMLElement) => void;
+  question?: Question;
 }
 
 export const DatasetColumnSelector = ({
@@ -33,14 +35,19 @@ export const DatasetColumnSelector = ({
   getColumnName,
   onChange,
   onShowWidget,
+  question,
 }: DatasetColumnSelectorProps) => {
   const columnSettings = useMemo(() => {
     return getColumnSettingsWithRefs(value);
   }, [value]);
 
   const columnItems = useMemo(() => {
-    return getDatasetColumnSettingItems(datasetColumns, columnSettings);
-  }, [datasetColumns, columnSettings]);
+    return getDatasetColumnSettingItems(
+      datasetColumns,
+      columnSettings,
+      question,
+    );
+  }, [datasetColumns, columnSettings, question]);
 
   const handleEnableColumn = useCallback(
     (columnItem: ColumnSettingItem) => {
