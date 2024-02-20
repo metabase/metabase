@@ -150,6 +150,7 @@ export const tokenFeatures = [
   "content_verification",
   "embedding",
   "hosting",
+  "llm_autodescription",
   "official_collections",
   "sandboxes",
   "sso_google",
