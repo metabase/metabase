@@ -1,6 +1,7 @@
 (ns hooks.clojure.test
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.string :as str]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]))
 
 (def ^:private disallowed-parallel-forms
   "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
@@ -189,6 +190,30 @@
                                                    "Split it up into smaller tests! 🥰")
                                      :type :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests)))))))
 
+(defn deftest-check-for-blank-lines [node]
+  (reduce
+   (fn [previous-child-node this-child-node]
+     (when previous-child-node
+       (when-let [previous-node-end-row (-> previous-child-node meta :end-row)]
+         (when-let [this-node-start-row (-> this-child-node meta :row)]
+           (when (> this-node-start-row (inc previous-node-end-row))
+             (hooks/reg-finding! (assoc (meta this-child-node)
+                                        :message (str "Stop putting blank lines in your tests! If the test is so "
+                                                      "long that you think it needs blank lines, split it up into "
+                                                      "multiple tests!")
+                                        :type :metabase/deftest-check-for-blank-lines))))))
+     ;; recursively check inside `testing` forms.
+     (when (and (hooks/list-node? this-child-node)
+                (hooks/token-node? (first (:children this-child-node)))
+                (let [resolved (hooks/resolve {:name (hooks/sexpr (first (:children this-child-node)))})]
+                  (and (= (:name resolved) 'testing)
+                       ('#{clojure.test cljs.test} (:ns resolved)))))
+       (deftest-check-for-blank-lines this-child-node))
+     ;; reduce: return `this-child-node` so it will be `previous-child-node` on the next iteration
+     this-child-node)
+   nil
+   (:children node)))
+
 (defn deftest [{:keys [node cljc lang]}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
@@ -196,6 +221,7 @@
             (= lang :clj))
     (deftest-check-parallel node))
   (deftest-check-not-horrifically-long node)
+  (deftest-check-for-blank-lines node)
   {:node node})
 
 ;;; this is a hacky way to determine whether these namespaces are required in the `ns` form or not... basically `:ns`
