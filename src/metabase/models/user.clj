@@ -439,6 +439,11 @@
   :user-local :only
   :type :string)
 
+(defsetting last-used-database-id
+  (deferred-tru "The last database a user has used for a native query.")
+  :user-local :only
+  :type :integer)
+
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 
 (defmethod audit-log/model-details :model/User
