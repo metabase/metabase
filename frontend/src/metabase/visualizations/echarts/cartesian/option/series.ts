@@ -158,7 +158,7 @@ const buildEChartsBarSeries = (
         show: settings["graph.show_values"] && !hasMultipleSeries,
       },
       itemStyle: {
-        opacity: 0.3,
+        opacity: CHART_STYLE.opacity.blur,
       },
     },
     type: "bar",
@@ -233,7 +233,7 @@ const buildEChartsLineAreaSeries = (
     chartWidth,
   );
 
-  const blurOpacity = hasMultipleSeries ? 0.3 : 1;
+  const blurOpacity = hasMultipleSeries ? CHART_STYLE.opacity.blur : 1;
 
   return {
     emphasis: {
@@ -264,7 +264,8 @@ const buildEChartsLineAreaSeries = (
     step:
       seriesSettings["line.interpolate"] === "step-after" ? "end" : undefined,
     stack: stackName,
-    areaStyle: display === "area" ? { opacity: 0.3 } : undefined,
+    areaStyle:
+      display === "area" ? { opacity: CHART_STYLE.opacity.area } : undefined,
     encode: {
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
