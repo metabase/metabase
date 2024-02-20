@@ -1,16 +1,15 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { isNumber } from "metabase/lib/types";
-import { Flex, Grid, NumberInput, Text, Icon } from "metabase/ui";
+import { Flex, Grid, NumberInput, Text } from "metabase/ui";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
-import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { InfoIcon, HoverParent } from "../InfoIcon.styled";
+import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
 export function NumberFilterEditor({
@@ -78,21 +77,19 @@ export function NumberFilterEditor({
     <HoverParent>
       <Grid grow>
         <Grid.Col span="auto">
-          <Flex h="100%" align="center" gap="sm">
-            <InfoIcon query={query} stageIndex={stageIndex} column={column} />
-            <Icon name={columnIcon} />
-            <FilterColumnName
-              query={query}
-              stageIndex={stageIndex}
-              column={column}
-              isSearching={isSearching}
-            />
+          <FilterTitle
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            columnIcon={columnIcon}
+            isSearching={isSearching}
+          >
             <FilterOperatorPicker
               value={operator}
               options={availableOptions}
               onChange={handleOperatorChange}
             />
-          </Flex>
+          </FilterTitle>
         </Grid.Col>
         <Grid.Col span={4}>
           <NumberValueInput

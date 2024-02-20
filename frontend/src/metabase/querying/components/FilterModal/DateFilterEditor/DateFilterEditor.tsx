@@ -13,8 +13,7 @@ import type {
 } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
-import { InfoIcon, HoverParent } from "../InfoIcon.styled";
-import { FilterColumnName } from "../FilterColumnName";
+import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
@@ -60,16 +59,13 @@ export function DateFilterEditor({
     <HoverParent>
       <Grid grow>
         <Grid.Col span="auto">
-          <Flex h="100%" align="center" gap="sm">
-            <InfoIcon query={query} stageIndex={stageIndex} column={column} />
-            <Icon name={columnIcon} />
-            <FilterColumnName
-              query={query}
-              stageIndex={stageIndex}
-              column={column}
-              isSearching={isSearching}
-            />
-          </Flex>
+          <FilterTitle
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            columnIcon={columnIcon}
+            isSearching={isSearching}
+          />
         </Grid.Col>
         <Grid.Col span={4}>
           <Flex gap="0.5rem">

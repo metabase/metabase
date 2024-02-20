@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Flex, Grid, TextInput, Icon } from "metabase/ui";
+import { Grid, TextInput } from "metabase/ui";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import type * as Lib from "metabase-lib";
 import { StringFilterValuePicker } from "../../FilterValuePicker";
-import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { InfoIcon, HoverParent } from "../InfoIcon.styled";
+import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
 export function StringFilterEditor({
@@ -70,21 +69,19 @@ export function StringFilterEditor({
     <HoverParent>
       <Grid grow>
         <Grid.Col span="auto">
-          <Flex h="100%" align="center" gap="sm">
-            <InfoIcon query={query} stageIndex={stageIndex} column={column} />
-            <Icon name={columnIcon} />
-            <FilterColumnName
-              query={query}
-              stageIndex={stageIndex}
-              column={column}
-              isSearching={isSearching}
-            />
+          <FilterTitle
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            columnIcon={columnIcon}
+            isSearching={isSearching}
+          >
             <FilterOperatorPicker
               value={operator}
               options={availableOptions}
               onChange={handleOperatorChange}
             />
-          </Flex>
+          </FilterTitle>
         </Grid.Col>
         <Grid.Col span={4}>
           <StringValueInput
