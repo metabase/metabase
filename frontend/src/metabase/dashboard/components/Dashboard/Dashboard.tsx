@@ -500,7 +500,7 @@ function DashboardInner(props: DashboardProps) {
             </DashboardHeaderContainer>
           )}
 
-          <DashboardBody isEditingOrSharing={isEditing || isSharing}>
+          <DashboardBody>
             <ParametersAndCardsContainer
               data-testid="dashboard-parameters-and-cards"
               shouldMakeDashboardHeaderStickyAfterScrolling={

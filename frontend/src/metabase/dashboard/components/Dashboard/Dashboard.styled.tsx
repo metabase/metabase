@@ -48,18 +48,14 @@ export const DashboardStyled = styled.div`
   width: 100%;
 `;
 
-export const DashboardBody = styled.div<{ isEditingOrSharing: boolean }>`
+export const DashboardBody = styled.div`
   position: relative;
   display: flex;
   flex: 1 0 auto;
   min-width: 0;
   min-height: 0;
 
-  ${({ isEditingOrSharing }) =>
-    isEditingOrSharing &&
-    css`
-      flex-basis: 0;
-    `}
+  flex-basis: 0;
 `;
 
 export const DashboardHeaderContainer = styled.header<{
