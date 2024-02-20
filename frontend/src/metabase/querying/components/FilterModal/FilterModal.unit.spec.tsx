@@ -207,4 +207,13 @@ describe("FilterModal", () => {
       ).toBeInTheDocument();
     });
   });
+
+  it("should have info icons on each column", () => {
+    setup({ query });
+
+    const sections = screen.getAllByTestId(/filter-column/);
+    sections.forEach(section => {
+      expect(within(section).getByLabelText("More info")).toBeInTheDocument();
+    });
+  });
 });
