@@ -15,7 +15,7 @@ import type { EditWidgetData } from "./types";
 interface ChartSettingTableColumnsProps {
   value: TableColumnOrderSetting[];
   columns: DatasetColumn[];
-  question: Question;
+  question?: Question;
   isDashboard?: boolean;
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[], question?: Question) => void;
@@ -31,10 +31,14 @@ export const ChartSettingTableColumns = ({
   onChange,
   onShowWidget,
 }: ChartSettingTableColumnsProps) => {
+  const [isEditingQuery, setIsEditingQuery] = useState(false);
+  if (!question) {
+    return null;
+  }
+
   const query = question.query();
   const stageIndex = -1;
   const hasEditButton = canEditQuery(query, isDashboard);
-  const [isEditingQuery, setIsEditingQuery] = useState(false);
 
   const handleQueryChange = (query: Lib.Query) => {
     onChange(value, question.setQuery(query));
