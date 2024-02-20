@@ -3,7 +3,7 @@ import { t, c, msgid } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { Box, Icon, Title } from "metabase/ui";
+import { Box, Icon, Title, Button, Flex } from "metabase/ui";
 import type {
   Card,
   SearchResult,
@@ -15,16 +15,14 @@ import { getCollectionName, sortModels, getIcon } from "../utils";
 import {
   CollectionCollapse,
   CollectionExpandCollapseContainer,
-  CollectionHeaderDiv,
   CollectionHeaderContainer,
-  CollectionHeaderLink,
-  CollectionHeaderToggle,
+  CollectionHeaderToggleContainer,
   CollectionSummary,
-  ContainerExpandCollapseButton,
   FixedSizeIcon,
   ModelCard,
   ModelCardLink,
   MultilineEllipsified,
+  HoverUnderlineLink,
 } from "./BrowseModels.styled";
 
 const MAX_COLLAPSED_MODELS = 6;
@@ -104,36 +102,41 @@ const CollectionHeader = ({
   const collectionHtmlId = `collection-${collection.id}`;
 
   return (
-    <CollectionHeaderContainer id={collectionHtmlId} role="heading">
-      <CollectionHeaderToggle
-        styles={noTransform}
-        onClick={onClick}
-        aria-label={
-          expanded
-            ? t`collapse ${getCollectionName(collection)}`
-            : t`expand ${getCollectionName(collection)}`
-        }
-      >
+    <CollectionHeaderContainer
+      id={collectionHtmlId}
+      role="heading"
+      onClick={onClick}
+    >
+      <CollectionHeaderToggleContainer>
         <FixedSizeIcon
-          color={color("text-medium")}
+          aria-label={
+            expanded
+              ? t`collapse ${getCollectionName(collection)}`
+              : t`expand ${getCollectionName(collection)}`
+          }
           name={expanded ? "chevrondown" : "chevronright"}
         />
-      </CollectionHeaderToggle>
-      <CollectionHeaderDiv>
-        <CollectionHeaderLink to={Urls.collection(collection)}>
+      </CollectionHeaderToggleContainer>
+      <Flex pt="1.5rem" pb="0.75rem" w="100%">
+        <Flex>
           <FixedSizeIcon {...icon} />
           <Title size="1rem" lh="1rem" ml=".25rem" mr="1rem" color="inherit">
             {getCollectionName(collection)}
           </Title>
-        </CollectionHeaderLink>
+        </Flex>
         <CollectionSummary>
-          {c("{0} is the number of models in a collection").ngettext(
-            msgid`${modelsCount} model`,
-            `${modelsCount} models`,
-            modelsCount,
-          )}
+          <HoverUnderlineLink
+            to={Urls.collection(collection)}
+            onClick={e => e.stopPropagation() /* prevent collapse */}
+          >
+            {c("{0} is the number of models in a collection").ngettext(
+              msgid`${modelsCount} model`,
+              `${modelsCount} models`,
+              modelsCount,
+            )}
+          </HoverUnderlineLink>
         </CollectionSummary>
-      </CollectionHeaderDiv>
+      </Flex>
     </CollectionHeaderContainer>
   );
 };
@@ -158,16 +161,11 @@ const ShowMoreFooter = ({
   return (
     <CollectionExpandCollapseContainer>
       {!showAll && `${shownModelsCount} of ${allModelsCount}`}
-      <ContainerExpandCollapseButton
-        styles={noTransform}
-        lh="inherit"
-        p="0"
-        onClick={onClick}
-      >
+      <Button variant="subtle" lh="inherit" p="0" onClick={onClick}>
         {showAll
           ? c("For a button that collapses a list of models").t`Show less`
           : c("For a button that expands a list of models").t`Show all`}
-      </ContainerExpandCollapseButton>
+      </Button>
     </CollectionExpandCollapseContainer>
   );
 };
@@ -203,12 +201,4 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
       </ModelCard>
     </ModelCardLink>
   );
-};
-
-const noTransform = {
-  root: {
-    top: 0,
-    transform: "none",
-    ":active": { transform: "none" },
-  },
 };

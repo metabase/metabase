@@ -6,7 +6,7 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
-import { Button, Collapse, Flex, Icon, type ButtonProps } from "metabase/ui";
+import { Collapse, Icon, type ButtonProps, Box } from "metabase/ui";
 
 import { BrowseGrid } from "./BrowseApp.styled";
 
@@ -56,12 +56,17 @@ export const MultilineEllipsified = styled(Ellipsified)`
 
 export const ModelGrid = styled(BrowseGrid)``;
 
-export const CollectionHeaderContainer = styled(Flex)`
+export const CollectionHeaderContainer = styled.button`
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
   border-top: 1px solid ${color("border")};
   margin-top: 0.75rem;
+  cursor: pointer;
+  color: ${color("text-dark")};
+  &:hover {
+    color: ${color("brand")};
+  }
   :first-of-type {
     margin-top: 1rem;
     border-top: none;
@@ -85,28 +90,27 @@ export const CollectionCollapse = styled(Collapse)`
   display: contents;
 `;
 
-export const ContainerExpandCollapseButton = styled(Button)<
-  ButtonProps & HTMLAttributes<HTMLButtonElement>
->`
+export const ContainerExpandCollapseButton = styled.div`
   border: 0;
   background-color: inherit;
 `;
 
-export const CollectionExpandCollapseContainer = styled(Flex)`
+export const CollectionExpandCollapseContainer = styled(Box)<
+  ButtonProps & HTMLAttributes<HTMLButtonElement>
+>`
   display: flex;
   gap: 0.25rem;
   justify-content: flex-start;
   align-items: center;
   grid-column: 1 / -1;
-  margin: 1rem 0;
+  margin: 1rem 0.25rem;
 `;
 
-export const CollectionHeaderToggle = styled(Button)<
-  ButtonProps & HTMLAttributes<HTMLButtonElement>
->`
-  padding: 10px;
+export const CollectionHeaderToggleContainer = styled.div`
+  padding: 0.5rem;
+  padding-right: 0.75rem;
   position: relative;
-  margin-left: -2rem;
+  margin-left: -2.25rem;
   margin-top: 0.75rem;
   border: none;
   background-color: transparent;
@@ -137,9 +141,8 @@ export const BannerModelIcon = styled(FixedSizeIcon)`
   margin-right: 0.5rem;
 `;
 
-export const CollectionHeaderDiv = styled.div`
-  display: flex;
-  width: 100%;
-  padding-top: 1.5rem;
-  padding-bottom: 0.75rem;
+export const HoverUnderlineLink = styled(Link)`
+  &:hover {
+    text-decoration: underline;
+  }
 `;
