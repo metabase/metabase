@@ -16,6 +16,14 @@ export type CollectionAuthorityLevel = "official" | null;
 
 export type CollectionType = "instance-analytics" | null;
 
+export type LastEditInfo = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  id: UserId;
+  timestamp: string;
+};
+
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;
   name: string;
@@ -87,6 +95,7 @@ export interface CollectionItem {
   moderated_status?: string;
   type?: string;
   can_write?: boolean;
+  "last-edit-info"?: LastEditInfo;
   getIcon: () => { name: IconName };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;

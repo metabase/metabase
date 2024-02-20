@@ -24,22 +24,19 @@ export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
-  const { data: databases, isLoading: isDatabasesLoading } =
-    useDatabaseListQuery();
-  const { data: recentItems, isLoading: isRecentItemsLoading } =
-    useRecentItemListQuery({ reload: true });
-  const { data: popularItems, isLoading: isPopularItemsLoading } =
+  const { data: databases, error: databasesError } = useDatabaseListQuery();
+  const { data: recentItems, error: recentItemsError } = useRecentItemListQuery(
+    { reload: true },
+  );
+  const { data: popularItems, error: popularItemsError } =
     usePopularItemListQuery({ reload: true });
+  const error = databasesError || recentItemsError || popularItemsError;
 
-  if (
-    !user ||
-    isLoading(
-      user,
-      isDatabasesLoading,
-      isRecentItemsLoading,
-      isPopularItemsLoading,
-    )
-  ) {
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -64,16 +61,16 @@ export const HomeContent = (): JSX.Element | null => {
 
 const isLoading = (
   user: User,
-  isDatabasesLoading: boolean,
-  isRecentItemsLoading: boolean,
-  isPopularItemsLoading: boolean,
+  databases: Database[] | undefined,
+  recentItems: RecentItem[] | undefined,
+  popularItems: PopularItem[] | undefined,
 ): boolean => {
   if (!user.has_question_and_dashboard) {
-    return isDatabasesLoading;
+    return databases == null;
   } else if (user.is_installer || !isWithinWeeks(user.first_login, 1)) {
-    return isDatabasesLoading || isRecentItemsLoading;
+    return databases == null || recentItems == null;
   } else {
-    return isDatabasesLoading || isRecentItemsLoading || isPopularItemsLoading;
+    return databases == null || recentItems == null || popularItems == null;
   }
 };
 

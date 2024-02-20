@@ -50,6 +50,7 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import type { RequestState, State } from "metabase-types/store";
 
 import QueryBuilder from "./QueryBuilder";
 
@@ -252,7 +253,11 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const { container, history } = renderWithProviders(
+  const {
+    store: { getState },
+    container,
+    history,
+  } = renderWithProviders(
     <Route>
       <Route path="/" component={TestHome} />
       <Route path="/model">
@@ -278,13 +283,32 @@ export const setup = async ({
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  await waitForLoadingRequests(getState);
 
   return {
     container,
     history: checkNotNull(history),
     mockEventListener,
   };
+};
+
+const waitForLoadingRequests = async (getState: () => State) => {
+  await waitFor(
+    () => {
+      const requests = getRequests(getState());
+      const areRequestsLoading = requests.some(request => request.loading);
+      expect(areRequestsLoading).toBe(false);
+    },
+    { timeout: 5000 },
+  );
+};
+
+const getRequests = (state: State): RequestState[] => {
+  return Object.values(state.requests).flatMap(group =>
+    Object.values(group).flatMap(entity =>
+      Object.values(entity).flatMap(request => Object.values(request)),
+    ),
+  );
 };
 
 export const startNewNotebookModel = async () => {

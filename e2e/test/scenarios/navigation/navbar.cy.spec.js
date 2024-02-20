@@ -20,6 +20,12 @@ describe("scenarios > navigation > navbar", () => {
       navigationSidebar().should("be.visible");
     });
 
+    it("should display error ui when data fetching fails", () => {
+      cy.intercept("GET", "/api/database", req => req.reply(500));
+      cy.visit("/");
+      navigationSidebar().findByText(/An error occurred/);
+    });
+
     it("state should preserve when clicking the mb logo", () => {
       cy.visit("/collection/root");
       navigationSidebar().should("be.visible");

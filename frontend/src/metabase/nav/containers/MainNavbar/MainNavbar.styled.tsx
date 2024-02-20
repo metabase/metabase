@@ -118,14 +118,14 @@ export const CollectionMenuList = styled.ul`
   padding: 0.5rem;
 `;
 
-export const LoadingContainer = styled.div`
+export const LoadingAndErrorContainer = styled.div`
   display: flex;
   flex: 1;
   align-items: center;
   justify-content: center;
 `;
 
-export const LoadingContent = styled.div`
+export const LoadingAndErrorContent = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -133,7 +133,7 @@ export const LoadingContent = styled.div`
   text-align: center;
 `;
 
-export const LoadingTitle = styled.h2`
+export const LoadingAndErrorTitle = styled.h2`
   color: ${color("text-light")};
   font-weight: 400;
   margin-top: ${space(1)};
