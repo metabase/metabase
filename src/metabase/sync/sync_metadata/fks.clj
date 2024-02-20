@@ -1,6 +1,8 @@
 (ns metabase.sync.sync-metadata.fks
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -92,7 +94,7 @@
   (if (driver/database-supports? (driver.u/database->driver database)
                                  :fast-sync-fks
                                  database)
-    (fast-sync-fks!)
+    (fast-sync-fks! database)
     (reduce (fn [update-info table]
               (let [table         (t2.realize/realize table)
                     table-fk-info (sync-fks-for-table! database table)]

@@ -289,29 +289,32 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod get-fks :default
-  [_driver ^Connection conn & {:keys [catalog-name schema-name table-name]}]
-  (let [^DatabaseMetaData metadata (.getMetaData conn)]
-    (into []
-          (sql-jdbc.sync.common/reducible-results
-           #(.getImportedKeys metadata catalog-name schema-name table-name)
-           (fn [^ResultSet rs]
-             (fn []
-               {:fk-table       {:name   (.getString rs "FKTABLE_NAME")
-                                 :schema (.getString rs "FKTABLE_SCHEM")}
-                :pk-table       {:name   (.getString rs "PKTABLE_NAME")
-                                 :schema (.getString rs "PKTABLE_SCHEM")}
-                :fk-column-name (.getString rs "FKCOLUMN_NAME")
-                :pk-column-name (.getString rs "PKCOLUMN_NAME")}))))))
+  [driver db & {:keys [catalog-name schema-name table-name]}]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       db
+       nil
+       (fn [^Connection conn]
+         (with-open [^ResultSet rs (.getImportedKeys (.getMetaData conn) catalog-name schema-name table-name)]
+           (reduce
+            ((take-while some?) rf)
+            init
+            (let [row-thunk (fn []
+                              {:fk-table       {:name   (.getString rs "FKTABLE_NAME")
+                                                :schema (.getString rs "FKTABLE_SCHEM")}
+                               :pk-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                :schema (.getString rs "PKTABLE_SCHEM")}
+                               :fk-column-name (.getString rs "FKCOLUMN_NAME")
+                               :pk-column-name (.getString rs "PKCOLUMN_NAME")})]
+              (repeatedly #(when (.next rs)
+                             (row-thunk)))))))))))
 
 (defn describe-fks
   "Default implementation of [[metabase.driver/describe-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   db
-   nil
-   (fn [^Connection conn]
-     (get-fks driver conn {}))))
+  (get-fks driver db {}))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
