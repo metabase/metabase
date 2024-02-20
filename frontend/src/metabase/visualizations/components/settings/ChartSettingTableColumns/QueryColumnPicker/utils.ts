@@ -12,40 +12,66 @@ function getColumns(query: Lib.Query, stageIndex: number) {
     : Lib.visibleColumns(query, stageIndex);
 }
 
+function getColumnItems(
+  query: Lib.Query,
+  stageIndex: number,
+  group: Lib.ColumnGroup,
+) {
+  return Lib.getColumnsFromColumnGroup(group).map(column => {
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
+    return {
+      column,
+      displayName: columnInfo.displayName,
+      isSelected: columnInfo.selected ?? false,
+      isDisabled: columnInfo.isAggregation || columnInfo.isBreakout,
+    };
+  });
+}
+
 function getGroupsWithColumns(
   query: Lib.Query,
   stageIndex: number,
   columns: Lib.ColumnMetadata[],
 ) {
   const groups = Lib.groupColumns(columns);
-
-  return groups.map((group, groupIndex) => {
-    const columnItems = Lib.getColumnsFromColumnGroup(group).map(column => {
-      const columnInfo = Lib.displayInfo(query, stageIndex, column);
-
-      return {
-        column,
-        displayName: columnInfo.displayName,
-        isSelected: columnInfo.selected ?? false,
-        isDisabled: columnInfo.isAggregation || columnInfo.isBreakout,
-      };
-    });
-
+  return groups.map(group => {
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
-    const isFirst = groupIndex === 0;
-    const isSelected = columnItems.every(columnItem => columnItem.isSelected);
+    const columnItems = getColumnItems(query, stageIndex, group);
 
     return {
       columnItems,
       displayName:
         groupInfo.fkReferenceName || groupInfo.displayName || t`Question`,
-      isSelected,
-      isDisabled: isFirst && isSelected,
+      isSelected: columnItems.every(({ isSelected }) => isSelected),
+      isDisabled: columnItems.some(({ isDisabled }) => isDisabled),
     };
   });
 }
 
-function addUniqueGroupNames(groupItems: ColumnGroupItem[]) {
+function disableLastSelectedQueryColumn(groupItems: ColumnGroupItem[]) {
+  return groupItems.map((groupItem, groupIndex) => {
+    if (groupIndex !== 0) {
+      return groupItem;
+    }
+
+    const isOnlySelectedColumn =
+      groupItem.columnItems.filter(({ isSelected }) => isSelected).length === 1;
+
+    return {
+      ...groupItem,
+      columnItems: groupItem.columnItems.map(columnItem => ({
+        ...columnItem,
+        isDisabled:
+          columnItem.isDisabled ||
+          (columnItem.isSelected && isOnlySelectedColumn),
+      })),
+      isDisabled: groupItem.isDisabled || groupItem.isSelected,
+    };
+  });
+}
+
+function deduplicateGroupNames(groupItems: ColumnGroupItem[]) {
   const groupNames = new Map<string, number>();
 
   return groupItems.map(groupItem => {
@@ -68,7 +94,7 @@ export function getColumnGroupItems(
 ): ColumnGroupItem[] {
   const columns = getColumns(query, stageIndex);
   const groupItems = getGroupsWithColumns(query, stageIndex, columns);
-  return addUniqueGroupNames(groupItems);
+  return deduplicateGroupNames(disableLastSelectedQueryColumn(groupItems));
 }
 
 export function searchColumnGroupItems(
