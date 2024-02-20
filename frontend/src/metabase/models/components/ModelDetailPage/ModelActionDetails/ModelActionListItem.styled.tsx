@@ -1,9 +1,10 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const ActionHeader = styled.div`
   display: flex;

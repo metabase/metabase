@@ -1,10 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import {
   createSampleDatabase,
   PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

@@ -4,6 +4,7 @@ import {
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import {
   SettingsApi,
   EmailApi,
@@ -12,7 +13,6 @@ import {
   GoogleApi,
   SamlApi,
 } from "metabase/services";
-import { refreshSiteSettings } from "metabase/redux/settings";
 
 // ACTION TYPES AND ACTION CREATORS
 

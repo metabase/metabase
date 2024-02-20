@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { Flex } from "metabase/ui";
+
 import { color } from "metabase/lib/colors";
+import { Flex } from "metabase/ui";
 
 export const FilterFooterRoot = styled(Flex)`
   &:not(:only-child) {

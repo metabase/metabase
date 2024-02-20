@@ -1,5 +1,6 @@
-import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/addons";
+import type { ComponentStory } from "@storybook/react";
+
 import { StringInputWidget } from "./StringInputWidget";
 
 export default {

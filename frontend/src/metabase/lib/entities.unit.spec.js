@@ -1,5 +1,6 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import promise from "redux-promise";
+
 import { createEntity, combineEntities } from "metabase/lib/entities";
 import requestsReducer from "metabase/redux/requests";
 

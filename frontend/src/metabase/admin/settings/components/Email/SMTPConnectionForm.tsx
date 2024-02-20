@@ -1,25 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import type { Settings } from "metabase-types/api";
+import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 import type { SettingElement } from "metabase/admin/settings/types";
-
+import Button from "metabase/core/components/Button";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
-
 import { Flex, Stack } from "metabase/ui";
-import Button from "metabase/core/components/Button";
-import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
+import type { Settings } from "metabase-types/api";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   sendTestEmail,
   updateEmailSettings,
   clearEmailSettings,
 } from "../../settings";
-
 import SettingsBatchForm from "../SettingsBatchForm";
 
 const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];

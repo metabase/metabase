@@ -1,7 +1,9 @@
-import { useState } from "react";
 import type { FormEvent } from "react";
+import { useState } from "react";
 import { t } from "ttag";
+
 import { Button, Stack } from "metabase/ui";
+
 import { DateOperatorPicker } from "../DateOperatorPicker";
 import { DATE_PICKER_OPERATORS } from "../constants";
 import type { DatePickerOperator, DatePickerValue } from "../types";

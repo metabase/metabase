@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import InputBlurChange from "metabase/components/InputBlurChange";
 
 interface ChartSettingInputProps {

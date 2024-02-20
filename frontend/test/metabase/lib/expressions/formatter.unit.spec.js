@@ -1,5 +1,5 @@
-import { format } from "metabase-lib/expressions/format";
 import { dataForFormatting } from "metabase-lib/expressions/__support__/shared";
+import { format } from "metabase-lib/expressions/format";
 
 describe("metabase-lib/expressions/format", () => {
   describe.each(dataForFormatting)("%s", (_name, cases, opts) => {

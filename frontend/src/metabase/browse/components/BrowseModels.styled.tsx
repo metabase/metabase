@@ -1,10 +1,12 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import Card from "metabase/components/Card";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
+import { color } from "metabase/lib/colors";
 import { Flex, Group, Icon } from "metabase/ui";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+
 import { BrowseGrid } from "./BrowseApp.styled";
 
 export const ModelCard = styled(Card)`

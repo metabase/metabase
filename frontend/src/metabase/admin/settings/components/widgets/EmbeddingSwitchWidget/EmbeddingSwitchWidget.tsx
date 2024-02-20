@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { Stack, Switch, Text } from "metabase/ui";
 
 interface EmbeddingSwitchWidgetProps {

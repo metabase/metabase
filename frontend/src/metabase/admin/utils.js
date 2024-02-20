@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
-import { UserAuthWrapper } from "redux-auth-wrapper";
 import { routerActions, replace } from "react-router-redux";
+import { UserAuthWrapper } from "redux-auth-wrapper";
+
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getUser } from "metabase/selectors/user";
 

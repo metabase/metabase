@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { tokenize } from "metabase-lib/expressions/tokenizer";
 
 import { generateExpression } from "./generator";

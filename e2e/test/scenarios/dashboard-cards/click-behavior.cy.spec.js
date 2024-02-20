@@ -21,12 +21,11 @@ import {
   visitEmbeddedPage,
   visitIframe,
 } from "e2e/support/helpers";
-
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
   createMockActionParameter,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";

@@ -1,20 +1,19 @@
 import { t } from "ttag";
 
+import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
+import { canonicalCollectionId } from "metabase/collections/utils";
+import Modal from "metabase/components/Modal";
 import {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
   PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
 } from "metabase/plugins";
-
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import Modal from "metabase/components/Modal";
-import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import { canonicalCollectionId } from "metabase/collections/utils";
 
+import CollectionOptionsButton from "./components/CollectionOptionsButton";
 import CollectionRow from "./components/CollectionRow";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
-import CollectionOptionsButton from "./components/CollectionOptionsButton";
 
 if (hasPremiumFeature("snippet_collections")) {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push(snippetSidebar => ({

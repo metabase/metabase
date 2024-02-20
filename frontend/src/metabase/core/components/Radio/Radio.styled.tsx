@@ -1,5 +1,7 @@
 import styled from "@emotion/styled";
+
 import { color, lighten, tint, isDark } from "metabase/lib/colors";
+
 import type { RadioColorScheme, RadioVariant } from "./types";
 
 export interface RadioGroupProps {

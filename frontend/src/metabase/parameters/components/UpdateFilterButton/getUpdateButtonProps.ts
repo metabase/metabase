@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { areParameterValuesIdentical } from "metabase-lib/parameters/utils/parameter-values";
 
 const UPDATE = t`Update filter`;

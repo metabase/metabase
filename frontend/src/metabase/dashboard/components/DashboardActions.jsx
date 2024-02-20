@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
-
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+
 import {
   FullScreenButtonIcon,
   NightModeButtonIcon,

@@ -1,6 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
+
 import type { ContentDirectionType } from "./utils";
 
 export const Section = styled.div<{

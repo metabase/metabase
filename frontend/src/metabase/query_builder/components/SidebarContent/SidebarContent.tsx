@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
+
 import type { IconName } from "metabase/ui";
+
 import SidebarHeader from "../SidebarHeader";
+
 import {
   SidebarContentRoot,
   SidebarContentMain,

@@ -2,6 +2,7 @@ import type {
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
 } from "../types";
+
 import { setDirection } from "./utils";
 
 describe("setDirection", () => {

@@ -1,13 +1,16 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithNumberFilter,
   findNumericColumn,
   storeInitialState,
 } from "../test-utils";
+
 import { NumberFilterPicker } from "./NumberFilterPicker";
 
 const NUMERIC_TEST_CASES: Array<[string, number]> = [

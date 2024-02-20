@@ -2,37 +2,17 @@
 
 import { combineReducers } from "@reduxjs/toolkit";
 
-import { PLUGIN_REDUCERS } from "metabase/plugins";
-
-/* admin */
 import admin from "metabase/admin/admin";
-
-/* setup */
-import { reducer as setup } from "metabase/setup/reducers";
-
-/* dashboards */
-import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
-
-/* parameters */
-import * as parameters from "metabase/parameters/reducers";
-
-/* query builder */
-import * as qb from "metabase/query_builder/reducers";
-
-/* data reference */
-import reference from "metabase/reference/reference";
-
-/* revisions */
-import revisions from "metabase/redux/revisions";
-
-/* alerts */
 import alert from "metabase/alert/alert";
-
-/* pulses */
-import * as pulse from "metabase/pulse/reducers";
-
-/* metabot */
+import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
 import * as metabot from "metabase/metabot/reducers";
+import * as parameters from "metabase/parameters/reducers";
+import { PLUGIN_REDUCERS } from "metabase/plugins";
+import * as pulse from "metabase/pulse/reducers";
+import * as qb from "metabase/query_builder/reducers";
+import revisions from "metabase/redux/revisions";
+import reference from "metabase/reference/reference";
+import { reducer as setup } from "metabase/setup/reducers";
 
 import commonReducers from "./reducers-common";
 

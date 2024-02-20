@@ -1,16 +1,18 @@
 import LogoIcon from "metabase/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
 import { getSteps } from "metabase/setup/selectors";
+
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { CompletedStep } from "../CompletedStep";
+import { DataUsageStep } from "../DataUsageStep";
 import { DatabaseHelp } from "../DatabaseHelp";
 import { DatabaseStep } from "../DatabaseStep";
 import { LanguageStep } from "../LanguageStep";
-import { DataUsageStep } from "../DataUsageStep";
 import { SetupHelp } from "../SetupHelp";
-import type { NumberedStepProps } from "../types";
 import { UsageQuestionStep } from "../UsageQuestionStep";
 import { UserStep } from "../UserStep";
+import type { NumberedStepProps } from "../types";
+
 import { PageBody, PageHeader } from "./SettingsPage.styled";
 
 const STEP_COMPONENTS: Record<

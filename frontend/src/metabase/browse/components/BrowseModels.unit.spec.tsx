@@ -1,4 +1,11 @@
 import fetchMock from "fetch-mock";
+
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -7,12 +14,7 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
-import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+
 import { BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {

@@ -1,19 +1,16 @@
 import { useEffect, useCallback, useMemo, useState } from "react";
-import { t } from "ttag";
-import _ from "underscore";
-import { Droppable, Draggable } from "react-beautiful-dnd";
-
 import type {
   DraggableProvided,
   DroppableProvided,
   DropResult,
 } from "react-beautiful-dnd";
+import { Droppable, Draggable } from "react-beautiful-dnd";
+import { t } from "ttag";
+import _ from "underscore";
 
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import { Form, FormProvider } from "metabase/forms";
-
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-
 import type {
   ActionFormSettings,
   FieldSettings,
@@ -27,16 +24,16 @@ import {
   getDefaultFormSettings,
 } from "../../../utils";
 import { syncFieldsWithParameters } from "../utils";
-import { reorderFields } from "./utils";
 
+import { Description } from "./Description";
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
-import FormFieldEditor from "./FormFieldEditor";
 import {
   FormContainer,
   FormFieldEditorDragContainer,
   WarningBanner,
 } from "./FormCreator.styled";
-import { Description } from "./Description";
+import FormFieldEditor from "./FormFieldEditor";
+import { reorderFields } from "./utils";
 
 // FormEditor's can't be submitted as it serves as a form preview
 const ON_SUBMIT_NOOP = _.noop;

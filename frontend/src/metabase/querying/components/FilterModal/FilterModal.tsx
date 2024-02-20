@@ -1,12 +1,21 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Flex, Modal, Stack, Tabs, Text, Icon } from "metabase/ui";
 
+import { Button, Flex, Modal, Stack, Tabs, Text, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import { ColumnFilterSection } from "./ColumnFilterSection";
+import {
+  TabPanelItem,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  TabPanelRoot,
+} from "./FilterModal.styled";
 import { FilterSearchInput } from "./FilterSearchInput";
 import { SegmentFilterEditor } from "./SegmentFilterEditor";
 import { SEARCH_KEY } from "./constants";
+import type { ColumnItem, GroupItem, SegmentItem } from "./types";
 import {
   addSegmentFilters,
   appendStageIfAggregated,
@@ -22,14 +31,6 @@ import {
   searchGroupItems,
   sortColumns,
 } from "./utils";
-import type { ColumnItem, GroupItem, SegmentItem } from "./types";
-import {
-  TabPanelItem,
-  ModalBody,
-  ModalFooter,
-  ModalHeader,
-  TabPanelRoot,
-} from "./FilterModal.styled";
 
 interface FilterModalProps {
   query: Lib.Query;

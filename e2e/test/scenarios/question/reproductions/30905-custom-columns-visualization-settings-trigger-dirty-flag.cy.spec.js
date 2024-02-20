@@ -1,5 +1,5 @@
-import { modal, popover, restore, visitQuestion } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { modal, popover, restore, visitQuestion } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const EXPRESSION_NAME = "TEST_EXPRESSION";

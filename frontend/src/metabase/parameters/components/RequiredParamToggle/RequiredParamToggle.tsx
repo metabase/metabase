@@ -1,7 +1,9 @@
-import { t } from "ttag";
 import type { ReactNode } from "react";
-import { Icon, HoverCard, Stack, Flex, Text } from "metabase/ui";
+import { t } from "ttag";
+
 import Toggle from "metabase/core/components/Toggle";
+import { Icon, HoverCard, Stack, Flex, Text } from "metabase/ui";
+
 import { SettingRequiredLabel } from "./RequierParamToggle.styled";
 
 interface RequiredParamToggleProps {

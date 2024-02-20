@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import EmptyState from "metabase/components/EmptyState";
 import { color } from "metabase/lib/colors";
 import {

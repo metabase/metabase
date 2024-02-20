@@ -1,3 +1,8 @@
+import { USERS } from "e2e/support/cypress_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
   restore,
@@ -14,11 +19,6 @@ import {
   main,
   undoToast,
 } from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
-import {
-  ADMIN_PERSONAL_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 

@@ -1,4 +1,5 @@
 import { render, screen } from "__support__/ui";
+
 import { HomeCard } from "./HomeCard";
 
 const setup = () => {

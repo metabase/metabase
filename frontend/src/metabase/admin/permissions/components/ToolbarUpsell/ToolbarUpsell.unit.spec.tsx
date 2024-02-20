@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
+
 import ToolbarUpsell from "./ToolbarUpsell";
 
 const setup = () => {

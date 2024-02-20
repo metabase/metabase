@@ -1,10 +1,8 @@
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { createAction } from "metabase/lib/redux";
+import { DashboardApi } from "metabase/services";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 import type { Dispatch, EmbedOptions } from "metabase-types/store";
-import { createAction } from "metabase/lib/redux";
-
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
-import { DashboardApi } from "metabase/services";
 
 import { setSidebar, closeSidebar } from "./ui";
 
