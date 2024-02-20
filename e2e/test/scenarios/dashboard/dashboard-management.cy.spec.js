@@ -191,8 +191,10 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 });
                 popover().findByText("New collection").click();
                 const NEW_COLLECTION = "Foo Collection";
-                modal().within(() => {
-                  cy.findByLabelText("Name").type(NEW_COLLECTION);
+                cy.findByTestId("new-collection-modal").then(modal => {
+                  cy.findByPlaceholderText("My new fantastic collection").type(
+                    NEW_COLLECTION,
+                  );
                   cy.button("Create").click();
                   cy.button("Duplicate").click();
                   assertOnRequest("copyDashboard");
