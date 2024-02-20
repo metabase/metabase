@@ -1,12 +1,13 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
-import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 import { createMockAdminState } from "metabase-types/store/mocks";
 
 import { getBillingInfoId } from "../BillingInfo/utils";
+
 import LicenseAndBillingSettings from "./LicenseAndBillingSettings";
 
 const setupState = ({

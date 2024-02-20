@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { Checkbox } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getColumnIcon } from "metabase/common/utils/columns";
+
 import {
   ToggleItem,
   ColumnItem,

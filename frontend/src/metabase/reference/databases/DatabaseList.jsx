@@ -1,20 +1,17 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import S from "metabase/components/List/List.css";
-
 import List from "metabase/components/List";
+import S from "metabase/components/List/List.css";
 import ListItem from "metabase/components/ListItem";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
 import * as metadataActions from "metabase/redux/metadata";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
-import ReferenceHeader from "../components/ReferenceHeader";
 
+import ReferenceHeader from "../components/ReferenceHeader";
 import { getDatabases, getError, getLoading } from "../selectors";
 
 const mapStateToProps = (state, props) => ({

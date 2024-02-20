@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
+
 import { screen, renderWithProviders } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockTokenStatus } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { checkNotNull } from "metabase/lib/types";
+
 import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 
 const setup = ({ isPaidPlan }: { isPaidPlan: boolean }) => {

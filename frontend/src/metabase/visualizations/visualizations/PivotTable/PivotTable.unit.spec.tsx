@@ -1,7 +1,8 @@
-import { useState } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import _ from "underscore";
+
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import { PivotTable } from "./PivotTable";

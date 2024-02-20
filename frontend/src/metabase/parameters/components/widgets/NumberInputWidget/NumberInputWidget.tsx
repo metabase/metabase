@@ -1,9 +1,10 @@
 import { useState } from "react";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
 import TokenField, { parseNumberValue } from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
   WidgetRoot,
   WidgetLabel,
@@ -11,7 +12,6 @@ import {
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
-import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 
 export type NumberInputWidgetProps = {
   value: number[] | undefined;

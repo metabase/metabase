@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
 import type { CreateQueryActionParams } from "metabase/entities/actions";
-
+import Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type {
   Card,
   ActionFormSettings,
@@ -12,23 +15,17 @@ import type {
   WritebackParameter,
   WritebackQueryAction,
 } from "metabase-types/api";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-
-import Question from "metabase-lib/Question";
-import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import { getDefaultFormSettings } from "../../../../utils";
-
 import type { ActionContextType } from "../ActionContext";
 import { ActionContext } from "../ActionContext";
 import type { ActionContextProviderProps, EditorBodyProps } from "../types";
 
+import QueryActionEditor from "./QueryActionEditor";
 import {
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
-import QueryActionEditor from "./QueryActionEditor";
 
 export interface QueryActionContextProviderProps
   extends ActionContextProviderProps<WritebackQueryAction> {

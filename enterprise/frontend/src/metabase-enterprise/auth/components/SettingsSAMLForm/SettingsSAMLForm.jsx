@@ -1,26 +1,28 @@
+import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
-import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import _ from "underscore";
+
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { updateSamlSettings } from "metabase/admin/settings/settings";
+import { settingToFormField } from "metabase/admin/settings/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { FormSection } from "metabase/containers/FormikForm";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
   FormSwitch,
-  FormTextarea,
   FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
-import { Stack } from "metabase/ui";
 import MetabaseSettings from "metabase/lib/settings";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
-import { updateSamlSettings } from "metabase/admin/settings/settings";
-import { settingToFormField } from "metabase/admin/settings/utils";
-import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import { Stack } from "metabase/ui";
+
 import {
   SAMLFormCaption,
   SAMLFormFooter,

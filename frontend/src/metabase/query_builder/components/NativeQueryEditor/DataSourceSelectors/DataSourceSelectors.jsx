@@ -1,9 +1,8 @@
-import { useMemo } from "react";
 import PropTypes from "prop-types";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getNativeQueryLanguage } from "metabase/lib/engine";
-
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,

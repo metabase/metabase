@@ -1,7 +1,9 @@
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
+
 import useStatusVisibility from "../../hooks/use-status-visibility";
+
 import {
   StatusCardRoot,
   StatusCardIcon,

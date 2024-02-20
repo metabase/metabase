@@ -3,8 +3,22 @@
 /**
  * Represents a structured MBQL query.
  */
-import _ from "underscore";
 import { chain, updateIn } from "icepick";
+import _ from "underscore";
+
+import * as Lib from "metabase-lib";
+import type { Dimension } from "metabase-lib/Dimension";
+import { ExpressionDimension, FieldDimension } from "metabase-lib/Dimension";
+import DimensionOptions from "metabase-lib/DimensionOptions";
+import type { AggregationOperator } from "metabase-lib/deprecated-types";
+import {
+  DISPLAY_QUOTES,
+  format as formatExpression,
+} from "metabase-lib/expressions/format";
+import { getAggregationOperators } from "metabase-lib/operators/utils";
+import * as Q from "metabase-lib/queries/utils/query";
+import { TYPE } from "metabase-lib/types/constants";
+import { createLookupByProperty } from "metabase-lib/utils";
 import type {
   Aggregation,
   DatabaseId,
@@ -14,27 +28,13 @@ import type {
   StructuredQuery as StructuredQueryObject,
   TableId,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import {
-  DISPLAY_QUOTES,
-  format as formatExpression,
-} from "metabase-lib/expressions/format";
-import { getAggregationOperators } from "metabase-lib/operators/utils";
-import { TYPE } from "metabase-lib/types/constants";
-import * as Q from "metabase-lib/queries/utils/query";
-import { createLookupByProperty } from "metabase-lib/utils";
-import type { Dimension } from "metabase-lib/Dimension";
-import { ExpressionDimension, FieldDimension } from "metabase-lib/Dimension";
-import DimensionOptions from "metabase-lib/DimensionOptions";
-import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
-import type { Query } from "../types";
-
-import type Segment from "../metadata/Segment";
-import type Database from "../metadata/Database";
 import type Question from "../Question";
-import type Table from "../metadata/Table";
+import type Database from "../metadata/Database";
 import type Field from "../metadata/Field";
+import type Segment from "../metadata/Segment";
+import type Table from "../metadata/Table";
+import type { Query } from "../types";
 
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";

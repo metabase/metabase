@@ -5,7 +5,6 @@ import {
   isItemCollection,
   isReadOnlyCollection,
 } from "metabase/collections/utils";
-
 import {
   createMockCollection,
   createMockCollectionItem,

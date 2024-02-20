@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
@@ -7,9 +9,6 @@ import {
   queryBuilderMain,
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;

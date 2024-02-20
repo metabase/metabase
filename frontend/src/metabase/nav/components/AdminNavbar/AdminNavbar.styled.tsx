@@ -1,10 +1,12 @@
 import styled from "@emotion/styled";
+
 import Link from "metabase/core/components/Link";
 import { alpha, color, darken } from "metabase/lib/colors";
 import {
   breakpointMaxLarge,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
+
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 
 export const AdminNavbarRoot = styled.nav`

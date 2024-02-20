@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import type { WritebackAction } from "metabase-types/api";
 
 import type { ModelActionMap } from "./types";

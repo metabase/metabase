@@ -1,6 +1,5 @@
 import dc from "dc";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 export const lineAddons = _chart => {
   _chart.fadeDeselectedArea = function () {

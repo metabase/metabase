@@ -1,7 +1,9 @@
 import { t } from "ttag";
+
 import ImageToggle from "../ImageToggle";
-import type { MetabotSetting } from "./types";
+
 import { MetabotIcon } from "./MetabotToggleWidget.styled";
+import type { MetabotSetting } from "./types";
 
 interface MetabotToggleWidgetProps {
   setting: MetabotSetting;

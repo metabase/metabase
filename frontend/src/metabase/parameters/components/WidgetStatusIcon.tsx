@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
+
 import { Icon } from "metabase/ui";
 
 type Props = {

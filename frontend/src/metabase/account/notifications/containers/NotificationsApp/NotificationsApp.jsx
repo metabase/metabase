@@ -1,5 +1,6 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
 import {
@@ -7,13 +8,14 @@ import {
   getUserId,
   canManageSubscriptions,
 } from "metabase/selectors/user";
+
 import {
   navigateToArchive,
   navigateToHelp,
   navigateToUnsubscribe,
 } from "../../actions";
-import { getNotifications } from "../../selectors";
 import NotificationList from "../../components/NotificationList";
+import { getNotifications } from "../../selectors";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state),

@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import Link from "metabase/core/components/Link";
-import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
+import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
+
 import { Container } from "./DashboardEmptyState.styled";
 
 function QuestionIllustration() {

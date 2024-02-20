@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockParameter } from "metabase-types/api/mocks";
+
 import { StringInputWidget } from "./StringInputWidget";
 
 const mockSetValue = jest.fn();

@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const TriggerIcon = styled(Icon)`
   display: none;

@@ -1,3 +1,9 @@
+import * as Lib from "metabase-lib";
+import { TemplateTagDimension } from "metabase-lib/Dimension";
+import type Question from "metabase-lib/Question";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import { isTemplateTagReference } from "metabase-lib/references";
+import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import type {
   ConcreteFieldReference,
   FieldReference,
@@ -8,12 +14,6 @@ import type {
   StructuredParameterDimensionTarget,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
-import * as Lib from "metabase-lib";
-import { TemplateTagDimension } from "metabase-lib/Dimension";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import { isTemplateTagReference } from "metabase-lib/references";
 
 export function isParameterVariableTarget(
   target: ParameterTarget,

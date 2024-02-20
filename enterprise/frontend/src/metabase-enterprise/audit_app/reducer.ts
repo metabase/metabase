@@ -1,7 +1,8 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { createAsyncThunk } from "metabase/lib/redux";
 
 import { GET } from "metabase/lib/api";
+import { createAsyncThunk } from "metabase/lib/redux";
+
 import { isAuditInfoComplete } from "./selectors";
 import type { AuditInfoState } from "./types/state";
 

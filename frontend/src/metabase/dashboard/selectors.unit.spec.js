@@ -1,14 +1,17 @@
 import { chain } from "icepick";
+
+import { createMockEntitiesState } from "__support__/store";
 import {
-  getParameters,
-  getSidebar,
-  getShowAddQuestionSidebar,
-  getIsSharing,
-  getEditingParameterId,
-  getIsEditingParameter,
   getClickBehaviorSidebarDashcard,
   getDashboardComplete,
+  getEditingParameterId,
+  getIsEditingParameter,
+  getIsSharing,
+  getParameters,
+  getShowAddQuestionSidebar,
+  getSidebar,
 } from "metabase/dashboard/selectors";
+import Field from "metabase-lib/metadata/Field";
 import {
   createMockCard,
   createMockDashboardCard,
@@ -19,8 +22,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import Field from "metabase-lib/metadata/Field";
+
 import { SIDEBAR_NAME } from "./constants";
 
 const STATE = createMockState({

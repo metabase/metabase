@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useEffect, useState } from "react";
+
 import { TextInput } from "metabase/ui";
 
 type Value = string | null;

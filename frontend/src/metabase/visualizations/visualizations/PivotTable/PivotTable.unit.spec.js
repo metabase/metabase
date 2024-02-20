@@ -1,21 +1,22 @@
-import { useState } from "react";
-import { thaw } from "icepick";
 import userEvent from "@testing-library/user-event";
+import { thaw } from "icepick";
+import { useState } from "react";
+
 import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
+import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import registerVisualizations from "metabase/visualizations/register";
+import Question from "metabase-lib/Question";
 import { createMockColumn } from "metabase-types/api/mocks";
 import {
-  createOrdersCreatedAtDatasetColumn,
-  createProductsCategoryDatasetColumn,
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
   SAMPLE_DB_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createProductsCategoryDatasetColumn,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
 
 registerVisualizations();
 

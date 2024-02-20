@@ -1,18 +1,16 @@
 import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isEmpty } from "metabase/lib/validate";
+import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
   QuestionDashboardCard,
   ParameterValueOrArray,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 
 import {
   InputContainer,

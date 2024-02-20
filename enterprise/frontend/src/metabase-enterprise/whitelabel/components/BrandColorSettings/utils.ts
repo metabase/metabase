@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { ColorOption } from "./types";
 
 export const getBrandColorOptions = (): ColorOption[] => [

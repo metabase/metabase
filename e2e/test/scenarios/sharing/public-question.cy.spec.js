@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   filterWidget,
@@ -10,7 +11,6 @@ import {
   modal,
   openNativeEditor,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 

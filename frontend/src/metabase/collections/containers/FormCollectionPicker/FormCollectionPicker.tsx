@@ -1,27 +1,22 @@
+import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { t } from "ttag";
-import { useField } from "formik";
-
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-
-import FormField from "metabase/core/components/FormField";
-import SelectButton from "metabase/core/components/SelectButton";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
-import CollectionName from "metabase/containers/CollectionName";
-import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
-import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
-
-import Collections from "metabase/entities/collections";
-import SnippetCollections from "metabase/entities/snippet-collections";
 
 import { isValidCollectionId } from "metabase/collections/utils";
-
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import CollectionName from "metabase/containers/CollectionName";
+import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
+import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
+import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
+import FormField from "metabase/core/components/FormField";
+import SelectButton from "metabase/core/components/SelectButton";
+import Collections from "metabase/entities/collections";
+import SnippetCollections from "metabase/entities/snippet-collections";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useSelector } from "metabase/lib/redux";
 import type { CollectionId } from "metabase-types/api";
 
-import { useSelector } from "metabase/lib/redux";
-import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,

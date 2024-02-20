@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
-import { isNotNull } from "metabase/lib/types";
+
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
-import type { Expression } from "metabase-types/api";
+import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/expressions";
+import type { Expression } from "metabase-types/api";
 
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {

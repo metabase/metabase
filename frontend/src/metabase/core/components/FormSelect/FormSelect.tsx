@@ -1,14 +1,15 @@
+import { useField } from "formik";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
-import { useField } from "formik";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+
+import FormField from "metabase/core/components/FormField";
 import type {
   SelectChangeEvent,
   SelectOption,
   SelectProps,
 } from "metabase/core/components/Select";
 import Select from "metabase/core/components/Select";
-import FormField from "metabase/core/components/FormField";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
   extends Omit<SelectProps<TValue, TOption>, "value"> {

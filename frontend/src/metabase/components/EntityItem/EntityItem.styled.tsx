@@ -1,9 +1,8 @@
 import styled from "@emotion/styled";
 
-import { color, darken } from "metabase/lib/colors";
-
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { color, darken } from "metabase/lib/colors";
 
 function getPinnedForeground(disabled: boolean) {
   return disabled ? darken(color("border"), 0.38) : color("accent4");

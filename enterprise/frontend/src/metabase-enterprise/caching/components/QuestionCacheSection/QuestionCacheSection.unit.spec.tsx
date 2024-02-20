@@ -1,10 +1,11 @@
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import QuestionCacheSection from "./QuestionCacheSection";
 
 interface SetupOpts {

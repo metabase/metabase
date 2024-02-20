@@ -1,11 +1,8 @@
-import { createEntity } from "metabase/lib/entities";
-
-import { GET } from "metabase/lib/api";
-import { entityForObject } from "metabase/lib/schema";
-
-import { ObjectUnionSchema } from "metabase/schema";
-
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { GET } from "metabase/lib/api";
+import { createEntity } from "metabase/lib/entities";
+import { entityForObject } from "metabase/lib/schema";
+import { ObjectUnionSchema } from "metabase/schema";
 
 import Actions from "./actions";
 import Bookmarks from "./bookmarks";
@@ -15,8 +12,8 @@ import Metrics from "./metrics";
 import Pulses from "./pulses";
 import Questions from "./questions";
 import Segments from "./segments";
-import Snippets from "./snippets";
 import SnippetCollections from "./snippet-collections";
+import Snippets from "./snippets";
 
 const searchList = GET("/api/search");
 const collectionList = GET("/api/collection/:collection/items");

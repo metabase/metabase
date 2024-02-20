@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { ModalHeader } from "metabase/components/ModalContent";
 
 export const EmbedModalHeader = styled(ModalHeader)`

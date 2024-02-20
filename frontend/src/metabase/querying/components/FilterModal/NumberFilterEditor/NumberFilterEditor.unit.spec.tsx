@@ -1,15 +1,17 @@
 import userEvent from "@testing-library/user-event";
-import type { FieldValuesResult } from "metabase-types/api";
-import { createMockFieldValues } from "metabase-types/api/mocks";
-import { ORDERS } from "metabase-types/api/mocks/presets";
+
+import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import type { FieldValuesResult } from "metabase-types/api";
+import { createMockFieldValues } from "metabase-types/api/mocks";
+import { ORDERS } from "metabase-types/api/mocks/presets";
+
 import { NumberFilterEditor } from "./NumberFilterEditor";
 
 interface SetupOpts {

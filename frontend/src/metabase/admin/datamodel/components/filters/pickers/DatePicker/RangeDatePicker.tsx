@@ -1,8 +1,7 @@
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { useCallback, useState } from "react";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+
 import Calendar from "metabase/components/Calendar";
 import type Filter from "metabase-lib/queries/structured/Filter";
 import {
@@ -10,10 +9,11 @@ import {
   getDateRangeFilterValue,
   setDateRangeFilterValue,
 } from "metabase-lib/queries/utils/date-filters";
+
+import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 import type { SingleDatePickerProps } from "./SingleDatePicker";
 import SingleDatePicker from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
-import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 
 export interface BetweenPickerProps {
   className?: string;

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+
 import { Text } from "metabase/ui";
+import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+
 import { SettingInputBlurChange } from "./LandingPageWidget.styled";
 import { getRelativeLandingPageUrl } from "./utils";
 
