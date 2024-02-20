@@ -36,7 +36,6 @@ function setup({ query = createQuery(), stageIndex = -1 }: SetupOpts = {}) {
 describe("QueryColumnPicker", () => {
   it("should allow to add and remove a column", () => {
     setup();
-
     const taxColumn = screen.getByRole("checkbox", { name: "Tax" });
     const totalColumn = screen.getByRole("checkbox", { name: "Total" });
     expect(taxColumn).toBeChecked();
@@ -57,5 +56,29 @@ describe("QueryColumnPicker", () => {
     userEvent.click(totalColumn);
     expect(taxColumn).toBeChecked();
     expect(totalColumn).toBeChecked();
+  });
+
+  it("should allow to add and remove an implicitly joinable column", () => {
+    setup();
+    const categoryColumn = screen.getByRole("checkbox", { name: "Category" });
+    const vendorColumn = screen.getByRole("checkbox", { name: "Vendor" });
+    expect(categoryColumn).not.toBeChecked();
+    expect(vendorColumn).not.toBeChecked();
+
+    userEvent.click(categoryColumn);
+    expect(categoryColumn).toBeChecked();
+    expect(vendorColumn).not.toBeChecked();
+
+    userEvent.click(vendorColumn);
+    expect(categoryColumn).toBeChecked();
+    expect(vendorColumn).toBeChecked();
+
+    userEvent.click(categoryColumn);
+    expect(categoryColumn).not.toBeChecked();
+    expect(vendorColumn).toBeChecked();
+
+    userEvent.click(vendorColumn);
+    expect(categoryColumn).not.toBeChecked();
+    expect(vendorColumn).not.toBeChecked();
   });
 });
