@@ -521,9 +521,8 @@ export const getTitleForColumn = (column, series, settings) => {
 export const buildTableColumnSettings = ({
   getIsColumnVisible = col => col.visibility_type !== "details-only",
 } = {}) => ({
-  // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
-  //   { name: "COLUMN_NAME", enabled: true }
-  //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
+  // We have some corrupted visualization settings without fieldRef
+  // So we have to remove broken settings without fieldRef manually
   "table.columns": {
     section: t`Columns`,
     // title: t`Columns`,
@@ -532,11 +531,12 @@ export const buildTableColumnSettings = ({
     isValid: ([{ card, data }]) => {
       const columns = card.visualization_settings["table.columns"];
       const enabledColumns = columns.filter(column => column.enabled);
-      return _.all(
-        enabledColumns,
+      const hasRefs = columns.every(column => column.fieldRef != null);
+      const hasColumns = enabledColumns.every(
         columnSetting =>
           findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
       );
+      return hasRefs && hasColumns;
     },
     getDefault: ([
       {

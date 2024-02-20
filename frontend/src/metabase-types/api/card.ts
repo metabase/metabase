@@ -103,10 +103,9 @@ export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
 
-  // We have some corrupted visualization settings where both names are mixed
-  // We should settle on `fieldRef`, make it required and remove `field_ref`
-  fieldRef?: FieldReference;
-  field_ref?: FieldReference;
+  // We have some corrupted visualization settings without fieldRef
+  // So we have to remove broken settings without fieldRef manually
+  fieldRef: FieldReference;
 };
 
 export type VisualizationSettings = {

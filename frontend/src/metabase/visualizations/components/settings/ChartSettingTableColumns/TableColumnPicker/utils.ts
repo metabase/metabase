@@ -1,15 +1,18 @@
 import * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import type { DatasetColumn } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  TableColumnOrderSetting,
+} from "metabase-types/api";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import type { ColumnSetting, EditWidgetData } from "../types";
+import type { EditWidgetData } from "../types";
 import type { ColumnItem, DragColumnProps } from "./types";
 
 export function getColumnItems(
   query: Lib.Query,
   stageIndex: number,
   legacyColumns: DatasetColumn[],
-  settings: ColumnSetting[],
+  settings: TableColumnOrderSetting[],
 ): ColumnItem[] {
   const columns = legacyColumns.map(column =>
     Lib.fromLegacyColumn(query, stageIndex, column),
@@ -49,9 +52,9 @@ export function getColumnItems(
 
 export function toggleColumnInSettings(
   { name, fieldRef, settingIndex }: ColumnItem,
-  settings: ColumnSetting[],
+  settings: TableColumnOrderSetting[],
   isEnabled: boolean,
-): ColumnSetting[] {
+): TableColumnOrderSetting[] {
   const newSettings = [...settings];
 
   if (settingIndex >= 0) {
@@ -66,7 +69,7 @@ export function toggleColumnInSettings(
 
 export const moveColumnInSettings = (
   columnItems: ColumnItem[],
-  settings: ColumnSetting[],
+  settings: TableColumnOrderSetting[],
   { oldIndex, newIndex }: DragColumnProps,
 ) => {
   const adjustedOldIndex = columnItems[oldIndex].settingIndex;

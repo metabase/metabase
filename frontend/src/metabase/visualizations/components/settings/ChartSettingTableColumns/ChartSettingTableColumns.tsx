@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import { Button } from "metabase/ui";
 import type {
@@ -9,7 +9,7 @@ import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import { QueryColumnPicker } from "./QueryColumnPicker";
 import { TableColumnPicker } from "./TableColumnPicker";
-import { canEditQuery, getColumnSettings } from "./utils";
+import { canEditQuery } from "./utils";
 import type { EditWidgetData } from "./types";
 
 interface ChartSettingTableColumnsProps {
@@ -33,7 +33,6 @@ export const ChartSettingTableColumns = ({
 }: ChartSettingTableColumnsProps) => {
   const query = question.query();
   const stageIndex = -1;
-  const settings = useMemo(() => getColumnSettings(value), [value]);
   const hasEditButton = canEditQuery(query, isDashboard);
   const [isEditingQuery, setIsEditingQuery] = useState(false);
 
@@ -63,7 +62,7 @@ export const ChartSettingTableColumns = ({
           query={query}
           stageIndex={stageIndex}
           columns={columns}
-          settings={settings}
+          settings={value}
           getColumnName={getColumnName}
           onChange={onChange}
           onShowWidget={onShowWidget}

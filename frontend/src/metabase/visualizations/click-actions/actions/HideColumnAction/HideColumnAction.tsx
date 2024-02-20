@@ -2,10 +2,6 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import { onUpdateVisualizationSettings } from "metabase/query_builder/actions";
-import {
-  findColumnSettingIndex,
-  getColumnSettingsWithRefs,
-} from "metabase/visualizations/components/settings/ChartSettingTableColumns/utils";
 
 export const HideColumnAction: LegacyDrill = ({
   question,
@@ -36,15 +32,14 @@ export const HideColumnAction: LegacyDrill = ({
       tooltip: t`Hide column`,
       default: true,
       action: () => {
-        const columnSettings = getColumnSettingsWithRefs(
-          settings?.["table.columns"] || [],
-        );
+        const columnSettings = settings?.["table.columns"] ?? [];
         const query = question.query();
 
-        const columnSettingIndex = findColumnSettingIndex(
+        const [columnSettingIndex] = Lib.findColumnIndexesFromLegacyRefs(
           query,
-          column,
-          columnSettings,
+          -1,
+          [column],
+          columnSettings.map(setting => setting.fieldRef),
         );
 
         const columnSettingsCopy = [...columnSettings];

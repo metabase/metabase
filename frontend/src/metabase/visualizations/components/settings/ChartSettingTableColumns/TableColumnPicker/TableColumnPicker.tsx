@@ -5,7 +5,7 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import { ChartSettingOrderedItems } from "../../ChartSettingOrderedItems";
-import type { ColumnSetting, EditWidgetData } from "../types";
+import type { EditWidgetData } from "../types";
 import {
   getColumnItems,
   getEditWidgetData,
@@ -18,7 +18,7 @@ interface TableColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
   columns: DatasetColumn[];
-  settings: ColumnSetting[];
+  settings: TableColumnOrderSetting[];
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[]) => void;
   onShowWidget: (config: EditWidgetData, targetElement: HTMLElement) => void;
