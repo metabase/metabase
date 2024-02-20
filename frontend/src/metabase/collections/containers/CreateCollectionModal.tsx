@@ -4,10 +4,8 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { Modal } from "metabase/ui";
-
-import ModalContent from "metabase/components/ModalContent";
 import * as Urls from "metabase/lib/urls";
+import { Modal } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

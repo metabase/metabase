@@ -1,7 +1,8 @@
 import type { ComponentType } from "react";
-import type { DashboardId, Member, User } from "metabase-types/api";
+
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
 import type Question from "metabase-lib/Question";
+import type { Member, User } from "metabase-types/api";
 
 export interface AuthProvider {
   name: string;

@@ -1,22 +1,21 @@
+import { useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
-import { useState } from "react";
 
-import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
-import { Flex, Tooltip, Icon, Button } from "metabase/ui";
 import { POST } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
-
-import "./loading.css";
+import { useSelector } from "metabase/lib/redux";
+import type { TLLMIndicatorProps } from "metabase/plugins/types";
+import { getQuestionWithDefaultVisualizationSettings } from "metabase/query_builder/actions/core/utils";
 import {
   getIsResultDirty,
   getResultsMetadata,
   getTransformedSeries,
 } from "metabase/query_builder/selectors";
-import { getQuestionWithDefaultVisualizationSettings } from "metabase/query_builder/actions/core/utils";
+import { getSetting } from "metabase/selectors/settings";
+import { Flex, Tooltip, Icon, Button } from "metabase/ui";
+import "./loading.css";
 import * as Lib from "metabase-lib";
-import type { TLLMIndicatorProps } from "metabase/plugins/types";
 
 const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
 

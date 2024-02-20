@@ -3,30 +3,29 @@ import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
-import { Form, FormProvider } from "metabase/forms";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import FormFooter from "metabase/core/components/FormFooter";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormInput from "metabase/core/components/FormInput";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import Button from "metabase/core/components/Button";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormRadio from "metabase/core/components/FormRadio";
-
-import { useCollectionListQuery } from "metabase/common/hooks";
-
 import {
   canonicalCollectionId,
   isInstanceAnalyticsCollection,
   getInstanceAnalyticsCustomCollection,
 } from "metabase/collections/utils";
-import type { CollectionId } from "metabase-types/api";
+import { useCollectionListQuery } from "metabase/common/hooks";
+import Button from "metabase/core/components/Button";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormFooter from "metabase/core/components/FormFooter";
+import FormInput from "metabase/core/components/FormInput";
+import FormRadio from "metabase/core/components/FormRadio";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormTextArea from "metabase/core/components/FormTextArea";
+import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
+import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import type Question from "metabase-lib/Question";
+import type { CollectionId } from "metabase-types/api";
+
 import { CreateCollectionOnTheGo } from "./CreateCollectionOnTheGo";
 
 import "./SaveQuestionModal.css";
