@@ -11,6 +11,7 @@ import {
   filterField,
   filterFieldPopover,
   filterSelectField,
+  hovercard,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -113,6 +114,20 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Quantity is equal to 20").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 4 rows").should("be.visible");
+  });
+
+  it("should have an info icon on the filter modal filters", () => {
+    visitQuestionAdhoc(rawQuestionDetails);
+    filter();
+
+    modal().within(() => {
+      cy.get("li").findByLabelText("More info").realHover();
+    });
+
+    hovercard().within(() => {
+      cy.contains("The date and time an order was submitted");
+      cy.contains("Creation timestamp");
+    });
   });
 
   it("should add a filter for an aggregated query", () => {
