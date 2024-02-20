@@ -1,17 +1,16 @@
 import { Route } from "react-router";
 
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { createMockState } from "metabase-types/store/mocks";
+import type { TokenStatusStatus } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import type { TokenStatusStatus } from "metabase-types/api";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { AppBanner } from "./AppBanner";
 

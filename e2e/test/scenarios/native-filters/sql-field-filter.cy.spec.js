@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openNativeEditor,
@@ -6,9 +7,8 @@ import {
   popover,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -78,7 +78,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       filterWidget().click();
       popover().within(() => {
         cy.icon("close").click();
-        cy.findByText("Update filter").click();
+        cy.findByText("Set to default").click();
       });
       filterWidget()
         .findByTestId("field-set-content")
@@ -215,7 +215,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
       popover().within(() => {
         cy.findByText("Gizmo").click();
-        cy.button("Add filter").click();
+        cy.button("Update filter").click();
       });
 
       cy.findByTestId("qb-header").find(".Icon-play").click();

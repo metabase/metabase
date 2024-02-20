@@ -11,6 +11,7 @@ import {
 } from "e2e/support/helpers";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import {
   DASHBOARD_SQL_LOCATION_FILTERS,
   questionDetails,
@@ -85,7 +86,7 @@ describe("scenarios > dashboard > filters > location", () => {
 
     filterWidget().click();
 
-    addWidgetStringFilter("Pittsburg");
+    addWidgetStringFilter("Pittsburg", { buttonLabel: "Update filter" });
 
     cy.get(".Card").within(() => {
       cy.contains("Aracely Jenkins");

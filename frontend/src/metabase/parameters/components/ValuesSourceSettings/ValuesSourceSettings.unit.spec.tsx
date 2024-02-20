@@ -1,8 +1,10 @@
 import userEvent from "@testing-library/user-event";
+
+import { setupParameterValuesEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { Parameter, ValuesQueryType } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { setupParameterValuesEndpoints } from "__support__/server-mocks";
+
 import ValuesSourceSettings from "./ValuesSourceSettings";
 
 interface SetupOpts {

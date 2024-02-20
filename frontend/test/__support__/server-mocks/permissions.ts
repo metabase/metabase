@@ -1,10 +1,10 @@
 import fetchMock from "fetch-mock";
+
 import type {
   CollectionPermissionsGraph,
   Group,
   Database,
 } from "metabase-types/api";
-
 import { createMockPermissionsGraph } from "metabase-types/api/mocks/permissions";
 
 export const setupPermissionsGraphEndpoints = (

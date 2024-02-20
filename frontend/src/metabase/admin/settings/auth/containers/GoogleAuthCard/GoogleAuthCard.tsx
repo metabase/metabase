@@ -1,8 +1,10 @@
-import { t } from "ttag";
 import { connect } from "react-redux";
-import { getSetting } from "metabase/selectors/settings";
+import { t } from "ttag";
+
 import { updateSettings } from "metabase/admin/settings/settings";
+import { getSetting } from "metabase/selectors/settings";
 import type { Dispatch, State } from "metabase-types/store";
+
 import type { AuthCardProps } from "../../components/AuthCard";
 import AuthCard from "../../components/AuthCard";
 import { GOOGLE_SCHEMA } from "../../constants";

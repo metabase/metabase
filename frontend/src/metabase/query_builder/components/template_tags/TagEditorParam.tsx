@@ -1,21 +1,31 @@
 import { Component } from "react";
-import { t } from "ttag";
-import _ from "underscore";
 import { connect } from "react-redux";
 import { Link } from "react-router";
+import { t } from "ttag";
+import _ from "underscore";
 
-import Schemas from "metabase/entities/schemas";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
-import { Text } from "metabase/ui";
+import Schemas from "metabase/entities/schemas";
+import MetabaseSettings from "metabase/lib/settings";
+import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
-
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
-import MetabaseSettings from "metabase/lib/settings";
-
+import { Text } from "metabase/ui";
+import type Database from "metabase-lib/metadata/Database";
+import type Field from "metabase-lib/metadata/Field";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type Table from "metabase-lib/metadata/Table";
+import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+import {
+  getDefaultParameterOptions,
+  getDefaultParameterWidgetType,
+  getParameterOptionsForField,
+} from "metabase-lib/parameters/utils/template-tag-options";
 import type {
   DimensionReference,
   FieldId,
@@ -29,19 +39,6 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Database from "metabase-lib/metadata/Database";
-import type Table from "metabase-lib/metadata/Table";
-import type Field from "metabase-lib/metadata/Field";
-
-import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
-import {
-  getDefaultParameterOptions,
-  getDefaultParameterWidgetType,
-  getParameterOptionsForField,
-} from "metabase-lib/parameters/utils/template-tag-options";
 
 import {
   ContainerLabel,
@@ -233,6 +230,26 @@ class TagEditorParamInner extends Component<Props> {
     const hasNoDefaultValue = !tag.default;
     const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
 
+    // We want to remove "default" and "required" so that it
+    // doesn't show up in the default value input update button
+    const defaultParameterInputValue = _.omit(
+      tag.type === "text" || tag.type === "dimension"
+        ? parameter || {
+            fields: [],
+            ...tag,
+            type: tag["widget-type"] || null,
+          }
+        : {
+            fields: [],
+            hasVariableTemplateTagTarget: true,
+            type:
+              tag["widget-type"] ||
+              (tag.type === "date" ? "date/single" : null),
+          },
+      "default",
+      "required",
+    );
+
     return (
       <TagContainer data-testid={`tag-editor-variable-${tag.name}`}>
         <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
@@ -370,21 +387,7 @@ class TagEditorParamInner extends Component<Props> {
             )}
           </ContainerLabel>
           <DefaultParameterValueWidget
-            parameter={
-              tag.type === "text" || tag.type === "dimension"
-                ? parameter || {
-                    fields: [],
-                    ...tag,
-                    type: tag["widget-type"] || null,
-                  }
-                : {
-                    fields: [],
-                    hasVariableTemplateTagTarget: true,
-                    type:
-                      tag["widget-type"] ||
-                      (tag.type === "date" ? "date/single" : null),
-                  }
-            }
+            parameter={defaultParameterInputValue}
             value={tag.default}
             setValue={value => {
               this.setParameterAttribute("default", value);

@@ -1,7 +1,8 @@
-import { msgid, ngettext, t } from "ttag";
 import { getIn } from "icepick";
-import Questions from "metabase/entities/questions";
+import { msgid, ngettext, t } from "ttag";
+
 import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
 
 export function getClickBehaviorDescription(dashcard) {
   const noBehaviorMessage = hasActionsMenu(dashcard)

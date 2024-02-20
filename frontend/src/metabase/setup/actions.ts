@@ -1,14 +1,15 @@
 import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
-import { SetupApi } from "metabase/services";
-import MetabaseSettings from "metabase/lib/settings";
-import { loadLocalization } from "metabase/lib/i18n";
-import type { DatabaseData, UsageReason } from "metabase-types/api";
-import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
 import {
   removeShowEmbedHomepageFlag,
   setShowEmbedHomepageFlag,
 } from "metabase/home/utils";
+import { loadLocalization } from "metabase/lib/i18n";
+import MetabaseSettings from "metabase/lib/settings";
+import { SetupApi } from "metabase/services";
+import type { DatabaseData, UsageReason } from "metabase-types/api";
+import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
+
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
@@ -25,8 +26,8 @@ import {
   getUsageReason,
   getUser,
 } from "./selectors";
-import { getDefaultLocale, getLocales, getUserToken } from "./utils";
 import type { SetupStep } from "./types";
+import { getDefaultLocale, getLocales, getUserToken } from "./utils";
 
 interface ThunkConfig {
   state: State;

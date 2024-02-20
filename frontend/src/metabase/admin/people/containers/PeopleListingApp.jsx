@@ -1,15 +1,14 @@
 import PropTypes from "prop-types";
-import { t } from "ttag";
 import { connect } from "react-redux";
-
-import * as Urls from "metabase/lib/urls";
+import { t } from "ttag";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-import { Group, Radio } from "metabase/ui";
+import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Group, Radio } from "metabase/ui";
 
-import SearchInput from "../components/SearchInput";
 import PeopleList from "../components/PeopleList";
+import SearchInput from "../components/SearchInput";
 import { USER_STATUS } from "../constants";
 import { usePeopleQuery } from "../hooks/use-people-query";
 

@@ -1,7 +1,6 @@
 import { createAsyncThunk, createReducer } from "@reduxjs/toolkit";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 import { SessionApi } from "metabase/services";
 
 export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";

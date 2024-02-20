@@ -1,13 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 import { t } from "ttag";
-import Input from "metabase/core/components/Input";
+import _ from "underscore";
+
 import { getColumnGroupName } from "metabase/common/utils/column-groups";
+import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import * as Lib from "metabase-lib";
-import { BreakoutColumnListItem } from "./BreakoutColumnListItem";
+
 import { ColumnGroupName, SearchContainer } from "./BreakoutColumnList.styled";
+import { BreakoutColumnListItem } from "./BreakoutColumnListItem";
 
 const STAGE_INDEX = -1;
 

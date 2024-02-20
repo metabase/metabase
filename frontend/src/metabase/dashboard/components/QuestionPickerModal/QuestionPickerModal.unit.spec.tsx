@@ -1,4 +1,10 @@
 import userEvent from "@testing-library/user-event";
+
+import {
+  setupCollectionsEndpoints,
+  setupCollectionItemsEndpoint,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import {
   act,
   renderWithProviders,
@@ -6,16 +12,12 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
-  setupCollectionsEndpoints,
-  setupCollectionItemsEndpoint,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
+
 import { QuestionPickerModal } from "./QuestionPickerModal";
 
 const ROOT_COLLECTION = createMockCollection({

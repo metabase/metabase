@@ -1,4 +1,9 @@
 /* istanbul ignore file */
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -6,11 +11,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
+
 import CreateCollectionForm from "../CreateCollectionForm";
 
 const ROOT_COLLECTION = createMockCollection({

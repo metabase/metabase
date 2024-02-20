@@ -1,15 +1,14 @@
-import cx from "classnames";
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+import cx from "classnames";
 import type { ComponentPropsWithoutRef } from "react";
-import { color } from "metabase/lib/colors";
-import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
-
-import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import { color } from "metabase/lib/colors";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
+
 import { DashCard } from "../DashCard/DashCard";
 
 // Class names are added here because we still use traditional css,

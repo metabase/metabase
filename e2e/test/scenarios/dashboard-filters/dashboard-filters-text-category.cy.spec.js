@@ -1,4 +1,8 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   clearFilterWidget,
@@ -14,15 +18,12 @@ import {
   toggleFilterWidgetValues,
   resetFilterWidgetToDefault,
 } from "e2e/support/helpers";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 import {
   applyFilterByType,
   selectDefaultValueFromPopover,
 } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 
 describe("scenarios > dashboard > filters > text/category", () => {
@@ -152,17 +153,21 @@ describe("scenarios > dashboard > filters > text/category", () => {
     );
 
     // Updates the filter value
-    selectDefaultValueFromPopover("Twitter");
+    selectDefaultValueFromPopover("Twitter", { buttonLabel: "Update filter" });
     saveDashboard();
     ensureDashboardCardHasText("37.65");
 
     // Resets the value back by clicking widget icon
-    toggleFilterWidgetValues(["Google", "Organic"]);
+    toggleFilterWidgetValues(["Google", "Organic"], {
+      buttonLabel: "Update filter",
+    });
     resetFilterWidgetToDefault();
     filterWidget().findByText("Twitter");
 
     // Removing value resets back to default
-    toggleFilterWidgetValues(["Twitter"]);
+    toggleFilterWidgetValues(["Twitter"], {
+      buttonLabel: "Set to default",
+    });
     filterWidget().findByText("Twitter");
   });
 });

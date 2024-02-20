@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
+
 import { DATE_PICKER_OPERATORS } from "../constants";
 import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
+
 import { SpecificDatePicker } from "./SpecificDatePicker";
 
 interface SetupOpts {

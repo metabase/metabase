@@ -1,15 +1,13 @@
 /* eslint "react/prop-types": "warn" */
-import { memo } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import cx from "classnames";
-
-import MetabaseSettings from "metabase/lib/settings";
+import PropTypes from "prop-types";
+import { memo } from "react";
+import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import SidebarItem from "metabase/components/SidebarItem";
-
 import S from "metabase/components/Sidebar.css";
+import SidebarItem from "metabase/components/SidebarItem";
+import MetabaseSettings from "metabase/lib/settings";
 
 const MetricSidebar = ({ metric, user, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>

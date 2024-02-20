@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
   setupApiKeyEndpoints,
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
 import { createMockGroup } from "metabase-types/api/mocks";
 

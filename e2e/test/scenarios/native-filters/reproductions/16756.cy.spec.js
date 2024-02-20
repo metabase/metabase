@@ -1,5 +1,5 @@
-import { restore, filterWidget, popover } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, filterWidget, popover } from "e2e/support/helpers";
 
 import { runQuery } from "../helpers/e2e-sql-filter-helpers";
 
@@ -58,7 +58,7 @@ describe("issue 16756", () => {
 
     popover().contains("15").click();
 
-    cy.button("Update filter").click();
+    cy.button("Add filter").click();
 
     runQuery();
 

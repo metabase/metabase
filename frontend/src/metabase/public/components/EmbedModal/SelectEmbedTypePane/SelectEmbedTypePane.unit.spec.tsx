@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
+
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { checkNotNull } from "metabase/lib/types";
-import { mockSettings } from "__support__/settings";
 
 import { SelectEmbedTypePane } from "./SelectEmbedTypePane";
 

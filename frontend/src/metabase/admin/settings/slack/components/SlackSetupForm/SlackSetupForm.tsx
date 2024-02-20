@@ -1,4 +1,5 @@
 import type { SlackSettings } from "metabase-types/api";
+
 import SlackForm from "../SlackForm";
 
 const DEFAULT_SETTINGS: SlackSettings = {

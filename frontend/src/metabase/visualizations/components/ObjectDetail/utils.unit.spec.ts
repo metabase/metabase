@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-
+import Question from "metabase-lib/Question";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -12,7 +12,6 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import Question from "metabase-lib/Question";
 
 import {
   getActionItems,
@@ -120,7 +119,7 @@ describe("ObjectDetail utils", () => {
 
   describe("getObjectName", () => {
     const question = new Question(card, metadata);
-    const table = question.table();
+    const table = question.legacyQueryTable();
 
     it("should get an entity name when there is an entity name column", () => {
       const name = getObjectName({

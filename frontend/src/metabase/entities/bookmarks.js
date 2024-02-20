@@ -1,10 +1,11 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { assoc, updateIn, dissoc } from "icepick";
 import _ from "underscore";
-import { createSelector } from "@reduxjs/toolkit";
-import { createEntity } from "metabase/lib/entities";
+
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
+import { createEntity } from "metabase/lib/entities";
 import { BookmarkSchema } from "metabase/schema";
 import { BookmarkApi } from "metabase/services";
 

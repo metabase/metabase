@@ -1,12 +1,12 @@
-import type { DatasetQuery } from "metabase-types/api";
 import { checkNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/Question";
+import type { DatasetQuery } from "metabase-types/api";
 
 export function createDatasetQuery(
   query: string,
   question: Question,
 ): DatasetQuery {
-  const tableId = question.tableId();
+  const tableId = question.legacyQueryTableId();
   const collection =
     tableId === null || typeof tableId === "undefined"
       ? undefined

@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockDashboard } from "metabase-types/api/mocks";
+
 import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
+import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 

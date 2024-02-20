@@ -1,5 +1,7 @@
-import { assocIn } from "icepick";
 import userEvent from "@testing-library/user-event";
+import { assocIn } from "icepick";
+
+import { screen, renderWithProviders } from "__support__/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -9,7 +11,7 @@ import {
   createMockTableColumnOrderSetting,
 } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
-import { screen, renderWithProviders } from "__support__/ui";
+
 import { DatasetColumnSelector } from "./DatasetColumnSelector";
 
 const COLUMNS = [

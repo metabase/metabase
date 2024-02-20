@@ -1,9 +1,9 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
-import CheckBox from "metabase/core/components/CheckBox";
-import ListSearchField from "metabase/components/ListSearchField";
 
+import ListSearchField from "metabase/components/ListSearchField";
+import CheckBox from "metabase/core/components/CheckBox";
 import { capitalize } from "metabase/lib/formatting";
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 

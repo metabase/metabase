@@ -1,7 +1,9 @@
 import { connect } from "react-redux";
+
 import type { State } from "metabase-types/store";
-import SlackSettings from "../../components/SlackSettings";
+
 import { loadManifest } from "../../actions";
+import SlackSettings from "../../components/SlackSettings";
 import { hasSlackAppToken } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({

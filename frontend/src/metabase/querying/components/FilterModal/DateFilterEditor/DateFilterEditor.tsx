@@ -1,10 +1,9 @@
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Flex, Grid, Popover, Icon } from "metabase/ui";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -13,11 +12,14 @@ import type {
 } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
+import { Button, Flex, Grid, Popover, Icon } from "metabase/ui";
+
 import { FilterColumnName } from "../FilterColumnName";
 import type { FilterEditorProps } from "../types";
+
+import { ClearIcon } from "./DateFilterEditor.styled";
 import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
-import { ClearIcon } from "./DateFilterEditor.styled";
 
 export function DateFilterEditor({
   query,

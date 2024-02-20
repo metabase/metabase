@@ -1,15 +1,13 @@
 import { useEffect, useMemo } from "react";
-import _ from "underscore";
-import { t } from "ttag";
 import { connect } from "react-redux";
-
 import { usePrevious } from "react-use";
+import { t } from "ttag";
+import _ from "underscore";
+
+import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import ModalContent from "metabase/components/ModalContent";
-
 import PersistedModels from "metabase/entities/persisted-models";
-
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import { ErrorBox } from "./ModelCacheRefreshJobs.styled";

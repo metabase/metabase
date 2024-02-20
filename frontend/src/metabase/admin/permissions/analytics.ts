@@ -1,4 +1,5 @@
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+
 import type { DataPermission, TableEntityId } from "./types";
 
 const getEventPrefix = (permission: DataPermission) => {

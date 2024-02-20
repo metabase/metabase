@@ -1,4 +1,6 @@
 import { assoc, assocIn } from "icepick";
+
+import { createMockEntitiesState } from "__support__/store";
 import {
   getQuestion,
   getIsResultDirty,
@@ -6,24 +8,20 @@ import {
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
-import { createMockEntitiesState } from "__support__/store";
+import Question from "metabase-lib/Question";
 import { createMockTable } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
+  PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockState,
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
 } from "metabase-types/store/mocks";
-import Question from "metabase-lib/Question";
-import Aggregation from "metabase-lib/queries/structured/Aggregation";
-import Breakout from "metabase-lib/queries/structured/Breakout";
-import Filter from "metabase-lib/queries/structured/Filter";
-import Join from "metabase-lib/queries/structured/Join";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return createMockState({
@@ -155,9 +153,11 @@ describe("getIsResultDirty", () => {
     it("converts clauses into plain MBQL objects", () => {
       const aggregation = ["count"];
       const breakout = ["field", ORDERS.CREATED_AT, null];
-      const filter = [">=", ["field", ORDERS.TOTAL, null], 20];
+      const filter = [">", ["field", ORDERS.TOTAL, null], 20];
       const join = {
         alias: "Products",
+        fields: "all",
+        "source-table": PRODUCTS_ID,
         condition: [
           "=",
           ["field", ORDERS.PRODUCT_ID, null],
@@ -167,15 +167,15 @@ describe("getIsResultDirty", () => {
 
       const state = getState(
         {
-          aggregation: [new Aggregation(aggregation)],
-          breakout: [new Breakout(breakout)],
-          filter: [new Filter(filter)],
-          joins: [new Join(join)],
+          aggregation: [aggregation],
+          breakout: [breakout],
+          filter,
+          joins: [join],
         },
         {
           aggregation: [aggregation],
           breakout: [breakout],
-          filter: [filter],
+          filter,
           joins: [join],
         },
       );

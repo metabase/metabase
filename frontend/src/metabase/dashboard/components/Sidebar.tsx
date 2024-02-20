@@ -1,7 +1,9 @@
-import { t } from "ttag";
 import type { ReactNode } from "react";
+import { t } from "ttag";
+
 import ButtonDeprecated from "metabase/core/components/Button";
 import { Button, Icon } from "metabase/ui";
+
 import {
   ButtonContainer,
   ChildrenContainer,

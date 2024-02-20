@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { DatePicker, Group, Stack, Text } from "metabase/ui";
+
 import type { DatesRangeValue, DateValue } from "metabase/ui";
+import { DatePicker, Group, Stack, Text } from "metabase/ui";
+
 import { setDatePart, setTimePart } from "../../utils";
+
 import { FlexDateInput, FlexTimeInput } from "./DateRangePickerBody.styled";
 
 interface DateRangePickerBodyProps {

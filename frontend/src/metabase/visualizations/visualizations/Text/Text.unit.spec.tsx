@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { color } from "metabase/lib/colors";
 
 import { Text } from "../Text";

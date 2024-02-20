@@ -1,13 +1,14 @@
 import styled from "@emotion/styled";
 
-import { breakpointMaxSmall } from "metabase/styled-components/theme";
-
-import { color } from "metabase/lib/colors";
 import EditableText from "metabase/core/components/EditableText";
 import FormField from "metabase/core/components/FormField/FormField";
+import { color } from "metabase/lib/colors";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
+
 import { SIDEBAR_WIDTH } from "../Sidebar";
 
 export const DashboardInfoSidebarRoot = styled.aside`
+  width: ${SIDEBAR_WIDTH}px;
   min-width: ${SIDEBAR_WIDTH}px;
   padding: 0 2rem 0.5rem;
   background: ${color("white")};

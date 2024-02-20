@@ -3,7 +3,7 @@
    [metabase.api.common :as api]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [toucan2.core :as t2]))
 
 (declare get-or-create-root-container-collection!)
@@ -57,7 +57,7 @@
         :description            description
         :name                   name
         :collection_id          (get-collection transform)
-        :result_metadata        (qp/query->expected-cols query)
+        :result_metadata        (qp.preprocess/query->expected-cols query)
         :visualization_settings {}
         :display                :table}
        card/populate-query-fields

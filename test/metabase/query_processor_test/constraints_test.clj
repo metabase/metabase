@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]))
 
 (defn- mbql-query []
@@ -11,7 +12,7 @@
      :order-by [[:asc $id]]}))
 
 (defn- native-query []
-  (qp/compile (mbql-query)))
+  (qp.compile/compile (mbql-query)))
 
 (deftest ^:parallel max-results-test
   (mt/test-drivers (mt/normal-drivers)
@@ -26,22 +27,24 @@
                {:database    (mt/id)
                 :type        :native
                 :native      (native-query)
-                :constraints {:max-results 5}})))))
+                :constraints {:max-results 5}})))))))
 
-    (testing (str "does it also work when running via `process-query-and-save-with-max-results-constraints!`, the "
-                  "function that powers endpoints like `POST /api/dataset`?")
+(deftest ^:parallel max-results-userland-query-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Do max results constraints work when running a userland query e.g. like we use for endpoints like `POST /api/dataset`?"
       (is (= [["Red Medicine"]
               ["Stout Burgers & Beers"]
               ["The Apple Pan"]
               ["Wurstküche"]
               ["Brite Spot Family Restaurant"]]
              (mt/rows
-              (qp/process-query-and-save-with-max-results-constraints!
-               {:database    (mt/id)
-                :type        :native
-                :native      (native-query)
-                :constraints {:max-results 5}}
-               {:context :question})))))))
+              (qp/process-query
+               (qp/userland-query-with-default-constraints
+                {:database    (mt/id)
+                 :type        :native
+                 :native      (native-query)
+                 :constraints {:max-results 5}}
+                {:context :question}))))))))
 
 (deftest ^:parallel override-limit-test
   (mt/test-drivers (mt/normal-drivers)
@@ -53,8 +56,10 @@
               (qp/process-query
                (-> (mbql-query)
                    (assoc-in [:query :limit] 10)
-                   (assoc :constraints {:max-results 3})))))))
+                   (assoc :constraints {:max-results 3})))))))))
 
+(deftest ^:parallel override-limit-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "However if `:limit` is lower than `:constraints` we should not return more than the `:limit`"
       (is (= [["Red Medicine"]
               ["Stout Burgers & Beers"]

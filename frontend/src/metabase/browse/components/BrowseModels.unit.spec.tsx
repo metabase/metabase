@@ -1,19 +1,20 @@
 import fetchMock from "fetch-mock";
+
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import type { SearchResult } from "metabase-types/api";
-import { createMockSetupState } from "metabase-types/store/mocks";
 import {
   createMockCollection,
   createMockModelResult,
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
-import { groupModels } from "../utils";
+import { createMockSetupState } from "metabase-types/store/mocks";
+
 import { BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
@@ -263,44 +264,5 @@ describe("BrowseModels", () => {
     expect(await findWhenModelWasEdited("Model 11")).toBe("5yr");
 
     jest.useRealTimers();
-  });
-  it("has a function that groups models by collection, sorting the collections alphabetically when English is the locale", () => {
-    const groupedModels = groupModels(mockModels, "en-US");
-    expect(groupedModels[0][0].collection.name).toEqual("Alpha");
-    expect(groupedModels[0]).toHaveLength(3);
-    expect(groupedModels[1][0].collection.name).toEqual("Ångström");
-    expect(groupedModels[1]).toHaveLength(3);
-    expect(groupedModels[2][0].collection.name).toEqual("Beta");
-    expect(groupedModels[2]).toHaveLength(3);
-    expect(groupedModels[3][0].collection.name).toEqual("Charlie");
-    expect(groupedModels[3]).toHaveLength(3);
-    expect(groupedModels[4][0].collection.name).toEqual("Delta");
-    expect(groupedModels[4]).toHaveLength(3);
-    expect(groupedModels[5][0].collection.name).toEqual("Our analytics");
-    expect(groupedModels[5]).toHaveLength(2);
-    expect(groupedModels[6][0].collection.name).toEqual("Özgür");
-    expect(groupedModels[6]).toHaveLength(3);
-    expect(groupedModels[7][0].collection.name).toEqual("Zulu");
-    expect(groupedModels[7]).toHaveLength(3);
-  });
-
-  it("has a function that groups models by collection, sorting the collections alphabetically when Swedish is the locale", () => {
-    const groupedModels = groupModels(mockModels, "sv-SV");
-    expect(groupedModels[0][0].collection.name).toEqual("Alpha");
-    expect(groupedModels[0]).toHaveLength(3);
-    expect(groupedModels[1][0].collection.name).toEqual("Beta");
-    expect(groupedModels[1]).toHaveLength(3);
-    expect(groupedModels[2][0].collection.name).toEqual("Charlie");
-    expect(groupedModels[2]).toHaveLength(3);
-    expect(groupedModels[3][0].collection.name).toEqual("Delta");
-    expect(groupedModels[3]).toHaveLength(3);
-    expect(groupedModels[4][0].collection.name).toEqual("Our analytics");
-    expect(groupedModels[4]).toHaveLength(2);
-    expect(groupedModels[5][0].collection.name).toEqual("Zulu");
-    expect(groupedModels[5]).toHaveLength(3);
-    expect(groupedModels[6][0].collection.name).toEqual("Ångström");
-    expect(groupedModels[6]).toHaveLength(3);
-    expect(groupedModels[7][0].collection.name).toEqual("Özgür");
-    expect(groupedModels[7]).toHaveLength(3);
   });
 });

@@ -4,13 +4,11 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
-import { Group, Loader, Icon } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
-
 import type { WrappedResult } from "metabase/search/types";
+import { Group, Loader, Icon } from "metabase/ui";
 
 import { InfoText } from "../InfoText";
-import { ItemIcon } from "./components";
 
 import {
   DescriptionDivider,
@@ -24,6 +22,7 @@ import {
   XRayButton,
   XRaySection,
 } from "./SearchResult.styled";
+import { ItemIcon } from "./components";
 
 export function SearchResult({
   result,
@@ -112,6 +111,25 @@ export function SearchResult({
           <ModerationIcon status={moderated_status} filled size={14} />
         </Group>
         <InfoText showLinks={!onClick} result={result} isCompact={compact} />
+        {description && showDescription && (
+          <DescriptionSection>
+            <Group noWrap spacing="sm" data-testid="result-description">
+              <DescriptionDivider
+                size="md"
+                color="focus"
+                orientation="vertical"
+              />
+              <SearchResultDescription
+                dark
+                unwrapDisallowed
+                unstyleLinks
+                allowedElements={[]}
+              >
+                {description}
+              </SearchResultDescription>
+            </Group>
+          </DescriptionSection>
+        )}
       </ResultNameSection>
       {isLoading && (
         <LoadingSection px="xs">
@@ -122,25 +140,6 @@ export function SearchResult({
         <XRaySection>
           <XRayButton leftIcon={<Icon name="bolt" />} onClick={onXRayClick} />
         </XRaySection>
-      )}
-      {description && showDescription && (
-        <DescriptionSection>
-          <Group noWrap spacing="sm" data-testid="result-description">
-            <DescriptionDivider
-              size="md"
-              color="focus"
-              orientation="vertical"
-            />
-            <SearchResultDescription
-              dark
-              unwrapDisallowed
-              unstyleLinks
-              allowedElements={[]}
-            >
-              {description}
-            </SearchResultDescription>
-          </Group>
-        </DescriptionSection>
       )}
     </SearchResultContainer>
   );
