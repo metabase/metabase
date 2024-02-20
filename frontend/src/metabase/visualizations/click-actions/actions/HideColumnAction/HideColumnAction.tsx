@@ -34,22 +34,25 @@ export const HideColumnAction: LegacyDrill = ({
       default: true,
       action: () => {
         const columnSettings = settings?.["table.columns"] ?? [];
+        const columnSettingsCopy = [...columnSettings];
         const query = question.query();
-
-        const [columnSettingIndex] = Lib.findColumnIndexesFromLegacyRefs(
+        const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
           query,
           -1,
           [column],
           columnSettings.map(setting => setting.fieldRef),
         );
+        const columnSettingIndex = columnIndexes.findIndex(
+          columnIndex => columnIndex >= 0,
+        );
 
-        const columnSettingsCopy = [...columnSettings];
-        if (columnSettingIndex !== -1) {
+        if (columnSettingIndex >= 0) {
           columnSettingsCopy[columnSettingIndex] = {
             ...columnSettingsCopy[columnSettingIndex],
             enabled: false,
           };
         }
+
         return onUpdateVisualizationSettings({
           "table.columns": columnSettingsCopy,
         });
