@@ -1,6 +1,13 @@
 (ns metabase.models.card
-  "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
-  is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
+  "Underlying DB model for several types of saved queries:
+
+  * a normal Saved Question ([[metabase.models.saved-question]])
+
+  * a Model ([[metabase.models.model]])
+
+  * a V2 Metric (coming soon™)
+
+  Card is a historical name, and in many cases in the codebase it really refers to a regular Saved Question."
   (:require
    [clojure.core.async :as a]
    [clojure.data :as data]
@@ -48,7 +55,8 @@
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate])
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)))
 
@@ -73,7 +81,8 @@
    :result_metadata        mi/transform-result-metadata
    :visualization_settings mi/transform-visualization-settings
    :parameters             mi/transform-parameters-list
-   :parameter_mappings     mi/transform-parameters-list})
+   :parameter_mappings     mi/transform-parameters-list
+   :type                   mi/transform-keyword})
 
 (doto :model/Card
   (derive :metabase/model)
@@ -102,20 +111,18 @@
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Card :id pk))))
 
-(def ^{:private true
-       :doc     "All acceptable card types.
-                Previously (< 49), we only had 2 card types: question and model, which were differentiated using the
-                boolean `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean
-                column to differentiate between all types. So we've added a new `type` column for this purpose.
+(def ^:private card-types
+  "All acceptable card types.
 
-                Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it gradually.
-                In the mean time we'll have both `type` and `dataset` columns."} card-types
-  #{"model" "question"
-    ;; metric will be added as part of epic #37335
-    #_"metric"})
+  Previously (< 50), we only had 2 card types: question and model, which were differentiated using the boolean
+  `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean column
+  to differentiate between all types. So we've added a new `type` column for this purpose."
+  #{:model
+    :question ; a Saved Question
+    #_:metric}) ; a v2 Metric; will be enabled in subsequent PR
 
 (def CardTypes
-  "Malli schema for acceptable card types."
+  "Malli schema for acceptable card types (as strings, for REST API friendliness)."
   (into [:enum] card-types))
 
 (mu/defn ^:private is-type? :- :boolean
@@ -124,29 +131,30 @@
    {:keys [type] :as _card} :- [:map [:type CardTypes]]]
   (= target-type type))
 
-(defn question?
-  "Returns true if `card` is a question."
-  [card]
-  (is-type? "question" card))
-
 (defn model?
   "Returns true if `card` is a model."
   [card]
-  (is-type? "model" card))
+  (is-type? :model card))
+
+(mu/defn ^:private type->toucan-model :- [:enum :model/Model :model/SavedQuestion]
+  [card-type]
+  (case (keyword card-type)
+    :model          :model/Model
+    (:question nil) :model/SavedQuestion))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (mi/define-simple-hydration-method dashboard-count
   :dashboard_count
   "Return the number of Dashboards this Card is in."
-  [{:keys [id]}]
-  (t2/count 'DashboardCard, :card_id id))
+  [{:keys [id], :as _card}]
+  (t2/count :model/DashboardCard, :card_id id))
 
 (mi/define-simple-hydration-method parameter-usage-count
   :parameter_usage_count
   "Return the number of dashboard/card filters and other widgets that use this card to populate their available
   values (via ParameterCards)"
-  [{:keys [id]}]
+  [{:keys [id], :as _card}]
   (t2/count ParameterCard, :card_id id))
 
 (mi/define-simple-hydration-method average-query-time
@@ -181,9 +189,7 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version :initially_published_at
-   ;; we'll use type now
-   :dataset])
+  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version :initially_published_at])
 
 (defmethod revision/serialize-instance :model/Card
   ([instance]
@@ -194,6 +200,14 @@
      ;; the type check only needed in tests because most test object does not include `type` key
      (and (some? (:type instance)) (not (model? instance)))
      (dissoc :result_metadata))))
+
+(defmethod revision/revert-to-revision! :model/Card
+  [model id user-id serialized-card]
+  ;; make sure we handle < 50 cards that had `:dataset` instead of `:type`
+  (let [serialized-card (cond-> serialized-card
+                          (contains? serialized-card :dataset) (-> (dissoc :dataset)
+                                                                   (assoc :type (if (:dataset serialized-card) :model :question))))]
+    ((get-method revision/revert-to-revision! :default) model id user-id serialized-card)))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -341,58 +355,7 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
-(defn- assert-card-type-and-dataset
-  "Throw an exception if card type and dataset contradicts, return the card if it's not."
-  [{:keys [type dataset] :as card}]
-  (if (and (some? type) (some? dataset)
-           (if (true? dataset)
-             (not= "model" type)
-             (= "model" type)))
-    (throw (ex-info (tru ":dataset is inconsistent with :type")
-                    {:status-code 400}))
-    card))
 
-(defn ensure-type-and-dataset-are-consistent
-  "We're in the process of migrating from using `report_card.dataset` to `report_card.type`.
-  In the future we'll drop `dataset` and only use `type`. But for now we need to make sure that both keys are aligned
-  when dealing with cards.
-  - If both keys are present, throw an exception if type and dataset is inconsistent.
-    If not we make sure `dataset` is true if `type` is `model` else false.
-  This will make a different when we have `metric` type since a boolean can't represent tri-state
-  - If only one key is present, we'll assoc the correct value for the other key."
-  [{:keys [type dataset] :as card}]
-  (cond
-   ;; if none of the 2 keys is present, do nothing
-   (and (nil? type) (nil? dataset))
-   card
-
-   ;; if both type and dataset is present, makes sure they don't contradict
-   (and (some? type) (some? dataset))
-   (assert-card-type-and-dataset card)
-
-   ;; if only type is present, make sure dataset follows
-   (some? type)
-   (assoc card :dataset (= type "model"))
-
-   ;; if only dataset is present, make sure type follows
-   (some? dataset)
-   (let [inferred-type (if dataset
-                         "model"
-                         "question")]
-     (log/warnf "Card type not found, defaulting to '%s'" inferred-type)
-     (assoc card :type inferred-type))))
-
-(defn- assert-valid-type
-  "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{:keys [type dataset_query]}]
-  (case type
-    "model" (let [template-tag-types (->> (get-in dataset_query [:native :template-tags])
-                                          vals
-                                          (map (comp keyword :type)))]
-              (when (some (complement #{:card :snippet}) template-tag-types)
-                (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
-                                {:status-code 400}))))
-    nil))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
@@ -404,7 +367,6 @@
       (check-for-circular-source-query-references card)
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
-      (assert-valid-type card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace Card (:collection_id card)))))
@@ -514,24 +476,56 @@
         (t2/delete! 'Action :model_id id, :type :implicit))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
-      ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
+      ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection
+      ;; namespace)
       (collection/check-collection-namespace Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
-      (pre-update-check-sandbox-constraints changes)
-      (assert-valid-type (merge old-card-info changes)))))
+      (pre-update-check-sandbox-constraints changes))))
 
 (t2/define-after-select :model/Card
   [card]
   (public-settings/remove-public-uuid-if-public-sharing-is-disabled card))
 
+(defn- t2-infer-model-for-insert [parsed-args]
+  (let [card-types (into #{} (map :type) (:rows parsed-args))]
+    (assert (<= (count card-types) 1)
+            "Cannot insert different subtypes of Card at the same time; insert them separately.")
+    (type->toucan-model (first card-types))))
+
+(defn- t2-infer-model-for-update-or-delete [parsed-args]
+  (let [inferred-type (or (get-in parsed-args [:changes :type]) ; for updates if we are changing the type e.g. SET type = <new-type>
+                          (get-in parsed-args [:kv-args :type]) ; condition e.g. WHERE type = <type>
+                          (let [card-id (or (get-in parsed-args [:kv-args :toucan/pk]) ; a condition
+                                            (throw (ex-info "Cannot do batch update or delete for generic :model/Card; use concrete model like :model/Model instead."
+                                                            {})))]
+                            (t2/select-one-fn :type [:model/Card :type] :id card-id)))]
+    (type->toucan-model inferred-type)))
+
+(defn- t2-infer-model-for-query-type [query-type parsed-args]
+  (or (when (isa? query-type :toucan.query-type/insert.*)
+        (t2-infer-model-for-insert parsed-args))
+      (when (or (isa? query-type :toucan.query-type/update.*)
+                (isa? query-type :toucan.query-type/delete.*))
+        (t2-infer-model-for-update-or-delete parsed-args))))
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.statement-type/DML
+                                         #_model          :model/Card
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  "INSERT, UPDATE, and DELETE against generic :model/Card should infer and hand off to the more-specific concrete
+  versions like :model/Model."
+  [query-type model parsed-args honeysql]
+  (if-let [inferred-model (when (= model :model/Card)
+                            (t2-infer-model-for-query-type query-type parsed-args))]
+    (t2.pipeline/build query-type inferred-model parsed-args honeysql)
+    (next-method query-type model parsed-args honeysql)))
+
 (t2/define-before-insert :model/Card
   [card]
   (-> card
-      ensure-type-and-dataset-are-consistent
       (assoc :metabase_version config/mb-version-string)
       maybe-normalize-query
       populate-result-metadata
@@ -554,7 +548,6 @@
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
   (-> (into {:id (:id card)} (t2/changes card))
-      ensure-type-and-dataset-are-consistent
       maybe-normalize-query
       populate-result-metadata
       pre-update
@@ -675,10 +668,9 @@ saved later when it is ready."
   the transaction yet. If you pass true here it is important to call the event after the cards are successfully
   created."
   ([card creator] (create-card! card creator false))
-  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings type] :as card-data} creator delay-event?]
-   (assert-card-type-and-dataset card-data)
+  ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as card-data} creator delay-event?]
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type :dataset]
+                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
          ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
          ;; `api/maybe-reconcile-collection-position!`
          card-data            (-> (zipmap data-keys (map card-data data-keys))
@@ -686,9 +678,8 @@ saved later when it is ready."
                                    :creator_id (:id creator)
                                    :parameters (or parameters [])
                                    :parameter_mappings (or parameter_mappings []))
-                                  (cond-> (and (nil? type) (nil? dataset))
-                                    (assoc :type "question"))
-                                  ensure-type-and-dataset-are-consistent)
+                                  (cond-> (nil? type)
+                                    (assoc :type "question")))
          result-metadata-chan (result-metadata-async {:query    dataset_query
                                                       :metadata result_metadata
                                                       :dataset? (model? card-data)})
@@ -842,27 +833,26 @@ saved later when it is ready."
   included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [card-before-update card-updates actor]}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
-  (let [card-updates (ensure-type-and-dataset-are-consistent card-updates)]
-    (t2/with-transaction [_conn]
-      (api/maybe-reconcile-collection-position! card-before-update card-updates)
+  (t2/with-transaction [_conn]
+    (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
-      (when (and (card-is-verified? card-before-update)
-                 (changed? card-compare-keys card-before-update card-updates))
-        ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
-        ;; to remove it regardless if enterprise edition is present at the moment.
-        (moderation-review/create-review! {:moderated_item_id   (:id card-before-update)
-                                           :moderated_item_type "card"
-                                           :moderator_id        (:id actor)
-                                           :status              nil
-                                           :text                (tru "Unverified due to edit")}))
-      ;; ok, now save the Card
-      (t2/update! Card (:id card-before-update)
-                  ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
-                  ;; modified if they're passed in as non-nil
-                  (u/select-keys-when card-updates
-                                      :present #{:collection_id :collection_position :description :cache_ttl :dataset :type}
-                                      :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                                                 :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview}))))
+    (when (and (card-is-verified? card-before-update)
+               (changed? card-compare-keys card-before-update card-updates))
+      ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+      ;; to remove it regardless if enterprise edition is present at the moment.
+      (moderation-review/create-review! {:moderated_item_id   (:id card-before-update)
+                                         :moderated_item_type "card"
+                                         :moderator_id        (:id actor)
+                                         :status              nil
+                                         :text                (tru "Unverified due to edit")}))
+    ;; ok, now save the Card
+    (t2/update! Card (:id card-before-update)
+                ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
+                ;; modified if they're passed in as non-nil
+                (u/select-keys-when card-updates
+                  :present #{:collection_id :collection_position :description :cache_ttl :type}
+                  :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
+                             :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one Card :id (:id card-before-update))]
     (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
@@ -975,7 +965,7 @@ saved later when it is ready."
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
 (defmethod audit-log/model-details :model/Card
-  [{dataset? :dataset :as card} _event-type]
+  [{card-type :type, :as card} _event-type]
   (merge (select-keys card [:name :description :database_id :table_id])
           ;; Use `model` instead of `dataset` to mirror product terminology
-         {:model? dataset?}))
+         {:model? (= (keyword card-type) :model)}))
