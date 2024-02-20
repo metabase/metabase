@@ -39,7 +39,12 @@
                     :use-srv true}]
     (testing "mongo+srv connection string used when :use-srv is thruthy"
       (is (str/includes? (mongo.connection/db-details->connection-string db-details)
-                         "mongodb+srv://test-host.place.com/datadb")))
+                         "mongodb+srv://test-host.place.com/datadb"))
+      (let [settings (mongo.connection/db-details->mongo-client-settings db-details)
+            ^MongoCredential credential (.getCredential settings)]
+        (is (= "test-user" (.getUserName credential)))
+        (is (= "test-pass" (str/join "" (.getPassword credential))))
+        (is (= "authdb" (.getSource credential)))))
     (testing "Only fqdn may be used with mongo+srv"
       (is (thrown-with-msg? Throwable
                             #"Using DNS SRV requires a FQDN for host"
