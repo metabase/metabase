@@ -9,7 +9,7 @@ import { filterWidget, focusNativeEditor, popover } from "e2e/support/helpers";
  * @param {("Text"|"Number"|"Date"|"Field Filter")} filterType
  */
 export function openTypePickerFromSelectedFilterType(filterType) {
-  cy.findAllByTestId("variable-type-select").click();
+  cy.findByTestId("variable-type-select").click();
 }
 
 /**

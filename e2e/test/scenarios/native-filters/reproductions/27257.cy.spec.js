@@ -21,7 +21,7 @@ describe("issue 27257", () => {
       cy.icon("string");
     });
 
-    cy.findAllByTestId("variable-type-select").click();
+    cy.findByTestId("variable-type-select").click();
     popover().contains("Number").click();
 
     filterWidget().within(() => {

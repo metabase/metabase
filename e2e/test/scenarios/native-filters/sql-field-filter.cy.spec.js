@@ -229,7 +229,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter widget type")
         .parent()
-        .findAllByTestId("filter-widget-type-select")
+        .findByTestId("filter-widget-type-select")
         .click();
 
       popover().contains("String");

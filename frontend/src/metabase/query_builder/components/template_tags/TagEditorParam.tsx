@@ -4,7 +4,6 @@ import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import Schemas from "metabase/entities/schemas";
 import MetabaseSettings from "metabase/lib/settings";
 import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
