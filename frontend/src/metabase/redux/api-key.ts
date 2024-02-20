@@ -4,10 +4,11 @@ import type {
   CreateApiKeyInput,
   CreateApiKeyResponse,
   UpdateApiKeyInput,
-  UpdateApiKeyOutput,
+  UpdateApiKeyResponse,
   RegenerateApiKeyResponse,
 } from "metabase-types/api/admin";
 import {
+  apiQuery,
   createEntityApi,
   getListTag,
   providesList,
@@ -28,14 +29,14 @@ export const ApiKeysApi = createApi({
   tagTypes: ["apiKey"],
   baseQuery: apiQuery,
   endpoints: builder => ({
-    list: builder.query<Entity[], void>({
+    list: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,
       providesTags: result => providesList(result, "apiKey"),
     }),
     count: builder.query<number, void>({
       query: () => `/api/api-key/count`,
     }),
-    create: builder.mutation<CreateOutput, CreateInput>({
+    create: builder.mutation<CreateApiKeyResponse, CreateApiKeyInput>({
       query: input => ({
         method: "POST",
         url: `/api/api-key`,
@@ -43,7 +44,7 @@ export const ApiKeysApi = createApi({
       }),
       invalidatesTags: [API_KEY_LIST_TAG],
     }),
-    update: builder.mutation<UpdateOutput, UpdateInput>({
+    update: builder.mutation<UpdateApiKeyResponse, UpdateApiKeyInput>({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/api-key/${id}`,
@@ -51,7 +52,7 @@ export const ApiKeysApi = createApi({
       }),
       invalidatesTags: [API_KEY_LIST_TAG],
     }),
-    delete: builder.mutation<void, Entity["id"]>({
+    delete: builder.mutation<void, ApiKey["id"]>({
       query: id => ({ method: "DELETE", url: `/api/api-key/${id}` }),
       invalidatesTags: [API_KEY_LIST_TAG],
     }),
@@ -77,7 +78,7 @@ export const ApiKeysApiApproachTwo = createEntityApi<
   CreateApiKeyInput,
   CreateApiKeyResponse,
   UpdateApiKeyInput,
-  UpdateApiKeyOutput
+  UpdateApiKeyResponse
 >({
   entityName: "ApiKey",
   apiPath: "api-key",

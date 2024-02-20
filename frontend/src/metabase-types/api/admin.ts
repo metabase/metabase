@@ -30,7 +30,7 @@ export type UpdateApiKeyInput = {
   name: string;
 };
 
-export type UpdateApiKeyOutput = void;
+export type UpdateApiKeyResponse = void;
 
 export type RegenerateApiKeyResponse = {
   unmasked_key: string;
