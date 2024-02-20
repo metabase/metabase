@@ -223,26 +223,35 @@
       (do (log/info "No migration lock found.")
           (log/info "Migration lock acquired.")))))
 
-(defn- assert-locked [liquibase]
-  (when-not (.hasChangeLogLock (lock-service liquibase))
-    ;; TODO not sure this is the right exception class to use
-    (throw (LockException. "The Liquibase lock must be taken before executing this operation"))))
+(defn holding-lock?
+  "Check whether the given Liquibase instance is already holding the database migration lock."
+  [liquibase]
+  (.hasChangeLogLock (lock-service liquibase)))
 
 (def ^:private ^:dynamic *lock-depth* 0)
+
+(defn- assert-locked [liquibase]
+  (when-not (holding-lock? liquibase)
+    (throw (ex-info "This operation requires a hold on the liquibase migration lock."
+                    {:lock-exists? (migration-lock-exists? liquibase)
+                     ;; It's possible that the lock was accidentally released by an operation, or force released by
+                     ;; another process, so its useful for debugging to know whether we were still within a locked
+                     ;; scope.
+                     :lock-depth *lock-depth*}))))
 
 (defn run-in-scope-locked
   "Run function `f` in a scope on the Liquibase instance `liquibase`.
    Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
    Clojure). This function initializes the database and the resource accessor which are often required.
-   The underlying locks are re-entrant, so it is safe to nest these blocks."
+   In order to ensure that mutual exclusion of these scopes across all running Metabase instances, we take a lock
+   in the app database. It's the responsibility of inner functions which require the lock to call [[assert-locked]]."
   [^Liquibase liquibase f]
-
-  (when (.hasChangeLogLock (lock-service liquibase))
-    ;; In production it's better to just take the lock again, it is re-entrant.
-    ;; Fail in dev and CI in order to clean up the code flow.
+  ;; Disallow nested locking in dev and CI, in order to force a clear lexical boundary where locking begins.
+  ;; Inner functions that require the lock to be held should
+  (when (holding-lock? liquibase)
+    ;; In somehow we encounter this situation in production, rather take a nested lock - it is re-entrant.
     (when-not config/is-prod?
       (throw (LockException. "Attempted to take a Liquibase lock, but we already are holding it."))))
-
   (let [database      (.getDatabase liquibase)
         scope-objects {(.name Scope$Attr/database)         database
                        (.name Scope$Attr/resourceAccessor) (.getResourceAccessor liquibase)}]
@@ -250,7 +259,6 @@
                  (reify Scope$ScopedRunner
                    (run [_]
                      (wait-for-migration-lock liquibase)
-                     (assert-locked liquibase)
                      (try
                        (binding [*lock-depth* (inc *lock-depth*)]
                          (f))
