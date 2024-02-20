@@ -36,11 +36,7 @@ const RegenerateKeyModal = ({
   const [regenerateApiKey] = useRegenerateApiKeyMutation();
   const handleRegenerate = useCallback(async () => {
     const result = await regenerateApiKey(apiKey.id).unwrap();
-<<<<<<< HEAD
     setSecretKey(result.unmasked_key);
-=======
-    setSecretKey(result.data.unmasked_key);
->>>>>>> d590134354 (invalidate count, added invalidation utils, general clean up)
     setModal("secretKey");
   }, [apiKey.id, setModal, setSecretKey, regenerateApiKey]);
 
