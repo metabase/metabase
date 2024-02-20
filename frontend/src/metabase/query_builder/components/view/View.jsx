@@ -228,8 +228,12 @@ class View extends Component {
       isDirty,
       isNativeEditorOpen,
       setParameterValueToDefault,
+      lastUsedDatabaseId,
     } = this.props;
-    const legacyQuery = question.legacyQuery();
+
+    const legacyQuery = lastUsedDatabaseId
+      ? question.legacyQuery().setDatabaseId(lastUsedDatabaseId)
+      : question.legacyQuery();
 
     // Normally, when users open native models,
     // they open an ad-hoc GUI question using the model as a data source
