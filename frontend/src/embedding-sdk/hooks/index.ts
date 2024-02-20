@@ -4,3 +4,4 @@ export * from "./use-question-search";
 export * from "./use-sdk-context";
 export * from "./use-init-data";
 export * from "./use-session-token";
+export * from "./use-available-fonts";

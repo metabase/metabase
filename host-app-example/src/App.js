@@ -8,7 +8,7 @@ const config = {
   metabaseInstanceUrl:
     process.env.REACT_APP_METABASE_INSTANCE_URL || "http://localhost:3000",
   font: "Roboto Slab",
-  jwtProviderUri: "http://localhost:8090/sso/metabase",
+  jwtProviderUri: "http://localhost:8081/sso/metabase",
   // apiKey: "mb_//WK5lK5krDurdyjO/ZcoYQi50gTvUekNxFMR9N+HJk=",
 };
 

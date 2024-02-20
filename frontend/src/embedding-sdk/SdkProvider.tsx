@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { memo, useEffect } from "react";
+import { memo, useEffect, useState } from "react";
 import { Provider } from "react-redux";
 import styled from "@emotion/styled";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
@@ -27,12 +27,14 @@ const MetabaseProviderInternal = ({
 }): JSX.Element => {
   const store = getStore(reducers);
 
+  const [font, setFont] = useState<string>(config.font ?? "Lato");
+
   useEffect(() => {
-    if (config.font) {
-      store.dispatch(setOptions({ font: config.font }));
+    if (font) {
+      store.dispatch(setOptions({ font }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.font]);
+  }, [font]);
 
   const { isLoggedIn, isInitialized } = useInitData({
     apiUrl: config.metabaseInstanceUrl,
@@ -48,15 +50,14 @@ const MetabaseProviderInternal = ({
         apiUrl: config.metabaseInstanceUrl,
         isInitialized,
         isLoggedIn,
+        font,
+        setFont,
       }}
     >
       <Provider store={store}>
         <SdkEmotionCacheProvider>
           <ThemeProvider>
-            <ContentWrapper
-              id={SDK_CONTEXT_CLASS_NAME}
-              font={config.font ?? "Lato"}
-            >
+            <ContentWrapper id={SDK_CONTEXT_CLASS_NAME} font={font}>
               {!isInitialized ? <div>Initializing...</div> : children}
             </ContentWrapper>
           </ThemeProvider>

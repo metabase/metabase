@@ -6,8 +6,3 @@ export type SDKConfigType = {
   font?: string;
   apiKey?: string;
 };
-
-export const METABASE_SDK_CONFIG: SDKConfigType = {
-  metabaseInstanceUrl: "http://localhost:3000",
-  font: "Lato",
-};

@@ -2,9 +2,11 @@ import { Welcome } from "./Welcome";
 import { QuestionList } from "./QuestionList";
 import { useState } from "react";
 import { QueryVisualizationSdk } from "metabase-embedding-sdk";
+import { FontSelector } from "./FontSelector/FontSelector";
 
 export const Page = () => {
   const [questionId, setQuestionId] = useState(null);
+
 
   return (
     <>
@@ -14,6 +16,8 @@ export const Page = () => {
         selectedQuestionId={questionId}
         setSelectedQuestionId={setQuestionId}
       />
+
+      <FontSelector />
 
       <div className="QueryVisualization-container">
         {questionId ? (
