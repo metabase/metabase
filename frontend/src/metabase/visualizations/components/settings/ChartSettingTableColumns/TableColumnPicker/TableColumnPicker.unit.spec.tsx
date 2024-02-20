@@ -69,7 +69,7 @@ interface SetupOpts {
   query?: Lib.Query;
   stageIndex?: number;
   columns?: DatasetColumn[];
-  settings?: TableColumnOrderSetting[];
+  columnSettings?: TableColumnOrderSetting[];
   getColumnName?: (column: DatasetColumn) => string;
 }
 
@@ -77,7 +77,7 @@ function setup({
   query = createQuery(),
   stageIndex = -1,
   columns = COLUMNS,
-  settings = COLUMN_SETTINGS,
+  columnSettings = COLUMN_SETTINGS,
   getColumnName = column => column.display_name,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
@@ -88,7 +88,7 @@ function setup({
       query={query}
       stageIndex={stageIndex}
       columns={columns}
-      settings={settings}
+      columnSettings={columnSettings}
       getColumnName={getColumnName}
       onChange={onChange}
       onShowWidget={onShowWidget}
