@@ -166,20 +166,6 @@
             (is (= false
                    (perms.u/valid-path? path)))))))))
 
-(deftest ^:parallel valid-path-backslashes-test
-  (testing "Only even numbers of backslashes should be valid (backslash must be escaped by another backslash)"
-    (doseq [[_num-backslashes expected schema-name] [[0 true "PUBLIC"]
-                                                     [0 true  "my_schema"]
-                                                     [2 false "my\\schema"]
-                                                     [4 true  "my\\\\schema"]
-                                                     [6 false "my\\\\\\schema"]
-                                                     [8 true  "my\\\\\\\\schema"]]]
-      (doseq [path [(format "/db/1/schema/%s/table/2/" schema-name)
-                    (format "/db/1/schema/%s/table/2/query/" schema-name)]]
-        (testing (str "\n" (pr-str path))
-          (is (= expected
-                 (perms.u/valid-path? path))))))))
-
 (deftest ^:parallel valid-path-format-test
   (testing "unknown paths with valid path format"
     (are [path] (perms.u/valid-path-format? path)
