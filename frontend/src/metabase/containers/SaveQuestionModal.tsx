@@ -127,7 +127,6 @@ export const SaveQuestionModal = ({
     ],
   );
 
-
   const collectionId = canonicalCollectionId(initialValues.collection_id);
   const questionWithCollectionId: Question =
     question.setCollectionId(collectionId);
