@@ -94,6 +94,16 @@ describe("QueryColumnPicker", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("should render info icons", () => {
+    const { sampleColumnInfo } = setup();
+
+    expect(
+      within(
+        screen.getByLabelText(sampleColumnInfo.displayName),
+      ).getByLabelText("More info"),
+    ).toBeInTheDocument();
+  });
+
   it("should highlight column used in a given clause", () => {
     const { query, clauseInfo } = createQueryWithBreakout();
     setup({ query });
