@@ -1,12 +1,12 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
-import _ from "underscore";
+import { Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { SegmentedControl } from "metabase/components/SegmentedControl";
-import CheckBox from "metabase/core/components/CheckBox";
-import Label from "metabase/components/type/Label";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox";
+import Label from "metabase/components/type/Label";
+import CheckBox from "metabase/core/components/CheckBox";
 import Toggle from "metabase/core/components/Toggle";
 
 export default class EmailAttachmentPicker extends Component {

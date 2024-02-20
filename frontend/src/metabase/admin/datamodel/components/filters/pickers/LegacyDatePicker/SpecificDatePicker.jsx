@@ -1,16 +1,16 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import cx from "classnames";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
 
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import cx from "classnames";
-import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar from "metabase/components/Calendar";
-import InputBlurChange from "metabase/components/InputBlurChange";
-import { Icon } from "metabase/ui";
 import ExpandingContent from "metabase/components/ExpandingContent";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import { getDateStyleFromSettings } from "metabase/lib/time";
+import { Icon } from "metabase/ui";
+
 import HoursMinutesInput from "../DatePicker/HoursMinutesInput";
 
 import { TimeLabel } from "./SpecificDatePicker.styled";

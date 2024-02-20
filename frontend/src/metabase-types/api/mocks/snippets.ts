@@ -1,4 +1,5 @@
 import type { NativeQuerySnippet } from "metabase-types/api";
+
 import { createMockUser } from "./user";
 
 export const createMockNativeQuerySnippet = ({

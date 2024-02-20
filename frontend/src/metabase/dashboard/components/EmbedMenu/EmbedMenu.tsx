@@ -3,6 +3,7 @@ import type { EmbedMenuProps } from "metabase/dashboard/components/EmbedMenu/typ
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+
 import { NonAdminEmbedMenu } from "./NonAdminEmbedMenu";
 
 export const EmbedMenu = (props: EmbedMenuProps) => {

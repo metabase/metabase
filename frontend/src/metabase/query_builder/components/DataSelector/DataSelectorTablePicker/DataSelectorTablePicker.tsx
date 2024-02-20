@@ -1,18 +1,18 @@
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
-import { isSyncCompleted } from "metabase/lib/syncing";
-
-import { Icon } from "metabase/ui";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import MetabaseSettings from "metabase/lib/settings";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
+import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
-import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
 import { DataSelectorSection as Section } from "../DataSelector.styled";
+import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
+
 import {
   DataSelectorTablePickerContainer as Container,
   DataSelectorTablePickerHeaderContainer as HeaderContainer,

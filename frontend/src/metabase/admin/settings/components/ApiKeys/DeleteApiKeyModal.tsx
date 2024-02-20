@@ -1,7 +1,5 @@
-import { t } from "ttag";
 import { useCallback } from "react";
-
-import type { ApiKey } from "metabase-types/api";
+import { t } from "ttag";
 
 import {
   FormProvider,
@@ -9,9 +7,9 @@ import {
   FormSubmitButton,
   FormErrorMessage,
 } from "metabase/forms";
-
-import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 import { ApiKeysApi } from "metabase/services";
+import { Text, Button, Group, Modal, Stack } from "metabase/ui";
+import type { ApiKey } from "metabase-types/api";
 
 export const DeleteApiKeyModal = ({
   onClose,

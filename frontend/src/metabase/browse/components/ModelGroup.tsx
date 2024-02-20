@@ -1,18 +1,17 @@
+import Link from "metabase/core/components/Link";
+import Search from "metabase/entities/search";
+import { color } from "metabase/lib/colors";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { Box, Group, Icon, Text, Title } from "metabase/ui";
 import type {
   Card,
   CollectionEssentials,
   SearchResult,
 } from "metabase-types/api";
-import * as Urls from "metabase/lib/urls";
 
-import Link from "metabase/core/components/Link";
-import Search from "metabase/entities/search";
-import { useDispatch } from "metabase/lib/redux";
-
-import { Box, Group, Icon, Text, Title } from "metabase/ui";
-
-import { color } from "metabase/lib/colors";
 import { getCollectionName, sortModels } from "../utils";
+
 import {
   CollectionHeaderContainer,
   CollectionHeaderGroup,

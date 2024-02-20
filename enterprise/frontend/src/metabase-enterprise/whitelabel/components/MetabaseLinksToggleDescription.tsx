@@ -1,6 +1,7 @@
-import { useState } from "react";
 import type { MouseEvent } from "react";
+import { useState } from "react";
 import { t } from "ttag";
+
 import { Anchor, Popover, Stack, Text } from "metabase/ui";
 
 export function MetabaseLinksToggleDescription() {

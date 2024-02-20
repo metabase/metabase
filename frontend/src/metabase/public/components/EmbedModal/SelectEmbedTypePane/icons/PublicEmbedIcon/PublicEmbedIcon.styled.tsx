@@ -1,5 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+
 import { SharingPaneButtonContent } from "../../SharingPaneButton/SharingPaneButton.styled";
 
 interface PublicEmbedIconRootProps {

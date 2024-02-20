@@ -1,9 +1,10 @@
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/lib/colors/types";
-import type { UserId } from "./user";
+import type { IconName } from "metabase/ui";
+
 import type { CardDisplayType } from "./card";
 import type { DatabaseId } from "./database";
 import type { TableId } from "./table";
+import type { UserId } from "./user";
 
 export type RegularCollectionId = number;
 

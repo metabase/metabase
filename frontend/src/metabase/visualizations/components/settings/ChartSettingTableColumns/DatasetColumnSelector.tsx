@@ -1,10 +1,17 @@
 import { useCallback, useMemo } from "react";
+
+import type Question from "metabase-lib/Question";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
+
 import { TableColumnSelector } from "./TableColumnSelector";
+import type {
+  ColumnSettingItem,
+  DragColumnProps,
+  EditWidgetConfig,
+} from "./types";
 import {
   disableColumnInSettings,
   enableColumnInSettings,
@@ -12,11 +19,6 @@ import {
   getDatasetColumnSettingItems,
   moveColumnInSettings,
 } from "./utils";
-import type {
-  ColumnSettingItem,
-  DragColumnProps,
-  EditWidgetConfig,
-} from "./types";
 
 export interface DatasetColumnSelectorProps {
   value: TableColumnOrderSetting[];

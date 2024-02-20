@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
-import { TabRow as BaseTabRow } from "metabase/core/components/TabRow";
 import BaseTabPanel from "metabase/core/components/TabPanel";
+import { TabRow as BaseTabRow } from "metabase/core/components/TabRow";
 
 export const TabRow = styled(BaseTabRow)`
   margin: 1rem 0;

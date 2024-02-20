@@ -1,4 +1,3 @@
-import type { FieldId, FieldReference, TableId } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   BOOLEAN,
@@ -12,6 +11,7 @@ import {
   TEMPORAL,
 } from "metabase-lib/types/constants";
 import { getFieldType } from "metabase-lib/types/utils/isa";
+import type { FieldId, FieldReference, TableId } from "metabase-types/api";
 
 const ICON_MAPPING: Record<string, string> = {
   [TEMPORAL]: "calendar",

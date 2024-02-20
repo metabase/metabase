@@ -1,6 +1,6 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import cx from "classnames";
 
 import Confirm from "metabase/components/Confirm";
 import EditBar from "metabase/components/EditBar";

@@ -1,11 +1,11 @@
 import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { color } from "metabase/lib/colors";
-import { useCurrentRef } from "metabase/hooks/use-current-ref";
+
 import ColorPicker from "metabase/core/components/ColorPicker";
-import { getBrandColorOptions } from "./utils";
-import type { ColorOption } from "./types";
+import { useCurrentRef } from "metabase/hooks/use-current-ref";
+import { color } from "metabase/lib/colors";
+
 import {
   TableBody,
   TableBodyCell,
@@ -14,6 +14,8 @@ import {
   TableHeaderCell,
   TableHeaderRow,
 } from "./BrandColorSettings.styled";
+import type { ColorOption } from "./types";
+import { getBrandColorOptions } from "./utils";
 
 export interface BrandColorSettingsProps {
   colors: Record<string, string>;

@@ -1,3 +1,9 @@
+import { USERS } from "e2e/support/cypress_data";
+import {
+  NO_DATA_PERSONAL_COLLECTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_USER_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -7,13 +13,6 @@ import {
   getCollectionActions,
   openCollectionMenu,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-import {
-  NO_DATA_PERSONAL_COLLECTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-  NORMAL_USER_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describe("personal collections", () => {
   beforeEach(() => {

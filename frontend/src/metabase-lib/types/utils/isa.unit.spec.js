@@ -1,9 +1,4 @@
 import {
-  getFieldType,
-  isString,
-  isInteger,
-} from "metabase-lib/types/utils/isa";
-import {
   TYPE,
   TEMPORAL,
   STRING,
@@ -14,6 +9,11 @@ import {
   COORDINATE,
   PRIMARY_KEY,
 } from "metabase-lib/types/constants";
+import {
+  getFieldType,
+  isString,
+  isInteger,
+} from "metabase-lib/types/utils/isa";
 
 describe("isa", () => {
   describe("getFieldType", () => {

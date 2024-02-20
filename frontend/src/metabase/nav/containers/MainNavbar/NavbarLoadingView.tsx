@@ -3,21 +3,18 @@ import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import {
-  LoadingContainer,
-  LoadingContent,
-  LoadingTitle,
+  LoadingAndErrorContainer,
+  LoadingAndErrorContent,
+  LoadingAndErrorTitle,
 } from "./MainNavbar.styled";
 
-function NavbarLoadingView() {
+export function NavbarLoadingView() {
   return (
-    <LoadingContainer>
-      <LoadingContent>
+    <LoadingAndErrorContainer>
+      <LoadingAndErrorContent>
         <LoadingSpinner />
-        <LoadingTitle>{t`Loading…`}</LoadingTitle>
-      </LoadingContent>
-    </LoadingContainer>
+        <LoadingAndErrorTitle>{t`Loading…`}</LoadingAndErrorTitle>
+      </LoadingAndErrorContent>
+    </LoadingAndErrorContainer>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NavbarLoadingView;

@@ -1,7 +1,7 @@
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
-import type ForeignKey from "metabase-lib/metadata/ForeignKey";
-
 import type Question from "metabase-lib/Question";
+import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+
 import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";

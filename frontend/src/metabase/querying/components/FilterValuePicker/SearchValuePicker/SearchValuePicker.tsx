@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
 import { useAsync, useDebounce } from "react-use";
 import { t } from "ttag";
-import type { FieldId, FieldValue } from "metabase-types/api";
+
 import { MultiSelect } from "metabase/ui";
+import type { FieldId, FieldValue } from "metabase-types/api";
+
 import { getEffectiveOptions } from "../utils";
+
 import { SEARCH_DEBOUNCE } from "./constants";
 import { shouldSearch, getSearchValues } from "./utils";
 

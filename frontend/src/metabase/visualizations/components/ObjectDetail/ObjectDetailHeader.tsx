@@ -2,13 +2,12 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Button from "metabase/core/components/Button";
 import { Flex } from "metabase/ui/components";
 
-import type { ObjectId } from "./types";
-
 import {
   CloseButton,
   ObjectDetailHeaderWrapper,
   ObjectIdLabel,
 } from "./ObjectDetailHeader.styled";
+import type { ObjectId } from "./types";
 
 export interface ObjectDetailHeaderProps {
   actionItems: {

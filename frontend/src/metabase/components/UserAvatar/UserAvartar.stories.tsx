@@ -1,4 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
+
 import UserAvatar from "./UserAvatar";
 
 export default {

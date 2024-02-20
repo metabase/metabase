@@ -1,11 +1,13 @@
-import { t } from "ttag";
 import type { ReactNode } from "react";
-import type { StackProps } from "metabase/ui";
-import { Button, Center, Group, Loader, FocusTrap } from "metabase/ui";
+import { t } from "ttag";
+
 import type {
   FilterTypeKeys,
   SearchFilterPropTypes,
 } from "metabase/search/types";
+import type { StackProps } from "metabase/ui";
+import { Button, Center, Group, Loader, FocusTrap } from "metabase/ui";
+
 import {
   DropdownApplyButtonDivider,
   SearchPopoverContainer,

@@ -1,6 +1,13 @@
-import { t } from "ttag";
-import { normalize } from "normalizr";
 import { assocIn, updateIn } from "icepick";
+import { normalize } from "normalizr";
+import { t } from "ttag";
+
+import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
+import {
+  field_visibility_types,
+  field_semantic_types,
+  has_field_values_options,
+} from "metabase/lib/core";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
   compose,
@@ -12,25 +19,15 @@ import {
   createThunkAction,
   updateData,
 } from "metabase/lib/redux";
-
 import { FieldSchema } from "metabase/schema";
-import { MetabaseApi } from "metabase/services";
-
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-
-import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
-
-import {
-  field_visibility_types,
-  field_semantic_types,
-  has_field_values_options,
-} from "metabase/lib/core";
-import { TYPE } from "metabase-lib/types/constants";
-import { getFieldValues } from "metabase-lib/queries/utils/field";
+import { MetabaseApi } from "metabase/services";
 import { getUniqueFieldId } from "metabase-lib/metadata/utils/fields";
+import { getFieldValues } from "metabase-lib/queries/utils/field";
+import { TYPE } from "metabase-lib/types/constants";
 
 // ADDITIONAL OBJECT ACTIONS
 

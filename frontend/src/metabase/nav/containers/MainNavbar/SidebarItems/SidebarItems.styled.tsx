@@ -1,13 +1,11 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
-import { Icon, Tooltip } from "metabase/ui";
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import Link from "metabase/core/components/Link";
-
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-
 import { alpha, color, darken } from "metabase/lib/colors";
+import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
+import { Icon, Tooltip } from "metabase/ui";
 
 export const SidebarIcon = styled(Icon)<{
   color?: string | null;

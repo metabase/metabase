@@ -1,4 +1,17 @@
 import userEvent from "@testing-library/user-event";
+
+import {
+  setupFieldSearchValuesEndpoints,
+  setupFieldValuesEndpoints,
+} from "__support__/server-mocks";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import type { FieldValuesResult } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
@@ -7,18 +20,7 @@ import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import {
-  act,
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
-import {
-  setupFieldSearchValuesEndpoints,
-  setupFieldValuesEndpoints,
-} from "__support__/server-mocks";
-import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
 import {
   NumberFilterValuePicker,
   StringFilterValuePicker,

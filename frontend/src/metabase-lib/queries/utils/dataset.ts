@@ -1,14 +1,15 @@
-import _ from "underscore";
 import cloneDeep from "lodash.clonedeep";
+import _ from "underscore";
+
+import * as Lib from "metabase-lib";
+import Dimension from "metabase-lib/Dimension";
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import type {
   DatasetColumn,
   DatasetData,
   FieldReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import Dimension from "metabase-lib/Dimension";
-import { normalize } from "metabase-lib/queries/utils/normalize";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;

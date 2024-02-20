@@ -1,14 +1,13 @@
 import { useMemo } from "react";
 import type { Params } from "react-router/lib/Router";
 
-import type { User as UserType } from "metabase-types/api";
-
-import { useDispatch } from "metabase/lib/redux";
-import User from "metabase/entities/users";
-import ModalContent from "metabase/components/ModalContent";
-
 import { useUserQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ModalContent from "metabase/components/ModalContent";
+import User from "metabase/entities/users";
+import { useDispatch } from "metabase/lib/redux";
+import type { User as UserType } from "metabase-types/api";
+
 import { UserForm } from "../forms/UserForm";
 
 interface EditUserModalProps {

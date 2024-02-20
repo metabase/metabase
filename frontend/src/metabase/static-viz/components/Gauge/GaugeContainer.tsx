@@ -1,7 +1,8 @@
+import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { truncateText } from "metabase/static-viz/lib/text";
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
 
+import Gauge from "./Gauge";
 import {
   START_ANGLE,
   CHART_WIDTH,
@@ -13,6 +14,7 @@ import {
   MAX_SEGMENT_VALUE_WIDTH,
   SEGMENT_LABEL_FONT_SIZE,
 } from "./constants";
+import type { Card, Data, GaugeLabelData, Position } from "./types";
 import {
   populateDefaultColumnSettings,
   removeDuplicateElements,
@@ -22,9 +24,6 @@ import {
   gaugeSorter,
   fixSwappedMinMax,
 } from "./utils";
-
-import type { Card, Data, GaugeLabelData, Position } from "./types";
-import Gauge from "./Gauge";
 
 export interface GaugeContainerProps {
   card: Card;

@@ -1,12 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import {
-  createMockDatabase,
-  createMockQueryAction,
-} from "metabase-types/api/mocks";
-import {
-  createOrdersTable,
-  createStructuredModelCard,
-} from "metabase-types/api/mocks/presets";
+
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -18,7 +11,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import type {
   Card,
@@ -26,6 +18,14 @@ import type {
   StructuredDatasetQuery,
   WritebackQueryAction,
 } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockQueryAction,
+} from "metabase-types/api/mocks";
+import {
+  createOrdersTable,
+  createStructuredModelCard,
+} from "metabase-types/api/mocks/presets";
 
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   settings: { "database-enable-actions": true },

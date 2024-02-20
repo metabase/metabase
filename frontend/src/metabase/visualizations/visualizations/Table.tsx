@@ -1,17 +1,14 @@
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import { formatColumn } from "metabase/lib/formatting";
 import * as DataGrid from "metabase/lib/data_grid";
-
+import { formatColumn } from "metabase/lib/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import ChartSettingsTableFormatting, {
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
-
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import {
   columnSettings,
   buildTableColumnSettings,
@@ -19,20 +16,16 @@ import {
   isPivoted as _isPivoted,
 } from "metabase/visualizations/lib/settings/column";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-
-import type {
-  DatasetColumn,
-  DatasetData,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
+import { isNative } from "metabase-lib/queries/utils/card";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import {
   isMetric,
   isDimension,
@@ -42,12 +35,16 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
-import { isNative } from "metabase-lib/queries/utils/card";
+import type {
+  DatasetColumn,
+  DatasetData,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
-import type { ColumnSettingDefinition, VisualizationProps } from "../types";
-import { TableSimple } from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
+import { TableSimple } from "../components/TableSimple";
+import type { ColumnSettingDefinition, VisualizationProps } from "../types";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;

@@ -1,4 +1,5 @@
 import { render, screen } from "__support__/ui";
+
 import { HomeCaption } from "./HomeCaption";
 
 const setup = () => {

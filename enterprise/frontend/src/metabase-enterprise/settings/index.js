@@ -1,5 +1,5 @@
-import MetabaseSettings from "metabase/lib/settings";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
+import MetabaseSettings from "metabase/lib/settings";
 
 export function hasPremiumFeature(feature) {
   const hasFeature = MetabaseSettings.get("token-features", {})?.[feature];

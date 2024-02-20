@@ -1,14 +1,13 @@
 /* eslint-disable react/prop-types */
-import _ from "underscore";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
+import _ from "underscore";
 
+import NoResults from "assets/img/no_results.svg";
 import Card from "metabase/components/Card";
+import EmptyState from "metabase/components/EmptyState";
 import Label from "metabase/components/type/Label";
 import Text from "metabase/components/type/Text";
-import EmptyState from "metabase/components/EmptyState";
-import NoResults from "assets/img/no_results.svg";
 
 import {
   LoginActiveLabel,

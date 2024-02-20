@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/Question";
 import {
   createSampleDatabase,
   createAdHocCard,
@@ -13,7 +14,6 @@ import {
   PEOPLE,
 } from "metabase-types/api/mocks/presets";
 
-import Question from "metabase-lib/Question";
 import { getParameterMappingOptions } from "./mapping-options";
 
 const metadata = createMockMetadata({

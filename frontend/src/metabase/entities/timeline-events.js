@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import { TimelineEventSchema } from "metabase/schema";
+
 import { createEntity, undo } from "metabase/lib/entities";
+import { TimelineEventSchema } from "metabase/schema";
 
 const TimelineEvents = createEntity({
   name: "timelineEvents",

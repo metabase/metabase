@@ -1,11 +1,11 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockGroup } from "metabase-types/api/mocks";
 
-import { SettingsLdapFormView } from "./SettingsLdapForm";
 import type { SettingValues } from "./SettingsLdapForm";
+import { SettingsLdapFormView } from "./SettingsLdapForm";
 
 const GROUPS = [
   createMockGroup(),

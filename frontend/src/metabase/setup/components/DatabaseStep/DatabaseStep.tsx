@@ -1,9 +1,11 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { t } from "ttag";
+
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { DatabaseData } from "metabase-types/api";
 import type { InviteInfo } from "metabase-types/store";
+
 import {
   selectStep,
   skipDatabase,
@@ -26,6 +28,7 @@ import { InactiveStep } from "../InactiveStep";
 import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
 import type { NumberedStepProps } from "../types";
+
 import { StepDescription } from "./DatabaseStep.styled";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
