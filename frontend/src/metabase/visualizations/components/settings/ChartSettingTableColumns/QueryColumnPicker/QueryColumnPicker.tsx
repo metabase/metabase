@@ -52,7 +52,11 @@ export const QueryColumnPicker = ({
       />
       {visibleGroupItems.map((groupItem, groupIndex) => {
         return (
-          <div role="list" key={groupIndex}>
+          <div
+            key={groupIndex}
+            role="list"
+            data-testid={`${groupItem.displayName.toLowerCase()}-table-columns`}
+          >
             <Text fz="lg" fw={700} lh="1.5rem" mb="1rem" mt="1.75rem">
               {groupItem.displayName}
             </Text>

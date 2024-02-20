@@ -1,16 +1,20 @@
+import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { ColumnGroupItem, ColumnItem } from "./types";
 
-export function getColumnGroupItems(
-  query: Lib.Query,
-  stageIndex: number,
-): ColumnGroupItem[] {
+function getColumns(query: Lib.Query, stageIndex: number) {
   const aggregations = Lib.aggregations(query, stageIndex);
   const breakouts = Lib.breakouts(query, stageIndex);
-  const columns =
-    aggregations.length > 0 || breakouts.length > 0
-      ? Lib.returnedColumns(query, stageIndex)
-      : Lib.visibleColumns(query, stageIndex);
+  return aggregations.length > 0 || breakouts.length > 0
+    ? Lib.returnedColumns(query, stageIndex)
+    : Lib.visibleColumns(query, stageIndex);
+}
+
+function getGroupsWithColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+) {
   const groups = Lib.groupColumns(columns);
 
   return groups.map(group => {
@@ -28,11 +32,38 @@ export function getColumnGroupItems(
 
     return {
       columnItems,
-      displayName: groupInfo.displayName,
+      displayName:
+        groupInfo.fkReferenceName || groupInfo.displayName || t`Question`,
       isSelected: columnItems.every(columnItem => columnItem.isSelected),
       isDisabled: columnItems.some(columnItem => columnItem.isDisabled),
     };
   });
+}
+
+function addUniqueGroupNames(groupItems: ColumnGroupItem[]) {
+  const groupNames = new Map<string, number>();
+
+  return groupItems.map(groupItem => {
+    const usageCount = groupNames.get(groupItem.displayName) ?? 0;
+    const newUsageCount = usageCount + 1;
+    groupNames.set(groupItem.displayName, newUsageCount);
+
+    const displayName =
+      newUsageCount === 1
+        ? groupItem.displayName
+        : t`${groupItem.displayName} ${newUsageCount}`;
+
+    return { ...groupItem, displayName };
+  });
+}
+
+export function getColumnGroupItems(
+  query: Lib.Query,
+  stageIndex: number,
+): ColumnGroupItem[] {
+  const columns = getColumns(query, stageIndex);
+  const groupItems = getGroupsWithColumns(query, stageIndex, columns);
+  return addUniqueGroupNames(groupItems);
 }
 
 export function searchColumnGroupItems(
