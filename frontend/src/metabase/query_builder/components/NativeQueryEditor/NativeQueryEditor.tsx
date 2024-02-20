@@ -16,6 +16,7 @@ import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/json";
 
+import { updateSetting } from "metabase/admin/settings/settings";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import Databases from "metabase/entities/databases";
@@ -140,6 +141,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   toggleSnippetSidebar: () => void;
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
+  onSetDatabaseId: (id: DatabaseId) => void;
 };
 
 interface StateProps {
@@ -688,9 +690,10 @@ export class NativeQueryEditor extends Component<
 
   /// Change the Database we're currently editing a query for.
   setDatabaseId = (databaseId: DatabaseId) => {
-    const { query, setDatasetQuery, question } = this.props;
+    const { query, setDatasetQuery, question, onSetDatabaseId } = this.props;
     if (question.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
+      onSetDatabaseId(databaseId);
       if (!this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor?.focus(), 50);
@@ -915,6 +918,14 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
       ),
     );
     return Questions.HACK_getObjectFromAction(action);
+  },
+  onSetDatabaseId: (id: DatabaseId) => {
+    dispatch(
+      updateSetting({
+        key: "last-used-database-id",
+        value: id,
+      }),
+    );
   },
 });
 
