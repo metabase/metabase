@@ -668,3 +668,32 @@
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
+
+(def ^:private model->namespace
+  "Mappings for models that do not follow the normal `metabase.models.kebab-case-model-name` pattern (mostly enterprise
+  models). Add more stuff here as needed."
+  {:model/GroupTableAccessPolicy 'metabase-enterprise.sandbox.models.group-table-access-policy})
+
+(methodical/defmethod t2/resolve-model :before :default
+  "Attempt to automatically load the corresponding namespace for a `:model/X` if not already loaded, e.g. for
+  `:model/DashboardCard` we will attempt to load the `metabase.models.dashboard-card` namespace if needed."
+  [model]
+  (when (and (keyword? model)
+             (not (isa? model :metabase/model))
+             (= (namespace model) "model"))
+    (let [model-namespace (or (model->namespace model)
+                              (symbol (str "metabase.models." (u/->kebab-case-en (name model)))))]
+      (try
+        (require model-namespace)
+        (assert (isa? model :metabase/model)
+                (format "Model %s still does not derive from :metabase/model after loading namespace %s"
+                        model
+                        model-namespace))
+        (catch Throwable e
+          (throw (ex-info (format "Error loading namespace for model %s (tried %s). Do you need to add an entry to %s?"
+                                  model
+                                  model-namespace
+                                  `model->namespace)
+                          {:model model, :namespace model-namespace}
+                          e))))))
+  model)

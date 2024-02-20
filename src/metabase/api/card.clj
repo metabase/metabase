@@ -417,10 +417,9 @@
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [collection_id collection_position dataset dataset_query description display name
+  [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
-   dataset                [:maybe :boolean]
    type                   [:maybe card/CardTypes]
    dataset_query          ms/Map
    parameters             [:maybe [:sequential ms/Parameter]]
@@ -473,13 +472,12 @@
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata parameters
-                   cache_ttl dataset collection_preview type]
+                   cache_ttl collection_preview type]
             :as   card-updates} :body}]
   {id                     ms/PositiveInt
    name                   [:maybe ms/NonBlankString]
    parameters             [:maybe [:sequential ms/Parameter]]
    dataset_query          [:maybe ms/Map]
-   dataset                [:maybe :boolean]
    type                   [:maybe card/CardTypes]
    display                [:maybe ms/NonBlankString]
    description            [:maybe :string]
@@ -494,9 +492,9 @@
    collection_preview     [:maybe :boolean]}
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        is-model-after-update? (if (and (nil? type) (nil? dataset))
+        is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
-                                 (card/model? (card/ensure-type-and-dataset-are-consistent card-updates)))]
+                                 (card/model? card-updates))]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query
@@ -509,7 +507,7 @@
                                                              :original-metadata (:result_metadata card-before-update)
                                                              :dataset?          is-model-after-update?})
           card-updates          (merge card-updates
-                                       (when (and (or (some? type) (some? dataset))
+                                       (when (and (some? type)
                                                   is-model-after-update?)
                                          {:display :table}))
           metadata-timeout      (a/timeout card/metadata-sync-wait-ms)
