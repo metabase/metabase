@@ -1,4 +1,5 @@
 import type { Card, Parameter, ParameterTarget } from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 import type {
   ParameterWithTarget,
   UiParameter,
@@ -37,6 +38,9 @@ export function getCardUiParameters(
       };
     }
 
-    return { ...parameter, hasVariableTemplateTagTarget: true };
+    return {
+      ...parameter,
+      hasVariableTemplateTagTarget: !isDimensionTarget(target),
+    };
   });
 }

@@ -6,7 +6,9 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
+import { createMockColumn } from "metabase-types/api/mocks";
 import {
+  createOrdersCreatedAtDatasetColumn,
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
@@ -61,9 +63,25 @@ const setup = () => {
                 ["2016-01-01T00:00:00-04:00", 500],
                 ["2017-01-01T00:00:00-04:00", 1500],
               ],
-              cols: question
-                .legacyQuery({ useStructuredQuery: true })
-                .columns(),
+              cols: [
+                createOrdersCreatedAtDatasetColumn({
+                  field_ref: [
+                    "field",
+                    ORDERS.CREATED_AT,
+                    { "temporal-unit": "year" },
+                  ],
+                  unit: "year",
+                  source: "breakout",
+                }),
+                createMockColumn({
+                  name: "count",
+                  display_name: "Count",
+                  field_ref: ["aggregation", "0"],
+                  source: "aggregation",
+                  base_type: "type/Integer",
+                  effective_type: "type/Integer",
+                }),
+              ],
             },
           },
         ]}

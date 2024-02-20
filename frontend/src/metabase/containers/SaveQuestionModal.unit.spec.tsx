@@ -29,8 +29,8 @@ import {
   createSampleDatabase,
   SAMPLE_DB_ID,
   ORDERS_ID,
-  ORDERS,
 } from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 
@@ -149,13 +149,12 @@ function getQuestion({
   );
 }
 
-const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
+const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, 1 row";
 
 function getDirtyQuestion(originalQuestion: Question) {
-  const query = originalQuestion.legacyQuery({
-    useStructuredQuery: true,
-  }) as StructuredQuery;
-  return query.breakout(["field", ORDERS.TOTAL, null]).question().markDirty();
+  return originalQuestion
+    .setQuery(Lib.limit(originalQuestion.query(), -1, 1))
+    .markDirty();
 }
 
 function fillForm({
