@@ -5845,13 +5845,13 @@ databaseChangeLog:
                   remarks: Name of an entity model
                   type: varchar(32)
                   constraints:
-                    nullable: true
+                    nullable: false
               - column:
                   name: model_id
                   remarks: ID of the said entity
                   type: int
                   constraints:
-                    nullable: true
+                    nullable: false
               - column:
                   name: collection_id
                   remarks: '(denormalized) id of a collection of an entity this references'

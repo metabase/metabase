@@ -4,15 +4,14 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.caching.strategies :as caching]
-   [metabase.models
-    :refer [Card Dashboard Database PersistedInfo TaskHistory]]
+   [metabase.models :refer [Card Dashboard Database PersistedInfo TaskHistory]]
+   [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (comment
   caching/keep-me)
@@ -55,7 +54,7 @@
 
 (defn do-with-persist-models [f]
   (let [two-hours-ago (t/minus (t/local-date-time) (t/hours 2))]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [Database db {:settings {:persist-models-enabled true}}
        Card     creating  {:type :model, :database_id (u/the-id db)}
        Card     deletable {:type :model, :database_id (u/the-id db)}
@@ -365,6 +364,7 @@
                      :model/Card       card2 {:dataset_query (mt/mbql-query venues {:limit 5})}
                      :model/Card       card3 {:dataset_query (mt/mbql-query venues {:limit 5})}
                      :model/Card       card4 {:dataset_query (mt/mbql-query venues {:limit 5})}
+                     :model/Card       card5 {:dataset_query (mt/mbql-query venues {:limit 5})}
 
                      :model/CacheConfig _c1 {:model    "question"
                                              :model_id (:id card1)
@@ -471,4 +471,9 @@
                 (testing "But no cache after the data has changed"
                   (let [q (#'qp.card/query-for-card card4 {} {} {} {})]
                     (is (=? (mkres nil)
-                            (-> (qp/process-query q) (dissoc :data))))))))))))))
+                            (-> (qp/process-query q) (dissoc :data)))))))))
+
+          (testing "default strategy = ttl"
+            (let [q (#'qp.card/query-for-card card5 {} {} {} {})]
+              (is (=? {:type :ttl}
+                      (:cache-strategy q))))))))))

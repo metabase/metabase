@@ -1,14 +1,14 @@
 (ns metabase-enterprise.caching.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.caching.api :as api.caching]
+   [metabase-enterprise.caching.api :as caching.api]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
 (comment
-  api.caching/keep-me)
+  caching.api/keep-me)
 
 (deftest cache-config-test
   (mt/discard-setting-changes [enable-query-caching]
@@ -34,6 +34,10 @@
                          :model/Card          card4  {:database_id   (:id db)
                                                       :collection_id (:id col3)}
                          :model/Card          card5  {:collection_id (:id col3)}]
+
+            (testing "No access from regular users"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 "ee/caching/"))))
 
             (testing "Can configure root"
               (is (mt/user-http-request :crowberto :put 200 "ee/caching/"
