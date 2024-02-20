@@ -82,12 +82,32 @@ describe("QueryColumnPicker", () => {
     expect(vendorColumn).not.toBeChecked();
   });
 
+  it("should allow to add and remove column groups", () => {
+    setup();
+    const productGroup = screen.getByRole("checkbox", { name: "Product" });
+    const categoryColumn = screen.getByRole("checkbox", { name: "Category" });
+    const vendorColumn = screen.getByRole("checkbox", { name: "Vendor" });
+    expect(productGroup).not.toBeChecked();
+    expect(categoryColumn).not.toBeChecked();
+    expect(vendorColumn).not.toBeChecked();
+
+    userEvent.click(productGroup);
+    expect(productGroup).toBeChecked();
+    expect(categoryColumn).toBeChecked();
+    expect(vendorColumn).toBeChecked();
+
+    userEvent.click(productGroup);
+    expect(productGroup).not.toBeChecked();
+    expect(categoryColumn).not.toBeChecked();
+    expect(vendorColumn).not.toBeChecked();
+  });
+
   it("should allow to search for columns", () => {
     setup();
     userEvent.type(screen.getByPlaceholderText("Search for a column…"), "a");
 
     const taxColumn = screen.getByRole("checkbox", { name: "Tax" });
-    const categoryColumn = screen.getByRole("checkbox", { name: "Total" });
+    const categoryColumn = screen.getByRole("checkbox", { name: "Category" });
     const vendorColumn = screen.queryByRole("checkbox", { name: "Vendor" });
     expect(taxColumn).toBeInTheDocument();
     expect(categoryColumn).toBeInTheDocument();
