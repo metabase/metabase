@@ -1,9 +1,10 @@
 import * as dbTasks from "./db_tasks";
-const replay = require("@replayio/cypress");
-const { verifyDownloadTasks } = require("cy-verify-downloads");
+
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
+const replay = require("@replayio/cypress");
+const { verifyDownloadTasks } = require("cy-verify-downloads");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 
@@ -23,6 +24,7 @@ const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 // the project's config changing)
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
+
 const {
   removeDirectory,
 } = require("./commands/downloads/deleteDownloadsFolder");
