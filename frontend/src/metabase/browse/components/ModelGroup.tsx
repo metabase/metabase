@@ -109,8 +109,8 @@ const CollectionHeader = ({
         onClick={onClick}
         aria-label={
           expanded
-            ? t`collapse ${collection.name}`
-            : t`expand ${collection.name}`
+            ? t`collapse ${getCollectionName(collection)}`
+            : t`expand ${getCollectionName(collection)}`
         }
       >
         <FixedSizeIcon
@@ -179,6 +179,8 @@ interface ModelCellProps {
 const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const headingId = `heading-for-model-${model.id}`;
 
+  const icon = getIcon(model);
+
   return (
     <ModelCardLink
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
@@ -187,7 +189,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
     >
       <ModelCard>
         <Box mb="auto">
-          <Icon name="model" size={20} color={color("brand")} />
+          <Icon {...icon} size={20} color={color("brand")} />
         </Box>
         <Title mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>

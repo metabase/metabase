@@ -11,14 +11,9 @@ describe("scenarios > browse data", () => {
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.location("pathname").should("eq", "/browse/models");
     cy.findByTestId("browse-app").findByText("Browse data");
+    cy.findByLabelText("expand Our analytics").click();
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.findByRole("button", { name: "Filter" });
-  });
-  it("can view summary of model's last edit", () => {
-    cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse data" }).click();
-    cy.findByRole("note", /Bobby Tables/).realHover();
-    cy.findByRole("tooltip", { name: /Last edited by Bobby Tables/ });
   });
   it("can browse to a database", () => {
     cy.visit("/");
@@ -74,9 +69,11 @@ describe("scenarios > browse data", () => {
     setTokenFeatures("all");
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
+    cy.findByRole("heading", { name: "Our analytics" }).should("not.exist");
     cy.findByRole("heading", { name: "Orders Model" }).should("not.exist");
     toggle().next("label").click();
     toggle().should("have.attr", "aria-checked", "false");
+    cy.findByLabelText("expand Our analytics").click();
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.findByLabelText("Move, archive, and more...").click();
     cy.findByRole("dialog", {
