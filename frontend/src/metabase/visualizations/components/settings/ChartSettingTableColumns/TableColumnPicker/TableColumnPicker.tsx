@@ -61,7 +61,7 @@ export const TableColumnPicker = ({
   };
 
   return (
-    <div role="list" aria-label="chart-settings-table-columns">
+    <div role="list" data-testid="chart-settings-table-columns">
       {columns.length > 0 && (
         <div role="group" data-testid="visible-columns">
           <ChartSettingOrderedItems

@@ -490,7 +490,7 @@ function refreshResultsInHeader() {
 
 function getSidebarColumns() {
   return cy
-    .findByRole("list", { name: "chart-settings-table-columns" })
+    .findByTestId("chart-settings-table-columns")
     .scrollIntoView()
     .should("be.visible")
     .findAllByRole("listitem");
