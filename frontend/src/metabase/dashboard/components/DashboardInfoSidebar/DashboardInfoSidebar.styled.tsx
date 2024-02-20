@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import EditableText from "metabase/core/components/EditableText";
 import FormField from "metabase/core/components/FormField/FormField";
