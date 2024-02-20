@@ -5,6 +5,7 @@ import type { RenderingContext } from "metabase/visualizations/types";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { DataKey, Datum, Extent, SeriesModel } from "../model/types";
+import { CHART_STYLE } from "../constants/style";
 
 const MIN_BUBBLE_DIAMETER = 15;
 const MAX_BUBBLE_DIAMETER = 75;
@@ -66,9 +67,17 @@ export function buildEChartsScatterSeries(
     },
     itemStyle: {
       color: seriesModel.color,
-      opacity: 0.8,
+      opacity: CHART_STYLE.opacity.scatter,
       borderColor: renderingContext.getColor("white"),
       borderWidth: 1,
+    },
+    emphasis: {
+      focus: "series", // there is no blur for single series scatter plot
+    },
+    blur: {
+      itemStyle: {
+        opacity: CHART_STYLE.opacity.blur,
+      },
     },
   };
 }
