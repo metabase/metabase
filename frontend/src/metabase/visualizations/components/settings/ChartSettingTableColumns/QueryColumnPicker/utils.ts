@@ -98,13 +98,17 @@ export function toggleColumnInQuery(
 export function toggleColumnGroupInQuery(
   query: Lib.Query,
   stageIndex: number,
-  { columnItems, isSelected }: ColumnGroupItem,
+  groupItem: ColumnGroupItem,
 ) {
-  return columnItems.reduce(
-    (query, { column }) =>
-      isSelected
-        ? Lib.removeField(query, stageIndex, column)
-        : Lib.addField(query, stageIndex, column),
-    query,
-  );
+  return groupItem.columnItems.reduce((query, columnItem) => {
+    if (groupItem.isSelected) {
+      return columnItem.isSelected
+        ? Lib.removeField(query, stageIndex, columnItem.column)
+        : query;
+    } else {
+      return columnItem.isSelected
+        ? query
+        : Lib.addField(query, stageIndex, columnItem.column);
+    }
+  }, query);
 }
