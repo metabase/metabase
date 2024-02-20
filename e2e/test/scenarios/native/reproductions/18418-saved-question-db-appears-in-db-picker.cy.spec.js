@@ -26,7 +26,7 @@ describe("issue 18418", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.get(".Modal").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.button("Not now").click();
 
