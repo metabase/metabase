@@ -824,7 +824,7 @@ const visualization = () => {
 };
 
 const scrollVisualization = (position = "right") => {
-  cy.get(".TableInteractive-header.scroll-hide-all").scrollTo(position, {
+  cy.get("#main-data-grid").scrollTo(position, {
     force: true,
   });
 };
