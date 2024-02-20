@@ -416,7 +416,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
     popover().findByText("Orders in a dashboard").click();
 
-    cy.findByRole("status").findByText("Saved");
+    undoToast().findByText("Changes saved").should("be.visible");
 
     expectGoodSnowplowEvent({
       event: "homepage_dashboard_enabled",
