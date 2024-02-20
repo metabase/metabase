@@ -1,15 +1,14 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import SidebarLayout from "metabase/components/SidebarLayout";
-
-import TableQuestions from "metabase/reference/databases/TableQuestions";
+import Questions from "metabase/entities/questions";
 import * as metadataActions from "metabase/redux/metadata";
+import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";
 
-import Questions from "metabase/entities/questions";
 import {
   getDatabase,
   getTable,

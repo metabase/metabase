@@ -1,6 +1,8 @@
 import { t } from "ttag";
-import { Icon } from "metabase/ui";
+
 import Tooltip from "metabase/core/components/Tooltip";
+import { Icon } from "metabase/ui";
+
 import { ButtonRoot } from "./SnippetSidebarButton.styled";
 
 interface SnippetSidebarButtonProps {

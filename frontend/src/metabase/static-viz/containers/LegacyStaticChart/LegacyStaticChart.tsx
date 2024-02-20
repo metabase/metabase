@@ -1,12 +1,12 @@
-import { createColorGetter } from "metabase/static-viz/lib/colors";
-import RowChart from "metabase/static-viz/components/RowChart";
-import Gauge from "metabase/static-viz/components/Gauge";
-import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";
-import WaterfallChart from "metabase/static-viz/components/WaterfallChart";
-import ProgressBar from "metabase/static-viz/components/ProgressBar";
-import LineAreaBarChart from "metabase/static-viz/components/LineAreaBarChart";
-import Funnel from "metabase/static-viz/components/FunnelChart";
 import type { ColorPalette } from "metabase/lib/colors/types";
+import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";
+import Funnel from "metabase/static-viz/components/FunnelChart";
+import Gauge from "metabase/static-viz/components/Gauge";
+import LineAreaBarChart from "metabase/static-viz/components/LineAreaBarChart";
+import ProgressBar from "metabase/static-viz/components/ProgressBar";
+import RowChart from "metabase/static-viz/components/RowChart";
+import WaterfallChart from "metabase/static-viz/components/WaterfallChart";
+import { createColorGetter } from "metabase/static-viz/lib/colors";
 
 export type LegacyStaticChartType =
   | "categorical/donut"

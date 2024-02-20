@@ -1,9 +1,11 @@
-import { t } from "ttag";
 import { assocIn } from "icepick";
+import { t } from "ttag";
+
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
+
 import {
   getComputedSettings,
   getSettingsWidgets,

@@ -2,7 +2,8 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import * as Errors from "metabase/lib/errors";
-
+import type Field from "metabase-lib/metadata/Field";
+import { TYPE } from "metabase-lib/types/constants";
 import type {
   ActionDashboardCard,
   ActionFormOption,
@@ -21,9 +22,6 @@ import type {
   WritebackParameter,
   VirtualCard,
 } from "metabase-types/api";
-
-import { TYPE } from "metabase-lib/types/constants";
-import type Field from "metabase-lib/metadata/Field";
 
 import type {
   ActionFormProps,

@@ -1,11 +1,13 @@
 import { t } from "ttag";
-import Link from "metabase/core/components/Link";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Icon } from "metabase/ui";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Icon } from "metabase/ui";
+
 import { CustomMapContent } from "../Maps.styled";
 
 export function CustomMapFooter() {

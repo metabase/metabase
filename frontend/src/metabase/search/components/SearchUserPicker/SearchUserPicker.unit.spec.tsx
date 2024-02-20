@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { createMockUser } from "metabase-types/api/mocks";
-import type { User, UserId } from "metabase-types/api";
-import { screen, renderWithProviders, waitFor, within } from "__support__/ui";
-import type { CreatedByFilterProps } from "metabase/search/types";
+
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
+import { screen, renderWithProviders, waitFor, within } from "__support__/ui";
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
+import type { CreatedByFilterProps } from "metabase/search/types";
+import type { User, UserId } from "metabase-types/api";
+import { createMockUser } from "metabase-types/api/mocks";
 
 const TEST_USERS: User[] = [
   createMockUser({ id: 1, common_name: "Alice" }),

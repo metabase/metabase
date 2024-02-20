@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import { getIcon, queryIcon, screen } from "__support__/ui";
 
 import { setup } from "./setup";

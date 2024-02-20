@@ -1,11 +1,12 @@
 /* eslint-disable jest/expect-expect */
 /* eslint-disable react/prop-types */
 
-import { Component } from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Component } from "react";
 
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
+
 import TokenField from "./TokenField";
 
 const DEFAULT_OPTIONS = ["Doohickey", "Gadget", "Gizmo", "Widget"];

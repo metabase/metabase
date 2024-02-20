@@ -1,15 +1,15 @@
-import {
-  restore,
-  setupSMTP,
-  visitQuestion,
-  leftSidebar,
-} from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  restore,
+  setupSMTP,
+  visitQuestion,
+  leftSidebar,
+} from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 

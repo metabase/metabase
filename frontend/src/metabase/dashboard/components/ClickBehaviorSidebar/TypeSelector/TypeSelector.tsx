@@ -1,19 +1,18 @@
 import { useCallback, useMemo } from "react";
 
+import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/lib/colors";
-
+import type { UiParameter } from "metabase-lib/parameters/types";
 import type {
   QuestionDashboardCard,
   ClickBehavior,
   ClickBehaviorType,
 } from "metabase-types/api";
-import type { UiParameter } from "metabase-lib/parameters/types";
 
-import { clickBehaviorOptions } from "../utils";
-import { useClickBehaviorOptionName } from "../hooks";
 import { SidebarItem } from "../SidebarItem";
+import { useClickBehaviorOptionName } from "../hooks";
+import { clickBehaviorOptions } from "../utils";
 
 import { BehaviorOptionIcon } from "./TypeSelector.styled";
 

@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { t } from "ttag";
+
+import { useSearchListQuery } from "metabase/common/hooks";
 import {
   Modal,
   Button,
@@ -10,7 +12,6 @@ import {
   Text,
   Icon,
 } from "metabase/ui";
-import { useSearchListQuery } from "metabase/common/hooks";
 import type { CollectionId, TableId, CardId } from "metabase-types/api";
 
 import { findLastEditedCollectionItem } from "./utils";

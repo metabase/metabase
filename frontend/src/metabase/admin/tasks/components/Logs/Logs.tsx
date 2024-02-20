@@ -1,16 +1,14 @@
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Component } from "react";
 import * as React from "react";
 import reactAnsiStyle from "react-ansi-style";
-
-import _ from "underscore";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 import { t } from "ttag";
-import type { Log } from "metabase-types/api";
-
-import { UtilApi } from "metabase/services";
+import _ from "underscore";
 
 import Select, { Option } from "metabase/core/components/Select";
+import { UtilApi } from "metabase/services";
+import type { Log } from "metabase-types/api";
+
 import { LogsContainer, LogsContent } from "./Logs.styled";
 
 const MAX_LOGS = 50000;

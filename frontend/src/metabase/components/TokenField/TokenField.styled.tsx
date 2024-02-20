@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-
 import { space } from "metabase/styled-components/theme";
 
 export const TokenFieldContainer = styled.ul`

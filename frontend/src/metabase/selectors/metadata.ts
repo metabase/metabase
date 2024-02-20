@@ -1,5 +1,19 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import Question from "metabase-lib/Question";
+import Database from "metabase-lib/metadata/Database";
+import Field from "metabase-lib/metadata/Field";
+import ForeignKey from "metabase-lib/metadata/ForeignKey";
+import Metadata from "metabase-lib/metadata/Metadata";
+import Metric from "metabase-lib/metadata/Metric";
+import Schema from "metabase-lib/metadata/Schema";
+import Segment from "metabase-lib/metadata/Segment";
+import Table from "metabase-lib/metadata/Table";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import {
+  getFieldValues,
+  getRemappings,
+} from "metabase-lib/queries/utils/field";
 import type {
   Card,
   NormalizedDatabase,
@@ -12,20 +26,6 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Question from "metabase-lib/Question";
-import Metadata from "metabase-lib/metadata/Metadata";
-import Database from "metabase-lib/metadata/Database";
-import Schema from "metabase-lib/metadata/Schema";
-import Table from "metabase-lib/metadata/Table";
-import Field from "metabase-lib/metadata/Field";
-import ForeignKey from "metabase-lib/metadata/ForeignKey";
-import Metric from "metabase-lib/metadata/Metric";
-import Segment from "metabase-lib/metadata/Segment";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
-import {
-  getFieldValues,
-  getRemappings,
-} from "metabase-lib/queries/utils/field";
 import { getSettings } from "./settings";
 
 type TableSelectorOpts = {

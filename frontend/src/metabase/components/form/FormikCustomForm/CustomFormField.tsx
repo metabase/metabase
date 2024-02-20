@@ -1,16 +1,15 @@
 import { forwardRef, useCallback, useMemo } from "react";
+import { useMount, useUnmount } from "react-use";
 import _ from "underscore";
 
-import { useMount, useUnmount } from "react-use";
-import { isCustomWidget } from "metabase-types/guards";
-import FormField from "metabase/components/form/FormikFormField";
 import FormWidget from "metabase/components/form/FormWidget";
-
+import FormField from "metabase/components/form/FormikFormField";
 import type {
   BaseFieldDefinition,
   StandardFormFieldDefinition,
   FormFieldDefinition,
 } from "metabase-types/forms";
+import { isCustomWidget } from "metabase-types/guards";
 
 import { useForm } from "./context";
 

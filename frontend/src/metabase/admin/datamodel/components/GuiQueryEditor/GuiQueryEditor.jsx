@@ -1,19 +1,20 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/no-string-refs */
-import { createRef, Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component, createRef } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 
-import cx from "classnames";
-import { Icon } from "metabase/ui";
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import { AggregationWidget } from "../AggregationWidget";
-import { FilterWidgetList } from "../FilterWidgetList";
 import { FilterPopover } from "../FilterPopover";
+import { FilterWidgetList } from "../FilterWidgetList";
 
 /**
  * @deprecated use MLv2

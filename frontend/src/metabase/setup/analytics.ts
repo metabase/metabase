@@ -1,5 +1,6 @@
-import type { UsageReason } from "metabase-types/api";
 import { trackSchemaEvent } from "metabase/lib/analytics";
+import type { UsageReason } from "metabase-types/api";
+
 import type { SetupStep } from "./types";
 
 const ONBOARDING_VERSION = "1.1.0";

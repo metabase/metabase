@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   appBar,
   describeEE,
@@ -7,7 +8,6 @@ import {
   setTokenFeatures,
   undoToast,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon(url) {
   cy.request("/api/setting/application-favicon-url")

@@ -1,24 +1,22 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import d3 from "d3";
 import { Component } from "react";
-
 import * as React from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
-import d3 from "d3";
-import cx from "classnames";
-
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { isNumeric } from "metabase-lib/types/utils/isa";
+
 import { GaugeArcPath } from "./Gauge.styled";
 import { getValue } from "./utils";
 

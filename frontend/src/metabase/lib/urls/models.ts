@@ -1,5 +1,7 @@
 import slugg from "slugg";
+
 import type { Card } from "metabase-types/api";
+
 import type { QuestionUrlBuilderParams } from "./questions";
 import { question } from "./questions";
 import { appendSlug } from "./utils";

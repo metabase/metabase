@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
+
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import {
   act,
   renderWithProviders,
@@ -7,18 +9,15 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-
 import { checkNotNull } from "metabase/lib/types";
-
+import * as Lib from "metabase-lib";
+import * as Lib_ColumnTypes from "metabase-lib/column_types";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
 
-import * as Lib from "metabase-lib";
-import * as Lib_ColumnTypes from "metabase-lib/column_types";
-
+import { FilterPicker } from "./FilterPicker";
 import {
   createQuery,
   createFilteredQuery,
@@ -36,7 +35,6 @@ import {
   createQueryWithExcludeDateFilter,
   createQueryWithRelativeDateFilter,
 } from "./test-utils";
-import { FilterPicker } from "./FilterPicker";
 
 const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
 const productVendors = PRODUCT_VENDOR_VALUES.values.flat() as string[];

@@ -1,35 +1,32 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useState, useCallback } from "react";
-import _ from "underscore";
+import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
-
-import { useToggle } from "metabase/hooks/use-toggle";
-import Search from "metabase/entities/search";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
-import Header from "metabase/collections/containers/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
-
-import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
-import PaginationControls from "metabase/components/PaginationControls";
-
-import { usePagination } from "metabase/hooks/use-pagination";
-import { useListSelect } from "metabase/hooks/use-list-select";
-
+import Header from "metabase/collections/containers/CollectionHeader";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-import UploadOverlay from "../UploadOverlay";
+import PaginationControls from "metabase/components/PaginationControls";
+import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
+import Search from "metabase/entities/search";
+import { useListSelect } from "metabase/hooks/use-list-select";
+import { usePagination } from "metabase/hooks/use-pagination";
+import { useToggle } from "metabase/hooks/use-toggle";
+
 import { ModelUploadModal } from "../ModelUploadModal";
-import { getComposedDragProps } from "./utils";
+import UploadOverlay from "../UploadOverlay";
+
 import {
   CollectionEmptyContent,
   CollectionMain,
   CollectionRoot,
   CollectionTable,
 } from "./CollectionContent.styled";
+import { getComposedDragProps } from "./utils";
 
 const PAGE_SIZE = 25;
 

@@ -1,7 +1,8 @@
 import { jt, t } from "ttag";
+
 import { updateSetting } from "metabase/admin/settings/settings";
-import { useDispatch } from "metabase/lib/redux";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { useDispatch } from "metabase/lib/redux";
 import { LegaleseStepDetailsContainer } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep.styled";
 import { Text, Button, Center, Stack, Title } from "metabase/ui";
 

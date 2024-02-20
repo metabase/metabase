@@ -1,6 +1,8 @@
 import type { ElementType, HTMLAttributes } from "react";
 import { forwardRef } from "react";
+
 import Tooltip from "metabase/core/components/Tooltip";
+
 import {
   ActionIcon,
   StyledAnchor,

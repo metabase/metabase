@@ -1,4 +1,8 @@
 import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   addSummaryGroupingField,
   restore,
   popover,
@@ -14,10 +18,6 @@ import {
   openNotebook,
 } from "e2e/support/helpers";
 
-import {
-  ORDERS_QUESTION_ID,
-  SECOND_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {

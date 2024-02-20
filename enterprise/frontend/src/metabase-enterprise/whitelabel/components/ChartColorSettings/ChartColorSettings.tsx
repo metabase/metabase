@@ -1,18 +1,14 @@
 import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { color } from "metabase/lib/colors";
-import { useCurrentRef } from "metabase/hooks/use-current-ref";
-import ColorPicker from "metabase/core/components/ColorPicker";
+
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ColorResetModal from "metabase-enterprise/whitelabel/components/ColorResetModal";
+import ColorPicker from "metabase/core/components/ColorPicker";
+import { useCurrentRef } from "metabase/hooks/use-current-ref";
+import { color } from "metabase/lib/colors";
 import { Button } from "metabase/ui";
-import {
-  getAutoChartColors,
-  getChartColorGroups,
-  getDefaultChartColors,
-  hasCustomChartColors,
-} from "./utils";
+import ColorResetModal from "metabase-enterprise/whitelabel/components/ColorResetModal";
+
 import {
   TableBody,
   TableBodyCell,
@@ -22,6 +18,12 @@ import {
   TableLink,
   TableTitle,
 } from "./ChartColorSettings.styled";
+import {
+  getAutoChartColors,
+  getChartColorGroups,
+  getDefaultChartColors,
+  hasCustomChartColors,
+} from "./utils";
 
 export interface ChartColorSettingsProps {
   colors: Record<string, string>;

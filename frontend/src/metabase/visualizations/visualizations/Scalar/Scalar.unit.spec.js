@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import { getIcon, render, screen, within } from "__support__/ui";
 
 import { Scalar } from "./Scalar";

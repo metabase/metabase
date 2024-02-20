@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+
 import { Option } from "metabase/core/components/Select";
 
 import { SelectWithHighlightingIcon } from "./ChartSettingSelect.styled";

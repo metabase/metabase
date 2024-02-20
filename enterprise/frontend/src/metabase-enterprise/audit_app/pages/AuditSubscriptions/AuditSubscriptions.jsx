@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import AuditContent from "../../components/AuditContent";
-import AuditAlertTable from "../../containers/AuditAlertTable";
-import AuditSubscriptionTable from "../../containers/AuditSubscriptionTable";
-import AuditAlertEditModal from "../../containers/AuditAlertEditModal";
 import AuditAlertDeleteModal from "../../containers/AuditAlertDeleteModal";
-import AuditSubscriptionEditModal from "../../containers/AuditSubscriptionEditModal";
+import AuditAlertEditModal from "../../containers/AuditAlertEditModal";
+import AuditAlertTable from "../../containers/AuditAlertTable";
 import AuditSubscriptionDeleteModal from "../../containers/AuditSubscriptionDeleteModal";
+import AuditSubscriptionEditModal from "../../containers/AuditSubscriptionEditModal";
+import AuditSubscriptionTable from "../../containers/AuditSubscriptionTable";
 
 const AuditSubscriptions = props => (
   <AuditContent {...props} tabs={AuditSubscriptions.tabs} />

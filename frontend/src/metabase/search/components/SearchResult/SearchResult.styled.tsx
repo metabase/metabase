@@ -2,10 +2,11 @@ import isPropValid from "@emotion/is-prop-valid";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { AnchorHTMLAttributes, HTMLAttributes, RefObject } from "react";
+
+import Markdown from "metabase/core/components/Markdown";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
 import { Box, Divider, Stack, Anchor, Button } from "metabase/ui";
-import Markdown from "metabase/core/components/Markdown";
 
 const { ModerationStatusIcon } = PLUGIN_MODERATION;
 

@@ -1,7 +1,9 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
+
 import { UserCollectionList } from "./UserCollectionList";
 
 const MockUsers = new Array(100).fill(0).map((_, index) =>

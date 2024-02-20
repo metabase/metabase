@@ -1,31 +1,29 @@
-import { Fragment, useMemo } from "react";
-import type { MouseEvent } from "react";
 import cx from "classnames";
+import type { MouseEvent } from "react";
+import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
-
-import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
-
-import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
+import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
   isID,
   isImageURL,
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
-import type { OnVisualizationClickType } from "./types";
 import {
   ObjectDetailsTable,
   GridContainer,
   GridCell,
   FitImage,
 } from "./ObjectDetailsTable.styled";
+import type { OnVisualizationClickType } from "./types";
 
 export interface DetailsTableCellProps {
   column: any;

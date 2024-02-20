@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
+import { screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import type { Settings } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/lib/types";
-import { screen } from "__support__/ui";
+
 import { setup } from "../setup";
 
 export type SetupOpts = {

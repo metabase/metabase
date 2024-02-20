@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import type { BoxProps } from "metabase/ui";
 import { Box, Text } from "metabase/ui";

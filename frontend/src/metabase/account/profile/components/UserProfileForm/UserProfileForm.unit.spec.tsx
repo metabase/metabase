@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { createMockUser } from "metabase-types/api/mocks";
+
 import type { UserProfileFormProps } from "./UserProfileForm";
 import UserProfileForm from "./UserProfileForm";
 

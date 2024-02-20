@@ -1,16 +1,16 @@
 import { withRouter } from "react-router";
-import type { Collection } from "metabase-types/api";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import type { Collection } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
-import { CollectionCaption } from "./CollectionCaption";
-import CollectionBookmark from "./CollectionBookmark";
-import CollectionTimeline from "./CollectionTimeline";
-import { CollectionUpload } from "./CollectionUpload";
 
+import CollectionBookmark from "./CollectionBookmark";
+import { CollectionCaption } from "./CollectionCaption";
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import { CollectionPermissions } from "./CollectionPermissions";
+import CollectionTimeline from "./CollectionTimeline";
+import { CollectionUpload } from "./CollectionUpload";
 
 export interface CollectionHeaderProps {
   collection: Collection;

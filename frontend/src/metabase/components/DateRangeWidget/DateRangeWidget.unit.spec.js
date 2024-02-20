@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+
 import { DateRangeWidget } from "metabase/components/DateRangeWidget";
 
 describe("DateRangeWidget", () => {

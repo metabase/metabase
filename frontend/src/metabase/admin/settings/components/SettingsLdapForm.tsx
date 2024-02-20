@@ -1,13 +1,16 @@
 import { useCallback, useMemo } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { connect } from "react-redux";
-import * as Yup from "yup";
 import type { TestConfig } from "yup";
+import * as Yup from "yup";
 
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateLdapSettings } from "metabase/admin/settings/settings";
-
-import { Stack, Group, Radio } from "metabase/ui";
+import type { SettingElement } from "metabase/admin/settings/types";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { FormSection } from "metabase/containers/FormikForm";
 import {
   Form,
   FormErrorMessage,
@@ -17,12 +20,8 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { FormSection } from "metabase/containers/FormikForm";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { Group, Radio, Stack } from "metabase/ui";
 import type { SettingValue } from "metabase-types/api";
-import type { SettingElement } from "metabase/admin/settings/types";
-import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
-import Button from "metabase/core/components/Button";
 import { SettingInput } from "metabase/admin/settings/components/widgets/SettingInput";
+import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
 import { FileInput } from "./ImageUpload.styled";

@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
+import styled from "@emotion/styled";
+import cx from "classnames";
 import { createRef, cloneElement, Children, Component } from "react";
 
-import cx from "classnames";
-import styled from "@emotion/styled";
-import { isObscured } from "metabase/lib/dom";
-
 import Tooltip from "metabase/core/components/Tooltip";
+import { isObscured } from "metabase/lib/dom";
 
 const Trigger = styled.a``;
 

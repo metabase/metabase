@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import Card from "metabase/components/Card";
+import { color } from "metabase/lib/colors";
+
 import { BrowseGrid } from "./BrowseApp.styled";
 
 export const DatabaseGrid = styled(BrowseGrid)`
