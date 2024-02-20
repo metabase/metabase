@@ -35,7 +35,7 @@ export function getColumnItems(
     [],
   );
 
-  return columns.map((column, columnIndex) => {
+  const columnItems = columns.map((column, columnIndex) => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
     const legacyColumn = legacyColumns[columnIndex];
     const settingIndex = settingIndexes[columnIndex];
@@ -50,6 +50,13 @@ export function getColumnItems(
       settingIndex,
     };
   });
+
+  return [
+    ...columnItems
+      .filter(({ settingIndex }) => settingIndex >= 0)
+      .sort((a, b) => a.settingIndex - b.settingIndex),
+    ...columnItems.filter(({ settingIndex }) => settingIndex < 0),
+  ];
 }
 
 export function toggleColumnInSettings(

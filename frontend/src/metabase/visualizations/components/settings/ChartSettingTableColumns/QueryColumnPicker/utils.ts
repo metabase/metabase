@@ -53,7 +53,7 @@ function addUniqueGroupNames(groupItems: ColumnGroupItem[]) {
     const displayName =
       newUsageCount === 1
         ? groupItem.displayName
-        : t`${groupItem.displayName} ${newUsageCount}`;
+        : `${groupItem.displayName} ${newUsageCount}`;
 
     return { ...groupItem, displayName };
   });
