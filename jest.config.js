@@ -45,7 +45,7 @@ const config = {
     ace: {},
     ga: {},
   },
-  reporters: ['default', 'jest-junit'],
+  reporters: ["default", "jest-junit"],
   coverageDirectory: "./coverage",
   coverageReporters: ["html", "lcov"],
   collectCoverageFrom: [
@@ -63,7 +63,7 @@ const config = {
     "/target/cljs_release/",
     "/frontend/test/",
   ],
-  testEnvironment: "jest-environment-jsdom",
+  testEnvironment: "<rootDir>/jest/jest-environment.js",
   watchPlugins: [
     "jest-watch-typeahead/filename",
     "jest-watch-typeahead/testname",
