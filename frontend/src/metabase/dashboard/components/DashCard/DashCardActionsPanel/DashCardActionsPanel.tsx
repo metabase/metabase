@@ -6,13 +6,13 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
+import type Question from "metabase-lib/Question";
 import type {
   Dashboard,
   DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
 
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
 import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";

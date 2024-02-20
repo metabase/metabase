@@ -1,11 +1,13 @@
-import * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import * as Lib from "metabase-lib";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+
 import type { EditWidgetData } from "../types";
+
 import type { ColumnItem, DragColumnProps } from "./types";
 
 export function getColumnItems(

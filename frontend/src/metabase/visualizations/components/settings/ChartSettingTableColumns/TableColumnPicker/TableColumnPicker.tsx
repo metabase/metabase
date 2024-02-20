@@ -1,18 +1,21 @@
 import { useMemo } from "react";
+
 import type * as Lib from "metabase-lib";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+
 import { ChartSettingOrderedItems } from "../../ChartSettingOrderedItems";
 import type { EditWidgetData } from "../types";
+
+import type { ColumnItem, DragColumnProps } from "./types";
 import {
   getColumnItems,
   getEditWidgetData,
   moveColumnInSettings,
   toggleColumnInSettings,
 } from "./utils";
-import type { ColumnItem, DragColumnProps } from "./types";
 
 interface TableColumnPickerProps {
   query: Lib.Query;

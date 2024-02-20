@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { t } from "ttag";
+
 import { Button } from "metabase/ui";
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import type * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+
 import { QueryColumnPicker } from "./QueryColumnPicker";
 import { TableColumnPicker } from "./TableColumnPicker";
-import { canEditQuery } from "./utils";
 import type { EditWidgetData } from "./types";
+import { canEditQuery } from "./utils";
 
 interface ChartSettingTableColumnsProps {
   value: TableColumnOrderSetting[];

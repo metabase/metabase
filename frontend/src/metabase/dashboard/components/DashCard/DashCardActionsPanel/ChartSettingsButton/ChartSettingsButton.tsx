@@ -2,13 +2,13 @@ import { t } from "ttag";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
+import type Question from "metabase-lib/Question";
 import type {
   Dashboard,
   DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
 
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
 
