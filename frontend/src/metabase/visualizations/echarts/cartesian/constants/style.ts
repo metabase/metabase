@@ -33,4 +33,9 @@ export const CHART_STYLE = {
     countLabelMargin: 4,
     zIndex: 1,
   },
+  opacity: {
+    blur: 0.3,
+    area: 0.3,
+    scatter: 0.8,
+  },
 };
