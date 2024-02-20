@@ -7,8 +7,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features
-    :refer [defenterprise defenterprise-schema]]
+   [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.task :as task]
@@ -50,67 +49,49 @@
                  [:aggregation [:enum "max" "count"]]
                  [:schedule string?]]]]]))
 
-(defenterprise refreshable-states
-  "States of `persisted_info` records which can be refreshed."
-  :feature :cache-granular-controls
-  []
-  #{"creating" "persisted" "error"})
-
-(defenterprise prunable-states
-  "States of `persisted_info` records which can be pruned."
-  :feature :cache-granular-controls
-  []
-  #{"deletable" "off"})
-
 (defn granular-ttl
-  "Returns the granular cache ttl (in seconds) for a card. On EE, this first checking whether there is a stored value
+  "Returns the granular cache ttl (in hours) for a card. On EE, this first checking whether there is a stored value
    for the card, dashboard, or database (in that order of decreasing preference). Returns nil on OSS."
-  [card dashboard database]
-  (let [ttls              [(:cache_ttl card) (:cache_ttl dashboard) (:cache_ttl database)]
-        most-granular-ttl (first (filter some? ttls))]
-    (when most-granular-ttl ; stored TTLs are in hours; convert to seconds
-      (* most-granular-ttl 3600))))
+  [card dashboard-id]
+  ; stored TTLs are in hours; convert to seconds
+  (or (:cache_ttl card)
+      (:cache_ttl (t2/select-one [:model/Dashboard :cache_ttl] :id dashboard-id))
+      (:cache_ttl (t2/select-one [:model/Database :cache_ttl] :id (:database_id card)))))
 
-(defenterprise-schema granular-cache-strategy :- CacheStrategy
+(defenterprise-schema granular-cache-strategy :- [:maybe CacheStrategy]
   "Returns the granular cache strategy for a card."
   :feature :cache-granular-controls
   [card dashboard-id]
-  (let [qs     [{:from   [:cache_config]
-                 :select [:id]
-                 :where  [:and [:= :model "question"]   [:= :model_id (:id card)]]}
-                {:from   [:cache_config]
-                 :select [:id]
-                 :where  [:and [:= :model "dashboard"]  [:= :model_id dashboard-id]]}
-                {:from   [:cache_config]
-                 :select [:id]
-                 :where  [:and [:= :model "collection"] [:= :model_id (:collection_id card)]]}
-                {:from   [:cache_config]
-                 :select [:id]
-                 :where  [:and [:= :model "database"]   [:= :model_id (:database_id card)]]}
-                {:from   [:cache_config]
-                 :select [:id]
-                 :where  [:= :model "root"]}]
-        q      {:select [:id]
-                :limit  1
-                :from   [[{:union-all qs} :unused_alias]]}
-        config (t2/select-one :model/CacheConfig :id q)]
-    (when (public-settings/enable-query-caching)
+  (when (public-settings/enable-query-caching)
+    (let [qs     [{:from   [:cache_config]
+                   :select [:id]
+                   :where  [:and [:= :model "question"]   [:= :model_id (:id card)]]}
+                  {:from   [:cache_config]
+                   :select [:id]
+                   :where  [:and [:= :model "dashboard"]  [:= :model_id dashboard-id]]}
+                  {:from   [:cache_config]
+                   :select [:id]
+                   :where  [:and [:= :model "collection"] [:= :model_id (:collection_id card)]]}
+                  {:from   [:cache_config]
+                   :select [:id]
+                   :where  [:and [:= :model "database"]   [:= :model_id (:database_id card)]]}
+                  {:from   [:cache_config]
+                   :select [:id]
+                   :where  [:= :model "root"]}]
+          q      {:select [:id]
+                  :limit  1
+                  :from   [[{:union-all qs} :unused_alias]]}
+          config (t2/select-one :model/CacheConfig :id q)]
       (if config
         (merge {:type       (:strategy config)
                 :updated_at (:updated_at config)
                 :payload    (:payload config)}
                (:config config))
 
-        (if-let [ttl (granular-ttl
-                      card
-                      (t2/select-one [:model/Dashboard :cache_ttl] :id dashboard-id)
-                      (t2/select-one [:model/Database :cache_ttl] :id (:database_id card)))]
+        (when-let [ttl (granular-ttl card dashboard-id)]
           {:type     :duration
-           :duration (int (/ ttl 3600)) ;; UI accepts hours, so it should divide cleanly
-           :unit     "hours"}
-          {:type         :ttl
-           :multiplier   (public-settings/query-caching-ttl-ratio)
-           :min_duration 50})))))
+           :duration ttl
+           :unit     "hours"})))))
 
 ;;; Strategy execution
 
@@ -142,7 +123,7 @@
 (defmethod fetch-cache-stmt-ee* :nocache [_ _ _]
   nil)
 
-(defenterprise fetch-cache-stmt-ee
+(defenterprise fetch-cache-stmt
   "Returns prepared statement to query for db cache backend."
   :feature :cache-granular-controls
   [strategy query-hash conn]

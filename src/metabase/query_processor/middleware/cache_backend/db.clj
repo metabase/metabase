@@ -69,17 +69,11 @@
                                          1000.0))]
       (prepare-statement conn query-hash (seconds-ago max-age-seconds)))))
 
-(defenterprise fetch-cache-stmt-ee
+(defenterprise fetch-cache-stmt
   "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
   metabase-enterprise.caching.strategies
-  [_strategy _conn _hash]
-  ::oss)
-
-(defn- fetch-cache-stmt ^PreparedStatement [strategy hash conn]
-  (let [res (fetch-cache-stmt-ee strategy hash conn)]
-    (if (= res ::oss)
-      (fetch-cache-stmt-ttl strategy hash conn)
-      res)))
+  [strategy conn hash]
+  (fetch-cache-stmt-ttl strategy hash conn))
 
 (defn- cached-results [query-hash strategy respond]
   ;; VERY IMPORTANT! Open up a connection (which internally binds [[toucan2.connection/*current-connectable*]] so it
@@ -87,7 +81,7 @@
   ;; we need to acquire another connection for one reason or another, such as recording QueryExecutions
   (t2/with-connection [conn]
     (when-let [stmt (fetch-cache-stmt strategy query-hash conn)]
-      (with-open [stmt stmt
+      (with-open [stmt ^PreparedStatement stmt
                   rs   (.executeQuery stmt)]
         (assert (= t2.connection/*current-connectable* conn))
         (if-not (.next rs)

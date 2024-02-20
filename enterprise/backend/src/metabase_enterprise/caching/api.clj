@@ -3,8 +3,10 @@
    [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -18,6 +20,7 @@
                                                   (some? x)   #{x}))}
                [:enum "root" "database" "collection" "dashboard" "question"]]
    collection [:maybe ms/PositiveInt]}
+  (validation/check-has-application-permission :setting)
 
   (let [model (cond-> model
                 (some #{"dashboard" "question"} model) (conj "collection"))
@@ -53,9 +56,10 @@
                           [:field_id int?]
                           [:aggregation [:enum "max" "count"]]
                           [:schedule string?]]]]]}
+  (validation/check-has-application-permission :setting)
   (when (and (= model "root") (not= model_id 0))
-    (throw (ex-info "Root configuration is only valid with model_id = 0" {:status-code 400
-                                                                          :model_id    model_id})))
+    (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
+                                                                                :model_id    model_id})))
   (let [entity (when-not (= model "root")
                  (api/check-404 (t2/select-one (case model
                                                  "database"   :model/Database
@@ -79,9 +83,10 @@
   [:as {{:keys [model model_id]} :body}]
   {model    [:enum "root" "database" "collection" "dashboard" "question"]
    model_id ms/PositiveInt}
+  (validation/check-has-application-permission :setting)
   (when (and (= model "root") (not= model_id 0))
-    (throw (ex-info "Root configuration is only valid with model_id = 0" {:status-code 400
-                                                                          :model_id model_id})))
+    (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
+                                                                                :model_id model_id})))
   (t2/delete! :model/CacheConfig :model model :model_id model_id)
   nil)
 
