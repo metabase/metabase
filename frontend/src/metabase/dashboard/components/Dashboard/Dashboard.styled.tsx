@@ -93,8 +93,11 @@ export const ParametersAndCardsContainer = styled.div<{
   min-width: 0;
   overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
     shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
+  overflow-x: auto;
   padding-bottom: 40px;
 `;
+
+export const FIXED_WIDTH = "1048px";
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   isSticky: boolean;
@@ -107,7 +110,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   /* z-index should be higher than in dashcards */
   z-index: 3;
   top: 0;
-  left: 0;
+  min-width: ${FIXED_WIDTH};
 
   /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
   ${({ isSticky, hasScroll }) =>
@@ -132,7 +135,6 @@ export const CardsContainer = styled(FullWidthContainer)`
   }
 `;
 
-export const FIXED_WIDTH = "1048px";
 export const MaxWidthContainer = styled.div<{
   isFixedWidth: boolean;
 }>`
