@@ -340,7 +340,7 @@
     "lint-eslint": "yarn build:cljs && yarn lint-eslint-pure",
     "lint-eslint-pure": "eslint --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 --report-unused-disable-directives enterprise/frontend frontend e2e",
     "lint-prettier": "yarn && yarn lint-prettier-pure",
-    "lint-prettier-pure": "prettier '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}' --check",
+    "lint-prettier-pure": "prettier --check '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
