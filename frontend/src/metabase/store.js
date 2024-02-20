@@ -4,7 +4,7 @@ import promise from "redux-promise";
 
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 
-import { ApiKeysApi } from "./redux/api";
+import { ApiKeysApi } from "./redux/api-key";
 
 export function getStore(reducers, history, intialState) {
   const reducer = combineReducers({

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ApiKeysApi } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/redux/api-key";
 
 import { AuthCardBody } from "./AuthCard/AuthCard";
 

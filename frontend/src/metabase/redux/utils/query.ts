@@ -1,5 +1,7 @@
 import { createApi, type BaseQueryFn } from "@reduxjs/toolkit/query/react";
+
 import api from "metabase/lib/api";
+
 import { providesList, getListTag } from "./query-cache";
 
 type AllowedHTTPMethods = "GET" | "POST" | "PUT" | "DELETE";

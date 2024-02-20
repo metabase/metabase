@@ -22,7 +22,7 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { ApiKeysApi } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/redux/api-key";
 import { Stack, Text, Group, Button, Icon } from "metabase/ui";
 
 import { AddRow } from "./AddRow";
