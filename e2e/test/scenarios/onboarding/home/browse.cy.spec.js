@@ -11,7 +11,6 @@ describe("scenarios > browse data", () => {
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.location("pathname").should("eq", "/browse/models");
     cy.findByTestId("browse-app").findByText("Browse data");
-    cy.findByLabelText("expand Our analytics").click();
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.findByRole("button", { name: "Filter" });
   });
@@ -73,7 +72,6 @@ describe("scenarios > browse data", () => {
     cy.findByRole("heading", { name: "Orders Model" }).should("not.exist");
     toggle().next("label").click();
     toggle().should("have.attr", "aria-checked", "false");
-    cy.findByLabelText("expand Our analytics").click();
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.findByLabelText("Move, archive, and more...").click();
     cy.findByRole("dialog", {
