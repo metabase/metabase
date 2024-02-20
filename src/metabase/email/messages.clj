@@ -291,18 +291,24 @@
                :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
     (email/send-message! email)))
 
+(defn- creator-sentiment-blob
+  "Create a blob of instance/user data to be sent to the creator sentiment survey."
+  [instance-data created_at num_dashboards num_questions num_models]
+  (-> {:instance instance-data
+       :user {:created_at created_at
+              :num_dashboards num_dashboards
+              :num_questions num_questions
+              :num_models num_models}}
+      json/generate-string
+      .getBytes
+      codecs/bytes->b64-str))
+
 (defn send-creator-sentiment-email!
   "Format and send an email to the system admin following up on the installation."
   [{:keys [email created_at first_name num_dashboards num_questions num_models]} instance-data]
   {:pre [(u/email? email)]}
-  (let [blob (-> {:instance instance-data
-                  :user {:created_at created_at
-                         :num_dashboards num_dashboards
-                         :num_questions num_questions
-                         :num_models num_models}}
-                 json/generate-string
-                 .getBytes
-                 codecs/bytes->b64-str)
+  (let [blob    (when (public-settings/anon-tracking-enabled)
+                  (creator-sentiment-blob instance-data created_at num_dashboards num_questions num_models))
         context (merge (common-context)
                        {:emailType  "notification"
                         :logoHeader true
@@ -311,10 +317,7 @@
                                 (str "https://metabase.com/feedback/creator?context=" blob)
                                 "https://metabase.com/feedback/creator")}
                        (when-not (premium-features/is-hosted?)
-                         {:self-hosted (str "<p style= \"font-weight: 500; font-size: 0.875em; line-height: 1.375em;\">"
-                                        "<i>(This email is sent directly from "
-                                        (public-settings/site-url)
-                                        ", it doesn't go through any external services)</i></p>")}))
+                         {:self-hosted (public-settings/site-url)}))
         message {:subject      "Metabase would love your take on something"
                  :recipients   [email]
                  :message-type :html

@@ -21,7 +21,6 @@
             Table User]]
    [metabase.models.humanization :as humanization]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -124,16 +123,6 @@
   "Returns true if the 'Chart Colors' have been customized"
   []
   (boolean (seq (apply dissoc (public-settings/application-colors) ui-colors))))
-
-(defn fetch-plan-info
-  "Figure out what plan this Metabase instance is on."
-  []
-  (cond
-    (and config/ee-available? (premium-features/is-hosted?) (premium-features/has-any-features?)) "pro-cloud/enterprise-cloud"
-    (and config/ee-available? (premium-features/is-hosted?) (not (premium-features/has-any-features?))) "starter"
-    (and config/ee-available? (not (premium-features/is-hosted?))) "pro-self-hosted/enterprise-self-hosted"
-    (not config/ee-available?) "oss"
-    :else "unknown"))
 
 (defn- instance-settings
   "Figure out global info about this instance"

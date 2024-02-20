@@ -5,7 +5,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.analytics.stats :as stats]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -29,6 +28,11 @@
   :audit      :getter)
 
 (defn- fetch-creators
+  "Fetch the creators who are eligible for a creator sentiment email. Which are users who, in the past 2 months:
+    - Created at least 10 questions total
+    - Created at least 2 SQL questions
+    - Created at least 1 dashboard
+    - Only admins if whitelabeling is enabled"
   [has-whitelabelling?]
   (t2/query {:select [[:u.email :email]
                       [:u.date_joined :created_at]
@@ -51,36 +55,24 @@
                       [:>= [:count [:distinct [:case [:= :rc.query_type "native"] :rc.id]]] 2]
                       [:>= [:count [:distinct :d.id]] 1]]}))
 
-(defn- fetch-num-users []
-  (->
-   (t2/query-one {:select [[:%count.* :num_users]]
-                  :from [[:core_user :u]]
-                  :where [:and
-                          [:= :u.is_active true]
-                          [:= :u.type "personal"]]})
-   :num_users))
-
-(defn- fetch-num-dashboards []
-  (->
-   (t2/query-one {:select [[:%count.* :num_dashboards]]
-                  :from [[:report_dashboard :d]]
-                  :where [:= :d.archived false]})
-   :num_dashboards))
-
-(defn- fetch-num-cards []
-  (t2/query-one {:select [[[:count [:distinct [:case [:and [:= :rc.type "question"] [:= :rc.archived false]] :rc.id]]] :num_questions]
-                          [[:count [:distinct [:case [:and [:= :rc.type "model"] [:= :rc.archived false]] :rc.id]]] :num_models]]
-                 :from [[:report_card :rc]]}))
+(defn fetch-plan-info
+  "Figure out what plan this Metabase instance is on."
+  []
+  (cond
+    (and config/ee-available? (premium-features/is-hosted?) (premium-features/has-any-features?)) "pro-cloud/enterprise-cloud"
+    (and config/ee-available? (premium-features/is-hosted?) (not (premium-features/has-any-features?))) "starter"
+    (and config/ee-available? (not (premium-features/is-hosted?))) "pro-self-hosted/enterprise-self-hosted"
+    (not config/ee-available?) "oss"
+    :else "unknown"))
 
 (defn- fetch-instance-data []
-  (let [num-cards (fetch-num-cards)]
-    {:created_at (snowplow/instance-creation)
-     :plan (stats/fetch-plan-info)
-     :verison (config/mb-version-info :tag)
-     :num_users (fetch-num-users)
-     :num_dashboards (fetch-num-dashboards)
-     :num_questions (:num_questions num-cards)
-     :num_models (:num_models num-cards)}))
+  {:created_at     (snowplow/instance-creation)
+   :plan           (fetch-plan-info)
+   :verison        (config/mb-version-info :tag)
+   :num_users      (t2/count :model/User :is_active true, :type "personal")
+   :num_dashboards (t2/count :model/Dashboard :archived false)
+   :num_questions  (t2/count :model/Card :archived false :type "question")
+   :num_models     (t2/count :model/Card :archived false :type "model")})
 
 (defn- send-creator-sentiment-emails!
   "Send an email to the instance admin following up on their experience with Metabase thus far."
