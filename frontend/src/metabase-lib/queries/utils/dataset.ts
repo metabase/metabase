@@ -59,7 +59,7 @@ export function findColumnIndexForColumnSetting(
 export function findColumnSettingIndexForColumn(
   query: Lib.Query,
   columnSettings: TableColumnOrderSetting[],
-  column: Lib.ColumnMetadata | DatasetColumn,
+  column: DatasetColumn,
 ) {
   const stageIndex = -1;
   const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(

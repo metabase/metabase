@@ -17,13 +17,13 @@ export function getColumnItems(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ): ColumnItem[] {
-  const columnItems = columns.map(legacyColumn => {
-    const column = Lib.fromLegacyColumn(query, stageIndex, legacyColumn);
+  const columnItems = columns.map(datasetColumn => {
+    const column = Lib.fromLegacyColumn(query, stageIndex, datasetColumn);
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
     const columnSettingIndex = findColumnSettingIndexForColumn(
       query,
       columnSettings,
-      column,
+      datasetColumn,
     );
     const columnSetting = columnSettings[columnSettingIndex];
 
@@ -32,7 +32,7 @@ export function getColumnItems(
       fieldRef: Lib.legacyRef(query, stageIndex, column),
       enabled: columnSetting ? columnSetting.enabled : true,
       icon: getColumnIcon(column),
-      column: legacyColumn,
+      column: datasetColumn,
       columnSettingIndex: columnSettingIndex,
     };
   });
