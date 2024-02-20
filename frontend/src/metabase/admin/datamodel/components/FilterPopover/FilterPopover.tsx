@@ -52,7 +52,6 @@ type Props = {
   dateShortcutOptions?: DateShortcutOptions;
   showCustom?: boolean;
   isNew?: boolean;
-  isTopLevel?: boolean;
   checkedColor?: string;
 };
 
@@ -70,7 +69,6 @@ export function FilterPopover({
   query: legacyQuery,
   showOperatorSelector,
   fieldPickerTitle,
-  isTopLevel,
   dateShortcutOptions,
   checkedColor,
   onChange,
@@ -209,17 +207,12 @@ export function FilterPopover({
           style={{ color: color("filter") }}
           maxHeight={Infinity}
           dimension={dimension}
-          sections={
-            isTopLevel
-              ? legacyQuery.topLevelFilterFieldOptionSections()
-              : (
-                  (filter &&
-                    filter.legacyQuery({ useStructuredQuery: true })) ||
-                  legacyQuery
-                ).filterFieldOptionSections(filter, {
-                  includeSegments: showCustom,
-                })
-          }
+          sections={(
+            (filter && filter.legacyQuery({ useStructuredQuery: true })) ||
+            legacyQuery
+          ).filterFieldOptionSections(filter, {
+            includeSegments: showCustom,
+          })}
           onChangeDimension={(dimension: FieldDimension) =>
             handleDimensionChange(dimension)
           }
@@ -228,7 +221,7 @@ export function FilterPopover({
             handleCommitFilter(item.filter, item.query);
           }}
           width="100%"
-          alwaysExpanded={isTopLevel}
+          alwaysExpanded={false}
         />
         {showCustom && (
           <div

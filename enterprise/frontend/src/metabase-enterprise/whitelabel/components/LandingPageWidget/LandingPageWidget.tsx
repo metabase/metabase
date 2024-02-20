@@ -7,7 +7,6 @@ import { getRelativeLandingPageUrl } from "./utils";
 
 interface Props {
   settingValues: EnterpriseSettings;
-  onChange: (value: string) => void;
   onChangeSetting: (
     key: "landing-page",
     value: EnterpriseSettings["landing-page"],

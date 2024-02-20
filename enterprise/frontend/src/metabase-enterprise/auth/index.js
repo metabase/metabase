@@ -95,6 +95,13 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         getHidden: () => true,
       },
       {
+        key: "saml-user-provisioning-enabled?",
+        display_name: t`User Provisioning`,
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        description: t`When a user logs in via SAML, create a Metabase account for them automatically if they don't have one.`,
+        type: "boolean",
+      },
+      {
         key: "saml-identity-provider-uri",
         display_name: t`SAML Identity Provider SSO URL`,
         placeholder: "https://example.com/app/my_saml_app/abc123/sso/saml",
@@ -179,7 +186,13 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         key: "jwt-enabled",
         display_name: t`JWT Authentication`,
         type: "boolean",
-        getHidden: () => true,
+      },
+      {
+        key: "jwt-user-provisioning-enabled?",
+        display_name: t`User Provisioning`,
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        description: t`When a user logs in via JWT, create a Metabase account for them automatically if they don't have one.`,
+        type: "boolean",
       },
       {
         key: "jwt-identity-provider-uri",

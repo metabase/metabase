@@ -12,7 +12,6 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import * as Lib from "metabase-lib";
 import { AggregationWidget } from "../AggregationWidget";
-import { BreakoutWidget } from "../BreakoutWidget";
 import { FilterWidgetList } from "../FilterWidgetList";
 import { FilterPopover } from "../FilterPopover";
 
@@ -219,64 +218,6 @@ export class GuiQueryEditor extends Component {
     }
   }
 
-  renderBreakouts() {
-    const { legacyQuery, setDatasetQuery, features } = this.props;
-
-    if (!features.breakout) {
-      return;
-    }
-
-    const breakoutList = [];
-
-    const breakouts = [...legacyQuery.breakouts()];
-
-    // Placeholder breakout for showing the add button
-    if (legacyQuery.canAddBreakout()) {
-      breakouts.push(null);
-    }
-
-    for (let index = 0; index < breakouts.length; index++) {
-      const breakout = breakouts[index];
-
-      if (breakout == null) {
-        breakoutList.push(<span key="nullBreakout" className="ml1" />);
-      }
-
-      breakoutList.push(
-        <BreakoutWidget
-          key={"breakout" + (breakout ? index : "-new")}
-          className="QueryOption p1"
-          breakout={breakout}
-          query={legacyQuery}
-          breakoutOptions={legacyQuery.breakoutOptions(breakout)}
-          onChangeBreakout={breakout =>
-            breakout
-              ? setDatasetQuery(legacyQuery.updateBreakout(index, breakout))
-              : setDatasetQuery(legacyQuery.removeBreakout(index))
-          }
-        >
-          {this.renderAdd(index === 0 ? t`Add a grouping` : null)}
-        </BreakoutWidget>,
-      );
-
-      if (breakouts[index + 1] != null) {
-        breakoutList.push(
-          <span key={"and" + index} className="text-bold">{t`and`}</span>,
-        );
-      }
-    }
-
-    return (
-      <div
-        className={cx("Query-section Query-section-breakout", {
-          disabled: breakoutList.length === 0,
-        })}
-      >
-        {breakoutList}
-      </div>
-    );
-  }
-
   renderDataSection() {
     const { legacyQuery, query, setDatasetQuery } = this.props;
 
@@ -338,23 +279,6 @@ export class GuiQueryEditor extends Component {
     );
   }
 
-  renderGroupedBySection() {
-    const { features } = this.props;
-    if (!features.aggregation && !features.breakout) {
-      return;
-    }
-
-    return (
-      <div
-        className="GuiBuilder-section GuiBuilder-groupedBy flex align-center px1"
-        ref="viewSection"
-      >
-        <span className="GuiBuilder-section-label Query-label">{t`Grouped By`}</span>
-        {this.renderBreakouts()}
-      </div>
-    );
-  }
-
   componentDidUpdate() {
     const guiBuilder = this.guiBuilder.current;
     if (!guiBuilder) {
@@ -392,7 +316,6 @@ export class GuiQueryEditor extends Component {
         </div>
         <div className="GuiBuilder-row flex flex-full">
           {this.renderViewSection()}
-          {this.renderGroupedBySection()}
           <div className="flex-full" />
           {this.props.children}
         </div>

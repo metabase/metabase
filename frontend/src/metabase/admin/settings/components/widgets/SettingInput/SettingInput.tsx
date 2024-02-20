@@ -30,6 +30,9 @@ export interface SettingInputProps {
 
 const identity = (value: Value) => value;
 
+/**
+ * @deprecated use SettingTextInput instead
+ */
 export const SettingInput = ({
   setting,
   onChange,

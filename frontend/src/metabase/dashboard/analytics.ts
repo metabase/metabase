@@ -1,7 +1,8 @@
 import { trackSchemaEvent } from "metabase/lib/analytics";
-import type { DashboardId } from "metabase-types/api";
+import type { DashboardId, DashboardWidth } from "metabase-types/api";
+import type { SectionId } from "./sections";
 
-const DASHBOARD_SCHEMA_VERSION = "1-1-3";
+const DASHBOARD_SCHEMA_VERSION = "1-1-4";
 
 export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
@@ -17,6 +18,17 @@ export const trackExportDashboardToPDF = (dashboardId: DashboardId) => {
   });
 };
 
+export const trackDashboardWidthChange = (
+  dashboardId: DashboardId,
+  width: DashboardWidth,
+) => {
+  trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
+    event: "dashboard_width_toggled",
+    dashboard_id: dashboardId,
+    full_width: width === "full",
+  });
+};
+
 type CardTypes = "text" | "heading" | "link" | "action";
 
 export const trackCardCreated = (
@@ -29,6 +41,17 @@ export const trackCardCreated = (
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
     event: `new_${type}_card_created`,
     dashboard_id,
+  });
+};
+
+export const trackSectionAdded = (
+  dashboardId: DashboardId,
+  sectionId: SectionId,
+) => {
+  trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
+    event: "dashboard_section_added",
+    dashboard_id: dashboardId,
+    section_layout: sectionId,
   });
 };
 

@@ -9,6 +9,7 @@ import {
   FormProvider,
   FormSecretKey,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -17,6 +18,7 @@ import { FormSection } from "metabase/containers/FormikForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import type { SettingValue } from "metabase-types/api";
 import type { SettingElement } from "metabase/admin/settings/types";
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 
 type SettingValues = { [key: string]: SettingValue };
 
@@ -24,7 +26,7 @@ type JWTFormSettingElement = Omit<SettingElement, "key"> & {
   key: string; // ensuring key is required
   is_env_setting?: boolean;
   env_name?: string;
-  default?: string;
+  default?: any;
 };
 
 type Props = {
@@ -52,14 +54,16 @@ export const SettingsJWTForm = ({
       placeholder: setting.is_env_setting
         ? t`Using ${setting.env_name}`
         : setting.placeholder || setting.default,
+      default: setting.default,
       required: setting.required,
       autoFocus: setting.autoFocus,
+      onChanged: setting.onChanged,
     }));
   }, [settings]);
 
   const attributeValues = useMemo(() => {
-    return getAttributeValues(settingValues);
-  }, [settingValues]);
+    return getAttributeValues(settings, settingValues);
+  }, [settings, settingValues]);
 
   const handleSubmit = useCallback(
     values => {
@@ -83,6 +87,16 @@ export const SettingsJWTForm = ({
               [t`JWT`],
             ]}
           />
+          <Stack spacing="0.75rem" m="2.5rem 0">
+            <SettingHeader
+              id="jwt-user-provisioning-enabled?"
+              setting={settings["jwt-user-provisioning-enabled?"]}
+            />
+            <FormSwitch
+              id="jwt-user-provisioning-enabled?"
+              name={fields["jwt-user-provisioning-enabled?"].name}
+            />
+          </Stack>
           <FormSection title={"Server Settings"}>
             <Stack spacing="md">
               <FormTextInput {...fields["jwt-identity-provider-uri"]} />
@@ -105,7 +119,7 @@ export const SettingsJWTForm = ({
               <FormTextInput {...fields["jwt-attribute-lastname"]} />
             </Stack>
           </FormSection>
-          <FormSection title={"Group Schema"}>
+          <FormSection title={"Group Schema"} data-testid="jwt-group-schema">
             <GroupMappingsWidget
               isFormik
               setting={{ key: "jwt-group-sync" }}
@@ -116,7 +130,6 @@ export const SettingsJWTForm = ({
               groupPlaceholder={t`Group Name`}
             />
           </FormSection>
-
           <Flex direction={"column"} align={"start"} gap={"1rem"}>
             <FormErrorMessage />
             <FormSubmitButton
@@ -132,6 +145,7 @@ export const SettingsJWTForm = ({
 };
 
 const JWT_ATTRS = [
+  "jwt-user-provisioning-enabled?",
   "jwt-identity-provider-uri",
   "jwt-shared-secret",
   "jwt-attribute-email",
@@ -140,8 +154,20 @@ const JWT_ATTRS = [
   "jwt-group-sync",
 ];
 
-const getAttributeValues = (values: SettingValues) => {
-  return Object.fromEntries(JWT_ATTRS.map(key => [key, values[key]]));
+const DEFAULTABLE_JWT_ATTRS = new Set(["jwt-user-provisioning-enabled?"]);
+
+const getAttributeValues = (
+  settings: Record<string, JWTFormSettingElement>,
+  values: SettingValues,
+) => {
+  return Object.fromEntries(
+    JWT_ATTRS.map(key => [
+      key,
+      DEFAULTABLE_JWT_ATTRS.has(key)
+        ? values[key] ?? settings[key]?.default
+        : values[key],
+    ]),
+  );
 };
 
 const mapDispatchToProps = {

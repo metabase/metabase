@@ -73,7 +73,7 @@ describe("SettingInput", () => {
       expect(screen.getByDisplayValue(value)).toBeInTheDocument();
     });
 
-    it("should  call onChange without leading or trailing spaces string", () => {
+    it("should call onChange without leading or trailing spaces string", () => {
       const value = "/";
       const { onChange } = setup({ setting, value, type: "text", normalize });
 
@@ -84,7 +84,7 @@ describe("SettingInput", () => {
       expect(onChange).toHaveBeenCalledWith("/");
     });
 
-    it("should not onChange with null", () => {
+    it("should call onChange with null", () => {
       const value = "/";
       const { onChange } = setup({ setting, value, type: "text", normalize });
 
@@ -94,7 +94,7 @@ describe("SettingInput", () => {
       expect(onChange).toHaveBeenCalledWith(null);
     });
 
-    it("should not onChange with number", () => {
+    it("should call onChange with number", () => {
       const value = "1";
       const { onChange } = setup({ setting, value, type: "number", normalize });
 
@@ -103,6 +103,16 @@ describe("SettingInput", () => {
       userEvent.type(input, "2");
       input.blur();
       expect(onChange).toHaveBeenCalledWith(2);
+    });
+
+    it("should not call onChange when blurring without changing anything", () => {
+      const value = "/";
+      const { onChange } = setup({ setting, value, type: "text", normalize });
+
+      const input = screen.getByDisplayValue(value);
+      input.focus();
+      input.blur();
+      expect(onChange).not.toHaveBeenCalled();
     });
   });
 });
