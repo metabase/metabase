@@ -10,6 +10,7 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+import type Question from "metabase-lib/Question";
 
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
 
@@ -17,6 +18,7 @@ interface Props {
   series: Series;
   dashboard: Dashboard;
   dashcard?: DashboardCard;
+  question?: Question;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 
@@ -24,6 +26,7 @@ export function ChartSettingsButton({
   series,
   dashboard,
   dashcard,
+  question,
   onReplaceAllVisualizationSettings,
 }: Props) {
   return (
@@ -48,6 +51,7 @@ export function ChartSettingsButton({
         isDashboard
         dashboard={dashboard}
         dashcard={dashcard}
+        question={question}
       />
     </ModalWithTrigger>
   );

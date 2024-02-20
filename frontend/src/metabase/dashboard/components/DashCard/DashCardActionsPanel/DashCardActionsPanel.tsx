@@ -15,6 +15,7 @@ import type {
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import type Question from "metabase-lib/Question";
 
 import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
@@ -32,6 +33,7 @@ interface Props {
   series: Series;
   dashboard: Dashboard;
   dashcard?: DashboardCard;
+  question?: Question;
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
@@ -52,6 +54,7 @@ export function DashCardActionsPanel({
   series,
   dashboard,
   dashcard,
+  question,
   isLoading,
   isPreviewing,
   hasError,
@@ -113,6 +116,7 @@ export function DashCardActionsPanel({
           series={series}
           dashboard={dashboard}
           dashcard={dashcard}
+          question={question}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
       );
