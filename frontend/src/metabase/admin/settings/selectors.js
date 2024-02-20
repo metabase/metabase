@@ -11,6 +11,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
+  PLUGIN_IS_EE_BUILD,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -690,7 +691,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   llm: {
     name: t`AI Features`,
-    getHidden: settings => !MetabaseSettings.isEnterprise(),
+    getHidden: settings => !PLUGIN_IS_EE_BUILD.isEEBuild(),
     order: 131,
     settings: [
       {
