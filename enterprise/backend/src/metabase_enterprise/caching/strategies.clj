@@ -87,7 +87,6 @@
                 :updated_at (:updated_at config)
                 :payload    (:payload config)}
                (:config config))
-
         (when-let [ttl (granular-ttl card dashboard-id)]
           {:type     :duration
            :duration ttl
