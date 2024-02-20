@@ -417,7 +417,7 @@
     (testing "should return the current time"
       ;; Allow a 30 second window for the current time to account for any difference between the time in Clojure and the DB
       (doseq [timezone [nil "America/Los_Angeles"]]
-        (mt/with-temporary-setting-values [report-timezone timezone]
+        (mt/with-report-timezone-id timezone
           (is (= true
                  (-> (mt/run-mbql-query venues
                        {:expressions {"1" [:now]}
