@@ -1,12 +1,13 @@
 import styled from "@emotion/styled";
+
+import Card from "metabase/components/Card";
+import { Grid, GridItem } from "metabase/components/Grid";
+import Link from "metabase/core/components/Link";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
   space,
 } from "metabase/styled-components/theme";
-import Card from "metabase/components/Card";
-import Link from "metabase/core/components/Link";
-import { Grid, GridItem } from "metabase/components/Grid";
 
 export const TableGrid = styled(Grid)`
   width: 100%;

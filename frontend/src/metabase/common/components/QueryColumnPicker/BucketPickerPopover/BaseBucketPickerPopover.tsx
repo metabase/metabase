@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import SelectList from "metabase/components/SelectList";
+
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import SelectList from "metabase/components/SelectList";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { ColorName } from "metabase/lib/colors/types";
 import * as Lib from "metabase-lib";
+
 import {
   Content,
   MoreButton,

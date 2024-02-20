@@ -1,14 +1,15 @@
 import { t } from "ttag";
+
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
-import type { Collection } from "metabase-types/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { Collection } from "metabase-types/api";
 
 import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLevelIcon";
-import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import { CollectionInstanceAnalyticsIcon } from "./components/CollectionInstanceAnalyticsIcon";
+import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import {
   AUTHORITY_LEVELS,
   REGULAR_COLLECTION,

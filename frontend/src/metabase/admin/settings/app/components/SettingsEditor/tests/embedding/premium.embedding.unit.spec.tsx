@@ -1,4 +1,6 @@
 import { screen } from "__support__/ui";
+
+import type { SetupOpts } from "./setup";
 import {
   goToInteractiveEmbeddingSettings,
   goToStaticEmbeddingSettings,
@@ -8,7 +10,6 @@ import {
   interactiveEmbeddingSettingsUrl,
   staticEmbeddingSettingsUrl,
 } from "./setup";
-import type { SetupOpts } from "./setup";
 
 const setupPremium = (opts?: SetupOpts) => {
   return setupEmbedding({

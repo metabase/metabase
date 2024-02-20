@@ -2,14 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  isNumeric,
-  isDate,
-  isBoolean,
-  isScope,
-  isSummable,
-  isLongitude,
-} from "metabase-lib/types/utils/isa";
-import {
   TYPE,
   TEMPORAL,
   LOCATION,
@@ -22,6 +14,14 @@ import {
   BOOLEAN,
   UNKNOWN,
 } from "metabase-lib/types/constants";
+import {
+  isNumeric,
+  isDate,
+  isBoolean,
+  isScope,
+  isSummable,
+  isLongitude,
+} from "metabase-lib/types/utils/isa";
 
 function freeformArgument(field, table) {
   return {

@@ -1,6 +1,5 @@
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
-
 import type Field from "metabase-lib/metadata/Field";
 
 import {

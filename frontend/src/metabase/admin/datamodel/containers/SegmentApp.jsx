@@ -3,13 +3,13 @@ import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import Segments from "metabase/entities/segments";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import Segments from "metabase/entities/segments";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
+import SegmentForm from "../components/SegmentForm";
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
-import SegmentForm from "../components/SegmentForm";
 
 const mapDispatchToProps = {
   updatePreviewSummary,

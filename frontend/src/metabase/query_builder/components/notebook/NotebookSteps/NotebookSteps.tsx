@@ -2,14 +2,14 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-
 import * as Lib from "metabase-lib";
-import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
+import type { Query } from "metabase-lib/types";
 
-import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
-import { getQuestionSteps } from "../lib/steps";
 import NotebookStep from "../NotebookStep";
+import { getQuestionSteps } from "../lib/steps";
+import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
+
 import { Container } from "./NotebookSteps.styled";
 
 interface NotebookStepsProps {

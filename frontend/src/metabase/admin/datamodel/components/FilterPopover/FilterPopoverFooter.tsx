@@ -1,9 +1,9 @@
-import { t } from "ttag";
 import cx from "classnames";
+import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-
 import type Filter from "metabase-lib/queries/structured/Filter";
+
 import FilterOptions from "./FilterOptions";
 
 type Props = {

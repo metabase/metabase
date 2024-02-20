@@ -1,5 +1,5 @@
-import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
+import type { Query } from "metabase-lib/types";
 
 export type NotebookStepType =
   | "data"

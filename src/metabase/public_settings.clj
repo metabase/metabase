@@ -24,7 +24,7 @@
 (comment premium-features/keep-me)
 
 (defsetting application-name
-  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
+  (deferred-tru "Replace the word “Metabase” wherever it appears.")
   :visibility :public
   :export?    true
   :type       :string
@@ -376,7 +376,7 @@
   :audit      :never)
 
 (defsetting loading-message
-  (deferred-tru "Message to show while a query is running.")
+  (deferred-tru "Choose the message to show while a query is running.")
   :visibility :public
   :export?    true
   :feature    :whitelabel
@@ -385,10 +385,7 @@
   :audit      :getter)
 
 (defsetting application-colors
-  (deferred-tru
-    (str "These are the primary colors used in charts and throughout {0}. "
-         "You might need to refresh your browser to see your changes take effect.")
-    (application-name-for-setting-descriptions))
+  (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You might need to refresh your browser to see your changes take effect.")
   :visibility :public
   :export?    true
   :type       :json
@@ -397,7 +394,7 @@
   :audit      :getter)
 
 (defsetting application-font
-  (deferred-tru "This will replace “Lato” as the font family.")
+  (deferred-tru "Replace “Lato” as the font family.")
   :visibility :public
   :export?    true
   :type       :string
@@ -429,7 +426,7 @@
   (or (:accent3 (application-colors)) "#EF8C8C"))
 
 (defsetting application-logo-url
-  (deferred-tru "For best results, use an SVG file with a transparent background.")
+  (deferred-tru "Upload a file to replace the Metabase logo on the top bar.")
   :visibility :public
   :export?    true
   :type       :string
@@ -438,7 +435,7 @@
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
-  (deferred-tru "The url or image that you want to use as the favicon.")
+  (deferred-tru "Upload a file to use as the favicon.")
   :visibility :public
   :export?    true
   :type       :string

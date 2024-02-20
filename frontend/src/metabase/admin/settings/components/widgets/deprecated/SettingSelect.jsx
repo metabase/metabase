@@ -3,6 +3,9 @@ import cx from "classnames";
 
 import Select, { Option } from "metabase/core/components/Select";
 
+/**
+ * @deprecated use Select from "metabase/admin/settings/components/widgets/SettingSelect" instead
+ */
 const SettingSelect = ({
   className = "",
   setting: { placeholder, value, options, defaultValue, searchProp, key },

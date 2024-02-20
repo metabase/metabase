@@ -1,12 +1,7 @@
-import fetchMock from "fetch-mock";
-import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
-import { useDispatch } from "metabase/lib/redux";
-import Databases from "metabase/entities/databases";
-import Tables from "metabase/entities/tables";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import type { TableListQuery } from "metabase-types/api";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
   setupDatabasesEndpoints,
   setupTablesEndpoints,
@@ -17,9 +12,16 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import { delay } from "metabase/lib/promise";
+import { useDispatch } from "metabase/lib/redux";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
+import type { TableListQuery } from "metabase-types/api";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+
 import { useEntityListQuery } from "./use-entity-list-query";
 
 const TEST_DB = createMockDatabase();

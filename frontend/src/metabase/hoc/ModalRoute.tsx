@@ -1,12 +1,12 @@
+import type { LocationDescriptor } from "history";
 import { Component } from "react";
 import * as React from "react";
+import { connect } from "react-redux";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
-import { connect } from "react-redux";
-import type { LocationDescriptor } from "history";
 
-import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal";
+import MetabaseSettings from "metabase/lib/settings";
 
 type IRoute = {
   path: string;

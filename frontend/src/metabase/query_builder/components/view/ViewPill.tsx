@@ -1,7 +1,8 @@
 import cx from "classnames";
-import { Icon } from "metabase/ui";
-import type { IconName } from "metabase/ui";
+
 import { color as c, alpha } from "metabase/lib/colors";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 export interface ViewPillProps {
   className?: string;

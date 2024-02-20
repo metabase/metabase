@@ -1,3 +1,4 @@
+import { WRITABLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   restore,
   queryWritableDB,
@@ -10,8 +11,6 @@ import {
   setTokenFeatures,
   modal,
 } from "e2e/support/helpers";
-
-import { WRITABLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
 

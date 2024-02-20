@@ -1,25 +1,28 @@
+import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
-import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import _ from "underscore";
+
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { updateSamlSettings } from "metabase/admin/settings/settings";
+import { settingToFormField } from "metabase/admin/settings/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { FormSection } from "metabase/containers/FormikForm";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
-  FormTextarea,
+  FormSwitch,
   FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
-import { Stack } from "metabase/ui";
 import MetabaseSettings from "metabase/lib/settings";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { Stack } from "metabase/ui";
 
-import { updateSamlSettings } from "metabase/admin/settings/settings";
-import { settingToFormField } from "metabase/admin/settings/utils";
 import {
   SAMLFormCaption,
   SAMLFormFooter,
@@ -79,7 +82,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               [t`SAML`],
             ]}
           />
-          <h2 className="mb3">{t`Set up SAML-based SSO`}</h2>
+          <h2 className="mb2">{t`Set up SAML-based SSO`}</h2>
           <SAMLFormCaption>
             {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
               <ExternalLink
@@ -87,6 +90,16 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               >{t`documentation`}</ExternalLink>
             )}.`}
           </SAMLFormCaption>
+          <Stack spacing="0.75rem" m="2.5rem 0">
+            <SettingHeader
+              id="saml-user-provisioning-enabled?"
+              setting={settings["saml-user-provisioning-enabled?"]}
+            />
+            <FormSwitch
+              id="saml-user-provisioning-enabled?"
+              name={fields["saml-user-provisioning-enabled?"].name}
+            />
+          </Stack>
           <SAMLFormSection>
             <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
             {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
@@ -216,6 +229,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
 // 1) Our `settingValues` has settings unrelated to SAML, which was previously sifted by collecting only those matching inline field names in our form.
 // 2) Some values should be replaced by defaults.
 const IS_SAML_ATTR_DEFAULTABLE = {
+  "saml-user-provisioning-enabled?": true,
   "saml-attribute-email": true,
   "saml-attribute-firstname": true,
   "saml-attribute-lastname": true,

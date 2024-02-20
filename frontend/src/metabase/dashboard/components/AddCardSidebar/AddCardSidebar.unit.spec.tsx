@@ -1,10 +1,15 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import fetchMock from "fetch-mock";
+
 import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase-types/store/mocks";
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { getNextId } from "__support__/utils";
+import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import { checkNotNull } from "metabase/lib/types";
+import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -13,13 +18,10 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-} from "__support__/server-mocks";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
-import { getNextId } from "__support__/utils";
-import { checkNotNull } from "metabase/lib/types";
+  createMockDashboardState,
+  createMockState,
+} from "metabase-types/store/mocks";
+
 import { AddCardSidebar } from "./AddCardSidebar";
 
 const CURRENT_USER = createMockUser({

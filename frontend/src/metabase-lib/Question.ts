@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+import _ from "underscore";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
@@ -594,9 +594,14 @@ class Question {
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
+      const hasColumn =
+        findColumnIndexForColumnSetting(cols, colSetting, this.query()) >= 0;
       const isMutatingColumn =
-        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
+        findColumnIndexForColumnSetting(
+          addedColumns,
+          colSetting,
+          this.query(),
+        ) >= 0;
       return hasColumn && !isMutatingColumn;
     });
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;

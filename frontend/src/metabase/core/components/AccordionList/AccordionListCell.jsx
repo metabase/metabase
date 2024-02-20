@@ -1,13 +1,12 @@
 /* eslint-disable react/prop-types */
 
+import cx from "classnames";
 import { t } from "ttag";
 
-import cx from "classnames";
-import { color } from "metabase/lib/colors";
-
-import { Icon, Box } from "metabase/ui";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { color } from "metabase/lib/colors";
+import { Icon, Box } from "metabase/ui";
 
 import {
   ListCellItem,

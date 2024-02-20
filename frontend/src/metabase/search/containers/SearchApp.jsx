@@ -1,29 +1,20 @@
-import { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
-
-import { jt, t } from "ttag";
-
-import _ from "underscore";
+import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
-import Search from "metabase/entities/search";
-
-import EmptyState from "metabase/components/EmptyState";
-import { Box, Text, Group, Paper } from "metabase/ui";
+import { jt, t } from "ttag";
+import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
+import EmptyState from "metabase/components/EmptyState";
 import PaginationControls from "metabase/components/PaginationControls";
+import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
-import {
-  getFiltersFromLocation,
-  getSearchTextFromLocation,
-} from "metabase/search/utils";
-import { PAGE_SIZE } from "metabase/search/containers/constants";
+import { useDispatch } from "metabase/lib/redux";
+import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchContextTypes,
   SearchFilterKeys,
 } from "metabase/search/constants";
-import { SearchSidebar } from "metabase/search/components/SearchSidebar";
-import { useDispatch } from "metabase/lib/redux";
 import {
   SearchControls,
   SearchBody,
@@ -31,6 +22,12 @@ import {
   SearchResultContainer,
 } from "metabase/search/containers/SearchApp.styled";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
+import { PAGE_SIZE } from "metabase/search/containers/constants";
+import {
+  getFiltersFromLocation,
+  getSearchTextFromLocation,
+} from "metabase/search/utils";
+import { Box, Text, Group, Paper } from "metabase/ui";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();

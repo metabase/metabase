@@ -1,13 +1,14 @@
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
 import {
   canonicalCollectionId,
   coerceCollectionId,
   isInstanceAnalyticsCollection,
   isRootCollection,
 } from "metabase/collections/utils";
-import type { CollectionEssentials, SearchResult } from "metabase-types/api";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import type { CollectionEssentials, SearchResult } from "metabase-types/api";
 
 export const getCollectionName = (collection: CollectionEssentials) => {
   if (isRootCollection(collection)) {

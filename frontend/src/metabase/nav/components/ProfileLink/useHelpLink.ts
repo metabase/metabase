@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { UtilApi } from "metabase/services";
+
 import { useSelector } from "metabase/lib/redux";
 import { getSetting, getIsPaidPlan } from "metabase/selectors/settings";
+import { UtilApi } from "metabase/services";
+
 import { getUser } from "../../../selectors/user";
 
 export const useHelpLink = (): { visible: boolean; href: string } => {

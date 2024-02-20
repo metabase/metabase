@@ -1,13 +1,13 @@
 import { Component } from "react";
-
 import * as React from "react";
 
-import Popover from "metabase/components/Popover";
 import { Filter as FilterComponent } from "metabase/admin/datamodel/components/Filter";
-
-import type Filter from "metabase-lib/queries/structured/Filter";
+import Popover from "metabase/components/Popover";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Filter from "metabase-lib/queries/structured/Filter";
+
 import { FilterPopover } from "../FilterPopover";
+
 import {
   FilterField,
   FilterOperator,

@@ -1,9 +1,11 @@
 import { screen } from "@testing-library/react";
 import { Route } from "react-router";
-import { createMockDatabase } from "metabase-types/api/mocks";
-import type { Database as IDatabase } from "metabase-types/api";
+
 import { renderWithProviders } from "__support__/ui";
 import Database from "metabase-lib/metadata/Database";
+import type { Database as IDatabase } from "metabase-types/api";
+import { createMockDatabase } from "metabase-types/api/mocks";
+
 import { ImpersonationWarning } from "./ImpersonationWarning";
 
 const setup = (database: IDatabase) => {

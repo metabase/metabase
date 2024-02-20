@@ -1,10 +1,9 @@
 import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-
-import type { Card } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
+import type { Card } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 export interface LoadMetadataOptions {
   reload?: boolean;

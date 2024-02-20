@@ -1,5 +1,5 @@
-import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
 
 const questionDetails = {
   name: "27279",

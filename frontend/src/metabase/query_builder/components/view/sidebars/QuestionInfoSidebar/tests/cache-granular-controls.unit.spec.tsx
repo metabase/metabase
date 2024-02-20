@@ -1,9 +1,10 @@
+import { screen } from "__support__/ui";
 import {
   createMockCard,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 

@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+
 import type { TimelineCardProps } from "./TimelineCard";
 import TimelineCard from "./TimelineCard";
 

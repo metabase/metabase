@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMockDashboard } from "metabase-types/api/mocks";
+
 import { getBrokenUpTextMatcher } from "__support__/ui";
+import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { getMockResource, setup } from "./setup";
 

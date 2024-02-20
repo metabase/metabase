@@ -1,9 +1,10 @@
 import { useCallback, useState } from "react";
-import { t } from "ttag";
 import { useMount } from "react-use";
+import { t } from "ttag";
+
 import { DashboardApi } from "metabase/services";
-import type { FieldId, Parameter } from "metabase-types/api";
 import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
+import type { FieldId, Parameter } from "metabase-types/api";
 
 export interface UseFilterFieldsState {
   data?: FieldId[][];

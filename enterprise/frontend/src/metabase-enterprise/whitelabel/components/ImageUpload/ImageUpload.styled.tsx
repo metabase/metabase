@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 
-export const LogoFileInput = styled.input`
+export const FileInput = styled.input`
   &::file-selector-button {
     padding: 0.75rem 1rem;
     margin-right: 1rem;
@@ -20,6 +21,6 @@ export const LogoFileInput = styled.input`
   }
 `;
 
-LogoFileInput.defaultProps = {
+FileInput.defaultProps = {
   type: "file",
 };

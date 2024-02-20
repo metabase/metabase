@@ -3,6 +3,7 @@ import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 
 import type { NotebookStepUiComponentProps } from "../types";
+
 import { ClauseStep } from "./ClauseStep";
 
 export const ExpressionStep = ({

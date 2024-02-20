@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
+
 import type { RelativeDatePickerValue } from "../types";
+
 import { RelativeDatePicker } from "./RelativeDatePicker";
 
 const TABS = ["Past", "Current", "Next"];

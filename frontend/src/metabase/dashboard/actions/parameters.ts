@@ -1,47 +1,69 @@
 import { assoc } from "icepick";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
+import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
+import { updateDashboard } from "metabase/dashboard/actions/save";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
-
 import {
   createParameter,
   setParameterName as setParamName,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
-import { updateDashboard } from "metabase/dashboard/actions/save";
-import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
-import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
-import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
 } from "metabase-lib/parameters/utils/parameter-values";
-import {
-  getDashboard,
-  getDraftParameterValues,
-  getIsAutoApplyFilters,
-  getParameterValues,
-  getParameters,
-  getDashboardId,
-  getAutoApplyFiltersToastId,
-  getDashCardById,
-} from "../selectors";
+import type {
+  ActionDashboardCard,
+  CardId,
+  DashCardId,
+  Parameter,
+  ParameterId,
+  ParameterMappingOptions,
+  ParameterTarget,
+  QuestionDashboardCard,
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+  WritebackAction,
+} from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 import { trackAutoApplyFiltersDisabled } from "../analytics";
+import {
+  getAutoApplyFiltersToastId,
+  getDashboard,
+  getDashboardId,
+  getDashCardById,
+  getDraftParameterValues,
+  getIsAutoApplyFilters,
+  getParameters,
+  getParameterValues,
+} from "../selectors";
+import { isQuestionDashCard } from "../utils";
 
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
-import { setSidebar, closeSidebar } from "./ui";
+import { closeSidebar, setSidebar } from "./ui";
 
-function updateParameter(dispatch, getState, id, parameterUpdater) {
+type SingleParamUpdater = (p: Parameter) => Parameter;
+
+function updateParameter(
+  dispatch: Dispatch,
+  getState: GetState,
+  id: ParameterId,
+  parameterUpdater: SingleParamUpdater,
+) {
   const dashboard = getDashboard(getState());
-  const index = _.findIndex(
-    dashboard && dashboard.parameters,
-    p => p.id === id,
-  );
+  if (!dashboard || !dashboard.parameters) {
+    return;
+  }
+
+  const index = _.findIndex(dashboard.parameters, p => p.id === id);
   if (index >= 0) {
     const parameters = assoc(
       dashboard.parameters,
@@ -54,7 +76,13 @@ function updateParameter(dispatch, getState, id, parameterUpdater) {
   }
 }
 
-function updateParameters(dispatch, getState, parametersUpdater) {
+type MultipleParamUpdater = (p: Parameter[]) => Parameter[];
+
+function updateParameters(
+  dispatch: Dispatch,
+  getState: GetState,
+  parametersUpdater: MultipleParamUpdater,
+) {
   const dashboard = getDashboard(getState());
   if (dashboard) {
     const parameters = parametersUpdater(dashboard.parameters || []);
@@ -64,46 +92,51 @@ function updateParameters(dispatch, getState, parametersUpdater) {
   }
 }
 
-export const setEditingParameter = parameterId => dispatch => {
-  if (parameterId != null) {
-    dispatch(
-      setSidebar({
-        name: SIDEBAR_NAME.editParameter,
-        props: {
-          parameterId,
-        },
-      }),
-    );
-  } else {
-    dispatch(closeSidebar());
-  }
-};
+export const setEditingParameter =
+  (parameterId: ParameterId) => (dispatch: Dispatch) => {
+    if (parameterId != null) {
+      dispatch(
+        setSidebar({
+          name: SIDEBAR_NAME.editParameter,
+          props: {
+            parameterId,
+          },
+        }),
+      );
+    } else {
+      dispatch(closeSidebar());
+    }
+  };
 
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
 export const addParameter = createThunkAction(
   ADD_PARAMETER,
-  parameterOption => (dispatch, getState) => {
-    let parameter;
+  (option: ParameterMappingOptions) => (dispatch, getState) => {
+    let newId: undefined | ParameterId = undefined;
+
     updateParameters(dispatch, getState, parameters => {
-      parameter = createParameter(parameterOption, parameters);
-      return parameters.concat(parameter);
+      const parameter = createParameter(option, parameters);
+      newId = parameter.id;
+      return [...parameters, parameter];
     });
 
-    dispatch(
-      setSidebar({
-        name: SIDEBAR_NAME.editParameter,
-        props: {
-          parameterId: parameter.id,
-        },
-      }),
-    );
+    if (newId) {
+      dispatch(
+        setSidebar({
+          name: SIDEBAR_NAME.editParameter,
+          props: {
+            parameterId: newId,
+          },
+        }),
+      );
+    }
   },
 );
 
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
-  parameterId => (dispatch, getState) => {
+  (parameterId: ParameterId) => (dispatch, getState) => {
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );
@@ -115,16 +148,21 @@ export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
 
 export const setParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
-  (parameter_id, dashcard_id, card_id, target) => {
+  (
+    parameterId: ParameterId,
+    dashcardId: DashCardId,
+    cardId: CardId,
+    target: ParameterTarget | null,
+  ) => {
     return (dispatch, getState) => {
       dispatch(closeAutoWireParameterToast());
 
-      const dashcard = getDashCardById(getState(), dashcard_id);
+      const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (target !== null) {
+      if (target !== null && isQuestionDashCard(dashcard)) {
         dispatch(
           autoWireDashcardsWithMatchingParameters(
-            parameter_id,
+            parameterId,
             dashcard,
             target,
           ),
@@ -133,12 +171,13 @@ export const setParameterMapping = createThunkAction(
 
       dispatch(
         setDashCardAttributes({
-          id: dashcard_id,
+          id: dashcardId,
           attributes: {
             parameter_mappings: getParameterMappings(
-              dashcard,
-              parameter_id,
-              card_id,
+              // TODO remove type casting when getParameterMappings is fixed
+              dashcard as QuestionDashboardCard,
+              parameterId,
+              cardId,
               target,
             ),
           },
@@ -152,7 +191,7 @@ export const SET_ACTION_FOR_DASHCARD =
   "metabase/dashboard/SET_ACTION_FOR_DASHCARD";
 export const setActionForDashcard = createThunkAction(
   SET_PARAMETER_MAPPING,
-  (dashcard, newAction) => dispatch => {
+  (dashcard: ActionDashboardCard, newAction: WritebackAction) => dispatch => {
     dispatch(
       setDashCardAttributes({
         id: dashcard.id,
@@ -168,7 +207,7 @@ export const setActionForDashcard = createThunkAction(
 export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
 export const setParameterName = createThunkAction(
   SET_PARAMETER_NAME,
-  (parameterId, name) => (dispatch, getState) => {
+  (parameterId: ParameterId, name: string) => (dispatch, getState) => {
     updateParameter(dispatch, getState, parameterId, parameter =>
       setParamName(parameter, name),
     );
@@ -178,19 +217,20 @@ export const setParameterName = createThunkAction(
 
 export const setParameterFilteringParameters = createThunkAction(
   SET_PARAMETER_NAME,
-  (parameterId, filteringParameters) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter => ({
-      ...parameter,
-      filteringParameters,
-    }));
-    return { id: parameterId, filteringParameters };
-  },
+  (parameterId: ParameterId, filteringParameters: ParameterId[]) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        filteringParameters,
+      }));
+      return { id: parameterId, filteringParameters };
+    },
 );
 
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId, value) => (_dispatch, getState) => {
+  (parameterId: ParameterId, value: any) => (_dispatch, getState) => {
     const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
 
     return {
@@ -219,7 +259,7 @@ export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 export const setParameterDefaultValue = createThunkAction(
   SET_PARAMETER_DEFAULT_VALUE,
-  (parameterId, defaultValue) => (dispatch, getState) => {
+  (parameterId: ParameterId, defaultValue: any) => (dispatch, getState) => {
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
       default: defaultValue,
@@ -232,7 +272,7 @@ export const SET_PARAMETER_VALUE_TO_DEFAULT =
   "metabase/dashboard/SET_PARAMETER_VALUE_TO_DEFAULT";
 export const setParameterValueToDefault = createThunkAction(
   SET_PARAMETER_VALUE_TO_DEFAULT,
-  parameterId => (dispatch, getState) => {
+  (parameterId: ParameterId) => (dispatch, getState) => {
     const parameter = getParameters(getState()).find(
       ({ id }) => id === parameterId,
     );
@@ -247,15 +287,15 @@ export const SET_PARAMETER_REQUIRED =
   "metabase/dashboard/SET_PARAMETER_REQUIRED";
 export const setParameterRequired = createThunkAction(
   SET_PARAMETER_REQUIRED,
-  (parameterId, value) => (dispatch, getState) => {
+  (parameterId: ParameterId, required: boolean) => (dispatch, getState) => {
     const parameter = getParameters(getState()).find(
       ({ id }) => id === parameterId,
     );
 
-    if (parameter.required !== value) {
+    if (parameter && parameter.required !== required) {
       updateParameter(dispatch, getState, parameterId, parameter => ({
         ...parameter,
-        required: value,
+        required,
       }));
     }
   },
@@ -265,7 +305,7 @@ export const SET_PARAMETER_IS_MULTI_SELECT =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 export const setParameterIsMultiSelect = createThunkAction(
   SET_PARAMETER_IS_MULTI_SELECT,
-  (parameterId, isMultiSelect) => (dispatch, getState) => {
+  (parameterId: ParameterId, isMultiSelect: boolean) => (dispatch, getState) => {
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
       isMultiSelect: isMultiSelect,
@@ -278,46 +318,54 @@ export const SET_PARAMETER_QUERY_TYPE =
   "metabase/dashboard/SET_PARAMETER_QUERY_TYPE";
 export const setParameterQueryType = createThunkAction(
   SET_PARAMETER_QUERY_TYPE,
-  (parameterId, queryType) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter => ({
-      ...parameter,
-      values_query_type: queryType,
-    }));
-    return { id: parameterId, queryType };
-  },
+  (parameterId: ParameterId, queryType: ValuesQueryType) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        values_query_type: queryType,
+      }));
+      return { id: parameterId, queryType };
+    },
 );
 
 export const SET_PARAMETER_SOURCE_TYPE =
   "metabase/dashboard/SET_PARAMETER_SOURCE_TYPE";
 export const setParameterSourceType = createThunkAction(
   SET_PARAMETER_SOURCE_TYPE,
-  (parameterId, sourceType) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter => ({
-      ...parameter,
-      values_source_type: sourceType,
-    }));
-    return { id: parameterId, sourceType };
-  },
+  (parameterId: ParameterId, sourceType: ValuesSourceType) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        values_source_type: sourceType,
+      }));
+      return { id: parameterId, sourceType };
+    },
 );
 
 export const SET_PARAMETER_SOURCE_CONFIG =
   "metabase/dashboard/SET_PARAMETER_SOURCE_CONFIG";
 export const setParameterSourceConfig = createThunkAction(
   SET_PARAMETER_SOURCE_CONFIG,
-  (parameterId, sourceConfig) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter => ({
-      ...parameter,
-      values_source_config: sourceConfig,
-    }));
-    return { id: parameterId, sourceConfig };
-  },
+  (parameterId: ParameterId, sourceConfig: ValuesSourceConfig) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        values_source_config: sourceConfig,
+      }));
+      return { id: parameterId, sourceConfig };
+    },
 );
 
 export const SET_PARAMETER_INDEX = "metabase/dashboard/SET_PARAMETER_INDEX";
 export const setParameterIndex = createThunkAction(
   SET_PARAMETER_INDEX,
-  (parameterId, index) => (dispatch, getState) => {
+  (parameterId: ParameterId, index: number) => (dispatch, getState) => {
     const dashboard = getDashboard(getState());
+
+    if (!dashboard || !dashboard.parameters) {
+      return;
+    }
+
     const parameterIndex = _.findIndex(
       dashboard.parameters,
       p => p.id === parameterId,
@@ -338,7 +386,6 @@ export const setParameterIndex = createThunkAction(
 
 export const SHOW_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
-
 export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
 
 export const HIDE_ADD_PARAMETER_POPOVER =
@@ -346,7 +393,8 @@ export const HIDE_ADD_PARAMETER_POPOVER =
 export const hideAddParameterPopover = createAction(HIDE_ADD_PARAMETER_POPOVER);
 
 export const setOrUnsetParameterValues =
-  parameterIdValuePairs => (dispatch, getState) => {
+  (parameterIdValuePairs: any[][]) =>
+  (dispatch: Dispatch, getState: GetState) => {
     const parameterValues = getParameterValues(getState());
     parameterIdValuePairs
       .map(([id, value]) =>
@@ -356,7 +404,8 @@ export const setOrUnsetParameterValues =
   };
 
 export const setParameterValuesFromQueryParams =
-  queryParams => (dispatch, getState) => {
+  (queryParams: Record<string, string | string[]>) =>
+  (dispatch: Dispatch, getState: GetState) => {
     const parameters = getParameters(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
@@ -370,7 +419,7 @@ export const TOGGLE_AUTO_APPLY_FILTERS =
   "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
 export const toggleAutoApplyFilters = createThunkAction(
   TOGGLE_AUTO_APPLY_FILTERS,
-  isEnabled => (dispatch, getState) => {
+  (isEnabled: boolean) => (dispatch, getState) => {
     const dashboardId = getDashboardId(getState());
 
     if (dashboardId) {

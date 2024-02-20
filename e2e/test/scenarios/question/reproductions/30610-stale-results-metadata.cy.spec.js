@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   modal,
   openNotebook,
@@ -9,7 +10,6 @@ import {
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("issue 30610", () => {
   beforeEach(() => {

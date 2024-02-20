@@ -1,5 +1,11 @@
-import _ from "underscore";
+import "ace/mode-clojure";
+import "ace/mode-javascript";
+import "ace/mode-python";
+import "ace/mode-ruby";
 import { t } from "ttag";
+import _ from "underscore";
+
+import { useSelector } from "metabase/lib/redux";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbeddingDisplayOptions,
@@ -8,17 +14,11 @@ import type {
   EmbedResourceType,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
-
-import "ace/mode-clojure";
-import "ace/mode-javascript";
-import "ace/mode-ruby";
-import "ace/mode-python";
-
-import { useSelector } from "metabase/lib/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import type { EmbedCodePaneVariant } from "./types";
-import { getDefaultDisplayOptions } from "./config";
+
 import { CodeSample } from "./CodeSample";
+import { getDefaultDisplayOptions } from "./config";
+import type { EmbedCodePaneVariant } from "./types";
 
 type EmbedCodePaneProps = {
   siteUrl: string;

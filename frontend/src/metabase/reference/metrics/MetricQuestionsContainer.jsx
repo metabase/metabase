@@ -1,15 +1,14 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import SidebarLayout from "metabase/components/SidebarLayout";
-import MetricQuestions from "metabase/reference/metrics/MetricQuestions";
-
+import Questions from "metabase/entities/questions";
 import * as metadataActions from "metabase/redux/metadata";
+import MetricQuestions from "metabase/reference/metrics/MetricQuestions";
 import * as actions from "metabase/reference/reference";
 
-import Questions from "metabase/entities/questions";
 import {
   getUser,
   getMetric,

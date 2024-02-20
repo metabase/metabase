@@ -4,8 +4,8 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockImplicitQueryAction } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { createMockImplicitQueryAction } from "metabase-types/api/mocks";
 
 import { useActionListQuery } from "./use-action-list-query";
 
