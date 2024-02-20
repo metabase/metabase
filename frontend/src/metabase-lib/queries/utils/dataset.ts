@@ -59,26 +59,13 @@ export function findColumnSettingIndexForColumn(
   columnSettings: TableColumnOrderSetting[],
   column: Lib.ColumnMetadata | DatasetColumn,
 ) {
-  // ignore settings without fieldRef but preserve indexes
-  const items = columnSettings.flatMap((item, settingIndex) => {
-    const fieldRef = item.fieldRef ? normalizeFieldRef(item.fieldRef) : null;
-    return fieldRef ? [{ fieldRef, settingIndex }] : [];
-  });
-
-  // first try to find by fieldRef
   const stageIndex = -1;
-  const itemIndexes = Lib.findColumnIndexesFromLegacyRefs(
+  const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
     [column],
-    items.map(({ fieldRef }) => fieldRef),
+    columnSettings.map(({ fieldRef }) => fieldRef),
   );
 
-  const itemIndex = itemIndexes.find(index => index >= 0);
-
-  if (itemIndex != null) {
-    return items[itemIndex].settingIndex;
-  }
-
-  return -1;
+  return columnIndexes.findIndex(columnIndex => columnIndex >= 0);
 }
