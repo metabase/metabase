@@ -1,20 +1,13 @@
-import fetchMock from "fetch-mock";
-
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
+import userEvent from "@testing-library/user-event";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockModelResult,
-  createMockSettingDefinition,
-  createMockSettings,
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
-
+import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
+import { renderWithProviders, screen } from "__support__/ui";
+import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "../constants";
 import { BrowseModels } from "./BrowseModels";
 
 const renderBrowseModels = (modelCount: number) => {
@@ -33,13 +26,14 @@ const renderBrowseModels = (modelCount: number) => {
   );
 };
 
-const collectionAlpha = createMockCollection({ id: 0, name: "Alpha" });
+const collectionAlpha = createMockCollection({ id: 99, name: "Alpha" });
 const collectionBeta = createMockCollection({ id: 1, name: "Beta" });
 const collectionCharlie = createMockCollection({ id: 2, name: "Charlie" });
 const collectionDelta = createMockCollection({ id: 3, name: "Delta" });
 const collectionZulu = createMockCollection({ id: 4, name: "Zulu" });
 const collectionAngstrom = createMockCollection({ id: 5, name: "Ångström" });
 const collectionOzgur = createMockCollection({ id: 6, name: "Özgür" });
+const collectionGrande = createMockCollection({ id: 7, name: "Grande" });
 
 const mockModels: SearchResult[] = [
   {
@@ -203,66 +197,166 @@ const mockModels: SearchResult[] = [
     last_editor_common_name: "Bobby",
     last_edited_at: "2000-01-01T00:00:00.000Z",
   },
+  ...new Array(100).fill(null).map((_, i) => {
+    return createMockModelResult({
+      id: i + 300,
+      name: `Model ${i + 300}`,
+      collection: collectionGrande,
+      last_editor_common_name: "Bobby",
+      last_edited_at: "2000-01-01T00:00:00.000Z",
+    });
+  }),
 ].map(model => createMockModelResult(model));
 
 describe("BrowseModels", () => {
   beforeEach(() => {
-    setupPropertiesEndpoints(createMockSettings());
-    setupSettingsEndpoints([createMockSettingDefinition()]);
-    fetchMock.put("path:/api/setting/default-browse-tab", 200);
+    localStorage.clear();
   });
-  it("displays models", async () => {
+
+  it("displays collection groups", async () => {
     renderBrowseModels(10);
-    for (let i = 0; i < 10; i++) {
-      expect(await screen.findByText(`Model ${i}`)).toBeInTheDocument();
-    }
+    expect(await screen.findByText("Alpha")).toBeInTheDocument();
+    expect(await screen.findByText("Beta")).toBeInTheDocument();
+    expect(await screen.findByText("Charlie")).toBeInTheDocument();
+    expect(await screen.findByText("Delta")).toBeInTheDocument();
   });
+
   it("displays a 'no models' message in the Models tab when no models exist", async () => {
     renderBrowseModels(0);
     expect(await screen.findByText("No models here yet")).toBeInTheDocument();
   });
-  it("displays models, organized by parent collection", async () => {
+
+  it("can expand collections to see models within them", async () => {
     renderBrowseModels(10);
-    // Three <a> tags representing models have aria-labelledby="collection-1 model-$id",
-    // and "collection-1" is the id of an element containing text 'Collection 1',
-    // so the following line finds those <a> tags.
-    const modelsInCollection1 = await screen.findAllByLabelText("Alpha");
-    expect(modelsInCollection1).toHaveLength(3);
-    const modelsInCollection2 = await screen.findAllByLabelText("Beta");
-    expect(modelsInCollection2).toHaveLength(3);
+    userEvent.click(await screen.findByLabelText("expand Alpha"));
+    expect(await screen.findByText("Model 0")).toBeInTheDocument();
+    expect(await screen.findByText("Model 1")).toBeInTheDocument();
+    expect(await screen.findByText("Model 2")).toBeInTheDocument();
+
+    userEvent.click(await screen.findByLabelText("expand Beta"));
+    expect(await screen.findByText("Model 3")).toBeInTheDocument();
+    expect(await screen.findByText("Model 4")).toBeInTheDocument();
+    expect(await screen.findByText("Model 5")).toBeInTheDocument();
   });
+
+  it("can collapse a collection to hide models within it", async () => {
+    renderBrowseModels(10);
+    userEvent.click(await screen.findByLabelText("expand Alpha"));
+    expect(await screen.findByText("Model 0")).toBeInTheDocument();
+    userEvent.click(await screen.findByLabelText("collapse Alpha"));
+    expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
+  });
+
   it("displays the Our Analytics collection if it has a model", async () => {
     renderBrowseModels(23);
-    const modelsInOurAnalytics = await screen.findAllByLabelText(
-      "Our analytics",
-    );
-    expect(modelsInOurAnalytics).toHaveLength(2);
+    userEvent.click(await screen.findByLabelText("expand Our analytics"));
+    expect(await screen.findByText("Model 20")).toBeInTheDocument();
+    expect(await screen.findByText("Model 21")).toBeInTheDocument();
   });
-  it("displays last edited information about models", async () => {
-    jest.useFakeTimers().setSystemTime(new Date("2024-12-15T12:00:00.000Z"));
 
-    renderBrowseModels(12);
-    const howLongAgo = /\d+(min|h|d|mo|yr)/;
-    const findWhenModelWasEdited = async (modelName: string) =>
-      (
-        await within(await screen.findByLabelText(modelName)).findByText(
-          howLongAgo,
-        )
-      )?.textContent?.match(howLongAgo)?.[0];
+  it("shows the first six models in a collection by default", async () => {
+    renderBrowseModels(9999);
+    expect(screen.queryByText("Model 300")).not.toBeInTheDocument();
+    expect(await screen.findByText("100 models")).toBeInTheDocument();
+    userEvent.click(await screen.findByLabelText("expand Grande"));
+    expect(await screen.findByText("Show all")).toBeInTheDocument();
+    [...new Array(6).keys()].forEach(async i => {
+      expect(screen.getByText(`Model ${300 + i}`)).toBeInTheDocument();
+    });
+  });
 
-    expect(await findWhenModelWasEdited("Model 0")).toBe("1min");
-    expect(await findWhenModelWasEdited("Model 1")).toBe("1min");
-    expect(await findWhenModelWasEdited("Model 2")).toBe("1min");
-    expect(await findWhenModelWasEdited("Model 3")).toBe("10min");
-    expect(await findWhenModelWasEdited("Model 4")).toBe("1h");
-    expect(await findWhenModelWasEdited("Model 5")).toBe("14h");
-    expect(await findWhenModelWasEdited("Model 6")).toBe("1d");
-    expect(await findWhenModelWasEdited("Model 7")).toBe("5d");
-    expect(await findWhenModelWasEdited("Model 8")).toBe("1mo");
-    expect(await findWhenModelWasEdited("Model 9")).toBe("10mo");
-    expect(await findWhenModelWasEdited("Model 10")).toBe("1yr");
-    expect(await findWhenModelWasEdited("Model 11")).toBe("5yr");
+  it("can show more than 6 models by clicking 'Show all'", async () => {
+    renderBrowseModels(9999);
+    expect(screen.queryByText("Model 300")).not.toBeInTheDocument();
+    expect(await screen.findByText("100 models")).toBeInTheDocument();
+    userEvent.click(await screen.findByLabelText("expand Grande"));
+    userEvent.click(await screen.findByText("Show all"));
+    [...new Array(100).keys()].forEach(async i => {
+      expect(screen.getByText(`Model ${300 + i}`)).toBeInTheDocument();
+    });
+  });
 
-    jest.useRealTimers();
+  it("can show less than all models by clicking 'Show less'", async () => {
+    renderBrowseModels(9999);
+    userEvent.click(await screen.findByLabelText("expand Grande"));
+    await screen.findByText("Model 301");
+    expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
+    userEvent.click(await screen.findByText("Show all"));
+    await screen.findByText("Model 301");
+    expect(screen.getByText("Model 399")).toBeInTheDocument();
+    userEvent.click(await screen.findByText("Show less"));
+    await screen.findByText("Model 301");
+    expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
+  });
+
+  it("persists show-all state when expanding and collapsing collections", async () => {
+    renderBrowseModels(9999);
+    userEvent.click(screen.getByLabelText("expand Grande"));
+    expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
+
+    userEvent.click(screen.getByText("Show all"));
+    expect(await screen.findByText("Model 301")).toBeInTheDocument();
+    expect(screen.getByText("Model 399")).toBeInTheDocument();
+
+    userEvent.click(screen.getByLabelText("collapse Grande"));
+    expect(screen.queryByText("Model 301")).not.toBeInTheDocument();
+    expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
+
+    userEvent.click(screen.getByLabelText("expand Grande"));
+    expect(await screen.findByText("Model 301")).toBeInTheDocument();
+    expect(screen.getByText("Model 399")).toBeInTheDocument();
+  });
+
+  describe("local storage", () => {
+    it("persists the expanded state of collections in local storage", async () => {
+      renderBrowseModels(10);
+      userEvent.click(await screen.findByLabelText("expand Alpha"));
+      expect(await screen.findByText("Model 0")).toBeInTheDocument();
+      expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
+        JSON.stringify({ 99: { expanded: true, showAll: false } }),
+      );
+    });
+
+    it("loads the expanded state of collections from local storage", async () => {
+      localStorage.setItem(
+        BROWSE_MODELS_LOCALSTORAGE_KEY,
+        JSON.stringify({ 99: { expanded: true, showAll: false } }),
+      );
+      renderBrowseModels(10);
+      expect(await screen.findByText("Model 0")).toBeInTheDocument();
+    });
+
+    it("persists the 'show all' state of collections in local storage", async () => {
+      renderBrowseModels(9999);
+      userEvent.click(await screen.findByLabelText("expand Grande"));
+      userEvent.click(await screen.findByText("Show all"));
+      await screen.findByText("Model 399");
+      expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
+        JSON.stringify({ 7: { expanded: true, showAll: true } }),
+      );
+    });
+
+    it("loads the 'show all' state of collections from local storage", async () => {
+      localStorage.setItem(
+        BROWSE_MODELS_LOCALSTORAGE_KEY,
+        JSON.stringify({ 7: { expanded: true, showAll: true } }),
+      );
+      renderBrowseModels(9999);
+      await screen.findByText("Show less");
+      [...new Array(100).keys()].forEach(async i => {
+        expect(screen.getByText(`Model ${300 + i}`)).toBeInTheDocument();
+      });
+    });
+
+    it("can deal with invalid local storage data", async () => {
+      localStorage.setItem(BROWSE_MODELS_LOCALSTORAGE_KEY, "{invalid json[[[}");
+      renderBrowseModels(10);
+      userEvent.click(await screen.findByLabelText("expand Alpha"));
+      expect(await screen.findByText("Model 0")).toBeInTheDocument();
+      // ignores invalid data and persists the new state
+      expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
+        JSON.stringify({ 99: { expanded: true, showAll: false } }),
+      );
+    });
   });
 });

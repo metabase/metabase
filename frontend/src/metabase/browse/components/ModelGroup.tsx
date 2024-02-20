@@ -1,4 +1,4 @@
-import { c, msgid } from "ttag";
+import { t, c, msgid } from "ttag";
 import { useMemo } from "react";
 import type {
   Card,
@@ -104,7 +104,15 @@ const CollectionHeader = ({
 
   return (
     <CollectionHeaderContainer id={collectionHtmlId} role="heading">
-      <CollectionHeaderToggle styles={noTransform} onClick={onClick}>
+      <CollectionHeaderToggle
+        styles={noTransform}
+        onClick={onClick}
+        aria-label={
+          expanded
+            ? t`collapse ${collection.name}`
+            : t`expand ${collection.name}`
+        }
+      >
         <FixedSizeIcon
           color={color("text-medium")}
           name={expanded ? "chevrondown" : "chevronright"}
