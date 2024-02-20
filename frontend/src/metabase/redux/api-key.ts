@@ -1,5 +1,9 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 
+
+import { createEntityApi, getListTag ,
+  providesList,
+} from "metabase/redux/utils";
 import type {
   ApiKey,
   CreateApiKeyInput,
@@ -8,13 +12,6 @@ import type {
   UpdateApiKeyOutput,
   RegenerateApiKeyResponse,
 } from "metabase-types/api/admin";
-
-import { createEntityApi, getListTag } from "metabase/redux/utils";
-import {
-  createEntityApi,
-  getListTag,
-  providesList,
-} from "metabase/redux/utils";
 
 const API_KEY_LIST_TAG = getListTag("apiKey");
 
