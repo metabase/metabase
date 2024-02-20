@@ -991,10 +991,6 @@
       (perms.test-util/with-no-data-perms-for-all-users!
         (perms.test-util/with-restored-perms!
           (perms.test-util/with-restored-data-perms!
-            ;; TODO: stop ignoring exceptions here! (But this is vestigial code, so hopefully will be deleted soon
-            ;; anyway...)
-            (u/ignore-exceptions
-              (@#'perms/update-group-permissions! all-users-group-id graph))
             (data-perms.graph/update-data-perms-graph!* {all-users-group-id graph})
             (f)))))))
 
