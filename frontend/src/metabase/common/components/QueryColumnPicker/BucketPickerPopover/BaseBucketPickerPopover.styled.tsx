@@ -16,7 +16,6 @@ export const TriggerButton = styled.button<{ hasDot?: boolean }>`
   display: flex;
   align-items: center;
   min-width: 0;
-  max-width: 50%;
 
   color: ${alpha(color("white"), 0.5)};
   font-weight: 700;
@@ -45,7 +44,9 @@ export const ChevronDown = styled(Icon)`
   flex: 0 0 auto;
   width: 8px;
   margin-left: 0.25em;
+  color: inherit;
   opacity: 0.75;
+  color: currentColor !important;
 `;
 
 export const SelectListItem = styled(BaseSelectList.Item)<{

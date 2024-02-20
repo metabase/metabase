@@ -84,6 +84,7 @@ export function JoinConditionColumnPicker({
           stageIndex={stageIndex}
           hasTemporalBucketing
           checkIsColumnSelected={checkColumnSelected}
+          withInfoIcons
           onClose={closePopover}
         />
       )}
