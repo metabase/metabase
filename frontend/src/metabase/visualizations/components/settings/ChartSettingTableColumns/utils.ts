@@ -1,7 +1,7 @@
 import type { TableColumnOrderSetting } from "metabase-types/api";
 import type { ColumnSetting } from "./types";
 
-export function getSettings(
+export function getColumnSettings(
   settings: TableColumnOrderSetting[],
 ): ColumnSetting[] {
   return settings.reduce((settings: ColumnSetting[], setting) => {

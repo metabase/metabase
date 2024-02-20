@@ -1,10 +1,13 @@
+import { useMemo, useState } from "react";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
+import { QueryColumnPicker } from "./QueryColumnPicker";
 import { TableColumnPicker } from "./TableColumnPicker";
-import { getSettings } from "./utils";
+import { getColumnSettings } from "./utils";
 import type { EditWidgetData } from "./types";
 
 interface ChartSettingTableColumnsProps {
@@ -26,9 +29,20 @@ export const ChartSettingTableColumns = ({
 }: ChartSettingTableColumnsProps) => {
   const query = question.query();
   const stageIndex = -1;
-  const settings = getSettings(value);
+  const settings = useMemo(() => getColumnSettings(value), [value]);
+  const [isEditingQuery] = useState(false);
 
-  return (
+  const handleQueryChange = (query: Lib.Query) => {
+    onChange(value, question.setQuery(query));
+  };
+
+  return isEditingQuery ? (
+    <QueryColumnPicker
+      query={query}
+      stageIndex={stageIndex}
+      onChange={handleQueryChange}
+    />
+  ) : (
     <TableColumnPicker
       query={query}
       stageIndex={stageIndex}
