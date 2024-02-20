@@ -2,18 +2,16 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import { Icon } from "metabase/ui";
-
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-
+import { getMetadata } from "metabase/selectors/metadata";
+import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
+
 import {
   Root,
   ColumnPickerContainer,

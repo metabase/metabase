@@ -1,22 +1,23 @@
 import { assoc } from "icepick";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
+import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
+import { updateDashboard } from "metabase/dashboard/actions/save";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
-
 import {
   createParameter,
   setParameterName as setParamName,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
-import { updateDashboard } from "metabase/dashboard/actions/save";
-import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
-import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
-import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
-import type { Dispatch, GetState } from "metabase-types/store";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
+import {
+  isParameterValueEmpty,
+  PULSE_PARAM_EMPTY,
+} from "metabase-lib/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
   CardId,
@@ -31,26 +32,23 @@ import type {
   ValuesSourceType,
   WritebackAction,
 } from "metabase-types/api";
-import {
-  isParameterValueEmpty,
-  PULSE_PARAM_EMPTY,
-} from "metabase-lib/parameters/utils/parameter-values";
-import {
-  getDashboard,
-  getDraftParameterValues,
-  getIsAutoApplyFilters,
-  getParameterValues,
-  getParameters,
-  getDashboardId,
-  getAutoApplyFiltersToastId,
-  getDashCardById,
-} from "../selectors";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 import { trackAutoApplyFiltersDisabled } from "../analytics";
-
+import {
+  getAutoApplyFiltersToastId,
+  getDashboard,
+  getDashboardId,
+  getDashCardById,
+  getDraftParameterValues,
+  getIsAutoApplyFilters,
+  getParameters,
+  getParameterValues,
+} from "../selectors";
 import { isQuestionDashCard } from "../utils";
+
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
-import { setSidebar, closeSidebar } from "./ui";
+import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
 

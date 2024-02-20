@@ -1,3 +1,6 @@
+import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   setupSMTP,
@@ -22,9 +25,6 @@ import {
   openEmbedModalFromMenu,
   getEmbedModalSharingPane,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { USERS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;

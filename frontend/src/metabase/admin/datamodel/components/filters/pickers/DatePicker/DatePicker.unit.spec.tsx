@@ -1,16 +1,15 @@
-import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
-
+import Filter from "metabase-lib/queries/structured/Filter";
 import {
   ORDERS,
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import Filter from "metabase-lib/queries/structured/Filter";
 
 import DatePicker from "./DatePicker";
 

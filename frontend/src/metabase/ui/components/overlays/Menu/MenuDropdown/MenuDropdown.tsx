@@ -1,7 +1,8 @@
-import { useEffect } from "react";
-import type { ReactNode } from "react";
-import { Menu } from "@mantine/core";
 import type { MenuDropdownProps } from "@mantine/core";
+import { Menu } from "@mantine/core";
+import type { ReactNode } from "react";
+import { useEffect } from "react";
+
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
 // hack to prevent parent TippyPopover from closing when selecting a Menu.Item

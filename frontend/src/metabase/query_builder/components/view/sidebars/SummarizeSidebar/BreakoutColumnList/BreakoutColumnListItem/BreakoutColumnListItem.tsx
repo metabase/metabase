@@ -1,9 +1,11 @@
 import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import Tooltip from "metabase/core/components/Tooltip";
 import * as Lib from "metabase-lib";
+
 import {
   AddButton,
   BucketPickerPopover,

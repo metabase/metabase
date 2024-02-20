@@ -1,9 +1,8 @@
 import { t, jt } from "ttag";
 
-import { Flex, Stack, Text, Title } from "metabase/ui";
-import MetabaseSettings from "metabase/lib/settings";
-
 import ExternalLink from "metabase/core/components/ExternalLink";
+import MetabaseSettings from "metabase/lib/settings";
+import { Flex, Stack, Text, Title } from "metabase/ui";
 
 export const ApplicationPermissionsHelp = () => (
   <Flex direction="column" py="1.375rem" px="1.5rem">

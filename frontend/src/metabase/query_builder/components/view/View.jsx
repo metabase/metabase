@@ -4,33 +4,23 @@ import { Motion, spring } from "react-motion";
 import { t } from "ttag";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
+import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
-
 import * as Lib from "metabase-lib";
 
 import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
-import QueryVisualization from "../QueryVisualization";
-import DataReference from "../dataref/DataReference";
-import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
-import { SnippetSidebar } from "../template_tags/SnippetSidebar";
-import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
-
 import QueryModals from "../QueryModals";
-import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
-import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
-import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
-import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
+import QueryVisualization from "../QueryVisualization";
+import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
+import DataReference from "../dataref/DataReference";
+import { SnippetSidebar } from "../template_tags/SnippetSidebar";
+import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 
-import TimelineSidebar from "./sidebars/TimelineSidebar";
 import NewQuestionHeader from "./NewQuestionHeader";
-import ViewFooter from "./ViewFooter";
-import ViewSidebar from "./ViewSidebar";
 import NewQuestionView from "./View/NewQuestionView";
-
 import QueryViewNotebook from "./View/QueryViewNotebook";
 import {
   BorderedViewTitleHeader,
@@ -42,6 +32,13 @@ import {
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
+import ViewFooter from "./ViewFooter";
+import ViewSidebar from "./ViewSidebar";
+import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
+import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
+import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
+import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
+import TimelineSidebar from "./sidebars/TimelineSidebar";
 
 class View extends Component {
   getLeftSidebar = () => {

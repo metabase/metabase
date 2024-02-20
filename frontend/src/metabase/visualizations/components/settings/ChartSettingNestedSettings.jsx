@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/display-name */
 import { Component } from "react";
-
 import _ from "underscore";
 
 import { updateSettings } from "metabase/visualizations/lib/settings";
+
 import ChartSettingsWidget from "../ChartSettingsWidget";
 
 /**

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import NoResults from "assets/img/no_results.svg";
 import Tooltip from "metabase/core/components/Tooltip";
 
-import NoResults from "assets/img/no_results.svg";
 import { Root, ShortMessage } from "./NoResultsView.styled";
 
 interface NoResultsViewProps {

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
-import { extractCollectionId } from "metabase/lib/urls";
+
 import { isNotNull } from "metabase/lib/types";
+import { extractCollectionId } from "metabase/lib/urls";
+
 import { CollectionContent } from "../CollectionContent";
 
 export interface CollectionLandingProps {

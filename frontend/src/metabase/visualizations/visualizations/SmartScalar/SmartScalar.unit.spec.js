@@ -6,6 +6,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
+
 import { COMPARISON_TYPES } from "./constants";
 
 registerVisualizations();

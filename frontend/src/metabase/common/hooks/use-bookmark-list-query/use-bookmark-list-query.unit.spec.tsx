@@ -8,8 +8,9 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockBookmark } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { createMockBookmark } from "metabase-types/api/mocks";
+
 import { useBookmarkListQuery } from "./use-bookmark-list-query";
 
 const TEST_BOOKMARK = createMockBookmark();

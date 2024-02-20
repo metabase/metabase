@@ -6,6 +6,7 @@ import type {
   ActionDashboardCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+
 import { createMockCard } from "./card";
 
 export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({

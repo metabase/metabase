@@ -1,3 +1,10 @@
+import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   openOrdersTable,
   popover,
@@ -13,14 +20,6 @@ import {
   describeOSS,
   queryBuilderHeader,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_QUESTION_ID,
-  SECOND_COLLECTION_ID,
-  THIRD_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 

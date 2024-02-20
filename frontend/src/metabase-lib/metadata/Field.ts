@@ -1,20 +1,17 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 
+import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 import { formatField, stripId } from "metabase/lib/formatting";
-import type {
-  DatasetColumn,
-  FieldReference,
-  FieldFingerprint,
-  FieldId,
-  FieldFormattingSettings,
-  FieldVisibilityType,
-  FieldValuesType,
-} from "metabase-types/api";
+import { getFilterOperators } from "metabase-lib/operators/utils";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import {
+  getFieldValues,
+  getRemappings,
+} from "metabase-lib/queries/utils/field";
 import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
@@ -45,18 +42,22 @@ import {
   isTypeFK,
   isZipCode,
 } from "metabase-lib/types/utils/isa";
-import { getFilterOperators } from "metabase-lib/operators/utils";
-import {
-  getFieldValues,
-  getRemappings,
-} from "metabase-lib/queries/utils/field";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type {
+  DatasetColumn,
+  FieldReference,
+  FieldFingerprint,
+  FieldId,
+  FieldFormattingSettings,
+  FieldVisibilityType,
+  FieldValuesType,
+} from "metabase-types/api";
+
 import { FieldDimension } from "../Dimension";
+
 import Base from "./Base";
-import type Table from "./Table";
 import type Metadata from "./Metadata";
+import type Table from "./Table";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
 
 const LONG_TEXT_MIN = 80;

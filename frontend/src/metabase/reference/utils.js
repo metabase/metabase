@@ -1,12 +1,12 @@
 import { assoc } from "icepick";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
+
 import { titleize, humanize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
-import { isTypePK } from "metabase-lib/types/utils/isa";
 import Question from "metabase-lib/Question";
+import { isTypePK } from "metabase-lib/types/utils/isa";
 
 export const idsToObjectMap = (ids, objects) =>
   ids

@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { LinkIcon, LinkRoot, LinkText } from "./SlackAppsLink.styled";
 
 export interface SlackAppsLinkProps {

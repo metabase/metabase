@@ -1,19 +1,16 @@
+import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-
-import type { FormikHelpers } from "formik";
-
-import Button from "metabase/core/components/Button";
-import { Form, FormProvider } from "metabase/forms";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
 import useActionForm from "metabase/actions/hooks/use-action-form";
 import {
   getSubmitButtonColor,
   getSubmitButtonLabel,
 } from "metabase/actions/utils";
-
+import Button from "metabase/core/components/Button";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import { Form, FormProvider } from "metabase/forms";
 import type {
   ActionFormInitialValues,
   ParameterId,
@@ -22,6 +19,7 @@ import type {
 } from "metabase-types/api";
 
 import { ActionFormFieldWidget } from "../ActionFormFieldWidget";
+
 import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {

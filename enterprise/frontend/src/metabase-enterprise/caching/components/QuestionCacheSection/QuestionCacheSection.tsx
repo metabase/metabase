@@ -1,7 +1,9 @@
 import { t } from "ttag";
+
 import { getRelativeTime } from "metabase/lib/time";
 import { Stack, Text } from "metabase/ui";
 import type Question from "metabase-lib/Question";
+
 import CacheSection from "../CacheSection";
 
 export interface QuestionCacheSectionProps {

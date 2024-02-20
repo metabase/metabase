@@ -1,21 +1,21 @@
-import { useState } from "react";
 import cx from "classnames";
 import PropTypes from "prop-types";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
   WidgetRoot,
   Footer,
 } from "metabase/parameters/components/widgets/Widget.styled";
-import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
   isFuzzyOperator,
 } from "metabase-lib/operators/utils";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 
 import { normalizeValue } from "./normalizeValue";
 

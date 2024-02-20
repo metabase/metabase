@@ -1,12 +1,12 @@
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+
 import CacheTTLField from "./components/CacheTTLField";
+import DashboardCacheSection from "./components/DashboardCacheSection";
 import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
 import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
-import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
 import QuestionCacheSection from "./components/QuestionCacheSection";
-import DashboardCacheSection from "./components/DashboardCacheSection";
-
+import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
 import {
   getQuestionsImplicitCacheTTL,
   validateCacheTTL,

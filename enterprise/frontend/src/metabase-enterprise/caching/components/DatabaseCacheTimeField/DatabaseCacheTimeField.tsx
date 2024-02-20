@@ -1,10 +1,12 @@
-import { useCallback } from "react";
 import { useField, useFormikContext } from "formik";
+import { useCallback } from "react";
 import { jt, t } from "ttag";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import Link from "metabase/core/components/Link/Link";
+
 import FormField from "metabase/core/components/FormField";
+import Link from "metabase/core/components/Link/Link";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import type { DatabaseData } from "metabase-types/api";
+
 import DatabaseCacheTimeInput from "../DatabaseCacheTimeInput";
 
 const FIELD = "cache_ttl";

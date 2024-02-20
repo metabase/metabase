@@ -1,30 +1,29 @@
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
-import { Route } from "metabase/hoc/Title";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
+
 import { createAdminRouteGuard } from "metabase/admin/utils";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { Route } from "metabase/hoc/Title";
 
 import AuditApp from "./containers/AuditApp";
 import UnsubscribeUserModal from "./containers/UnsubscribeUserModal/UnsubscribeUserModal";
-
-import AuditOverview from "./pages/AuditOverview";
-
-import AuditDatabases from "./pages/AuditDatabases";
-import AuditDatabaseDetail from "./pages/AuditDatabaseDetail";
-import AuditSchemas from "./pages/AuditSchemas";
-import AuditSchemaDetail from "./pages/AuditSchemaDetail";
-import AuditTables from "./pages/AuditTables";
-import AuditTableDetail from "./pages/AuditTableDetail";
-import AuditQuestions from "./pages/AuditQuestions";
-import AuditQuestionDetail from "./pages/AuditQuestionDetail";
-import AuditDashboards from "./pages/AuditDashboards";
 import AuditDashboardDetail from "./pages/AuditDashboardDetail";
-import AuditQueryDetail from "./pages/AuditQueryDetail";
-import AuditUsers from "./pages/AuditUsers";
-import AuditUserDetail from "./pages/AuditUserDetail";
+import AuditDashboards from "./pages/AuditDashboards";
+import AuditDatabaseDetail from "./pages/AuditDatabaseDetail";
+import AuditDatabases from "./pages/AuditDatabases";
 import AuditDownloads from "./pages/AuditDownloads";
+import AuditOverview from "./pages/AuditOverview";
+import AuditQueryDetail from "./pages/AuditQueryDetail";
+import AuditQuestionDetail from "./pages/AuditQuestionDetail";
+import AuditQuestions from "./pages/AuditQuestions";
+import AuditSchemaDetail from "./pages/AuditSchemaDetail";
+import AuditSchemas from "./pages/AuditSchemas";
 import AuditSubscriptions from "./pages/AuditSubscriptions";
+import AuditTableDetail from "./pages/AuditTableDetail";
+import AuditTables from "./pages/AuditTables";
+import AuditUserDetail from "./pages/AuditUserDetail";
+import AuditUsers from "./pages/AuditUsers";
 
 function getPageRoutes(path, page) {
   const subRoutes = [];

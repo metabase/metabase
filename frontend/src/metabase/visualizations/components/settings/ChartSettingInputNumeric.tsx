@@ -1,6 +1,7 @@
-import { useState } from "react";
 import type * as React from "react";
+import { useState } from "react";
 import _ from "underscore";
+
 import { ChartSettingNumericInput } from "./ChartSettingInputNumeric.styled";
 
 const ALLOWED_CHARS = [

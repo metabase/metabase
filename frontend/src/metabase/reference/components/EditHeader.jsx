@@ -1,8 +1,10 @@
-import { memo } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { memo } from "react";
 import { t } from "ttag";
+
 import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal";
+
 import S from "./EditHeader.css";
 
 const EditHeader = ({

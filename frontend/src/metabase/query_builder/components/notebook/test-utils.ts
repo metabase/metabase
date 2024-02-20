@@ -6,6 +6,7 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
+
 import type { NotebookStep } from "./types";
 
 export const metadata = createMockMetadata({

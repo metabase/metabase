@@ -1,18 +1,16 @@
 /* eslint-disable react/prop-types */
+import { dissoc } from "icepick";
 import { useState } from "react";
 import { connect } from "react-redux";
-import { dissoc } from "icepick";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import withToast from "metabase/hoc/Toast";
-import { entityTypeForObject } from "metabase/lib/schema";
-
 import Link from "metabase/core/components/Link";
-
-import Dashboards from "metabase/entities/dashboards";
 import Collections from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import Dashboards from "metabase/entities/dashboards";
+import withToast from "metabase/hoc/Toast";
+import { entityTypeForObject } from "metabase/lib/schema";
+import * as Urls from "metabase/lib/urls";
 
 function mapStateToProps(state, props) {
   return {

@@ -1,5 +1,12 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
+
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  convertSavedQuestionToVirtualTable,
+  getCollectionVirtualSchemaName,
+} from "metabase-lib/metadata/utils/saved-questions";
 import type {
   Card,
   Collection,
@@ -7,12 +14,7 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  convertSavedQuestionToVirtualTable,
-  getCollectionVirtualSchemaName,
-} from "metabase-lib/metadata/utils/saved-questions";
+
 import { PERMISSION_ERROR } from "./constants";
 
 export interface CollectionEndpoints {

@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Flex, Grid, TextInput, Icon } from "metabase/ui";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
+import { Flex, Grid, TextInput, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+
 import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";

@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { Text } from "metabase/ui";
 
 export const ModelFilterControlSwitchLabel = styled(Text)`

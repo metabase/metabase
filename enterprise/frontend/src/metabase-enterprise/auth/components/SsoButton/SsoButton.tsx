@@ -1,8 +1,10 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
+
+import { AuthButton } from "metabase/auth/components/AuthButton";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import { AuthButton } from "metabase/auth/components/AuthButton";
+
 import { loginSSO } from "../../actions";
 
 interface SsoButtonProps {

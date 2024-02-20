@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
+
 import * as Lib from "metabase-lib";
 
 export function useJoinCondition(

@@ -1,9 +1,8 @@
 import styled from "@emotion/styled";
 
-import { Icon } from "metabase/ui";
-
 import { alpha, color } from "metabase/lib/colors";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { Icon } from "metabase/ui";
 
 export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
   display: flex;

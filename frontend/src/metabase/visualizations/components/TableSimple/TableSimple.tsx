@@ -1,13 +1,13 @@
-import { useCallback, useLayoutEffect, useMemo, useState, useRef } from "react";
 import { getIn } from "icepick";
+import { useCallback, useLayoutEffect, useMemo, useState, useRef } from "react";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-
 import { isPositiveInteger } from "metabase/lib/number";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
-
+import type { ClickObject } from "metabase-lib";
+import { isID } from "metabase-lib/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
@@ -16,8 +16,6 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { ClickObject } from "metabase-lib";
-import { isID } from "metabase-lib/types/utils/isa";
 
 import { TableCell } from "./TableCell";
 import TableFooter from "./TableFooter";

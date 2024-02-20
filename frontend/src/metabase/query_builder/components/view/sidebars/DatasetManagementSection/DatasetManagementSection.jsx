@@ -2,15 +2,13 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
 } from "metabase/query_builder/actions";
-
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import Question from "metabase-lib/Question";
 
-import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 import {
   Button,
   MetadataIndicatorContainer,
@@ -18,6 +16,7 @@ import {
   SectionContent,
   SectionTitle,
 } from "./DatasetManagementSection.styled";
+import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 
 const mapDispatchToProps = {
   setQueryBuilderMode,
