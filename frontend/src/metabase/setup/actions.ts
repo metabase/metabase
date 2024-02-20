@@ -94,6 +94,13 @@ export const submitUsageReason = createAsyncThunk(
   },
 );
 
+export const submitLicenseToken = createAsyncThunk(
+  "metabase/setup/SUBMIT_LICENSE_TOKEN",
+  (_token: string | null) => {
+    // TODO: add analytics
+  },
+);
+
 export const UPDATE_DATABASE_ENGINE = "metabase/setup/UPDATE_DATABASE_ENGINE";
 export const updateDatabaseEngine = createAsyncThunk(
   UPDATE_DATABASE_ENGINE,

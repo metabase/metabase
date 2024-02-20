@@ -15,6 +15,7 @@ import {
   updateTracking,
   submitSetup,
   submitUsageReason,
+  submitLicenseToken,
 } from "./actions";
 import { getNextStep } from "./selectors";
 
@@ -54,6 +55,12 @@ export const reducer = createReducer(initialState, builder => {
     state.usageReason = usageReason;
     state.step = getNextStep({ setup: state } as State);
   });
+  builder.addCase(submitLicenseToken.pending, (state, { meta }) => {
+    const token = meta.arg;
+    state.licenseToken = token;
+    state.step = getNextStep({ setup: state } as State);
+  });
+
   builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
     state.databaseEngine = meta.arg;
   });
