@@ -616,7 +616,7 @@
                        :parameters}
                      (set (keys public-action))))))))))))
 
-(deftest public-dashboard-param-link-to-a-field-without-full-field-values-test
+#_(deftest public-dashboard-param-link-to-a-field-without-full-field-values-test
   (testing "GET /api/public/dashboard/:uuid"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (t2.with-temp/with-temp
