@@ -492,15 +492,6 @@ class Question {
     const columns = Lib.returnedColumns(query, stageIndex);
     const previousColumns = Lib.returnedColumns(previousQuery, stageIndex);
 
-    if (
-      !_.isEqual(
-        previousQuestion.setting("table.columns"),
-        this.setting("table.columns"),
-      )
-    ) {
-      return this;
-    }
-
     const addedColumns = columns
       .filter(
         column =>

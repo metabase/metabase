@@ -3,7 +3,7 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
-import { DatasetColumnSelector } from "./DatasetColumnSelector";
+import { TableColumnPicker } from "./TableColumnPicker";
 import { getSettings } from "./utils";
 import type { EditWidgetData } from "./types";
 
@@ -29,7 +29,7 @@ export const ChartSettingTableColumns = ({
   const settings = getSettings(value);
 
   return (
-    <DatasetColumnSelector
+    <TableColumnPicker
       query={query}
       stageIndex={stageIndex}
       columns={columns}

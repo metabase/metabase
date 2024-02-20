@@ -5,16 +5,16 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import { ChartSettingOrderedItems } from "../../ChartSettingOrderedItems";
-import { toggleColumnInSettings } from "../utils";
 import type { ColumnSetting, EditWidgetData } from "../types";
 import {
   getColumnItems,
   getEditWidgetData,
   moveColumnInSettings,
+  toggleColumnInSettings,
 } from "./utils";
 import type { ColumnItem, DragColumnProps } from "./types";
 
-interface DatasetColumnSelectorProps {
+interface TableColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
   columns: DatasetColumn[];
@@ -24,7 +24,7 @@ interface DatasetColumnSelectorProps {
   onShowWidget: (config: EditWidgetData, targetElement: HTMLElement) => void;
 }
 
-export const DatasetColumnSelector = ({
+export const TableColumnPicker = ({
   query,
   stageIndex,
   columns,
@@ -32,7 +32,7 @@ export const DatasetColumnSelector = ({
   getColumnName,
   onChange,
   onShowWidget,
-}: DatasetColumnSelectorProps) => {
+}: TableColumnPickerProps) => {
   const columnItems = useMemo(() => {
     return getColumnItems(query, stageIndex, columns, settings);
   }, [query, stageIndex, columns, settings]);

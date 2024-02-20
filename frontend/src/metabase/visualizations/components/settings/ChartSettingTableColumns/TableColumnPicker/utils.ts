@@ -2,7 +2,6 @@ import * as Lib from "metabase-lib";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { DatasetColumn } from "metabase-types/api";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { getSettingIndexes } from "../utils";
 import type { ColumnSetting, EditWidgetData } from "../types";
 import type { ColumnItem, DragColumnProps } from "./types";
 
@@ -16,11 +15,19 @@ export function getColumnItems(
     Lib.fromLegacyColumn(query, stageIndex, column),
   );
 
-  const settingIndexes = getSettingIndexes(
+  const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
     columns,
-    settings,
+    settings.map(setting => setting.fieldRef),
+  );
+
+  const settingIndexes = columnIndexes.reduce(
+    (settingIndexes: number[], columnIndex, settingIndex) => {
+      settingIndexes[columnIndex] = settingIndex;
+      return settingIndexes;
+    },
+    [],
   );
 
   return columns.map((column, columnIndex) => {
@@ -39,6 +46,23 @@ export function getColumnItems(
       settingIndex,
     };
   });
+}
+
+export function toggleColumnInSettings(
+  { name, fieldRef, settingIndex }: ColumnItem,
+  settings: ColumnSetting[],
+  isEnabled: boolean,
+): ColumnSetting[] {
+  const newSettings = [...settings];
+
+  if (settingIndex >= 0) {
+    const setting = newSettings[settingIndex];
+    newSettings[settingIndex] = { ...setting, enabled: isEnabled };
+  } else {
+    newSettings.push({ name, fieldRef, enabled: isEnabled });
+  }
+
+  return newSettings;
 }
 
 export const moveColumnInSettings = (
