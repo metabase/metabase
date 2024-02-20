@@ -43,7 +43,9 @@ export const BrowseModels = ({
     const newPreferences = {
       ...collectionViewPreferences,
       [collectionId]: {
-        expanded: !collectionViewPreferences?.[collectionId]?.expanded,
+        expanded: !(
+          collectionViewPreferences?.[collectionId]?.expanded ?? true
+        ),
         showAll: !!collectionViewPreferences?.[collectionId]?.showAll,
       },
     };
@@ -58,7 +60,7 @@ export const BrowseModels = ({
     const newPreferences = {
       ...collectionViewPreferences,
       [collectionId]: {
-        expanded: collectionViewPreferences?.[collectionId]?.expanded ?? false,
+        expanded: collectionViewPreferences?.[collectionId]?.expanded ?? true,
         showAll: !collectionViewPreferences?.[collectionId]?.showAll,
       },
     };
@@ -80,7 +82,9 @@ export const BrowseModels = ({
             const collectionId = groupOfModels[0].collection.id;
             return (
               <ModelGroup
-                expanded={!!collectionViewPreferences?.[collectionId]?.expanded}
+                expanded={
+                  collectionViewPreferences?.[collectionId]?.expanded ?? true
+                }
                 showAll={!!collectionViewPreferences?.[collectionId]?.showAll}
                 toggleExpanded={() =>
                   handleToggleCollectionExpand(collectionId)

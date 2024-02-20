@@ -188,14 +188,14 @@ const mockModels: SearchResult[] = [
   },
   {
     id: 21,
-    name: "Model 20",
+    name: "Model 21",
     collection: defaultRootCollection,
     last_editor_common_name: "Bobby",
     last_edited_at: "2000-01-01T00:00:00.000Z",
   },
   {
     id: 22,
-    name: "Model 21",
+    name: "Model 22",
     collection: defaultRootCollection,
     last_editor_common_name: "Bobby",
     last_edited_at: "2000-01-01T00:00:00.000Z",
@@ -215,6 +215,10 @@ describe("BrowseModels", () => {
   beforeEach(() => {
     localStorage.clear();
   });
+  it("displays a 'no models' message in the Models tab when no models exist", async () => {
+    renderBrowseModels(0);
+    expect(await screen.findByText("No models here yet")).toBeInTheDocument();
+  });
 
   it("displays collection groups", async () => {
     renderBrowseModels(10);
@@ -224,65 +228,60 @@ describe("BrowseModels", () => {
     expect(await screen.findByText("Delta")).toBeInTheDocument();
   });
 
-  it("displays a 'no models' message in the Models tab when no models exist", async () => {
-    renderBrowseModels(0);
-    expect(await screen.findByText("No models here yet")).toBeInTheDocument();
+  it("displays models in collections by default", () => {
+    const modelCount = 22;
+    renderBrowseModels(modelCount);
+    expect(screen.queryByText("No models here yet")).not.toBeInTheDocument();
+    assertThatModelsExist(0, modelCount - 1);
   });
 
-  it("can expand collections to see models within them", async () => {
+  it("can collapse collections to hide models within them", async () => {
     renderBrowseModels(10);
-    userEvent.click(await screen.findByLabelText("expand Alpha"));
-    expect(await screen.findByText("Model 0")).toBeInTheDocument();
-    expect(await screen.findByText("Model 1")).toBeInTheDocument();
-    expect(await screen.findByText("Model 2")).toBeInTheDocument();
-
-    userEvent.click(await screen.findByLabelText("expand Beta"));
-    expect(await screen.findByText("Model 3")).toBeInTheDocument();
-    expect(await screen.findByText("Model 4")).toBeInTheDocument();
-    expect(await screen.findByText("Model 5")).toBeInTheDocument();
-  });
-
-  it("can collapse a collection to hide models within it", async () => {
-    renderBrowseModels(10);
-    userEvent.click(await screen.findByLabelText("expand Alpha"));
-    expect(await screen.findByText("Model 0")).toBeInTheDocument();
     userEvent.click(await screen.findByLabelText("collapse Alpha"));
     expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
+    expect(screen.queryByText("Model 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Model 2")).not.toBeInTheDocument();
+
+    userEvent.click(await screen.findByLabelText("collapse Beta"));
+    expect(screen.queryByText("Model 3")).not.toBeInTheDocument();
+    expect(screen.queryByText("Model 4")).not.toBeInTheDocument();
+    expect(screen.queryByText("Model 5")).not.toBeInTheDocument();
+  });
+
+  it("can expand a collection to see models within it", async () => {
+    renderBrowseModels(10);
+    userEvent.click(await screen.findByLabelText("collapse Alpha"));
+    expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
+    userEvent.click(await screen.findByLabelText("expand Alpha"));
+    expect(await screen.findByText("Model 0")).toBeInTheDocument();
   });
 
   it("displays the Our Analytics collection if it has a model", async () => {
-    renderBrowseModels(23);
-    userEvent.click(await screen.findByLabelText("expand Our analytics"));
+    renderBrowseModels(25);
+    await screen.findByText("Alpha");
+    await screen.findByText("Our analytics");
     expect(await screen.findByText("Model 20")).toBeInTheDocument();
     expect(await screen.findByText("Model 21")).toBeInTheDocument();
+    expect(await screen.findByText("Model 22")).toBeInTheDocument();
   });
 
   it("shows the first six models in a collection by default", async () => {
     renderBrowseModels(9999);
-    expect(screen.queryByText("Model 300")).not.toBeInTheDocument();
     expect(await screen.findByText("100 models")).toBeInTheDocument();
-    userEvent.click(await screen.findByLabelText("expand Grande"));
     expect(await screen.findByText("Show all")).toBeInTheDocument();
-    [...new Array(6).keys()].forEach(async i => {
-      expect(screen.getByText(`Model ${300 + i}`)).toBeInTheDocument();
-    });
+    assertThatModelsExist(300, 305);
   });
 
   it("can show more than 6 models by clicking 'Show all'", async () => {
     renderBrowseModels(9999);
-    expect(screen.queryByText("Model 300")).not.toBeInTheDocument();
-    expect(await screen.findByText("100 models")).toBeInTheDocument();
-    userEvent.click(await screen.findByLabelText("expand Grande"));
+    await screen.findByText("6 of 100");
+    expect(screen.queryByText("Model 350")).not.toBeInTheDocument();
     userEvent.click(await screen.findByText("Show all"));
-    [...new Array(100).keys()].forEach(async i => {
-      expect(screen.getByText(`Model ${300 + i}`)).toBeInTheDocument();
-    });
+    assertThatModelsExist(300, 399);
   });
 
   it("can show less than all models by clicking 'Show less'", async () => {
     renderBrowseModels(9999);
-    userEvent.click(await screen.findByLabelText("expand Grande"));
-    await screen.findByText("Model 301");
     expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
     userEvent.click(await screen.findByText("Show all"));
     await screen.findByText("Model 301");
@@ -294,9 +293,6 @@ describe("BrowseModels", () => {
 
   it("persists show-all state when expanding and collapsing collections", async () => {
     renderBrowseModels(9999);
-    userEvent.click(screen.getByLabelText("expand Grande"));
-    expect(screen.queryByText("Model 399")).not.toBeInTheDocument();
-
     userEvent.click(screen.getByText("Show all"));
     expect(await screen.findByText("Model 301")).toBeInTheDocument();
     expect(screen.getByText("Model 399")).toBeInTheDocument();
@@ -313,25 +309,24 @@ describe("BrowseModels", () => {
   describe("local storage", () => {
     it("persists the expanded state of collections in local storage", async () => {
       renderBrowseModels(10);
-      userEvent.click(await screen.findByLabelText("expand Alpha"));
-      expect(await screen.findByText("Model 0")).toBeInTheDocument();
+      userEvent.click(await screen.findByLabelText("collapse Alpha"));
+      expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
       expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
-        JSON.stringify({ 99: { expanded: true, showAll: false } }),
+        JSON.stringify({ 99: { expanded: false, showAll: false } }),
       );
     });
 
-    it("loads the expanded state of collections from local storage", async () => {
+    it("loads the collapsed state of collections from local storage", async () => {
       localStorage.setItem(
         BROWSE_MODELS_LOCALSTORAGE_KEY,
-        JSON.stringify({ 99: { expanded: true, showAll: false } }),
+        JSON.stringify({ 99: { expanded: false, showAll: false } }),
       );
       renderBrowseModels(10);
-      expect(await screen.findByText("Model 0")).toBeInTheDocument();
+      expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
     });
 
     it("persists the 'show all' state of collections in local storage", async () => {
       renderBrowseModels(9999);
-      userEvent.click(await screen.findByLabelText("expand Grande"));
       userEvent.click(await screen.findByText("Show all"));
       await screen.findByText("Model 399");
       expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
@@ -345,21 +340,26 @@ describe("BrowseModels", () => {
         JSON.stringify({ 7: { expanded: true, showAll: true } }),
       );
       renderBrowseModels(9999);
-      await screen.findByText("Show less");
-      [...new Array(100).keys()].forEach(async i => {
-        expect(screen.getByText(`Model ${300 + i}`)).toBeInTheDocument();
-      });
+      expect(await screen.findByText("Show less")).toBeInTheDocument();
+      assertThatModelsExist(300, 399);
     });
 
     it("can deal with invalid local storage data", async () => {
       localStorage.setItem(BROWSE_MODELS_LOCALSTORAGE_KEY, "{invalid json[[[}");
       renderBrowseModels(10);
-      userEvent.click(await screen.findByLabelText("expand Alpha"));
       expect(await screen.findByText("Model 0")).toBeInTheDocument();
+      userEvent.click(await screen.findByLabelText("collapse Alpha"));
+      expect(screen.queryByText("Model 0")).not.toBeInTheDocument();
       // ignores invalid data and persists the new state
       expect(localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY)).toEqual(
-        JSON.stringify({ 99: { expanded: true, showAll: false } }),
+        JSON.stringify({ 99: { expanded: false, showAll: false } }),
       );
     });
   });
 });
+
+function assertThatModelsExist(startId: number, endId: number) {
+  for (let i = startId; i <= endId; i++) {
+    expect(screen.getByText(`Model ${i}`)).toBeInTheDocument();
+  }
+}
