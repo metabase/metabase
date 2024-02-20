@@ -20,6 +20,13 @@
    table    :- i/TableInstance]
   (driver/describe-table (driver.u/database->driver database) database table))
 
+(mu/defn fast-fk-metadata :- i/FastFKMetadata
+  "Get information about the foreign keys of a database."
+  [database :- i/DatabaseInstance]
+  (let [driver (driver.u/database->driver database)]
+    (when (driver/database-supports? driver :foreign-keys database)
+      (driver/describe-fks driver database))))
+
 (mu/defn fk-metadata :- i/FKMetadata
   "Get information about the foreign keys belonging to `table`."
   [database :- i/DatabaseInstance

@@ -97,6 +97,10 @@
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
 
+(defmethod driver/describe-fks :sql-jdbc
+  [driver database]
+  (sql-jdbc.sync/describe-fks driver database))
+
 (defmethod driver/describe-table-indexes :sql-jdbc
   [driver database table]
   (sql-jdbc.sync/describe-table-indexes driver database table))

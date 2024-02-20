@@ -14,8 +14,7 @@
 (mu/defn ^:private mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
-   table    :- i/TableInstance
-   fk       :- i/FKMetadataEntry]
+   metadata :- i/FastFKMetadata]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
                          {:select [:f.id]
                           :from   [[:metabase_field :f]]
@@ -29,13 +28,13 @@
                                    [:= :f.active true]
                                    [:not= :f.visibility_type "retired"]]})
         fk-field-id-query (field-id-query (:id database)
-                                          (:schema table)
-                                          (:name table)
-                                          (:fk-column-name fk))
+                                          (:fk-table-schema metadata)
+                                          (:fk-table-name metadata)
+                                          (:fk-column-name metadata))
         dest-field-id-query (field-id-query (:id database)
-                                            (:schema (:dest-table fk))
-                                            (:name (:dest-table fk))
-                                            (:dest-column-name fk))]
+                                            (:fk-table-schema metadata)
+                                            (:fk-table-name metadata)
+                                            (:fk-column-name metadata))]
     (u/prog1 (t2/query-one {:update [:metabase_field :f]
                             :set {:fk_target_field_id dest-field-id-query
                                   :semantic_type      "type/FK"}
@@ -46,10 +45,25 @@
                                      [:not= :f.fk_target_field_id dest-field-id-query]]]})
       (when (= <> 1)
         (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
-                                  (sync-util/table-name-for-logging table)
-                                  (sync-util/field-name-for-logging :name (:fk-column-name fk))
-                                  (sync-util/table-name-for-logging (:dest-table fk))
-                                  (sync-util/field-name-for-logging :name (:dest-column-name fk))))))))
+                                  (sync-util/table-name-for-logging :name (:fk-table-name metadata)
+                                                                    :schema (:fk-table-schema metadata))
+                                  (sync-util/field-name-for-logging :name (:fk-column-name metadata))
+                                  (sync-util/table-name-for-logging :name (:fk-table-name metadata)
+                                                                    :schema (:fk-table-schema metadata))
+                                  (sync-util/field-name-for-logging :name (:pk-column-name metadata))))))))
+
+(mu/defn fast-sync-fks!
+  "Sync the foreign keys for a specific `table`."
+  [database :- i/DatabaseInstance]
+  (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
+    (let [fk-metadata (fetch-metadata/fast-fk-metadata database)]
+      (transduce (map (fn [x]
+                        {:total-fks   1
+                         :updated-fks (mark-fk! database x)}))
+                 (partial merge-with +)
+                 {:total-fks   0
+                  :updated-fks 0}
+                 fk-metadata))))
 
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
@@ -62,24 +76,34 @@
      (let [fks-to-update (fetch-metadata/fk-metadata database table)]
        {:total-fks   (count fks-to-update)
         :updated-fks (sync-util/sum-numbers (fn [fk]
-                                              (mark-fk! database table fk))
+                                              (mark-fk! database
+                                                        {:fk-table-name (:name table)
+                                                         :fk-table-schema (:schema table)
+                                                         :fk-column-name (:fk-column-name fk)
+                                                         :pk-table-name (:name (:dest-table fk))
+                                                         :pk-table-schema (:schema (:dest-table fk))
+                                                         :pk-column-name (:dest-column-name fk)}))
                                             fks-to-update)}))))
 
 (mu/defn sync-fks!
   "Sync the foreign keys in a `database`. This sets appropriate values for relevant Fields in the Metabase application
   DB based on values from the `FKMetadata` returned by [[metabase.driver/describe-table-fks]]."
   [database :- i/DatabaseInstance]
-  (reduce (fn [update-info table]
-            (let [table         (t2.realize/realize table)
-                  table-fk-info (sync-fks-for-table! database table)]
-              ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
-              ;; sync-aborting errors should be surfaced to the UI (see
-              ;; `:metabase.sync.util/exception-classes-not-to-retry`).
-              (sync-util/set-initial-table-sync-complete! table)
-              (if (instance? Exception table-fk-info)
-                (update update-info :total-failed inc)
-                (merge-with + update-info table-fk-info))))
+  (if (driver/database-supports? (driver.u/database->driver database)
+                                 :fast-sync-fks
+                                 database)
+    (fast-sync-fks!)
+    (reduce (fn [update-info table]
+              (let [table         (t2.realize/realize table)
+                    table-fk-info (sync-fks-for-table! database table)]
+                ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
+                ;; sync-aborting errors should be surfaced to the UI (see
+                ;; `:metabase.sync.util/exception-classes-not-to-retry`).
+                (sync-util/set-initial-table-sync-complete! table)
+                (if (instance? Exception table-fk-info)
+                  (update update-info :total-failed inc)
+                  (merge-with + update-info table-fk-info))))
           {:total-fks    0
            :updated-fks  0
            :total-failed 0}
-          (sync-util/db->reducible-sync-tables database)))
+          (sync-util/db->reducible-sync-tables database))))
