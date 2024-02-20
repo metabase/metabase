@@ -1,4 +1,4 @@
-import { Component, useMemo } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
