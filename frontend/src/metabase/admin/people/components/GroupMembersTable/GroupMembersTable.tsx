@@ -11,7 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import User from "metabase/entities/users";
 
-import { ApiKeysApi } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/redux/api-key";
 import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import type { State } from "metabase-types/store";

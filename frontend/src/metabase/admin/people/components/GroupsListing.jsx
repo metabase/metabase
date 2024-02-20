@@ -15,7 +15,7 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { ApiKeysApi } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/redux/api-key";
 
 import Input from "metabase/core/components/Input";
 import ModalContent from "metabase/components/ModalContent";

@@ -10,7 +10,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { ApiKeysApi } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/redux/api-key";
 
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";

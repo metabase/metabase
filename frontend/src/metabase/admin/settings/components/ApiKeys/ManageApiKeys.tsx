@@ -12,7 +12,7 @@ import type { ApiKey } from "metabase-types/api";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { ApiKeysApi } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/redux/api-key";
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
