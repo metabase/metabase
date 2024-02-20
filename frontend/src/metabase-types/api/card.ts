@@ -102,9 +102,6 @@ export type PivotTableCollapsedRowsSetting = {
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
-
-  // We have some corrupted visualization settings without fieldRef
-  // So we have to remove broken settings without fieldRef manually
   fieldRef: FieldReference;
 };
 
