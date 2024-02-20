@@ -3,6 +3,7 @@ import {
   visitQuestionAdhoc,
   visitQuestion,
   popover,
+  undoToast,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -146,8 +147,7 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("US Dollar").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved");
+    undoToast().findByText("Changes saved").should("be.visible");
 
     visitQuestionAdhoc({
       display: "scalar",
