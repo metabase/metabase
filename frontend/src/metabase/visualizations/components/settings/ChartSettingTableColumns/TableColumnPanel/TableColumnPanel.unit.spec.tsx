@@ -13,7 +13,7 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
-import { TableColumnPicker } from "./TableColumnPicker";
+import { TableColumnPanel } from "./TableColumnPanel";
 
 const COLUMNS = [
   createMockColumn({
@@ -84,7 +84,7 @@ function setup({
   const onShowWidget = jest.fn();
 
   renderWithProviders(
-    <TableColumnPicker
+    <TableColumnPanel
       query={query}
       stageIndex={stageIndex}
       columns={columns}

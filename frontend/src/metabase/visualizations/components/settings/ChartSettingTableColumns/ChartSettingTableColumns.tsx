@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { FieldPanel } from "metabase/querying";
 import { Button } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
@@ -9,8 +10,7 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 
-import { QueryColumnPicker } from "./QueryColumnPicker";
-import { TableColumnPicker } from "./TableColumnPicker";
+import { TableColumnPanel } from "./TableColumnPanel";
 import type { EditWidgetData } from "./types";
 import { canEditQuery } from "./utils";
 
@@ -58,13 +58,13 @@ export const ChartSettingTableColumns = ({
         </Button>
       )}
       {isEditingQuery ? (
-        <QueryColumnPicker
+        <FieldPanel
           query={query}
           stageIndex={stageIndex}
           onChange={handleQueryChange}
         />
       ) : (
-        <TableColumnPicker
+        <TableColumnPanel
           query={query}
           stageIndex={stageIndex}
           columns={columns}

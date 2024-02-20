@@ -78,9 +78,7 @@ const setup = ({ vizType }) => {
       expect(screen.getByText("User")).toBeInTheDocument();
       expect(screen.getByText("Product")).toBeInTheDocument();
 
-      const userColumList = screen.getByRole("list", {
-        name: "user-table-columns",
-      });
+      const userColumList = screen.getByTestId("user-table-columns");
 
       expect(within(userColumList).getByLabelText("Address")).not.toBeChecked();
       expect(within(userColumList).getByLabelText("State")).not.toBeChecked();

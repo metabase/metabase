@@ -13,17 +13,17 @@ import {
   toggleColumnInQuery,
 } from "./utils";
 
-interface QueryColumnPickerProps {
+interface FieldPanelProps {
   query: Lib.Query;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
 }
 
-export const QueryColumnPicker = ({
+export const FieldPanel = ({
   query,
   stageIndex,
   onChange,
-}: QueryColumnPickerProps) => {
+}: FieldPanelProps) => {
   const [searchValue, setSearchValue] = useState("");
 
   const groupItems = useMemo(() => {

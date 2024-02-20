@@ -5,7 +5,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import type * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 
-import { QueryColumnPicker } from "./QueryColumnPicker";
+import { FieldPanel } from "./FieldPanel";
 
 interface TestProps {
   query: Lib.Query;
@@ -16,11 +16,7 @@ function Test({ query: initialQuery, stageIndex }: TestProps) {
   const [query, setQuery] = useState(initialQuery);
 
   return (
-    <QueryColumnPicker
-      query={query}
-      stageIndex={stageIndex}
-      onChange={setQuery}
-    />
+    <FieldPanel query={query} stageIndex={stageIndex} onChange={setQuery} />
   );
 }
 

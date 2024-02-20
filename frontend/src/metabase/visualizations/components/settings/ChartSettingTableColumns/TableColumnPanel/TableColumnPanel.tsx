@@ -17,7 +17,7 @@ import {
   toggleColumnInSettings,
 } from "./utils";
 
-interface TableColumnPickerProps {
+interface TableColumnPanelProps {
   query: Lib.Query;
   stageIndex: number;
   columns: DatasetColumn[];
@@ -27,7 +27,7 @@ interface TableColumnPickerProps {
   onShowWidget: (config: EditWidgetData, targetElement: HTMLElement) => void;
 }
 
-export const TableColumnPicker = ({
+export const TableColumnPanel = ({
   query,
   stageIndex,
   columns,
@@ -35,7 +35,7 @@ export const TableColumnPicker = ({
   getColumnName,
   onChange,
   onShowWidget,
-}: TableColumnPickerProps) => {
+}: TableColumnPanelProps) => {
   const columnItems = useMemo(() => {
     return getColumnItems(query, stageIndex, columns, columnSettings);
   }, [query, stageIndex, columns, columnSettings]);
