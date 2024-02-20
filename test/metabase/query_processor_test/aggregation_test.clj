@@ -285,14 +285,32 @@
                    results)))))))
 
 (deftest semantic-type-for-aggregate-fields-test
-  (testing "Does `:semantic-type` show up for aggregate Fields?"
+  (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"
     (tu/with-temp-vals-in-db Field (data/id :venues :price) {:semantic_type :type/Currency}
-      (let [results (mt/run-mbql-query venues
-                      {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
-                      :semantic_type :type/Currency)
-               (or (-> results mt/cols first)
-                   results)))))))
+      (doseq [[aggregation predfn expected-semantic-type] [[:sum nil :type/Currency]
+                                                           [:count nil :type/Quantity]
+                                                           [:cum-count nil :type/Quantity]
+                                                           [:count-where (fn [f] [:> f 10]) :type/Quantity]
+                                                           [:avg nil :type/Currency]
+                                                           [:distinct nil :type/Quantity]
+                                                           [:max nil :type/Currency]
+                                                           [:median nil :type/Currency]
+                                                           [:min nil :type/Currency]
+                                                           #_[:percentile [] :type/Quantity]
+                                                           #_[:share [] :type/Percentage]
+                                                           [:stddev nil :type/Currency]
+                                                           [:cum-sum nil :type/Currency]
+                                                           #_[:sum-where (fn [f] [:> f 10]) :type/Currency]
+                                                           [:var nil nil]]]
+        (let [results (mt/run-mbql-query venues
+                        {:aggregation (if predfn
+                                        [[aggregation (predfn $price) $price]]
+                                        [[aggregation $price]])})]
+            (testing (format "The %s Aggregation's semantic-type should be: %s" aggregation expected-semantic-type)
+              (is (= expected-semantic-type
+                     (:semantic_type
+                      (or (-> results mt/cols first)
+                          results))))))))))
 
 (deftest ^:parallel duplicate-aggregations-test
   (mt/test-drivers (mt/normal-drivers)

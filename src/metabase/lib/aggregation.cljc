@@ -138,7 +138,6 @@
     :sum       "sum"
     :var       "var"))
 
-
 (defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
   [query stage-number [tag _opts arg] style]
   (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
@@ -152,6 +151,11 @@
       :stddev    (i18n/tru "Standard deviation of {0}" arg)
       :sum       (i18n/tru "Sum of {0}"                arg)
       :var       (i18n/tru "Variance of {0}"           arg))))
+
+(defmethod lib.metadata.calculation/metadata-method :distinct
+  [query stage-number clause]
+  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+         :semantic-type :type/Quantity))
 
 (defmethod lib.metadata.calculation/display-name-method :percentile
   [query stage-number [_percentile _opts x p] style]
