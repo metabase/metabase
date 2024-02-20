@@ -103,7 +103,7 @@ export const SaveQuestionModal = ({
 
   const initialValues: FormValues = useMemo(
     () => ({
-      name: "",
+      name: question.generateQueryDescription() || "",
       description: question.description() || "",
       collection_id:
         question.collectionId() === undefined ||
