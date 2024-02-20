@@ -176,7 +176,10 @@
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
-  weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
+  weavejester/dependency                    {:mvn/version "0.2.1"}             ; Dependency graphs and topological sorting
+  ai.djl.huggingface/tokenizers {:mvn/version "0.26.0"}
+  ai.djl.pytorch/pytorch-engine {:mvn/version "0.26.0"}
+  io.github.jbellis/jvector {:mvn/version "3.0.0-alpha.5"}}
 
 
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

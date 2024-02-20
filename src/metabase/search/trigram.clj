@@ -41,6 +41,28 @@
                                                 (check (first f)))
                                :else        true))))}))
 
+(defn fetch-model [model]
+  (let [collect-q (collect-model-q model)
+        q         (mdb.query/format-sql (first (mdb.query/compile collect-q)))]
+    (try
+      (let [res (-> (mdb.query/reducible-query q)
+                    t2.realize/realize)]
+        (prn model (count res))
+        res)
+      (catch Exception e
+        (throw (ex-info "wtf" {:model model :query collect-q} e))))))
+
+(defmulti make-model-string (fn [data] (or (:type data) (:model data))))
+
+(defmethod make-model-string "dashboard" [m]
+  (str "Dashboard of " (:name m) " " (:description m)))
+
+(defmethod make-model-string "model" [m]
+  (str "Model of " (:name m) " " (:description m)))
+
+(defmethod make-model-string "question" [m]
+  (str "Question of " (:name m) " " (:description m)))
+
 
 (def DATA
   (delay
