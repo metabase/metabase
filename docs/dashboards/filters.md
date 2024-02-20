@@ -108,12 +108,12 @@ You can even wire up filters to text cards, but only if [the text card includes 
 
 ## Requiring a filter
 
-You can tell Metabase to require a filter so that people _must_ filter the dashboard by a certain column on a card.
+You can tell Metabase to require a filter so that people _must_ filter the dashboard by a certain column on a card. If you require a filter, you'll also need to supply a default value for that filter.
 
 You might want to require a filter value if:
 
 - Your unfiltered dashboard contains questions that pull lots of data, as enforcing filtered data can prevent people from inadvertently querying tons of data and running up your data warehouse costs.
-- The questions on your dashboard don't make sense without a filter. For example, if you create a dashboard intended to view data relevant to a specific customer (as opposed to all customers), you can require a customer ID so that the dashboard only loads data for that particular customer.
+- The questions on your dashboard don't make sense without a filter. For example, if you create a dashboard intended to view data relevant to a specific customer (as opposed to all customers), you can require a customer ID so that the dashboard only loads data for a particular customer.
 
 ## Editing a filter
 
