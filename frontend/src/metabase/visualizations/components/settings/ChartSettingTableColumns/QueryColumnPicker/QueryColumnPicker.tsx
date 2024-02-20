@@ -57,6 +57,7 @@ export const QueryColumnPicker = ({
           <div
             key={groupIndex}
             role="list"
+            aria-label={groupItem.displayName}
             data-testid={`${groupItem.displayName.toLowerCase()}-table-columns`}
           >
             <Text fz="lg" fw={700} lh="1.5rem" mb="1rem" mt="1.75rem">
@@ -73,7 +74,8 @@ export const QueryColumnPicker = ({
                 }
                 checked={groupItem.isSelected}
                 disabled={groupItem.isDisabled}
-                onClick={() => handleGroupToggle(groupItem)}
+                aria-label={groupItem.displayName}
+                onChange={() => handleGroupToggle(groupItem)}
               />
             </Box>
             {groupItem.columnItems.map((columnItem, columnIndex) => (
@@ -91,7 +93,8 @@ export const QueryColumnPicker = ({
                   disabled={columnItem.isDisabled}
                   mb="1.5rem"
                   size="xs"
-                  onClick={() => handleColumnToggle(columnItem)}
+                  aria-label={columnItem.displayName}
+                  onChange={() => handleColumnToggle(columnItem)}
                 />
               </Box>
             ))}
