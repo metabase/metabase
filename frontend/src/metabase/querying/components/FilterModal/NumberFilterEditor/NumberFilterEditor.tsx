@@ -5,12 +5,12 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { isNumber } from "metabase/lib/types";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
-import { Flex, Grid, NumberInput, Text, Icon } from "metabase/ui";
+import { Flex, Grid, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
-import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
 export function NumberFilterEditor({
@@ -75,37 +75,38 @@ export function NumberFilterEditor({
   };
 
   return (
-    <Grid grow>
-      <Grid.Col span="auto">
-        <Flex h="100%" align="center" gap="sm">
-          <Icon name={columnIcon} />
-          <FilterColumnName
+    <HoverParent>
+      <Grid grow>
+        <Grid.Col span="auto">
+          <FilterTitle
             query={query}
             stageIndex={stageIndex}
             column={column}
+            columnIcon={columnIcon}
             isSearching={isSearching}
+          >
+            <FilterOperatorPicker
+              value={operator}
+              options={availableOptions}
+              onChange={handleOperatorChange}
+            />
+          </FilterTitle>
+        </Grid.Col>
+        <Grid.Col span={4}>
+          <NumberValueInput
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            values={values}
+            valueCount={valueCount}
+            hasMultipleValues={hasMultipleValues}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
           />
-          <FilterOperatorPicker
-            value={operator}
-            options={availableOptions}
-            onChange={handleOperatorChange}
-          />
-        </Flex>
-      </Grid.Col>
-      <Grid.Col span={4}>
-        <NumberValueInput
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          values={values}
-          valueCount={valueCount}
-          hasMultipleValues={hasMultipleValues}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-        />
-      </Grid.Col>
-    </Grid>
+        </Grid.Col>
+      </Grid>
+    </HoverParent>
   );
 }
 
