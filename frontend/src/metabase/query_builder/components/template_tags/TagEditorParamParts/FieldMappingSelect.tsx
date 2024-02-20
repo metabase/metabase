@@ -56,8 +56,7 @@ export function FieldMappingSelect({
               setFieldFn={setFieldFn}
               className="AdminSelect flex align-center"
               isInitiallyOpen={!tag.dimension}
-              triggerIconSize={12}
-              renderAsSelect={true}
+              triggerIconSize={"1rem"} // this is inline with Mantine select icon size
             />
           )}
         </Schemas.Loader>
