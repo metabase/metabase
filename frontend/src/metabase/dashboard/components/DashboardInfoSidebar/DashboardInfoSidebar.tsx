@@ -1,19 +1,9 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { PLUGIN_CACHING } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
-import { Switch } from "metabase/ui";
-
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
-import EditableText from "metabase/core/components/EditableText";
-
-import type { Dashboard } from "metabase-types/api";
-import { getUser } from "metabase/selectors/user";
-
 import {
   revertToRevision,
   updateDashboard,
@@ -27,8 +17,6 @@ import { getUser } from "metabase/selectors/user";
 import { Switch } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
-import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -51,11 +39,6 @@ export function DashboardInfoSidebar({
   const { data: revisions } = useRevisionListQuery({
     query: { model_type: "dashboard", model_id: dashboard.id },
   });
-
-  // const { loading, generatedDescription, SuggestDescriptionButton } =
-  //   PLUGIN_LLM_AUTODESCRIPTION.useLLMDashboardDescription({
-  //     dashboardId: dashboard.id,
-  //   });
 
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
@@ -95,7 +78,6 @@ export function DashboardInfoSidebar({
         <DescriptionHeader>{t`About`}</DescriptionHeader>
         <StyledEditableText
           initialValue={dashboard.description}
-          // loading={loading}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
           isOptional
@@ -104,7 +86,6 @@ export function DashboardInfoSidebar({
           placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}
         />
-        {/*<SuggestDescriptionButton />*/}
       </ContentSection>
 
       <ContentSection>

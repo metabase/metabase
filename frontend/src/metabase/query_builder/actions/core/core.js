@@ -12,10 +12,6 @@ import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
-import { createThunkAction } from "metabase/lib/redux";
-import { LlmTaskAutoDescribe } from "metabase/services";
-import { MetabotApi } from "metabase/services";
-
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";

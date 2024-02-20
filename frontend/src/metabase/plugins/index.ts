@@ -35,7 +35,6 @@ import type {
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
-import type Database from "metabase-lib/metadata/Database";
 import type {
   GetAuthProviders,
   PluginGroupManagersType,
