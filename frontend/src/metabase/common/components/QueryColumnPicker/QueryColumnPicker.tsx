@@ -192,6 +192,7 @@ export function QueryColumnPicker({
         renderItemDescription={omitItemDescription}
         renderItemIcon={renderItemIcon}
         renderItemExtra={renderItemExtra}
+        renderItemLabel={renderItemLabel}
         color={color}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
@@ -199,6 +200,10 @@ export function QueryColumnPicker({
       />
     </DelayGroup>
   );
+}
+
+function renderItemLabel(item: ColumnListItem) {
+  return item.displayName;
 }
 
 function renderItemWrapper(content: ReactNode) {

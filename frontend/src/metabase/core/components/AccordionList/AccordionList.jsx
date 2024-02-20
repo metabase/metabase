@@ -74,6 +74,7 @@ export default class AccordionList extends Component {
     itemIsSelected: PropTypes.func,
     itemIsClickable: PropTypes.func,
     renderItemName: PropTypes.func,
+    renderItemLabel: PropTypes.func,
     renderItemDescription: PropTypes.func,
     renderItemIcon: PropTypes.func,
     renderItemExtra: PropTypes.func,
