@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import BrandColorSettings from "../BrandColorSettings";
 import ChartColorSettings from "../ChartColorSettings";
 import ChartColorPreview from "../ChartColorPreview";
@@ -12,22 +11,19 @@ import {
   SettingRoot,
   SettingTitle,
 } from "./ColorSettings.styled";
-import { RefreshConfirmationModal } from "./RefreshConfirmationModal";
 
 export interface ColorSettingsProps {
-  colorsSettingValue: Record<string, string> | null;
+  initialColors: Record<string, string> | null;
   originalColors: Record<string, string>;
   onChange?: (colors: Record<string, string>) => void;
 }
 
 export const ColorSettings = ({
-  colorsSettingValue,
+  initialColors,
   originalColors,
   onChange,
 }: ColorSettingsProps): JSX.Element => {
-  const [initialColors] = useState(colorsSettingValue ?? {});
-  const [colors, setColors] = useState(colorsSettingValue ?? {});
-  const isDirty = !_.isEqual(initialColors, colors);
+  const [colors, setColors] = useState(initialColors ?? {});
 
   const colorPalette = useMemo(() => {
     return { ...originalColors, ...colors };
@@ -68,7 +64,6 @@ export const ColorSettings = ({
           <ChartColorPreview colorPalette={colorPalette} />
         </SectionContent>
       </ChartColorSection>
-      <RefreshConfirmationModal isEnabled={isDirty} />
     </SettingRoot>
   );
 };
