@@ -35,8 +35,8 @@ class SaveStatus extends Component {
     this.setState({ showSavingingTimeout: timeout });
   }
 
-  setSaved() {
-    this.notify({ message: t`Saved` });
+  setSaved(message = t`Saved`) {
+    this.notify({ message });
   }
 
   setSaveError(error) {
