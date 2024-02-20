@@ -257,6 +257,23 @@ describe("scenarios > visualizations > table", () => {
     });
   });
 
+  it("should show field metadata in a hovercard when hovering over a table column in the summarize sidebar", () => {
+    openOrdersTable({ limit: 2 });
+
+    summarize();
+
+    cy.findAllByTestId("dimension-list-item")
+      .contains("ID")
+      .parents("[data-testid='dimension-list-item']")
+      .within(() => {
+        cy.findByLabelText("More info").realHover();
+      });
+
+    hovercard().within(() => {
+      cy.contains("Entity Key");
+    });
+  });
+
   it("should show field metadata hovercards for native query tables", () => {
     openNativeEditor().type("select * from products");
     cy.findByTestId("native-query-editor-container").icon("play").click();

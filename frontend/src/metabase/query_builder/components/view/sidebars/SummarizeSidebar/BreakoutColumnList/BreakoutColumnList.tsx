@@ -6,6 +6,7 @@ import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ColumnGroupName, SearchContainer } from "./BreakoutColumnList.styled";
@@ -116,26 +117,28 @@ export function BreakoutColumnList({
         />
       </SearchContainer>
       {!isSearching && (
-        <ul data-testid="pinned-dimensions">
-          {pinnedItems.map(item => (
-            <BreakoutColumnListItem
-              key={item.longDisplayName}
-              query={query}
-              item={item}
-              breakout={item.breakout}
-              isPinned
-              onAddColumn={onAddBreakout}
-              onUpdateColumn={column => {
-                if (item.breakout) {
-                  onUpdateBreakout(item.breakout, column);
-                } else {
-                  onAddBreakout(column);
-                }
-              }}
-              onRemoveColumn={handleRemovePinnedBreakout}
-            />
-          ))}
-        </ul>
+        <DelayGroup>
+          <ul data-testid="pinned-dimensions">
+            {pinnedItems.map(item => (
+              <BreakoutColumnListItem
+                key={item.longDisplayName}
+                query={query}
+                item={item}
+                breakout={item.breakout}
+                isPinned
+                onAddColumn={onAddBreakout}
+                onUpdateColumn={column => {
+                  if (item.breakout) {
+                    onUpdateBreakout(item.breakout, column);
+                  } else {
+                    onAddBreakout(column);
+                  }
+                }}
+                onRemoveColumn={handleRemovePinnedBreakout}
+              />
+            ))}
+          </ul>
+        </DelayGroup>
       )}
       <ul data-testid="unpinned-dimensions">
         {sections.map(section => (
