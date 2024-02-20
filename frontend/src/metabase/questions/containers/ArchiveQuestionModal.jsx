@@ -2,13 +2,11 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
-
 import { t, ngettext, msgid } from "ttag";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
-
-import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
+import * as Urls from "metabase/lib/urls";
 
 const mapDispatchToProps = {
   archive: card => Questions.actions.setArchived(card, true),

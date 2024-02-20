@@ -6,6 +6,7 @@ import type {
   RowValue,
   TableId,
 } from "metabase-types/api";
+
 import type {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,

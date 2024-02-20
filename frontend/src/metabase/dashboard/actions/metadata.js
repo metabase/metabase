@@ -1,9 +1,10 @@
 import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
-import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getLinkTargets } from "metabase/lib/click-behavior";
+import { loadMetadataForDependentItems } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
+
 import { isVirtualDashCard } from "../utils";
 
 export const loadMetadataForDashboard = dashCards => async dispatch => {

@@ -1,5 +1,5 @@
-import { getStylesRef, rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
+import { getStylesRef, rem } from "@mantine/core";
 
 export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
   Day: {

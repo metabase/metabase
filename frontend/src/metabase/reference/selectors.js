@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
 import Dashboards from "metabase/entities/dashboards";
-
 import { resourceListToMap } from "metabase/lib/redux";
 import {
   getShallowDatabases as getDatabases,

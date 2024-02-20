@@ -3,12 +3,11 @@ import { t } from "ttag";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import QuestionModerationIcon from "./components/QuestionModerationIcon";
-import QuestionModerationSection from "./components/QuestionModerationSection";
-import QuestionModerationButton from "./components/QuestionModerationButton";
 import ModerationReviewBanner from "./components/ModerationReviewBanner";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
-
+import QuestionModerationButton from "./components/QuestionModerationButton";
+import QuestionModerationIcon from "./components/QuestionModerationIcon";
+import QuestionModerationSection from "./components/QuestionModerationSection";
 import {
   MODERATION_STATUS,
   getStatusIcon,

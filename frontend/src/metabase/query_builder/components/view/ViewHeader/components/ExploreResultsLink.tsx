@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import type Question from "metabase-lib/Question";

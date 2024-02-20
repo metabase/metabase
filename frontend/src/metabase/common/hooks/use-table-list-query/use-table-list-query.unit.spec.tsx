@@ -1,5 +1,3 @@
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { createMockTable } from "metabase-types/api/mocks";
 import { setupTablesEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -7,6 +5,9 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { createMockTable } from "metabase-types/api/mocks";
+
 import { useTableListQuery } from "./use-table-list-query";
 
 const TEST_TABLE = createMockTable();

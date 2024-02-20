@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
 export const AccountContent = styled.div`

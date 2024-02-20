@@ -8,6 +8,7 @@ import {
   createMockStructuredCard,
   createMockNativeCard,
 } from "metabase-types/api/mocks";
+
 import { ORDERS_ID, SAMPLE_DB_ID } from "./sample_database";
 
 type StructuredCard = Card<StructuredDatasetQuery>;

@@ -2,6 +2,7 @@
 import cx from "classnames";
 
 import { formDomOnlyProps } from "metabase/lib/redux";
+
 import { HelpText } from "./FormTextAreaWidget.styled";
 
 const FormTextAreaWidget = ({

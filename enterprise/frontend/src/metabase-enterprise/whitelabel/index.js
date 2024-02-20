@@ -1,13 +1,18 @@
-import { jt, t } from "ttag";
 import { updateIn } from "icepick";
+import { jt, t } from "ttag";
+
+import RedirectWidget from "metabase/admin/settings/components/widgets/RedirectWidget";
+import { SettingSelect } from "metabase/admin/settings/components/widgets/SettingSelect";
+import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
+import MetabaseSettings from "metabase/lib/settings";
 import {
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_APP_INIT_FUCTIONS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_LOGO_ICON_COMPONENTS,
-  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_SELECTORS,
 } from "metabase/plugins";
-
+import { Anchor, Text } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   getApplicationName,
@@ -15,25 +20,20 @@ import {
   getLoadingMessage,
   getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
-import MetabaseSettings from "metabase/lib/settings";
 
-import { Anchor, Text } from "metabase/ui";
-import RedirectWidget from "metabase/admin/settings/components/widgets/RedirectWidget";
-import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
-import { SettingSelect } from "metabase/admin/settings/components/widgets/SettingSelect";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
-import FontWidget from "./components/FontWidget";
-import { LandingPageWidget } from "./components/LandingPageWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
-import { ImageUpload } from "./components/ImageUpload";
-import LogoIcon from "./components/LogoIcon";
-import { updateColors } from "./lib/whitelabel";
-import { getLoadingMessageOptions } from "./lib/loading-message";
+import FontWidget from "./components/FontWidget";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
+import { ImageUpload } from "./components/ImageUpload";
+import { LandingPageWidget } from "./components/LandingPageWidget";
+import LogoIcon from "./components/LogoIcon";
 import {
   MetabaseLinksToggleDescription,
   SwitchWidget,
 } from "./components/SwitchWidget";
+import { getLoadingMessageOptions } from "./lib/loading-message";
+import { updateColors } from "./lib/whitelabel";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));

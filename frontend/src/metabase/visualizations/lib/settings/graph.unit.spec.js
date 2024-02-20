@@ -5,6 +5,7 @@ import {
   createMockDatasetData,
   createMockColumn,
 } from "metabase-types/api/mocks";
+
 import { STACKABLE_SETTINGS, getDefaultDimensionLabel } from "./graph";
 
 describe("STACKABLE_SETTINGS", () => {

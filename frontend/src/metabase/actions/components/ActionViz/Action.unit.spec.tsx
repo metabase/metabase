@@ -1,6 +1,12 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import {
+  setupActionEndpoints,
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
   queryIcon,
@@ -9,13 +15,8 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import {
-  setupActionEndpoints,
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-
+import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
+import { checkNotNull } from "metabase/lib/types";
 import type {
   ActionDashboardCard,
   ParameterTarget,
@@ -32,8 +33,6 @@ import {
   createMockStructuredDatasetQuery,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { checkNotNull } from "metabase/lib/types";
 
 import type { ActionProps } from "./Action";
 import Action from "./Action";

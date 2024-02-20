@@ -1,6 +1,5 @@
 import { init } from "./app";
-
-import { getRoutes } from "./routes-public";
 import reducers from "./reducers-public";
+import { getRoutes } from "./routes-public";
 
 init(reducers, getRoutes, () => {});

@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+
 import { FieldSet } from "metabase/components/FieldSet";
-import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 interface ParameterFieldSetProps {
   fieldHasValueOrFocus?: boolean;

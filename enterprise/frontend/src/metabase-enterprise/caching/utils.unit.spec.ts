@@ -1,13 +1,14 @@
+import { createMockMetadata } from "__support__/metadata";
+import { mockSettings } from "__support__/settings";
+import { hoursToSeconds, msToSeconds } from "metabase/lib/time";
 import { checkNotNull } from "metabase/lib/types";
-import { msToSeconds, hoursToSeconds } from "metabase/lib/time";
+import type { CardType } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { mockSettings } from "__support__/settings";
-import { createMockMetadata } from "__support__/metadata";
-import type { CardType } from "metabase-types/api";
+
 import {
   getQuestionsImplicitCacheTTL,
   hasQuestionCacheSection,

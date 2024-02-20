@@ -1,5 +1,3 @@
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { createMockDatabase } from "metabase-types/api/mocks";
 import {
   PERMISSION_ERROR,
   setupDatabasesEndpoints,
@@ -10,6 +8,9 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { createMockDatabase } from "metabase-types/api/mocks";
+
 import { useDatabaseQuery } from "./use-database-query";
 
 const TEST_DATABASE = createMockDatabase();

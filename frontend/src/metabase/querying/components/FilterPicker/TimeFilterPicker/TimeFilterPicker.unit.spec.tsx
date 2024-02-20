@@ -1,13 +1,16 @@
-import dayjs from "dayjs";
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
+
 import { render, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithTimeFilter,
   findTimeColumn,
 } from "../test-utils";
+
 import { TimeFilterPicker } from "./TimeFilterPicker";
 
 type SetupOpts = {

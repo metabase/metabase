@@ -1,11 +1,10 @@
+import { color } from "metabase/lib/colors";
 import {
   PLUGIN_MODERATION,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
-import { color } from "metabase/lib/colors";
-
-import type { Collection } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
+import type { Collection } from "metabase-types/api";
 
 // sometimes we want to show an icon on the question
 // based on the collection it's in

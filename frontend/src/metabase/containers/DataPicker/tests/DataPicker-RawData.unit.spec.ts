@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
-
 import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
 
 import {

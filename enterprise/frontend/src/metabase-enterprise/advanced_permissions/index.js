@@ -1,7 +1,10 @@
-import { t } from "ttag";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+import {
+  getDatabaseFocusPermissionsUrl,
+  getGroupFocusPermissionsUrl,
+} from "metabase/admin/permissions/utils/urls";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   PLUGIN_REDUCERS,
@@ -12,14 +15,12 @@ import {
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
 } from "metabase/plugins";
-import {
-  getDatabaseFocusPermissionsUrl,
-  getGroupFocusPermissionsUrl,
-} from "metabase/admin/permissions/utils/urls";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+
 import { ImpersonationModal } from "./components/ImpersonationModal";
+import { updateNativePermission } from "./graph";
 import { getImpersonatedPostAction, advancedPermissionsSlice } from "./reducer";
 import { getImpersonations } from "./selectors";
-import { updateNativePermission } from "./graph";
 
 const IMPERSONATED_PERMISSION_OPTION = {
   label: t`Impersonated`,

@@ -1,9 +1,10 @@
 export * from "./config";
 
 import { FK_SYMBOL } from "metabase/lib/formatting";
-import type { Expression } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import Dimension from "metabase-lib/Dimension";
+import type { Expression } from "metabase-types/api";
+
 import {
   OPERATORS,
   FUNCTIONS,

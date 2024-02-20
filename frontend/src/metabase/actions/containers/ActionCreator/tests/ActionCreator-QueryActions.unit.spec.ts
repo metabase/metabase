@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import { screen, getIcon, queryIcon, within } from "__support__/ui";
 
+import { screen, getIcon, queryIcon, within } from "__support__/ui";
 import {
   createMockActionParameter,
   createMockCard,

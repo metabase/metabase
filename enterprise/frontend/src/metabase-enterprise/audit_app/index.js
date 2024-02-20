@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import {
   PLUGIN_ADMIN_NAV_ITEMS,
   PLUGIN_ADMIN_ROUTES,
@@ -9,11 +10,11 @@ import {
   PLUGIN_QUERY_BUILDER_HEADER,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import getAuditRoutes, { getUserMenuRotes } from "./routes";
-import { auditInfo } from "./reducer";
-import { getDashboardOverviewId, getQuestionOverviewId } from "./selectors";
 
 import { InstanceAnalyticsButton } from "./components/InstanceAnalyticsButton/InstanceAnalyticsButton";
+import { auditInfo } from "./reducer";
+import getAuditRoutes, { getUserMenuRotes } from "./routes";
+import { getDashboardOverviewId, getQuestionOverviewId } from "./selectors";
 
 if (hasPremiumFeature("audit_app")) {
   PLUGIN_ADMIN_NAV_ITEMS.push({

@@ -3,16 +3,23 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
+
+import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import type { RadioOption } from "metabase/core/components/Radio";
 import Radio from "metabase/core/components/Radio";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
-import ModalContent from "metabase/components/ModalContent";
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import type Question from "metabase-lib/Question";
+import type Field from "metabase-lib/metadata/Field";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
+import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
 import type {
   ValuesSourceConfig,
   ValuesSourceType,
@@ -21,14 +28,10 @@ import type {
   ParameterValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
-import type Field from "metabase-lib/metadata/Field";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
+
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
+
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
   ModalHelpMessage,

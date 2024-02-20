@@ -1,5 +1,5 @@
-import { KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 import { moveToBack, moveToFront } from "metabase/lib/dom";
+import { KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 export function initBrush(parent, child, onBrushChange, onBrushEnd) {
   if (!parent.brushOn || !child.brushOn) {

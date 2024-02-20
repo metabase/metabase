@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import * as Lib from "metabase-lib";
 
 export function getPivotColumnSplit(question) {

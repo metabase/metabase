@@ -1,14 +1,14 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
+import { serializeCardForUrl } from "metabase/lib/card";
+import { checkNotNull } from "metabase/lib/types";
+import type Question from "metabase-lib/Question";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 import { createMockLocation } from "metabase-types/store/mocks";
-import { serializeCardForUrl } from "metabase/lib/card";
-import { checkNotNull } from "metabase/lib/types";
-import type Question from "metabase-lib/Question";
 
 import { isNavigationAllowed } from "./utils";
 

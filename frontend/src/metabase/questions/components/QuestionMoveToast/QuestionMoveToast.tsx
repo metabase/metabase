@@ -1,9 +1,8 @@
 import { jt } from "ttag";
 
 import { coerceCollectionId } from "metabase/collections/utils";
-
-import type { CollectionId } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
+import type { CollectionId } from "metabase-types/api";
 
 import {
   CollectionLink,

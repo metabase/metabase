@@ -1,23 +1,19 @@
-import { Component } from "react";
-import _ from "underscore";
 import cx from "classnames";
+import type { LocationDescriptor } from "history";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import type { LocationDescriptor } from "history";
+import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
-
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
-import { getVisualizationRaw } from "metabase/visualizations";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { color } from "metabase/lib/colors";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import {
   isQuestionDashCard,
   getVisibleCardIds,
 } from "metabase/dashboard/utils";
-
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { color } from "metabase/lib/colors";
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
@@ -26,13 +22,15 @@ import {
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
-import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
+import { getVisualizationRaw } from "metabase/visualizations";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
-
+import type Metadata from "metabase-lib/metadata/Metadata";
 import type {
   BaseDashboardCard,
   Card,
@@ -46,21 +44,17 @@ import type {
   ParameterValueOrArray,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
-import type Metadata from "metabase-lib/metadata/Metadata";
 
+import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
+import { DashCard } from "./DashCard/DashCard";
+import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
 import {
   DashboardCardContainer,
   DashboardGridContainer,
 } from "./DashboardGrid.styled";
-
-import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
+import { QuestionPickerModal } from "./QuestionPickerModal";
 import { GridLayout } from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
-
-import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
-import { QuestionPickerModal } from "./QuestionPickerModal";
-import { DashCard } from "./DashCard/DashCard";
 
 type GridBreakpoint = "desktop" | "mobile";
 

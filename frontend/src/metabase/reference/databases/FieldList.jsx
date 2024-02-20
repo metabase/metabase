@@ -1,25 +1,24 @@
 /* eslint "react/prop-types": "warn" */
 /* eslint-disable react/no-unknown-property */
+import cx from "classnames";
+import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { useFormik } from "formik";
 import { t } from "ttag";
-import cx from "classnames";
-import S from "metabase/components/List/List.css";
-import R from "metabase/reference/Reference.css";
-import F from "metabase/reference/components/Field.css";
 
-import Field from "metabase/reference/components/Field";
-import List from "metabase/components/List";
 import EmptyState from "metabase/components/EmptyState";
+import List from "metabase/components/List";
+import S from "metabase/components/List/List.css";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import * as metadataActions from "metabase/redux/metadata";
+import R from "metabase/reference/Reference.css";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
-
-import * as metadataActions from "metabase/redux/metadata";
+import Field from "metabase/reference/components/Field";
+import F from "metabase/reference/components/Field.css";
 import * as actions from "metabase/reference/reference";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
+
 import {
   getError,
   getFieldsByTable,

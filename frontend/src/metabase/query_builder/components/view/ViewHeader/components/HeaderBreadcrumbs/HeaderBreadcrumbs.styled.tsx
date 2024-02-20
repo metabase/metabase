@@ -1,6 +1,7 @@
-import PropTypes from "prop-types";
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+import PropTypes from "prop-types";
+
 import Badge from "metabase/components/Badge";
 import { color } from "metabase/lib/colors";
 

@@ -1,5 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+
 import { darken } from "metabase/lib/colors";
 
 // Should be applied to :before or :after pseudo-elements to add a spacing between table sections such as header, body or footer

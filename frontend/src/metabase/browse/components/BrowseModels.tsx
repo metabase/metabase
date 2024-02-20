@@ -1,16 +1,13 @@
 import { t } from "ttag";
 
-import type { SearchResult } from "metabase-types/api";
-
+import NoResults from "assets/img/no_results.svg";
+import type { useSearchListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
-
-import type { useSearchListQuery } from "metabase/common/hooks";
-
-import NoResults from "assets/img/no_results.svg";
-import { Box } from "metabase/ui";
-
 import { getLocale } from "metabase/setup/selectors";
+import { Box } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
+
 import { groupModels } from "../utils";
 
 import { CenteredEmptyState } from "./BrowseApp.styled";

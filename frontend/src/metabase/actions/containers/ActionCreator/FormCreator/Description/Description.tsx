@@ -1,8 +1,10 @@
 import { jt, t } from "ttag";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+
 import { InfoText } from "./Description.styled";
 
 export function Description() {

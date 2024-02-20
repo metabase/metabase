@@ -1,5 +1,5 @@
-import { Switch } from "metabase/ui";
 import type { SwitchProps } from "metabase/ui";
+import { Switch } from "metabase/ui";
 
 interface MetabaseBooleanSetting {
   value: boolean | null;

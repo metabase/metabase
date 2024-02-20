@@ -1,13 +1,12 @@
 import { useState, useRef } from "react";
 import { t } from "ttag";
-
 import _ from "underscore";
 
 import { CardApi } from "metabase/services";
 
-import * as Queries from "../../audit_app/lib/cards/queries";
-import AuditTable from "../../audit_app/containers/AuditTable";
 import AuditParameters from "../../audit_app/components/AuditParameters";
+import AuditTable from "../../audit_app/containers/AuditTable";
+import * as Queries from "../../audit_app/lib/cards/queries";
 import { ErrorMode } from "../mode";
 
 const getSortOrder = isAscending => (isAscending ? "asc" : "desc");

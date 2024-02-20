@@ -1,4 +1,5 @@
 import type { CardId, WritebackActionId } from "metabase-types/api";
+
 import { modelDetail } from "./models";
 
 type ParentModelProps = {

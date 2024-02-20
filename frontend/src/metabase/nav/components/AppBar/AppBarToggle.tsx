@@ -1,8 +1,10 @@
-import { t } from "ttag";
-import { useState, useEffect } from "react";
 import { useHover } from "@mantine/hooks";
+import { useState, useEffect } from "react";
+import { t } from "ttag";
+
 import { isMac } from "metabase/lib/browser";
 import { Tooltip } from "metabase/ui";
+
 import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
 
 export interface AppBarToggleProps {

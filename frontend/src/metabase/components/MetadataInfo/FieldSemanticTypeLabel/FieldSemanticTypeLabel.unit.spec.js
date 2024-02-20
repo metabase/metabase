@@ -1,5 +1,5 @@
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   createSampleDatabase,
@@ -7,6 +7,7 @@ import {
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
+
 import FieldSemanticTypeLabel from "./FieldSemanticTypeLabel";
 
 const state = createMockState({

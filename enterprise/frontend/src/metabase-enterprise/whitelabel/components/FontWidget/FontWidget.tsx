@@ -1,7 +1,9 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+
 import MetabaseSettings from "metabase/lib/settings";
 import { Select } from "metabase/ui";
+
 import type { FontSetting, FontSettingKeys, FontSettingValues } from "./types";
 
 export interface FontWidgetProps {

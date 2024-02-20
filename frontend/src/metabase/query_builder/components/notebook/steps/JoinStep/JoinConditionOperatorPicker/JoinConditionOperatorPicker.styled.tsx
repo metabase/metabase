@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import SelectList from "metabase/components/SelectList";
 import { color, lighten } from "metabase/lib/colors";
 

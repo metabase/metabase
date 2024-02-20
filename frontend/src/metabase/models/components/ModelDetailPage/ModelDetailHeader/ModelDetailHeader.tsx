@@ -1,19 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
 import EntityMenu from "metabase/components/EntityMenu";
-import Link from "metabase/core/components/Link";
 import Modal from "metabase/components/Modal";
-
-import * as Urls from "metabase/lib/urls";
-
-import ArchiveModelModal from "metabase/questions/containers/ArchiveQuestionModal";
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
-
-import type { Collection } from "metabase-types/api";
-
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
+import * as Urls from "metabase/lib/urls";
+import ArchiveModelModal from "metabase/questions/containers/ArchiveQuestionModal";
 import type Question from "metabase-lib/Question";
+import type { Collection } from "metabase-types/api";
 
 import {
   ModelHeader,

@@ -1,4 +1,5 @@
 import { Button } from "metabase/ui";
+
 import { getUpdateButtonProps } from "./getUpdateButtonProps";
 
 interface UpdateButtonProps {

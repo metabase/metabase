@@ -1,6 +1,7 @@
-import { ResizableBox } from "react-resizable";
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+import { ResizableBox } from "react-resizable";
+
 import { color, darken } from "metabase/lib/colors";
 
 const aceEditorStyle = css`

@@ -1,6 +1,8 @@
 import { t } from "ttag";
-import { Icon, Text } from "metabase/ui";
+
 import { color } from "metabase/lib/colors";
+import { Icon, Text } from "metabase/ui";
+
 import {
   LoadingAndErrorContainer,
   LoadingAndErrorContent,

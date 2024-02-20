@@ -1,13 +1,13 @@
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-
-import { openUrl } from "metabase/redux/app";
-import * as Lib from "metabase-lib";
 import { getParametersMappedToDashcard } from "metabase/parameters/utils/dashboards";
+import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
+
 import { getDashboardId } from "../selectors";
 
 export const EDIT_QUESTION = "metabase/dashboard/EDIT_QUESTION";

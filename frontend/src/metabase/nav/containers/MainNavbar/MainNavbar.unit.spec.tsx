@@ -1,22 +1,19 @@
-import { Route } from "react-router";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-
-import * as Urls from "metabase/lib/urls";
-
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
+import * as Urls from "metabase/lib/urls";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCard,
@@ -25,14 +22,13 @@ import {
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-
+import type { DashboardState } from "metabase-types/store";
 import {
   createMockState,
   createMockDashboardState,
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
 
-import type { DashboardState } from "metabase-types/store";
 import MainNavbar from "./MainNavbar";
 
 type SetupOpts = {

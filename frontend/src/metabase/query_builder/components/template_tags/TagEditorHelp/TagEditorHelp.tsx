@@ -1,13 +1,14 @@
 import { t, jt } from "ttag";
+
 import Code from "metabase/components/Code";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { uuid } from "metabase/lib/utils";
-import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
-import { useSelector } from "metabase/lib/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type Database from "metabase-lib/metadata/Database";
+import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
 
 const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
   variable: {

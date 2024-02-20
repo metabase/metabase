@@ -1,9 +1,9 @@
-import { ModelIndexes } from "metabase/entities/model-indexes";
 import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
 import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
+import { ModelIndexes } from "metabase/entities/model-indexes";
 import type {
   ModelIndexesListQuery,
   ModelIndexesListResult,

@@ -1,7 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
+
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
-import { getSetting, getSettings } from "metabase/selectors/settings";
 import type { AuthProvider } from "metabase/plugins/types";
+import { getSetting, getSettings } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
 const EMPTY_PROVIDERS: AuthProvider[] = [];
