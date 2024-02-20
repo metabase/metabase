@@ -17,6 +17,7 @@ import {
 import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
 import {
   getDefaultBubbleSizeCol,
+  getDefaultGoalLabel,
   getDefaultIsHistogram,
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
@@ -232,6 +233,8 @@ export const computeStaticComboChartSettings = (
     "graph.x_axis.scale",
     getDefaultXAxisScale(settings),
   );
+
+  fillWithDefaultValue(settings, "graph.goal_label", getDefaultGoalLabel());
 
   // For scatter plot
   fillWithDefaultValue(
