@@ -8,6 +8,7 @@ import {
   filter,
   filterField,
   getNotebookStep,
+  hovercard,
   join,
   openNotebook,
   openOrdersTable,
@@ -261,6 +262,27 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // confirm that the popover is shown
     popover().contains("The total billed amount.");
     popover().contains("80.36");
+  });
+
+  it("should show an info card filter columns in the popover", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Filter").click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Add filters to narrow your answer").click();
+
+    cy.findByRole("tree")
+      .findByText("User ID")
+      .parents("[data-testid='dimension-list-item']")
+      .findByLabelText("More info")
+      .realHover();
+
+    hovercard().within(() => {
+      cy.contains("Foreign Key");
+      cy.findByText(/The id of the user/);
+    });
   });
 
   describe.skip("popover rendering issues (metabase#15502)", () => {
