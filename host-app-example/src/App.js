@@ -7,9 +7,9 @@ import { LogoutButton } from "./Logout";
 const config = {
   metabaseInstanceUrl:
     process.env.REACT_APP_METABASE_INSTANCE_URL || "http://localhost:3000",
-  font: "Lato",
-  // jwtProviderUri: process.env.REACT_APP_JWT_PROVIDER_URI,
-  apiKey: "mb_//WK5lK5krDurdyjO/ZcoYQi50gTvUekNxFMR9N+HJk=",
+  font: "Roboto Slab",
+  jwtProviderUri: "http://localhost:8090/sso/metabase",
+  // apiKey: "mb_//WK5lK5krDurdyjO/ZcoYQi50gTvUekNxFMR9N+HJk=",
 };
 
 const App = () => (

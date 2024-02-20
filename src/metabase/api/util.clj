@@ -2,6 +2,9 @@
   "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks."
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [compojure.core :refer [GET POST]]
    [crypto.random :as crypto-random]
    [metabase.analytics.prometheus :as prometheus]
@@ -10,8 +13,10 @@
    [metabase.api.common.validation :as validation]
    [metabase.logger :as logger]
    [metabase.troubleshooting :as troubleshooting]
+   [metabase.util.files :as u.files]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]))
+   [ring.util.response :as response])
+)
 
 (api/defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
@@ -52,5 +57,28 @@
   (let [pool-info (prometheus/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
+
+
+(api/defendpoint GET "/fonts"
+  "Returns the font file given the font name"
+  [font-name]
+  {font-name [:maybe ms/NonBlankString]}
+  (log/info (str "frontend_client/app/fonts/" font-name))
+  (u.files/with-open-path-to-resource [file-path (str "frontend_client/app/fonts/" font-name)]
+    (log/info file-path)
+    (let [file-path-str (.toString file-path)
+          file (java.io.File. file-path-str)]
+      (if (.exists file)
+        (let [content-type (cond
+                             (.endsWith file-path ".woff") "application/font-woff"
+                             (.endsWith file-path ".woff2") "application/font-woff2"
+                             (.endsWith file-path ".ttf") "application/x-font-ttf"
+                             (.endsWith file-path ".otf") "font/opentype"
+                             :else "application/octet-stream")]
+          (-> (response/file-response  file-path-str)
+              (response/content-type content-type)
+              (response/header "Content-Disposition" (str "attachment; filename=\"" font-name "\""))))
+        (response/response "File not found")))))
+
 
 (api/define-routes)

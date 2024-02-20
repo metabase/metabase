@@ -69,7 +69,25 @@ module.exports = env => {
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
         },
         {
-          test: /\.(eot|woff2?|ttf|svg|png)$/,
+          test: /\.(eot|woff2?|ttf)$/,
+          type: "asset/resource",
+          resourceQuery: { not: [/component|source/] },
+          generator: {
+            publicPath: pathData => {
+              const transformedPath = pathData.module.rawRequest.replace(
+                /^fonts\/([^\/]+)\/.*$/,
+                "$1",
+              );
+              return `http://localhost:3000/api/util/fonts?font-name=${encodeURIComponent(
+                transformedPath,
+              )}/`;
+            },
+            filename: "[name][ext]",
+            emit: false,
+          },
+        },
+        {
+          test: /\.(svg|png)$/,
           type: "asset/inline",
           resourceQuery: { not: [/component|source/] },
         },
@@ -79,6 +97,7 @@ module.exports = env => {
             {
               loader: "style-loader",
             },
+            //   { loader: MiniCssExtractPlugin.loader },
             { loader: "css-loader", options: CSS_CONFIG },
             { loader: "postcss-loader" },
           ],

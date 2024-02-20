@@ -13,14 +13,14 @@ import { setOptions } from "metabase/redux/embed";
 import { SdkEmotionCacheProvider } from "./SdkEmotionCacheProvider";
 import { EmbeddingContext } from "./context";
 import type { SDKConfigType } from "./config";
-import { METABASE_SDK_CONFIG, SDK_CONTEXT_CLASS_NAME } from "./config";
+import { SDK_CONTEXT_CLASS_NAME } from "./config";
 
 import "./styles.css";
 import { useInitData } from "./hooks";
 
 const MetabaseProviderInternal = ({
   children,
-  config = METABASE_SDK_CONFIG,
+  config,
 }: {
   children: React.ReactNode;
   config: SDKConfigType;
