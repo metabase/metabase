@@ -154,8 +154,10 @@ describe("scenarios > question > saved", () => {
     popover().findByText("New collection").click();
 
     const NEW_COLLECTION = "Foo";
-    modal().within(() => {
-      cy.findByLabelText("Name").type(NEW_COLLECTION);
+    cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByPlaceholderText("My new fantastic collection").type(
+        NEW_COLLECTION,
+      );
       cy.findByText("Create").click();
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
       cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);

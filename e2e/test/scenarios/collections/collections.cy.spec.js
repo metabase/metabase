@@ -573,9 +573,11 @@ describe("scenarios > collection defaults", () => {
         cy.findByText("Collection").click();
       });
 
-      modal().within(() => {
+      cy.findByTestId("new-collection-modal").then(modal => {
         cy.findByText("Collection it's saved in").should("be.visible");
-        cy.findByText("Third collection").should("be.visible");
+        cy.findByTestId("select-button")
+          .findByText("Third collection")
+          .should("be.visible");
       });
     });
   });

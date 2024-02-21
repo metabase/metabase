@@ -96,9 +96,9 @@ describeEE("official collections", () => {
       openCollection("First collection");
 
       openNewCollectionItemFlowFor("collection");
-      modal().within(() => {
+      cy.findByTestId("new-collection-modal").then(modal => {
         assertNoCollectionTypeInput();
-        cy.icon("close").click();
+        cy.findByLabelText("Close").click();
       });
 
       openCollectionMenu();
@@ -119,10 +119,12 @@ describeEE("official collections", () => {
       popover().findByText("Make collection official").should("exist");
 
       openNewCollectionItemFlowFor("collection");
-      modal().within(() => {
+      cy.findByTestId("new-collection-modal").then(modal => {
         assertHasCollectionTypeInput();
-        cy.findByLabelText("Name").type("Personal collection child");
-        cy.button("Create").click();
+        cy.findByPlaceholderText("My new fantastic collection").type(
+          "Personal collection child",
+        );
+        cy.findByText("Create").click();
       });
 
       openCollection("Personal collection child");
@@ -134,9 +136,9 @@ describeEE("official collections", () => {
       popover().findByText("Make collection official").should("exist");
 
       openNewCollectionItemFlowFor("collection");
-      modal().within(() => {
+      cy.findByTestId("new-collection-modal").then(modal => {
         assertHasCollectionTypeInput();
-        cy.icon("close").click();
+        cy.findByLabelText("Close").click();
       });
     });
   });
