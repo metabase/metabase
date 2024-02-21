@@ -63,7 +63,6 @@ export const DashboardBody = styled.div<{ isEditingOrSharing: boolean }>`
 `;
 
 export const DashboardHeaderContainer = styled.header<{
-  isVisible: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
 }>`
@@ -72,12 +71,6 @@ export const DashboardHeaderContainer = styled.header<{
 
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
-
-  ${({ isVisible }) =>
-    !isVisible &&
-    css`
-      display: none;
-    `}
 
   ${({ isFullscreen }) =>
     isFullscreen &&

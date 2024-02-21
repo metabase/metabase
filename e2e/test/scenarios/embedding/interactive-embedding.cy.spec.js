@@ -17,6 +17,7 @@ import {
   getNextUnsavedDashboardCardId,
   dashboardGrid,
   createDashboardWithTabs,
+  goToTab,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -311,7 +312,7 @@ describeEE("scenarios > embedding > full app", () => {
       dashboardGrid().findByText("Rows 1-6 of first 2000").should("be.visible");
     });
 
-    it("should hide the dashboard with multiple tabs header by a param (metabase#39002)", () => {
+    it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
       const FIRST_TAB = { id: 1, name: "Tab 1" };
       const SECOND_TAB = { id: 2, name: "Tab 2" };
       createDashboardWithTabs({
@@ -337,6 +338,10 @@ describeEE("scenarios > embedding > full app", () => {
         "not.exist",
       );
       dashboardGrid().findByText("Rows 1-6 of first 2000").should("be.visible");
+      goToTab(SECOND_TAB.name);
+      cy.findByTestId("dashboard-parameters-and-cards")
+        .findByText("There's nothing here, yet.")
+        .should("be.visible");
     });
 
     it("should hide the dashboard's additional info by a param", () => {

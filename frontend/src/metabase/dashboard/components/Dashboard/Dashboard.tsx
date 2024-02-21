@@ -205,7 +205,6 @@ function DashboardInner(props: DashboardProps) {
     isAutoApplyFilters,
     isEditing,
     isFullscreen,
-    isHeaderVisible,
     isNavigatingBackToDashboard,
     isNightMode,
     isSharing,
@@ -485,7 +484,6 @@ function DashboardInner(props: DashboardProps) {
       {() => (
         <DashboardStyled>
           <DashboardHeaderContainer
-            isVisible={isHeaderVisible}
             isFullscreen={isFullscreen}
             isNightMode={shouldRenderAsNightMode}
           >
