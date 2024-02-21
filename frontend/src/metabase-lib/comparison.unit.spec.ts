@@ -1,29 +1,30 @@
 import { freeze } from "immer";
 
-import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { createMockCard } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createQuery } from "metabase-lib/test-helpers";
+import {
+  createOrdersTaxDatasetColumn,
+  createOrdersTotalDatasetColumn,
+} from "metabase-types/api/mocks/presets";
 
 describe("findColumnIndexesFromLegacyRefs", () => {
-  const metadata = createMockMetadata({
-    databases: [createSampleDatabase()],
-  });
-
   it("works even on frozen columns and refs", () => {
-    const card = createMockCard({});
-    const question = new Question(card, metadata);
+    const query = createQuery();
+    const stageIndex = -1;
+    const columns = freeze(
+      [createOrdersTotalDatasetColumn(), createOrdersTaxDatasetColumn()],
+      true,
+    );
 
-    const columns = question._legacyQuery().columns();
+    const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      columns,
+      columns.map(({ field_ref }) => field_ref!),
+    );
 
-    const frozen = freeze(columns, true /* deep */);
-    expect(Object.isFrozen(frozen[6])).toBe(true);
-    expect(Object.isFrozen(frozen[6].field_ref)).toBe(true);
-    expect(
-      Lib.findColumnIndexesFromLegacyRefs(question.query(), -1, frozen, [
-        frozen[6].field_ref,
-      ]),
-    ).toEqual([6]);
+    expect(Object.isFrozen(columns[0])).toBe(true);
+    expect(Object.isFrozen(columns[1])).toBe(true);
+    expect(columnIndexes).toEqual([0, 1]);
   });
 });
