@@ -5,7 +5,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
-import { deleteSession } from "metabase/lib/auth";
+import { deleteSession, initiateSLO } from "metabase/lib/auth";
 import * as Urls from "metabase/lib/urls";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -99,13 +99,14 @@ export const logout = createAsyncThunk(
   LOGOUT,
   async (redirectUrl: string | undefined, { dispatch, rejectWithValue }) => {
     try {
-      const {'saml-logout-url': samlLogoutUrl} = await deleteSession();
+      const {'saml-logout-url': samlLogoutUrl} =  await initiateSLO(); // deleteSession();
       // TODO: rename to sso-logout-url
       console.log("samlLogoutUrl", samlLogoutUrl);
+      console.log("decoded samlLogoutUrl", decodeURIComponent(samlLogoutUrl));
       // dispatch(clearCurrentUser());
-      await dispatch(refreshLocale()).unwrap();
-      trackLogout();
-      reload();
+      // await dispatch(refreshLocale()).unwrap();
+      // trackLogout();
+      // reload();
       // clears redux state and browser caches
       if (samlLogoutUrl !== undefined) {
         // handle the redirect to the saml logout url inline

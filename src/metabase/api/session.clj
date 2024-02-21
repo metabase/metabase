@@ -214,13 +214,12 @@
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
   (let [{:keys [email sso_source]}
-        (t2/query-one
-         {:select [:user.email :user.sso_source]
-          :from   [[:core_user :user]]
-          :join   [[:core_session :session] [:= :user.id :session.user_id]]
-          :where  [:= :session.id metabase-session-id]})]
+        (t2/query-one {:select [:u.email :u.sso_source]
+                       :from   [[:core_user :u]]
+                       :join   [[:core_session :session] [:= :u.id :session.user_id]]
+                       :where  [:= :session.id metabase-session-id]})]
     {:saml-logout-url
-     (when (= sso_source "saml")
+     (when (and (sso-settings/saml-enabled) (= sso_source "saml"))
        (saml/logout-redirect-location
         :idp-url (sso-settings/saml-identity-provider-uri)
         :issuer (sso-settings/saml-application-name)

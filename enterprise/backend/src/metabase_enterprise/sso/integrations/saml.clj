@@ -30,7 +30,9 @@
   5. Metabase clears the user's session, responds to the client with a redirect to the home page."
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.data.xml :as xml]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.sso.api.interface :as sso.i]
@@ -46,9 +48,12 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.urls :as urls]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
-   [schema.core :as s])
+   [schema.core :as s]
+   [toucan2.core :as t2])
   (:import
    (java.net URI URISyntaxException)
    (java.util Base64 UUID)))
@@ -228,3 +233,37 @@
                            :device-info     (request.u/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
       (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+
+
+(def ^:private saml2-success-status "urn:oasis:names:tc:SAML:2.0:status:Success")
+
+(mu/defn slo-success? :- :boolean
+  "Given a slo request saml response, return true if the response is successful."
+  [xml-str]
+  (let [*success? (atom false)]
+    (walk/postwalk
+     (fn [x]
+       (when (and (map? x)
+                  (= (:tag x) :StatusCode)
+                  (= (get-in x [:attrs :Value]) saml2-success-status))
+         (reset! *success? true))
+       x)
+     (xml/parse-str xml-str))
+    @*success?))
+
+(defmethod sso.i/sso-handle-slo :saml
+  [{:keys [cookies params] :as req}]
+  (let [xml-str (base64-decode (:SAMLResponse params))
+        success? (slo-success? xml-str)]
+    (if-let [metabase-session-id (and success?
+                                      (get-in cookies [mw.session/metabase-session-cookie :value]))]
+      (let [{:keys [email sso_source]} (t2/query-one
+                                        {:select [:user.email :user.sso_source]
+                                         :from   [[:core_user :user]]
+                                         :join   [[:core_session :session] [:= :user.id :session.user_id]]
+                                         :where  [:= :session.id metabase-session-id]})]
+        (t2/delete! :model/Session :id metabase-session-id)
+        (mw.session/clear-session-cookie
+         (response/redirect (urls/site-url))))
+      {:status 500 :body "SAML logout failed."})))
+

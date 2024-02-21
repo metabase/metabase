@@ -9,14 +9,11 @@
    [metabase-enterprise.sso.integrations.jwt]
    [metabase-enterprise.sso.integrations.saml]
    [metabase.api.common :as api]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.urls :as urls]
-   [ring.util.response :as response]
-   [stencil.core :as stencil]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]
+   [stencil.core :as stencil]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,15 +31,18 @@
       (log/error #_e (trs "Error returning SSO entry point"))
       (throw e))))
 
-(defn- sso-error-page [^Throwable e]
-  {:status  (get (ex-data e) :status-code 500)
-   :headers {"Content-Type" "text/html"}
-   :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
-              (let [message    (.getMessage e)
-                    data       (u/pprint-to-str (ex-data e))]
-                {:errorMessage   message
-                 :exceptionClass (.getName Exception)
-                 :additionalData data}))})
+(mu/defn ^:private sso-error-page
+  ([^Throwable e] (sso-error-page e "in"))
+  ([^Throwable e log-direction :- [:enum "in" "out"]]
+   {:status  (get (ex-data e) :status-code 500)
+    :headers {"Content-Type" "text/html"}
+    :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
+                                  (let [message    (.getMessage e)
+                                        data       (u/pprint-to-str (ex-data e))]
+                                    {:logDirection   log-direction
+                                     :errorMessage   message
+                                     :exceptionClass (.getName Exception)
+                                     :additionalData data}))}))
 
 ;; POST /auth/sso
 (api/defendpoint POST "/"
@@ -57,16 +57,11 @@
 ;; POST /auth/sso/handle_slo
 (api/defendpoint POST "/handle_slo"
   "Handles client confirmation of saml logout via slo"
-  [:as {cookies :cookies :as req}]
-  {cookies :map}
-  (if-let [metabase-session-id (get-in cookies [mw.session/metabase-session-cookie :value])]
-    (let [{:keys [email]} (t2/query-one
-                           {:select [:user.email]
-                            :from   [[:core_user :user]]
-                            :join   [[:core_session :session] [:= :user.id :session.user_id]]
-                            :where  [:= :session.id metabase-session-id]})]
-      (t2/delete! :model/Session :id metabase-session-id)
-      (mw.session/clear-session-cookie api/generic-204-no-content))
-    {:status 500 :body "SAML logout failed."}))
+  [:as req]
+  (try
+    (sso.i/sso-handle-slo req)
+    (catch Throwable e
+      (log/error e (trs "Error handling SLO"))
+      (sso-error-page e "out"))))
 
 (api/define-routes)
