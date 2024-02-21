@@ -164,7 +164,6 @@ function setup({
     dashcards: _.indexBy(dashcards, "id"),
   });
 
-  // @ts-expect-error we need better redux test tooling
   const store = getStore(
     mainReducers,
     createMockState({ dashboard: dashboardState }),

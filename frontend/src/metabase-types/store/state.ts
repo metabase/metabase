@@ -9,6 +9,7 @@ import type { EntitiesState } from "./entities";
 import type { MetabotState } from "./metabot";
 import type { QueryBuilderState } from "./qb";
 import type { ParametersState } from "./parameters";
+import type { RequestsState } from "./requests";
 import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { FileUploadState } from "./upload";
@@ -25,6 +26,7 @@ export interface State {
   metabot: MetabotState;
   parameters: ParametersState;
   qb: QueryBuilderState;
+  requests: RequestsState;
   routing: RouterState;
   settings: SettingsState;
   setup: SetupState;
