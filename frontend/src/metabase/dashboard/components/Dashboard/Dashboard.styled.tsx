@@ -86,6 +86,10 @@ export const DashboardHeaderContainer = styled.header<{
     `}
 `;
 
+export const CardsContainer = styled(FullWidthContainer)`
+  margin-top: 8px;
+`;
+
 export const ParametersAndCardsContainer = styled.div<{
   shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
 }>`
@@ -98,6 +102,17 @@ export const ParametersAndCardsContainer = styled.div<{
     overflow-x: clip;
   }
   padding-bottom: 40px;
+
+  &.${SAVING_DOM_IMAGE_CLASS} {
+    ${CardsContainer} {
+      padding-bottom: 20px;
+    }
+
+    ${DashCard.root} {
+      box-shadow: none;
+      border: 1px solid ${color("border")};
+    }
+  }
 `;
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
@@ -121,19 +136,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       border-bottom: 1px solid
         ${hasScroll ? color("border") : color("bg-light")};
     `}
-`;
-
-export const CardsContainer = styled(FullWidthContainer)`
-  margin-top: 8px;
-
-  &.${SAVING_DOM_IMAGE_CLASS} {
-    padding-bottom: 20px;
-
-    ${DashCard.root} {
-      box-shadow: none;
-      border: 1px solid ${color("border")};
-    }
-  }
 `;
 
 export const FIXED_WIDTH = "1048px";
