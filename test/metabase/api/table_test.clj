@@ -892,7 +892,8 @@
                                   (mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :latitude)]]
           (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues)) custom-field-order)
           (is (= custom-field-order
-                 (->> (table/fields (t2/select-one Table :id (mt/id :venues)))
+                 (->> (t2/hydrate (t2/select-one Table :id (mt/id :venues)) :fields)
+                      :fields
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))
