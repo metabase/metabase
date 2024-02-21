@@ -16,7 +16,11 @@ import { Icon, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
-import { StyledAccordionList, ItemName } from "./QueryColumnPicker.styled";
+import {
+  StyledAccordionList,
+  NameAndBucketing,
+  ItemName,
+} from "./QueryColumnPicker.styled";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
@@ -136,8 +140,8 @@ export function QueryColumnPicker({
 
   const renderItemName = useCallback(
     (item: ColumnListItem) => (
-      <ItemName>
-        {item.displayName}
+      <NameAndBucketing>
+        <ItemName>{item.displayName}</ItemName>
         {(hasBinning || hasTemporalBucketing) && (
           <BucketPickerPopover
             query={query}
@@ -152,7 +156,7 @@ export function QueryColumnPicker({
             onSelect={handleSelect}
           />
         )}
-      </ItemName>
+      </NameAndBucketing>
     ),
     [
       query,

@@ -10,7 +10,7 @@ export const StyledAccordionList = styled(AccordionList)<{ color: ColorName }>`
   color: ${props => color(props.color)};
 `;
 
-export const ItemName = styled.div`
+export const NameAndBucketing = styled.div`
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -20,6 +20,9 @@ export const ItemName = styled.div`
   ${TriggerButton} {
     height: 100%;
     padding: 0;
-    margin-left: 0.25rem;
   }
+`;
+
+export const ItemName = styled.div`
+  margin-right: 0.25rem;
 `;
