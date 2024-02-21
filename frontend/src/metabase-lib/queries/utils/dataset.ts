@@ -52,35 +52,46 @@ export function findColumnIndexForColumnSetting(
       return columnIndex;
     }
   }
+
   // if that fails, find by column name
   return _.findIndex(columns, col => col.name === columnSetting.name);
 }
 
-export function findColumnSettingIndexForColumn(
-  query: Lib.Query,
-  columnSettings: TableColumnOrderSetting[],
-  column: DatasetColumn,
-) {
-  // ignore settings without fieldRef but preserve indexes
-  const items = columnSettings.flatMap((item, settingIndex) => {
-    const fieldRef = normalize(item.fieldRef);
-    return fieldRef ? [{ fieldRef, settingIndex }] : [];
-  });
+type FieldRefWithIndex = {
+  fieldRef: FieldReference;
+  originalIndex: number;
+};
 
-  // first try to find by fieldRef
-  const stageIndex = -1;
-  const itemIndexes = Lib.findColumnIndexesFromLegacyRefs(
-    query,
-    stageIndex,
-    [column],
-    items.map(({ fieldRef }) => fieldRef),
+export function findColumnSettingIndexesForColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: DatasetColumn[],
+  columnSettings: TableColumnOrderSetting[],
+) {
+  const fieldRefs = columnSettings.reduce(
+    (fieldRefs: FieldRefWithIndex[], { fieldRef }, originalIndex) => {
+      if (fieldRef != null) {
+        fieldRefs.push({ fieldRef, originalIndex });
+      }
+      return fieldRefs;
+    },
+    [],
   );
 
-  const itemIndex = itemIndexes.find(index => index >= 0);
+  const columnIndexByFieldRefIndex = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    stageIndex,
+    columns,
+    fieldRefs.map(({ fieldRef }) => fieldRef),
+  );
 
-  if (itemIndex != null) {
-    return items[itemIndex].settingIndex;
-  }
-
-  return -1;
+  return columnIndexByFieldRefIndex.reduce(
+    (settingIndexes: number[], columnIndex, fieldRefIndex) => {
+      if (columnIndex >= 0) {
+        settingIndexes[columnIndex] = fieldRefs[fieldRefIndex].originalIndex;
+      }
+      return settingIndexes;
+    },
+    new Array(columns.length).fill(-1),
+  );
 }

@@ -44,9 +44,9 @@ const BaseColumnItem = ({
     <ColumnItemRoot
       className={className}
       role={role}
-      title={role ? title : undefined}
       isDraggable={draggable}
       onClick={onClick}
+      aria-label={role ? title : undefined}
       data-testid={draggable ? `draggable-item-${title}` : null}
       data-enabled={!!onRemove}
     >
