@@ -27,6 +27,7 @@ import {
 import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import Question from "metabase-lib/Question";
+import InternalQuery from "metabase-lib/queries/InternalQuery";
 import { nestedSettings } from "./nested";
 
 // HACK: cyclical dependency causing errors in unit tests
@@ -530,6 +531,9 @@ export const buildTableColumnSettings = ({
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     isValid: ([{ card, data }], vizSettings) => {
       const question = new Question(card /* metadata */);
+      if (InternalQuery.isDatasetQueryType(question.datasetQuery())) {
+        return true;
+      }
       const query = question.query();
       const stageIndex = -1;
       const columnSettings = vizSettings["table.columns"];
