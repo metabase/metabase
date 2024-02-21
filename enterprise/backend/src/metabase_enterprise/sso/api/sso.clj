@@ -15,7 +15,8 @@
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
    [ring.util.response :as response]
-   [stencil.core :as stencil]))
+   [stencil.core :as stencil]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,5 +53,20 @@
     (catch Throwable e
       (log/error e (trs "Error logging in"))
       (sso-error-page e))))
+
+;; POST /auth/sso/handle_slo
+(api/defendpoint POST "/handle_slo"
+  "Handles client confirmation of saml logout via slo"
+  [:as {cookies :cookies :as req}]
+  {cookies :map}
+  (if-let [metabase-session-id (get-in cookies [mw.session/metabase-session-cookie :value])]
+    (let [{:keys [email]} (t2/query-one
+                           {:select [:user.email]
+                            :from   [[:core_user :user]]
+                            :join   [[:core_session :session] [:= :user.id :session.user_id]]
+                            :where  [:= :session.id metabase-session-id]})]
+      (t2/delete! :model/Session :id metabase-session-id)
+      (mw.session/clear-session-cookie api/generic-204-no-content))
+    {:status 500 :body "SAML logout failed."}))
 
 (api/define-routes)

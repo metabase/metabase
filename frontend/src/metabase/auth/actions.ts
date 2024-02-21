@@ -103,9 +103,9 @@ export const logout = createAsyncThunk(
       // TODO: rename to sso-logout-url
       console.log("samlLogoutUrl", samlLogoutUrl);
       // dispatch(clearCurrentUser());
-      // await dispatch(refreshLocale()).unwrap();
-      // trackLogout();
-      // reload();
+      await dispatch(refreshLocale()).unwrap();
+      trackLogout();
+      reload();
       // clears redux state and browser caches
       if (samlLogoutUrl !== undefined) {
         // handle the redirect to the saml logout url inline

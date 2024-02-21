@@ -206,6 +206,8 @@
   (t2/delete! Session :id metabase-session-id)
   (mw.session/clear-session-cookie api/generic-204-no-content))
 
+(def metabase-slo-redirect-url "/auth/sso/handle_sso")
+
 ;; client initiates slo:
 (api/defendpoint POST "/logout"
   "Logout."
@@ -225,25 +227,7 @@
         :user-email email
         :relay-state (encode-decode/str->base64
                       (str (urls/site-url)
-                           "/api/session/handle_slo"))))}))
-
-(api/defendpoint POST "/handle_slo"
-  "Handles client confirmation of saml logout via slo"
-  [:as {body :body :as req}]
-  {body :any}
-  (def r req)
-  (def bb (slurp (:body r)))
-  (def body body)
-  (log/fatal [:slo-req body])
-  (let [slo-worked? true]
-    (if slo-worked?
-      (do
-        ;; TODO: who is the user?
-        ;; (t2/delete! Session :id metabase-session-id)
-        ;; TODO: check the saml for errors here.
-
-        (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
-      {:status 500 :body "SAML logout failed"})))
+                           metabase-slo-redirect-url))))}))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
