@@ -16,6 +16,14 @@ describe("issue 35344", () => {
 
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
+    // make sure normal undo still works
+    focusNativeEditor().type("--");
+    expect(focusNativeEditor().findByText("--")).to.exist;
+
+    focusNativeEditor().type("{meta}z");
+    focusNativeEditor().findByText("--").should("not.exist");
+
+    // more undoing does not change to empty editor
     focusNativeEditor().type("{meta}z");
     expect(focusNativeEditor().findByText("select")).to.exist;
   });
