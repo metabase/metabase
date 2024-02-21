@@ -274,17 +274,13 @@
        (describe-table-fks* driver conn table db-name-or-nil)))))
 
 (defmulti get-fks
-  "Returns an ISeq of primary keys for using a JDBC DatabaseMetaData from JDBC
-  Connection `conn`. Ref: https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getPrimaryKeys-java.lang.String-java.lang.String-java.lang.String-
-
-  The items are ordered by TABLE_CATEGORY, TABLE_SCHEMA, TABLE_NAME, and KEY_SEQ
+  "Returns a reducible of foreign keys data.
 
   Note: If catalog-name, schema-name, and table-name are not passed as kwargs, this must return all pks that the
-  metadata's connection can access. This is an undocumented feature of the .getPrimaryKeys method, but it is
-  implemented this way for Postgres and probably other databases."
+  metadata's connection can access."
   {:changelog-test/ignore true
    :added    "0.50.0"
-   :arglists '([driver ^Connection conn & {:as kwargs}])}
+   :arglists '([driver database & {:keys [catalog-name schema-name table-name]}])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
