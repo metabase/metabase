@@ -186,6 +186,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     const invite = getInvite(getState());
     const isTrackingAllowed = getIsTrackingAllowed(getState());
     const usageReason = getUsageReason(getState());
+    const licenseToken = getState().setup.licenseToken;
 
     try {
       await SetupApi.create({
@@ -198,6 +199,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
           site_locale: locale?.code,
           allow_tracking: isTrackingAllowed.toString(),
         },
+        license_token: licenseToken,
       });
 
       if (usageReason === "embedding" || usageReason === "both") {
