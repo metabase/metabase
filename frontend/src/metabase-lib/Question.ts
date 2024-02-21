@@ -568,11 +568,10 @@ class Question {
   }
 
   _syncNativeQuerySettings({ data: { cols = [] } = {} }) {
-    const vizSettings = this.setting("table.columns") || [];
+    const columnSettings = this.setting("table.columns") || [];
     // "table.columns" receive a value only if there are custom settings
     // e.g. some columns are hidden. If it's empty, it means everything is visible
-    const isUsingDefaultSettings = vizSettings.length === 0;
-
+    const isUsingDefaultSettings = columnSettings.length === 0;
     if (isUsingDefaultSettings) {
       return this;
     }
@@ -580,40 +579,41 @@ class Question {
     const query = this.query();
     const stageIndex = -1;
 
+    const columnIndexBySettingIndex = findColumnIndexesForColumnSettings(
+      query,
+      stageIndex,
+      cols,
+      columnSettings,
+    );
     const settingIndexByColumnIndex = findColumnSettingIndexesForColumns(
       query,
       stageIndex,
       cols,
-      vizSettings,
+      columnSettings,
     );
-    let addedColumns = cols.filter((col, colIndex) => {
+
+    const addedColumns = cols.filter((col, colIndex) => {
       const hasVizSettings = settingIndexByColumnIndex[colIndex] >= 0;
       return !hasVizSettings;
     });
-    const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn =
-        findColumnIndexesForColumnSettings(cols, colSetting, this.query()) >= 0;
-      const isMutatingColumn =
-        findColumnIndexesForColumnSettings(
-          addedColumns,
-          colSetting,
-          this.query(),
-        ) >= 0;
-      return hasColumn && !isMutatingColumn;
-    });
-    const noColumnsRemoved = validVizSettings.length === vizSettings.length;
+
+    const existingColumnSettings = columnSettings.filter(
+      (setting, settingIndex) => columnIndexBySettingIndex[settingIndex] >= 0,
+    );
+    const noColumnsRemoved =
+      existingColumnSettings.length === columnSettings.length;
 
     if (noColumnsRemoved && addedColumns.length === 0) {
       return this;
     }
 
-    addedColumns = addedColumns.map(col => ({
+    const addedColumnSettings = addedColumns.map(col => ({
       name: col.name,
       fieldRef: col.field_ref,
       enabled: true,
     }));
     return this.updateSettings({
-      "table.columns": [...validVizSettings, ...addedColumns],
+      "table.columns": [...existingColumnSettings, ...addedColumnSettings],
     });
   }
 
