@@ -16,10 +16,10 @@ describe("issue 29786", { tags: "@external" }, () => {
     openNativeEditor({ databaseName: "QA MySQL8" });
     SQLFilter.enterParameterizedQuery(SQL_QUERY);
 
-    cy.findAllByText("Text").first().click();
+    cy.findAllByTestId("variable-type-select").first().click();
     SQLFilter.chooseType("Field Filter");
     FieldFilter.mapTo({ table: "Products", field: "Category" });
-    cy.findAllByText("Text").last().click();
+    cy.findAllByTestId("variable-type-select").last().click();
     SQLFilter.chooseType("Field Filter");
     FieldFilter.mapTo({ table: "Products", field: "Vendor" });
 

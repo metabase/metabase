@@ -211,6 +211,18 @@
               {:source-query {:source-table $$checkins
                               :filter       [:> $date "2014-01-01"]}}))))))
 
+(deftest ^:parallel wrap-literals-around-expressions-test
+  (testing "does wrapping literals work against expressions? (#27185)"
+    (is (= (lib.tu.macros/mbql-query checkins
+             {:expressions {"foo" $date}
+              :filter      [:>
+                            [:expression "foo" {:base-type :type/DateTime}]
+                            [:absolute-datetime #t "2014-01-01T00:00Z[UTC]" :default]]})
+           (wrap-value-literals
+             (lib.tu.macros/mbql-query checkins
+               {:expressions {"foo" $date}
+                :filter      [:> [:expression "foo" {:base-type :type/DateTime}] "2014-01-01"]}))))))
+
 (deftest ^:parallel other-clauses-test
   (testing "Make sure we apply the transformation to predicates in all parts of the query, not only `:filter`"
     (is (= (lib.tu.macros/mbql-query checkins

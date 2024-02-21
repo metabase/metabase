@@ -3,11 +3,18 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]))
 
+(defn- select-sso-backend
+  [req]
+  (if (contains? (:params req) :jwt)
+    :jwt
+    :saml))
+
 (defn- sso-backend
   "Function that powers the defmulti in figuring out which SSO backend to use. It might be that we need to have more
   complex logic around this, but now it's just a simple priority. If SAML is configured use that otherwise JWT"
-  [_]
+  [req]
   (cond
+    (and (sso-settings/saml-enabled) (sso-settings/jwt-enabled)) (select-sso-backend req)
     (sso-settings/saml-enabled) :saml
     (sso-settings/jwt-enabled)  :jwt
     :else                       nil))

@@ -47,7 +47,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-que
 import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
-  findColumnSettingIndexForColumn,
+  findColumnSettingIndexesForColumns,
 } from "metabase-lib/queries/utils/dataset";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -492,15 +492,6 @@ class Question {
     const columns = Lib.returnedColumns(query, stageIndex);
     const previousColumns = Lib.returnedColumns(previousQuery, stageIndex);
 
-    if (
-      !_.isEqual(
-        previousQuestion.setting("table.columns"),
-        this.setting("table.columns"),
-      )
-    ) {
-      return this;
-    }
-
     const addedColumns = columns
       .filter(
         column =>
@@ -587,10 +578,16 @@ class Question {
     }
 
     const query = this.query();
+    const stageIndex = -1;
 
-    let addedColumns = cols.filter(col => {
-      const hasVizSettings =
-        findColumnSettingIndexForColumn(query, vizSettings, col) >= 0;
+    const settingIndexByColumnIndex = findColumnSettingIndexesForColumns(
+      query,
+      stageIndex,
+      cols,
+      vizSettings,
+    );
+    let addedColumns = cols.filter((col, colIndex) => {
+      const hasVizSettings = settingIndexByColumnIndex[colIndex] >= 0;
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
