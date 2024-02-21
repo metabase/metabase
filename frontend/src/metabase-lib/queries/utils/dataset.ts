@@ -2,7 +2,7 @@ import * as Lib from "metabase-lib";
 import type {
   DatasetColumn,
   DatasetData,
-  FieldReference,
+  DimensionReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
 
@@ -10,7 +10,7 @@ export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
 
 type FieldRefWithIndex = {
-  fieldRef: FieldReference;
+  fieldRef: DimensionReference;
   originalIndex: number;
 };
 
