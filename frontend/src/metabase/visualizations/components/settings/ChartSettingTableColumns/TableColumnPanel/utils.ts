@@ -73,6 +73,7 @@ export const moveColumnInSettings = (
   const adjustedOldIndex = columnItems[oldIndex].columnSettingIndex;
   const adjustedNewIndex = columnItems[newIndex].columnSettingIndex;
 
+  // delete a setting from the old index and put it to the new index, shifting all elements
   const newSettings = [...columnSettings];
   newSettings.splice(
     adjustedNewIndex,
