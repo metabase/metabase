@@ -1,4 +1,3 @@
-import cloneDeep from "lodash.clonedeep";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
@@ -41,11 +40,8 @@ export function findColumnIndexForColumnSetting(
     const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
       query,
       stageIndex,
-      // we make a deep clone to unfreeze objects as
-      // cljs adds a unique id to every object
-      // and it's not possible with frozen objects
-      cloneDeep(columns),
-      [cloneDeep(normalizedFieldRef)],
+      columns,
+      [normalizedFieldRef],
     );
 
     if (columnIndex >= 0) {
