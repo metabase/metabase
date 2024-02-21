@@ -75,14 +75,14 @@
                             (fn [_ _]
                               {:choices [{:message {:content json-response}}]})]
                 (is (= expected
-                       (mt/user-http-request :rasta :get 200 url))))))
+                       (mt/user-http-request :rasta :post 200 url))))))
           (testing "We can handle json in markdown"
             (mt/with-premium-features #{:llm-autodescription}
               (with-redefs [llm-client/*create-chat-completion-endpoint*
                             (fn [_ _]
                               {:choices [{:message {:content (format "```json%s```" json-response)}}]})]
                 (is (= expected
-                       (mt/user-http-request :rasta :get 200 url))))))
+                       (mt/user-http-request :rasta :post 200 url))))))
           (testing "We can't handle bad responses"
             (mt/with-premium-features #{:llm-autodescription}
               (with-redefs [llm-client/*create-chat-completion-endpoint*
@@ -91,9 +91,9 @@
                                                     (format "This is not a good json message -- %s" json-response)}}]})]
                 (is (= 500
                        (get-in
-                         (mt/user-http-request :rasta :get 500 url)
+                         (mt/user-http-request :rasta :post 500 url)
                          [:data :status-code]))))))
           (testing "When the `:llm-autodescription` feature is disabled, you get a 402 with message"
             (mt/with-premium-features #{}
               (is (= "LLM Auto-description is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                     (mt/user-http-request :rasta :get 402 url))))))))))
+                     (mt/user-http-request :rasta :post 402 url))))))))))

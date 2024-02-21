@@ -4,13 +4,13 @@
    [cheshire.core :as json]
    [clojure.set :refer [rename-keys]]
    [metabase-enterprise.llm.client :as llm-client]
-   [metabase-enterprise.llm.util :as llm-util]
-   [metabase.query-processor.compile :as qp.compile]))
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.util :as u]))
 
 (defn- question->prompt-data
   "Create a data-oriented summary of a question as input to an LLM for summarization."
   [{:keys [display visualization_settings dataset_query result_metadata]}]
-  (let [visualization_settings (llm-util/remove-nil-vals visualization_settings)
+  (let [visualization_settings (u/remove-nils visualization_settings)
         {:keys [query]} (qp.compile/compile-and-splice-parameters dataset_query)]
     (cond->
       {:sql_query           query
@@ -18,7 +18,7 @@
        :column_descriptions (zipmap
                               (map (some-fn :display_name :name) result_metadata)
                               (map (some-fn :semantic_type :effective_type) result_metadata))}
-      visualization_settings
+      (seq visualization_settings)
       (assoc :visualization_settings visualization_settings))))
 
 (defn describe-question

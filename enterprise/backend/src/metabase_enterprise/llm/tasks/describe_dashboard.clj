@@ -5,7 +5,7 @@
    [clojure.set :refer [rename-keys]]
    [clojure.walk :as walk]
    [metabase-enterprise.llm.client :as llm-client]
-   [metabase-enterprise.llm.util :as llm-util]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- dashboard->prompt-data
@@ -38,16 +38,18 @@
                                                                (map :name result_metadata)
                                                                (mapv (some-fn :display_name :name) result_metadata))
                                     visualization_settings   (->> visualization_settings
-                                                                  llm-util/remove-nil-vals
+                                                                  u/remove-nils
                                                                   (walk/prewalk (fn [v] (field-name->display-name v v))))]]
-                          {:chart-name        card-name
-                           :chart-description description
-                           :chart-type        display
-                           :chart-settings    visualization_settings
-                           :data-column-names (vals field-name->display-name)
-                           :chart-parameters  (mapv
-                                                (comp :parameter-name param-id->param :parameter_id)
-                                                parameter_mappings)})
+                          (cond->
+                            {:chart-name        card-name
+                             :chart-description description
+                             :chart-type        display
+                             :data-column-names (vals field-name->display-name)
+                             :chart-parameters  (mapv
+                                                  (comp :parameter-name param-id->param :parameter_id)
+                                                  parameter_mappings)}
+                            (seq visualization_settings)
+                            (assoc :chart-settings visualization_settings)))
      :global-parameters (vals param-id->param)}))
 
 (defn describe-dashboard

@@ -1,5 +1,23 @@
 (ns metabase-enterprise.llm.client
-  "A wrapper around the OpenAI client API."
+  "A wrapper around the OpenAI client API.
+
+  The `create-chat-completion` function combines several useful middlewares to create a client that can be used for AI
+  completions. Note that this is a function that returns a function. Example usage is as follows:
+
+  ```clojure
+   ((create-chat-completion)
+   {:messages [{:role \"system\" :content \"You are a helpful assistant.\"}
+               {:role \"user\" :content \"Who won the world series in 2020?\"}
+               {:role \"assistant\" :content \"The Los Angeles Dodgers won the World Series in 2020.\"}
+               {:role \"user\" :content \"Where was it played?\"}]})
+  ```
+
+  The user need only provide a map of messages following the standard
+  [OpenAI chat completions API format](https://platform.openai.com/docs/guides/text-generation/chat-completions-api).
+
+  Note that while this is not a _de jure_ standard, it is evolving as a _de facto_ standard as can be seen by use of the
+  [OpenAI Client](https://platform.openai.com/docs/libraries) with [Llama API](https://docs.llama-api.com/essentials/chat).
+  "
   (:require
    [cheshire.core :as json]
    [metabase-enterprise.llm.settings :as llm-settings]
@@ -110,10 +128,6 @@
     ([params]
      (wrap-find-result* params nil))))
 
-(re-matches
-  #"(?s)\s*```(?:json)?(.*)```\s*"
-  "```json\n{\n  \"friendly_title\": \"Overview of Orders Data 📊\",\n  \"friendly_summary\": \"This table displays detailed information about customer orders, including IDs, user and product IDs, subtotal, tax, total amount, discount, creation date, and quantity.\"\n}\n```")
-
 (defn wrap-parse-json
   "Parse a JSON result from the response. Note that this must be called after
   wrap-find-result or similar such that the response is a string."
@@ -179,12 +193,3 @@
       wrap-openai-exceptions
       wrap-usage
       wrap-find-result))
-
-(comment
-  ;; Example usage
-  ((create-chat-completion)
-   {:messages [{:role "system" :content "You are a helpful assistant."}
-               {:role "user" :content "Who won the world series in 2020?"}
-               {:role "assistant" :content "The Los Angeles Dodgers won the World Series in 2020."}
-               {:role "user" :content "Where was it played?"}]})
-  )

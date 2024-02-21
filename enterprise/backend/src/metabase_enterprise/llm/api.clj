@@ -27,8 +27,8 @@
   ;(check-data-permissions-for-query dataset_query)
   {:summary (describe-question body)})
 
-(api/defendpoint GET "/dashboard/summarize/:id"
-  "Get Dashboard with ID."
+(api/defendpoint POST "/dashboard/summarize/:id"
+  "Provide a summary of a dashboard."
   [id]
   {id ms/PositiveInt}
   {:summary (describe-dashboard id)})
