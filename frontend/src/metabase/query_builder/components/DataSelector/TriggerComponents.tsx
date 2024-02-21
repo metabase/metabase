@@ -7,6 +7,8 @@ import type Database from "metabase-lib/metadata/Database";
 import type Field from "metabase-lib/metadata/Field";
 import type Table from "metabase-lib/metadata/Table";
 
+import { TriggerContainer, TriggerContainerIcon } from "./DataSelector.styled";
+
 export function Trigger({
   className,
   style,
@@ -21,14 +23,25 @@ export function Trigger({
   mantine?: boolean;
   children: ReactNode;
 }) {
+  const icon = showDropdownIcon && <Icon name="chevrondown" size={iconSize} />;
+
+  if (style || className) {
+    return (
+      <span
+        className={className || "px2 py2 text-bold cursor-pointer text-default"}
+        style={style}
+      >
+        {children}
+        {icon}
+      </span>
+    );
+  }
+
   return (
-    <span
-      className={className || "px2 py2 text-bold cursor-pointer text-default"}
-      style={style}
-    >
+    <TriggerContainer>
       {children}
-      {showDropdownIcon && <Icon name="chevrondown" size={iconSize} />}
-    </span>
+      {icon && <TriggerContainerIcon>{icon}</TriggerContainerIcon>}
+    </TriggerContainer>
   );
 }
 

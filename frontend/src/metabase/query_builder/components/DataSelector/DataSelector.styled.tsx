@@ -96,3 +96,23 @@ export const EmptyStateContainer = styled.div`
 export const TableSearchContainer = styled.div`
   padding: 0.5rem;
 `;
+
+export const TriggerContainer = styled.div`
+  width: 100%;
+  position: relative;
+  padding: 0.5rem 2.625rem 0.5rem 0.6875rem;
+  border: 1px solid ${color("border")};
+  border-radius: ${space(0)};
+  cursor: pointer;
+`;
+
+export const TriggerContainerIcon = styled.div`
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  right: -1px;
+  top: 0;
+  width: 2.5rem;
+  height: 100%;
+`;

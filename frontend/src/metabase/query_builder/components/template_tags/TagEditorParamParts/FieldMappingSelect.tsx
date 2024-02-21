@@ -54,7 +54,6 @@ export function FieldMappingSelect({
                 hasSelectedDimensionField ? tag?.dimension?.[1] : null
               }
               setFieldFn={setFieldFn}
-              className="AdminSelect flex align-center"
               isInitiallyOpen={!tag.dimension}
               triggerIconSize={"1rem"} // this is inline with Mantine select icon size
             />
