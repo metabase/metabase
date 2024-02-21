@@ -19,11 +19,11 @@
       (is (= 1
              (-> @inbox vals first count))))))
 
-(deftest send-follow-up-email-no-survey-test
-  (testing "Make sure we don't send an email when no-surveys is true."
+(deftest send-follow-up-email-survey-not-enabled-test
+  (testing "Make sure we don't send an email when surveys-enabled is false."
    (mt/with-temporary-setting-values [anon-tracking-enabled true
                                       follow-up-email-sent  false
-                                      no-surveys            true]
+                                      surveys-enabled       false]
      (with-fake-inbox
        (#'follow-up-emails/send-follow-up-email!)
        (is (= 0
