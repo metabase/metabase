@@ -16,6 +16,7 @@ import {
   submitSetup,
   submitUsageReason,
   submitLicenseToken,
+  initSetup,
 } from "./actions";
 import { getNextStep } from "./selectors";
 
@@ -23,9 +24,13 @@ const initialState: SetupState = {
   step: "welcome",
   isLocaleLoaded: false,
   isTrackingAllowed: true,
+  isPaidPlan: false,
 };
 
 export const reducer = createReducer(initialState, builder => {
+  builder.addCase(initSetup.fulfilled, (state, { payload: { isPaidPlan } }) => {
+    state.isPaidPlan = isPaidPlan;
+  });
   builder.addCase(loadUserDefaults.fulfilled, (state, { payload: user }) => {
     state.user = user;
   });

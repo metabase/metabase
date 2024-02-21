@@ -26,6 +26,7 @@ export interface SubscribeInfo {
 }
 
 export interface SetupState {
+  isPaidPlan: boolean;
   step: SetupStep;
   locale?: Locale;
   user?: UserInfo;
