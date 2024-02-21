@@ -31,6 +31,17 @@ export function mergeLogs(logArrays: Log[][]) {
     .slice(-1 * MAX_LOGS);
 }
 
+export function hasLog(logs: Log[], targetLog: Log): boolean {
+  return (
+    logs.findIndex(
+      log =>
+        log.timestamp === targetLog?.timestamp &&
+        log.process_uuid === targetLog?.process_uuid &&
+        log.msg === targetLog?.msg,
+    ) > -1
+  );
+}
+
 export function filterLogs(logs: Log[], processUUID: string) {
   return logs.filter(
     ev =>

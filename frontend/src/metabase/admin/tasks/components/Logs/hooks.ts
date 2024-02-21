@@ -7,7 +7,7 @@ import _ from "underscore";
 import { UtilApi } from "metabase/services";
 import type { Log } from "metabase-types/api";
 
-import { mergeLogs } from "./utils";
+import { mergeLogs, hasLog } from "./utils";
 
 export function usePollingLogsQuery(pollingDurationMs: number) {
   const [loaded, setLoaded] = useState(false);
@@ -29,16 +29,14 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
       if (isMountedRef.current) {
         setLoaded(true);
         setError(null);
-        const newestLog = _.first(newLogs);
-        const hasFetchedNewLogs = !logs.some(
-          log =>
-            log.timestamp === newestLog?.timestamp &&
-            log.process_uuid === newestLog?.process_uuid &&
-            log.msg === newestLog?.msg,
-        );
-        if (hasFetchedNewLogs) {
-          setLogs(mergeLogs([logs, newLogs.reverse()]));
-        }
+        setLogs(logs => {
+          const newestLog = _.first(newLogs);
+          const hasFetchedNewLogs = !hasLog(logs, newestLog);
+          if (hasFetchedNewLogs) {
+            return mergeLogs([logs, newLogs.reverse()]);
+          }
+          return logs;
+        });
         isFetchingRef.current = false;
       }
     } catch (err: any) {
@@ -79,15 +77,15 @@ export function useTailLogs(logs: Log[]) {
     }
   }
 
-  // auto-follow logs
+  // auto-follow logs on update
   useEffect(() => {
     if (logs.length) {
       autoFollow();
     }
   }, [logs]);
 
-  // recalculate if we should be auto-following based on user if user
-  // is currently scrolled to the bottom of the container
+  // recalculate if we should be auto-following based on if the
+  // user is currently scrolled to the bottom of the container
   const onScroll = useCallback(() => {
     const elem = scrollRef.current;
     if (elem) {
