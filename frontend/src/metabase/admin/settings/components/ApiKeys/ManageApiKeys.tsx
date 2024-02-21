@@ -14,7 +14,6 @@ import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 
-
 const { fontFamilyMonospace } = getThemeOverrides();
 
 type Modal = null | "create" | "edit" | "delete";
