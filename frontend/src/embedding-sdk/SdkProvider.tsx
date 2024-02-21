@@ -37,14 +37,13 @@ const MetabaseProviderInternal = ({
   }, [font]);
 
   const { isLoggedIn, isInitialized } = useInitData({
-    store: store,
+    store,
     config,
   });
 
   return (
     <EmbeddingContext.Provider
       value={{
-        apiUrl: config.metabaseInstanceUrl,
         isInitialized,
         isLoggedIn,
         font,

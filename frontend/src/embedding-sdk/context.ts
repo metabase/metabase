@@ -1,7 +1,6 @@
 import { createContext } from "react";
 
 interface EmbeddingSdkContextData {
-  apiUrl: string;
   isInitialized: boolean;
   isLoggedIn: boolean;
   font: string | null;
@@ -9,7 +8,6 @@ interface EmbeddingSdkContextData {
 }
 
 export const EmbeddingContext = createContext<EmbeddingSdkContextData>({
-  apiUrl: "",
   isInitialized: false,
   isLoggedIn: false,
   font: null,
