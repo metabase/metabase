@@ -93,7 +93,7 @@ export const BrowseModels = ({
                   handleToggleCollectionShowAll(collectionId)
                 }
                 models={groupOfModels}
-                key={`modelgroup-${groupOfModels[0].collection.id}`}
+                key={`modelgroup-${collectionId}`}
                 localeCode={localeCode}
               />
             );

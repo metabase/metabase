@@ -42,18 +42,23 @@ export const ModelGroup = ({
   toggleExpanded: () => void;
   toggleShowAll: () => void;
 }) => {
-  const { aboveFoldModels, belowFoldModels } = useMemo(() => {
-    const sortedModels = models.sort((a, b) => sortModels(a, b, localeCode));
+  const { sortedModels, aboveFoldModelsCount } = useMemo(() => {
+    const sortedModels = [...models].sort((a, b) =>
+      sortModels(a, b, localeCode),
+    );
 
-    return {
-      aboveFoldModels: sortedModels.slice(0, MAX_COLLAPSED_MODELS),
-      belowFoldModels: sortedModels.slice(MAX_COLLAPSED_MODELS),
-    };
+    const aboveFoldModelsCount =
+      models.length >= MAX_COLLAPSED_MODELS
+        ? MAX_COLLAPSED_MODELS
+        : models.length;
+
+    return { sortedModels, aboveFoldModelsCount };
   }, [models, localeCode]);
 
-  const visibleModels = showAll
-    ? [...aboveFoldModels, ...belowFoldModels]
-    : aboveFoldModels;
+  const visibleModels = useMemo(() => {
+    return showAll ? sortedModels : sortedModels.slice(0, MAX_COLLAPSED_MODELS);
+  }, [sortedModels, showAll]);
+
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
@@ -77,7 +82,7 @@ export const ModelGroup = ({
         ))}
         <ShowMoreFooter
           hasMoreModels={models.length > MAX_COLLAPSED_MODELS}
-          shownModelsCount={aboveFoldModels.length}
+          shownModelsCount={aboveFoldModelsCount}
           allModelsCount={models.length}
           showAll={showAll}
           onClick={toggleShowAll}

@@ -156,8 +156,9 @@ type ModelVisibilityPrefs = {
 const isRecordWithCollectionIdKeys = (
   prefs: unknown,
 ): prefs is Record<CollectionId, any> =>
+  !!prefs &&
   typeof prefs === "object" &&
-  prefs !== null &&
+  !Array.isArray(prefs) &&
   Object.keys(prefs).every(isValidCollectionId);
 
 const isValidModelVisibilityPrefs = (
