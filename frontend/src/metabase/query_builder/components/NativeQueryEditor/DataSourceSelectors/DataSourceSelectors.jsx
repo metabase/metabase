@@ -60,6 +60,8 @@ const DataSourceSelectors = ({
   setTableId,
   editorContext,
 }) => {
+  const database = question.database();
+
   const databases = useMemo(() => {
     const allDatabases = query
       .metadata()
@@ -71,8 +73,6 @@ const DataSourceSelectors = ({
 
     return allDatabases;
   }, [query, editorContext]);
-
-  const database = question.database();
 
   if (
     !isNativeEditorOpen ||
