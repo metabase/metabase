@@ -1,5 +1,13 @@
+<<<<<<< HEAD:frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/DatasetColumnSelector.unit.spec.tsx
 import { assocIn } from "icepick";
 import userEvent from "@testing-library/user-event";
+=======
+import userEvent from "@testing-library/user-event";
+
+import { screen, renderWithProviders } from "__support__/ui";
+import type * as Lib from "metabase-lib";
+import { createQuery } from "metabase-lib/test-helpers";
+>>>>>>> ac3734876c (Fix table viz settings when query is out of sync with the setting (#38912)):frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/TableColumnPanel/TableColumnPanel.unit.spec.tsx
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -9,8 +17,13 @@ import {
   createMockTableColumnOrderSetting,
 } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
+<<<<<<< HEAD:frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/DatasetColumnSelector.unit.spec.tsx
 import { screen, renderWithProviders } from "__support__/ui";
 import { DatasetColumnSelector } from "./DatasetColumnSelector";
+=======
+
+import { TableColumnPanel } from "./TableColumnPanel";
+>>>>>>> ac3734876c (Fix table viz settings when query is out of sync with the setting (#38912)):frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/TableColumnPanel/TableColumnPanel.unit.spec.tsx
 
 const COLUMNS = [
   createMockColumn({
@@ -63,23 +76,29 @@ const COLUMN_SETTINGS = [
 ];
 
 interface SetupOpts {
-  value?: TableColumnOrderSetting[];
+  query?: Lib.Query;
+  stageIndex?: number;
   columns?: DatasetColumn[];
+  columnSettings?: TableColumnOrderSetting[];
   getColumnName?: (column: DatasetColumn) => string;
 }
 
-const setup = ({
-  value = COLUMN_SETTINGS,
+function setup({
+  query = createQuery(),
+  stageIndex = -1,
   columns = COLUMNS,
+  columnSettings = COLUMN_SETTINGS,
   getColumnName = column => column.display_name,
-}: SetupOpts = {}) => {
+}: SetupOpts = {}) {
   const onChange = jest.fn();
   const onShowWidget = jest.fn();
 
   renderWithProviders(
-    <DatasetColumnSelector
-      value={value}
+    <TableColumnPanel
+      query={query}
+      stageIndex={stageIndex}
       columns={columns}
+      columnSettings={columnSettings}
       getColumnName={getColumnName}
       onChange={onChange}
       onShowWidget={onShowWidget}
@@ -87,7 +106,7 @@ const setup = ({
   );
 
   return { onChange };
-};
+}
 
 describe("DatasetColumnSelector", () => {
   it("should display columns in the order of the setting", () => {
@@ -100,38 +119,50 @@ describe("DatasetColumnSelector", () => {
     expect(items[3]).toHaveTextContent("Subtotal");
   });
 
+  it("should display columns without matching setting", () => {
+    setup({ columnSettings: [] });
+    const items = screen.getAllByTestId(/draggable-item/);
+    expect(items).toHaveLength(4);
+    expect(items[0]).toHaveTextContent("ID");
+    expect(items[1]).toHaveTextContent("Total");
+    expect(items[2]).toHaveTextContent("Tax");
+    expect(items[3]).toHaveTextContent("Subtotal");
+  });
+
   it("should allow to enable a column", () => {
-    const columnIndex = findColumnIndex("TAX", COLUMN_SETTINGS);
     const { onChange } = setup();
 
     enableColumn("Tax");
-    expect(onChange).toHaveBeenCalledWith(
-      assocIn(COLUMN_SETTINGS, [columnIndex, "enabled"], true),
-    );
+
+    const columnIndex = findColumnIndex("TAX", COLUMN_SETTINGS);
+    const newSettings = [...COLUMN_SETTINGS];
+    newSettings[columnIndex] = { ...newSettings[columnIndex], enabled: true };
+    expect(onChange).toHaveBeenCalledWith(newSettings);
   });
 
   it("should allow to disable a column", () => {
-    const columnIndex = findColumnIndex("ID", COLUMN_SETTINGS);
     const { onChange } = setup();
 
     disableColumn("ID");
-    expect(onChange).toHaveBeenCalledWith(
-      assocIn(COLUMN_SETTINGS, [columnIndex, "enabled"], false),
-    );
+
+    const columnIndex = findColumnIndex("ID", COLUMN_SETTINGS);
+    const newSettings = [...COLUMN_SETTINGS];
+    newSettings[columnIndex] = { ...newSettings[columnIndex], enabled: false };
+    expect(onChange).toHaveBeenCalledWith(newSettings);
   });
 });
 
-const enableColumn = (columnName: string) => {
+function enableColumn(columnName: string) {
   userEvent.click(screen.getByTestId(`${columnName}-show-button`));
-};
+}
 
-const disableColumn = (columnName: string) => {
+function disableColumn(columnName: string) {
   userEvent.click(screen.getByTestId(`${columnName}-hide-button`));
-};
+}
 
-const findColumnIndex = (
+function findColumnIndex(
   columnName: string,
   settings: TableColumnOrderSetting[],
-) => {
+) {
   return settings.findIndex(setting => setting.name === columnName);
-};
+}
