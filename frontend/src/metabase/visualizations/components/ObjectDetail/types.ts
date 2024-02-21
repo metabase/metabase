@@ -24,7 +24,7 @@ export type OnVisualizationClickType =
 
 export interface ObjectDetailProps {
   data: DatasetData;
-  question?: Question;
+  question: Question;
   metadata?: Metadata;
   card?: Card;
   dashcard?: QuestionDashboardCard;

@@ -46,7 +46,7 @@ import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
-  findColumnIndexForColumnSetting,
+  findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/queries/utils/dataset";
 import {
@@ -592,9 +592,9 @@ class Question {
     });
     const validVizSettings = vizSettings.filter(colSetting => {
       const hasColumn =
-        findColumnIndexForColumnSetting(cols, colSetting, this.query()) >= 0;
+        findColumnIndexesForColumnSettings(cols, colSetting, this.query()) >= 0;
       const isMutatingColumn =
-        findColumnIndexForColumnSetting(
+        findColumnIndexesForColumnSettings(
           addedColumns,
           colSetting,
           this.query(),
