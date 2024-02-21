@@ -295,16 +295,17 @@
   "Create a blob of instance/user data to be sent to the creator sentiment survey."
   [instance-data created_at num_dashboards num_questions num_models]
   (-> {:instance instance-data
-       :user {:created_at created_at
-              :num_dashboards num_dashboards
-              :num_questions num_questions
-              :num_models num_models}}
+       :user     {:created_at     created_at
+                  :num_dashboards num_dashboards
+                  :num_questions  num_questions
+                  :num_models     num_models}}
       json/generate-string
       .getBytes
       codecs/bytes->b64-str))
 
 (defn send-creator-sentiment-email!
-  "Format and send an email to the system admin following up on the installation."
+  "Format and send an email to a creator with a link to a survey. Can include info about the instance and the creator
+  if [[public-settings/anon-tracking-enabled]] is true."
   [{:keys [email created_at first_name num_dashboards num_questions num_models]} instance-data]
   {:pre [(u/email? email)]}
   (let [blob    (when (public-settings/anon-tracking-enabled)
@@ -313,9 +314,8 @@
                        {:emailType  "notification"
                         :logoHeader true
                         :first-name first_name
-                        :link (if (public-settings/anon-tracking-enabled)
-                                (str "https://metabase.com/feedback/creator?context=" blob)
-                                "https://metabase.com/feedback/creator")}
+                        :link       (cond-> "https://metabase.com/feedback/creator"
+                                      blob (str "?context=" blob))}
                        (when-not (premium-features/is-hosted?)
                          {:self-hosted (public-settings/site-url)}))
         message {:subject      "Metabase would love your take on something"

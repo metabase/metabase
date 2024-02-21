@@ -35,6 +35,7 @@
   ;; we need access to email AND the instance must be opted into anonymous tracking. Make sure email hasn't been sent yet
   (when (and (email/email-configured?)
              (public-settings/anon-tracking-enabled)
+             (not (email/no-surveys))
              (not (follow-up-email-sent)))
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to
     ;; TODO - Does it make to send to this user instead of `(public-settings/admin-email)`?
@@ -42,7 +43,7 @@
       (try
         (messages/send-follow-up-email! (:email admin))
         (catch Throwable e
-          (log/error "Problem sending follow-up email:" e))
+          (log/error e "Problem sending follow-up email:"))
         (finally
           (follow-up-email-sent! true))))))
 

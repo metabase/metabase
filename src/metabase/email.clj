@@ -102,6 +102,14 @@
   :getter     #(boolean (email-smtp-host))
   :doc        false)
 
+(setting/defsetting no-surveys
+  (deferred-tru "Enable or disable surveys")
+  :type       :boolean
+  :default    false
+  :export?    false
+  :visibility :internal
+  :audit      :getter)
+
 (defn- add-ssl-settings [m ssl-setting]
   (merge
    m
