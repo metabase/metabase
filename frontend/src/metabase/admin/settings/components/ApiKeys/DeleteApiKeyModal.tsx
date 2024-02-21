@@ -7,7 +7,7 @@ import {
   FormSubmitButton,
   FormErrorMessage,
 } from "metabase/forms";
-import { ApiKeysApi } from "metabase/redux/api-key";
+import { useDeleteApiKeyMutation } from "metabase/redux/api";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 import type { ApiKey } from "metabase-types/api";
 
@@ -18,7 +18,7 @@ export const DeleteApiKeyModal = ({
   onClose: () => void;
   apiKey: ApiKey;
 }) => {
-  const [deleteApiKey] = ApiKeysApi.useDeleteMutation();
+  const [deleteApiKey] = useDeleteApiKeyMutation();
 
   const handleDelete = useCallback(async () => {
     await deleteApiKey(apiKey.id);

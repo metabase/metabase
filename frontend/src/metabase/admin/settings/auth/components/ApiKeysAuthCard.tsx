@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { ApiKeysApi } from "metabase/redux/api-key";
+import { useCountApiKeyQuery } from "metabase/redux/api";
 
 import { AuthCardBody } from "./AuthCard/AuthCard";
 
 export const ApiKeysAuthCard = () => {
-  const { data } = ApiKeysApi.useCountQuery();
+  const { data } = useCountApiKeyQuery();
   const keyCount = data ?? 0;
   const isConfigured = keyCount > 0;
 
