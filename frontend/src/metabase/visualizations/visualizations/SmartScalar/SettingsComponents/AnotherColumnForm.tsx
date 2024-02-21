@@ -32,10 +32,9 @@ export function AnotherColumnForm({
   onChange,
   onBack,
 }: AnotherColumnFormProps) {
-  const [label, setLabel] = useState(getInitialLabel(selectedValue, columns));
-  const [column, setColumn] = useState(
-    getInitialColumn(selectedValue, columns),
-  );
+  const initialValues = getInitialValues(selectedValue, columns);
+  const [label, setLabel] = useState(initialValues.label);
+  const [column, setColumn] = useState(initialValues.column);
 
   const canSubmit = label.length > 0 && column.length > 0;
 
@@ -99,28 +98,21 @@ export function AnotherColumnForm({
   );
 }
 
-function getInitialColumn(
+function getInitialValues(
   value: SmartScalarComparisonAnotherColumn | undefined,
   columns: DatasetColumn[],
 ) {
-  if (value?.column) {
-    return value.column;
+  if (value) {
+    return value;
   }
-  if (columns.length === 1) {
-    return columns[0].name;
-  }
-  return "";
-}
 
-function getInitialLabel(
-  value: SmartScalarComparisonAnotherColumn | undefined,
-  columns: DatasetColumn[],
-) {
-  if (value?.label) {
-    return value.label;
-  }
   if (columns.length === 1) {
-    return columns[0].display_name;
+    const column = columns[0];
+    return {
+      label: column.display_name,
+      column: column.name,
+    };
   }
-  return "";
+
+  return { label: "", column: "" };
 }
