@@ -1,0 +1,7 @@
+.UserInfo--container {
+    @apply tw-flex tw-flex-col tw-justify-end tw-w-48;
+}
+
+.UserInfo--email {
+    @apply tw-text-right tw-font-light tw-text-xs tw-truncate;
+}

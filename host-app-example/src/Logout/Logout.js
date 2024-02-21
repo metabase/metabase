@@ -1,5 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { AUTH_API_HOST } from "./config";
+import { AUTH_API_HOST } from "../config";
+import { UserInfo } from "../UserInfo";
+import { UserDropdown } from "../UserDropdown";
+
+import "./Logout.css";
 
 export const LogoutButton = () => {
   const navigate = useNavigate();
@@ -22,5 +26,10 @@ export const LogoutButton = () => {
       });
   };
 
-  return <button onClick={onLogout}>Logout</button>;
+  return (
+    <div className="Logout--container">
+      <UserInfo />
+      <UserDropdown onClick={onLogout} />
+    </div>
+  );
 };

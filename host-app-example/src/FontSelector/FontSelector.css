@@ -1,13 +1,11 @@
+.FontSelector--container {
+    @apply tw-flex tw-flex-row tw-justify-center tw-items-center tw-gap-4;
+}
+
+.FontSelector--label {
+    @apply tw-font-bold tw-text-lg;
+}
+
 .FontSelector-button {
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    cursor: pointer;
-    display: inline-block;
-    font-size: 16px;
-    margin: 0 4px;
-    padding: 8px 16px;
-    text-align: center;
-    text-decoration: none;
-    transition: background-color 0.3s ease;
+    @apply tw-bg-gray-600 tw-text-white tw-font-bold tw-py-2 tw-px-5 tw-rounded;
 }

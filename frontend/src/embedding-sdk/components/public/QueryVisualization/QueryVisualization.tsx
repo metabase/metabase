@@ -19,6 +19,7 @@ import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
 
 interface QueryVisualizationProps {
   questionId: CardId;
+  showVisualizationSelector?: boolean;
 }
 
 type State = {
@@ -121,17 +122,19 @@ export const QueryVisualizationSdk = (
 
         return (
           <Group h="100%" pos="relative" align="flex-start">
-            <Box w="355px">
-              <ChartTypeSidebar
-                question={question}
-                result={result}
-                onOpenChartSettings={onOpenChartSettings}
-                onCloseChartType={onCloseChartType}
-                query={legacyQuery}
-                setUIControls={setUIControls}
-                updateQuestion={changeVisualization}
-              />
-            </Box>
+            {props.showVisualizationSelector && (
+              <Box w="355px">
+                <ChartTypeSidebar
+                  question={question}
+                  result={result}
+                  onOpenChartSettings={onOpenChartSettings}
+                  onCloseChartType={onCloseChartType}
+                  query={legacyQuery}
+                  setUIControls={setUIControls}
+                  updateQuestion={changeVisualization}
+                />
+              </Box>
+            )}
             <QueryVisualizationSdkWrapper
               className="full-width"
               question={question}

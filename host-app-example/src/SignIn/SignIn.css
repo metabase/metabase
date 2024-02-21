@@ -1,0 +1,27 @@
+input.SignIn--input {
+    @apply tw-py-2 tw-px-3 tw-border tw-border-gray-200 tw-rounded tw-bg-gray-100;
+}
+
+.SignIn--form {
+    @apply tw-flex tw-flex-col tw-gap-8;
+}
+
+.SignIn--form > div {
+    @apply tw-flex tw-flex-col tw-justify-start tw-items-start;
+}
+
+.SignIn--form > div > label {
+    @apply tw-text-gray-600 tw-font-bold;
+}
+
+.SignIn--screen {
+    @apply tw-grid tw-place-items-center tw-h-screen;
+}
+
+.SignIn--container {
+    @apply tw-flex tw-flex-col tw-gap-8 tw-items-center tw-bg-white tw-shadow-2xl tw-border tw-border-gray-200 tw-p-8 tw-rounded-2xl tw-w-96 tw-h-96;
+}
+
+.SignIn--submit {
+    @apply tw-py-2 tw-px-5 tw-border tw-border-gray-200 tw-rounded tw-bg-sky-500 tw-font-bold tw-text-white hover:tw-bg-sky-600;
+}

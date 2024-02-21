@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AUTH_API_HOST } from "./config";
+import { AUTH_API_HOST } from "../config";
+
+import "./SignIn.css"
 
 export const SignIn = () => {
   const [authError, setAuthError] = useState(null);
@@ -36,57 +38,32 @@ export const SignIn = () => {
   };
 
   return (
-    <div
-      style={{
-        display: "grid",
-        placeItems: "center",
-        height: "100vh",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "2rem",
-          alignItems: "center",
-        }}
-      >
+    <div className="SignIn--screen">
+      <div className="SignIn--container">
         <h1>Sign In</h1>
-        <form
-          onSubmit={onSubmit}
-          action="#"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "1rem",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "1rem",
-            }}
-          >
+        <form className="SignIn--form" onSubmit={onSubmit} action="#">
+          <div>
             <label htmlFor="email">Email</label>
-            <input type="text" name="email" id="email" />
+            <input
+              className="SignIn--input"
+              type="text"
+              name="email"
+              id="email"
+            />
           </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "1rem",
-            }}
-          >
+          <div>
             <label htmlFor="password">Password</label>
-            <input type="password" name="password" id="password" />
+            <input
+              className="SignIn--input"
+              type="password"
+              name="password"
+              id="password"
+            />
           </div>
 
-          <button type="submit">Sign In</button>
+          <button className="SignIn--submit" type="submit">
+            Sign In
+          </button>
         </form>
 
         {authError && <div>Invalid email or password</div>}

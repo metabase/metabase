@@ -1,0 +1,11 @@
+.QuestionSearchBar--container {
+    @apply tw-flex tw-flex-row tw-justify-center tw-items-center tw-gap-4;
+}
+
+.QuestionSearchBar--input {
+    @apply tw-bg-gray-600 tw-text-white tw-font-bold tw-py-2 tw-px-5 tw-rounded tw-w-full;
+}
+
+.QuestionSearchBar--button {
+    @apply tw-bg-blue-500 tw-text-white tw-p-2 tw-rounded-md;
+}

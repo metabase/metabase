@@ -1,0 +1,11 @@
+.ResultsDropdown--container {
+    @apply tw-absolute tw-z-50 tw-w-96 tw-h-96 tw-left-0 tw-overflow-scroll tw-shadow-2xl tw-border tw-border-gray-500 tw-bg-gray-600 tw-rounded tw-gap-1;
+}
+
+.ResultsDropdown--result-list {
+    @apply tw-p-2 tw-flex tw-flex-col tw-gap-2;
+}
+
+.ResultsDropdown--list-item {
+    @apply tw-px-4 tw-py-1 tw-flex tw-flex-row tw-w-full tw-rounded;
+}

@@ -1,0 +1,11 @@
+.ShowVisualizationToggle--container {
+    @apply tw-flex tw-flex-row tw-items-center tw-px-4 tw-gap-4 tw-py-4;
+}
+
+.ShowVisualizationToggle--button {
+    @apply tw-rounded-full tw-w-6 tw-h-6 tw-bg-sky-500 tw-border-white tw-border tw-font-bold;
+}
+
+.ShowVisualizationToggle--question-name {
+    @apply tw-font-black tw-text-lg;
+}

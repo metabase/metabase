@@ -5,7 +5,7 @@ import {
     RouterProvider,
 } from "react-router-dom";
 import "./index.css";
-import {SignIn} from "./SignIn";
+import {SignIn} from "./SignIn/SignIn";
 import App from "./App";
 
 const router = createBrowserRouter([

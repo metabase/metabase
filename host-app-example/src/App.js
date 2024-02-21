@@ -1,30 +1,20 @@
 import { MetabaseProvider } from "metabase-embedding-sdk";
 
 import { Page } from "./Page";
-import "./App.css";
-import { LogoutButton } from "./Logout";
 
 const config = {
   metabaseInstanceUrl:
     process.env.REACT_APP_METABASE_INSTANCE_URL || "http://localhost:3000",
-  font: "Roboto Slab",
-  authType: "jwt",
-  jwtProviderUri: "http://localhost:8081/sso/metabase",
-  // apiKey: "mb_//WK5lK5krDurdyjO/ZcoYQi50gTvUekNxFMR9N+HJk=",
+  font: "Inter",
+  authType: "apiKey",
+  // jwtProviderUri: "http://localhost:8081/sso/metabase",
+  apiKey: "mb_ibHudja0H7LJiStzxaI1R1EUxlVSDCO9ywbkNY/0Mak=",
 };
 
 const App = () => (
-  <div className="App-container">
-    <div className="App-header">
-      <LogoutButton />
-    </div>
-
-    <MetabaseProvider config={config}>
-      <div className="App-body">
-        <Page />
-      </div>
-    </MetabaseProvider>
-  </div>
+  <MetabaseProvider config={config}>
+    <Page />
+  </MetabaseProvider>
 );
 
 export default App;

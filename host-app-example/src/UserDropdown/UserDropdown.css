@@ -1,0 +1,19 @@
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.UserDropdown--container {
+    @apply tw-z-50 dropdown tw-inline-block tw-relative;
+}
+
+.UserDropdown--avatar {
+    @apply tw-w-8 tw-h-8 tw-rounded-full tw-border tw-border-gray-400;
+}
+
+.UserDropdown--logout-container {
+   @apply tw-right-0 tw-top-8 tw-absolute tw-hidden
+}
+
+.UserDropdown--logout-button {
+    @apply tw-mt-2 tw-text-red-500 tw-w-24 tw-py-4 tw-bg-white tw-border tw-border-gray-300 tw-font-bold hover:tw-underline tw-rounded;
+}
