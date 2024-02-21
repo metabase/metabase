@@ -543,8 +543,11 @@
                              (and (empty? search-id) (not-empty search-name))
                              [:like [:lower :report_card.name] (str "%" search-name "%")])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
-                :order-by [[:type :asc]             ; prioritize models
-                           [:report_card.id :desc]] ; then most recently created
+                ;; prioritize models. This relies of `model` coming before `question` alphabetically, and Tamas pointed
+                ;; out this is a little brittle. He's right -- once we put v2 Metrics in then we can replace this with a
+                ;; fancy `CASE` expression or something so we can sort things exactly how we like.
+                :order-by [[:type :asc]
+                           [:report_card.id :desc]] ; sort by most recently created after sorting by type
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]

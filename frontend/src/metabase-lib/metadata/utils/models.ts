@@ -144,7 +144,7 @@ export function checkCanRefreshModelCache(
     return false;
   }
 
-  if (refreshInfo.card_type === "model") {
+  if (refreshInfo.card_type === "question") {
     return false;
   }
 
