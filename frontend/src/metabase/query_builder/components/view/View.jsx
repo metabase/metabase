@@ -254,6 +254,7 @@ class View extends Component {
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
           setParameterValueToDefault={setParameterValueToDefault}
+          shouldPersistLastUsedDatabase={true}
         />
       </NativeQueryEditorContainer>
     );

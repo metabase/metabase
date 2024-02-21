@@ -218,6 +218,7 @@ export class NativeQueryEditor extends Component<
       snippets: true,
       promptInput: true,
     },
+    shouldPersistLastUsedDatabase: false,
   };
 
   UNSAFE_componentWillMount() {
@@ -690,11 +691,18 @@ export class NativeQueryEditor extends Component<
 
   // Change the Database we're currently editing a query for.
   setDatabaseId = (databaseId: DatabaseId) => {
-    const { query, setDatasetQuery, question, onSetDatabaseId } = this.props;
+    const {
+      query,
+      setDatasetQuery,
+      question,
+      onSetDatabaseId,
+      shouldPersistLastUsedDatabase,
+    } = this.props;
+
     if (question.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
 
-      onSetDatabaseId(databaseId);
+      shouldPersistLastUsedDatabase && onSetDatabaseId(databaseId);
       if (!this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor?.focus(), 50);
