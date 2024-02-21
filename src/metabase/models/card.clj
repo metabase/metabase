@@ -46,11 +46,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
-   [potemkin :as p]
-   [pretty.core :as pretty]
    [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.instance :as t2.instance]
    [toucan2.tools.hydrate :as t2.hydrate])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)))
