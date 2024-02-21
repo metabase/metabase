@@ -14,7 +14,7 @@ import { Box, Button, Group, Text } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/Question";
 
-import { useEmbeddingContext } from "./hooks";
+import { useEmbeddingContext } from "../../../hooks";
 import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
 
 interface QueryVisualizationProps {

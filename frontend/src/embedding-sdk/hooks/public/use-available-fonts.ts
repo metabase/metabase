@@ -1,6 +1,6 @@
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { useEmbeddingContext } from "./use-sdk-context";
+import { useEmbeddingContext } from "../../hooks/private/use-sdk-context";
 
 export const useAvailableFonts = () => {
   const { font, setFont } = useEmbeddingContext();

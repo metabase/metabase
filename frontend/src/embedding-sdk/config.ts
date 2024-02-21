@@ -2,7 +2,14 @@ export const SDK_CONTEXT_CLASS_NAME = "metabase-sdk"; // this should be synced w
 
 export type SDKConfigType = {
   metabaseInstanceUrl: string;
-  jwtProviderUri?: string;
   font?: string;
-  apiKey?: string;
-};
+} & (
+  | {
+      authType: "jwt";
+      jwtProviderUri: string;
+    }
+  | {
+      authType: "apiKey";
+      apiKey: string;
+    }
+);
