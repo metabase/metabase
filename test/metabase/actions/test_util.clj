@@ -192,6 +192,7 @@
                                                                                 :required     false}}}}}
                               options-map))]
         {:action-id action-id :model-id model-id})
+
       :implicit
       (let [action-id (action/insert! (merge
                                        {:type :implicit

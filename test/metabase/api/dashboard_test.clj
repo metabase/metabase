@@ -1170,7 +1170,7 @@
                        (into #{} (map :name) copied-cards))
                     "Should preserve the titles of the original cards"))
               (testing "Should not deep-copy models"
-                (is (every? (comp false? :dataset) copied-cards)
+                (is (every? #(= (:type %) :question) copied-cards)
                     "Copied a model")))))))))
 
 (deftest copy-dashboard-test-4

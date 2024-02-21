@@ -5574,7 +5574,7 @@ databaseChangeLog:
             sql: >-
               UPDATE report_card
               SET dataset = true
-              WHERE "type" = 'model';
+              WHERE type = 'model';
 
   - changeSet:
       id: v50.2024-02-20T19:26:38

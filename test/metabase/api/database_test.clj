@@ -725,9 +725,9 @@
        Card       card-1     (card-with-native-query "Maz Quote Views Per Month" :collection_id (:id collection))
        Card       card-2     (card-with-native-query "Maz Quote Views Per Day" :type :model)
        Card       card-3     (card-with-native-query "Maz Quote Views Per Day")]
-      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name (:name collection))
-                          card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name nil)
-                          card-3 (assoc (select-keys card-3 [:id :name :dataset]) :collection_name nil)}]
+      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name]) :type "question", :collection_name (:name collection))
+                          card-2 (assoc (select-keys card-2 [:id :name]) :type "model", :collection_name nil)
+                          card-3 (assoc (select-keys card-3 [:id :name]) :type "question", :collection_name nil)}]
         (testing "exclude cards without perms"
           (mt/with-non-admin-groups-no-root-collection-perms
             (is (= [(card->result card-1)]

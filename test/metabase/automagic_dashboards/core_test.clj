@@ -85,9 +85,15 @@
                                         :database (mt/id)}
                         :type          :model}]
             (let [{:keys [entity source]} (#'magic/->root card)]
-              (is (true? (:dataset card)))
+              (is (=? {:type :model}
+                      card))
               (is (= entity card))
-              (is (= source (assoc card :entity_type :entity/GenericTable))))))
+              (is (= source (assoc card :entity_type :entity/GenericTable))))))))))
+
+(deftest source-root-card-test-2
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset test-data
+      (testing "Card sourcing has four branches..."
         (testing "A nested query's source is itself with the :entity_type :entity/GenericTable assoced in"
           (mt/with-temp
             [Card {source-query-id :id
@@ -102,18 +108,30 @@
                                         :type     :query
                                         :database (mt/id)}}]
             (let [{:keys [entity source]} (#'magic/->root card)]
-              (is (false? (:dataset card)))
+              (is (=? {:type :question}
+                      card))
               (is (true? (#'magic/nested-query? card)))
               (is (= entity card))
-              (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))
+              (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))))))
+
+(deftest source-root-card-test-3
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset test-data
+      (testing "Card sourcing has four branches..."
         (testing "A native query's source is itself with the :entity_type :entity/GenericTable assoced in"
           (let [query (mt/native-query {:query "select * from orders"})]
             (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
               (let [{:keys [entity source]} (#'magic/->root card)]
-                (is (false? (:dataset card)))
+                (is (=? {:type :question}
+                        card))
                 (is (true? (#'magic/native-query? card)))
                 (is (= entity card))
-                (is (= source (assoc card :entity_type :entity/GenericTable)))))))
+                (is (= source (assoc card :entity_type :entity/GenericTable)))))))))))
+
+(deftest source-root-card-test-4
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset test-data
+      (testing "Card sourcing has four branches..."
         (testing "A plain query card (not native, nested, or a model) is sourced by its base table."
           (mt/with-temp
             [Card {table-id :table_id
@@ -123,7 +141,8 @@
                                                    :type     :query
                                                    :database (mt/id)}}]
             (let [{:keys [entity source]} (#'magic/->root card)]
-              (is (false? (:dataset card)))
+              (is (=? {:type :question}
+                      card))
               (is (false? (#'magic/nested-query? card)))
               (is (false? (#'magic/native-query? card)))
               (is (= entity card))

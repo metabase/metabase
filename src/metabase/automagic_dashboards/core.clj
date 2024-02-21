@@ -238,14 +238,14 @@
 
 (defmethod ->root Card
   [card]
-  (let [{:keys [dataset] :as source} (source card)]
+  (let [source (source card)]
     {:entity                     card
      :source                     source
      :database                   (:database_id card)
      :query-filter               (get-in card [:dataset_query :query :filter])
      :full-name                  (tru "\"{0}\"" (:name card))
      :short-name                 (names/source-name {:source source})
-     :url                        (format "%s%s/%s" public-endpoint (if dataset "model" "question") (u/the-id card))
+     :url                        (format "%s%s/%s" public-endpoint (name (:type source :question)) (u/the-id card))
      :dashboard-templates-prefix [(if (table-like? card)
                                     "table"
                                     "question")]}))

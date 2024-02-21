@@ -44,7 +44,6 @@
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -121,16 +120,10 @@
 (mr/def ::type
   (into [:enum] card-types))
 
-(mu/defn ^:private is-type? :- :boolean
-  "Returns true if card is of type `target-type`"
-  [{:keys [type] :as _card} :- [:map [:type ::type]]
-   target-type              :- ::type]
-  (= type target-type))
-
 (defn model?
   "Returns true if `card` is a model."
   [card]
-  (is-type? card :model))
+  (= (keyword (:type card)) :model))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 

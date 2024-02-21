@@ -160,6 +160,7 @@
                 (#'interesting/matching-fields
                  (update-in context [:source :fields] conj another-field)
                  generic-number-dimension)))))))
+
 (deftest candidate-bindings-1f-3b-test
   (testing "Candidate bindings with one field and multiple bindings"
     (let [field                {:base_type     :type/Integer

@@ -654,10 +654,7 @@
 
   source-namespaces
   {:linters
-   {:discouraged-namespace
-    {colorize.core {:message "Use metabase.util/colorize instead of colorize.core directly, since its colorization can be disabled."}}
-
-    :discouraged-var
+   {:discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
      clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
 

@@ -1545,8 +1545,8 @@
   (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
     (let [user-id          (:id (new-instance-with-default :core_user))
           db-id            (:id (new-instance-with-default :metabase_database))
-          card             (new-instance-with-default :report_card {:type :question :creator_id user-id :database_id db-id})
-          model            (new-instance-with-default :report_card {:type :model :creator_id user-id :database_id db-id})
+          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
+          model            (new-instance-with-default :report_card {:dataset true :creator_id user-id :database_id db-id})
           card-revision-id (:id (new-instance-with-default :revision
                                                            {:object    (json/generate-string (dissoc card :type))
                                                             :model     "Card"
