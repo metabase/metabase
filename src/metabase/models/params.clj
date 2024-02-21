@@ -186,7 +186,7 @@
 
 
 (mu/defn ^:private param-field-ids->fields
-  "Get the Fields (as a map of Field ID -> Field) that shoudld be returned for hydrated `:param_fields` for a Card or
+  "Get the Fields (as a map of Field ID -> Field) that should be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
   [field-ids :- [:maybe [:set ms/PositiveInt]]]
