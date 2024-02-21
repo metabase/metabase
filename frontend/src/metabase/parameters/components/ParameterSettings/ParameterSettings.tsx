@@ -15,7 +15,7 @@ import type {
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import { RequiredParamToggle } from "../RequiredParamToggle";
-import ValuesSourceSettings from "../ValuesSourceSettings";
+import { ValuesSourceSettings } from "../ValuesSourceSettings";
 
 import {
   SettingLabel,
