@@ -75,9 +75,13 @@
              (email/surveys-enabled))
     (let [instance-data (when (public-settings/anon-tracking-enabled)
                           (fetch-instance-data))
-          creators      (fetch-creators (premium-features/enable-whitelabeling?))
-          month         (- (.getValue (t/month)) 1)]
-      (doseq [creator creators]
+          all-creators  (fetch-creators (premium-features/enable-whitelabeling?))
+          month         (- (.getValue (t/month)) 1)
+          this-month    (fn [c] (= month (-> c :email hash (mod 12))))
+          recipients    (filter this-month all-creators)]
+      (log/infof "Sending surveys to %d creators of a total %d"
+                 (count all-creators) (count recipients))
+      (doseq [creator recipients]
         ;; Send the email if the creator's email hash matches the current month
         (when (= (-> creator :email hash (mod 12)) month)
           (try
