@@ -64,23 +64,29 @@
   [card dashboard-id]
   (when (public-settings/enable-query-caching)
     (let [qs     [{:from   [:cache_config]
-                   :select [:id]
+                   :select [:id
+                            [[:inline 1] :ordering]]
                    :where  [:and [:= :model "question"]   [:= :model_id (:id card)]]}
                   {:from   [:cache_config]
-                   :select [:id]
+                   :select [:id
+                            [[:inline 1] :ordering]]
                    :where  [:and [:= :model "dashboard"]  [:= :model_id dashboard-id]]}
                   {:from   [:cache_config]
-                   :select [:id]
+                   :select [:id
+                            [[:inline 1] :ordering]]
                    :where  [:and [:= :model "collection"] [:= :model_id (:collection_id card)]]}
                   {:from   [:cache_config]
-                   :select [:id]
+                   :select [:id
+                            [[:inline 1] :ordering]]
                    :where  [:and [:= :model "database"]   [:= :model_id (:database_id card)]]}
                   {:from   [:cache_config]
-                   :select [:id]
+                   :select [:id
+                            [[:inline 1] :ordering]]
                    :where  [:= :model "root"]}]
-          q      {:select [:id]
-                  :limit  1
-                  :from   [[{:union-all qs} :unused_alias]]}
+          q      {:select   [:id]
+                  :limit    1
+                  :from     [[{:union-all qs} :unused_alias]]
+                  :order-by :ordering}
           config (t2/select-one :model/CacheConfig :id q)]
       (if config
         (merge {:type       (:strategy config)
