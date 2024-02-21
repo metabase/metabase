@@ -10,35 +10,17 @@ import { getParameterType } from "./parameter-type";
 export const PULSE_PARAM_EMPTY = null;
 export const PULSE_PARAM_USE_DEFAULT = undefined;
 
-/**
- * In some cases, we need to use default parameter value in place of an absent one.
- * Please use this function when dealing with the required parameters.
- */
-export function getParameterValue({
-  parameter,
-  values = {},
-  defaultRequired = false,
-}) {
+export function getParameterValue({ parameter, values = {} }) {
   const value = values?.[parameter.id];
-  const useDefault = defaultRequired && parameter.required;
-  return value ?? (useDefault ? parameter.default : null);
+  return value ?? (parameter.required ? parameter.default : null);
 }
 
-/**
- * In some cases, we need to use default parameter value in place of an absent one.
- * Please use this function when dealing with the required parameters.
- */
-export function getValuePopulatedParameters({
-  parameters,
-  values = {},
-  defaultRequired = false,
-}) {
+export function getValuePopulatedParameters({ parameters, values = {} }) {
   return parameters.map(parameter => ({
     ...parameter,
     value: getParameterValue({
       parameter,
       values,
-      defaultRequired,
     }),
   }));
 }

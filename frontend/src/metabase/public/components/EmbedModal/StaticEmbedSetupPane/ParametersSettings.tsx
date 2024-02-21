@@ -44,7 +44,6 @@ export const ParametersSettings = ({
       getValuePopulatedParameters({
         parameters: lockedParameters,
         values: parameterValues,
-        defaultRequired: true,
       }) as EmbedResourceParameterWithValue[],
     [lockedParameters, parameterValues],
   );

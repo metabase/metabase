@@ -406,7 +406,6 @@ function getPreviewParamsBySlug({
       getParameterValue({
         parameter,
         values: parameterValues,
-        defaultRequired: true,
       }),
     ]),
   );
