@@ -58,41 +58,49 @@ const TABLE_STEP = "TABLE";
 // chooses a table field (table has already been selected)
 const FIELD_STEP = "FIELD";
 
-export const DataSourceSelector = props => (
-  <DataSelector
-    steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
-    combineDatabaseSchemaSteps
-    getTriggerElementContent={TableTrigger}
-    {...props}
-  />
-);
+export function DataSourceSelector(props) {
+  return (
+    <DataSelector
+      steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
+      combineDatabaseSchemaSteps
+      getTriggerElementContent={TableTrigger}
+      {...props}
+    />
+  );
+}
 
-export const DatabaseDataSelector = props => (
-  <DataSelector
-    steps={[DATABASE_STEP]}
-    getTriggerElementContent={DatabaseTrigger}
-    {...props}
-  />
-);
+export function DatabaseDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[DATABASE_STEP]}
+      getTriggerElementContent={DatabaseTrigger}
+      {...props}
+    />
+  );
+}
 
-export const DatabaseSchemaAndTableDataSelector = props => (
-  <DataSelector
-    steps={[DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
-    combineDatabaseSchemaSteps
-    getTriggerElementContent={TableTrigger}
-    {...props}
-  />
-);
+export function DatabaseSchemaAndTableDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
+      combineDatabaseSchemaSteps
+      getTriggerElementContent={TableTrigger}
+      {...props}
+    />
+  );
+}
 
-export const SchemaAndTableDataSelector = props => (
-  <DataSelector
-    steps={[SCHEMA_STEP, TABLE_STEP]}
-    getTriggerElementContent={TableTrigger}
-    {...props}
-  />
-);
+export function SchemaAndTableDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[SCHEMA_STEP, TABLE_STEP]}
+      getTriggerElementContent={TableTrigger}
+      {...props}
+    />
+  );
+}
 
-export const SchemaTableAndFieldDataSelector = props => {
+export function SchemaTableAndFieldDataSelector(props) {
   return (
     <DataSelector
       steps={[SCHEMA_STEP, TABLE_STEP, FIELD_STEP]}
@@ -102,7 +110,7 @@ export const SchemaTableAndFieldDataSelector = props => {
       {...props}
     />
   );
-};
+}
 
 export class UnconnectedDataSelector extends Component {
   constructor(props) {
