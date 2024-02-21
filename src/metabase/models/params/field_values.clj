@@ -49,8 +49,8 @@
      (let [fields       (-> (t2/select :model/Field :id [:in (set field-ids)])
                             (field/readable-fields-only)
                             (t2/hydrate :values))
-           field-values (->> (map #(select-keys (field-values/get-or-create-full-field-values! %)
-                                                [:field_id :human_readable_values :values])
+           field-values (->> (map #(select-keys (field-values/get-latest-full-field-values (:id %))
+                                    [:field_id :human_readable_values :values])
                                   fields)
                              (keep not-empty))]
        (m/index-by :field_id field-values)))))
