@@ -482,48 +482,10 @@
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
 
-;;; it's a map that hates if you try to get the key `:dataset` from it. NOCOMMIT
-(declare ->DatasetHatingMap)
-
-(defn- check-for-dataset-key [k]
-  (when (= k :dataset)
-      (throw (ex-info ":dataset is deprecated, use :type instead!" {}))))
-
-(p/def-map-type DatasetHatingMap [m]
-  (get [_this k default-value]
-    (check-for-dataset-key k)
-    (get m k default-value))
-  (assoc [this k v]
-    (check-for-dataset-key k)
-    (let [m' (assoc m k v)]
-      (if (identical? m m')
-        this
-        (->DatasetHatingMap m'))))
-  (dissoc [this k]
-    (check-for-dataset-key k)
-    (let [m' (dissoc m k)]
-      (if (identical? m m')
-        this
-        (->DatasetHatingMap m'))))
-  (keys [_this]
-    (keys m))
-  (meta [_this]
-    (meta m))
-  (with-meta [this metta]
-    (let [m' (with-meta m metta)]
-      (if (identical? m m')
-        this
-        (->DatasetHatingMap m'))))
-
-  pretty/PrettyPrintable
-  (pretty [_this]
-    (list `->DatasetHatingMap m)))
 
 (t2/define-after-select :model/Card
   [card]
-  (let [card (public-settings/remove-public-uuid-if-public-sharing-is-disabled card)
-        m* (into (DatasetHatingMap. {}) card)]
-    (t2.instance/->Instance (t2/model card) m* m* (meta card))))
+  (public-settings/remove-public-uuid-if-public-sharing-is-disabled card))
 
 (t2/define-before-insert :model/Card
   [card]
