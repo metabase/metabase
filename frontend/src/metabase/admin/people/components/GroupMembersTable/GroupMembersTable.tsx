@@ -11,7 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import User from "metabase/entities/users";
 
-import { ApiKeysApi } from "metabase/redux/api-key";
+import { useListApiKeyQuery } from "metabase/redux/api";
 import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import type { State } from "metabase-types/store";
@@ -59,7 +59,7 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const { isLoading, data: apiKeys } = ApiKeysApi.useListQuery();
+  const { isLoading, data: apiKeys } = useListApiKeyQuery();
   const groupApiKeys = useMemo(() => {
     return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
   }, [apiKeys, group.id]);

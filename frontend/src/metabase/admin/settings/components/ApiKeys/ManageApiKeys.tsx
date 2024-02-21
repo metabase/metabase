@@ -12,7 +12,7 @@ import type { ApiKey } from "metabase-types/api";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { ApiKeysApi } from "metabase/redux/api-key";
+import { useListApiKeyQuery } from "metabase/redux/api";
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
@@ -117,7 +117,7 @@ export const ManageApiKeys = () => {
   const [modal, setModal] = useState<Modal>(null);
   const [activeApiKey, setActiveApiKey] = useState<null | ApiKey>(null);
 
-  const { data: apiKeys, error, isLoading } = ApiKeysApi.useListQuery();
+  const { data: apiKeys, error, isLoading } = useListApiKeyQuery();
 
   const sortedApiKeys = useMemo(() => {
     if (!apiKeys) {
