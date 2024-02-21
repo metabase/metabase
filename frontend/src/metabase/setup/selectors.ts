@@ -79,7 +79,7 @@ export const getAvailableLocales = (state: State): LocaleData[] => {
 export const getIsEmailConfigured = (state: State): boolean => {
   return getSetting(state, "email-configured?");
 };
-``;
+
 export const getSteps = (state: State) => {
   const usageReason = getUsageReason(state);
   const activeStep = getStep(state);
