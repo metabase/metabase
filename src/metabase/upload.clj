@@ -558,7 +558,7 @@
             _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
             card              (card/create-card!
                                {:collection_id          collection-id
-                                :dataset                true
+                                :type                   :model
                                 :database_id            (:id database)
                                 :dataset_query          {:database (:id database)
                                                          :query    {:source-table (:id table)}
@@ -759,6 +759,6 @@
     - uploads are enabled
   Otherwise based_on_upload is nil."
   [cards]
-  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))
+  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter #(= (:type %) :model) cards)))
         card->maybe-model (comp id->model :id)]
     (map #(or (card->maybe-model %) %) cards)))

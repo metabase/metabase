@@ -795,7 +795,7 @@
               query-results (qp/process-query
                               (cond-> dataset_query
                                 dataset
-                                (assoc-in [:info :metadata/dataset-metadata] result_metadata)))
+                                (assoc-in [:info :metadata/model-metadata] result_metadata)))
               {:keys [content]} (body/render :line :inline "UTC" card nil (:data query-results))]
           (testing "Content is generated (rather than an exception being thrown)"
             (is (= :div (first content)))))))))

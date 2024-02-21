@@ -168,7 +168,7 @@
          :type     :query
          :query    {:source-table "card__1"
                     :limit        50}}])
-      (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :dataset true}]})))
+      (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}]})))
 
 (deftest ^:parallel nested-nested-queries-test-2
   (testing "Marks datasets as from a dataset"
@@ -178,8 +178,10 @@
                                          :query    {:source-table "card__1"
                                                     :limit        1}
                                          :database lib.schema.id/saved-questions-virtual-database-id})]
-          (is (= {:dataset true, :rows 1}
-                 (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
+          (is (=? {:dataset true ; TODO -- remove the `:dataset` key
+                   :rows    1
+                   :model   true}
+                  (-> results :data (update :rows count)))))))))
 
 (deftest ^:parallel nested-nested-queries-test-3
   (testing "Marks datasets as from a dataset"

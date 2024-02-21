@@ -37,7 +37,7 @@
                                                          :is_upload true}
                        :model/Card       {card-id :id
                                           :as card}     {:collection_id (:id collection)
-                                                         :dataset       true
+                                                         :type          :model
                                                          :dataset_query {:type     :query
                                                                          :database db-id
                                                                          :query    {:source-table table-id}}}]

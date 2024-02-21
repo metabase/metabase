@@ -13,5 +13,5 @@
                    Card     card {:database_id (u/the-id db)}]
       (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)})
       (is (zero? (count (t2/select PersistedInfo :card_id (u/the-id card)))))
-      (events/publish-event! :event/card-create {:object (assoc card :dataset true) :user-id (mt/user->id :rasta)})
+      (events/publish-event! :event/card-create {:object (assoc card :type :model) :user-id (mt/user->id :rasta)})
       (is (= "creating" (:state (t2/select-one PersistedInfo :card_id (u/the-id card))))))))

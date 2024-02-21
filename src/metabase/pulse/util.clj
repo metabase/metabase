@@ -34,7 +34,7 @@
                                             :context                   :pulse
                                             :card-id                   card-id}
                                            dataset
-                                           (assoc :metadata/dataset-metadata result_metadata))
+                                           (assoc :metadata/model-metadata result_metadata))
                                          options)))))
               result        (if pulse-creator-id
                               (mw.session/with-current-user pulse-creator-id

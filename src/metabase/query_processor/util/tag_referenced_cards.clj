@@ -1,7 +1,7 @@
 (ns metabase.query-processor.util.tag-referenced-cards
   (:require
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
@@ -15,7 +15,7 @@
   [query]
   (keep :card-id (query->template-tags query)))
 
-(mu/defn tags-referenced-cards :- [:maybe [:sequential lib.metadata/CardMetadata]]
+(mu/defn tags-referenced-cards :- [:maybe [:sequential ::lib.schema.metadata/card]]
   "Returns Card instances referenced by the given native `query`."
   [query]
   (mapv

@@ -103,7 +103,7 @@
                  Table     hidden-table {:name            "hidden table"
                                          :visibility_type "hidden"}
                  Card      dataset {:name                   "rand-name"
-                                    :dataset                true
+                                    :type                   :model
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
                                     :visualization_settings {}}]
@@ -183,7 +183,7 @@
                  Table     hidden-table {:name            "hidden table"
                                          :visibility_type "hidden"}
                  Card      dataset {:name                   "rand-name"
-                                    :dataset                true
+                                    :type                   :model
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
                                     :visualization_settings {}}]

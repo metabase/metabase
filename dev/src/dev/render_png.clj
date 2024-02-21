@@ -58,7 +58,7 @@
         query-results (qp/process-query
                         (cond-> dataset_query
                           dataset
-                          (assoc-in [:info :metadata/dataset-metadata] result_metadata)))
+                          (assoc-in [:info :metadata/model-metadata] result_metadata)))
         png-bytes     (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                        card
                                                        query-results

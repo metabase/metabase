@@ -50,7 +50,7 @@ union
 select
     report_card.id as entity_id,
     'card_' || report_card.id as entity_qualified_id,
-    "type" AS entity_type,
+    type AS entity_type,
     created_at,
     updated_at,
     creator_id,

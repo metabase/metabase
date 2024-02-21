@@ -173,7 +173,7 @@
                                          :description   "Linked card desc"
                                          :display       "bar"
                                          :collection_id coll-id}
-       Card          {model-id :id}     {:dataset       true
+       Card          {model-id :id}     {:type          :model
                                          :name          "Linked model name"
                                          :description   "Linked model desc"
                                          :display       "table"

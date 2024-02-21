@@ -564,7 +564,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (mt/with-actions-test-data-tables #{"venues" "categories"}
         (mt/with-actions-test-data-and-actions-enabled
-          (mt/with-actions [{card-id :id} {:dataset true, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+          (mt/with-actions [{card-id :id} {:type :model, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
                             {:keys [action-id]} {:type :implicit
                                                  :kind "row/update"
                                                  :visualization_settings {:fields {"id"    {:id     "id"

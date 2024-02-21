@@ -125,7 +125,7 @@
                  (->> (mt/user-http-request :rasta :get 200 "collection")
                       (filter (fn [{collection-name :name}]
                                 (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
-                                    (str/includes? collection-name "Personal Collection"))))
+                                    (some-> collection-name (str/includes? "Personal Collection")))))
                       (map :name)))))))))
 
 (deftest list-collections-personal-only-test
@@ -656,7 +656,7 @@
     (testing "Database id is returned for items in which dataset is true"
       (t2.with-temp/with-temp [Collection collection      {}
                                User       _               {:first_name "x" :last_name "x" :email "zzzz@example.com"}
-                               Card       {card-id-1 :id} {:dataset       true
+                               Card       {card-id-1 :id} {:type          :model
                                                            :collection_id (u/the-id collection)}
                                Card       {card-id-2 :id} {:collection_id (u/the-id collection)}]
         (is (= #{{:id card-id-1 :database_id (mt/id)}
@@ -906,7 +906,7 @@
                                                                :location (format "/%d/" collection-id)
                                                                :authority_level "official"}
                                Card       _                   {:name "card" :collection_id collection-id}
-                               Card       _                   {:name "dataset" :dataset true :collection_id collection-id}
+                               Card       _                   {:name "dataset" :type :model :collection_id collection-id}
                                Dashboard  _                   {:name "dash" :collection_id collection-id}]
         (let [items (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
                                                  :models ["dashboard" "card" "collection"]))]

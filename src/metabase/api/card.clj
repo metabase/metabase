@@ -44,6 +44,7 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -414,13 +415,15 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
+(mr/def ::card-type
+  (into [:enum {:decode/json keyword}] (mapcat (juxt identity u/qualified-name)) card/card-types))
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
-   type                   [:maybe card/CardTypes]
+   type                   [:maybe ::card-type]
    dataset_query          ms/Map
    parameters             [:maybe [:sequential ms/Parameter]]
    parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
@@ -435,9 +438,11 @@
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  (-> (card/create-card! body @api/*current-user*)
-      hydrate-card-details
-      (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
+  (let [body (cond-> body
+               (string? (:type body)) (update :type keyword))]
+    (-> (card/create-card! body @api/*current-user*)
+        hydrate-card-details
+        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 (api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -478,7 +483,7 @@
    name                   [:maybe ms/NonBlankString]
    parameters             [:maybe [:sequential ms/Parameter]]
    dataset_query          [:maybe ms/Map]
-   type                   [:maybe card/CardTypes]
+   type                   [:maybe ::card-type]
    display                [:maybe ms/NonBlankString]
    description            [:maybe :string]
    visualization_settings [:maybe ms/Map]
@@ -492,6 +497,8 @@
    collection_preview     [:maybe :boolean]}
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
+        card-updates           (cond-> card-updates
+                                 (:type card-updates) (update :type keyword))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
@@ -514,8 +521,7 @@
           [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])
           timed-out?            (= port metadata-timeout)
           card-updates          (cond-> card-updates
-                                  (not timed-out?)
-                                  (assoc :result_metadata fresh-metadata))]
+                                  (not timed-out?) (assoc :result_metadata fresh-metadata))]
       (u/prog1 (-> (card/update-card! {:card-before-update card-before-update
                                        :card-updates       card-updates
                                        :actor              @api/*current-user*})

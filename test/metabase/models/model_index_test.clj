@@ -44,8 +44,8 @@
             pk_ref    (mt/$ids $products.id)
             value_ref (mt/$ids $products.title)]
         (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                   :dataset         true
-                                                   :name            "model index test")]
+                                                   :type :model
+                                                   :name "model index test")]
           (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
                                                   {:model_id  (:id model)
                                                    :pk_ref    pk_ref
@@ -191,8 +191,8 @@
   [{:keys [query pk-name value-name quantity subset scenario]}]
   (testing scenario
     (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                               :dataset         true
-                                               :name            "model index test")]
+                                               :type :model
+                                               :name "model index test")]
       (let [by-name     (fn [n] (or (some (fn [f]
                                             (when (= (-> f :display_name u/lower-case-en) (u/lower-case-en n))
                                               (:field_ref f)))
@@ -257,8 +257,8 @@
             pk-ref            (mt/$ids $products.id)
             invalid-value-ref (mt/$ids $products.ean)]
         (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                   :dataset         true
-                                                   :name            "model index test")
+                                                   :type :model
+                                                   :name "model index test")
                                  ModelIndex mi {:model_id   (:id model)
                                                 :pk_ref     pk-ref
                                                 :value_ref  invalid-value-ref

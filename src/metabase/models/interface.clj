@@ -672,7 +672,8 @@
 (def ^:private model->namespace
   "Mappings for models that do not follow the normal `metabase.models.kebab-case-model-name` pattern (mostly enterprise
   models). Add more stuff here as needed."
-  {:model/GroupTableAccessPolicy 'metabase-enterprise.sandbox.models.group-table-access-policy})
+  {:model/ConnectionImpersonation 'metabase-enterprise.advanced-permissions.models.connection-impersonation
+   :model/GroupTableAccessPolicy  'metabase-enterprise.sandbox.models.group-table-access-policy})
 
 (methodical/defmethod t2/resolve-model :before :default
   "Attempt to automatically load the corresponding namespace for a `:model/X` if not already loaded, e.g. for
@@ -690,10 +691,12 @@
                         model
                         model-namespace))
         (catch Throwable e
-          (throw (ex-info (format "Error loading namespace for model %s (tried %s). Do you need to add an entry to %s?"
-                                  model
-                                  model-namespace
-                                  `model->namespace)
-                          {:model model, :namespace model-namespace}
-                          e))))))
+          ;; NOCOMMIT
+          (log/error
+           (ex-info (u/colorize :red (format "Error loading namespace for model %s (tried %s). Do you need to add an entry to %s?"
+                                             model
+                                             model-namespace
+                                             `model->namespace))
+                    {:model model, :namespace model-namespace}
+                    e))))))
   model)
