@@ -35,7 +35,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // save question initially
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.get(".ModalBody").contains("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
