@@ -330,6 +330,30 @@
       (log/error e (trs "Error fetching field values"))
       nil)))
 
+(defn- delete-duplicates-and-return-latest!
+  "This is a workaround for the issue of stale FieldValues rows (metabase#668)
+  In order to mitigate the impact of duplicates, we return the most recently updated row, and delete the older rows."
+  [rows]
+  (if (<= (count rows) 1)
+    (first rows)
+    (let [[latest & duplicates] (sort-by :updated_at u/reverse-compare rows)]
+      (t2/delete! FieldValues :id [:in (map :id duplicates)])
+      latest)))
+
+(defn get-latest-field-values
+  "This returns the FieldValues with the given :type and :hash_key for the given Field.
+   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  [field-id type hash]
+  (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
+  (delete-duplicates-and-return-latest!
+    (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
+
+(defn get-latest-full-field-values
+  "This returns the full FieldValues for the given Field.
+   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  [field-id]
+  (get-latest-field-values field-id :full nil))
+
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
@@ -337,7 +361,7 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values              (t2/select-one FieldValues :field_id (u/the-id field) :type :full)
+  (let [field-values              (get-latest-full-field-values (u/the-id field))
         {unwrapped-values :values
          :keys [has_more_values]} (distinct-values field)
         ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
@@ -359,7 +383,7 @@
                (> (count values) auto-list-cardinality-threshold)))
       (do
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
-                       field-name (count values))
+                    field-name (count values))
                   (trs "Switching Field to use a search widget instead."))
         (t2/update! 'Field (u/the-id field) {:has_field_values nil})
         (clear-field-values-for-field! field)
@@ -374,13 +398,13 @@
       ;; if the FieldValues object already exists then update values in it
       (and field-values unwrapped-values)
       (do
-       (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
-       (t2/update! FieldValues (u/the-id field-values)
-                   (m/remove-vals nil?
-                                  {:has_more_values       has_more_values
-                                   :values                values
-                                   :human_readable_values (fixup-human-readable-values field-values values)}))
-       ::fv-updated)
+        (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
+        (t2/update! FieldValues (u/the-id field-values)
+                    (m/remove-vals nil?
+                                   {:has_more_values       has_more_values
+                                    :values                values
+                                    :human_readable_values (fixup-human-readable-values field-values values)}))
+        ::fv-updated)
 
       ;; if FieldValues object doesn't exist create one
       unwrapped-values
@@ -407,20 +431,19 @@
   [{field-id :id field-values :values :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (let [existing (or (not-empty field-values)
-                       (t2/select-one FieldValues :field_id field-id :type :full))]
+    (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
       (if (or (not existing) (inactive? existing))
         (case (create-or-update-full-field-values! field human-readable-values)
           ::fv-deleted
           nil
 
           ::fv-created
-          (t2/select-one FieldValues :field_id field-id :type :full)
+          (get-latest-full-field-values field-id)
 
           (do
             (when existing
               (t2/update! FieldValues (:id existing) {:last_used_at :%now}))
-            (t2/select-one FieldValues :field_id field-id :type :full)))
+            (get-latest-full-field-values field-id)))
         (do
           (t2/update! FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
@@ -489,7 +512,7 @@
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
-    (t2/select-one FieldValues :field_id (:id field))))
+    (get-latest-full-field-values (:id field))))
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.

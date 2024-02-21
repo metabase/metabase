@@ -872,3 +872,8 @@
       (if (empty? to-traverse)
         traversed
         (recur to-traverse traversed)))))
+
+(defn reverse-compare
+  "A reversed java.util.Comparator, useful for sorting elements in descending in order"
+  [x y]
+  (compare y x))
