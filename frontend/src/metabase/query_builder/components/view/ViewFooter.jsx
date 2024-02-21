@@ -43,7 +43,7 @@ const ViewFooter = ({
     return null;
   }
 
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const hasDataPermission = isEditable;
   const hideChartSettings = result.error && !hasDataPermission;
 
@@ -105,7 +105,9 @@ const ViewFooter = ({
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" />,
-          result != null && <ExecutionTime time={result.running_time} />,
+          isNative && result != null && (
+            <ExecutionTime time={result.running_time} />
+          ),
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"
