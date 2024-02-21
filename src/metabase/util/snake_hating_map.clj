@@ -25,8 +25,6 @@
       (throw e))))
 
 (defn- normalize-key [k]
-  (when (= k :dataset)
-    (throw (ex-info ":dataset is deprecated, use :type instead" {}))) ; NOCOMMIT
   (if (snake-cased-key? k)
     (do
       (warn-about-using-snake-case k)
