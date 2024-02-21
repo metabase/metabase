@@ -1,23 +1,24 @@
-import userEvent from "@testing-library/user-event";
 import { screen } from "@testing-library/react";
-import { createMockState } from "metabase-types/store/mocks";
-import {
-  createMockCard,
-  createMockDashboard,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import userEvent from "@testing-library/user-event";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type {
   EmbedResource,
   EmbedResourceType,
 } from "metabase/public/lib/types";
 import type { TokenFeatures } from "metabase-types/api";
-import { mockSettings } from "__support__/settings";
+import {
+  createMockCard,
+  createMockDashboard,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
-import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
+import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 
 const TextEditorMock = ({
   value,

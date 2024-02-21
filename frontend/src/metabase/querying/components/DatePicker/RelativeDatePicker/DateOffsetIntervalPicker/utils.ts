@@ -1,10 +1,12 @@
 import { t } from "ttag";
+
 import * as Lib from "metabase-lib";
+
+import { DATE_PICKER_TRUNCATION_UNITS } from "../../constants";
 import type {
   DatePickerTruncationUnit,
   RelativeIntervalDirection,
 } from "../../types";
-import { DATE_PICKER_TRUNCATION_UNITS } from "../../constants";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import { getDirection } from "../utils";
 

@@ -1,17 +1,18 @@
-import {
-  createAdHocNativeCard,
-  createSampleDatabase,
-  createSavedStructuredCard,
-  createSavedNativeCard,
-} from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/Question";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
-import Question from "metabase-lib/Question";
+import {
+  createAdHocNativeCard,
+  createSampleDatabase,
+  createSavedStructuredCard,
+  createSavedNativeCard,
+} from "metabase-types/api/mocks/presets";
+
 import { canExploreResults } from "./utils";
 
 describe("canExploreResults", () => {

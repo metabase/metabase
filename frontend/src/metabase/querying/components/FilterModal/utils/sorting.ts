@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+
 import type { ColumnItem } from "../types";
 
 function isCreationDateOrTimestamp(column: Lib.ColumnMetadata) {

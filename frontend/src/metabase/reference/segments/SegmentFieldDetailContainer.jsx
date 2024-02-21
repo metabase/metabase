@@ -1,13 +1,12 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import SidebarLayout from "metabase/components/SidebarLayout";
-import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
-
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
+import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
 
 import {
   getSegment,
@@ -16,6 +15,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
+
 import SegmentFieldSidebar from "./SegmentFieldSidebar";
 
 const mapStateToProps = (state, props) => ({

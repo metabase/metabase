@@ -1,9 +1,8 @@
 import { t } from "ttag";
+
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { UserInfo } from "metabase-types/store";
-import { ActiveStep } from "../ActiveStep";
-import { InactiveStep } from "../InactiveStep";
-import { UserForm } from "../UserForm";
+
 import { selectStep, submitUser } from "../../actions";
 import {
   getIsHosted,
@@ -13,7 +12,11 @@ import {
   getUser,
 } from "../../selectors";
 import { validatePassword } from "../../utils";
+import { ActiveStep } from "../ActiveStep";
+import { InactiveStep } from "../InactiveStep";
+import { UserForm } from "../UserForm";
 import type { NumberedStepProps } from "../types";
+
 import { StepDescription } from "./UserStep.styled";
 
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {

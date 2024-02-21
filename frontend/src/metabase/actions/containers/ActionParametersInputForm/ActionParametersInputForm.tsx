@@ -2,7 +2,6 @@ import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 
 import ActionForm from "metabase/actions/components/ActionForm";
-
 import type {
   OnSubmitActionForm,
   ParametersForActionExecution,

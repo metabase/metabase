@@ -1,5 +1,19 @@
 import { t } from "ttag";
 import _ from "underscore";
+
+import {
+  getMaxMetricsSupported,
+  getMaxDimensionsSupported,
+} from "metabase/visualizations";
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  seriesSetting,
+  keyForSingleSeries,
+} from "metabase/visualizations/lib/settings/series";
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
   columnsAreValid,
   getFriendlyName,
@@ -7,23 +21,6 @@ import {
   preserveExistingColumnsOrder,
   MAX_SERIES,
 } from "metabase/visualizations/lib/utils";
-
-import {
-  seriesSetting,
-  keyForSingleSeries,
-} from "metabase/visualizations/lib/settings/series";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
-import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-
-import {
-  getMaxMetricsSupported,
-  getMaxDimensionsSupported,
-} from "metabase/visualizations";
-
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import {
   isDimension,
   isMetric,

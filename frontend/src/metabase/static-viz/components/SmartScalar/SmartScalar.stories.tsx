@@ -1,8 +1,7 @@
 import { colors } from "metabase/lib/colors";
+import { createColorGetter } from "metabase/static-viz/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import { createColorGetter } from "metabase/static-viz/lib/colors";
-
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,

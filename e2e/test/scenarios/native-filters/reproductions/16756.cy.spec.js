@@ -1,5 +1,5 @@
-import { restore, filterWidget, popover } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, filterWidget, popover } from "e2e/support/helpers";
 
 import { runQuery } from "../helpers/e2e-sql-filter-helpers";
 
@@ -45,7 +45,7 @@ describe("issue 16756", () => {
     cy.icon("variable").click();
 
     // Update the filter widget type
-    cy.findByTestId("sidebar-right").findByText("Date Range").click();
+    cy.findByTestId("sidebar-right").findByDisplayValue("Date Range").click();
 
     popover().contains("Single Date").click();
 
@@ -58,7 +58,7 @@ describe("issue 16756", () => {
 
     popover().contains("15").click();
 
-    cy.button("Update filter").click();
+    cy.button("Add filter").click();
 
     runQuery();
 

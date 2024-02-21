@@ -1,7 +1,10 @@
 import { t } from "ttag";
+
 import { useSelector } from "metabase/lib/redux";
+
 import { getIsStepActive } from "../../selectors";
 import { NewsletterForm } from "../NewsletterForm";
+
 import {
   StepBody,
   StepFooter,

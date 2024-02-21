@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
 import { color } from "metabase/lib/colors";
+import * as Lib from "metabase-lib";
+
 import { HeaderButton } from "../ViewHeader.styled";
 
 export function QuestionSummarizeWidget({

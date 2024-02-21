@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -6,6 +7,7 @@ import {
   createQuery,
   findTemporalBucket,
 } from "metabase-lib/test-helpers";
+
 import { TimeseriesBucketPicker } from "./TimeseriesBucketPicker";
 
 function findBreakoutColumn(query: Lib.Query) {

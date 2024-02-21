@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+
 import type { FilterOperatorOption } from "./types";
 
 export function getAvailableOperatorOptions<

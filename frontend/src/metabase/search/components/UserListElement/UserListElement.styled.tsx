@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
+
 import type { ButtonProps } from "metabase/ui";
 import { Button } from "metabase/ui";
 

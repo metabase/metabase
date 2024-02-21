@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   getDashboardCard,
@@ -13,8 +14,6 @@ import {
   expectNoBadSnowplowEvents,
   expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
-
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > dashboard > text and headings", () => {
   beforeEach(() => {

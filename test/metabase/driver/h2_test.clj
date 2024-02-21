@@ -16,6 +16,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -202,7 +203,7 @@
                       "FROM ATTEMPTS "
                       "GROUP BY ATTEMPTS.DATE "
                       "ORDER BY ATTEMPTS.DATE ASC")
-                 (some-> (qp/compile query) :query pretty-sql))))))))
+                 (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2

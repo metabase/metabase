@@ -24,17 +24,18 @@
         (let [query         (assoc query :async? false)
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
-                                (qp/process-query-and-save-with-max-results-constraints!
-                                 (assoc query :middleware {:skip-results-metadata? true
-                                                           :process-viz-settings?  true
-                                                           :js-int-to-string?      false})
-                                 (merge (cond->
-                                          {:executed-by               pulse-creator-id
-                                           :context                   :pulse
-                                           :card-id                   card-id}
-                                          dataset
-                                          (assoc :metadata/dataset-metadata result_metadata))
-                                        options))))
+                                (qp/process-query
+                                 (qp/userland-query-with-default-constraints
+                                  (assoc query :middleware {:skip-results-metadata? true
+                                                            :process-viz-settings?  true
+                                                            :js-int-to-string?      false})
+                                  (merge (cond->
+                                           {:executed-by               pulse-creator-id
+                                            :context                   :pulse
+                                            :card-id                   card-id}
+                                           dataset
+                                           (assoc :metadata/dataset-metadata result_metadata))
+                                         options)))))
               result        (if pulse-creator-id
                               (mw.session/with-current-user pulse-creator-id
                                 (process-query))

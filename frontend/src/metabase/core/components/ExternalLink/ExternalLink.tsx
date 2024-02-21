@@ -1,6 +1,8 @@
 import type { AnchorHTMLAttributes, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
+
 import { getUrlTarget } from "metabase/lib/dom";
+
 import { LinkRoot } from "./ExternalLink.styled";
 
 interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {

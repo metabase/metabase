@@ -1,15 +1,22 @@
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
 
-import type { IconName, IconProps } from "metabase/ui";
-import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
-
+import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import type {
   DataPermission,
   DatabaseEntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
-
+import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import type {
+  AvailableModelFilters,
+  ModelFilterControlsProps,
+} from "metabase/browse/utils";
+import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import type { SearchFilterComponent } from "metabase/search/types";
+import type { IconName, IconProps } from "metabase/ui";
+import type Question from "metabase-lib/Question";
+import type Database from "metabase-lib/metadata/Database";
 import type {
   Bookmark,
   Collection,
@@ -26,19 +33,8 @@ import type {
   User,
   UserListResult,
 } from "metabase-types/api";
-
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
-
 import type { AdminPathKey, State } from "metabase-types/store";
-import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
-import type { SearchFilterComponent } from "metabase/search/types";
-import type {
-  AvailableModelFilters,
-  ModelFilterControlsProps,
-} from "metabase/browse/utils";
-import type Question from "metabase-lib/Question";
 
-import type Database from "metabase-lib/metadata/Database";
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
@@ -349,4 +345,8 @@ export const PLUGIN_DASHBOARD_HEADER = {
 
 export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
+};
+
+export const PLUGIN_IS_EE_BUILD = {
+  isEEBuild: () => false,
 };

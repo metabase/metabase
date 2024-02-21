@@ -1,9 +1,9 @@
+import { parseHashOptions, parseSearchOptions } from "metabase/lib/browser";
 import {
   combineReducers,
   createAction,
   handleActions,
 } from "metabase/lib/redux";
-import { parseHashOptions, parseSearchOptions } from "metabase/lib/browser";
 
 export const DEFAULT_EMBED_OPTIONS = {
   top_nav: true,

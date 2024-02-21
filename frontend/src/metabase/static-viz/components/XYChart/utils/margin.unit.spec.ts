@@ -1,4 +1,5 @@
 import { CHART_PADDING } from "metabase/static-viz/components/XYChart/constants";
+
 import { calculateMargin, LABEL_OFFSET } from "./margin";
 
 const COMPUTED_TEXT_HEIGHT = 50;

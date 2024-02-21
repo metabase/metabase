@@ -1,19 +1,18 @@
 /* eslint-disable react/prop-types */
-import { memo, Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { memo, Component } from "react";
 import { t } from "ttag";
 
-import cx from "classnames";
-import { uuid } from "metabase/lib/utils";
-import Select, { Option } from "metabase/core/components/Select";
 import Confirm from "metabase/components/Confirm";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Modal from "metabase/components/Modal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import Modal from "metabase/components/Modal";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Select, { Option } from "metabase/core/components/Select";
+import { uuid } from "metabase/lib/utils";
 import { SettingsApi, GeoJSONApi } from "metabase/services";
-
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
+
 import SettingHeader from "../SettingHeader";
 
 export default class CustomGeoJSONWidget extends Component {

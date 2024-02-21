@@ -1,9 +1,10 @@
-import { t } from "ttag";
 import type { MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
+import { t } from "ttag";
+
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { Flex, Tooltip } from "metabase/ui";
 
 export type DashboardEmbedHeaderButtonProps = {

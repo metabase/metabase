@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
+
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
 import { Button, Group, Text } from "metabase/ui";
+import { createMockState } from "metabase-types/store/mocks";
+
 import { EmbedModal } from "./EmbedModal";
 
 const TestEmbedModal = ({

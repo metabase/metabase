@@ -291,6 +291,39 @@
                :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
     (email/send-message! email)))
 
+(defn- creator-sentiment-blob
+  "Create a blob of instance/user data to be sent to the creator sentiment survey."
+  [instance-data created_at num_dashboards num_questions num_models]
+  (-> {:instance instance-data
+       :user     {:created_at     created_at
+                  :num_dashboards num_dashboards
+                  :num_questions  num_questions
+                  :num_models     num_models}}
+      json/generate-string
+      .getBytes
+      codecs/bytes->b64-str))
+
+(defn send-creator-sentiment-email!
+  "Format and send an email to a creator with a link to a survey. Can include info about the instance and the creator
+  if [[public-settings/anon-tracking-enabled]] is true."
+  [{:keys [email created_at first_name num_dashboards num_questions num_models]} instance-data]
+  {:pre [(u/email? email)]}
+  (let [blob    (when (public-settings/anon-tracking-enabled)
+                  (creator-sentiment-blob instance-data created_at num_dashboards num_questions num_models))
+        context (merge (common-context)
+                       {:emailType  "notification"
+                        :logoHeader true
+                        :first-name first_name
+                        :link       (cond-> "https://metabase.com/feedback/creator"
+                                      blob (str "?context=" blob))}
+                       (when-not (premium-features/is-hosted?)
+                         {:self-hosted (public-settings/site-url)}))
+        message {:subject      "Metabase would love your take on something"
+                 :recipients   [email]
+                 :message-type :html
+                 :message      (stencil/render-file "metabase/email/creator_sentiment_email" context)}]
+    (email/send-message! message)))
+
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
    :content-id   content-id

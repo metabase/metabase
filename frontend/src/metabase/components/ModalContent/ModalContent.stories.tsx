@@ -1,6 +1,8 @@
-import type { ComponentStory } from "@storybook/react";
 import { action } from "@storybook/addon-actions";
+import type { ComponentStory } from "@storybook/react";
+
 import { color } from "metabase/lib/colors";
+
 import ModalContent, { ModalContentActionIcon } from "./index";
 
 export default {

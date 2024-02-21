@@ -7,6 +7,7 @@ import {
   isDashcardLoading,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import {
   createMockDashboard,
   createMockVirtualDashCard,
@@ -15,7 +16,6 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
   id: 1,

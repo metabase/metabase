@@ -1,11 +1,12 @@
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { createMockSegment } from "metabase-types/api/mocks";
 import { setupSegmentsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { createMockSegment } from "metabase-types/api/mocks";
+
 import { useSegmentQuery } from "./use-segment-query";
 
 const TEST_SEGMENT = createMockSegment();

@@ -1,21 +1,21 @@
 import * as React from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
+import {
+  verifyCard,
+  removeCardReview,
+} from "metabase-enterprise/moderation/actions";
+import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import {
   MODERATION_STATUS,
   getLatestModerationReview,
   getStatusIcon,
   isItemVerified,
 } from "metabase-enterprise/moderation/service";
-import { getIsModerator } from "metabase-enterprise/moderation/selectors";
-import {
-  verifyCard,
-  removeCardReview,
-} from "metabase-enterprise/moderation/actions";
-
-import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
+import type { State } from "metabase-types/store";
+
 import { VerifyButton as DefaultVerifyButton } from "../QuestionModerationSection/QuestionModerationSection.styled";
 
 interface Props {

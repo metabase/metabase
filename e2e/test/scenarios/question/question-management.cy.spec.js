@@ -1,4 +1,11 @@
 import { onlyOn } from "@cypress/skip-test";
+
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestion,
@@ -17,13 +24,6 @@ import {
   expectGoodSnowplowEvents,
   modal,
 } from "e2e/support/helpers";
-
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

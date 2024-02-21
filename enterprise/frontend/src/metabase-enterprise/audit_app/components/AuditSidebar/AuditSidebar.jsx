@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
-import { t } from "ttag";
 import cx from "classnames";
+import { t } from "ttag";
+
 import { SidebarItemLink, SidebarItemRoot } from "./AuditSidebar.styled";
 
 const AuditSidebarSection = ({ title, children }) => (

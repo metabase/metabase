@@ -1,5 +1,5 @@
-import { LoginHistorySchema } from "metabase/schema";
 import { createEntity } from "metabase/lib/entities";
+import { LoginHistorySchema } from "metabase/schema";
 
 const LoginHistory = createEntity({
   name: "loginHistory",

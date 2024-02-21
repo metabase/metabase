@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -20,6 +21,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -181,47 +183,63 @@
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 
-(defn run-query-for-card-async
-  "Run the query for Card with `parameters` and `constraints`, and return results in a
+(mu/defn process-query-for-card-default-qp :- :some
+  "Default value of the `:qp` option for [[process-query-for-card]]."
+  [query :- ::qp.schema/query
+   rff   :- ::qp.schema/rff]
+  (qp/process-query (qp/userland-query query) rff))
+
+(defn- process-query-for-card-default-run-fn
+  "Create the default `:run` function for [[process-query-for-card]]."
+  [qp export-format]
+  (^:once fn* [query info]
+   (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+     (qp (update query :info merge info) rff))))
+
+(mu/defn process-query-for-card
+  "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
-  returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are not
-  met before returning the `StreamingResponse`.
+  returned as the result of an API endpoint fn, but you can return something different by passing a different `:run`
+  option. `:run` has a signature
+
+    (run query info) => result
+
+  Will throw an Exception if preconditions (such as read perms) are not met *before* returning the
+  `StreamingResponse`.
 
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
   options."
-  [card-id export-format
-   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp-runner run ignore_cache]
+  [card-id :- ::lib.schema.id/card
+   export-format
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp run ignore-cache]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
-             qp-runner   qp/process-query-and-save-execution!}}]
+             qp          process-query-for-card-default-qp
+             ;; param `run` can be used to control how the query is ran, e.g. if you need to customize the `context`
+             ;; passed to the QP
+             run         (process-query-for-card-default-run-fn qp export-format)}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
-  (let [run       (or run
-                      ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                      ;; customize the `context` passed to the QP
-                      (^:once fn* [query info]
-                       (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
-                         (qp-runner query info rff context))))
-        dash-viz  (when (not= context :question)
-                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
-        card      (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
-                                                  :dataset :result_metadata :visualization_settings]
-                                                 :id card-id))
-        query     (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                      (update :viz-settings (fn [viz] (merge viz dash-viz)))
-                      (assoc :async? true)
-                      (update :middleware (fn [middleware]
-                                            (merge
-                                             {:js-int-to-string? true :ignore-cached-results? ignore_cache}
-                                             middleware))))
-        info      (cond-> {:executed-by            api/*current-user-id*
-                           :context                context
-                           :card-id                card-id
-                           :card-name              (:name card)
-                           :dashboard-id           dashboard-id
-                           :visualization-settings (:visualization_settings card)}
-                    (and (:dataset card) (seq (:result_metadata card)))
-                    (assoc :metadata/dataset-metadata (:result_metadata card)))]
+  (let [dash-viz (when (and (not= context :question)
+                            dashcard-id)
+                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
+        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
+                                                 :dataset :result_metadata :visualization_settings]
+                                                :id card-id))
+        query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                     (update :viz-settings (fn [viz] (merge viz dash-viz)))
+                     (update :middleware (fn [middleware]
+                                           (merge
+                                            {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                            middleware))))
+        info     (cond-> {:executed-by            api/*current-user-id*
+                          :context                context
+                          :card-id                card-id
+                          :card-name              (:name card)
+                          :dashboard-id           dashboard-id
+                          :visualization-settings (:visualization_settings card)}
+                   (and (:dataset card) (seq (:result_metadata card)))
+                   (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))

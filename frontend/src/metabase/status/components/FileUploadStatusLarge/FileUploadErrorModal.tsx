@@ -1,8 +1,9 @@
 import { t } from "ttag";
-import { Text } from "metabase/ui";
+
+import { ErrorBox } from "metabase/components/ErrorDetails";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
-import { ErrorBox } from "metabase/components/ErrorDetails";
+import { Text } from "metabase/ui";
 
 export const FileUploadErrorModal = ({
   onClose,

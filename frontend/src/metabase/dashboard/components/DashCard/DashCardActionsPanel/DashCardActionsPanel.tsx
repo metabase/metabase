@@ -1,11 +1,12 @@
-import { t } from "ttag";
-
 import type { MouseEvent } from "react";
 import { useState } from "react";
+import { t } from "ttag";
+
+import { isActionDashCard } from "metabase/actions/utils";
+import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Icon } from "metabase/ui";
-
 import { getVisualizationRaw } from "metabase/visualizations";
-
+import type Question from "metabase-lib/Question";
 import type {
   Dashboard,
   DashboardCard,
@@ -13,25 +14,23 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { isActionDashCard } from "metabase/actions/utils";
-import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
-
-import { useDuplicateDashCard } from "./use-duplicate-dashcard";
-import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
-import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
-import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
-import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
-import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
+import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
+import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
+import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
 import {
   DashCardActionButtonsContainer,
   DashCardActionsPanelContainer,
 } from "./DashCardActionsPanel.styled";
+import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
+import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
+import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 
 interface Props {
   series: Series;
   dashboard: Dashboard;
   dashcard?: DashboardCard;
+  question?: Question;
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
@@ -52,6 +51,7 @@ export function DashCardActionsPanel({
   series,
   dashboard,
   dashcard,
+  question,
   isLoading,
   isPreviewing,
   hasError,
@@ -113,6 +113,7 @@ export function DashCardActionsPanel({
           series={series}
           dashboard={dashboard}
           dashcard={dashcard}
+          question={question}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
       );

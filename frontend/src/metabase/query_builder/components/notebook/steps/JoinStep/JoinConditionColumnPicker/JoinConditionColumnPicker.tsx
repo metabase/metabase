@@ -1,15 +1,14 @@
-import { forwardRef, useCallback, useMemo } from "react";
 import type { RefObject } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { Text } from "metabase/ui";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import type { TippyPopoverWithTriggerRef } from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import type {
   QueryColumnPickerProps,
   ColumnListItem,
 } from "metabase/common/components/QueryColumnPicker";
-
+import type { TippyPopoverWithTriggerRef } from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {

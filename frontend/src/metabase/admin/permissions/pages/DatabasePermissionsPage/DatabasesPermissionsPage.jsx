@@ -1,32 +1,31 @@
-import { Fragment, useCallback } from "react";
-import { useAsync } from "react-use";
-import PropTypes from "prop-types";
 import { bindActionCreators } from "@reduxjs/toolkit";
+import PropTypes from "prop-types";
+import { Fragment, useCallback } from "react";
+import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { connect } from "react-redux";
-
-import { Loader, Center } from "metabase/ui";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PermissionsApi } from "metabase/services";
+import { Loader, Center } from "metabase/ui";
+
+import {
+  PermissionsEditor,
+  PermissionsEditorEmptyState,
+} from "../../components/PermissionsEditor";
+import { PermissionsSidebar } from "../../components/PermissionsSidebar";
+import {
+  updateDataPermission,
+  LOAD_DATA_PERMISSIONS_FOR_DB,
+} from "../../permissions";
 import {
   getGroupsDataPermissionEditor,
   getDataFocusSidebar,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
-import {
-  updateDataPermission,
-  LOAD_DATA_PERMISSIONS_FOR_DB,
-} from "../../permissions";
-
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
-import {
-  PermissionsEditor,
-  PermissionsEditorEmptyState,
-} from "../../components/PermissionsEditor";
 import {
   DATABASES_BASE_PATH,
   getDatabaseFocusPermissionsUrl,

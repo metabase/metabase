@@ -1,12 +1,15 @@
 import type Tether from "tether";
+
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import type { PopoverBaseProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+
 import {
   NotebookCell,
   NotebookCellAdd,
   NotebookCellItem,
 } from "../../NotebookCell";
+
 import { ClausePopover } from "./ClausePopover";
 
 type RenderItemOpts<T> = {

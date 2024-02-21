@@ -3,7 +3,6 @@ import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
-
 import { TYPE } from "metabase-lib/types/constants";
 
 describe("schema_metadata", () => {

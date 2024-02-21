@@ -1,38 +1,21 @@
+import { useState } from "react";
 import { t } from "ttag";
 
-import type {
-  Card,
-  CollectionEssentials,
-  SearchResult,
-} from "metabase-types/api";
-import * as Urls from "metabase/lib/urls";
-
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
-import { useSelector } from "metabase/lib/redux";
-
-import type { useSearchListQuery } from "metabase/common/hooks";
-
 import NoResults from "assets/img/no_results.svg";
-import { Box, Group, Icon, Text, Title } from "metabase/ui";
-
-import { getCollectionIcon } from "metabase/entities/collections";
+import type { useSearchListQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
-import { entityForObject } from "metabase/lib/schema";
-import { color } from "metabase/lib/colors";
-import { getCollectionName, groupModels, sortModels } from "../utils";
+import { Box } from "metabase/ui";
+import type { SearchResult, CollectionId } from "metabase-types/api";
+
+import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "../constants";
+import { getCollectionViewPreferences, groupModels } from "../utils";
 
 import { CenteredEmptyState } from "./BrowseApp.styled";
-import {
-  CollectionHeaderContainer,
-  CollectionHeaderGroup,
-  CollectionHeaderLink,
-  GridContainer,
-  ModelCard,
-  MultilineEllipsified,
-} from "./BrowseModels.styled";
-import { LastEdited } from "./LastEdited";
+import { ModelGrid } from "./BrowseModels.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
+import { ModelGroup } from "./ModelGroup";
 
 export const BrowseModels = ({
   modelsResult,
@@ -42,6 +25,9 @@ export const BrowseModels = ({
   const { data: models = [], error, isLoading } = modelsResult;
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
+  const [collectionViewPreferences, setCollectionViewPreferences] = useState(
+    getCollectionViewPreferences,
+  );
 
   if (error || isLoading) {
     return (
@@ -53,21 +39,66 @@ export const BrowseModels = ({
     );
   }
 
+  const handleToggleCollectionExpand = (collectionId: CollectionId) => {
+    const newPreferences = {
+      ...collectionViewPreferences,
+      [collectionId]: {
+        expanded: !(
+          collectionViewPreferences?.[collectionId]?.expanded ?? true
+        ),
+        showAll: !!collectionViewPreferences?.[collectionId]?.showAll,
+      },
+    };
+    setCollectionViewPreferences(newPreferences);
+    localStorage.setItem(
+      BROWSE_MODELS_LOCALSTORAGE_KEY,
+      JSON.stringify(newPreferences),
+    );
+  };
+
+  const handleToggleCollectionShowAll = (collectionId: CollectionId) => {
+    const newPreferences = {
+      ...collectionViewPreferences,
+      [collectionId]: {
+        expanded: collectionViewPreferences?.[collectionId]?.expanded ?? true,
+        showAll: !collectionViewPreferences?.[collectionId]?.showAll,
+      },
+    };
+    setCollectionViewPreferences(newPreferences);
+    localStorage.setItem(
+      BROWSE_MODELS_LOCALSTORAGE_KEY,
+      JSON.stringify(newPreferences),
+    );
+  };
+
   const groupsOfModels = groupModels(models, localeCode);
 
   if (models.length) {
     return (
       <>
         <ModelExplanationBanner />
-        <GridContainer role="grid">
-          {groupsOfModels.map(groupOfModels => (
-            <ModelGroup
-              models={groupOfModels}
-              key={`modelgroup-${groupOfModels[0].collection.id}`}
-              localeCode={localeCode}
-            />
-          ))}
-        </GridContainer>
+        <ModelGrid role="grid">
+          {groupsOfModels.map(groupOfModels => {
+            const collectionId = groupOfModels[0].collection.id;
+            return (
+              <ModelGroup
+                expanded={
+                  collectionViewPreferences?.[collectionId]?.expanded ?? true
+                }
+                showAll={!!collectionViewPreferences?.[collectionId]?.showAll}
+                toggleExpanded={() =>
+                  handleToggleCollectionExpand(collectionId)
+                }
+                toggleShowAll={() =>
+                  handleToggleCollectionShowAll(collectionId)
+                }
+                models={groupOfModels}
+                key={`modelgroup-${collectionId}`}
+                localeCode={localeCode}
+              />
+            );
+          })}
+        </ModelGrid>
       </>
     );
   }
@@ -84,103 +115,5 @@ export const BrowseModels = ({
         </Box>
       }
     />
-  );
-};
-
-const ModelGroup = ({
-  models,
-  localeCode,
-}: {
-  models: SearchResult[];
-  localeCode: string | undefined;
-}) => {
-  const sortedModels = models.sort((a, b) => sortModels(a, b, localeCode));
-  const collection = models[0].collection;
-
-  /** This id is used by aria-labelledby */
-  const collectionHtmlId = `collection-${collection.id}`;
-
-  return (
-    <>
-      <CollectionHeader
-        collection={collection}
-        key={collectionHtmlId}
-        id={collectionHtmlId}
-      />
-      {sortedModels.map(model => (
-        <ModelCell
-          model={model}
-          collectionHtmlId={collectionHtmlId}
-          key={`model-${model.id}`}
-        />
-      ))}
-    </>
-  );
-};
-
-interface ModelCellProps {
-  model: SearchResult;
-  collectionHtmlId: string;
-}
-
-const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
-  const headingId = `heading-for-model-${model.id}`;
-
-  const lastEditorFullName =
-    model.last_editor_common_name ?? model.creator_common_name;
-  const timestamp = model.last_edited_at ?? model.created_at ?? "";
-
-  const entity = entityForObject(model);
-  const icon = entity?.objectSelectors?.getIcon?.(model);
-
-  return (
-    <Link
-      aria-labelledby={`${collectionHtmlId} ${headingId}`}
-      key={model.id}
-      to={Urls.model(model as unknown as Partial<Card>)}
-    >
-      <ModelCard>
-        <Box mb="auto">
-          <Icon {...icon} size={20} color={color("brand")} />
-        </Box>
-        <Title mb=".25rem" size="1rem">
-          <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
-            {model.name}
-          </MultilineEllipsified>
-        </Title>
-        <LastEdited editorFullName={lastEditorFullName} timestamp={timestamp} />
-      </ModelCard>
-    </Link>
-  );
-};
-
-const CollectionHeader = ({
-  collection,
-  id,
-}: {
-  collection: CollectionEssentials;
-  id: string;
-}) => {
-  const icon = getCollectionIcon(collection);
-
-  return (
-    <CollectionHeaderContainer
-      id={id}
-      role="heading"
-      pt={"1rem"}
-      mr="1rem"
-      align="center"
-    >
-      <CollectionHeaderGroup grow noWrap>
-        <CollectionHeaderLink to={Urls.collection(collection)}>
-          <Group spacing=".25rem">
-            <Icon {...icon} />
-            <Text weight="bold" color="text-dark">
-              {getCollectionName(collection)}
-            </Text>
-          </Group>
-        </CollectionHeaderLink>
-      </CollectionHeaderGroup>
-    </CollectionHeaderContainer>
   );
 };

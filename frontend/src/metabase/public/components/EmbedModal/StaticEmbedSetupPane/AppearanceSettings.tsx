@@ -1,22 +1,23 @@
-import { jt, t } from "ttag";
 import type { ChangeEvent } from "react";
-import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
+import { jt, t } from "ttag";
+
+import { getPlan } from "metabase/common/utils/plan";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Select from "metabase/core/components/Select";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
+import type {
+  EmbeddingDisplayOptions,
+  EmbedResourceType,
+} from "metabase/public/lib/types";
 import {
   getDocsUrl,
   getSetting,
   getUpgradeUrl,
 } from "metabase/selectors/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Select from "metabase/core/components/Select";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { color } from "metabase/lib/colors";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import type {
-  EmbeddingDisplayOptions,
-  EmbedResourceType,
-} from "metabase/public/lib/types";
-import { getPlan } from "metabase/common/utils/plan";
+import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
 
 import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";

@@ -1,34 +1,30 @@
 import { createAction } from "redux-actions";
-
 import _ from "underscore";
+
+import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
+import Questions from "metabase/entities/questions";
+import Revision from "metabase/entities/revisions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
+import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
-import { createThunkAction } from "metabase/lib/redux";
-
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
-
 import { openUrl } from "metabase/redux/app";
-
-import Questions from "metabase/entities/questions";
-import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
-
-import { fetchAlertsForQuestion } from "metabase/alert/alert";
-import Revision from "metabase/entities/revisions";
-import * as Lib from "metabase-lib";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
+import Query from "metabase-lib/queries/Query";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase-lib/queries/utils/card";
-import Query from "metabase-lib/queries/Query";
-import Question from "metabase-lib/Question";
 
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
@@ -40,7 +36,6 @@ import {
   isBasedOnExistingQuestion,
   getParameters,
 } from "../../selectors";
-
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
@@ -209,7 +204,7 @@ export const apiCreateQuestion = question => {
 
     const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
-    const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
+    const cleanQuery = Lib.dropEmptyStages(question.query());
     const questionToCreate = questionWithVizSettings
       .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
@@ -274,7 +269,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
+    const cleanQuery = Lib.dropEmptyStages(question.query());
     const questionToUpdate = questionWithVizSettings
       .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);

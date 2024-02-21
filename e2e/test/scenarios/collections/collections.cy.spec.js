@@ -1,5 +1,14 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
+
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  ORDERS_QUESTION_ID,
+  FIRST_COLLECTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   modal,
@@ -14,14 +23,6 @@ import {
   getPinnedSection,
   moveOpenedCollectionTo,
 } from "e2e/support/helpers";
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  FIRST_COLLECTION_ID,
-  SECOND_COLLECTION_ID,
-  THIRD_COLLECTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
@@ -150,7 +151,9 @@ describe("scenarios > collection defaults", () => {
       // 2. Ensure we show the helpful tooltip with the full (long) collection name
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Fifth collection with a very long name").realHover();
-      popover().contains("Fifth collection with a very long name");
+      cy.findByRole("tooltip", {
+        name: /Fifth collection with a very long name/,
+      });
     });
 
     it("should be usable on mobile screen sizes (metabase#15006)", () => {

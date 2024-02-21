@@ -1,6 +1,7 @@
 /* eslint "react/prop-types": "warn" */
-import { Fragment } from "react";
 import PropTypes from "prop-types";
+import { Fragment } from "react";
+
 import { Text } from "metabase/ui";
 
 export const BoldCode = ({ children, ...props }) => (

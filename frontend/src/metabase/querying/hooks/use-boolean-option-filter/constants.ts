@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { OperatorOption, OptionType } from "./types";
 
 export const OPERATOR_OPTIONS: Record<OptionType, OperatorOption> = {
