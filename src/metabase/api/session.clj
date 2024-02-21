@@ -206,7 +206,7 @@
   (t2/delete! Session :id metabase-session-id)
   (mw.session/clear-session-cookie api/generic-204-no-content))
 
-(def metabase-slo-redirect-url "/auth/sso/handle_sso")
+(def metabase-slo-redirect-url "/auth/sso/handle_slo")
 
 ;; client initiates slo:
 (api/defendpoint POST "/logout"
