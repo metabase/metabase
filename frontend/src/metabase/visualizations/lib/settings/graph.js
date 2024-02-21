@@ -283,7 +283,11 @@ export const STACKABLE_SETTINGS = {
         single => settings.series(single).display,
       );
 
-      return isStackingValueValid(settings, seriesDisplays);
+      return isStackingValueValid(
+        series.card.display,
+        settings,
+        seriesDisplays,
+      );
     },
     getDefault: ([{ card, data }], settings) => {
       return getDefaultStackingValue(settings, card);

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   Card,
+  CardDisplayType,
   DatasetColumn,
   DatasetData,
   SeriesOrderSetting,
@@ -15,16 +16,21 @@ import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
 
 export const isStackingValueValid = (
+  cardDisplay: CardDisplayType,
   settings: ComputedVisualizationSettings,
   seriesDisplays: string[],
 ) => {
-  if (settings["stackable.stack_type"] != null) {
-    const stackableDisplays = seriesDisplays.filter(display =>
-      STACKABLE_DISPLAY_TYPES.has(display),
-    );
-    return stackableDisplays.length > 1;
+  if (settings["stackable.stack_type"] == null) {
+    return true;
   }
-  return true;
+  if (!STACKABLE_DISPLAY_TYPES.has(cardDisplay)) {
+    return false;
+  }
+
+  const stackableDisplays = seriesDisplays.filter(display =>
+    STACKABLE_DISPLAY_TYPES.has(display),
+  );
+  return stackableDisplays.length > 1;
 };
 
 export const getDefaultStackingValue = (
