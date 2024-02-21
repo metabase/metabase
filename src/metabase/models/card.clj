@@ -138,7 +138,7 @@
   :dashboard_count
   "Return the number of Dashboards this Card is in."
   [{:keys [id]}]
-  (t2/count 'DashboardCard, :card_id id))
+  (t2/count :model/DashboardCard, :card_id id))
 
 (mi/define-simple-hydration-method parameter-usage-count
   :parameter_usage_count
@@ -431,25 +431,25 @@
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (t2/select-pks-set  'Action {:select [:action.id]
-                                                     :from   [:action]
-                                                     :join   [:implicit_action
-                                                              [:= :action.id :implicit_action.action_id]]
-                                                     :where  [:= :action.model_id model-id]})]
-    (t2/delete! 'Action :id [:in action-ids])))
+  (when-let [action-ids (t2/select-pks-set :model/Action {:select [:action.id]
+                                                          :from   [:action]
+                                                          :join   [:implicit_action
+                                                                   [:= :action.id :implicit_action.action_id]]
+                                                          :where  [:= :action.model_id model-id]})]
+    (t2/delete! :model/Action :id [:in action-ids])))
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
-          old-card-info (when (or (= (:type changes) :model)
+          old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (t2/select-one [:model/Card :dataset_query :type] :id id))]
+                          (t2/select-one [:model/Card :dataset_query :type] :id (u/the-id id)))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
-        (t2/delete! 'DashboardCard :card_id id))
+        (t2/delete! :model/DashboardCard :card_id id))
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])

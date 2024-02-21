@@ -183,7 +183,11 @@
           (is (thrown-with-msg?
                Exception
                #"Actions must be made with models, not cards"
-               (t2/update! Action action-id {:archived false})))))
+               (t2/update! Action action-id {:archived false}))))))))
+
+(deftest model-to-saved-question-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
       ;; Ngoc: I know this seems like a silly test but we actually made a mistake
       ;; in the pre-update because `nil` is considered falsy. So have this test
       ;; here to make sure we don't made that mistake again

@@ -76,7 +76,7 @@
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (binding [qp.perms/*card-id* source-card-id]
         (qp.streaming/streaming-response [rff export-format]
-                                         (qp/process-query (update query :info merge info) rff))))))
+          (qp/process-query (update query :info merge info) rff))))))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."

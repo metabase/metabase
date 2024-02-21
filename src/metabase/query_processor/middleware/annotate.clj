@@ -467,8 +467,6 @@
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
   [{:keys [source-metadata source-query :source-query/model? fields], :as inner-query}, results]
-  (println "(u/pprint-to-str inner-query):" (u/pprint-to-str inner-query)) ; NOCOMMIT
-  (println "model?:" model?) ; NOCOMMIT
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
       (and (empty? cols) source-query)
