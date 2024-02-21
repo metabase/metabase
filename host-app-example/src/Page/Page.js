@@ -7,6 +7,7 @@ import { LogoutButton } from "../Logout";
 import { ShowVisualizationToggle } from "../ShowVisualizationToggle";
 
 import "./Page.css";
+import {StyleLeakFlag} from "../StyleLeakFlag/StyleLeakFlag";
 
 export const Page = () => {
   const [question, setQuestion] = useState(null);
@@ -48,6 +49,7 @@ export const Page = () => {
 
       <footer className="Page--footer">
         <FontSelector />
+          <StyleLeakFlag/>
       </footer>
     </div>
   );
