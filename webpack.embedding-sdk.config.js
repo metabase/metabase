@@ -74,13 +74,9 @@ module.exports = env => {
           resourceQuery: { not: [/component|source/] },
           generator: {
             publicPath: pathData => {
-              const transformedPath = pathData.module.rawRequest.replace(
-                /^fonts\/([^\/]+)\/.*$/,
-                "$1",
-              );
-              return `http://localhost:3000/api/util/fonts?font-name=${encodeURIComponent(
-                transformedPath,
-              )}/`;
+              const filePath = pathData.module.rawRequest.replace(/\/[^\/]*$/, '');
+              console.log(filePath)
+              return `http://localhost:3000/app/${filePath}/`;
             },
             filename: "[name][ext]",
             emit: false,
