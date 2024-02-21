@@ -33,14 +33,21 @@ export function findColumnIndexesForColumnSettings(
   columnSettings: TableColumnOrderSetting[],
 ) {
   const fieldRefs = getFieldRefsWithIndexes(columnSettings);
-  const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+  const columnIndexByFieldRefIndex = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
     columns,
     fieldRefs.map(({ fieldRef }) => fieldRef),
   );
-
-  return columnIndexes.map(columnIndex => fieldRefs[columnIndex].originalIndex);
+  return columnIndexByFieldRefIndex.reduce(
+    (columnIndexes: number[], columnIndex, fieldRefIndex) => {
+      if (columnIndex >= 0) {
+        columnIndexes[fieldRefs[fieldRefIndex].originalIndex] = columnIndex;
+      }
+      return columnIndexes;
+    },
+    new Array(columnSettings.length).fill(-1),
+  );
 }
 
 export function findColumnSettingIndexesForColumns(
@@ -56,7 +63,6 @@ export function findColumnSettingIndexesForColumns(
     columns,
     fieldRefs.map(({ fieldRef }) => fieldRef),
   );
-
   return columnIndexByFieldRefIndex.reduce(
     (settingIndexes: number[], columnIndex, fieldRefIndex) => {
       if (columnIndex >= 0) {
