@@ -102,10 +102,10 @@
   :getter     #(boolean (email-smtp-host))
   :doc        false)
 
-(setting/defsetting no-surveys
+(setting/defsetting surveys-enabled
   (deferred-tru "Enable or disable surveys")
   :type       :boolean
-  :default    false
+  :default    true
   :export?    false
   :visibility :internal
   :audit      :getter)

@@ -32,10 +32,10 @@
 (defn- send-follow-up-email!
   "Send an email to the instance admin following up on their experience with Metabase thus far."
   []
-  ;; we need access to email AND the instance must be opted into anonymous tracking. Make sure email hasn't been sent yet
+  ;; we need access to email AND the instance must be opted into anonymous tracking AND have surveys enabled. Make sure email hasn't been sent yet
   (when (and (email/email-configured?)
              (public-settings/anon-tracking-enabled)
-             (not (email/no-surveys))
+             (email/surveys-enabled)
              (not (follow-up-email-sent)))
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to
     ;; TODO - Does it make to send to this user instead of `(public-settings/admin-email)`?

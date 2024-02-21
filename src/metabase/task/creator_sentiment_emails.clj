@@ -72,7 +72,7 @@
   []
   ;; we need access to email AND the instance must have surveys enabled.
   (when (and (email/email-configured?)
-             (not (email/no-surveys)))
+             (email/surveys-enabled))
     (let [instance-data (when (public-settings/anon-tracking-enabled)
                           (fetch-instance-data))
           creators      (fetch-creators (premium-features/enable-whitelabeling?))

@@ -11,9 +11,9 @@
 
 (deftest send-creator-sentiment-emails!-test
   (mt/with-fake-inbox
-    (testing "Make sure we only send emails when no surveys is false."
-      (mt/with-temporary-setting-values [no-surveys true]
-        (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}   ;; mods to 1, this email would be sent if no surveys was false (see below)
+    (testing "Make sure we only send emails when surveys-enabled is true"
+      (mt/with-temporary-setting-values [surveys-enabled false]
+        (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}   ;; mods to 1, this email would be sent if surveys-enabled was true
                                                                        {:email "b@metabase.com"}   ;; mods to 4
                                                                        {:email "c@metabase.com"}]) ;; mods to 2
                       t/month (constantly (t/month 2))]
@@ -21,19 +21,18 @@
           (is (= 0
                  (-> @inbox vals first count))))))
 
-    (testing "Make sure that send-creator-sentiment-emails! only sends emails to creators with the correct month hash."
-      (mt/with-temporary-setting-values [no-surveys false]
+    (mt/with-temporary-setting-values [surveys-enabled true]
+      (testing "Make sure that send-creator-sentiment-emails! only sends emails to creators with the correct month hash."
         (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}   ;; mods to 1
                                                                        {:email "b@metabase.com"}   ;; mods to 4
                                                                        {:email "c@metabase.com"}]) ;; mods to 2
                       t/month (constantly (t/month 2))]
           (#'creator-sentiment-emails/send-creator-sentiment-emails!)
           (is (= 1
-                 (-> @inbox vals first count))))))
+                 (-> @inbox vals first count)))))
 
-    (mt/reset-inbox!)
-    (testing "Make sure context is included when anon tracking is enabled"
-      (mt/with-temporary-setting-values [no-surveys false]
+      (mt/reset-inbox!)
+      (testing "Make sure context is included when anon tracking is enabled"
         (with-redefs [public-settings/anon-tracking-enabled (constantly true)
                       creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
                       t/month (constantly (t/month 2))]
@@ -43,33 +42,30 @@
 
     (mt/reset-inbox!)
     (testing "Make sure context isn't included when anon tracking is enabled"
-      (mt/with-temporary-setting-values [no-surveys false]
-        (with-redefs [public-settings/anon-tracking-enabled (constantly false)
-                      creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
-                      t/month (constantly (t/month 2))]
-          (#'creator-sentiment-emails/send-creator-sentiment-emails!)
-          (is (= 0
-                 (count (et/regex-email-bodies #"creator\?context=")))))))
+      (with-redefs [public-settings/anon-tracking-enabled (constantly false)
+                    creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
+                    t/month (constantly (t/month 2))]
+        (#'creator-sentiment-emails/send-creator-sentiment-emails!)
+        (is (= 0
+               (count (et/regex-email-bodies #"creator\?context="))))))
 
     (mt/reset-inbox!)
     (testing "Make sure external services message is included when is self hosted"
-      (mt/with-temporary-setting-values [no-surveys false]
-        (with-redefs [premium-features/is-hosted? (constantly false)
-                      creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
-                      t/month (constantly (t/month 2))]
-          (#'creator-sentiment-emails/send-creator-sentiment-emails!)
-          (is (= 1
-                 (count (et/regex-email-bodies #"external services")))))))
+      (with-redefs [premium-features/is-hosted? (constantly false)
+                    creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
+                    t/month (constantly (t/month 2))]
+        (#'creator-sentiment-emails/send-creator-sentiment-emails!)
+        (is (= 1
+               (count (et/regex-email-bodies #"external services"))))))))
 
     (mt/reset-inbox!)
     (testing "Make sure external services isn't included when not self hosted"
-      (mt/with-temporary-setting-values [no-surveys false]
         (with-redefs [premium-features/is-hosted? (constantly true)
                       creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
                       t/month (constantly (t/month 2))]
           (#'creator-sentiment-emails/send-creator-sentiment-emails!)
           (is (= 0
-                 (count (et/regex-email-bodies #"external services")))))))))
+                 (count (et/regex-email-bodies #"external services"))))))
 
 (deftest fetch-creators-test
   (let [creator-id 33

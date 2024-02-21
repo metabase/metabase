@@ -23,7 +23,7 @@
   (testing "Make sure we don't send an email when no-surveys is true."
    (mt/with-temporary-setting-values [anon-tracking-enabled true
                                       follow-up-email-sent  false
-                                      no-surveys true]
+                                      no-surveys            true]
      (with-fake-inbox
        (#'follow-up-emails/send-follow-up-email!)
        (is (= 0
