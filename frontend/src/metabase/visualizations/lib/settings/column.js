@@ -528,11 +528,11 @@ export const buildTableColumnSettings = ({
     // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    isValid: ([{ card, data }]) => {
+    isValid: ([{ card, data }], vizSettings) => {
       const question = new Question(card /* metadata */);
       const query = question.query();
       const stageIndex = -1;
-      const columnSettings = card.visualization_settings["table.columns"];
+      const columnSettings = vizSettings["table.columns"];
       const columnIndexes = findColumnIndexesForColumnSettings(
         query,
         stageIndex,

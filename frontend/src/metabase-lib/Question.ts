@@ -579,26 +579,24 @@ class Question {
     const query = this.query();
     const stageIndex = -1;
 
-    const columnIndexBySettingIndex = findColumnIndexesForColumnSettings(
+    const columnIndexes = findColumnIndexesForColumnSettings(
       query,
       stageIndex,
       cols,
       columnSettings,
     );
-    const settingIndexByColumnIndex = findColumnSettingIndexesForColumns(
+    const columnSettingIndexes = findColumnSettingIndexesForColumns(
       query,
       stageIndex,
       cols,
       columnSettings,
     );
-
     const addedColumns = cols.filter((col, colIndex) => {
-      const hasVizSettings = settingIndexByColumnIndex[colIndex] >= 0;
+      const hasVizSettings = columnSettingIndexes[colIndex] >= 0;
       return !hasVizSettings;
     });
-
     const existingColumnSettings = columnSettings.filter(
-      (setting, settingIndex) => columnIndexBySettingIndex[settingIndex] >= 0,
+      (setting, settingIndex) => columnIndexes[settingIndex] >= 0,
     );
     const noColumnsRemoved =
       existingColumnSettings.length === columnSettings.length;

@@ -45,15 +45,15 @@ export const TableColumnPanel = ({
   };
 
   const handleEnableColumn = (columnItem: ColumnItem) => {
-    onChange(toggleColumnInSettings(columnItem, columnSettings, true));
+    onChange(toggleColumnInSettings(columnItem, columnItems, true));
   };
 
   const handleDisableColumn = (columnItem: ColumnItem) => {
-    onChange(toggleColumnInSettings(columnItem, columnSettings, false));
+    onChange(toggleColumnInSettings(columnItem, columnItems, false));
   };
 
-  const handleDragColumn = (props: DragColumnProps) => {
-    onChange(moveColumnInSettings(columnItems, columnSettings, props));
+  const handleDragColumn = ({ oldIndex, newIndex }: DragColumnProps) => {
+    onChange(moveColumnInSettings(columnItems, oldIndex, newIndex));
   };
 
   const handleEditColumn = (
