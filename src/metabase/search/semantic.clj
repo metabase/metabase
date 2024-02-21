@@ -1,25 +1,21 @@
 (ns metabase.search.semantic
-  (:import [ai.djl.huggingface.translator TextEmbeddingTranslatorFactory]
-           ai.djl.ModelException
-           ai.djl.inference.Predictor
-           ai.djl.repository.zoo.Criteria
-           ai.djl.repository.zoo.ZooModel
-           ai.djl.training.util.ProgressBar
-           ai.djl.translate.TranslateException
-           io.github.jbellis.jvector.graph.ListRandomAccessVectorValues
-           io.github.jbellis.jvector.graph.GraphIndexBuilder
-           io.github.jbellis.jvector.graph.GraphSearcher$Builder
-           io.github.jbellis.jvector.graph.NodeSimilarity$ExactScoreFunction
-           io.github.jbellis.jvector.vector.VectorSimilarityFunction
-           io.github.jbellis.jvector.vector.VectorEncoding
-           io.github.jbellis.jvector.util.Bits
-           io.github.jbellis.jvector.pq.CompressedVectors
-           io.github.jbellis.jvector.pq.PQVectors
-           io.github.jbellis.jvector.pq.ProductQuantization
-           [java.util ArrayList]
-           [clojure.lang PersistentVector]))
+  (:require
+   [metabase.search.trigram :as tri])
+  (:import
+   (ai.djl.huggingface.translator TextEmbeddingTranslatorFactory)
+   (ai.djl.repository.zoo Criteria ZooModel)
+   (ai.djl.training.util ProgressBar)
+   (clojure.lang PersistentVector)
+   (io.github.jbellis.jvector.graph GraphIndexBuilder GraphSearcher GraphSearcher$Builder ListRandomAccessVectorValues
+                                    NodeSimilarity$ExactScoreFunction SearchResult$NodeScore)
+   (io.github.jbellis.jvector.pq CompressedVectors PQVectors ProductQuantization)
+   (io.github.jbellis.jvector.util Bits)
+   (io.github.jbellis.jvector.vector VectorEncoding VectorSimilarityFunction)
+   (java.util ArrayList)))
 
 (set! *warn-on-reflection* true)
+
+(declare predict index)
 
 (defonce CRITERIA
   (-> (Criteria/builder)
@@ -30,10 +26,21 @@
       (.optProgress (ProgressBar.))
       (.build)))
 
-(defonce MODEL
+(defonce ^ZooModel MODEL
   (.loadModel ^Criteria CRITERIA))
 
-(defn predict [s]
+(defonce DATA
+  (delay (vec (concat
+               (tri/fetch-model "dashboard")
+               (tri/fetch-model "card")))))
+
+(defonce VECTORS
+  (delay (mapv #(predict (tri/make-model-string %)) @DATA)))
+
+(defonce INDEX
+  (delay (index @VECTORS)))
+
+(defn predict ^floats [^String s]
   (.predict (.newPredictor MODEL) s))
 
 (defn index [vectors]
@@ -53,45 +60,42 @@
      :compressed compressed
      :searcher   (.build (GraphSearcher$Builder. (.getView graph)))}))
 
-(defn vcomparator [ravv s]
+(defn vcomparator [^ListRandomAccessVectorValues ravv s]
   (let [v (predict s)]
     (reify NodeSimilarity$ExactScoreFunction
       (similarityTo [_this j]
         (.compare VectorSimilarityFunction/EUCLIDEAN v (.vectorValue ravv j))))))
 
-(defn search [{:keys [ravv searcher compressed]} top-k s]
+(defn search [{:keys [ravv
+                      ^GraphSearcher searcher
+                      ^CompressedVectors compressed]}
+              top-k s]
   #_
   (let [query-v (predict s)
         sf (.approximateScoreFunctionFor compressed)])
   (.getNodes (.search searcher (vcomparator ravv s) nil (int top-k) (float 0.3) Bits/ALL)))
 
-(comment
-  (def graph
-    (index [(predict "Yearly revenue")
-            (predict "Monthly subscribers")]))
+;;; API
 
-  (def s (.build (GraphSearcher$Builder. (.getView (:graph graph)))))
-
-  (for [item ]
-    [(.node item) (.score item)])
-  )
-
-
-;;; fetching data
-
-(require '[metabase.search.trigram :as tri])
-
-(comment
-  (tri/collect-model-q "card")
-  (def data (vec (concat
-                  (tri/fetch-model "dashboard")
-                  (tri/fetch-model "card"))))
-  (def vectors (mapv #(predict (tri/make-model-string %)) data))
-
-  (def idx (index vectors))
-
-  (for [item (search idx 10 "Earning information")
-        :let [node (get data (.node item))]]
-    (-> (select-keys node [:name :description])
-        (assoc :score (.score item)
-               :url (str "https://stats.metabase.com/dashboard/" (:id node))))))
+(defn api-search [{:keys [search-string limit-int] :as ctx}]
+  (let [nodes (search @INDEX limit-int search-string)]
+    {:total            (count nodes)
+     :limit            limit-int
+     :offset           0
+     :available_models ["dashboard" "card"]
+     :models           ["dashboard" "card"]
+     :data             (vec (for [^SearchResult$NodeScore item nodes
+                                  :let                         [x (get @DATA (.node item))]]
+                              {:archived    (:archived x)
+                               :id          (:id x)
+                               :collection  {:id (:collection_id x)
+                                             :name (:collection_name x)}
+                               #_{:authority_level "official"
+                                                     :id              358
+                                                     :name            "Revenue"
+                                                     :type            nil}
+                               :name        (:name x)
+                               :description (:description x)
+                               :model       (:model x)
+                               :score       (:score x)
+                               :updated_at  (:updated_at x)}))}))

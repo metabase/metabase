@@ -41,8 +41,19 @@
                                                 (check (first f)))
                                :else        true))))}))
 
+(defn- add-collection-join-and-where-clauses [q]
+  (if-let [field (first (filter #(when (keyword? %) (str/ends-with? (name %) ".collection_id")) (:select q)))]
+    (-> q
+        (api.search/add-collection-join-and-where-clauses field {:search-string      "q"
+                                                                 :archived?          false
+                                                                 :current-user-perms #{"/"}
+                                                                 :models             #{}})
+        (update :select conj [:collection.name :collection_name]))
+    q))
+
 (defn fetch-model [model]
-  (let [collect-q (collect-model-q model)
+  (let [collect-q (-> (collect-model-q model)
+                      add-collection-join-and-where-clauses)
         q         (mdb.query/format-sql (first (mdb.query/compile collect-q)))]
     (try
       (let [res (-> (mdb.query/reducible-query q)
