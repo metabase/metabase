@@ -70,10 +70,16 @@ function memoizeOne<T, U>(fn: (input: T) => U) {
   return memoizedFn;
 }
 
-const formatTs = memoizeOne((ts: number) => dayjs(ts).format());
+const formatTs = (ts: number) => dayjs(ts).format();
+
+// logs are sorted by time when we got to format them
+// and many logs happen with in the same exact millisecond
+// this helps avoid expensive format computation if curr
+// value is the same as the last one
+const memoedFormatTs = memoizeOne(formatTs);
 
 export function formatLog(log: Log) {
-  const timestamp = formatTs(log.timestamp);
+  const timestamp = memoedFormatTs(log.timestamp);
   const uuid = log.process_uuid || "---";
   return [
     `[${uuid}] ${timestamp} ${log.level} ${log.fqns} ${log.msg}`,

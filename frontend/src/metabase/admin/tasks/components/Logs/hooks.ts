@@ -31,7 +31,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
         setError(null);
         setLogs(logs => {
           const newestLog = _.first(newLogs);
-          const hasFetchedNewLogs = !hasLog(logs, newestLog);
+          const hasFetchedNewLogs = newestLog && !hasLog(logs, newestLog);
           if (hasFetchedNewLogs) {
             return mergeLogs([logs, newLogs.reverse()]);
           }
