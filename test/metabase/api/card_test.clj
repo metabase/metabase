@@ -2035,7 +2035,9 @@
       (is (= [["MONEY"]
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
+
+(deftest xlsx-default-currency-formatting-test-2
   (testing "Default localization settings take effect"
     (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
                                                           :type/Currency {:currency "EUR", :currency_style "symbol"}}]
@@ -3036,8 +3038,9 @@
       (testing "GET /api/card/:card-id/params/:param-key/search/:query"
         (is (= {:values          [["Red Medicine"]]
                 :has_more_values false}
-               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
+               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red"))))))))
 
+(deftest parameters-with-source-is-card-test-2
   (testing "fallback to field-values"
     (let [mock-default-result {:values          [["field-values"]]
                                :has_more_values false}]
@@ -3064,8 +3067,9 @@
                                              :values_source_config {:card_id     source-card-id
                                                                     :value_field (mt/$ids $venues.name)}}]}]
             (let [url (param-values-url card "abc")]
-              (is (= mock-default-result (mt/user-http-request :rasta :get 200 url)))))))))
+              (is (= mock-default-result (mt/user-http-request :rasta :get 200 url))))))))))
 
+(deftest parameters-with-source-is-card-test-3
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp

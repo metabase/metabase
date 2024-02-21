@@ -495,7 +495,7 @@
         {:base-count (card-count-fn resp)
          :show-count (card-count-fn slimmed)}))))
 
-(deftest table-show-param-test
+(deftest ^:parallel table-show-param-test
   (testing "x-ray of a table with show set reduces the number of returned cards"
     (let [show-limit 1
           {:keys [base-count show-count]} (card-count-check show-limit "table/%s" [(mt/id :venues)])]
@@ -504,7 +504,7 @@
       (testing "Only \"limit\" cards are produced"
         (is (= show-limit show-count))))))
 
-(deftest metric-xray-show-param-test
+(deftest ^:parallel metric-xray-show-param-test
   (testing "x-ray of a metric with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
                                                      :definition {:query {:aggregation ["count"]}}}]
@@ -515,7 +515,7 @@
         (testing "Only \"limit\" cards are produced"
           (is (= show-limit show-count)))))))
 
-(deftest segment-xray-show-param-test
+(deftest ^:parallel segment-xray-show-param-test
   (testing "x-ray of a segment with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                        :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
@@ -526,7 +526,7 @@
         (testing "Only \"limit\" cards are produced"
           (is (= show-limit show-count)))))))
 
-(deftest field-xray-show-param-test
+(deftest ^:parallel field-xray-show-param-test
   (testing "x-ray of a field with show set reduces the number of returned cards"
     (let [show-limit 1
           {:keys [base-count show-count]} (card-count-check show-limit "field/%s" [(mt/id :venues :price)])]
@@ -535,7 +535,7 @@
       (testing "Only \"limit\" cards are produced"
         (is (= show-limit show-count))))))
 
-(deftest cell-query-xray-show-param-test
+(deftest ^:parallel cell-query-xray-show-param-test
   (testing "x-ray of a cell-query with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [Card {card-id :id} {:table_id      (mt/id :venues)
                                                  :dataset_query (mt/mbql-query venues
@@ -548,7 +548,7 @@
         (testing "Only \"limit\" cards are produced"
           (is (= show-limit show-count)))))))
 
-(deftest comparison-xray-show-param-test
+(deftest ^:parallel comparison-xray-show-param-test
   (testing "x-ray of a comparison with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [Segment {segment-id :id} @segment]
       (let [show-limit 1
