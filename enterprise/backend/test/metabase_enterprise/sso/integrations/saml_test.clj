@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.sso.integrations.jwt-test :as jwt-test]
    [metabase-enterprise.sso.integrations.saml :as saml.mt]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.http-client :as client]
@@ -402,7 +401,7 @@
                    (saml-login-attributes "rasta@metabase.com")))))))))
 
 (deftest jwt-saml-both-enabled-saml-success-test
-  (jwt-test/with-sso-jwt-token
+  (mt/with-additional-premium-features #{:sso-jwt}
     (testing "with SAML and JWT configured, a GET request without JWT params successfully logins with SAML."
       (with-saml-default-setup
         (do-with-some-validators-disabled
