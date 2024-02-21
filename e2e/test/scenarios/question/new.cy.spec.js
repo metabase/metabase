@@ -296,13 +296,18 @@ describe("scenarios > question > new", () => {
     popover().findByText("New collection").click();
 
     const NEW_COLLECTION = "Foo";
-    modal().within(() => {
-      cy.findByLabelText("Name").type(NEW_COLLECTION);
+    cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByPlaceholderText("My new fantastic collection").type(
+        NEW_COLLECTION,
+      );
       cy.findByText("Create").click();
-      cy.findByText("Save new question");
-      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
-      cy.findByText("Save").click();
     });
+
+    cy.findByTestId("save-question-modal").then(modal => {
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.button("Save").click();
+    });
+
     cy.get("header").findByText(NEW_COLLECTION);
   });
 

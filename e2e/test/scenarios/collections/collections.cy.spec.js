@@ -55,10 +55,12 @@ describe("scenarios > collection defaults", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Collection").click();
 
-      modal().within(() => {
-        cy.findByLabelText("Name").type("Test collection");
+      cy.findByTestId("new-collection-modal").then(modal => {
+        cy.findByPlaceholderText("My new fantastic collection").type(
+          "Test collection",
+        );
         cy.findByLabelText("Description").type("Test collection description");
-        cy.findByText("Our analytics").click();
+        cy.findByTestId("select-button").findByText("Our analytics").click();
       });
 
       popover().within(() => {
