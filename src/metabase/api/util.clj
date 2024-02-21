@@ -63,9 +63,7 @@
   "Returns the font file given the font name"
   [font-name]
   {font-name [:maybe ms/NonBlankString]}
-  (log/info (str "frontend_client/app/fonts/" font-name))
   (u.files/with-open-path-to-resource [file-path (str "frontend_client/app/fonts/" font-name)]
-    (log/info file-path)
     (let [file-path-str (.toString file-path)
           file (java.io.File. file-path-str)]
       (if (.exists file)
