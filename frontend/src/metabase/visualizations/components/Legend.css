@@ -13,21 +13,21 @@ fullscreen dashboard mode
   margin-bottom: 0.25em;
 }
 
-.LegendItem.muted {
+.LegendItem:global(.muted) {
   opacity: 0.4;
 }
 
-.Legend.none {
+.Legend:global(.none) {
   display: none;
 }
 
-.Legend.vertical {
+.Legend:global(.vertical) {
   display: flex;
   flex-direction: column;
   margin-right: 1em;
 }
 
-.Legend.horizontal {
+.Legend:global(.horizontal) {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;

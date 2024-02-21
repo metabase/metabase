@@ -1,6 +1,6 @@
-:global .float-left {
+:global(.float-left) {
   float: left;
 }
-:global .float-right {
+:global(.float-right) {
   float: right;
 }

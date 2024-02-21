@@ -1,5 +1,5 @@
 /* TODO - ideally this would be more reusable and not hardcode a value */
-@keyframes progress-bar {
+:global @keyframes progress-bar {
   from {
     transform: translate3d(0, 0, 0, 0);
   }

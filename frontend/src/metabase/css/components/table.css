@@ -15,7 +15,7 @@ th {
   text-align: left;
 }
 
-.Table {
+:global(.Table) {
   /* standard table reset */
   border-collapse: collapse;
   border-spacing: 0;
@@ -28,30 +28,30 @@ th {
   text-align: left;
 }
 
-.Table--bordered {
+:global(.Table--bordered) {
   border: 1px solid color-mod(var(--color-border) alpha(-70%));
 }
 
-.Table tr {
+:global(.Table tr) {
   border-bottom: 1px solid color-mod(var(--color-border) alpha(-70%));
 }
 
-.Table tr:nth-child(even) {
+:global(.Table tr:nth-child(even)) {
   background-color: color-mod(var(--color-bg-black) alpha(-98%));
 }
 
-.Table th,
-.Table td {
+:global(.Table th),
+:global(.Table td) {
   padding: 1em;
   border: 1px solid color-mod(var(--color-border) alpha(-70%));
 }
 
-.ComparisonTable {
+:global(.ComparisonTable) {
   border-collapse: collapse;
   border-spacing: 0;
 }
 
-.ComparisonTable th,
-.ComparisonTable td {
+:global(.ComparisonTable th),
+:global(.ComparisonTable td) {
   border-bottom: 1px solid var(--color-border);
 }

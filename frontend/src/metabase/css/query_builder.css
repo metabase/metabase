@@ -41,12 +41,12 @@
   padding: 0;
 }
 
-:global .TooltipFilterList .Query-filter {
+:global(.TooltipFilterList .Query-filter) {
   padding-left: 0 !important;
   padding-bottom: 0 !important;
 }
 
-:global .TooltipFilterList .Query-filterList {
+:global(.TooltipFilterList .Query-filterList) {
   flex-direction: column;
 }
 
@@ -89,33 +89,33 @@
   background-color: currentColor;
 }
 
-:global .SelectionItem .Icon {
+:global(.SelectionItem .Icon) {
   margin-left: 0.5rem;
   margin-right: 0.75rem;
   color: currentcolor;
 }
 
-:global .SelectionItem .Icon-check {
+:global(.SelectionItem .Icon-check) {
   opacity: 0;
 }
 
-:global .SelectionItem .Icon-chevrondown {
+:global(.SelectionItem .Icon-chevrondown) {
   opacity: 1;
 }
 
-:global .SelectionItem:hover .Icon {
+:global(.SelectionItem:hover .Icon) {
   color: var(--color-text-white) !important;
 }
 
-:global .SelectionItem:hover .SelectionModule-display {
+:global(.SelectionItem:hover .SelectionModule-display) {
   color: var(--color-text-white);
 }
 
-:global .SelectionItem:hover .SelectionModule-description {
+:global(.SelectionItem:hover .SelectionModule-description) {
   color: var(--color-text-white);
 }
 
-:global .SelectionItem.SelectionItem--selected .Icon-check {
+:global(.SelectionItem.SelectionItem--selected .Icon-check) {
   opacity: 1;
 }
 
@@ -162,7 +162,6 @@
   background-color: transparent;
 }
 
-/* query errors */
 :global(.QueryError) {
   flex-direction: column;
   justify-content: center;
@@ -228,25 +227,23 @@
   margin-left: -41px; /* ugh */
 }
 
-:global .QueryError2 {
+:global(.QueryError2) {
   padding-top: 4rem;
   margin-left: auto;
   margin-right: auto;
 }
 
-:global .QueryError2-details {
+:global(.QueryError2-details) {
   max-width: 500px;
 }
 
-:global .QueryError2-detailBody {
+:global(.QueryError2-detailBody) {
   background-color: var(--color-bg-light);
   max-height: 15rem;
   overflow: auto;
 }
 
-/* GUI BUILDER */
-
-:global .GuiBuilder {
+:global(.GuiBuilder) {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -259,50 +256,50 @@
 
 /* for medium breakpoint only expand if data reference is not shown */
 @media screen and (--breakpoint-min-md) {
-  :global .GuiBuilder {
+  :global(.GuiBuilder) {
     font-size: 1em;
   }
 }
 
 /* un-expanded (default) */
-:global .GuiBuilder-row {
+:global(.GuiBuilder-row) {
   border-bottom: 1px solid var(--color-border);
 }
-:global .GuiBuilder-row:last-child {
+:global(.GuiBuilder-row:last-child) {
   border-bottom-color: transparent;
 }
-:global .GuiBuilder-data {
+:global(.GuiBuilder-data) {
   border-right: 1px solid var(--color-border);
 }
-:global .GuiBuilder-filtered-by {
+:global(.GuiBuilder-filtered-by) {
   border-right: 1px solid transparent;
 }
-:global .GuiBuilder-view {
+:global(.GuiBuilder-view) {
   border-right: 1px solid var(--color-border);
 }
-:global .GuiBuilder-sort-limit {
+:global(.GuiBuilder-sort-limit) {
   border-left: 1px solid var(--color-border);
 }
 
 /* expanded */
-:global .GuiBuilder.GuiBuilder--expand {
+:global(.GuiBuilder.GuiBuilder--expand) {
   flex-direction: row;
 }
-:global .GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child {
+:global(.GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child) {
   border-right-color: transparent;
   border-bottom-color: var(--color-border);
 }
-:global .GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by {
+:global(.GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by) {
   border-right-color: var(--color-border);
 }
 
-:global .GuiBuilder-section {
+:global(.GuiBuilder-section) {
   position: relative;
   min-height: 55px;
   min-width: 100px;
 }
 
-:global .GuiBuilder-section-label {
+:global(.GuiBuilder-section-label) {
   background-color: white;
   position: absolute;
   top: -7px;
@@ -313,31 +310,31 @@
 
 /* @transitions */
 
-:global .AddToDashSuccess {
+:global(.AddToDashSuccess) {
   max-width: 260px;
   text-align: center;
 }
 
 /* DATA SECTION */
 
-:global .GuiBuilder-data {
+:global(.GuiBuilder-data) {
   z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
 /* FILTER BY SECTION */
 
-:global .Filter-section-sort-field.selected .QueryOption,
-:global .Filter-section-sort-direction.selected .QueryOption {
+:global(.Filter-section-sort-field.selected .QueryOption),
+:global(.Filter-section-sort-direction.selected .QueryOption) {
   color: inherit;
 }
 
 /* SORT/LIMIT SECTION */
 
-:global .GuiBuilder-sort-limit {
+:global(.GuiBuilder-sort-limit) {
   min-width: 0px;
 }
 
-:global .EllipsisButton {
+:global(.EllipsisButton) {
   font-size: 3em;
   position: relative;
   top: -0.8rem;
@@ -345,11 +342,11 @@
 
 /* VISUALIZATION SETTINGS */
 
-:global .VisualizationSettings .GuiBuilder-section {
+:global(.VisualizationSettings .GuiBuilder-section) {
   border-right: none !important;
 }
 
-:global .ChartType-button {
+:global(.ChartType-button) {
   width: 38px;
   height: 38px;
   border-radius: 38px;
@@ -357,51 +354,51 @@
   border: 1px solid var(--color-border);
 }
 
-:global .ChartType-popover {
+:global(.ChartType-popover) {
   min-width: 15em !important;
 }
 
-:global .ChartType--selected {
+:global(.ChartType--selected) {
   color: white;
   background-color: var(--color-brand);
 }
 
-:global .ChartType--notSensible {
+:global(.ChartType--notSensible) {
   opacity: 0.5;
 }
 
-:global .ColorWell {
+:global(.ColorWell) {
   width: 18px;
   height: 18px;
   margin: 3px;
   margin-right: 0.3rem;
 }
 
-:global .RunButton {
+:global(.RunButton) {
   opacity: 1;
   transition: transform 0.25s, opacity 0.25s;
 }
 
-:global .RunButton.RunButton--compact {
+:global(.RunButton.RunButton--compact) {
   padding: 16px 32px;
 }
 
-:global .RunButton.RunButton--hidden {
+:global(.RunButton.RunButton--hidden) {
   transform: translateY(-20px);
   opacity: 0;
 }
 
 @media (prefers-reduced-motion) {
-  :global .RunButton,
-  :global .RunButton.RunButton--compact,
-  :global .RunButton.RunButton--hidden {
+  :global(.RunButton),
+  :global(.RunButton.RunButton--compact),
+  :global(.RunButton.RunButton--hidden) {
     transition-duration: 10ms;
   }
 }
 
 /* DATA REFERENCE */
 
-:global .SideDrawer {
+:global(.SideDrawer) {
   z-index: -1;
   position: absolute;
   top: 0;
@@ -414,22 +411,22 @@
   opacity: 0;
 }
 
-:global .SideDrawer--show {
+:global(.SideDrawer--show) {
   z-index: 0;
   right: 0;
   opacity: 1;
   transition: all 0.5s;
 }
 
-:global .DataReference h1 {
+:global(.DataReference h1) {
   font-size: 20pt;
 }
 
-:global .DataReference-paneCount {
+:global(.DataReference-paneCount) {
   padding-right: 0.6em;
 }
 
-:global .ObjectJSON {
+:global(.ObjectJSON) {
   max-height: 200px;
   overflow: scroll;
   padding: 1em;
@@ -439,16 +436,16 @@
   white-space: pre-wrap;
 }
 
-:global .PopoverBody.AddToDashboard {
+:global(.PopoverBody.AddToDashboard) {
   min-width: 25em;
 }
 
-:global .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
-:global .List-item--selected .FieldList-grouping-trigger {
+:global(.List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger),
+:global(.List-item--selected .FieldList-grouping-trigger) {
   visibility: visible;
 }
 
-:global .QuestionTooltipTarget {
+:global(.QuestionTooltipTarget) {
   color: var(--color-text-light);
   display: inline-block;
   border: 2px solid currentColor;
@@ -464,22 +461,22 @@
   cursor: pointer;
 }
 
-:global .QuestionTooltipTarget:after {
+:global(.QuestionTooltipTarget:after) {
   content: "?";
   font-size: 13px;
   font-weight: bold;
 }
 
-:global .FilterInput:hover .FilterRemove-field {
+:global(.FilterInput:hover .FilterRemove-field) {
   opacity: 1;
 }
 
 /* need to do this ugliness to override the locally scoped font size from Scalar.css */
-:global .QueryBuilder .ScalarValue {
+:global(.QueryBuilder .ScalarValue) {
   font-size: 5em;
 }
 
-:global .sql-code {
+:global(.sql-code) {
   font-size: 90%;
   line-height: 1.2em;
   font-family: "Courier 10 Pitch", Courier, monospace;
@@ -492,22 +489,22 @@
   border-radius: 4px;
 }
 
-:global .ParameterValuePickerNoPopover input {
+:global(.ParameterValuePickerNoPopover input) {
   font-size: 16px;
   color: var(--color-text-dark);
   border: none;
 }
 
-:global .ParameterValuePickerNoPopover--selected input {
+:global(.ParameterValuePickerNoPopover--selected input) {
   font-weight: bold;
   color: var(--color-brand);
 }
 
-:global .ParameterValuePickerNoPopover input:focus {
+:global(.ParameterValuePickerNoPopover input:focus) {
   outline: none;
   color: var(--color-text-dark);
 }
 
-:global .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
+:global(.ParameterValuePickerNoPopover input::-webkit-input-placeholder) {
   color: var(--color-text-medium);
 }

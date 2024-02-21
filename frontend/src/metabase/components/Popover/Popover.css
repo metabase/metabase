@@ -1,10 +1,10 @@
 /* afaik popover needs a positioning context to be able to calculate the transform */
-.PopoverContainer {
+:global(.PopoverContainer) {
   position: absolute;
   z-index: 4;
 }
 
-.PopoverBody {
+:global(.PopoverBody) {
   pointer-events: auto;
   min-width: 1em; /* ewwwwwwww */
   display: flex;
@@ -14,7 +14,7 @@
   max-width: 500px;
 }
 
-.PopoverBody.PopoverBody--withBackground {
+:global(.PopoverBody.PopoverBody--withBackground) {
   border: 1px solid #edf2f5;
   box-shadow: 0 4px 10px var(--color-shadow);
   background-color: var(--color-bg-white);
@@ -22,13 +22,13 @@
   overflow: auto;
 }
 
-.tippy-box,
-.tippy-content {
+:global(.tippy-box),
+:global(.tippy-content) {
   max-height: inherit;
   transition: transform 0s, visibility 0.3s, opacity 0.3s;
 }
 
-.tippy-box[data-theme~="tooltip"] {
+:global(.tippy-box[data-theme~="tooltip"]) {
   color: white;
   font-weight: bold;
   background-color: var(--color-bg-black);
@@ -41,15 +41,15 @@
   overflow-wrap: break-word;
 }
 
-.tippy-box[data-theme~="tooltip"] .tippy-content {
+:global .tippy-box[data-theme~="tooltip"] .tippy-content {
   padding: 10px 12px;
 }
 
-.tippy-box[data-theme~="no-padding"] .tippy-content {
+:global .tippy-box[data-theme~="no-padding"] .tippy-content {
   padding: 0;
 }
 
-.tippy-box[data-theme~="popover"] {
+:global(.tippy-box[data-theme~="popover"]) {
   font-size: inherit;
   background-color: var(--color-bg-white);
   color: var(--color-text-default);
@@ -60,7 +60,7 @@
   overflow: auto;
 }
 
-.tippy-box[data-theme~="popover"] .tippy-content {
+:global .tippy-box[data-theme~="popover"] .tippy-content {
   padding: 0;
 }
 
@@ -68,11 +68,11 @@
  * initially added  for date pickers so the dual date picker can fully
  * expand as necessary - metabase#5971
  */
-.PopoverBody.PopoverBody--autoWidth {
+:global(.PopoverBody.PopoverBody--autoWidth) {
   max-width: none;
 }
 
-.PopoverBody.PopoverBody--tooltip {
+:global(.PopoverBody.PopoverBody--tooltip) {
   color: white;
   font-weight: bold;
   background-color: var(--color-bg-black);
@@ -81,14 +81,14 @@
   line-height: 1.26;
   padding: 10px 12px;
 }
-.PopoverBody.PopoverBody--tooltip.PopoverBody--tooltipConstrainedWidth {
+:global(.PopoverBody.PopoverBody--tooltip.PopoverBody--tooltipConstrainedWidth) {
   font-size: 12px;
   max-width: 200px;
 }
 
 /* shared arrow styles */
-.PopoverBody--withArrow:before,
-.PopoverBody--withArrow:after {
+:global(.PopoverBody--withArrow:before),
+:global(.PopoverBody--withArrow:after) {
   position: absolute;
   content: "";
   display: block;
@@ -103,25 +103,25 @@
  * to stick to bottom, options lists and other
  * middle content need extra margin-bottom
  */
-.PopoverBody--marginBottom {
+:global(.PopoverBody--marginBottom) {
   margin-bottom: 60px;
 }
 
-.PopoverBody .Form-input {
+:global .PopoverBody .Form-input {
   font-size: 1rem;
 }
 
-.PopoverBody .Form-field {
+:global .PopoverBody .Form-field {
   margin-bottom: 0.75rem;
 }
 
-.PopoverHeader {
+:global(.PopoverHeader) {
   display: flex;
   border-bottom: 1px solid var(--color-border);
   min-width: 400px;
 }
 
-.PopoverHeader-item {
+:global(.PopoverHeader-item) {
   flex: 1;
   position: relative;
   top: 1px; /* to overlap bottom border */
@@ -135,17 +135,17 @@
   border-bottom: 2px solid transparent;
 }
 
-.PopoverHeader-item.selected {
+:global(.PopoverHeader-item.selected) {
   color: currentcolor;
   border-color: currentcolor;
 }
 
-.PopoverHeader-item--withArrow {
+:global(.PopoverHeader-item--withArrow) {
   margin-right: 8px;
 }
 
-.PopoverHeader-item--withArrow:before,
-.PopoverHeader-item--withArrow:after {
+:global(.PopoverHeader-item--withArrow:before),
+:global(.PopoverHeader-item--withArrow:after) {
   position: absolute;
   content: "";
   display: block;
@@ -158,18 +158,18 @@
 }
 
 /* create a slightly larger arrow on the right for border purposes */
-.PopoverHeader-item--withArrow:before {
+:global(.PopoverHeader-item--withArrow:before) {
   right: -16px;
   border-left-color: var(--color-border);
 }
 
 /* create a smaller inset arrow on the right */
-.PopoverHeader-item--withArrow:after {
+:global(.PopoverHeader-item--withArrow:after) {
   right: -15px;
   border-left-color: var(--color-bg-white);
 }
 
-.PopoverFooter {
+:global(.PopoverFooter) {
   background: white;
   position: absolute;
   bottom: 0;
@@ -182,79 +182,79 @@
   z-index: 1;
 }
 
-.PopoverBody--withBackground .PopoverFooterWhenIsNotEqualOps,
-.popover .PopoverFooterWhenIsNotEqualOps {
+:global .PopoverBody--withBackground .PopoverFooterWhenIsNotEqualOps,
+:global .popover .PopoverFooterWhenIsNotEqualOps {
   bottom: 0;
   padding-bottom: 12px;
   padding-top: 10px;
   width: calc(100% - 26px);
 }
 
-.PopoverParameterFieldWidgetFooter {
+:global(.PopoverParameterFieldWidgetFooter) {
   position: fixed;
   bottom: -7px;
 }
 
 /* create a slightly larger arrow on the top for border purposes */
-.tether-element-attached-top .PopoverBody--withArrow:before {
+:global .tether-element-attached-top .PopoverBody--withArrow:before {
   top: -20px;
   border-bottom-color: var(--color-border);
 }
-.tether-element-attached-top .PopoverBody--tooltip:before {
+:global .tether-element-attached-top .PopoverBody--tooltip:before {
   border-bottom: none;
 }
 
 /* create a smaller inset arrow on the top */
-.tether-element-attached-top .PopoverBody--withArrow:after {
+:global .tether-element-attached-top .PopoverBody--withArrow:after {
   top: -18px;
   border-bottom-color: var(--color-bg-white);
 }
-.tether-element-attached-top .PopoverBody--tooltip:after {
+:global .tether-element-attached-top .PopoverBody--tooltip:after {
   border-bottom-color: var(--color-bg-black);
 }
 
 /* create a slightly larger arrow on the bottom for border purposes */
-.tether-element-attached-bottom .PopoverBody--withArrow:before {
+:global .tether-element-attached-bottom .PopoverBody--withArrow:before {
   bottom: -20px;
   border-top-color: var(--color-border);
 }
-.tether-element-attached-bottom .PopoverBody--tooltip:before {
+:global .tether-element-attached-bottom .PopoverBody--tooltip:before {
   border-top: none;
 }
 
 /* create a smaller inset arrow on the bottom */
-.tether-element-attached-bottom .PopoverBody--withArrow:after {
+:global .tether-element-attached-bottom .PopoverBody--withArrow:after {
   bottom: -18px;
   border-top-color: var(--color-bg-white);
 }
-.tether-element-attached-bottom .PopoverBody--tooltip:after {
+:global .tether-element-attached-bottom .PopoverBody--tooltip:after {
   border-top-color: var(--color-bg-black);
 }
 
 /* if the tether element is attached right, move our arrows right */
-.tether-target-attached-right .PopoverBody--withArrow:before,
-.tether-target-attached-right .PopoverBody--withArrow:after {
+:global .tether-target-attached-right .PopoverBody--withArrow:before,
+:global .tether-target-attached-right .PopoverBody--withArrow:after {
   right: 12px;
 }
 
 /* if the tether element is attached center, move our arrows to the center */
-.tether-element-attached-center .PopoverBody--withArrow:before,
-.tether-element-attached-center .PopoverBody--withArrow:after {
+:global .tether-element-attached-center .PopoverBody--withArrow:before,
+:global .tether-element-attached-center .PopoverBody--withArrow:after {
   margin-left: 50%;
   left: -10px;
 }
 
-.tether-element-attached-right .PopoverBody--withArrow:before,
-.tether-element-attached-right .PopoverBody--withArrow:after {
+:global .tether-element-attached-right .PopoverBody--withArrow:before,
+:global .tether-element-attached-right .PopoverBody--withArrow:after {
   right: 12px;
 }
 
-.tether-element-attached-left .PopoverBody--withArrow:before,
-.tether-element-attached-left .PopoverBody--withArrow:after {
+:global .tether-element-attached-left .PopoverBody--withArrow:before,
+:global .tether-element-attached-left .PopoverBody--withArrow:after {
   left: 12px;
 }
 
-#popover-event-target {
+:global(#popover-event-target) {
   position: fixed;
   width: 6px;
   height: 6px;
@@ -263,22 +263,22 @@
 
 /* transition classes */
 
-.Popover-appear,
-.Popover-enter {
+:global(.Popover-appear),
+:global(.Popover-enter) {
   opacity: 0.01;
 }
 
-.Popover-appear.Popover-appear-active,
-.Popover-enter.Popover-enter-active {
+:global(.Popover-appear.Popover-appear-active),
+:global(.Popover-enter.Popover-enter-active) {
   opacity: 1;
   transition: opacity 100ms ease-in;
 }
 
-.Popover-leave {
+:global(.Popover-leave) {
   opacity: 1;
 }
 
-.Popover-leave.Popover-leave-active {
+:global(.Popover-leave.Popover-leave-active) {
   opacity: 0.01;
   transition: opacity 100ms ease-in;
 }

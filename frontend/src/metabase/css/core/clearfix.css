@@ -9,13 +9,13 @@
  * 2. The use of `table` rather than `block` is only necessary if using
  *    `:before` to contain the top-margins of child elements.
  */
-.clearfix:before,
-.clearfix:after {
+:global(.clearfix:before),
+:global(.clearfix:after) {
   content: " "; /* 1 */
   display: table; /* 2 */
 }
 
-.clearfix:after {
+:global(.clearfix:after) {
   clear: both;
 }
 
@@ -23,6 +23,6 @@
  * For IE 6/7 only
  * Include this rule to trigger hasLayout and contain floats.
  */
-.clearfix {
+:global(.clearfix) {
   *zoom: 1;
 }

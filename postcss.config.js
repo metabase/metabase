@@ -21,5 +21,6 @@ module.exports = {
         "focus-visible-pseudo-class": false,
       },
     },
+    "postcss-discard-comments": {},
   },
 };

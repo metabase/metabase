@@ -12,16 +12,16 @@
   color: var(--color-text-light);
 }
 
-.Form-field {
+:global(.Form-field) {
   margin-bottom: 1.5em;
   color: var(--color-text-medium);
 }
 
-.Form-field.Form--fieldError {
+:global(.Form-field.Form--fieldError) {
   color: var(--color-error);
 }
 
-.Form-label {
+:global(.Form-label) {
   display: block;
   font-weight: 900;
   font-size: 0.88em;
@@ -29,7 +29,7 @@
   margin-bottom: 0.5em;
 }
 
-.Form-input {
+:global(.Form-input) {
   font-family: var(--default-font-family);
   font-weight: 700;
   font-size: 16px;
@@ -38,28 +38,28 @@
   padding: 0.75em;
 }
 
-.Form-input,
-.Form-input-border {
+:global(.Form-input),
+:global(.Form-input-border) {
   border: 1px solid var(--form-field-border-color);
   border-radius: var(--input-border-radius);
   outline: none;
 }
 
-.Form-field.Form--fieldError .Form-input {
+:global(.Form-field.Form--fieldError .Form-input) {
   border-color: var(--color-error);
 }
 
-.Form-input:focus:not(.no-focus),
-.Form-field:hover .Form-input:not(.no-focus) {
+:global(.Form-input:focus:not(.no-focus)),
+:global(.Form-field:hover .Form-input:not(.no-focus)) {
   border-color: var(--color-brand);
   transition: border 300ms ease-in-out;
 }
 
-.Form-field .AdminSelect {
+:global(.Form-field .AdminSelect) {
   border-color: var(--form-field-border-color);
 }
 
-.Form-field .AdminSelect:hover {
+:global(.Form-field .AdminSelect:hover) {
   border-color: var(--color-brand);
   transition: border 300ms ease-in-out;
 }

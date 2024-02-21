@@ -1,13 +1,13 @@
 /* TODO: based on popover.css, combine them? */
 /* TODO: other arrow directions */
 
-:global .arrow-right {
+:global(.arrow-right) {
   position: relative; /* TODO: should it be up to the consumer to set a non-static positioning? */
 }
 
 /* shared arrow styles */
-:global .arrow-right:before,
-:global .arrow-right:after {
+:global(.arrow-right:before),
+:global(.arrow-right:after) {
   position: absolute;
   content: "";
   display: block;
@@ -21,13 +21,13 @@
 }
 
 /* create a slightly larger arrow on the right for border purposes */
-:global .arrow-right:before {
+:global(.arrow-right:before) {
   right: -20px;
   border-left-color: var(--color-border);
 }
 
 /* create a smaller inset arrow on the right */
-:global .arrow-right:after {
+:global(.arrow-right:after) {
   right: -19px;
   border-left-color: var(--color-white);
 }

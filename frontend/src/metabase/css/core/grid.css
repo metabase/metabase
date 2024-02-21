@@ -1,4 +1,4 @@
-.Grid {
+:global .Grid {
   display: flex;
   flex-wrap: wrap;
   list-style: none;
@@ -6,263 +6,263 @@
   padding: 0;
 }
 
-.Grid-cell,
-.Grid--normal > .Grid-cell {
+:global .Grid-cell,
+:global .Grid--normal > .Grid-cell {
   flex: 1;
 }
 
-.Grid--flexCells > .Grid-cell {
+:global .Grid--flexCells > .Grid-cell {
   display: flex;
 }
 
-.Grid--top {
+:global .Grid--top {
   align-items: flex-start;
 }
 
-.Grid--bottom {
+:global .Grid--bottom {
   align-items: flex-end;
 }
 
-.Grid--center {
+:global .Grid--center {
   align-items: center;
 }
 
-.Grid--justifyCenter {
+:global .Grid--justifyCenter {
   justify-content: center;
 }
 
-.Grid-cell--top {
+:global .Grid-cell--top {
   align-self: flex-start;
 }
 
-.Grid-cell--bottom {
+:global .Grid-cell--bottom {
   align-self: flex-end;
 }
 
-.Grid-cell--center {
+:global .Grid-cell--center {
   align-self: center;
 }
 
-.Grid-cell--autoSize {
+:global .Grid-cell--autoSize {
   flex: none;
 }
 
-.Grid--fit > .Grid-cell {
+:global .Grid--fit > .Grid-cell {
   flex: 1;
 }
 
-.Grid--full > .Grid-cell {
+:global .Grid--full > .Grid-cell {
   flex: 0 0 100%;
 }
 
-.Grid--1of2 > .Grid-cell {
+:global .Grid--1of2 > .Grid-cell {
   flex: 0 0 50%;
 }
 
-.Grid--1of3 > .Grid-cell {
+:global .Grid--1of3 > .Grid-cell {
   flex: 0 0 33.3333%;
 }
 
-.Grid--1of4 > .Grid-cell {
+:global .Grid--1of4 > .Grid-cell {
   flex: 0 0 25%;
 }
 
 @media (--breakpoint-min-sm) {
-  .small-Grid--fit > .Grid-cell {
+  :global .small-Grid--fit > .Grid-cell {
     flex: 1;
   }
-  .small-Grid--full > .Grid-cell {
+  :global .small-Grid--full > .Grid-cell {
     flex: 0 0 100%;
   }
-  .small-Grid--1of2 > .Grid-cell {
+  :global .small-Grid--1of2 > .Grid-cell {
     flex: 0 0 50%;
   }
-  .small-Grid--1of3 > .Grid-cell {
+  :global .small-Grid--1of3 > .Grid-cell {
     flex: 0 0 33.3333%;
   }
-  .small-Grid--1of4 > .Grid-cell {
+  :global .small-Grid--1of4 > .Grid-cell {
     flex: 0 0 25%;
   }
 }
 
 @media (--breakpoint-min-md) {
-  .md-Grid--fit > .Grid-cell {
+  :global .md-Grid--fit > .Grid-cell {
     flex: 1;
   }
-  .md-Grid--full > .Grid-cell {
+  :global .md-Grid--full > .Grid-cell {
     flex: 0 0 100%;
   }
-  .md-Grid--1of2 > .Grid-cell {
+  :global .md-Grid--1of2 > .Grid-cell {
     flex: 0 0 50%;
   }
-  .md-Grid--1of3 > .Grid-cell {
+  :global .md-Grid--1of3 > .Grid-cell {
     flex: 0 0 33.3333%;
   }
-  .md-Grid--1of4 > .Grid-cell {
+  :global .md-Grid--1of4 > .Grid-cell {
     flex: 0 0 25%;
   }
 }
 
 @media (--breakpoint-min-lg) {
-  .large-Grid--fit > .Grid-cell {
+  :global .large-Grid--fit > .Grid-cell {
     flex: 1;
   }
-  .large-Grid--full > .Grid-cell {
+  :global .large-Grid--full > .Grid-cell {
     flex: 0 0 100%;
   }
-  .large-Grid--1of2 > .Grid-cell {
+  :global .large-Grid--1of2 > .Grid-cell {
     flex: 0 0 50%;
   }
-  .large-Grid--1of3 > .Grid-cell {
+  :global .large-Grid--1of3 > .Grid-cell {
     flex: 0 0 33.3333%;
   }
-  .large-Grid--1of4 > .Grid-cell {
+  :global .large-Grid--1of4 > .Grid-cell {
     flex: 0 0 25%;
   }
 }
 
-.Grid--gutters {
+:global .Grid--gutters {
   margin: -1em 0 1em -1em;
 }
-.Grid--gutters > .Grid-cell {
+:global .Grid--gutters > .Grid-cell {
   padding: 1em 0 0 1em;
 }
 
-.Grid--guttersLg {
+:global .Grid--guttersLg {
   margin: -1.5em 0 1.5em -1.5em;
 }
-.Grid--guttersLg > .Grid-cell {
+:global .Grid--guttersLg > .Grid-cell {
   padding: 1.5em 0 0 1.5em;
 }
 
-.Grid--guttersXl {
+:global .Grid--guttersXl {
   margin: -2em 0 2em -2em;
 }
-.Grid--guttersXl > .Grid-cell {
+:global .Grid--guttersXl > .Grid-cell {
   padding: 2em 0 0 2em;
 }
 
-.Grid--guttersXXl {
+:global .Grid--guttersXXl {
   margin: -5em 0 5em -5em;
 }
-.Grid--guttersXXl > .Grid-cell {
+:global .Grid--guttersXXl > .Grid-cell {
   padding: 5em 0 0 5em;
 }
 
 @media (--breakpoint-min-sm) {
-  .small-Grid--gutters {
+  :global .small-Grid--gutters {
     margin: -1em 0 1em -1em;
   }
-  .small-Grid--gutters > .Grid-cell {
+  :global .small-Grid--gutters > .Grid-cell {
     padding: 1em 0 0 1em;
   }
-  .small-Grid--guttersLg {
+  :global .small-Grid--guttersLg {
     margin: -1.5em 0 1.5em -1.5em;
   }
-  .small-Grid--guttersLg > .Grid-cell {
+  :global .small-Grid--guttersLg > .Grid-cell {
     padding: 1.5em 0 0 1.5em;
   }
-  .small-Grid--guttersXl {
+  :global .small-Grid--guttersXl {
     margin: -2em 0 2em -2em;
   }
-  .small-Grid--guttersXl > .Grid-cell {
+  :global .small-Grid--guttersXl > .Grid-cell {
     padding: 2em 0 0 2em;
   }
-  .small-Grid--guttersXXl {
+  :global .small-Grid--guttersXXl {
     margin: -5em 0 5em -5em;
   }
-  .small-Grid--guttersXXl > .Grid-cell {
+  :global .small-Grid--guttersXXl > .Grid-cell {
     padding: 5em 0 0 5em;
   }
-  .sm-Grid--normal > .Grid-cell {
+  :global .sm-Grid--normal > .Grid-cell {
     flex: 1;
   }
 }
 
 @media (--breakpoint-min-md) {
-  .md-Grid--gutters {
+  :global .md-Grid--gutters {
     margin: -1em 0 1em -1em;
   }
-  .md-Grid--gutters > .Grid-cell {
+  :global .md-Grid--gutters > .Grid-cell {
     padding: 1em 0 0 1em;
   }
-  .md-Grid--guttersLg {
+  :global .md-Grid--guttersLg {
     margin: -1.5em 0 1.5em -1.5em;
   }
-  .md-Grid--guttersLg > .Grid-cell {
+  :global .md-Grid--guttersLg > .Grid-cell {
     padding: 1.5em 0 0 1.5em;
   }
-  .md-Grid--guttersXl {
+  :global .md-Grid--guttersXl {
     margin: -2em 0 2em -2em;
   }
-  .md-Grid--guttersXl > .Grid-cell {
+  :global .md-Grid--guttersXl > .Grid-cell {
     padding: 2em 0 0 2em;
   }
-  .md-Grid--guttersXXl {
+  :global .md-Grid--guttersXXl {
     margin: -5em 0 5em -5em;
   }
-  .md-Grid--guttersXXl > .Grid-cell {
+  :global .md-Grid--guttersXXl > .Grid-cell {
     padding: 5em 0 0 5em;
   }
-  .md-Grid--normal > .Grid-cell {
+  :global .md-Grid--normal > .Grid-cell {
     flex: 1;
   }
 }
 
 @media (--breakpoint-min-lg) {
-  .large-Grid--gutters {
+  :global .large-Grid--gutters {
     margin: -1em 0 1em -1em;
   }
-  .large-Grid--gutters > .Grid-cell {
+  :global .large-Grid--gutters > .Grid-cell {
     padding: 1em 0 0 1em;
   }
-  .large-Grid--guttersLg {
+  :global .large-Grid--guttersLg {
     margin: -1.5em 0 1.5em -1.5em;
   }
-  .large-Grid--guttersLg > .Grid-cell {
+  :global .large-Grid--guttersLg > .Grid-cell {
     padding: 1.5em 0 0 1.5em;
   }
-  .large-Grid--guttersXl {
+  :global .large-Grid--guttersXl {
     margin: -2em 0 2em -2em;
   }
-  .large-Grid--guttersXl > .Grid-cell {
+  :global .large-Grid--guttersXl > .Grid-cell {
     padding: 2em 0 0 2em;
   }
-  .large-Grid--guttersXXl {
+  :global .large-Grid--guttersXXl {
     margin: -5em 0 5em -5em;
   }
-  .large-Grid--guttersXXl > .Grid-cell {
+  :global .large-Grid--guttersXXl > .Grid-cell {
     padding: 5em 0 0 5em;
   }
-  .large-Grid--normal > .Grid-cell {
+  :global .large-Grid--normal > .Grid-cell {
     flex: 1;
   }
 }
 
-.Grid-cell.Cell--1of3 {
+:global .Grid-cell.Cell--1of3 {
   flex: 0 0 33.3333%;
 }
 
 @media screen and (--breakpoint-min-sm) {
-  .Grid-cell.sm-Cell--1of3 {
+  :global .Grid-cell.sm-Cell--1of3 {
     flex: 0 0 33.3333%;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
-  .Grid-cell.md-Cell--1of3 {
+  :global .Grid-cell.md-Cell--1of3 {
     flex: 0 0 33.3333%;
   }
 }
 
 @media screen and (--breakpoint-min-lg) {
-  .Grid-cell.lg-Cell--1of3 {
+  :global .Grid-cell.lg-Cell--1of3 {
     flex: 0 0 33.3333%;
   }
 }
 
 @media screen and (--breakpoint-min-xl) {
-  .Grid-cell.xl-Cell--1of3 {
+  :global .Grid-cell.xl-Cell--1of3 {
     flex: 0 0 33.3333%;
   }
 }

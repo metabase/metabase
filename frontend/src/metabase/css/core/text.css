@@ -4,189 +4,183 @@
 }
 
 /* center */
-:global .text-centered {
+:global(.text-centered) {
   text-align: center;
 }
 
 @media screen and (--breakpoint-min-sm) {
-  :global .sm-text-centered {
+  :global(.sm-text-centered) {
     text-align: center;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
-  :global .md-text-centered {
+  :global(.md-text-centered) {
     text-align: center;
   }
 }
 
 @media screen and (--breakpoint-min-lg) {
-  :global .lg-text-centered {
+  :global(.lg-text-centered) {
     text-align: center;
   }
 }
 
 @media screen and (--breakpoint-min-xl) {
-  :global .xl-text-centered {
+  :global(.xl-text-centered) {
     text-align: center;
   }
 }
 
-/* left */
-
-:global .text-left {
+:global(.text-left) {
   text-align: left;
 }
 
 @media screen and (--breakpoint-min-sm) {
-  :global .sm-text-left {
+  :global(.sm-text-left) {
     text-align: left;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
-  :global .md-text-left {
+  :global(.md-text-left) {
     text-align: left;
   }
 }
 
 @media screen and (--breakpoint-min-lg) {
-  :global .lg-text-left {
+  :global(.lg-text-left) {
     text-align: left;
   }
 }
 
 @media screen and (--breakpoint-min-xl) {
-  :global .xl-text-left {
+  :global(.xl-text-left) {
     text-align: left;
   }
 }
 
-/* right */
-
-:global .text-right {
+:global(.text-right) {
   text-align: right;
 }
 
 @media screen and (--breakpoint-min-sm) {
-  :global .sm-text-right {
+  :global(.sm-text-right) {
     text-align: right;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
-  :global .md-text-right {
+  :global(.md-text-right) {
     text-align: right;
   }
 }
 
 @media screen and (--breakpoint-min-lg) {
-  :global .lg-text-right {
+  :global(.lg-text-right) {
     text-align: right;
   }
 }
 
 @media screen and (--breakpoint-min-xl) {
-  :global .xl-text-right {
+  :global(.xl-text-right) {
     text-align: right;
   }
 }
 
-:global .text-uppercase {
+:global(.text-uppercase) {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
-:global .text-lowercase {
+:global(.text-lowercase) {
   text-transform: lowercase;
 }
 
-:global .text-capitalize {
+:global(.text-capitalize) {
   text-transform: capitalize;
 }
 
-:global .text-transform-none {
+:global(.text-transform-none) {
   text-transform: none;
 }
 
-/* text weight */
-/* NOTE: .text-light removed since it conflicted with text-light in colors.css */
-:global .text-normal {
+:global(.text-normal) {
   font-weight: 400;
 }
-:global .text-bold {
+:global(.text-bold) {
   font-weight: 700;
 }
 
-:global .text-heavy {
+:global(.text-heavy) {
   font-weight: 900;
 }
 
 /* text style */
 
-:global .text-italic {
+:global(.text-italic) {
   font-style: italic;
 }
 
 /* larger text size used for descriptions  */
-:global .text-body {
+:global(.text-body) {
   font-size: 1.286em;
   line-height: 1.457em;
   color: var(--color-text-medium); /* TODO - is this bad? */
 }
 
-:global .text-list {
+:global(.text-list) {
   font-size: 1em;
 }
 
-:global .text-paragraph {
+:global(.text-paragraph) {
   font-size: 1.143em;
   line-height: 1.5em;
 }
 
-:global .text-spaced {
+:global(.text-spaced) {
   line-height: 1.5em;
 }
 
-:global .text-unspaced {
+:global(.text-unspaced) {
   line-height: normal;
 }
 
-:global .text-small {
+:global(.text-small) {
   font-size: 0.875em;
 }
 
-:global .text-smaller {
+:global(.text-smaller) {
   font-size: 0.8em;
 }
 
-:global .text-current {
+:global(.text-current) {
   color: currentColor;
 }
 
-:global .text-underline {
+:global(.text-underline) {
   text-decoration: underline;
 }
 
-:global .text-underline-hover:hover {
+:global(.text-underline-hover:hover) {
   text-decoration: underline;
 }
 
-:global .text-ellipsis {
+:global(.text-ellipsis) {
   text-overflow: ellipsis;
 }
 
-:global .text-wrap {
+:global(.text-wrap) {
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
 }
 
-:global .text-nowrap {
+:global(.text-nowrap) {
   white-space: nowrap;
 }
 
-:global .text-code {
+:global(.text-code) {
   font-family: monospace;
   color: var(--color-text-medium);
   background-color: var(--color-bg-medium);
@@ -196,25 +190,25 @@
   white-space: pre-wrap;
 }
 
-:global .text-code-plain {
+:global(.text-code-plain) {
   font-family: monospace;
   color: var(--color-text-dark);
   line-height: 1.4em;
   white-space: pre-wrap;
 }
 
-:global .text-monospace {
+:global(.text-monospace) {
   font-family: Monaco, monospace;
 }
 
-:global .text-pre-wrap {
+:global(.text-pre-wrap) {
   white-space: pre-wrap;
 }
 
-:global .text-measure {
+:global(.text-measure) {
   max-width: 620px;
 }
 
-:global .break-anywhere {
+:global(.break-anywhere) {
   line-break: anywhere;
 }

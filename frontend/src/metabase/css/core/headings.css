@@ -3,17 +3,17 @@
 }
 
 h1,
-.h1,
+:global(.h1),
 h2,
-.h2,
+:global(.h2),
 h3,
-.h3,
+:global(.h3),
 h4,
-.h4,
+:global(.h4),
 h5,
-.h5,
+:global(.h5),
 h6,
-.h6 {
+:global(.h6) {
   font-weight: 700;
   margin-top: var(--default-header-margin);
   margin-bottom: var(--default-header-margin);
@@ -28,84 +28,84 @@ h1 {
   font-size: 2em;
 }
 
-.h1 {
+:global(.h1) {
   font-size: 2em;
 }
-.h2 {
+:global(.h2) {
   font-size: 1.5em;
 }
-.h3 {
+:global(.h3) {
   font-size: 1.17em;
 }
-.h4 {
+:global(.h4) {
   font-size: 1.12em;
 }
-.h5 {
+:global(.h5) {
   font-size: 0.83em;
 }
-.h6 {
+:global(.h6) {
   font-size: 0.75em;
 }
 
 @media screen and (--breakpoint-min-sm) {
-  .sm-h1 {
+  :global(.sm-h1) {
     font-size: 2em;
   }
-  .sm-h2 {
+  :global(.sm-h2) {
     font-size: 1.5em;
   }
-  .sm-h3 {
+  :global(.sm-h3) {
     font-size: 1.17em;
   }
-  .sm-h4 {
+  :global(.sm-h4) {
     font-size: 1.12em;
   }
-  .sm-h5 {
+  :global(.sm-h5) {
     font-size: 0.83em;
   }
-  .sm-h6 {
+  :global(.sm-h6) {
     font-size: 0.75em;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
-  .md-h1 {
+  :global(.md-h1) {
     font-size: 2em;
   }
-  .md-h2 {
+  :global(.md-h2) {
     font-size: 1.5em;
   }
-  .md-h3 {
+  :global(.md-h3) {
     font-size: 1.17em;
   }
-  .md-h4 {
+  :global(.md-h4) {
     font-size: 1.12em;
   }
-  .md-h5 {
+  :global(.md-h5) {
     font-size: 0.83em;
   }
-  .md-h6 {
+  :global(.md-h6) {
     font-size: 0.75em;
   }
 }
 
 @media screen and (--breakpoint-min-lg) {
-  .lg-h1 {
+  :global(.lg-h1) {
     font-size: 2em;
   }
-  .lg-h2 {
+  :global(.lg-h2) {
     font-size: 1.5em;
   }
-  .lg-h3 {
+  :global(.lg-h3) {
     font-size: 1.17em;
   }
-  .lg-h4 {
+  :global(.lg-h4) {
     font-size: 1.12em;
   }
-  .lg-h5 {
+  :global(.lg-h5) {
     font-size: 0.83em;
   }
-  .lg-h6 {
+  :global(.lg-h6) {
     font-size: 0.75em;
   }
 }

@@ -1,8 +1,8 @@
-.Header-title {
+:global(.Header-title) {
   width: 455px;
 }
 
-.Header-title-name {
+:global(.Header-title-name) {
   font-size: 1.24em;
   color: var(--color-text-dark);
 }

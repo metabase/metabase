@@ -100,7 +100,7 @@
 }
 
 /* hack fix for IE 11 which was hiding the archive icon */
-@media all and (-ms-high-contrast: none), {
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
   .extraIcons {
     composes: icons;
   }
