@@ -111,7 +111,7 @@
       "id": 118,
       "parameter_mappings": [],
       "include_csv": false,
-      "display": "combo",
+      "display": "area",
       "entity_id": "419neqzItwLxhnfiArNMi",
       "collection_preview": true,
       "visualization_settings": {

@@ -37,6 +37,7 @@ import trendMultiSeriesNormalizedStackedBar from "./trend-multi-series-normalize
 import trendCombo from "./trend-combo.json";
 import trendComboPower from "./trend-combo-power.json";
 import trendComboLog from "./trend-combo-log.json";
+import comboBarsBecomeStackedInStaticViz38827 from "./combo-becomes-stacked-in-static-viz-38827.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import numbericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
@@ -82,6 +83,7 @@ export const data = {
   trendCombo,
   trendComboPower,
   trendComboLog,
+  comboBarsBecomeStackedInStaticViz38827,
   combinedBarTimeSeriesDifferentGranularityWithBreakout,
   numbericXAxisIncludesZero37082,
 };
