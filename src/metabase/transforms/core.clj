@@ -177,9 +177,9 @@
 
 (s/defn ^:private tableset :- Tableset
   [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str)]
-  (table/with-fields
-    (de/with-domain-entity
-      (t2/select 'Table :db_id db-id :schema schema))))
+  (-> (t2/select 'Table :db_id db-id :schema schema)
+      de/with-domain-entity
+      (t2/hydrate :fields)))
 
 (s/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.
