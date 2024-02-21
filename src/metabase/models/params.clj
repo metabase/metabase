@@ -88,7 +88,7 @@
    (into {}
          (map (comp (juxt :field_id identity)
                     #(select-keys % [:field_id :human_readable_values :values])
-                    field-values/get-or-create-full-field-values!))
+                    #(field-values/get-latest-full-field-values (:id %))))
          (t2/hydrate (t2/select :model/Field :id [:in (set param-field-ids)]) :values))))
 
 (defn- field-ids->param-field-values
@@ -186,7 +186,7 @@
 
 
 (mu/defn ^:private param-field-ids->fields
-  "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
+  "Get the Fields (as a map of Field ID -> Field) that should be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
   [field-ids :- [:maybe [:set ms/PositiveInt]]]
@@ -204,7 +204,7 @@
 #_{:clj-kondo/ignore [:unused-private-var]}
 (mi/define-simple-hydration-method ^:private hydrate-param-values
   :param_values
-  "Hydration method for `:param_fields`."
+  "Hydration method for `:param_values`."
   [instance]
   (param-values instance))
 
