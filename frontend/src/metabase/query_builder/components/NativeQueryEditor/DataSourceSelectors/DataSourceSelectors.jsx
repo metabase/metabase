@@ -16,7 +16,6 @@ const DataSourceSelectorsPropTypes = {
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
   editorContext: PropTypes.oneOf(["action", "question"]),
-  lastUsedDatabaseId: PropTypes.number,
 };
 
 const PopulatedDataSourceSelectorsPropTypes = {
@@ -60,7 +59,6 @@ const DataSourceSelectors = ({
   setDatabaseId,
   setTableId,
   editorContext,
-  lastUsedDatabaseId,
 }) => {
   const databases = useMemo(() => {
     const allDatabases = query
@@ -74,11 +72,7 @@ const DataSourceSelectors = ({
     return allDatabases;
   }, [query, editorContext]);
 
-  const [preselectedDatabase] = databases.filter(
-    d => d.id === lastUsedDatabaseId,
-  );
-
-  const database = question.database() || preselectedDatabase;
+  const database = question.database();
 
   if (
     !isNativeEditorOpen ||
