@@ -1,7 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
-  modal,
   describeEE,
   openNewCollectionItemFlowFor,
   appBar,
@@ -247,10 +246,10 @@ function openCollection(collectionName) {
 
 function createAndOpenOfficialCollection({ name }) {
   openNewCollectionItemFlowFor("collection");
-  modal().within(() => {
-    cy.findByLabelText("Name").type(name);
+  cy.findByTestId("new-collection-modal").then(modal => {
+    cy.findByPlaceholderText("My new fantastic collection").type(name);
     cy.findByText("Official").click();
-    cy.button("Create").click();
+    cy.findByText("Create").click();
   });
   navigationSidebar().within(() => {
     cy.findByText(name).click();
