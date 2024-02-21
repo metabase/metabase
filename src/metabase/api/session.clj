@@ -206,14 +206,44 @@
   (t2/delete! Session :id metabase-session-id)
   (mw.session/clear-session-cookie api/generic-204-no-content))
 
+;; client initiates slo:
 (api/defendpoint POST "/logout"
   "Logout."
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
-  (t2/delete! Session :id metabase-session-id)
-  (mw.session/clear-session-cookie api/generic-204-no-content)
-  (log/fatal "LOGGIN OUT ON SAML:")
-  (response/redirect "http://localhost:9090/realms/master/protocol/saml?SAMLRequest=fVE9b8IwEN37KyLvIcGkKVgkNBJCikQ7tLRDl8jYB1iK7dTnVPz8JoFItAOLJT%2B9j3t3y9VZ18EPOFTWZGQ6iUkARlipzDEjH7tNOCer%2FGGJXNcN29qjbf0bfLeAPlh3jzLcD8qT9w2LotoKXp8seraIF3HkgNcaI83Rg4saZ70Vto56NxKU64woWc0eKRxmCxmmMBdhklAI5ylPQ3hKU5HuJRwk7ciILZQGPTc%2BIzSmSRjTcJru6JTRBZslXyT4HGvQvkZXzCDrozLSOsMsR4XMcA3IvGDvxcuWdUTGEcH1JW4lzX3N2ITkw2bYMJ3LNXi%2B5wjL6Ba9UF47k3IdbKzT3N937xElw8NAZaC5qgspHSCS3HdLfx5zJsLqa9bFPr8e6r3jdo1KI%2BGc336qjbO6Klp%2FAuOVGI5XFeMGLl7%2F5CP45%2Fj5Lw%3D%3D&RelayState=aHR0cDovL2xvY2FsaG9zdDozMDAwLw%3D%3D"))
+  (let [{:keys [email sso_source]}
+        (t2/query-one
+         {:select [:user.email :user.sso_source]
+          :from   [[:core_user :user]]
+          :join   [[:core_session :session] [:= :user.id :session.user_id]]
+          :where  [:= :session.id metabase-session-id]})]
+    {:saml-logout-url
+     (when (= sso_source "saml")
+       (saml/logout-redirect-location
+        :idp-url (sso-settings/saml-identity-provider-uri)
+        :issuer (sso-settings/saml-application-name)
+        :user-email email
+        :relay-state (encode-decode/str->base64
+                      (str (urls/site-url)
+                           "/api/session/handle_slo"))))}))
+
+(api/defendpoint POST "/handle_slo"
+  "Handles client confirmation of saml logout via slo"
+  [:as {body :body :as req}]
+  {body :any}
+  (def r req)
+  (def bb (slurp (:body r)))
+  (def body body)
+  (log/fatal [:slo-req body])
+  (let [slo-worked? true]
+    (if slo-worked?
+      (do
+        ;; TODO: who is the user?
+        ;; (t2/delete! Session :id metabase-session-id)
+        ;; TODO: check the saml for errors here.
+
+        (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
+      {:status 500 :body "SAML logout failed"})))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.

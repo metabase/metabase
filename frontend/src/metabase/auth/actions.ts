@@ -100,14 +100,21 @@ export const logout = createAsyncThunk(
   async (redirectUrl: string | undefined, { dispatch, rejectWithValue }) => {
     try {
       const {'saml-logout-url': samlLogoutUrl} = await deleteSession();
+      // TODO: rename to sso-logout-url
       console.log("samlLogoutUrl", samlLogoutUrl);
       // dispatch(clearCurrentUser());
       // await dispatch(refreshLocale()).unwrap();
       // trackLogout();
-      // window.location.href=samlLogoutUrl;
-      // dispatch(push(rdu));
-      // reload(); // clears redux state and browser caches
-    } catch (error) {
+      // reload();
+      // clears redux state and browser caches
+      if (samlLogoutUrl !== undefined) {
+        // handle the redirect to the saml logout url inline
+        window.location.href=samlLogoutUrl;
+      } else {
+        // dispatch(push(redirectUrl || Urls.login()));
+      }
+    }
+    catch (error) {
       return rejectWithValue(error);
     }
   },
