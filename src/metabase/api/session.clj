@@ -3,6 +3,7 @@
   (:require
    [compojure.core :refer [DELETE GET POST]]
    [java-time.api :as t]
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.ldap :as api.ldap]
@@ -26,9 +27,11 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   [metabase.util.urls :as urls]
+   [saml20-clj.core :as saml]
+   [saml20-clj.encode-decode :as encode-decode]
    [throttle.core :as throttle]
-   [toucan2.core :as t2]
-   [ring.util.response :as response])
+   [toucan2.core :as t2])
   (:import
    (com.unboundid.util LDAPSDKException)
    (java.util UUID)))
@@ -206,7 +209,9 @@
   (t2/delete! Session :id metabase-session-id)
   (mw.session/clear-session-cookie api/generic-204-no-content))
 
-(def metabase-slo-redirect-url "/auth/sso/handle_slo")
+(def metabase-slo-redirect-url
+  "The url that the IdP should respond to. Not all IdPs support this, but it's a good idea to send it just in case."
+  "/auth/sso/handle_slo")
 
 ;; client initiates slo:
 (api/defendpoint POST "/logout"
@@ -225,8 +230,7 @@
         :issuer (sso-settings/saml-application-name)
         :user-email email
         :relay-state (encode-decode/str->base64
-                      (str (urls/site-url)
-                           metabase-slo-redirect-url))))}))
+                      (str (urls/site-url) metabase-slo-redirect-url))))}))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
