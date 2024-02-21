@@ -4,7 +4,6 @@ import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
 import { Box, Icon, Title } from "metabase/ui";
 
 import type { useDatabaseListQuery } from "metabase/common/hooks";
@@ -13,8 +12,8 @@ import NoResults from "assets/img/no_results.svg";
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   DatabaseCard,
+  DatabaseCardLink,
   DatabaseGrid,
-  DatabaseGridItem,
 } from "./BrowseDatabases.styled";
 
 export const BrowseDatabases = ({
@@ -35,8 +34,8 @@ export const BrowseDatabases = ({
   return databases.length ? (
     <DatabaseGrid data-testid="database-browser">
       {databases.map(database => (
-        <DatabaseGridItem key={database.id}>
-          <Link to={Urls.browseDatabase(database)}>
+        <div key={database.id}>
+          <DatabaseCardLink to={Urls.browseDatabase(database)}>
             <DatabaseCard>
               <Icon
                 name="database"
@@ -44,12 +43,12 @@ export const BrowseDatabases = ({
                 className="mb3"
                 size={32}
               />
-              <Title order={2} size="1rem" lh="1rem">
+              <Title order={2} size="1rem" lh="1rem" color="inherit">
                 {database.name}
               </Title>
             </DatabaseCard>
-          </Link>
-        </DatabaseGridItem>
+          </DatabaseCardLink>
+        </div>
       ))}
     </DatabaseGrid>
   ) : (
