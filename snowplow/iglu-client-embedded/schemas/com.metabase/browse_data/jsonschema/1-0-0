@@ -20,13 +20,13 @@
     },
     "model_id": {
       "description": "Unique identifier for the model within the Metabase instance",
-      "type": "integer",
+      "type": ["integer", "null"],
       "minimum": 0,
       "maximum": 2147483647
     },
     "table_id": {
       "description": "Unique identifier for the table within the Metabase instance",
-      "type": "integer",
+      "type": ["integer", "null"],
       "minimum": 0,
       "maximum": 2147483647
     }
