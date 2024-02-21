@@ -10,22 +10,13 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
-   [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.task :as task]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(setting/defsetting ^:private no-surveys
-  (deferred-tru "Enable or disable creator sentiment emails")
-  :type       :boolean
-  :default    false
-  :visibility :internal
-  :audit      :getter)
 
 (defn- fetch-creators
   "Fetch the creators who are eligible for a creator sentiment email. Which are users who, in the past 2 months:
@@ -59,11 +50,13 @@
   "Figure out what plan this Metabase instance is on."
   []
   (cond
-    (and config/ee-available? (premium-features/is-hosted?) (premium-features/has-any-features?)) "pro-cloud/enterprise-cloud"
-    (and config/ee-available? (premium-features/is-hosted?) (not (premium-features/has-any-features?))) "starter"
-    (and config/ee-available? (not (premium-features/is-hosted?))) "pro-self-hosted/enterprise-self-hosted"
-    (not config/ee-available?) "oss"
-    :else "unknown"))
+    (and config/ee-available? (premium-features/is-hosted?))
+    (if (premium-features/has-any-features?)
+      "pro-cloud/enterprise-cloud"
+      "starter")
+
+    config/ee-available? "pro-self-hosted/enterprise-self-hosted"
+    :else                "unknown"))
 
 (defn- fetch-instance-data []
   {:created_at     (snowplow/instance-creation)
@@ -79,17 +72,22 @@
   []
   ;; we need access to email AND the instance must have surveys enabled.
   (when (and (email/email-configured?)
-             (not (no-surveys)))
-    (let [instance-data (when (public-settings/anon-tracking-enabled) (fetch-instance-data))
-          creators (fetch-creators (premium-features/enable-whitelabeling?))
-          month (- (.getValue (t/month)) 1)]
-      (doseq [creator creators]
+             (email/surveys-enabled))
+    (let [instance-data (when (public-settings/anon-tracking-enabled)
+                          (fetch-instance-data))
+          all-creators  (fetch-creators (premium-features/enable-whitelabeling?))
+          month         (- (.getValue (t/month)) 1)
+          this-month    (fn [c] (= month (-> c :email hash (mod 12))))
+          recipients    (filter this-month all-creators)]
+      (log/infof "Sending surveys to %d creators of a total %d"
+                 (count all-creators) (count recipients))
+      (doseq [creator recipients]
         ;; Send the email if the creator's email hash matches the current month
         (when (= (-> creator :email hash (mod 12)) month)
           (try
             (messages/send-creator-sentiment-email! creator instance-data)
             (catch Throwable e
-              (log/error "Problem sending creator sentiment email:" e))))))))
+              (log/error e "Problem sending creator sentiment email:"))))))))
 
 (jobs/defjob ^{:doc "Sends out a monthly survey to a portion of the creators."} CreatorSentimentEmail [_]
   (send-creator-sentiment-emails!))
@@ -105,6 +103,6 @@
                  (triggers/with-identity (triggers/key creator-sentiment-emails-trigger-key))
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; Fire at 9:15am on the 1st day of every month
-                   (cron/cron-schedule "0 15 9 1 * ?")))]
+                   ;; Fire at 2am on the second saturday of the month
+                   (cron/cron-schedule "0 0 2 ? * 7#2")))]
     (task/schedule-task! job trigger)))
