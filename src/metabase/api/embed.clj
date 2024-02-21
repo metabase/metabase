@@ -660,7 +660,8 @@
       ;; ok, at this point we can run the query
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
-          (binding [api/*current-user-permissions-set* (atom #{"/"})]
+          (binding [api/*current-user-permissions-set* (atom #{"/"})
+                    api/*is-superuser?*                 true]
             (api.dashboard/param-values (t2/select-one Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
