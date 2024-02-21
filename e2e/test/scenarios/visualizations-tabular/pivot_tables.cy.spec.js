@@ -1030,8 +1030,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         cy.findByText("Save").click();
       });
 
-      cy.get("#SaveQuestionModal").within(() => {
-        cy.findByText("Save").click();
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.button("Save").click();
       });
 
       cy.get("#QuestionSavedModal").within(() => {
