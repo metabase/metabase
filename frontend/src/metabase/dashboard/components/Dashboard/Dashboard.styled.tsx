@@ -90,31 +90,6 @@ export const CardsContainer = styled(FullWidthContainer)`
   margin-top: 8px;
 `;
 
-export const ParametersAndCardsContainer = styled.div<{
-  shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
-}>`
-  flex: auto;
-  min-width: 0;
-  overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
-    shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
-  overflow-x: hidden;
-  @supports (overflow-x: clip) {
-    overflow-x: clip;
-  }
-  padding-bottom: 40px;
-
-  &.${SAVING_DOM_IMAGE_CLASS} {
-    ${CardsContainer} {
-      padding-bottom: 20px;
-    }
-
-    ${DashCard.root} {
-      box-shadow: none;
-      border: 1px solid ${color("border")};
-    }
-  }
-`;
-
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   isSticky: boolean;
   hasScroll: boolean;
@@ -136,6 +111,36 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       border-bottom: 1px solid
         ${hasScroll ? color("border") : color("bg-light")};
     `}
+`;
+
+export const ParametersAndCardsContainer = styled.div<{
+  shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
+}>`
+  flex: auto;
+  min-width: 0;
+  overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
+    shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
+  overflow-x: hidden;
+  @supports (overflow-x: clip) {
+    overflow-x: clip;
+  }
+  padding-bottom: 40px;
+
+  &.${SAVING_DOM_IMAGE_CLASS} {
+    ${ParametersWidgetContainer} {
+      background-color: transparent;
+      border-bottom: none;
+    }
+
+    ${CardsContainer} {
+      padding-bottom: 20px;
+    }
+
+    ${DashCard.root} {
+      box-shadow: none;
+      border: 1px solid ${color("border")};
+    }
+  }
 `;
 
 export const FIXED_WIDTH = "1048px";
