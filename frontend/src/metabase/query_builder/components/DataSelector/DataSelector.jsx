@@ -93,13 +93,12 @@ export const SchemaAndTableDataSelector = props => (
 );
 
 export const SchemaTableAndFieldDataSelector = props => (
-  // <div style={{ outline: "2px solid rgba(255,0,0,.4)" }}>
   <DataSelector
     steps={[SCHEMA_STEP, TABLE_STEP, FIELD_STEP]}
     getTriggerElementContent={FieldTrigger}
+    isMantine={true}
     {...props}
   />
-  // </div>
 );
 
 export class UnconnectedDataSelector extends Component {
@@ -174,6 +173,7 @@ export class UnconnectedDataSelector extends Component {
     canChangeDatabase: true,
     hasTriggerExpandControl: true,
     isPopover: true,
+    isMantine: false,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -720,6 +720,8 @@ export class UnconnectedDataSelector extends Component {
       triggerElement,
       getTriggerElementContent: TriggerComponent,
       hasTriggerExpandControl,
+      readOnly,
+      isMantine,
     } = this.props;
 
     if (triggerElement) {
@@ -732,8 +734,9 @@ export class UnconnectedDataSelector extends Component {
       <Trigger
         className={className}
         style={style}
-        showDropdownIcon={!this.props.readOnly && hasTriggerExpandControl}
-        iconSize={triggerIconSize}
+        showDropdownIcon={!readOnly && hasTriggerExpandControl}
+        iconSize={isMantine ? "1rem" : triggerIconSize}
+        isMantine={isMantine}
       >
         <TriggerComponent
           database={selectedDatabase}

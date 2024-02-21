@@ -55,7 +55,6 @@ export function FieldMappingSelect({
               }
               setFieldFn={setFieldFn}
               isInitiallyOpen={!tag.dimension}
-              triggerIconSize={"1rem"} // this is inline with Mantine select icon size
             />
           )}
         </Schemas.Loader>
