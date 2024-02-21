@@ -1,4 +1,5 @@
-import type * as Lib from "metabase-lib";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import * as Lib from "metabase-lib";
 import { findColumnSettingIndexesForColumns } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
@@ -28,7 +29,7 @@ export function getColumnItems(
   columns.forEach((column, columnIndex) => {
     const columnSettingIndex = originalIndexes[columnIndex];
     if (columnSettingIndex < 0) {
-      updatedIndexes.push(updatedSettings.length);
+      updatedIndexes[columnIndex] = updatedSettings.length;
       updatedSettings.push({
         name: column.name,
         fieldRef: column.field_ref,
@@ -45,8 +46,8 @@ export function getColumnItems(
       name: column.name,
       enabled: columnSetting.enabled,
       index: columnSettingIndex,
-      icon: "add" as const,
-      column: column,
+      icon: getColumnIcon(Lib.fromLegacyColumn(query, stageIndex, column)),
+      column,
       columnSetting,
     };
   });
