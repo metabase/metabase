@@ -173,7 +173,6 @@ const mapStateToProps = (state, props) => {
     requiredTemplateTags: getRequiredTemplateTags(state),
     getEmbeddedParameterVisibility: slug =>
       getEmbeddedParameterVisibility(state, slug),
-    lastUsedDatabaseId: getSetting(state, "last-used-database-id"),
   };
 };
 
