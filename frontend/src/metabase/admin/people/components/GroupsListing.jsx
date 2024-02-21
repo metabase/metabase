@@ -22,7 +22,7 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { ApiKeysApi } from "metabase/redux/api-key";
+import { useListApiKeyQuery } from "metabase/redux/api";
 import { Stack, Text, Group, Button, Icon } from "metabase/ui";
 
 import { AddRow } from "./AddRow";
@@ -274,7 +274,7 @@ function GroupsTable({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const { isLoading, data: apiKeys } = ApiKeysApi.useListQuery();
+  const { isLoading, data: apiKeys } = useListApiKeyQuery();
 
   if (isLoading) {
     return <LoadingAndErrorWrapper loading={isLoading} />;

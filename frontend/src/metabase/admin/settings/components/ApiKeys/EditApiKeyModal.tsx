@@ -9,13 +9,17 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { ApiKeysApi } from "metabase/redux/api-key";
+import {
+  useRegenerateApiKeyMutation,
+  useUpdateApiKeyMutation,
+} from "metabase/redux/api";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
 
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
+
 
 
 
@@ -33,7 +37,7 @@ const RegenerateKeyModal = ({
   setModal: (name: EditModalName) => void;
   setSecretKey: (key: string) => void;
 }) => {
-  const [regenerateApiKey] = ApiKeysApi.useRegenerateMutation();
+  const [regenerateApiKey] = useRegenerateApiKeyMutation();
   const handleRegenerate = useCallback(async () => {
     const result = await regenerateApiKey(apiKey.id).unwrap();
     setSecretKey(result.unmasked_key);
@@ -97,7 +101,7 @@ export const EditApiKeyModal = ({
 }) => {
   const [modal, setModal] = useState<EditModalName>("edit");
   const [secretKey, setSecretKey] = useState<string>("");
-  const [updateApiKey] = ApiKeysApi.useUpdateMutation();
+  const [updateApiKey] = useUpdateApiKeyMutation();
 
   const handleSubmit = useCallback(
     async vals => {

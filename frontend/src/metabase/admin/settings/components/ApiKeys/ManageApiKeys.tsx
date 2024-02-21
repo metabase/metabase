@@ -5,7 +5,7 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
-import { ApiKeysApi } from "metabase/redux/api-key";
+import { useListApiKeyQuery } from "metabase/redux/api";
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
@@ -14,7 +14,6 @@ import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 import { formatMaskedKey } from "./utils";
-
 
 const { fontFamilyMonospace } = getThemeOverrides();
 
@@ -111,7 +110,7 @@ export const ManageApiKeys = () => {
   const [modal, setModal] = useState<Modal>(null);
   const [activeApiKey, setActiveApiKey] = useState<null | ApiKey>(null);
 
-  const { data: apiKeys, error, isLoading } = ApiKeysApi.useListQuery();
+  const { data: apiKeys, error, isLoading } = useListApiKeyQuery();
 
   const sortedApiKeys = useMemo(() => {
     if (!apiKeys) {
