@@ -92,14 +92,17 @@ export const SchemaAndTableDataSelector = props => (
   />
 );
 
-export const SchemaTableAndFieldDataSelector = props => (
-  <DataSelector
-    steps={[SCHEMA_STEP, TABLE_STEP, FIELD_STEP]}
-    getTriggerElementContent={FieldTrigger}
-    isMantine={true}
-    {...props}
-  />
-);
+export const SchemaTableAndFieldDataSelector = props => {
+  return (
+    <DataSelector
+      steps={[SCHEMA_STEP, TABLE_STEP, FIELD_STEP]}
+      getTriggerElementContent={FieldTrigger}
+      // We don't want to change styles when there's a different trigger element
+      isMantine={!props.getTriggerElementContent}
+      {...props}
+    />
+  );
+};
 
 export class UnconnectedDataSelector extends Component {
   constructor(props) {
