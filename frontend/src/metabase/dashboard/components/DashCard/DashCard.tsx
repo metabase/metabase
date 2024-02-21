@@ -140,7 +140,7 @@ function DashCardInner({
 
   const question = useSelector(state =>
     isQuestionDashCard(dashcard)
-      ? getQuestionByCard(state, dashcard)
+      ? getQuestionByCard(state, { card: dashcard.card })
       : undefined,
   );
 
