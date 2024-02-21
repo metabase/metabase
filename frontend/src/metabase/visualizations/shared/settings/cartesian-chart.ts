@@ -1,4 +1,5 @@
 import _ from "underscore";
+import { t } from "ttag";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   Card,
@@ -150,6 +151,8 @@ export const getDefaultXAxisScale = (
   }
   return "ordinal";
 };
+
+export const getDefaultGoalLabel = () => t`Goal`;
 
 /**
  * Returns the default column names to be used for scatter plot viz settings.
