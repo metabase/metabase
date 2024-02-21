@@ -1,8 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
-import { restore, setTokenFeatures , describeWithSnowplow, expectGoodSnowplowEvent, resetSnowplow, expectNoBadSnowplowEvents, enableTracking } from "e2e/support/helpers";
+import {
+  restore,
+  setTokenFeatures,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  resetSnowplow,
+  expectNoBadSnowplowEvents,
+  enableTracking,
+} from "e2e/support/helpers";
 
-const {PRODUCTS_ID} = SAMPLE_DATABASE;
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describeWithSnowplow("scenarios > browse data", () => {
   beforeEach(() => {
@@ -22,7 +30,7 @@ describeWithSnowplow("scenarios > browse data", () => {
     expectNoBadSnowplowEvents();
     expectGoodSnowplowEvent({
       event: "browse_data_model_clicked",
-      model_id: ORDERS_MODEL_ID
+      model_id: ORDERS_MODEL_ID,
     });
   });
   it("can browse to a table", () => {
@@ -36,9 +44,8 @@ describeWithSnowplow("scenarios > browse data", () => {
     expectNoBadSnowplowEvents();
     expectGoodSnowplowEvent({
       event: "browse_data_table_clicked",
-      table_id: PRODUCTS_ID
+      table_id: PRODUCTS_ID,
     });
-
   });
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
