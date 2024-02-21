@@ -2,7 +2,6 @@ import cloneDeep from "lodash.clonedeep";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import Dimension from "metabase-lib/Dimension";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import type {
   DatasetColumn,
@@ -13,19 +12,6 @@ import type {
 
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
-
-/**
- * Returns a MBQL field reference (FieldReference) for a given result dataset column
- */
-export function fieldRefForColumn(
-  column: DatasetColumn,
-): FieldReference | null | undefined {
-  // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
-  return (
-    column.field_ref &&
-    Dimension.parseMBQL(column.field_ref)?.baseDimension().mbql()
-  );
-}
 
 export function findColumnIndexForColumnSetting(
   columns: DatasetColumn[],
