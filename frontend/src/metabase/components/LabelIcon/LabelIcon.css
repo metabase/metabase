@@ -1,16 +1,16 @@
-:local(.colorIcon) {
+.colorIcon {
   composes: inline-block from "style";
   width: 18px;
   height: 18px;
   border-radius: 3px;
 }
 
-:local(.emojiIcon) {
+.emojiIcon {
   composes: text-centered from "style";
   font-size: 20px;
 }
 
-:local(.icon) {
-  composes: transition-color from "style";
+.icon {
+  transition: color 0.3s linear;
   color: currentColor;
 }

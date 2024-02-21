@@ -6,70 +6,70 @@
   --sidebar-breadcrumbs-color: var(--color-text-medium);
 }
 
-:local(.breadcrumbs) {
+.breadcrumbs {
   display: flex;
   align-items: center;
   color: var(--breadcrumbs-color);
 }
 
-:local(.breadcrumb) {
+.breadcrumb {
   font-size: 0.75rem;
   font-weight: bold;
   text-transform: uppercase;
   cursor: default;
 }
 
-:local(.breadcrumb.fontLarge) {
+.breadcrumb.fontLarge {
   font-size: 0.875rem;
 }
 
-:local(.breadcrumbDivider) {
+.breadcrumbDivider {
   margin-left: var(--breadcrumb-divider-spacing);
   margin-right: var(--breadcrumb-divider-spacing);
   flex-shrink: 0;
 }
 
 /* the breadcrumb path will always inherit the color of the breadcrumbs object */
-:local(.breadcrumb.breadcrumbPath) {
+.breadcrumb.breadcrumbPath {
   color: currentColor;
   transition: color 0.3s linear;
   cursor: pointer;
 }
 
-:local(.breadcrumb.breadcrumbPath):hover {
+.breadcrumb.breadcrumbPath:hover {
   color: var(--breadcrumb-page-color);
   transition: color 0.3s linear;
 }
 
 /* the breadcrumb page (current page) should be a different contrasting color  */
-:local(.breadcrumb.breadcrumbPage) {
+.breadcrumb.breadcrumbPage {
   color: var(--breadcrumb-page-color);
 }
 
-:local(.sidebarBreadcrumbs) {
+.sidebarBreadcrumbs {
   composes: flex from "style";
   composes: breadcrumbs;
   color: var(--sidebar-breadcrumbs-color);
   max-width: 100%;
 }
 
-:local(.sidebarBreadcrumb) {
+.sidebarBreadcrumb {
   composes: breadcrumb;
   height: 15px;
 }
 
 /* the breadcrumb path will always inherit the color of the breadcrumbs object */
-:local(.sidebarBreadcrumb.breadcrumbPath) {
+.sidebarBreadcrumb.breadcrumbPath {
   color: currentColor;
   transition: color 0.3s linear;
 }
 
-:local(.sidebarBreadcrumb.breadcrumbPath):hover {
+.sidebarBreadcrumb.breadcrumbPath:hover {
   color: var(--color-brand);
   transition: color 0.3s linear;
 }
 
 /* the breadcrumb page (current page) should be a different contrasting color  */
-:local(.sidebarBreadcrumb.breadcrumbPage) {
+.sidebarBreadcrumb.breadcrumbPage {
   color: var(--color-brand);
 }

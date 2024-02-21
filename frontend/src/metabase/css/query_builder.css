@@ -2,65 +2,37 @@
   --selection-color: var(--color-text-light);
 }
 
-#react_qb_viz {
-  flex-grow: 1;
-}
-
-/* @layout */
-.QueryBuilder {
-  transition: margin-right 0.35s;
-}
-
-.QueryBuilder--showSideDrawer {
-  margin-right: 300px;
-}
-
-.QueryHeader-details {
-  display: flex;
-  align-items: center;
-}
-
-/* a section of the graphical query itself */
-.Query-section {
-  display: flex;
-  align-items: center;
-}
-
-.Query-section.Query-section--right {
-  justify-content: flex-end;
-}
-
-.QueryName {
+:global(.QueryName) {
   font-weight: 200;
   margin-top: 0;
   margin-bottom: 0;
   font-size: 1.2rem;
 }
 
-.Query-label {
+:global(.Query-label) {
   text-transform: uppercase;
   font-size: 10px;
   font-weight: 700;
   color: var(--color-text-medium);
 }
 
-.Query-filters {
+:global(.Query-filters) {
   max-width: 400px;
 }
 
-.Query-filterList {
+:global(.Query-filterList) {
   display: flex;
   overflow-y: hidden;
   white-space: nowrap;
 }
 
-.Filter-section {
+:global(.Filter-section) {
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-.Query-filter .input {
+:global(.Query-filter .input) {
   border-radius: 0;
   border: none;
   font-size: inherit;
@@ -69,47 +41,43 @@
   padding: 0;
 }
 
-.TooltipFilterList .Query-filter {
+:global .TooltipFilterList .Query-filter {
   padding-left: 0 !important;
   padding-bottom: 0 !important;
 }
 
-.TooltipFilterList .Query-filterList {
+:global .TooltipFilterList .Query-filterList {
   flex-direction: column;
-}
-
-.TooltipFilterList .Query-section {
-  margin-left: -0.5rem;
 }
 
 /*
     @selectionmodule
 */
-.SelectionModule {
+:global(.SelectionModule) {
   color: var(--color-brand);
 }
 
-.SelectionList {
+:global(.SelectionList) {
   padding-top: 5px;
   overflow-y: auto;
   max-height: 340px;
 }
 
-.SelectionItems {
+:global(.SelectionItems) {
   max-width: 320px;
 }
 
-.SelectionItems.SelectionItems--open {
+:global(.SelectionItems.SelectionItems--open) {
   opacity: 1;
   transition: opacity 0.3s linear;
   pointer-events: all;
 }
 
-.SelectionItems.SelectionItems--expanded {
+:global(.SelectionItems.SelectionItems--expanded) {
   max-height: inherit;
 }
 
-.SelectionItem {
+:global(.SelectionItem) {
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -117,85 +85,85 @@
   background-color: var(--color-bg-white);
 }
 
-.SelectionItem:hover {
+:global(.SelectionItem:hover) {
   background-color: currentColor;
 }
 
-.SelectionItem .Icon {
+:global .SelectionItem .Icon {
   margin-left: 0.5rem;
   margin-right: 0.75rem;
   color: currentcolor;
 }
 
-.SelectionItem .Icon-check {
+:global .SelectionItem .Icon-check {
   opacity: 0;
 }
 
-.SelectionItem .Icon-chevrondown {
+:global .SelectionItem .Icon-chevrondown {
   opacity: 1;
 }
 
-.SelectionItem:hover .Icon {
+:global .SelectionItem:hover .Icon {
   color: var(--color-text-white) !important;
 }
 
-.SelectionItem:hover .SelectionModule-display {
+:global .SelectionItem:hover .SelectionModule-display {
   color: var(--color-text-white);
 }
 
-.SelectionItem:hover .SelectionModule-description {
+:global .SelectionItem:hover .SelectionModule-description {
   color: var(--color-text-white);
 }
 
-.SelectionItem.SelectionItem--selected .Icon-check {
+:global .SelectionItem.SelectionItem--selected .Icon-check {
   opacity: 1;
 }
 
-.SelectionModule-display {
+:global(.SelectionModule-display) {
   color: currentColor;
   margin-bottom: 0.25em;
 }
 
-.SelectionModule-description {
+:global(.SelectionModule-description) {
   color: var(--color-text-medium);
   font-size: 0.8rem;
 }
 
-.Visualization {
+:global(.Visualization) {
   transition: background 0.3s linear;
 }
 
-.Visualization.Visualization--loading {
+:global(.Visualization.Visualization--loading) {
   transition: background 0.3s linear;
 }
 
-.Visualization.Visualization--error {
+:global(.Visualization.Visualization--error) {
   justify-content: center;
 }
 
-.Visualization--scalar {
+:global(.Visualization--scalar) {
   justify-content: center;
   font-size: 8rem;
   font-weight: 200;
 }
 
-.Loading {
+:global(.Loading) {
   background-color: color-mod(var(--color-bg-white) alpha(-28%));
   transition: opacity 0.5s;
 }
-.Loading.Loading--hidden {
+:global(.Loading.Loading--hidden) {
   background-color: transparent;
 }
-.Dirty {
+:global(.Dirty) {
   background-color: color-mod(var(--color-bg-white) alpha(-28%));
   transition: opacity 0.5s;
 }
-.Dirty.Loading--hidden {
+:global(.Dirty.Loading--hidden) {
   background-color: transparent;
 }
 
 /* query errors */
-.QueryError {
+:global(.QueryError) {
   flex-direction: column;
   justify-content: center;
   max-width: 500px;
@@ -203,40 +171,40 @@
   margin-right: auto;
 }
 
-.QueryError-image {
+:global(.QueryError-image) {
   background-repeat: no-repeat;
   margin-bottom: 1rem;
 }
 
-.QueryError-image--noRows {
+:global(.QueryError-image--noRows) {
   width: 120px;
   height: 120px;
   background-image: url("~assets/img/no_results.svg");
 }
 
-.QueryError-image--queryError {
+:global(.QueryError-image--queryError) {
   width: 120px;
   height: 120px;
   background-image: url("~assets/img/no_understand.svg");
 }
 
-.QueryError-image--serverError {
+:global(.QueryError-image--serverError) {
   width: 120px;
   height: 148px;
   background-image: url("~assets/img/blown_up.svg");
 }
 
-.QueryError-image--timeout {
+:global(.QueryError-image--timeout) {
   width: 120px;
   height: 120px;
   background-image: url("~assets/img/stopwatch.svg");
 }
 
-.QueryError-messageText {
+:global(.QueryError-messageText) {
   line-height: 1.4;
 }
 
-.QueryError-adminEmail {
+:global(.QueryError-adminEmail) {
   position: relative;
   display: inline-block;
   border-radius: var(--default-border-radius);
@@ -245,7 +213,7 @@
   padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
 }
 
-.QueryError-adminEmail:before {
+:global(.QueryError-adminEmail:before) {
   content: "Admin Email";
   font-size: 10px;
   text-align: center;
@@ -260,17 +228,17 @@
   margin-left: -41px; /* ugh */
 }
 
-.QueryError2 {
+:global .QueryError2 {
   padding-top: 4rem;
   margin-left: auto;
   margin-right: auto;
 }
 
-.QueryError2-details {
+:global .QueryError2-details {
   max-width: 500px;
 }
 
-.QueryError2-detailBody {
+:global .QueryError2-detailBody {
   background-color: var(--color-bg-light);
   max-height: 15rem;
   overflow: auto;
@@ -278,7 +246,7 @@
 
 /* GUI BUILDER */
 
-.GuiBuilder {
+:global .GuiBuilder {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -291,50 +259,50 @@
 
 /* for medium breakpoint only expand if data reference is not shown */
 @media screen and (--breakpoint-min-md) {
-  .GuiBuilder {
+  :global .GuiBuilder {
     font-size: 1em;
   }
 }
 
 /* un-expanded (default) */
-.GuiBuilder-row {
+:global .GuiBuilder-row {
   border-bottom: 1px solid var(--color-border);
 }
-.GuiBuilder-row:last-child {
+:global .GuiBuilder-row:last-child {
   border-bottom-color: transparent;
 }
-.GuiBuilder-data {
+:global .GuiBuilder-data {
   border-right: 1px solid var(--color-border);
 }
-.GuiBuilder-filtered-by {
+:global .GuiBuilder-filtered-by {
   border-right: 1px solid transparent;
 }
-.GuiBuilder-view {
+:global .GuiBuilder-view {
   border-right: 1px solid var(--color-border);
 }
-.GuiBuilder-sort-limit {
+:global .GuiBuilder-sort-limit {
   border-left: 1px solid var(--color-border);
 }
 
 /* expanded */
-.GuiBuilder.GuiBuilder--expand {
+:global .GuiBuilder.GuiBuilder--expand {
   flex-direction: row;
 }
-.GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child {
+:global .GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child {
   border-right-color: transparent;
   border-bottom-color: var(--color-border);
 }
-.GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by {
+:global .GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by {
   border-right-color: var(--color-border);
 }
 
-.GuiBuilder-section {
+:global .GuiBuilder-section {
   position: relative;
   min-height: 55px;
   min-width: 100px;
 }
 
-.GuiBuilder-section-label {
+:global .GuiBuilder-section-label {
   background-color: white;
   position: absolute;
   top: -7px;
@@ -345,31 +313,31 @@
 
 /* @transitions */
 
-.AddToDashSuccess {
+:global .AddToDashSuccess {
   max-width: 260px;
   text-align: center;
 }
 
 /* DATA SECTION */
 
-.GuiBuilder-data {
+:global .GuiBuilder-data {
   z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
 /* FILTER BY SECTION */
 
-.Filter-section-sort-field.selected .QueryOption,
-.Filter-section-sort-direction.selected .QueryOption {
+:global .Filter-section-sort-field.selected .QueryOption,
+:global .Filter-section-sort-direction.selected .QueryOption {
   color: inherit;
 }
 
 /* SORT/LIMIT SECTION */
 
-.GuiBuilder-sort-limit {
+:global .GuiBuilder-sort-limit {
   min-width: 0px;
 }
 
-.EllipsisButton {
+:global .EllipsisButton {
   font-size: 3em;
   position: relative;
   top: -0.8rem;
@@ -377,11 +345,11 @@
 
 /* VISUALIZATION SETTINGS */
 
-.VisualizationSettings .GuiBuilder-section {
+:global .VisualizationSettings .GuiBuilder-section {
   border-right: none !important;
 }
 
-.ChartType-button {
+:global .ChartType-button {
   width: 38px;
   height: 38px;
   border-radius: 38px;
@@ -389,51 +357,51 @@
   border: 1px solid var(--color-border);
 }
 
-.ChartType-popover {
+:global .ChartType-popover {
   min-width: 15em !important;
 }
 
-.ChartType--selected {
+:global .ChartType--selected {
   color: white;
   background-color: var(--color-brand);
 }
 
-.ChartType--notSensible {
+:global .ChartType--notSensible {
   opacity: 0.5;
 }
 
-.ColorWell {
+:global .ColorWell {
   width: 18px;
   height: 18px;
   margin: 3px;
   margin-right: 0.3rem;
 }
 
-.RunButton {
+:global .RunButton {
   opacity: 1;
   transition: transform 0.25s, opacity 0.25s;
 }
 
-.RunButton.RunButton--compact {
+:global .RunButton.RunButton--compact {
   padding: 16px 32px;
 }
 
-.RunButton.RunButton--hidden {
+:global .RunButton.RunButton--hidden {
   transform: translateY(-20px);
   opacity: 0;
 }
 
 @media (prefers-reduced-motion) {
-  .RunButton,
-  .RunButton.RunButton--compact,
-  .RunButton.RunButton--hidden {
+  :global .RunButton,
+  :global .RunButton.RunButton--compact,
+  :global .RunButton.RunButton--hidden {
     transition-duration: 10ms;
   }
 }
 
 /* DATA REFERENCE */
 
-.SideDrawer {
+:global .SideDrawer {
   z-index: -1;
   position: absolute;
   top: 0;
@@ -446,22 +414,22 @@
   opacity: 0;
 }
 
-.SideDrawer--show {
+:global .SideDrawer--show {
   z-index: 0;
   right: 0;
   opacity: 1;
   transition: all 0.5s;
 }
 
-.DataReference h1 {
+:global .DataReference h1 {
   font-size: 20pt;
 }
 
-.DataReference-paneCount {
+:global .DataReference-paneCount {
   padding-right: 0.6em;
 }
 
-.ObjectJSON {
+:global .ObjectJSON {
   max-height: 200px;
   overflow: scroll;
   padding: 1em;
@@ -471,16 +439,16 @@
   white-space: pre-wrap;
 }
 
-.PopoverBody.AddToDashboard {
+:global .PopoverBody.AddToDashboard {
   min-width: 25em;
 }
 
-.List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
-.List-item--selected .FieldList-grouping-trigger {
+:global .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
+:global .List-item--selected .FieldList-grouping-trigger {
   visibility: visible;
 }
 
-.QuestionTooltipTarget {
+:global .QuestionTooltipTarget {
   color: var(--color-text-light);
   display: inline-block;
   border: 2px solid currentColor;
@@ -496,22 +464,22 @@
   cursor: pointer;
 }
 
-.QuestionTooltipTarget:after {
+:global .QuestionTooltipTarget:after {
   content: "?";
   font-size: 13px;
   font-weight: bold;
 }
 
-.FilterInput:hover .FilterRemove-field {
+:global .FilterInput:hover .FilterRemove-field {
   opacity: 1;
 }
 
 /* need to do this ugliness to override the locally scoped font size from Scalar.css */
-.QueryBuilder .ScalarValue {
+:global .QueryBuilder .ScalarValue {
   font-size: 5em;
 }
 
-.sql-code {
+:global .sql-code {
   font-size: 90%;
   line-height: 1.2em;
   font-family: "Courier 10 Pitch", Courier, monospace;
@@ -524,22 +492,22 @@
   border-radius: 4px;
 }
 
-.ParameterValuePickerNoPopover input {
+:global .ParameterValuePickerNoPopover input {
   font-size: 16px;
   color: var(--color-text-dark);
   border: none;
 }
 
-.ParameterValuePickerNoPopover--selected input {
+:global .ParameterValuePickerNoPopover--selected input {
   font-weight: bold;
   color: var(--color-brand);
 }
 
-.ParameterValuePickerNoPopover input:focus {
+:global .ParameterValuePickerNoPopover input:focus {
   outline: none;
   color: var(--color-text-dark);
 }
 
-.ParameterValuePickerNoPopover input::-webkit-input-placeholder {
+:global .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
 }

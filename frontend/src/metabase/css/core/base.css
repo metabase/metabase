@@ -76,42 +76,24 @@ textarea {
   min-height: 110px;
 }
 
-.pointer-events-none,
-.pointer-events-none * {
+:global .pointer-events-none,
+:global .pointer-events-none * {
   pointer-events: none;
 }
 
-.disabled,
-:local(.disabled) {
+:global .disabled {
   pointer-events: none;
   opacity: 0.4;
 }
 
-.faded,
-:local(.faded) {
+:global .faded {
   opacity: 0.4;
 }
-.fade-in-hover:hover {
+:global .fade-in-hover:hover {
   opacity: 1;
   transition: opacity 0.3s;
 }
 
-.MB-lightBG {
-  background-color: var(--color-bg-light);
-}
-
-.circle {
+:global .circle {
   border-radius: 99px;
-}
-
-.undefined {
-  border: 1px solid red !important;
-}
-
-.no-outline * {
-  outline: none;
-}
-
-.outline-none {
-  outline: none;
 }

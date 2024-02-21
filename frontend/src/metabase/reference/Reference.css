@@ -4,38 +4,38 @@
   --icon-width: 60px;
 }
 
-:local(.guideEmpty) {
+.guideEmpty {
   composes: flex full justify-center from "style";
   padding-top: 75px;
 }
 
-:local(.guideEmptyBody) {
+.guideEmptyBody {
   composes: text-centered from "style";
   max-width: 400px;
 }
 
-:local(.guideEmptyMessage) {
+.guideEmptyMessage {
   composes: text-dark text-paragraph text-centered mt3 from "style";
 }
 
-:local(.columnHeader) {
+.columnHeader {
   composes: flex flex-full from "style";
   padding-top: 20px;
   padding-bottom: 20px;
 }
 
-:local(.revisionsWrapper) {
+.revisionsWrapper {
   padding-top: 20px;
   padding-left: var(--icon-width);
 }
 
-:local(.schemaSeparator) {
+.schemaSeparator {
   composes: text-light mt2 from "style";
   margin-left: var(--icon-width);
   font-size: 18px;
 }
 
-:local(.tableActualName) {
+.tableActualName {
   font-family: "Lucida Console", Monaco, monospace;
   font-size: 13px;
   line-height: 1.4em;
@@ -48,11 +48,11 @@
   padding: 0.2em 0.4em;
 }
 
-:local(.guideLeftPadded) {
+.guideLeftPadded {
   composes: flex full justify-center from "style";
 }
 
-:local(.guideLeftPadded)::before {
+.guideLeftPadded::before {
   /*FIXME: not sure how to share this with other components
      because we can't use composes here apparently. any workarounds?*/
   content: "";
@@ -62,101 +62,101 @@
   margin-right: 50px;
 }
 
-:local(.guideLeftPaddedBody) {
+.guideLeftPaddedBody {
   flex: 0.7;
   max-width: 550px;
 }
 
-:local(.guideWrapper) {
+.guideWrapper {
   margin-bottom: 50px;
 }
 
-:local(.guideTitle) {
+.guideTitle {
   composes: guideLeftPadded;
   font-size: 24px;
   margin-top: 50px;
 }
 
-:local(.guideTitleBody) {
+.guideTitleBody {
   composes: full text-dark text-bold from "style";
   composes: guideLeftPaddedBody;
 }
 
-:local(.guideSeeAll) {
+.guideSeeAll {
   composes: guideLeftPadded;
   font-size: 18px;
 }
 
-:local(.guideSeeAllBody) {
+.guideSeeAllBody {
   composes: flex full text-dark text-bold mt4 from "style";
   composes: guideLeftPaddedBody;
 }
 
-:local(.guideSeeAllLink) {
+.guideSeeAllLink {
   composes: flex-full block no-decoration py1 border-top from "style";
 }
 
-:local(.guideContact) {
+.guideContact {
   composes: mt4 from "style";
   composes: guideLeftPadded;
   margin-bottom: 100px;
 }
 
-:local(.guideContactBody) {
+.guideContactBody {
   composes: full from "style";
   composes: guideLeftPaddedBody;
   font-size: 16px;
 }
 
-:local(.guideEditHeader) {
+.guideEditHeader {
   composes: full text-body my4 from "style";
   max-width: 550px;
   color: var(--color-text-dark);
 }
 
-:local(.guideEditHeaderTitle) {
+.guideEditHeaderTitle {
   composes: text-bold mb2 from "style";
   font-size: 24px;
 }
 
-:local(.guideEditCards) {
+.guideEditCards {
   composes: mt2 mb4 from "style";
 }
 
-:local(.guideEditCard) {
+.guideEditCard {
   composes: input p4 from "style";
 }
 
-:local(.guideEditLabel) {
+.guideEditLabel {
   composes: block text-bold mb2 from "style";
   font-size: 16px;
   color: var(--title-color);
 }
 
-:local(.guideEditHeaderDescription) {
+.guideEditHeaderDescription {
   font-size: 16px;
 }
 
-:local(.guideEditTitle) {
+.guideEditTitle {
   composes: block text-body text-bold from "style";
   color: var(--title-color);
   font-size: 16px;
   margin-top: 50px;
 }
 
-:local(.guideEditSubtitle) {
+.guideEditSubtitle {
   composes: text-body from "style";
   color: var(--color-text-light);
   font-size: 16px;
   max-width: 700px;
 }
 
-:local(.guideEditAddButton) {
+.guideEditAddButton {
   composes: flex full my2 pl4 from "style";
   padding-right: 3.5rem;
 }
 
-:local(.guideEditAddButton)::before {
+.guideEditAddButton::before {
   content: "";
   display: block;
   flex: 250;
@@ -164,12 +164,12 @@
   margin-right: 50px;
 }
 
-:local(.guideEditAddButtonBody) {
+.guideEditAddButtonBody {
   flex: 550;
   max-width: 550px;
 }
 
-:local(.guideEditTextarea) {
+.guideEditTextarea {
   composes: text-dark input p2 from "style";
   resize: none;
   font-size: 16px;
@@ -178,22 +178,22 @@
   min-height: 100px;
 }
 
-:local(.guideEditContact) {
+.guideEditContact {
   composes: flex from "style";
 }
 
-:local(.guideEditContactName) {
+.guideEditContactName {
   flex: 250;
   max-width: 250px;
   margin-right: 50px;
 }
 
-:local(.guideEditContactEmail) {
+.guideEditContactEmail {
   flex: 550;
   max-width: 550px;
 }
 
-:local(.guideEditInput) {
+.guideEditInput {
   composes: full text-dark input p2 from "style";
   font-size: 16px;
   display: block;

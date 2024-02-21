@@ -3,22 +3,22 @@
   --muted-color: var(--color-text-light);
 }
 
-:local(.detail) {
+.detail {
   composes: flex align-center from "style";
   composes: relative from "style";
 }
 
-:local(.detailBody) {
+.detailBody {
   composes: pb4 from "style";
   max-width: 900px;
 }
 
-:local(.detailTitle) {
+.detailTitle {
   composes: text-bold inline-block from "style";
   color: var(--title-color);
 }
 
-:local(.detailSubtitle) {
+.detailSubtitle {
   composes: text-dark text-paragraph from "style";
   white-space: pre-wrap;
   font-size: 16px;
@@ -26,12 +26,12 @@
   padding-top: 6px;
 }
 
-:local(.detailSubtitleLight) {
+.detailSubtitleLight {
   composes: text-light from "style";
   padding-top: 6px;
 }
 
-:local(.detailTextarea) {
+.detailTextarea {
   composes: text-dark input p2 from "style";
   resize: none;
   font-size: 16px;

@@ -1,0 +1,23 @@
+.query-section {
+  display: flex;
+  align-items: center;
+}
+
+.disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.add-block {
+  color: var(--color-text-light);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.3s linear;
+}
+
+.add-block:hover {
+  color: var(--color-text-medium);
+}

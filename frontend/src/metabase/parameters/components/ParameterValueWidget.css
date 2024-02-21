@@ -1,4 +1,4 @@
-:local(.parameter) {
+.parameter {
   composes: flex align-center from "style";
   font-weight: 600;
   min-height: 30px;
@@ -6,7 +6,7 @@
   color: var(--color-text-medium);
 }
 
-:local(.nameInput) {
+.nameInput {
   composes: flex align-center from "style";
   min-height: 30px;
   min-width: 150px;
@@ -14,35 +14,34 @@
   border: none;
   font-size: 1em;
   font-weight: 600;
-  border: none;
 }
 
-:local(.fullscreen) {
+.fullscreen {
   margin-right: 0;
   margin-left: 0;
 }
-:local(.fullscreen .name) {
+.fullscreen .name {
   font-size: 14px;
 }
-:local(.fullscreen .parameter) {
+.fullscreen .parameter {
   min-width: 0;
   min-height: 0;
   background-color: transparent;
   font-size: 14px;
 }
 
-:local(.parameter.selected) {
+.parameter.selected {
   font-weight: bold;
   color: var(--color-brand);
   border-color: var(--color-brand);
 }
 
-:local(.parameter) input {
+.parameter input {
   flex-grow: 1;
   border-radius: 0;
 }
 
-:local(.parameter.noPopover) input {
+.parameter.noPopover input {
   width: 100%;
   font-size: 1em;
   font-weight: 600;
@@ -56,72 +55,72 @@
   }
 }
 
-:local(.parameter.noPopover.selected) input {
+.parameter.noPopover.selected input {
   font-weight: bold;
   color: var(--color-brand);
 }
 
-:local(.parameter.noPopover) input:focus {
+.parameter.noPopover input:focus {
   outline: none;
   color: var(--color-text-dark);
 }
-:local(.parameter.noPopover) input::-webkit-input-placeholder {
+.parameter.noPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
 }
-:local(.parameter.noPopover) input:-moz-placeholder {
+.parameter.noPopover input:-moz-placeholder {
   color: var(--color-text-medium);
 }
-:local(.parameter.noPopover) input::-moz-placeholder {
+.parameter.noPopover input::-moz-placeholder {
   color: var(--color-text-medium);
 }
-:local(.parameter.noPopover) input:-ms-input-placeholder {
+.parameter.noPopover input:-ms-input-placeholder {
   color: var(--color-text-medium);
 }
 
-.Dashboard--night :local(.parameter.noPopover) input:focus,
-.Theme--night :local(.parameter.noPopover) input:focus {
+:global(.Dashboard--night) .parameter.noPopover input:focus,
+:global(.Theme--night) .parameter.noPopover input:focus {
   color: var(--color-text-white);
 }
 
-:local(.nameInput:focus),
-:local(.input:focus) {
+.nameInput:focus,
+.input:focus {
   outline: none;
 }
 
-:local(.name) {
+.name {
   composes: mr1 from "style";
   font-size: 16px;
   font-weight: bold;
   color: var(--color-text-medium);
 }
 
-:local(.parameterButtons) {
+.parameterButtons {
   display: flex;
   justify-content: space-around;
   font-size: smaller;
 }
 
-:local(.editButton),
-:local(.removeButton) {
+.editButton,
+.removeButton {
   composes: flex align-center cursor-pointer from "style";
 }
 
-:local(.editButton:hover) {
+.editButton:hover {
   color: var(--color-brand);
 }
 
-:local(.removeButton:hover) {
+.removeButton:hover {
   color: var(--color-error);
 }
 
-:local(.editNameIconContainer) {
+.editNameIconContainer {
   display: inline-block;
   height: 0;
   margin-left: 0.25em;
   width: 10px;
 }
 
-:local(.editNameIconContainer) > svg {
+.editNameIconContainer > svg {
   position: absolute;
   top: -6px;
 }

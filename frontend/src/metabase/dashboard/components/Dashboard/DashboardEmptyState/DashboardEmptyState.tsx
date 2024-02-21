@@ -5,10 +5,10 @@ import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
 import type { Dashboard } from "metabase-types/api";
-import { Container } from "./DashboardEmptyState.styled";
+import { Container, QuestionCircleStyled } from "./DashboardEmptyState.styled";
 
 function QuestionIllustration() {
-  return <span className="QuestionCircle">?</span>;
+  return <QuestionCircleStyled>?</QuestionCircleStyled>;
 }
 
 interface DashboardEmptyStateProps {

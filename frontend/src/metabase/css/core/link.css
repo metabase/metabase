@@ -1,39 +1,38 @@
-.no-decoration,
-:local(.no-decoration) {
+:global .no-decoration {
   text-decoration: none;
 }
 
-.link {
+:global .link {
   cursor: pointer;
   text-decoration: none;
   color: var(--color-brand);
 }
 
-.link:hover {
+:global .link:hover {
   text-decoration: underline;
 }
 
-.link--nohover:hover {
+:global .link--nohover:hover {
   text-decoration: none;
 }
 
-.link:focus {
+:global .link:focus {
   outline: 2px solid var(--color-focus);
 }
 
-.link:focus:not(:focus-visible) {
+:global .link:focus:not(:focus-visible) {
   outline: none;
 }
 
-.link--wrappable {
+:global .link--wrappable {
   word-break: break-all;
 }
 
-.link--icon {
+:global .link--icon {
   line-height: initial;
 }
 
-.expand-clickable {
+:global .expand-clickable {
   display: inline-block;
   position: relative;
   z-index: 1;

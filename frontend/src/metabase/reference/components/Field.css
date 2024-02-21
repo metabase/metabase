@@ -2,55 +2,55 @@
   --title-color: var(--color-text-medium);
 }
 
-:local(.field) {
+.field {
   composes: flex align-center from "style";
 }
 
-:local(.fieldNameTitle) {
+.fieldNameTitle {
   composes: flex-half pr2 from "style";
 }
 
-:local(.fieldName) {
+.fieldName {
   composes: fieldNameTitle;
 }
 
-:local(.fieldNameTextInput) {
+.fieldNameTextInput {
   composes: input p1 from "style";
   color: var(--title-color);
   width: 100%;
   font-size: 14px;
 }
 
-:local(.fieldSelect) {
+.fieldSelect {
   composes: input p1 block from "style";
 }
 
-:local(.fieldType) {
+.fieldType {
   composes: flex-1-quarter text-medium pr2 from "style";
   overflow: hidden;
   white-space: nowrap;
 }
 
-:local(.fieldDataType) {
+.fieldDataType {
   composes: flex-1-quarter text-medium from "style";
 }
 
-:local(.fieldSecondary) {
+.fieldSecondary {
   composes: field;
   font-size: 13px;
 }
 
-:local(.fieldActualName) {
+.fieldActualName {
   composes: fieldNameTitle;
   composes: text-monospace text-light from "style";
   font-size: 12px;
   letter-spacing: 1px;
 }
 
-:local(.fieldForeignKey) {
+.fieldForeignKey {
   composes: fieldType;
 }
 
-:local(.fieldOther) {
+.fieldOther {
   composes: fieldDataType;
 }

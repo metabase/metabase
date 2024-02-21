@@ -2,40 +2,40 @@
   --title-color: var(--color-text-medium);
 }
 
-:local(.headerBody) {
+.headerBody {
   composes: flex flex-full text-dark text-bold from "style";
   overflow: hidden;
   align-items: center;
   border-color: var(--color-border);
 }
 
-:local(.headerTextInput) {
+.headerTextInput {
   composes: p1 from "style";
   font-size: 18px;
   color: var(--title-color);
   max-width: 550px;
 }
 
-:local(.subheader) {
+.subheader {
   composes: mt1 mb2 from "style";
 }
 
-:local(.subheaderBody) {
+.subheaderBody {
   composes: text-medium text-bold from "style";
   font-size: 14px;
 }
 
-:local(.subheaderLink) {
+.subheaderLink {
   color: var(--color-brand);
   text-decoration: none;
 }
 
-:local(.subheaderLink):hover {
+.subheaderLink:hover {
   color: var(--color-brand);
   transition: color 0.3s linear;
 }
 
-:local(.headerSchema) {
+.headerSchema {
   composes: text-light absolute from "style";
   top: -10px;
   font-size: 12px;

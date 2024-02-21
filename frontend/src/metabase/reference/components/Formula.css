@@ -1,19 +1,19 @@
-:local(.formula) {
+.formula {
   composes: bordered rounded from "style";
   background-color: var(--color-bg-light);
   cursor: pointer;
 }
 
-:local(.formulaHeader) {
+.formulaHeader {
   composes: flex align-center text-brand py1 px2 from "style";
 }
 
-:local(.formulaTitle) {
+.formulaTitle {
   composes: ml2 from "style";
   font-size: 16px;
 }
 
-:local(.formulaDefinitionInner) {
+.formulaDefinitionInner {
   composes: p2 from "style";
 }
 

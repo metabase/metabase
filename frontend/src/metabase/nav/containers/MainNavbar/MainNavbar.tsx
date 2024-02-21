@@ -108,7 +108,6 @@ function MainNavbar({
 
   return (
     <Sidebar
-      className="Nav"
       isOpen={isOpen}
       aria-hidden={!isOpen}
       data-testid="main-navbar-root"

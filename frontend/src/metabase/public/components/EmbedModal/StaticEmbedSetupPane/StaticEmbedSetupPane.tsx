@@ -28,14 +28,16 @@ import {
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { getParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 import { getDefaultDisplayOptions } from "./config";
-import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { ParametersSettings } from "./ParametersSettings";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { OverviewSettings } from "./OverviewSettings";
 import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
 import { EMBED_MODAL_TABS } from "./tabs";
-import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
+import {
+  ServerEmbedCodePaneStyled,
+  SettingsTabLayout,
+} from "./StaticEmbedSetupPane.styled";
 import { PreviewModeSelector } from "./PreviewModeSelector";
 import { PreviewPane } from "./PreviewPane";
 
@@ -186,8 +188,7 @@ export const StaticEmbedSetupPane = ({
 
   const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => {
     return (
-      <ServerEmbedCodePane
-        className="flex-full w-full"
+      <ServerEmbedCodePaneStyled
         variant={variant}
         initialPreviewParameters={initialPreviewParameters}
         resource={resource}

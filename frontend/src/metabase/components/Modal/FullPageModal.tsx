@@ -42,7 +42,9 @@ export class FullPageModal extends Component<
   }
 
   setTopOfModalToBottomOfNav() {
-    const nav = document.body.querySelector(".Nav");
+    const nav =
+      document.body.querySelector("[data-testid='main-navbar-root']") ||
+      document.body.querySelector("[data-testid='admin-navbar-root']");
     if (nav) {
       this._modalElement.style.top = nav.getBoundingClientRect().bottom + "px";
     }

@@ -1,4 +1,4 @@
-:local(.editHeader) {
+.editHeader {
   composes: text-white flex align-center from "style";
   position: absolute;
   top: 0;
@@ -8,20 +8,20 @@
   background-color: color-mod(var(--color-bg-white) alpha(-85%));
 }
 
-:local(.editHeaderButtons) {
+.editHeaderButtons {
   composes: flex-align-right from "style";
 }
 
-:local(.editHeaderButton) {
+.editHeaderButton {
   border: none;
   color: var(--color-brand);
 }
 
-:local(.saveButton) {
+.saveButton {
   composes: editHeaderButton;
 }
 
-:local(.cancelButton) {
+.cancelButton {
   composes: editHeaderButton;
   opacity: 0.5;
 }

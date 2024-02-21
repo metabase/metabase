@@ -4,197 +4,189 @@
 }
 
 /* center */
-.text-centered,
-:local(.text-centered) {
+:global .text-centered {
   text-align: center;
 }
 
 @media screen and (--breakpoint-min-sm) {
-  .sm-text-centered {
+  :global .sm-text-centered {
     text-align: center;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
-  .md-text-centered {
+  :global .md-text-centered {
     text-align: center;
   }
 }
 
 @media screen and (--breakpoint-min-lg) {
-  .lg-text-centered {
+  :global .lg-text-centered {
     text-align: center;
   }
 }
 
 @media screen and (--breakpoint-min-xl) {
-  .xl-text-centered {
+  :global .xl-text-centered {
     text-align: center;
   }
 }
 
 /* left */
 
-.text-left,
-:local(.text-left) {
+:global .text-left {
   text-align: left;
 }
 
 @media screen and (--breakpoint-min-sm) {
-  .sm-text-left {
+  :global .sm-text-left {
     text-align: left;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
-  .md-text-left {
+  :global .md-text-left {
     text-align: left;
   }
 }
 
 @media screen and (--breakpoint-min-lg) {
-  .lg-text-left {
+  :global .lg-text-left {
     text-align: left;
   }
 }
 
 @media screen and (--breakpoint-min-xl) {
-  .xl-text-left {
+  :global .xl-text-left {
     text-align: left;
   }
 }
 
 /* right */
 
-.text-right,
-:local(.text-right) {
+:global .text-right {
   text-align: right;
 }
 
 @media screen and (--breakpoint-min-sm) {
-  .sm-text-right {
+  :global .sm-text-right {
     text-align: right;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
-  .md-text-right {
+  :global .md-text-right {
     text-align: right;
   }
 }
 
 @media screen and (--breakpoint-min-lg) {
-  .lg-text-right {
+  :global .lg-text-right {
     text-align: right;
   }
 }
 
 @media screen and (--breakpoint-min-xl) {
-  .xl-text-right {
+  :global .xl-text-right {
     text-align: right;
   }
 }
 
-.text-uppercase,
-:local(.text-uppercase) {
+:global .text-uppercase {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.text-lowercase {
+
+:global .text-lowercase {
   text-transform: lowercase;
 }
 
-.text-capitalize {
+:global .text-capitalize {
   text-transform: capitalize;
 }
 
-.text-transform-none {
+:global .text-transform-none {
   text-transform: none;
 }
 
 /* text weight */
 /* NOTE: .text-light removed since it conflicted with text-light in colors.css */
-.text-normal {
+:global .text-normal {
   font-weight: 400;
 }
-.text-bold,
-:local(.text-bold) {
+:global .text-bold {
   font-weight: 700;
 }
 
-.text-heavy {
+:global .text-heavy {
   font-weight: 900;
 }
 
 /* text style */
 
-.text-italic {
+:global .text-italic {
   font-style: italic;
 }
 
 /* larger text size used for descriptions  */
-.text-body,
-:local(.text-body) {
+:global .text-body {
   font-size: 1.286em;
   line-height: 1.457em;
   color: var(--color-text-medium); /* TODO - is this bad? */
 }
 
-.text-list {
+:global .text-list {
   font-size: 1em;
 }
 
-.text-paragraph,
-:local(.text-paragraph) {
+:global .text-paragraph {
   font-size: 1.143em;
   line-height: 1.5em;
 }
 
-.text-spaced,
-:local(.text-spaced) {
+:global .text-spaced {
   line-height: 1.5em;
 }
 
-.text-unspaced,
-:local(.text-unspaced) {
+:global .text-unspaced {
   line-height: normal;
 }
 
-.text-small {
+:global .text-small {
   font-size: 0.875em;
 }
 
-.text-smaller {
+:global .text-smaller {
   font-size: 0.8em;
 }
 
-.text-current {
+:global .text-current {
   color: currentColor;
 }
 
-.text-underline {
+:global .text-underline {
   text-decoration: underline;
 }
 
-.text-underline-hover:hover {
+:global .text-underline-hover:hover {
   text-decoration: underline;
 }
 
-.text-ellipsis {
+:global .text-ellipsis {
   text-overflow: ellipsis;
 }
 
-.text-wrap {
+:global .text-wrap {
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
 }
 
-.text-nowrap {
+:global .text-nowrap {
   white-space: nowrap;
 }
 
-.text-code {
+:global .text-code {
   font-family: monospace;
   color: var(--color-text-medium);
   background-color: var(--color-bg-medium);
@@ -203,26 +195,26 @@
   line-height: 1.4em;
   white-space: pre-wrap;
 }
-.text-code-plain {
+
+:global .text-code-plain {
   font-family: monospace;
   color: var(--color-text-dark);
   line-height: 1.4em;
   white-space: pre-wrap;
 }
 
-.text-monospace,
-:local(.text-monospace) {
+:global .text-monospace {
   font-family: Monaco, monospace;
 }
 
-.text-pre-wrap {
+:global .text-pre-wrap {
   white-space: pre-wrap;
 }
 
-.text-measure {
+:global .text-measure {
   max-width: 620px;
 }
 
-.break-anywhere {
+:global .break-anywhere {
   line-break: anywhere;
 }

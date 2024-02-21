@@ -22,158 +22,79 @@
   --color-border: #eeecec;
 }
 
-.text-default,
-:local(.text-default) {
+:global .text-default {
   color: var(--color-text-dark);
 }
 
-.text-default-hover:hover {
+:global .text-default-hover:hover {
   color: var(--color-text-dark);
 }
 
 /* brand */
-.text-brand,
-:local(.text-brand) {
+:global .text-brand {
   color: var(--color-brand);
 }
 
 /* success */
 
-.text-success {
+:global .text-success {
   color: var(--color-success);
-}
-.bg-success {
-  background-color: var(--color-success);
 }
 
 /* error */
 
-.text-error,
-:local(.text-error),
-.text-error-hover:hover {
+:global .text-error,
+:global .text-error-hover:hover {
   color: var(--color-error);
 }
 
-.bg-error,
-.bg-error-hover:hover {
+:global .bg-error-hover:hover {
   background-color: var(--color-error);
 }
-.bg-error-input {
+:global .bg-error-input {
   background-color: var(--color-bg-white);
 }
 
-.text-orange,
-.text-orange-hover:hover {
-  color: var(--color-warning);
-}
-
-.text-slate {
+:global .text-slate {
   color: var(--color-text-medium);
 }
-.text-slate-light {
-  color: var(--color-text-light);
-}
-.text-slate-extra-light {
-  background-color: var(--color-bg-light);
-}
-
-/* alt */
-.bg-alt,
-.bg-alt-hover:hover {
-  background-color: var(--color-bg-light);
-}
-
-.text-light,
-:local(.text-light),
-.text-light-hover:hover {
+:global .text-slate-light {
   color: var(--color-text-light);
 }
 
-.text-medium,
-:local(.text-medium),
-.text-medium-hover:hover {
+:global .text-light {
+  color: var(--color-text-light);
+}
+
+:global .text-medium,
+:global .text-medium-hover:hover {
   color: var(--color-text-medium);
 }
 
-.text-dark,
-:local(.text-dark),
-.text-dark-hover:hover {
+:global .text-dark,
+:global .text-dark-hover:hover {
   color: var(--color-text-dark);
 }
 
-.bg-light,
-.bg-light-hover:hover {
+:global .bg-light,
+:global .bg-light-hover:hover {
   background-color: var(--color-bg-light);
 }
 
-.bg-medium,
-.bg-medium-hover:hover {
+:global .bg-medium {
   background-color: var(--color-bg-medium);
-}
-
-.bg-dark,
-.bg-dark-hover:hover {
-  background-color: var(--color-bg-dark);
-}
-
-.bg-black,
-.bg-black-hover:hover {
-  background-color: var(--color-bg-black);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
-.text-white,
-:local(.text-white),
-.text-white-hover:hover {
+:global .text-white,
+:global .text-white-hover:hover {
   color: var(--color-text-white);
 }
 
-@media screen and (--breakpoint-min-md) {
-  .md-text-white {
-    color: var(--color-text-white);
-  }
-}
-
-.bg-white,
-:local(.bg-white) {
+:global .bg-white {
   background-color: var(--color-bg-white);
 }
 
-.bg-light-blue {
+:global .bg-light-blue {
   background-color: var(--color-bg-light);
-}
-
-.bg-light-blue-hover:hover {
-  background-color: var(--color-bg-medium);
-}
-
-.text-light-blue,
-.text-light-blue-hover:hover {
-  color: var(--color-text-light);
-}
-.text-slate {
-  color: var(--color-text-medium);
-}
-
-.bg-transparent {
-  background-color: transparent;
-}
-
-/* entity colors */
-
-.bg-question {
-  background-color: var(--color-bg-dark);
-}
-.text-question {
-  color: var(--color-text-medium);
-}
-
-.text-light {
-  color: var(--color-text-light);
-}
-.text-medium {
-  color: var(--color-text-medium);
-}
-.text-dark {
-  color: var(--color-text-dark);
 }

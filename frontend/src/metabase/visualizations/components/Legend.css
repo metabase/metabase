@@ -2,32 +2,32 @@
 legend item needs to be in the scope in order to control the font size in
 fullscreen dashboard mode
 */
-.LegendItem {
+:global(.LegendItem) {
   font-weight: bold;
   transition: opacity 0.25s linear;
   opacity: 1;
 }
 
-:local .LegendHeader {
+.LegendHeader {
   margin-top: 0.25em;
   margin-bottom: 0.25em;
 }
 
-:local(.LegendItem).muted {
+.LegendItem.muted {
   opacity: 0.4;
 }
 
-:local .Legend.none {
+.Legend.none {
   display: none;
 }
 
-:local .Legend.vertical {
+.Legend.vertical {
   display: flex;
   flex-direction: column;
   margin-right: 1em;
 }
 
-:local .Legend.horizontal {
+.Legend.horizontal {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;

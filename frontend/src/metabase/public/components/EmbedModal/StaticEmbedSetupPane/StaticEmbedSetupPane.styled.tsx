@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import type { ReactNode } from "react";
 import { Text } from "metabase/ui";
+import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 
 const ContentWrapper = styled.div`
   width: 100%;
@@ -68,3 +69,8 @@ export const DisplayOptionSection = ({
     {children}
   </div>
 );
+
+export const ServerEmbedCodePaneStyled = styled(ServerEmbedCodePane)`
+  width: 100%;
+  flex: 1 0 auto;
+`;

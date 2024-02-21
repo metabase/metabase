@@ -2,35 +2,34 @@
   --default-border-radius: 8px;
 }
 
-.rounded,
-:local(.rounded) {
+:global .rounded {
   border-radius: var(--default-border-radius);
 }
 
-.rounded-top {
+:global .rounded-top {
   border-top-left-radius: var(--default-border-radius);
   border-top-right-radius: var(--default-border-radius);
 }
 
-.rounded-bottom {
+:global .rounded-bottom {
   border-bottom-left-radius: var(--default-border-radius);
   border-bottom-right-radius: var(--default-border-radius);
 }
 
-.rounded-left {
+:global .rounded-left {
   border-top-left-radius: var(--default-border-radius);
   border-bottom-left-radius: var(--default-border-radius);
 }
 
-.rounded-right {
+:global .rounded-right {
   border-top-right-radius: var(--default-border-radius);
   border-bottom-right-radius: var(--default-border-radius);
 }
 
-.circular {
+:global .circular {
   border-radius: 99px !important;
 }
 
-.not-rounded {
+:global .not-rounded {
   border-radius: 0;
 }

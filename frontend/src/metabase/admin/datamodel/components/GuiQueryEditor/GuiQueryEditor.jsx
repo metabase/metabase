@@ -11,10 +11,13 @@ import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import * as Lib from "metabase-lib";
+import CS from "metabase/css/core/index.css";
+
 import { AggregationWidget } from "../AggregationWidget";
 import { BreakoutWidget } from "../BreakoutWidget";
 import { FilterWidgetList } from "../FilterWidgetList";
 import { FilterPopover } from "../FilterPopover";
+import S from "./GuiQueryEditor.module.css";
 
 /**
  * @deprecated use MLv2
@@ -50,18 +53,16 @@ export class GuiQueryEditor extends Component {
   };
 
   renderAdd(text, onClick, targetRefName) {
-    const className =
-      "AddButton text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
     if (onClick) {
       return (
-        <a className={className} onClick={onClick}>
+        <a className={S.addBlock} onClick={onClick}>
           {text && <span className="mr1">{text}</span>}
           {this.renderAddIcon(targetRefName)}
         </a>
       );
     } else {
       return (
-        <span className={className}>
+        <span className={S.addBlock}>
           {text && <span className="mr1">{text}</span>}
           {this.renderAddIcon(targetRefName)}
         </span>
@@ -126,7 +127,7 @@ export class GuiQueryEditor extends Component {
     }
 
     return (
-      <div className={cx("Query-section", { disabled: !enabled })}>
+      <div className={cx(S.querySection, !enabled && S.disabled)}>
         <div className="Query-filters">{filterList}</div>
         <div className="mx2">
           <PopoverWithTrigger
@@ -212,7 +213,13 @@ export class GuiQueryEditor extends Component {
     } else {
       // TODO: move this into AggregationWidget?
       return (
-        <div className="Query-section Query-section-aggregation disabled">
+        <div
+          className={cx(
+            S.querySection,
+            S.disabled,
+            "Query-section-aggregation",
+          )}
+        >
           <a className="QueryOption p1 flex align-center">{t`Raw data`}</a>
         </div>
       );
@@ -268,9 +275,11 @@ export class GuiQueryEditor extends Component {
 
     return (
       <div
-        className={cx("Query-section Query-section-breakout", {
-          disabled: breakoutList.length === 0,
-        })}
+        className={cx(
+          S.querySection,
+          "Query-section-breakout",
+          breakoutList.length === 0 && S.disabled,
+        )}
       >
         {breakoutList}
       </div>
@@ -282,9 +291,10 @@ export class GuiQueryEditor extends Component {
 
     return (
       <div
-        className={
-          "GuiBuilder-section GuiBuilder-data flex align-center arrow-right"
-        }
+        className={cx(
+          CS.arrow_right,
+          "GuiBuilder-section GuiBuilder-data flex align-center",
+        )}
       >
         <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
         {this.props.canChangeTable ? (

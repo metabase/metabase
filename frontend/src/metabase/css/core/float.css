@@ -1,8 +1,6 @@
-.float-left,
-:local(.float-left) {
+:global .float-left {
   float: left;
 }
-.float-right,
-:local(.float-right) {
+:global .float-right {
   float: right;
 }
