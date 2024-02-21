@@ -3,11 +3,13 @@
   tables, schemas, and fields, and their types. For example, with SQL databases, these functions use the JDBC
   DatabaseMetaData to get this information."
   (:require
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.fn :as mu.fn]))
 
 (mu/defn db-metadata :- i/DatabaseMetadata
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."
@@ -20,14 +22,16 @@
    table    :- i/TableInstance]
   (driver/describe-table (driver.u/database->driver database) database table))
 
-(mu/defn fast-fk-metadata
-  "Get information about the foreign keys of a database."
-  [database :- i/DatabaseInstance]
-  (let [driver (driver.u/database->driver database)]
-    (when (driver/database-supports? driver :foreign-keys database)
-      (driver/describe-fks driver database))))
+(mu/defn fk-metadata
+  "Returns a reducible collection of maps [[i/FastFKMetadataEntry]] representing foreign key relationships of `database`.
+  Only supported for databases that support `fast-sync-fks`."
+  [database :- i/DatabaseInstance & {:as args}]
+  (cond->> (driver/describe-fks (driver.u/database->driver database) database args)
+    ;; this is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
+    (not config/is-prod?)
+    (eduction (map #(mu.fn/validate-output {} i/FastFKMetadataEntry %)))))
 
-(mu/defn fk-metadata :- i/FKMetadata
+(mu/defn table-fk-metadata :- i/FKMetadata
   "Get information about the foreign keys belonging to `table`."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]

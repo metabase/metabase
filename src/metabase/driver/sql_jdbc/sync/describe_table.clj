@@ -249,42 +249,8 @@
      (fn [^Connection conn]
        (describe-table* driver conn table)))))
 
-(defn- describe-table-fks*
-  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
-  (into
-   #{}
-   (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-                                           (fn [^ResultSet rs]
-                                             (fn []
-                                               {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                                :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                                   :schema (.getString rs "PKTABLE_SCHEM")}
-                                                :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
-
-(defn describe-table-fks
-  "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
-  (if (instance? Connection db-or-id-or-spec-or-conn)
-    (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db-or-id-or-spec-or-conn
-     nil
-     (fn [^Connection conn]
-       (describe-table-fks* driver conn table db-name-or-nil)))))
-
-(defmulti get-fks
-  "Returns a reducible of foreign keys data.
-
-  Note: If catalog-name, schema-name, and table-name are not passed as kwargs, this must return all pks that the
-  metadata's connection can access."
-  {:changelog-test/ignore true
-   :added    "0.50.0"
-   :arglists '([driver database & {:keys [catalog-name schema-name table-name]}])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod get-fks :default
+(defn describe-fks
+  "Default implementation of [[metabase.driver/describe-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db & {:keys [catalog-name schema-name table-name]}]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
@@ -298,19 +264,21 @@
             ((take-while some?) rf)
             init
             (let [row-thunk (fn []
-                              {:fk-table       {:name   (.getString rs "FKTABLE_NAME")
-                                                :schema (.getString rs "FKTABLE_SCHEM")}
-                               :pk-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                :schema (.getString rs "PKTABLE_SCHEM")}
-                               :fk-column-name (.getString rs "FKCOLUMN_NAME")
-                               :pk-column-name (.getString rs "PKCOLUMN_NAME")})]
+                              {:fk-table         {:name   (.getString rs "FKTABLE_NAME")
+                                                  :schema (.getString rs "FKTABLE_SCHEM")}
+                               :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                  :schema (.getString rs "PKTABLE_SCHEM")}
+                               :fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                               :dest-column-name (.getString rs "PKCOLUMN_NAME")})]
               (repeatedly #(when (.next rs)
                              (row-thunk)))))))))))
 
-(defn describe-fks
-  "Default implementation of [[metabase.driver/describe-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db]
-  (get-fks driver db {}))
+(defn describe-table-fks
+  "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver db table]
+  (into
+   #{}
+   (describe-fks driver db :table-name (:name table) :schema-name (:schema table))))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

@@ -75,7 +75,7 @@
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
-     (let [fks-to-update (fetch-metadata/fk-metadata database table)]
+     (let [fks-to-update (fetch-metadata/table-fk-metadata database table)]
        {:total-fks   (count fks-to-update)
         :updated-fks (sync-util/sum-numbers (fn [fk]
                                               (mark-fk! database
@@ -89,7 +89,9 @@
 
 (mu/defn sync-fks!
   "Sync the foreign keys in a `database`. This sets appropriate values for relevant Fields in the Metabase application
-  DB based on values from the `FKMetadata` returned by [[metabase.driver/describe-table-fks]]."
+  DB based on values from the `FKMetadata` returned by [[metabase.driver/describe-table-fks]].
+
+  If the driver supports the `:fast-sync-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata."
   [database :- i/DatabaseInstance]
   (if (driver/database-supports? (driver.u/database->driver database)
                                  :fast-sync-fks
