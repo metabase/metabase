@@ -3,7 +3,7 @@ import type { DashboardId, DashboardWidth } from "metabase-types/api";
 
 import type { SectionId } from "./sections";
 
-const DASHBOARD_SCHEMA_VERSION = "1-1-4";
+const DASHBOARD_SCHEMA_VERSION = "1-1-3";
 
 export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {

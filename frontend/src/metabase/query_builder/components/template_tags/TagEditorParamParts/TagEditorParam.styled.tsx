@@ -17,12 +17,13 @@ export const TagName = styled.h3`
 
 interface ContainerLabelProps {
   paddingTop?: boolean;
+  smallPaddingBottom?: boolean;
 }
 
 export const ContainerLabel = styled.div<ContainerLabelProps>`
   display: block;
   font-weight: 700;
-  padding-bottom: 0.5rem;
+  padding-bottom: ${props => (props.smallPaddingBottom ? "0.25rem" : "0.5rem")};
   color: ${color("text-medium")};
   padding-top: ${props => (props.paddingTop ? "0.5rem" : "0")};
 `;

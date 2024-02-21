@@ -23,6 +23,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -1342,6 +1343,28 @@
                  :mongo []
                  [[0]])
                (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+(deftest filter-by-expression-time-interval-test
+  (testing "Datetime expressions can filter to a date range (#33528)"
+    (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+      (mt/dataset
+        checkins:1-per-day
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
+                      (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns $q)))
+                      (lib/filter $q (lib/time-interval (lib/expression-ref $q "customdate") :current :week)))
+              mbql-query (mt/mbql-query
+                           checkins
+                           {:expressions {"customdate" $timestamp}
+                            :filter [:time-interval [:expression "customdate" {:base-type :type/DateTime}] :current :week]})
+              processed  (qp/process-query query)
+              mbql-processed (qp/process-query mbql-query)]
+          ;; Test both path ways since only mbql-queries were affected.
+          (is (= 7 (count (mt/rows processed))))
+          (is (= 7 (count (mt/rows mbql-processed))))
+          (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
+                 (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
+                 (get-in (qp/process-query query) [:data :native_form]))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
 (deftest june-31st-test
