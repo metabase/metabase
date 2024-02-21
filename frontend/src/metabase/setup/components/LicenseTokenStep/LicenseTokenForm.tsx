@@ -35,6 +35,7 @@ export const LicenseTokenForm = ({ onValidSubmit }: LicenseTokenFormProps) => {
     <>
       <Box mb="md">
         <TextInput
+          aria-label={t`Token`}
           placeholder={t`Paste your token here`}
           value={token}
           onChange={e => setToken(e.target.value)}
