@@ -26,7 +26,7 @@ describe("issue 23293", () => {
     cy.wait("@dataset");
 
     queryBuilderHeader().button("Save").click();
-    cy.get(".Modal").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.wait("@saveQuestion").then(({ response }) => {
       cy.get(".Modal").button("Not now").click();
