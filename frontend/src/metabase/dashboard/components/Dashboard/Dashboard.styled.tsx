@@ -86,20 +86,6 @@ export const DashboardHeaderContainer = styled.header<{
     `}
 `;
 
-export const ParametersAndCardsContainer = styled.div<{
-  shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
-}>`
-  flex: auto;
-  min-width: 0;
-  overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
-    shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
-  overflow-x: hidden;
-  @supports (overflow-x: clip) {
-    overflow-x: clip;
-  }
-  padding-bottom: 40px;
-`;
-
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   isEditing: boolean;
   isSticky: boolean;
@@ -146,6 +132,40 @@ export const CardsContainer = styled(FullWidthContainer)<{
 
   &.${SAVING_DOM_IMAGE_CLASS} {
     padding-bottom: 20px;
+
+    ${DashCard.root} {
+      box-shadow: none;
+      border: 1px solid ${color("border")};
+    }
+  }
+`;
+
+export const ParametersAndCardsContainer = styled.div<{
+  shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
+}>`
+  flex: auto;
+  min-width: 0;
+  overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
+    shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
+  overflow-x: hidden;
+  @supports (overflow-x: clip) {
+    overflow-x: clip;
+  }
+  padding-bottom: 40px;
+
+  &.${SAVING_DOM_IMAGE_CLASS} {
+    ${ParametersWidgetContainer} {
+      background-color: transparent;
+      border-bottom: none;
+      margin-top: 1rem;
+      legend {
+        top: -12px;
+      }
+    }
+
+    ${CardsContainer} {
+      padding-bottom: 20px;
+    }
 
     ${DashCard.root} {
       box-shadow: none;

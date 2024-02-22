@@ -10,7 +10,7 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
-import { SIDEBAR_NAME } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardSidebars } from "../DashboardSidebars";
 
@@ -297,6 +297,7 @@ class DashboardInner extends Component {
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer
+                id={DASHBOARD_PDF_EXPORT_ROOT_ID}
                 data-testid="dashboard-parameters-and-cards"
                 shouldMakeDashboardHeaderStickyAfterScrolling={
                   !isFullscreen && (isEditing || isSharing)
