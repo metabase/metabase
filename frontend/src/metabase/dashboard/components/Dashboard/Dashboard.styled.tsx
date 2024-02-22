@@ -130,6 +130,12 @@ export const ParametersAndCardsContainer = styled.div<{
     ${ParametersWidgetContainer} {
       background-color: transparent;
       border-bottom: none;
+
+      margin-top: 1rem;
+
+      legend {
+        top: -12px;
+      }
     }
 
     ${CardsContainer} {
