@@ -20,10 +20,7 @@
   nil)
 
 (defn db-details->connection-string
-  "Generate connection string from database details.
-
-   - `?authSource` is always prestent because we are using `dbname`.
-   - We let the user override options we are passing in by means of `additional-options`."
+  "Generate connection string from database details."
   [{:keys [use-conn-uri conn-uri host port dbname additional-options use-srv ssl] :as _db-details}]
   ;; Connection string docs:
   ;; http://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-core/com/mongodb/ConnectionString.html
@@ -37,8 +34,7 @@
      (when (and (not use-srv) (some? port)) (str ":" port))
      "/"
      dbname
-     "?appName=" config/mb-app-id-string
-     "&connectTimeoutMS=" (driver.u/db-connection-timeout-ms)
+     "?connectTimeoutMS=" (driver.u/db-connection-timeout-ms)
      "&serverSelectionTimeoutMS=" (driver.u/db-connection-timeout-ms)
      (when ssl "&ssl=true")
      (when (seq additional-options) (str "&" additional-options)))))
@@ -72,8 +68,12 @@
                               db-details->connection-string
                               ConnectionString.)
         builder (com.mongodb.MongoClientSettings/builder)]
+    (.applicationName builder config/mb-app-id-string)
     (.applyConnectionString builder connection-string)
-    (when (not use-conn-uri)
+    (when-not use-conn-uri
+      ;; NOTE: authSource connection parameter is the second argument of `createCredential`. We currently set it only
+      ;;       when some credentials are used (ie. user is not empty), previously we did that in all cases. I've
+      ;;       manually verified that's not necessary.
       (when (seq user)
         (.credential builder
                      (MongoCredential/createCredential user

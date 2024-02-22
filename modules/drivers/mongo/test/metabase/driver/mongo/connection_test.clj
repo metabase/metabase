@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.util :as mongo.util]
@@ -10,8 +11,6 @@
   (:import
    (com.mongodb MongoCredential ServerAddress)
    (com.mongodb.client MongoDatabase)))
-
-;;;; TODO: move some tests to db-test?
 
 (set! *warn-on-reflection* true)
 
@@ -158,3 +157,13 @@
        (is (= s (.getUserName credential)))
        (is (= s (str/join "" (.getPassword credential))))
        (is (= "admin" (.getSource credential)))))))
+
+(deftest application-name-test
+  (mt/test-driver
+   :mongo
+   (with-redefs [config/mb-app-id-string "$ : / ? # [ ] @"]
+     (let [db-details {:host "test-host.place.com"
+                       :dbname "datadb"}
+           settings (mongo.connection/db-details->mongo-client-settings db-details)]
+       (is (= "$ : / ? # [ ] @"
+              (.getApplicationName settings)))))))
