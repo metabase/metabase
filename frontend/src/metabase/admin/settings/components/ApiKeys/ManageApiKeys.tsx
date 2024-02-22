@@ -44,7 +44,7 @@ function ApiKeysTable({
   setActiveApiKey: (apiKey: ApiKey) => void;
   setModal: (modal: Modal) => void;
   loading: boolean;
-  error?: Error;
+  error?: unknown;
 }) {
   return (
     <Stack data-testid="api-keys-table" pb="lg">
@@ -155,7 +155,7 @@ export const ManageApiKeys = () => {
         </Group>
         <ApiKeysTable
           loading={isLoading}
-          error={error as any}
+          error={error}
           apiKeys={sortedApiKeys}
           setActiveApiKey={setActiveApiKey}
           setModal={setModal}
