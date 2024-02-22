@@ -160,7 +160,7 @@ class PublicDashboard extends Component {
       : [];
 
     const visibleDashcards = (dashboard?.dashcards ?? []).filter(
-      isActionDashCard,
+      dashcard => !isActionDashCard(dashcard),
     );
 
     return (
