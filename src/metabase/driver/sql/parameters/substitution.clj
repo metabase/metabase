@@ -284,10 +284,11 @@
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
-  (->> (field->clause driver field param-type value)
-       (sql.qp/->honeysql driver)
-       (honeysql->replacement-snippet-info driver)
-       :replacement-snippet))
+  (sql.qp/with-driver-honey-sql-version driver
+     (->> (field->clause driver field param-type value)
+          (sql.qp/->honeysql driver)
+          (honeysql->replacement-snippet-info driver)
+          :replacement-snippet)))
 
 (s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
