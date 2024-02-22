@@ -48,12 +48,16 @@ const Bookmarks = createEntity({
   },
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object) {
-      const { archived, card_type, id, name } = payload.object;
+      const { archived, type, id, name } = payload.object;
       const key = `card-${id}`;
       if (archived) {
         return dissoc(state, key);
       } else {
-        return updateIn(state, [key], item => ({ ...item, card_type, name }));
+        return updateIn(state, [key], item => ({
+          ...item,
+          card_type: type,
+          name,
+        }));
       }
     }
 
@@ -118,7 +122,7 @@ function getIcon(bookmark) {
        * In order to reuse it we need to map Bookmark["card_type"] to Card["type"]
        * because Bookmark["type"] is something else.
        */
-      type: bookmark.card_type,
+      type: bookmark.type === "card" ? bookmark.card_type : bookmark.type,
     });
   }
 
