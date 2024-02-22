@@ -8,7 +8,6 @@ import _ from "underscore";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Bookmark from "metabase/entities/bookmarks";
-import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
@@ -161,10 +160,6 @@ const mapStateToProps = (state, props) => {
     autocompleteResultsFn: getAutocompleteResultsFn(state),
     cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
-    initialCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
     queryStartTime: getQueryStartTime(state),
     nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
