@@ -55,26 +55,18 @@
   :feature :cache-granular-controls
   [card dashboard-id]
   (when (public-settings/enable-query-caching)
-    (let [qs     [{:from   [:cache_config]
-                   :select [:id
-                            [[:inline 1] :ordering]]
-                   :where  [:and [:= :model "question"]   [:= :model_id (:id card)]]}
-                  {:from   [:cache_config]
-                   :select [:id
-                            [[:inline 1] :ordering]]
-                   :where  [:and [:= :model "dashboard"]  [:= :model_id dashboard-id]]}
-                  {:from   [:cache_config]
-                   :select [:id
-                            [[:inline 1] :ordering]]
-                   :where  [:and [:= :model "collection"] [:= :model_id (:collection_id card)]]}
-                  {:from   [:cache_config]
-                   :select [:id
-                            [[:inline 1] :ordering]]
-                   :where  [:and [:= :model "database"]   [:= :model_id (:database_id card)]]}
-                  {:from   [:cache_config]
-                   :select [:id
-                            [[:inline 1] :ordering]]
-                   :where  [:= :model "root"]}]
+    (let [qs     (for [[i model model-id] [[1 "question"   (:id card)]
+                                           [2 "dashboard"  dashboard-id]
+                                           [3 "collection" (:collection_id card)]
+                                           [4 "database"   (:database_id card)]
+                                           [5 "root"       0]]
+                       :when model-id]
+                   {:from   [:cache_config]
+                    :select [:id
+                             [[:inline i] :ordering]]
+                    :where  [:and
+                             [:= :model model]
+                             [:= :model_id model-id]]})
           q      {:select   [:id]
                   :limit    1
                   :from     [[{:union-all qs} :unused_alias]]
