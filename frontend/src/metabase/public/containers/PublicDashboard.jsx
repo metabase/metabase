@@ -21,6 +21,7 @@ import {
   getDraftParameterValues,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
+import { isActionDashCard } from "metabase/dashboard/utils";
 import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import { setErrorPage } from "metabase/redux/app";
@@ -158,8 +159,9 @@ class PublicDashboard extends Component {
       ? getDashboardActions(this, { ...this.props, isPublic: true })
       : [];
 
-    const isNotAction = dashcard => !dashcard.action;
-    const visibleDashcards = (dashboard?.dashcards ?? []).filter(isNotAction);
+    const visibleDashcards = (dashboard?.dashcards ?? []).filter(
+      isActionDashCard,
+    );
 
     return (
       <EmbedFrame
