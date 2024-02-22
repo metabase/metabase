@@ -107,26 +107,35 @@ describeEE("official collections", () => {
       });
     });
 
-    it("should not be able to manage collection authority level for personal collections and their children", () => {
+    it("should be able to manage collection authority level for personal collections and their children (metabase#30236)", () => {
       cy.visit("/collection/root");
 
       openCollection("Your personal collection");
       getCollectionActions().within(() => {
-        cy.icon("ellipsis").should("not.exist");
+        cy.icon("ellipsis").should("exist");
+        cy.icon("ellipsis").click();
       });
+
+      popover().findByText("Make collection official").should("exist");
 
       openNewCollectionItemFlowFor("collection");
       modal().within(() => {
-        assertNoCollectionTypeInput();
+        assertHasCollectionTypeInput();
         cy.findByLabelText("Name").type("Personal collection child");
         cy.button("Create").click();
       });
 
       openCollection("Personal collection child");
 
+      getCollectionActions().within(() => {
+        cy.icon("ellipsis").should("exist");
+        cy.icon("ellipsis").click();
+      });
+      popover().findByText("Make collection official").should("exist");
+
       openNewCollectionItemFlowFor("collection");
       modal().within(() => {
-        assertNoCollectionTypeInput();
+        assertHasCollectionTypeInput();
         cy.icon("close").click();
       });
     });
@@ -261,6 +270,12 @@ function assertNoCollectionTypeInput() {
   cy.findByText(/Collection type/i).should("not.exist");
   cy.findByText("Regular").should("not.exist");
   cy.findByText("Official").should("not.exist");
+}
+
+function assertHasCollectionTypeInput() {
+  cy.findByText(/Collection type/i).should("exist");
+  cy.findByText("Regular").should("exist");
+  cy.findByText("Official").should("exist");
 }
 
 function assertNoCollectionTypeOption() {
