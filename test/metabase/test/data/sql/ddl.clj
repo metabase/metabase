@@ -42,11 +42,12 @@
 (defn- add-pk-if-needed
   [driver {:keys [field-definitions] :as tabledef}]
   (if (not (some :pk? field-definitions))
-    (update tabledef :field-definitions conj (tx/map->FieldDefinition
-                                              {:field-name    (sql.tx/pk-field-name driver)
-                                               :base-type     {:native (sql.tx/pk-sql-type driver)}
-                                               :semantic-type :type/PK
-                                               :pk?           true}))
+    (update tabledef :field-definitions #(cons (tx/map->FieldDefinition
+                                                 {:field-name    (sql.tx/pk-field-name driver)
+                                                  :base-type     {:native (sql.tx/pk-sql-type driver)}
+                                                  :semantic-type :type/PK
+                                                  :pk?           true})
+                                               %))
     tabledef))
 
 (defmethod create-db-tables-ddl-statements :sql/test-extensions
