@@ -1,31 +1,29 @@
-import { Fragment, useMemo } from "react";
-import type { MouseEvent } from "react";
 import cx from "classnames";
+import type { MouseEvent } from "react";
+import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
-
-import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
-
-import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
+import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
+import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
   isID,
   isImageURL,
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
-import type { OnVisualizationClickType } from "./types";
 import {
   ObjectDetailsTable,
   GridContainer,
   GridCell,
   FitImage,
 } from "./ObjectDetailsTable.styled";
+import type { OnVisualizationClickType } from "./types";
 
 export interface DetailsTableCellProps {
   column: any;
@@ -147,21 +145,16 @@ export function DetailsTable({
     if (!columnSettings) {
       return { cols: columns, row: zoomedRow };
     }
-    const columnIndexes = columnSettings
-      .filter(columnSetting => columnSetting?.enabled)
-      .map(columnSetting =>
-        findColumnIndexForColumnSetting(columns, columnSetting),
-      )
-      .filter(
-        (columnIndex: number) =>
-          columnIndex >= 0 && columnIndex < columns.length,
-      );
+    const columnIndexes = findColumnIndexesForColumnSettings(
+      columns,
+      columnSettings.filter(({ enabled }) => enabled),
+    ).filter((columnIndex: number) => columnIndex >= 0);
 
     return {
-      cols: columnIndexes.map((i: number) => columns[i]) as any[],
+      cols: columnIndexes.map((i: number) => columns[i]),
       row: columnIndexes.map((i: number) => zoomedRow[i]),
     };
-  }, [columns, zoomedRow, columnSettings]);
+  }, [columnSettings, columns, zoomedRow]);
 
   if (!cols?.length) {
     return (

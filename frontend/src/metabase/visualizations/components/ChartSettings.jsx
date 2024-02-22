@@ -345,7 +345,6 @@ class ChartSettings extends Component {
       // NOTE: special props to support adding additional fields
       question: question,
       addField: addField,
-      isDashboard,
       onShowWidget: this.handleShowWidget,
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
