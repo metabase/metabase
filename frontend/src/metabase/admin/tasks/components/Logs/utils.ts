@@ -70,7 +70,7 @@ function memoizeOne<T, U>(fn: (input: T) => U) {
   return memoizedFn;
 }
 
-const formatTs = (ts: number) => dayjs(ts).format();
+const formatTs = (ts: string) => dayjs(ts).format();
 
 // logs are sorted by time when we got to format them
 // and many logs happen with in the same exact millisecond
