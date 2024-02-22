@@ -35,6 +35,7 @@ export function VirtualizedList({
         height: "100%",
         overflowY: "auto",
       }}
+      data-testid="scroll-container"
     >
       <div
         style={{
