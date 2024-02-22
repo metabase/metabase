@@ -59,7 +59,7 @@ import type { Query } from "./types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
-  dataset?: boolean;
+  cardType?: CardType;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -240,30 +240,12 @@ class Question {
     return this.setCard(assoc(this.card(), "cache_ttl", cache));
   }
 
-  /**
-   * returns whether this question is a model
-   * @deprecated Use Question.prototype.type instead
-   */
-  isDataset(): boolean {
-    return this._card && this._card.dataset;
-  }
-
   type(): CardType {
     return this._card?.type ?? "question";
   }
 
-  /**
-   * @deprecated Use Question.prototype.setType instead
-   */
-  private _setDataset(dataset: boolean) {
-    return this.setCard(assoc(this.card(), "dataset", dataset));
-  }
-
   setType(type: CardType) {
-    const dataset = type === "model";
-    // _setDataset is still called for backwards compatibility
-    // as we're migrating "dataset" -> "type" incrementally
-    return this.setCard(assoc(this.card(), "type", type))._setDataset(dataset);
+    return this.setCard(assoc(this.card(), "type", type));
   }
 
   isPersisted() {
@@ -472,7 +454,9 @@ class Question {
   }
 
   composeDataset(): Question {
-    if (!this.isDataset() || !this.isSaved()) {
+    const type = this.type();
+
+    if (type === "question" || !this.isSaved()) {
       return this;
     }
 
@@ -764,7 +748,9 @@ class Question {
     // we frequently treat dataset/model questions like they are already nested
     // so we need to fetch the virtual card table representation of the Question
     // so that we can properly access the table's fields in various scenarios
-    if (this.isDataset() && this.isSaved()) {
+    const type = this.type();
+    const isModel = type === "model";
+    if (isModel && this.isSaved()) {
       dependencies.push({
         type: "table",
         id: getQuestionVirtualTableId(this.id()),
@@ -892,7 +878,7 @@ class Question {
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
-      dataset: this._card.dataset,
+      type: this._card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
@@ -1021,7 +1007,7 @@ class Question {
     name,
     display = "table",
     visualization_settings = {},
-    dataset,
+    cardType,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -1031,8 +1017,8 @@ class Question {
       collection_id: collectionId,
       display,
       visualization_settings,
-      dataset,
       dataset_query,
+      type: cardType,
     };
 
     if (type === "native") {

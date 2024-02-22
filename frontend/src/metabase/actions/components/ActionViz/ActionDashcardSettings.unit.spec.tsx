@@ -39,8 +39,8 @@ const actionParameter2 = createActionParameter(2);
 const actionParameterRequired = createActionParameter(3, { required: true });
 
 const models = [
-  createMockCard({ id: 1, name: "Model Uno", dataset: true }),
-  createMockCard({ id: 2, name: "Model Deux", dataset: true }),
+  createMockCard({ id: 1, name: "Model Uno", type: "model" }),
+  createMockCard({ id: 2, name: "Model Deux", type: "model" }),
 ];
 
 const actions1 = [

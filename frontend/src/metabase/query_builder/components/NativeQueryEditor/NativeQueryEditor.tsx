@@ -71,7 +71,11 @@ import {
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-type CardCompletionItem = Pick<Card, "id" | "name" | "dataset"> & {
+type CardCompletionItem = Pick<Card, "id" | "name"> & {
+  /**
+   * TODO: migrate `dataset` to `type` attribute
+   */
+  dataset: boolean;
   collection_name: string;
 };
 
@@ -417,6 +421,9 @@ export class NativeQueryEditor extends Component<
     // initialize the content
     this.handleQueryUpdate(query?.queryText() ?? "");
     editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN, 0, 0);
+
+    // reset undo manager to prevent undoing to empty editor
+    editor.getSession().getUndoManager().reset();
 
     // hmmm, this could be dangerous
     if (!this.props.readOnly) {

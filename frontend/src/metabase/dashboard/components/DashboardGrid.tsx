@@ -400,9 +400,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
       replaceCard({ dashcardId: replaceCardModalDashCard.id, nextCardId });
 
-      const hadModelCard = replaceCardModalDashCard.card.dataset;
       addUndo({
-        message: hadModelCard ? t`Model replaced` : t`Question replaced`,
+        message: getUndoReplaceCardMessage(replaceCardModalDashCard.card),
         undo: true,
         action: () =>
           setDashCardAttributes({
@@ -627,6 +626,18 @@ function isEditingTextOrHeadingCard(display: string, isEditing: boolean) {
 
   return isEditing && isTextOrHeadingCard;
 }
+
+const getUndoReplaceCardMessage = ({ type }: Card) => {
+  if (type === "model") {
+    return t`Model replaced`;
+  }
+
+  if (type === "question") {
+    return t`Question replaced`;
+  }
+
+  throw new Error(`Unknown card.type: ${type}`);
+};
 
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
