@@ -59,7 +59,7 @@ import type { Query } from "./types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
-  dataset?: boolean;
+  cardType?: CardType;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -878,6 +878,7 @@ class Question {
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
+      type: this._card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
@@ -1006,6 +1007,7 @@ class Question {
     name,
     display = "table",
     visualization_settings = {},
+    cardType,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -1016,6 +1018,7 @@ class Question {
       display,
       visualization_settings,
       dataset_query,
+      type: cardType,
     };
 
     if (type === "native") {

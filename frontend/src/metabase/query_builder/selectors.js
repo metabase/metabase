@@ -370,7 +370,8 @@ function areModelsEquivalent({
   currentQuestion,
   tableMetadata,
 }) {
-  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
+  const isModel = originalQuestion?.type() === "model";
+  if (!lastRunQuestion || !currentQuestion || !isModel) {
     return false;
   }
 
@@ -566,7 +567,9 @@ export const getIsSavedQuestionChanged = createSelector(
     const hasUnsavedChanges = hasChanges && !wereChangesSaved;
 
     return (
-      isSavedQuestion && hasUnsavedChanges && !originalQuestion.isDataset()
+      isSavedQuestion &&
+      hasUnsavedChanges &&
+      originalQuestion.type() === "question"
     );
   },
 );
