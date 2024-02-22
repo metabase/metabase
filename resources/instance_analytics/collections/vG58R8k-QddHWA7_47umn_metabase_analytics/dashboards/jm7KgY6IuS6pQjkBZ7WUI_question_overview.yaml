@@ -29,6 +29,11 @@ parameters:
   slug: question_name
   type: string/=
   values_query_type: search
+- id: 602ee33c
+  name: Date Filter
+  sectionId: date
+  slug: date_filter
+  type: date/all-options
 serdes/meta:
 - id: jm7KgY6IuS6pQjkBZ7WUI
   label: question_overview
@@ -99,6 +104,16 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Entity Qualified
+  - card_id: 613VT_7b325t9FBAJZcU8
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
   series: []
   visualization_settings:
     column_settings: null
@@ -220,6 +235,16 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Entity Qualified
+  - card_id: y-_5bBl0fXY9XlEbpJkrj
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
   series: []
   visualization_settings:
     column_settings: null
@@ -255,6 +280,16 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Entity Qualified
+  - card_id: MOAq881VSlM2BhVUv5e_K
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
   series: []
   visualization_settings:
     column_settings:
@@ -347,6 +382,16 @@ dashcards:
         - public
         - v_query_log
         - card_qualified_id
+  - card_id: -_XgVaPuz7MY8jlG0wSEC
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - base-type: type/DateTimeWithLocalTZ
   series: []
   visualization_settings:
     column_settings: null
@@ -382,6 +427,16 @@ dashcards:
         - name
       - base-type: type/Text
         join-alias: Content - Card Qualified
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - base-type: type/DateTimeWithLocalTZ
   series: []
   visualization_settings:
     column_settings:
@@ -546,5 +601,6 @@ dashcards:
         join-alias: People - User
       name: user_id
     table.pivot_column: error
+initially_published_at: null
 tabs: []
 width: full
