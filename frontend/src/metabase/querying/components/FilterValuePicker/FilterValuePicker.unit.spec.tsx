@@ -407,6 +407,26 @@ describe("StringFilterValuePicker", () => {
       expect(screen.getByText("a@b.com")).toBeInTheDocument();
       expect(onChange).not.toHaveBeenCalled();
     });
+
+    it("should not allow to create a value when there is the exact match in search results", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["a@b.com"],
+        searchValues: {
+          "a@b.com": createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["a@b.com"]],
+          }),
+        },
+      });
+
+      userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
+      act(() => jest.advanceTimersByTime(1000));
+      expect(screen.getByText("a@b.com")).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 
   describe("no values", () => {
