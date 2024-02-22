@@ -56,6 +56,7 @@ import {
 } from "metabase-lib/Alert";
 
 import type { Query } from "./types";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -573,6 +574,7 @@ class Question {
 
     const addedColumnSettings = addedColumns.map(col => ({
       name: col.name,
+      key: getColumnKey(col),
       fieldRef: col.field_ref,
       enabled: true,
     }));

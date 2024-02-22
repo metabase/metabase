@@ -28,6 +28,7 @@ export function getColumnItems(
       updatedIndexes[columnIndex] = updatedSettings.length;
       updatedSettings.push({
         name: column.name,
+        key: getColumnKey(column),
         fieldRef: column.field_ref,
         enabled: false,
       });

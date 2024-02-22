@@ -535,6 +535,15 @@ export const buildTableColumnSettings = ({
       );
       return columnIndexes.every(columnIndex => columnIndex >= 0);
     },
+    getValue: (column, vizSettings) => {
+      const settings = vizSettings["table.columns"] ?? [];
+      return settings.map(setting => ({
+        ...setting,
+        key:
+          setting.key ??
+          getColumnKey({ name: setting.key, field_ref: setting.fieldRef }),
+      }));
+    },
     getDefault: ([
       {
         data: { cols },

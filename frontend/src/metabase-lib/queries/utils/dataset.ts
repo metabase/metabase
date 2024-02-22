@@ -1,3 +1,4 @@
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   DatasetData,
@@ -11,18 +12,20 @@ export function findColumnIndexesForColumnSettings(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
-  const columnIndexByName = new Map(
-    columns.map(({ name }, index) => [name, index]),
+  const columnIndexByKey = new Map(
+    columns.map((column, index) => [getColumnKey(column), index]),
   );
-  return columnSettings.map(({ name }) => columnIndexByName.get(name) ?? -1);
+  return columnSettings.map(({ key }) => columnIndexByKey.get(key) ?? -1);
 }
 
 export function findColumnSettingIndexesForColumns(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
-  const columnSettingIndexByName = new Map(
-    columnSettings.map(({ name }, index) => [name, index]),
+  const columnSettingIndexByKey = new Map(
+    columnSettings.map(({ key }, index) => [key, index]),
   );
-  return columns.map(({ name }) => columnSettingIndexByName.get(name) ?? -1);
+  return columns.map(
+    column => columnSettingIndexByKey.get(getColumnKey(column)) ?? -1,
+  );
 }
