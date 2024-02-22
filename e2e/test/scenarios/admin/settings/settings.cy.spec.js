@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openOrdersTable,
@@ -7,10 +9,8 @@ import {
   isOSS,
   isEE,
   setTokenFeatures,
+  undoToast,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -62,7 +62,7 @@ describe("scenarios > admin > settings", () => {
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
     cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
-    cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
+    undoToast().contains(/^Error: Invalid site URL/);
   });
 
   it("should save a setting", () => {

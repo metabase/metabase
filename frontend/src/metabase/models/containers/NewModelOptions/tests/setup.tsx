@@ -1,11 +1,12 @@
 import { Route } from "react-router";
-import type { Database, TokenFeatures } from "metabase-types/api";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { createMockState } from "metabase-types/store/mocks";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
+import type { Database, TokenFeatures } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import NewModelOptions from "../NewModelOptions";
 

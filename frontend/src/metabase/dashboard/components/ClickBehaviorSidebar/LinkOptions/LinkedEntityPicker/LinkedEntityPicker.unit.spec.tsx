@@ -1,5 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
+import {
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import { getNextId } from "__support__/utils";
+import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import { checkNotNull } from "metabase/lib/types";
 import type {
   CollectionItem,
   Dashboard,
@@ -17,15 +27,7 @@ import {
 } from "metabase-types/api/mocks";
 import type { StoreDashboard } from "metabase-types/store";
 import { createMockDashboardState } from "metabase-types/store/mocks";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import { checkNotNull } from "metabase/lib/types";
-import {
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { getNextId } from "__support__/utils";
+
 import { LinkedEntityPicker } from "./LinkedEntityPicker";
 
 const ROOT_COLLECTION = createMockCollection({

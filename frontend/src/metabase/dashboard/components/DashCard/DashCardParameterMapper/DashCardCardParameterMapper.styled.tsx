@@ -1,10 +1,10 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
-import { space } from "metabase/styled-components/theme";
-import { alpha, color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 import Button from "metabase/core/components/Button";
+import { alpha, color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const Container = styled.div<{ isSmall: boolean }>`
   margin: ${({ isSmall }) => (isSmall ? 0 : space(1))} 0;
@@ -27,7 +27,6 @@ export const TextCardDefault = styled.div`
 export const CardLabel = styled.div`
   font-size: 0.83em;
   margin-bottom: ${space(1)};
-  text-weight: bold;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -47,7 +46,6 @@ export const TargetButton = styled.div<{ variant: string }>`
   align-items: center;
   justify-content: space-between;
   background-color: ${color("white")};
-  text-weight: bold;
   cursor: pointer;
   border: 2px solid ${color("brand")};
   border-radius: 8px;
@@ -101,7 +99,7 @@ export const TargetButtonText = styled.span`
   margin-right: ${space(1)};
 `;
 
-export const CloseIconButton = styled(Button)<{ icon: string; size: number }>`
+export const CloseIconButton = styled(Button)<{ icon?: string; size?: number }>`
   color: ${color("white")};
   background-color: transparent;
   border: none;

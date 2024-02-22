@@ -1,31 +1,30 @@
-import { Fragment, useMemo } from "react";
-import type { MouseEvent } from "react";
 import cx from "classnames";
+import type { MouseEvent } from "react";
+import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
-
-import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
-
-import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
+import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import type Question from "metabase-lib/Question";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
   isID,
   isImageURL,
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
-import type { OnVisualizationClickType } from "./types";
 import {
   ObjectDetailsTable,
   GridContainer,
   GridCell,
   FitImage,
 } from "./ObjectDetailsTable.styled";
+import type { OnVisualizationClickType } from "./types";
 
 export interface DetailsTableCellProps {
   column: any;
@@ -129,6 +128,7 @@ export interface DetailsTableProps {
   data: DatasetData;
   zoomedRow: unknown[];
   settings: VisualizationSettings;
+  question?: Question;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
 }
@@ -139,6 +139,7 @@ export function DetailsTable({
   settings,
   onVisualizationClick,
   visualizationIsClickable,
+  question,
 }: DetailsTableProps): JSX.Element {
   const { cols: columns } = data;
   const columnSettings = settings["table.columns"];
@@ -150,7 +151,11 @@ export function DetailsTable({
     const columnIndexes = columnSettings
       .filter(columnSetting => columnSetting?.enabled)
       .map(columnSetting =>
-        findColumnIndexForColumnSetting(columns, columnSetting),
+        findColumnIndexForColumnSetting(
+          columns,
+          columnSetting,
+          question?.query(),
+        ),
       )
       .filter(
         (columnIndex: number) =>
@@ -161,7 +166,7 @@ export function DetailsTable({
       cols: columnIndexes.map((i: number) => columns[i]) as any[],
       row: columnIndexes.map((i: number) => zoomedRow[i]),
     };
-  }, [columns, zoomedRow, columnSettings]);
+  }, [columnSettings, columns, zoomedRow, question]);
 
   if (!cols?.length) {
     return (

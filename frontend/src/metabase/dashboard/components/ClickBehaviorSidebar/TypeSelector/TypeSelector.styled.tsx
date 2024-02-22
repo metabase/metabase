@@ -1,5 +1,7 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
+
 import { SidebarItem } from "../SidebarItem";
 
 export const BehaviorOptionIcon = styled(SidebarItem.Icon)<{

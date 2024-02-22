@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
+
+import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { useSelector } from "metabase/lib/redux";
+import { getUpgradeUrl } from "metabase/selectors/settings";
 import type { IconName } from "metabase/ui";
 import { Icon, Flex, Text, Title } from "metabase/ui";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
-import { useSelector } from "metabase/lib/redux";
-import { getUpgradeUrl } from "metabase/selectors/settings";
 import { PermissionIconContainer } from "./PermissionHelpDescription.styled";
 
 interface PermissionHelpDescriptionProps {

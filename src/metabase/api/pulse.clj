@@ -254,14 +254,14 @@
   {:arglists '([card])}
   [{query :dataset_query, card-id :id}]
   (binding [qp.perms/*card-id* card-id]
-    (qp/process-query-and-save-execution!
-     (assoc query
-            :async? false
-            :middleware {:process-viz-settings? true
-                         :js-int-to-string?     false})
-     {:executed-by api/*current-user-id*
-      :context     :pulse
-      :card-id     card-id})))
+    (qp/process-query
+     (qp/userland-query
+      (assoc query
+             :middleware {:process-viz-settings? true
+                          :js-int-to-string?     false})
+      {:executed-by api/*current-user-id*
+       :context     :pulse
+       :card-id     card-id}))))
 
 (api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."

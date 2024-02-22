@@ -1,23 +1,19 @@
 import { useState, useCallback } from "react";
 import { t } from "ttag";
 
-import { Box, Text } from "metabase/ui";
-
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { updateSettings } from "metabase/admin/settings/settings";
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
-import { refreshCurrentUser } from "metabase/redux/user";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
-
+import { updateSettings } from "metabase/admin/settings/settings";
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
-
-import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
 import Button from "metabase/core/components/Button/Button";
-import { isPersonalCollectionOrChild } from "metabase/collections/utils";
-
-import type { Collection, DashboardId } from "metabase-types/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { refreshCurrentUser } from "metabase/redux/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Box, Text } from "metabase/ui";
+import type { Collection, DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { createCard } from "metabase/lib/card";
 
 import { trackCardCreated } from "../analytics";
+
 import { addDashCardToDashboard } from "./cards-typed";
 
 export const addActionToDashboard =

@@ -1,8 +1,7 @@
 import { assoc } from "icepick";
 
-import { handleActions, createAction } from "metabase/lib/redux";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { handleActions, createAction } from "metabase/lib/redux";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils.js";
 

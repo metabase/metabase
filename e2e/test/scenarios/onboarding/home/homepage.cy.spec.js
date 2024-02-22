@@ -1,3 +1,8 @@
+import { USERS } from "e2e/support/cypress_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
   restore,
@@ -12,12 +17,8 @@ import {
   resetSnowplow,
   enableTracking,
   main,
+  undoToast,
 } from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
-import {
-  ADMIN_PERSONAL_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 
@@ -179,14 +180,14 @@ describe("scenarios > home > custom homepage", () => {
 
       popover().findByText("Orders in a dashboard").click();
 
-      cy.findByRole("status").findByText("Saved");
+      undoToast().findByText("Changes saved").should("be.visible");
 
       cy.log(
         "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
       );
 
       cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
-      cy.findByRole("status").findByText("Saved");
+      undoToast().findByText("Changes saved").should("be.visible");
 
       cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
       cy.findByTestId("custom-homepage-dashboard-setting").should(
@@ -415,7 +416,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
     popover().findByText("Orders in a dashboard").click();
 
-    cy.findByRole("status").findByText("Saved");
+    undoToast().findByText("Changes saved").should("be.visible");
 
     expectGoodSnowplowEvent({
       event: "homepage_dashboard_enabled",

@@ -9,6 +9,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -17,7 +18,10 @@
    (clojure.lang ExceptionInfo)))
 
 (defn- check-perms [query]
-  (:pre (mt/test-qp-middleware qp.perms/check-query-permissions query)))
+  (let [qp (fn [query _rff]
+             (qp.pipeline/*result* query))
+        qp (qp.perms/check-query-permissions qp)]
+    (qp query (constantly conj))))
 
 (defn- check-perms-for-rasta
   "Check permissions for `query` with rasta as the current user."
@@ -252,11 +256,12 @@
                           :actual-permissions   #{}
                           :permissions-error?   true
                           :type                 qp.error-type/missing-required-permissions}}
-              (qp/process-userland-query
-               {:database (mt/id)
-                :type     :query
-                :query    {:source-table (mt/id :venues)
-                           :limit        1}}))))))
+              (qp/process-query
+               (qp/userland-query
+                {:database (mt/id)
+                 :type     :query
+                 :query    {:source-table (mt/id :venues)
+                            :limit        1}})))))))
 
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
@@ -311,8 +316,10 @@
                             (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                               (is (= expected
                                      (mt/rows
-                                      (qp/process-userland-query (mt/mbql-query nil
-                                                                   {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
+                                      (qp/process-query
+                                       (qp/userland-query
+                                        (mt/mbql-query nil
+                                          {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."

@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
+
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import type { TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
@@ -24,6 +25,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase-types/store/mocks";
+
 import { TagEditorParam } from "./TagEditorParam";
 
 interface SetupOpts {
@@ -99,7 +101,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
+      userEvent.click(screen.getByTestId("variable-type-select"));
       userEvent.click(screen.getByText("Field Filter"));
+      userEvent.click(screen.getByTestId("variable-type-select"));
       userEvent.click(screen.getByText("Number"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -216,7 +220,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       userEvent.click(screen.getByText("String"));
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       userEvent.click(screen.getByText("String contains"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -235,7 +241,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       userEvent.click(screen.getByText("String starts with"));
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       userEvent.click(screen.getByText("String"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -253,6 +261,7 @@ describe("TagEditorParam", () => {
       });
       setup({ tag });
 
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       expect(screen.getByText("String")).toBeInTheDocument();
     });
   });

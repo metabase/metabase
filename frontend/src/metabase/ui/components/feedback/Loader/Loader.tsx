@@ -1,5 +1,5 @@
-import { Loader as MantineLoader, getSize } from "@mantine/core";
 import type { LoaderProps } from "@mantine/core";
+import { Loader as MantineLoader, getSize } from "@mantine/core";
 
 const SIZES: Record<string, string> = {
   xs: "1rem",

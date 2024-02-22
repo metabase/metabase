@@ -1,7 +1,7 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import _ from "underscore";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
+import _ from "underscore";
+
 import type { DayOfWeekId } from "metabase-types/api";
 
 // returns 0-6 where Sunday as 0 and Saturday as 6

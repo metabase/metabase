@@ -7,6 +7,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel binning-display-name-for-coordinate-columns-test
   (testing "Include little degree symbols in display names for coordinate columns"
     (let [query     (lib/query meta/metadata-provider (meta/table-metadata :people))

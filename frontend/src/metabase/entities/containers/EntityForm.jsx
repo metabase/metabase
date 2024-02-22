@@ -2,11 +2,12 @@
 import { Component } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
 import {
   isInstanceAnalyticsCollection,
   getInstanceAnalyticsCustomCollection,
 } from "metabase/collections/utils";
+import ModalContent from "metabase/components/ModalContent";
+
 import entityType from "./EntityType";
 
 export function getForm(entityDef) {

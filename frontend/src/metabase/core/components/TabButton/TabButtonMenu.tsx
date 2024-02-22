@@ -1,8 +1,9 @@
-import { useContext } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
+import { useContext } from "react";
 
 import { TabContext } from "../Tab/TabContext";
 import { getTabButtonInputId } from "../Tab/utils";
+
 import type { TabButtonMenuAction, TabButtonMenuItem } from "./TabButton";
 import { MenuContent, MenuItem } from "./TabButton.styled";
 

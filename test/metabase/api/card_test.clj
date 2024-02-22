@@ -37,6 +37,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.server.middleware.util :as mw.util]
    [metabase.task :as task]
@@ -830,7 +831,7 @@
 (defn- to-native [query]
   {:database (:database query)
    :type     :native
-   :native   (mt/compile query)})
+   :native   (qp.compile/compile query)})
 
 (deftest updating-card-updates-metadata
   (let [query          (updating-card-updates-metadata-query)
@@ -2268,12 +2269,12 @@
                                                              :middleware {:add-default-userland-constraints? true
                                                                           :userland-query?                   true}}}]
     (with-cards-in-readable-collection card
-      (let [orig qp.card/run-query-for-card-async]
-        (with-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
-                                                         (apply orig card-id export-format
-                                                                :run (fn [{:keys [constraints]} _]
-                                                                       {:constraints constraints})
-                                                                options))]
+      (let [orig qp.card/process-query-for-card]
+        (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
+                                                       (apply orig card-id export-format
+                                                              :run (fn [{:keys [constraints]} _]
+                                                                     {:constraints constraints})
+                                                              options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
@@ -2716,7 +2717,7 @@
                  [:collections       :any]]
                 (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
 
-(deftest pivot-card-test
+(deftest ^:parallel pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/card/pivot/:card-id/query"
@@ -2732,7 +2733,7 @@
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-(deftest dataset-card
+(deftest ^:parallel dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
     (t2.with-temp/with-temp [:model/Card card {:display       :bar
                                                :dataset_query (mbql-count-query)}]
@@ -2814,7 +2815,7 @@
           to-native      (fn [q]
                            {:database (:database q)
                             :type     :native
-                            :native   (mt/compile q)})
+                            :native   (qp.compile/compile q)})
           update-card!  (fn [card]
                           (mt/user-http-request :rasta :put 200
                                                 (str "card/" (u/the-id card)) card))]

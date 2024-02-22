@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
+
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+
 import { AdminEmbedMenu } from "./AdminEmbedMenu";
 
 const setup = ({

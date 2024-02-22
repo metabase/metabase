@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   RegularClickAction,

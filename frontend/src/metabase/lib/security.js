@@ -1,4 +1,5 @@
 import passwordGenerator from "password-generator";
+
 import MetabaseSettings from "metabase/lib/settings";
 
 // generate a password that satisfies `complexity` requirements, by default the ones that come back in the

@@ -20,7 +20,7 @@
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test.data.env :as tx.env]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -423,10 +423,10 @@
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
    (merge
-    (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
-                                     :type     :query
-                                     :query    {:source-table table-id
-                                                :aggregation  [[aggregation-type [:field-id field-id]]]}}))
+    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
+                                                :type     :query
+                                                :query    {:source-table table-id
+                                                           :aggregation  [[aggregation-type [:field-id field-id]]]}}))
     (when (= aggregation-type :cum-count)
       {:base_type     :type/BigInteger
        :semantic_type :type/Quantity}))))

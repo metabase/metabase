@@ -1,9 +1,8 @@
 import styled from "@emotion/styled";
 
+import Button from "metabase/core/components/Button";
 import { alpha, color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-
-import Button from "metabase/core/components/Button";
 
 export const CurrentContainer = styled.div<{ first?: boolean }>`
   display: flex;

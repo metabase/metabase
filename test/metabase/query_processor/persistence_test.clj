@@ -10,6 +10,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.fix-bad-references
     :as fix-bad-refs]
@@ -98,7 +99,7 @@
       (mt/dataset test-data
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     [:native (mt/native-query
-                                              (mt/compile
+                                              (qp.compile/compile
                                                (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled [persist-models!]
             (mt/with-temp [Card model {:dataset true

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import { screen, getIcon, queryIcon, within } from "__support__/ui";
 
+import { screen, getIcon, queryIcon, within } from "__support__/ui";
 import {
   createMockActionParameter,
   createMockCard,
@@ -74,7 +74,7 @@ describe("ActionCreator > Query Actions", () => {
       it("should preselect model", async () => {
         const MODEL_NAME = "Awesome Model";
         const model = createMockCard({
-          dataset: true,
+          type: "model",
           can_write: true,
           name: MODEL_NAME,
         });

@@ -534,21 +534,21 @@
   The input map requires:
   `:card` which contains a map with the necessary keys to configure a visualization.
   `:data` which is map that mimics the shape and settings returned by executing a card's :dataset_query with
-  `metabase.query-processor/process-query-and-save-execution!`, and the :process-viz-settings? middleware.
-  For example:
+  [[metabase.query-processor/process-query]] + [[metabase.query-processor/userland-query]], and
+  the :process-viz-settings? middleware. For example:
 
   ```
   (let [card-id 1
       {:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
       user                             (t2/select-one user/User)
       query-results                    (binding [qp.perms/*card-id* nil]
-                                         (qp/process-query-and-save-execution!
-                                           (-> dataset_query
-                                               (assoc :async? false)
+                                         (qp/process-query
+                                           (qp/userland-query
+                                            (-> dataset_query
                                                (assoc-in [:middleware :process-viz-settings?] true))
-                                           {:executed-by (:id user)
-                                            :context     :pulse
-                                            :card-id     card-id}))]
+                                            {:executed-by (:id user)
+                                             :context     :pulse
+                                             :card-id     card-id})))]
   {:data query-results})
   ```
 
@@ -557,10 +557,10 @@
 
   Rendering the result as a hiccup tree is acheived by redefining 2 functions:
 
-  `metabase.pulse.render.js-svg/svg-string->bytes` normally takes an svg-string from the static-viz js (via gaalvm)
+  [[metabase.pulse.render.js-svg/svg-string->bytes]] normally takes an svg-string from the static-viz js (via gaalvm)
   and returns PNG bytes. It is redefined to pass the svg-string without any encoding.
 
-  `metabase.pulse.render.image-bundle/make-image-bundle` normally takes a render-type (:inline :attachment) and
+  [[metabase.pulse.render.image-bundle/make-image-bundle]] normally takes a render-type (:inline :attachment) and
   image-bytes, and returns a map containing the image as a base64 encoded string, suitable for an inline src string
   to embed the PNG in an html img tag. It is redefined to pass the string unmodified.
 

@@ -6,7 +6,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [metabase.util.log :as log]))
@@ -33,7 +33,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod pk-field-name :sql/test-extensions [_] "id")
-
 
 ;; TODO - WHAT ABOUT SCHEMA NAME???
 (defmulti qualified-name-components
@@ -297,7 +296,7 @@
                             {:source-table (data/id table)
                              :aggregation  [[:count]]
                              :filter       [:= [:field-id (data/id table field)] 1]})
-          {:keys [query]} (qp/compile mbql-query)
+          {:keys [query]} (qp.compile/compile mbql-query)
           ;; preserve stuff like cast(1 AS datetime) in the resulting query
           query           (str/replace query (re-pattern #"= (.*)(?:1)(.*)") (format "= $1{{%s}}$2" (name field)))]
       {:query query})))
@@ -309,6 +308,18 @@
                             {:source-table (data/id table)
                              :aggregation  [[:count]]
                              :filter       [:= [:field-id (data/id table field)] 1]})
-          {:keys [query]} (qp/compile mbql-query)
+          {:keys [query]} (qp.compile/compile mbql-query)
           query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
       {:query query})))
+
+(defmulti session-schema
+  "Return the unquoted schema name for the current test session, if any. This can be used in test code that needs
+  to use the schema to create tables outside the regular test data setup. Test code that uses this should assume that
+  the schema is already created during initialization, and that the tables inside it will be cleaned up between test
+  runs in CI. Returns nil by default if there is no session schema, or the database doesn't support schemas.
+  For non-cloud drivers, this is typically the default schema that the driver uses when no schema is specified."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod session-schema :sql/test-extensions [_] nil)

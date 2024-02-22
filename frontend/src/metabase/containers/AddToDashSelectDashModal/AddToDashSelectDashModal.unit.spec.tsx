@@ -1,14 +1,24 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
 import {
-  setupMostRecentlyViewedDashboard,
-  setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
   setupDashboardCollectionItemsEndpoint,
+  setupMostRecentlyViewedDashboard,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { getNextId } from "__support__/utils";
+import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
+import type {
+  Card,
+  Collection,
+  Dashboard,
+  SearchResult,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -16,15 +26,7 @@ import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type {
-  Card,
-  Collection,
-  Dashboard,
-  SearchResult,
-} from "metabase-types/api";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import { checkNotNull, isNotNull } from "metabase/lib/types";
-import { getNextId } from "__support__/utils";
+
 import { ConnectedAddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const CURRENT_USER = createMockUser({
@@ -96,20 +98,20 @@ const COLLECTIONS = [
 const CARD_IN_ROOT_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
-  dataset: true,
+  type: "model",
 });
 
 const CARD_IN_PUBLIC_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
-  dataset: true,
+  type: "model",
   collection: COLLECTION,
 });
 
 const CARD_IN_PERSONAL_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Card in a personal collection",
-  dataset: true,
+  type: "model",
   collection: PERSONAL_COLLECTION,
 });
 

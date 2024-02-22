@@ -1,3 +1,7 @@
+import type { UniqueIdentifier } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import type {
   HTMLAttributes,
   ChangeEventHandler,
@@ -13,15 +17,11 @@ import {
   useState,
   forwardRef,
 } from "react";
-import styled from "@emotion/styled";
 import { t } from "ttag";
 
-import { css } from "@emotion/react";
-import { useSortable } from "@dnd-kit/sortable";
-import type { UniqueIdentifier } from "@dnd-kit/core";
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
-
 import { color, lighten } from "metabase/lib/colors";
+
 import type { TabContextType } from "../Tab";
 import {
   getTabButtonInputId,
@@ -29,7 +29,7 @@ import {
   getTabPanelId,
   TabContext,
 } from "../Tab";
-import { TabButtonMenu } from "./TabButtonMenu";
+
 import {
   TabButtonInput,
   TabButtonRoot,
@@ -37,6 +37,7 @@ import {
   TabButtonInputWrapper,
   TabButtonInputResizer,
 } from "./TabButton.styled";
+import { TabButtonMenu } from "./TabButtonMenu";
 
 export const INPUT_WRAPPER_TEST_ID = "tab-button-input-wrapper";
 

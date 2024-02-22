@@ -1,5 +1,6 @@
-import { createMockParameter } from "metabase-types/api/mocks";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
+import { createMockParameter } from "metabase-types/api/mocks";
+
 import { isSingleOrMultiSelectable } from "./parameter-type";
 
 describe("isSingleOrMultiSelectable", () => {

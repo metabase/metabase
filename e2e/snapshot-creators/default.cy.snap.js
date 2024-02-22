@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { snapshot, restore, withSampleDatabase } from "e2e/support/helpers";
+
 import {
   USERS,
   USER_GROUPS,
@@ -7,6 +7,7 @@ import {
   SAMPLE_DB_TABLES,
   METABASE_SECRET_KEY,
 } from "e2e/support/cypress_data";
+import { snapshot, restore, withSampleDatabase } from "e2e/support/helpers";
 
 const {
   STATIC_ORDERS_ID,

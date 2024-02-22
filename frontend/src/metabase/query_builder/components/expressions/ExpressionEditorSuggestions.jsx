@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
-import { Component, Fragment } from "react";
 import PropTypes from "prop-types";
+import { Component, Fragment } from "react";
 import _ from "underscore";
+
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 import { isObscured } from "metabase/lib/dom";
+import { Icon } from "metabase/ui";
+
 import {
   ExpressionListItem,
   ExpressionList,

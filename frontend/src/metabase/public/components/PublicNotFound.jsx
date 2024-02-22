@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import EmbedFrame from "./EmbedFrame";
 
 const PublicNotFound = () => (

@@ -1,11 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { createMockField } from "metabase-types/api/mocks";
-import {
-  createOrdersIdField,
-  createOrdersTable,
-  createSampleDatabase,
-  ORDERS_ID,
-} from "metabase-types/api/mocks/presets";
+
 import { createMockMetadata } from "__support__/metadata";
 import {
   renderWithProviders,
@@ -14,6 +8,14 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { createMockField } from "metabase-types/api/mocks";
+import {
+  createOrdersIdField,
+  createOrdersTable,
+  createSampleDatabase,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
+
 import { TimeFilterEditor } from "./TimeFilterEditor";
 
 const TIME_FIELD = createMockField({

@@ -1,11 +1,13 @@
 import userEvent from "@testing-library/user-event";
+
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import type { Expression } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
-import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
+import type { Expression } from "metabase-types/api";
+
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
+import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {

@@ -1,11 +1,11 @@
+import { getDefaultTab } from "metabase/dashboard/actions";
+import { INITIAL_DASHBOARD_STATE } from "metabase/dashboard/constants";
 import {
   createMockCard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
-import { INITIAL_DASHBOARD_STATE } from "metabase/dashboard/constants";
 import type { DashboardState } from "metabase-types/store";
-import { getDefaultTab } from "metabase/dashboard/actions";
 
 const TEST_CARD = createMockCard({
   dataset_query: {

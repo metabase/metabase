@@ -1,13 +1,14 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import { Icon } from "metabase/ui";
 import {
   SortableContainer,
   SortableElement,
   SortableHandle,
 } from "metabase/components/sortable";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { Icon } from "metabase/ui";
+
 import { ParameterWidget as StaticParameterWidget } from "./ParameterWidget";
 
 const StaticParameterWidgetList = ({

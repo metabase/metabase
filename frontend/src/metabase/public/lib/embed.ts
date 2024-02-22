@@ -1,5 +1,5 @@
-import querystring from "querystring";
 import { KJUR } from "jsrsasign"; // using jsrsasign because jsonwebtoken doesn't work on the web :-/
+import querystring from "querystring";
 
 import type {
   EmbedResourceType,

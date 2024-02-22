@@ -1,12 +1,6 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import type { Card, CollectionItem, Database, User } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollectionItem,
-  createMockDatabase,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { Route } from "react-router";
+
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -17,6 +11,14 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import type { Card, CollectionItem, Database, User } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollectionItem,
+  createMockDatabase,
+  createMockUser,
+} from "metabase-types/api/mocks";
+
 import MetabotWidget from "./MetabotWidget";
 
 const TEST_DATABASE = createMockDatabase({
@@ -41,7 +43,7 @@ const TEST_USER_2 = createMockUser({
 
 const TEST_MODEL = createMockCard({
   name: "Orders",
-  dataset: true,
+  type: "model",
   dataset_query: {
     database: TEST_DATABASE.id,
     type: "query",

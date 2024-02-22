@@ -1,12 +1,18 @@
-import _ from "underscore";
 import { t } from "ttag";
-import { isUUID, isJWT } from "metabase/lib/utils";
+import _ from "underscore";
+
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { isUUID, isJWT } from "metabase/lib/utils";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import {
+  isDateParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/parameters/utils/parameter-type";
 import type {
   Card,
   CardId,
@@ -28,11 +34,6 @@ import type {
   VirtualCardDisplay,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
-import {
-  isDateParameter,
-  isNumberParameter,
-  isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params) {
@@ -123,7 +124,7 @@ export function isNativeDashCard(dashcard: QuestionDashboardCard) {
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
 // info text about parameter mapping in the card itself or as a tooltip.
 export function showVirtualDashCardInfoText(
-  dashcard: QuestionDashboardCard,
+  dashcard: DashboardCard,
   isMobile: boolean,
 ) {
   if (isVirtualDashCard(dashcard)) {

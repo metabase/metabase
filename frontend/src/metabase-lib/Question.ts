@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+import _ from "underscore";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
@@ -12,7 +12,7 @@ import StructuredQuery, {
 import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/queries/NativeQuery";
-import AtomicQuery from "metabase-lib/queries/AtomicQuery";
+import type AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
 import type BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
@@ -23,18 +23,18 @@ import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
+  CardDisplayType,
   CardType,
   CollectionId,
   DatabaseId,
-  DatasetQuery,
-  DatasetData,
-  TableId,
-  Parameter as ParameterObject,
-  ParameterValues,
-  ParameterId,
-  VisualizationSettings,
-  CardDisplayType,
   Dataset,
+  DatasetData,
+  DatasetQuery,
+  Parameter as ParameterObject,
+  ParameterId,
+  ParameterValues,
+  TableId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 // TODO: remove these dependencies
@@ -47,7 +47,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-que
 import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
-  findColumnSettingIndexForColumn,
+  findColumnSettingIndexesForColumns,
 } from "metabase-lib/queries/utils/dataset";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -59,7 +59,7 @@ import type { Query } from "./types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
-  dataset?: boolean;
+  cardType?: CardType;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -222,19 +222,6 @@ class Question {
   }
 
   /**
-   * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
-   */
-  atomicQueries(): AtomicQuery[] {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-
-    if (query instanceof AtomicQuery) {
-      return [query];
-    }
-
-    return [];
-  }
-
-  /**
    * The visualization type of the question
    */
   display(): string {
@@ -253,30 +240,12 @@ class Question {
     return this.setCard(assoc(this.card(), "cache_ttl", cache));
   }
 
-  /**
-   * returns whether this question is a model
-   * @deprecated Use Question.prototype.type instead
-   */
-  isDataset(): boolean {
-    return this._card && this._card.dataset;
-  }
-
   type(): CardType {
     return this._card?.type ?? "question";
   }
 
-  /**
-   * @deprecated Use Question.prototype.setType instead
-   */
-  private _setDataset(dataset: boolean) {
-    return this.setCard(assoc(this.card(), "dataset", dataset));
-  }
-
   setType(type: CardType) {
-    const dataset = type === "model";
-    // _setDataset is still called for backwards compatibility
-    // as we're migrating "dataset" -> "type" incrementally
-    return this.setCard(assoc(this.card(), "type", type))._setDataset(dataset);
+    return this.setCard(assoc(this.card(), "type", type));
   }
 
   isPersisted() {
@@ -352,10 +321,6 @@ class Question {
     return this.setDisplay(display).updateSettings(settings);
   }
 
-  setDefaultQuery() {
-    return this.legacyQuery({ useStructuredQuery: true }).question();
-  }
-
   settings(): VisualizationSettings {
     return (this._card && this._card.visualization_settings) || {};
   }
@@ -377,10 +342,6 @@ class Question {
     return this.card().creationType;
   }
 
-  isEmpty(): boolean {
-    return this.legacyQuery({ useStructuredQuery: true }).isEmpty();
-  }
-
   /**
    * How many filters or other widgets are this question's values used for?
    */
@@ -393,10 +354,7 @@ class Question {
    */
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
-
-    return isNative
-      ? this.legacyQuery({ useStructuredQuery: true }).canRun()
-      : Lib.canRun(this.query());
+    return isNative ? this.legacyQuery().canRun() : Lib.canRun(this.query());
   }
 
   canWrite(): boolean {
@@ -496,7 +454,9 @@ class Question {
   }
 
   composeDataset(): Question {
-    if (!this.isDataset() || !this.isSaved()) {
+    const type = this.type();
+
+    if (type === "question" || !this.isSaved()) {
       return this;
     }
 
@@ -515,15 +475,6 @@ class Question {
     const stageIndex = -1;
     const columns = Lib.returnedColumns(query, stageIndex);
     const previousColumns = Lib.returnedColumns(previousQuery, stageIndex);
-
-    if (
-      !_.isEqual(
-        previousQuestion.setting("table.columns"),
-        this.setting("table.columns"),
-      )
-    ) {
-      return this;
-    }
 
     const addedColumns = columns
       .filter(
@@ -611,16 +562,27 @@ class Question {
     }
 
     const query = this.query();
+    const stageIndex = -1;
 
-    let addedColumns = cols.filter(col => {
-      const hasVizSettings =
-        findColumnSettingIndexForColumn(query, vizSettings, col) >= 0;
+    const settingIndexByColumnIndex = findColumnSettingIndexesForColumns(
+      query,
+      stageIndex,
+      cols,
+      vizSettings,
+    );
+    let addedColumns = cols.filter((col, colIndex) => {
+      const hasVizSettings = settingIndexByColumnIndex[colIndex] >= 0;
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
+      const hasColumn =
+        findColumnIndexForColumnSetting(cols, colSetting, this.query()) >= 0;
       const isMutatingColumn =
-        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
+        findColumnIndexForColumnSetting(
+          addedColumns,
+          colSetting,
+          this.query(),
+        ) >= 0;
       return hasColumn && !isMutatingColumn;
     });
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;
@@ -744,17 +706,23 @@ class Question {
 
   databaseId(): DatabaseId | null {
     const query = this.query();
-    const databaseId = Lib.databaseID(query);
-    return databaseId;
+    return Lib.databaseID(query);
   }
 
-  table(): Table | null {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-    return query && typeof query.table === "function" ? query.table() : null;
+  legacyQueryTable(): Table | null {
+    const query = this.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+    if (isNative) {
+      return this.legacyQuery().table();
+    } else {
+      const tableId = Lib.sourceTableOrCardId(query);
+      const metadata = this.metadata();
+      return metadata.table(tableId);
+    }
   }
 
-  tableId(): TableId | null {
-    const table = this.table();
+  legacyQueryTableId(): TableId | null {
+    const table = this.legacyQueryTable();
     return table ? table.id : null;
   }
 
@@ -780,7 +748,9 @@ class Question {
     // we frequently treat dataset/model questions like they are already nested
     // so we need to fetch the virtual card table representation of the Question
     // so that we can properly access the table's fields in various scenarios
-    if (this.isDataset() && this.isSaved()) {
+    const type = this.type();
+    const isModel = type === "model";
+    if (isModel && this.isSaved()) {
       dependencies.push({
         type: "table",
         id: getQuestionVirtualTableId(this.id()),
@@ -899,7 +869,7 @@ class Question {
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? Lib.dropStageIfEmpty(this.query()) : this.query();
+    const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
 
     const cardCopy = {
       name: this._card.name,
@@ -908,7 +878,7 @@ class Question {
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
-      dataset: this._card.dataset,
+      type: this._card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
@@ -1037,7 +1007,7 @@ class Question {
     name,
     display = "table",
     visualization_settings = {},
-    dataset,
+    cardType,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -1047,8 +1017,8 @@ class Question {
       collection_id: collectionId,
       display,
       visualization_settings,
-      dataset,
       dataset_query,
+      type: cardType,
     };
 
     if (type === "native") {
