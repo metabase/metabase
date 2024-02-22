@@ -1042,30 +1042,31 @@
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
-    (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
-      (let [card-id   (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
-            _         (is (integer? card-id))
-            query     (t2/select-one-fn :dataset_query Card :id card-id)
-            run-query (fn []
-                        (let [results (qp/process-query (assoc query :cache-strategy {:type           :ttl
-                                                                                      :multiplier     60
-                                                                                      :execution-time 10
-                                                                                      :min-duration   0}))]
-                          {:cached?  (boolean (:cached (:cache/details results)))
-                           :num-rows (count (mt/rows results))}))]
-        (mt/with-temporary-setting-values [enable-query-caching true]
-          (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
-            (mt/with-current-user nil
-              (testing "First run -- should not be cached"
-                (is (= {:cached? false, :num-rows 5}
-                       (run-query))))
-              (testing "Should be cached by now"
-                (is (= {:cached? true, :num-rows 5}
-                       (run-query))))))
-          (testing "Ok, now try to access the Table that is sandboxed by the cached Card"
-            ;; this should *NOT* be cached because we're generating a nested query with sandboxing in play.
-            (is (= {:cached? false, :num-rows 5}
-                   (run-query)))))))))
+    (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
+      (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
+        (let [card-id   (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
+              _         (is (integer? card-id))
+              query     (t2/select-one-fn :dataset_query Card :id card-id)
+              run-query (fn []
+                          (let [results (qp/process-query (assoc query :cache-strategy {:type           :ttl
+                                                                                        :multiplier     60
+                                                                                        :execution-time 10
+                                                                                        :min-duration   0}))]
+                            {:cached?  (boolean (:cached (:cache/details results)))
+                             :num-rows (count (mt/rows results))}))]
+          (mt/with-temporary-setting-values [enable-query-caching true]
+            (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
+              (mt/with-current-user nil
+                (testing "First run -- should not be cached"
+                  (is (= {:cached? false, :num-rows 5}
+                         (run-query))))
+                (testing "Should be cached by now"
+                  (is (= {:cached? true, :num-rows 5}
+                         (run-query))))))
+            (testing "Ok, now try to access the Table that is sandboxed by the cached Card"
+              ;; this should *NOT* be cached because we're generating a nested query with sandboxing in play.
+              (is (= {:cached? false, :num-rows 5}
+                     (run-query))))))))))
 
 (deftest persistence-disabled-when-sandboxed
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)

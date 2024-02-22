@@ -72,7 +72,7 @@
 (defenterprise fetch-cache-stmt
   "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
   metabase-enterprise.caching.strategies
-  [strategy conn hash]
+  [strategy hash conn]
   (fetch-cache-stmt-ttl strategy hash conn))
 
 (defn- cached-results [query-hash strategy respond]
