@@ -157,6 +157,11 @@
   (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
          :semantic-type :type/Quantity))
 
+(defmethod lib.metadata.calculation/metadata-method :var
+  [query stage-number clause]
+  (dissoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+         :semantic-type))
+
 (defmethod lib.metadata.calculation/display-name-method :percentile
   [query stage-number [_percentile _opts x p] style]
   (i18n/tru "{0}th percentile of {1}" p (lib.metadata.calculation/display-name query stage-number x style)))
@@ -164,6 +169,11 @@
 (defmethod lib.metadata.calculation/column-name-method :percentile
   [_query _stage-number _clause]
   "percentile")
+
+(defmethod lib.metadata.calculation/metadata-method :percentile
+  [query stage-number clause]
+  (dissoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+         :semantic-type))
 
 (lib.hierarchy/derive :percentile ::aggregation)
 
@@ -189,6 +199,11 @@
   [_query _stage-number _share]
   "share")
 
+(defmethod lib.metadata.calculation/metadata-method :share
+  [query stage-number clause]
+  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+         :semantic-type :type/Percentage))
+
 (lib.hierarchy/derive :share ::aggregation)
 
 (defmethod lib.metadata.calculation/display-name-method :count-where
@@ -198,6 +213,11 @@
 (defmethod lib.metadata.calculation/column-name-method :count-where
   [_query _stage-number _count-where]
   "count-where")
+
+(defmethod lib.metadata.calculation/metadata-method :count-where
+  [query stage-number clause]
+  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+         :semantic-type :type/Quantity))
 
 (lib.hierarchy/derive :count-where ::aggregation)
 
