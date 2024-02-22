@@ -48,12 +48,12 @@ const Bookmarks = createEntity({
   },
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object) {
-      const { archived, dataset, id, name } = payload.object;
+      const { archived, card_type, id, name } = payload.object;
       const key = `card-${id}`;
       if (archived) {
         return dissoc(state, key);
       } else {
-        return updateIn(state, [key], item => ({ ...item, dataset, name }));
+        return updateIn(state, [key], item => ({ ...item, card_type, name }));
       }
     }
 
@@ -109,11 +109,24 @@ function getEntityFor(type) {
 
 function getIcon(bookmark) {
   const bookmarkEntity = getEntityFor(bookmark.type);
+
+  if (bookmarkEntity.name === "questions") {
+    return bookmarkEntity.objectSelectors.getIcon({
+      ...bookmark,
+      /**
+       * Questions.objectSelectors.getIcon works with Card instances.
+       * In order to reuse it we need to map Bookmark["card_type"] to Card["type"]
+       * because Bookmark["type"] is something else.
+       */
+      type: bookmark.card_type,
+    });
+  }
+
   return bookmarkEntity.objectSelectors.getIcon(bookmark);
 }
 
 export function isModelBookmark(bookmark) {
-  return bookmark.type === "card" && bookmark.dataset;
+  return bookmark.type === "card" && bookmark.card_type === "model";
 }
 
 export const getOrderedBookmarks = createSelector(
