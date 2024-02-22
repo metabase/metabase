@@ -25,7 +25,10 @@ import {
   isPercentage,
 } from "metabase-lib/types/utils/isa";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
+import {
+  findColumnIndexesForColumnSettings,
+  getColumnSettingKey,
+} from "metabase-lib/queries/utils/dataset";
 import { nestedSettings } from "./nested";
 
 // HACK: cyclical dependency causing errors in unit tests
@@ -548,9 +551,7 @@ export const buildTableColumnSettings = ({
       function getValue(columnSettings) {
         return columnSettings.map(setting => ({
           ...setting,
-          key:
-            setting.key ??
-            getColumnKey({ name: setting.key, field_ref: setting.fieldRef }),
+          key: getColumnSettingKey(setting),
         }));
       }
 
