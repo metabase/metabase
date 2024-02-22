@@ -14,8 +14,13 @@ type FieldRefWithIndex = {
   originalIndex: number;
 };
 
-function getFieldRefsWithIndexes(columnSettings: TableColumnOrderSetting[]) {
-  return columnSettings.reduce(
+function findColumnIndexesWithMissingRefs(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: DatasetColumn[],
+  columnSettings: TableColumnOrderSetting[],
+): number[] {
+  const fieldRefs = columnSettings.reduce(
     (fieldRefs: FieldRefWithIndex[], { fieldRef }, originalIndex) => {
       if (fieldRef != null) {
         fieldRefs.push({ fieldRef, originalIndex });
@@ -24,22 +29,13 @@ function getFieldRefsWithIndexes(columnSettings: TableColumnOrderSetting[]) {
     },
     [],
   );
-}
-
-export function findColumnIndexesForColumnSettings(
-  query: Lib.Query,
-  stageIndex: number,
-  columns: DatasetColumn[],
-  columnSettings: TableColumnOrderSetting[],
-) {
-  const fieldRefs = getFieldRefsWithIndexes(columnSettings);
-  const columnIndexByFieldRefIndex = Lib.findColumnIndexesFromLegacyRefs(
+  const columnIndexBySettingIndex = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
     columns,
     fieldRefs.map(({ fieldRef }) => fieldRef),
   );
-  return columnIndexByFieldRefIndex.reduce(
+  return columnIndexBySettingIndex.reduce(
     (columnIndexes: number[], columnIndex, fieldRefIndex) => {
       if (columnIndex >= 0) {
         columnIndexes[fieldRefs[fieldRefIndex].originalIndex] = columnIndex;
@@ -50,23 +46,74 @@ export function findColumnIndexesForColumnSettings(
   );
 }
 
+function findColumnIndexesWithNameFallback(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: DatasetColumn[],
+  columnSettings: TableColumnOrderSetting[],
+): number[] {
+  const columnIndexBySettingIndex = findColumnIndexesWithMissingRefs(
+    query,
+    stageIndex,
+    columns,
+    columnSettings,
+  );
+  const columnIndexByName = new Map(
+    columns.map((column, columnIndex) => [column.name, columnIndex]),
+  );
+  columnIndexBySettingIndex.forEach(columnIndex => {
+    if (columnIndex >= 0) {
+      columnIndexByName.delete(columns[columnIndex].name);
+    }
+  });
+  return columnIndexBySettingIndex.map(
+    (columnIndex: number, settingIndex: number) => {
+      if (columnIndex >= 0) {
+        return columnIndex;
+      }
+
+      const setting = columnSettings[settingIndex];
+      const fallbackColumnIndex = columnIndexByName.get(setting.name);
+      if (fallbackColumnIndex != null) {
+        columnIndexByName.delete(setting.name);
+        return fallbackColumnIndex;
+      }
+
+      return -1;
+    },
+  );
+}
+
+export function findColumnIndexesForColumnSettings(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: DatasetColumn[],
+  columnSettings: TableColumnOrderSetting[],
+) {
+  return findColumnIndexesWithNameFallback(
+    query,
+    stageIndex,
+    columns,
+    columnSettings,
+  );
+}
+
 export function findColumnSettingIndexesForColumns(
   query: Lib.Query,
   stageIndex: number,
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ) {
-  const fieldRefs = getFieldRefsWithIndexes(columnSettings);
-  const columnIndexByFieldRefIndex = Lib.findColumnIndexesFromLegacyRefs(
+  const columnIndexes = findColumnIndexesWithNameFallback(
     query,
     stageIndex,
     columns,
-    fieldRefs.map(({ fieldRef }) => fieldRef),
+    columnSettings,
   );
-  return columnIndexByFieldRefIndex.reduce(
-    (settingIndexes: number[], columnIndex, fieldRefIndex) => {
+  return columnIndexes.reduce(
+    (settingIndexes: number[], columnIndex, settingIndex) => {
       if (columnIndex >= 0) {
-        settingIndexes[columnIndex] = fieldRefs[fieldRefIndex].originalIndex;
+        settingIndexes[columnIndex] = settingIndex;
       }
       return settingIndexes;
     },
