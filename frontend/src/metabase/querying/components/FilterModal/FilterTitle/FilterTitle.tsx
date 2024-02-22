@@ -28,7 +28,12 @@ export function FilterTitle({
 }: FilterTitleProps) {
   return (
     <Flex h="100%" align="center" gap="sm">
-      <InfoIcon query={query} stageIndex={stageIndex} column={column} />
+      <InfoIcon
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        position="left"
+      />
       <Icon name={columnIcon} />
       <FilterColumnName
         query={query}
