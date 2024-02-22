@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 
-import type * as Lib from "metabase-lib";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -18,8 +17,6 @@ import {
 } from "./utils";
 
 interface TableColumnPanelProps {
-  query: Lib.Query;
-  stageIndex: number;
   columns: DatasetColumn[];
   columnSettings: TableColumnOrderSetting[];
   getColumnName: (column: DatasetColumn) => string;
@@ -28,8 +25,6 @@ interface TableColumnPanelProps {
 }
 
 export const TableColumnPanel = ({
-  query,
-  stageIndex,
   columns,
   columnSettings,
   getColumnName,
@@ -37,8 +32,8 @@ export const TableColumnPanel = ({
   onShowWidget,
 }: TableColumnPanelProps) => {
   const columnItems = useMemo(() => {
-    return getColumnItems(query, stageIndex, columns, columnSettings);
-  }, [query, stageIndex, columns, columnSettings]);
+    return getColumnItems(columns, columnSettings);
+  }, [columns, columnSettings]);
 
   const getItemName = (columnItem: ColumnItem) => {
     return getColumnName(columnItem.column);

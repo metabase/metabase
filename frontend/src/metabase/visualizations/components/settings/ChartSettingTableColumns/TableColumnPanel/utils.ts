@@ -1,5 +1,5 @@
-import { getColumnIcon } from "metabase/common/utils/columns";
-import * as Lib from "metabase-lib";
+import type { IconName } from "metabase/ui";
+import { getIconForField } from "metabase-lib/metadata/utils/fields";
 import { findColumnSettingIndexesForColumns } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
@@ -12,8 +12,6 @@ import type { EditWidgetData } from "../types";
 import type { ColumnItem } from "./types";
 
 export function getColumnItems(
-  query: Lib.Query,
-  stageIndex: number,
   columns: DatasetColumn[],
   originalSettings: TableColumnOrderSetting[],
 ): ColumnItem[] {
@@ -45,7 +43,7 @@ export function getColumnItems(
       name: column.name,
       enabled: columnSetting.enabled,
       index: columnSettingIndex,
-      icon: getColumnIcon(Lib.fromLegacyColumn(query, stageIndex, column)),
+      icon: getIconForField(column) as IconName,
       column,
       columnSetting,
     };
