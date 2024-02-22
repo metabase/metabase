@@ -241,7 +241,7 @@
 
 (defmethod create-table-sql :sql/test-extensions
   [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions table-comment]}]
-  (let [pk-field-name (->> field-definitions (filter :pk?) first :field-name (sql.u/quote-name driver :field))]
+  (let [pk-field-name (->> field-definitions (filter :pk?) first :field-name (qualify-and-quote driver))]
     (format "CREATE TABLE %s (%s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
             (str/join
