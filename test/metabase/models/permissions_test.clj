@@ -2,12 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]
-   [metabase.models.user :as user]
    [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -18,72 +16,6 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
-
-;;; -------------------------------------------------- data-perms-path ---------------------------------------------------
-
-(deftest ^:parallel data-perms-path-test
-  (testing "valid paths"
-    (are [expected args] (= expected
-                            (apply perms/data-perms-path args))
-      "/db/1/"                       [1]
-      "/db/1/schema/public/"         [1 "public"]
-      "/db/1/schema/public/table/2/" [1 "public" 2]))
-  (testing "invalid paths"
-    (testing "invalid input should throw an exception"
-      (are [args] (thrown?
-                   Exception
-                   (apply perms/data-perms-path args))
-        []
-        [1 "public" 2 3]
-        [nil]
-        ["sales"]
-        [:sales]
-        [true]
-        [false]
-        [{}]
-        [[]]
-        [:sales]
-        [1 true]
-        [1 false]
-        [1 {}]
-        [1 []]
-        [1 :sales]
-        [1 "public" nil]
-        [1 "public" "sales"]
-        [1 "public" :sales]
-        [1 "public" true]
-        [1 "public" false]
-        [1 "public" {}]
-        [1 "public" []]))))
-
-(deftest ^:parallel data-perms-path-escape-slashes-test
-  (doseq [{:keys [slash-direction schema-name expected-escaped]} [{:slash-direction  "back (#8693)"
-                                                                   :schema-name      "my\\schema"
-                                                                   :expected-escaped "my\\\\schema"}
-                                                                  {:slash-direction  "back (multiple)"
-                                                                   :schema-name      "my\\\\schema"
-                                                                   :expected-escaped "my\\\\\\\\schema"}
-                                                                  {:slash-direction  "forward (#12450)"
-                                                                   :schema-name      "my/schema"
-                                                                   :expected-escaped "my\\/schema"}
-                                                                  {:slash-direction  "both"
-                                                                   :schema-name      "my\\/schema"
-                                                                   :expected-escaped "my\\\\\\/schema"}
-                                                                  {:slash-direction  "both (multiple)"
-                                                                   :schema-name      "my\\\\/schema"
-                                                                   :expected-escaped "my\\\\\\\\\\/schema"}]]
-    (testing (format "We should handle slashes in permissions paths\nDirection = %s\nSchema = %s\n"
-                     slash-direction (pr-str schema-name))
-      (testing (pr-str (list 'data-perms-path {:id 1}))
-        (is (= "/db/1/"
-               (perms/data-perms-path {:id 1}))))
-      (testing (pr-str (list 'data-perms-path {:id 1} schema-name))
-        (is (= (format "/db/1/schema/%s/" expected-escaped)
-               (perms/data-perms-path {:id 1} schema-name))))
-      (testing (pr-str (list 'data-perms-path {:id 1} schema-name {:id 2}))
-        (is (= (format "/db/1/schema/%s/table/2/" expected-escaped)
-               (perms/data-perms-path {:id 1} schema-name {:id 2})))))))
-
 
 ;;; ---------------------------------- Generating permissions paths for Collections ----------------------------------
 
@@ -114,36 +46,6 @@
              Exception
              (f input)))))))
 
-(deftest ^:parallel is-permissions-for-object?-test
-  (are [perms-path] (perms/is-permissions-for-object? perms-path "/db/1/schema/PUBLIC/table/1/")
-    "/"
-    "/db/"
-    "/db/1/"
-    "/db/1/schema/"
-    "/db/1/schema/PUBLIC/"
-    "/db/1/schema/PUBLIC/table/1/")
-  (are [perms-path] (not (perms/is-permissions-for-object? perms-path "/db/1/schema/PUBLIC/table/1/"))
-    "/db/2/"
-    "/db/2/native/"
-    "/db/1/schema/public/"
-    "/db/1/schema/private/"
-    "/db/1/schema/PUBLIC/table/2/"))
-
-(deftest ^:parallel is-partial-permissions-for-object?-test
-  (are [perms-path] (perms/is-partial-permissions-for-object? perms-path "/db/1/")
-    "/"
-    "/db/"
-    "/db/1/"
-    "/db/1/schema/"
-    "/db/1/schema/PUBLIC/"
-    "/db/1/schema/PUBLIC/table/"
-    "/db/1/schema/PUBLIC/table/1/"
-    "/db/1/schema/PUBLIC/table/1/field/"
-    "/db/1/schema/PUBLIC/table/1/field/2/")
-  (are [perms-path] (not (perms/is-partial-permissions-for-object? perms-path "/db/1/"))
-    "/db/2/"
-    "/db/2/native/"))
-
 ;;; This originally lived in [[metabase.models.permissions]] but it is only used in tests these days so I moved it here.
 (defn is-permissions-set?
   "Is `permissions-set` a valid set of permissions object paths?"
@@ -158,17 +60,7 @@
   (testing "valid permissions sets"
     (are [perms-set] (is-permissions-set? perms-set)
       #{}
-      #{"/"}
-      #{"/db/1/"}
-      #{"/db/1/"}
-      #{"/db/1/schema/"}
-      #{"/db/1/schema/public/"}
-      #{"/db/1/schema/public/table/1/"}
-      #{"/" "/db/2/"}
-      #{"/db/1/" "/db/2/schema/"}
-      #{"/db/1/schema/" "/db/2/schema/public/"}
-      #{"/db/1/schema/public/" "/db/2/schema/public/table/3/"}
-      #{"/db/1/schema/public/table/2/" "/db/3/schema/public/table/4/"}))
+      #{"/"}))
   (testing "invalid permissions sets"
     (testing "things that aren't sets"
       (are [perms-set] (not (is-permissions-set? perms-set))
@@ -176,8 +68,7 @@
     (testing "things that contain invalid paths"
       (are [perms-set] (not (is-permissions-set? perms-set))
         #{"/" "/toucans/"}
-        #{"/db/1/" "//"}
-        #{"/db/1/" "/db/1/table/2/"}
+        #{"/db/1/" "/"}
         #{"/db/1/native/schema/"}
         #{"/db/1/schema/public/" "/parroty/"}
         #{"/db/1/schema/public/table/1/" "/ocean/"}))))
@@ -341,19 +232,6 @@
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest revoke-db-schema-permissions-test
-  (mt/with-temp [Database database {}]
-    (testing "revoke-db-schema-permissions! should revoke all non-native permissions on a database"
-      (is (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                           (perms/data-perms-path database)))
-      (is (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                           (perms/adhoc-native-query-path database)))
-      (perms/revoke-db-schema-permissions! (perms-group/all-users) database)
-      (is (not (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                                (perms/data-perms-path database))))
-      (is (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                           (perms/adhoc-native-query-path database))))))
-
 (deftest revoke-permissions-helper-function-test
   (testing "Make sure if you try to use the helper function to *revoke* perms for a Personal Collection, you get an Exception"
     (is (thrown-with-msg?
@@ -446,15 +324,3 @@
         (testing (format "Able to revoke `%s` permission" (name perm-type))
           (perms/revoke-application-permissions! group-id perm-type)
           (is (not (= (perms) #{perm-path}))))))))
-
-(deftest ^:parallel generate-graph-test
-  (are [db-ids group-id->paths expected] (= expected
-                                            (#'perms/generate-graph db-ids group-id->paths))
-    #{2} {1 ["/db/2/"]}                            {1 {2 {:data {:native :write, :schemas :all}}}}
-    #{2} {1 ["/data/db/2/"]}                       {1 {2 {:data {:native :write}}}}
-    #{2} {1 ["/query/db/2/schema/"]}               {1 {2 {:query {:schemas :all, :native :none}}}}
-    #{2} {1 ["/query/db/2/schema/PUBLIC/"]}        {1 {2 {:query {:schemas {"PUBLIC" :all}}}}}
-    #{2} {1 ["/query/db/2/schema//"]}              {1 {2 {:query {:schemas {"" :all}}}}}
-    #{2} {1 ["/db/2/schema/"]}                     {1 {2 {:data {:schemas :all}}}}
-    #{2} {1 ["/query/db/2/schema/" "/data/db/2/"]} {1 {2 {:query {:schemas :all}, :data {:native :write}}}}
-    #{2} {1 ["/db/2/"]}                            {1 {2 {:data {:native :write, :schemas :all}}}}))
