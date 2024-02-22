@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.caching.strategies :as caching]
+   [metabase-enterprise.task.caching :as task.caching]
    [metabase.models :refer [Card Dashboard Database PersistedInfo TaskHistory]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
@@ -430,7 +431,7 @@
           (testing "strategy = schedule"
             (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
               (mt/with-clock (t 0)
-                (#'caching/refresh-schedule-configs)
+                (#'task.caching/refresh-schedule-configs)
                 (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
                   (is (=? {:type :schedule}
                           (:cache-strategy q)))
@@ -441,7 +442,7 @@
                             (-> (qp/process-query q) (dissoc :data)))))))
               (testing "No cache after job ran again"
                 (mt/with-clock (t 121)
-                  (#'caching/refresh-schedule-configs)
+                  (#'task.caching/refresh-schedule-configs)
                   (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
                     (is (=? (mkres nil)
                             (-> (qp/process-query q) (dissoc :data)))))))))
@@ -449,7 +450,7 @@
           (testing "strategy = query"
             (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
               (mt/with-clock (t 0)
-                (#'caching/refresh-query-configs)
+                (#'task.caching/refresh-query-configs)
                 (let [q (#'qp.card/query-for-card card4 {} {} {} {})]
                   (is (=? {:type :query}
                           (:cache-strategy q)))
@@ -460,14 +461,14 @@
                             (-> (qp/process-query q) (dissoc :data)))))))
 
               (mt/with-clock (t 121)
-                (#'caching/refresh-query-configs)
+                (#'task.caching/refresh-query-configs)
                 (testing "There is still cache after job ran again"
                   (let [q (#'qp.card/query-for-card card4 {} {} {} {})]
                     (is (=? (mkres (t 0))
                             (-> (qp/process-query q) (dissoc :data))))))
 
                 (t2/update! :model/CacheConfig {:id (:id c4)} {:config (assoc (:config c4) :aggregation "count")})
-                (#'caching/refresh-query-configs)
+                (#'task.caching/refresh-query-configs)
                 (testing "But no cache after the data has changed"
                   (let [q (#'qp.card/query-for-card card4 {} {} {} {})]
                     (is (=? (mkres nil)
