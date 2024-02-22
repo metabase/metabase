@@ -151,6 +151,7 @@
                         (or
                           body
                           {:valid         false
+                           :error_code    :unable_to_validate
                            :status        (tru "Unable to validate token")
                            :error-details (.getMessage e1)}))))))))))
 

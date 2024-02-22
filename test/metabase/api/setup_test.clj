@@ -650,13 +650,22 @@
                                                              :features ["test" "fixture"]
                                                              :trial    false})]
           (is (= {:valid true}
-                 (client/client :get (str "setup/token-check?license_token=" random-fake-token)))))
-        (testing "Check that returns {valid: false} for invalid token"
-          (mt/with-temporary-setting-values [has-user-setup false]
-            (with-redefs [premium-features/fetch-token-status (fn [_x] {:valid false})]
-              (is (= {:valid false}
-                     (client/client :get (str "setup/token-check?license_token=" random-fake-token)))))))
-        (testing "Check that returns {valid: false} for invalid token"
-          (mt/with-temporary-setting-values [has-user-setup true]
-            (is (= "This endpoint can only be used before the initial setup."
-                   (client/client :get (str "setup/token-check?license_token=" random-fake-token))))))))))
+                 (client/client :get (str "setup/token-check?license_token=" random-fake-token))))))))
+  (testing "Check that returns {valid: false} for invalid token"
+    (mt/with-temporary-setting-values [has-user-setup false]
+      (with-redefs [premium-features/fetch-token-status (fn [_x] {:valid false})]
+        (is (= {:valid false}
+               (client/client :get (str "setup/token-check?license_token=" random-fake-token)))))))
+  (testing "Check that returns an error code when it can't validate the token"
+    (mt/with-temporary-setting-values [has-user-setup false]
+      (with-redefs [premium-features/fetch-token-status (fn [_x]
+                                                          {:valid      false
+                                                           :error_code :unable_to_validate
+                                                           :status     "fake"})]
+        (is (= {:valid      false
+                :error_code "unable_to_validate"}
+               (client/client :get (str "setup/token-check?license_token=" random-fake-token)))))))
+  (testing "Check that it doesn't work after initial setup"
+    (mt/with-temporary-setting-values [has-user-setup true]
+      (is (= "This endpoint can only be used before the initial setup."
+             (client/client :get (str "setup/token-check?license_token=" random-fake-token)))))))

@@ -360,6 +360,6 @@
             (tru "This endpoint can only be used before the initial setup.")
             {:status-code 403}))
     (let [status (premium-features/fetch-token-status token)]
-      {:valid (:valid status)})))
+      (select-keys status [:valid :error_code] ))))
 
 (api/define-routes)

@@ -58,6 +58,7 @@
                                  ;; throw an ex-info here
                                  (throw (Exception. "network issues")))]
           (is (= {:valid         false
+                  :error_code    :unable_to_validate
                   :status        "Unable to validate token"
                   :error-details "network issues"}
                  (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
