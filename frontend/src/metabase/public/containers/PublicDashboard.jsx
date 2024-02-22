@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import { assoc } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -157,6 +158,9 @@ class PublicDashboard extends Component {
       ? getDashboardActions(this, { ...this.props, isPublic: true })
       : [];
 
+    const isNotAction = dashcard => !dashcard.action;
+    const visibleDashcards = (dashboard?.dashcards ?? []).filter(isNotAction);
+
     return (
       <EmbedFrame
         name={dashboard && dashboard.name}
@@ -185,6 +189,7 @@ class PublicDashboard extends Component {
             <DashboardContainer>
               <DashboardGridConnected
                 {...this.props}
+                dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                 isPublic
                 className="spread"
                 mode={PublicMode}
