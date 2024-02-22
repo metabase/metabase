@@ -355,12 +355,7 @@ function TabPanelFilterItem({
   };
 
   return (
-    <TabPanelItem
-      component="li"
-      px="2rem"
-      py="1rem"
-      data-testid={`filter-column-${displayName}`}
-    >
+    <TabPanelItem component="li" data-testid={`filter-column-${displayName}`}>
       <ColumnFilterSection
         query={query}
         stageIndex={stageIndex}

@@ -8,5 +8,5 @@ export { HoverParent };
 
 export const InfoIcon = styled(QueryColumnInfoIcon)`
   position: relative;
-  left: -0.5rem;
+  left: 0.25rem;
 `;
