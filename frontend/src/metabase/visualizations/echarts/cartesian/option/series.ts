@@ -15,6 +15,7 @@ import type {
   ChartDataset,
   Datum,
   XAxisModel,
+  TimeSeriesXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -95,6 +96,26 @@ export function getDataLabelFormatter(
   };
 }
 
+const getTimeSeriesBarCategoryGap = (
+  dataset: ChartDataset,
+  xAxisModel: TimeSeriesXAxisModel,
+) => {
+  // ECharts calculates category width based on the number of values in the dataset. However, for time series,
+  // we want category width be based on the computed interval of data and the number of units within the extent.
+  // For example, if data consists of only two points 1st and 20th days and the unit is day, then we want
+  // the bar category to have the width of the single day on the axis.
+  if (dataset.length < xAxisModel.lengthInIntervals + 1) {
+    const fullBarGroupWidthPercent =
+      dataset.length / (xAxisModel.lengthInIntervals + 1);
+    // Assume 20% padding
+    const barCategoryGapPercent = (1 - fullBarGroupWidthPercent) * 1.2;
+
+    return `${barCategoryGapPercent * 100}%`;
+  }
+
+  return undefined;
+};
+
 export const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
@@ -148,16 +169,7 @@ const buildEChartsBarSeries = (
       barWidth = `${99.5 / barSeriesCount}%`;
     }
   } else if (isTimeSeriesAxis(xAxisModel)) {
-    /*
-      ECharts calculates category width based on the number of values in the dataset.
-      However, for time series, we want category width be based on the computed interval of data and the number of units within the extent.
-      For example, if data consists of only two points 1st and 20th days and the unit is day, then we want the bar category to have the width of the single day on the axis.
-    */
-    if (dataset.length < xAxisModel.lengthInIntervals + 1) {
-      const barCategoryGapPercent =
-        1 - (dataset.length / (xAxisModel.lengthInIntervals + 1)) * 0.4;
-      barCategoryGap = `${barCategoryGapPercent * 100}%`;
-    }
+    barCategoryGap = getTimeSeriesBarCategoryGap(dataset, xAxisModel);
   }
 
   return {
