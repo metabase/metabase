@@ -66,7 +66,7 @@ import type {
   State,
 } from "metabase-types/store";
 
-import { SIDEBAR_NAME } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
@@ -641,7 +641,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
   saveAsPDF = async () => {
     const { dashboard } = this.props;
-    const cardNodeSelector = "#Dashboard-Cards-Container";
+    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
     await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
       trackExportDashboardToPDF(dashboard.id);
     });
