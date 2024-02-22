@@ -6,6 +6,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
+import type Question from "metabase-lib/Question";
 import type {
   Dashboard,
   DashboardCard,
@@ -29,6 +30,7 @@ interface Props {
   series: Series;
   dashboard: Dashboard;
   dashcard?: DashboardCard;
+  question?: Question;
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
@@ -49,6 +51,7 @@ export function DashCardActionsPanel({
   series,
   dashboard,
   dashcard,
+  question,
   isLoading,
   isPreviewing,
   hasError,
@@ -110,6 +113,7 @@ export function DashCardActionsPanel({
           series={series}
           dashboard={dashboard}
           dashcard={dashcard}
+          question={question}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
       );

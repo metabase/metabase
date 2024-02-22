@@ -21,8 +21,7 @@ describe("issue 27257", () => {
       cy.icon("string");
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Variable type").parent().findByText("Text").click();
+    cy.findByTestId("variable-type-select").click();
     popover().contains("Number").click();
 
     filterWidget().within(() => {

@@ -58,6 +58,7 @@ describe("issue 31606", { tags: "@external" }, () => {
     queryBuilderMain()
       .findByText(/missing required parameters/)
       .should("be.visible");
+
     filterWidget().within(() => {
       cy.icon("close").should("not.exist");
     });
@@ -78,8 +79,11 @@ describe("issue 31606", { tags: "@external" }, () => {
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("Enter a default value…").should("not.exist");
-
-      cy.findByText("Default filter widget value").next().click();
+      cy.findByText("Default filter widget value")
+        .next()
+        .find("a")
+        .first()
+        .click();
     });
 
     popover().within(() => {

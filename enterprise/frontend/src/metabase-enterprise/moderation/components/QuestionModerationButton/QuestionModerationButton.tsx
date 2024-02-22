@@ -3,8 +3,8 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import {
-  verifyCard,
   removeCardReview,
+  verifyCard,
 } from "metabase-enterprise/moderation/actions";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import {
@@ -16,6 +16,7 @@ import {
 import type Question from "metabase-lib/Question";
 import type { State } from "metabase-types/store";
 
+import { getVerifyQuestionTitle } from "../../utils";
 import { VerifyButton as DefaultVerifyButton } from "../QuestionModerationSection/QuestionModerationSection.styled";
 
 interface Props {
@@ -76,9 +77,7 @@ function QuestionModerationButton({
           data-testid="moderation-verify-action"
           {...verifyButtonProps}
         >
-          {question.isDataset()
-            ? t`Verify this model`
-            : t`Verify this question`}
+          {getVerifyQuestionTitle(question)}
         </VerifyButton>
       )}
       {isModerator && isVerified && (

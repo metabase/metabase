@@ -86,12 +86,30 @@
   (cond-> [:aggregation aggregation-index]
     (some? option) (conj option)))
 
+(defn- normalize-ref-opts [opts]
+  (let [opts (normalize-tokens opts :ignore-path)]
+   (cond-> opts
+       (:base-type opts)     (update :base-type keyword)
+       (:temporal-unit opts) (update :temporal-unit keyword)
+       (:binning opts)       (update :binning (fn [binning]
+                                                (cond-> binning
+                                                  (:strategy binning) (update :strategy keyword)))))))
+
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
-  [[_ expression-name]]
-  [:expression (if (keyword? expression-name)
-                 (mbql.u/qualified-name expression-name)
-                 expression-name)])
+  [[_ expression-name opts]]
+  (let [expression [:expression (if (keyword? expression-name)
+                                  (mbql.u/qualified-name expression-name)
+                                  expression-name)]
+        opts (->> opts
+                  normalize-ref-opts
+                  ;; Only keep fields required for handling binned&datetime expressions (#33528)
+                  ;; Allowing added alias-info through here breaks
+                  ;; [[metabase.query-processor.util.nest-query-test/nest-expressions-ignore-source-queries-test]]
+                  (m/filter-keys #{:base-type :temporal-unit :binning})
+                  not-empty)]
+    (cond-> expression
+      opts (conj opts))))
 
 (defmethod normalize-mbql-clause-tokens :binning-strategy
   ;; For `:binning-strategy` clauses (which wrap other Field clauses) normalize the strategy-name and recursively
@@ -103,15 +121,9 @@
 
 (defmethod normalize-mbql-clause-tokens :field
   [[_ id-or-name opts]]
-  (let [opts (normalize-tokens opts :ignore-path)]
-    [:field
-     id-or-name
-     (cond-> opts
-       (:base-type opts)     (update :base-type keyword)
-       (:temporal-unit opts) (update :temporal-unit keyword)
-       (:binning opts)       (update :binning (fn [binning]
-                                                (cond-> binning
-                                                  (:strategy binning) (update :strategy keyword)))))]))
+  [:field
+   id-or-name
+   (normalize-ref-opts opts)])
 
 (defmethod normalize-mbql-clause-tokens :field-literal
   ;; Similarly, for Field literals, keep the arg as-is, but make sure it is a string."

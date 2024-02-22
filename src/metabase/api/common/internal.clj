@@ -108,9 +108,13 @@
     (str "\n\n### PARAMS:\n\n"
          (str/join "\n\n"
                    (for [[param-symb schema] param-symb->schema]
-                     (format "*  **`%s`** %s"
-                             (param-name param-symb schema)
-                             (dox-for-schema schema route-str)))))))
+                     (let [p-name (param-name param-symb schema)
+                           p-desc (dox-for-schema schema route-str)]
+                       (format "-  **`%s`** %s"
+                               p-name
+                               (if (str/blank? p-desc) ; some params lack descriptions
+                                 p-desc
+                                 (u/add-period p-desc)))))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."

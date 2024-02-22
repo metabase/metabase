@@ -34,7 +34,7 @@ describe("issue 21597", { tags: "@external" }, () => {
       parseSpecialCharSequences: false,
     });
 
-    cy.findByTestId("select-button").click();
+    cy.findByTestId("variable-type-select").click();
     popover().within(() => {
       cy.findByText("Field Filter").click();
     });

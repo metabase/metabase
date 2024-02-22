@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
+import type Question from "metabase-lib/Question";
 import type {
   Dashboard,
   DashboardCard,
@@ -15,6 +16,7 @@ interface Props {
   series: Series;
   dashboard: Dashboard;
   dashcard?: DashboardCard;
+  question?: Question;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 
@@ -22,6 +24,7 @@ export function ChartSettingsButton({
   series,
   dashboard,
   dashcard,
+  question,
   onReplaceAllVisualizationSettings,
 }: Props) {
   return (
@@ -46,6 +49,7 @@ export function ChartSettingsButton({
         isDashboard
         dashboard={dashboard}
         dashcard={dashcard}
+        question={question}
       />
     </ModalWithTrigger>
   );

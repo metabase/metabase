@@ -111,7 +111,7 @@ const orders_card_without_pk = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset: true,
+  type: "model",
   database_id: SAMPLE_DB_ID,
   table_id: ORDERS_ID,
   dataset_query: {
