@@ -207,6 +207,7 @@ export interface Settings {
   "deprecation-notice-version"?: string;
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
+  "ee-openai-api-key"?: string;
   "email-configured?": boolean;
   "embedding-app-origin": string;
   "embedding-secret-key"?: string;
