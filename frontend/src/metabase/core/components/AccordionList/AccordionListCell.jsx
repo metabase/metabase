@@ -155,7 +155,7 @@ export const AccordionListCell = ({
               {icon}
             </span>
           )}
-          <div>
+          <div className="List-item-content">
             {name && <h4 className="List-item-title ml1 text-wrap">{name}</h4>}
             {description && (
               <p className="List-item-description ml1 text-wrap">
