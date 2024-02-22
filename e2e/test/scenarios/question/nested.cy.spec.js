@@ -499,7 +499,9 @@ describe("scenarios > question > nested", () => {
       cy.intercept("POST", "/api/card").as("cardCreated");
 
       cy.findByText("Save").click({ force: true });
-      cy.findByTestId("save-question-modal").button("Save").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+      });
 
       cy.wait("@cardCreated").then(({ response: { body } }) => {
         expect(body.error).not.to.exist;

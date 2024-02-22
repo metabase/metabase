@@ -74,7 +74,9 @@ function saveUpdatedQuestion() {
   cy.intercept("PUT", "/api/card/*").as("updateQuestion");
 
   cy.findByText("Save").click();
-  modal().button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
+  });
 }
 
 function assertQuestionIsUpdatedWithoutError() {
