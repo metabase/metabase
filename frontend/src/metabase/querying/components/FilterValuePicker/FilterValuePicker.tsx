@@ -29,7 +29,7 @@ interface FilterValuePickerProps<T> {
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
   placeholder: string;
-  shouldCreate: (query: string) => boolean;
+  canAddValue: (query: string) => boolean;
 }
 
 function FilterValuePicker({
@@ -40,7 +40,7 @@ function FilterValuePicker({
   placeholder,
   autoFocus = false,
   compact = false,
-  shouldCreate,
+  canAddValue,
   onChange,
   onFocus,
   onBlur,
@@ -86,7 +86,7 @@ function FilterValuePicker({
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
-        shouldCreate={shouldCreate}
+        canAddValue={canAddValue}
         autoFocus={autoFocus}
         onChange={onChange}
       />
@@ -97,7 +97,7 @@ function FilterValuePicker({
     <StaticValuePicker
       selectedValues={selectedValues}
       placeholder={placeholder}
-      shouldCreate={shouldCreate}
+      canAddValue={canAddValue}
       autoFocus={autoFocus}
       onChange={onChange}
       onFocus={onFocus}
@@ -111,7 +111,7 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
-  const shouldCreate = (query: string) => {
+  const canAddValue = (query: string) => {
     return query.trim().length > 0 && !values.includes(query);
   };
 
@@ -121,7 +121,7 @@ export function StringFilterValuePicker({
       column={column}
       values={values}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-      shouldCreate={shouldCreate}
+      canAddValue={canAddValue}
     />
   );
 }
@@ -132,7 +132,7 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<number>) {
-  const shouldCreate = (query: string) => {
+  const canAddValue = (query: string) => {
     const number = parseFloat(query);
     return isFinite(number) && !values.includes(number);
   };
@@ -143,7 +143,7 @@ export function NumberFilterValuePicker({
       column={column}
       values={values.map(value => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      shouldCreate={shouldCreate}
+      canAddValue={canAddValue}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
     />
   );

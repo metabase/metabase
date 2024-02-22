@@ -13,7 +13,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate: (query: string) => boolean;
+  canAddValue: (query: string) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
 }
@@ -24,7 +24,7 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
-  shouldCreate,
+  canAddValue,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
@@ -59,6 +59,13 @@ export function SearchValuePicker({
     return searchValue;
   };
 
+  const shouldCreate = (searchValue: string) => {
+    return (
+      canAddValue(searchValue) &&
+      !options.some(option => option.label === searchValue)
+    );
+  };
+
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
@@ -68,7 +75,7 @@ export function SearchValuePicker({
       searchValue={searchValue}
       placeholder={placeholder}
       shouldCreate={shouldCreate}
-      getCreateLabel={searchValue => t`New ${searchValue}`}
+      getCreateLabel={searchValue => searchValue}
       creatable
       searchable
       autoFocus={autoFocus}
