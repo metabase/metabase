@@ -36,8 +36,6 @@ export const HideColumnAction: LegacyDrill = ({
       action: () => {
         const columnSettings = settings?.["table.columns"] ?? [];
         const [columnSettingIndex] = findColumnSettingIndexesForColumns(
-          question.query(),
-          -1,
           [column],
           columnSettings,
         );

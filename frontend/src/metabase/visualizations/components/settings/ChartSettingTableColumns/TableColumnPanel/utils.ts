@@ -18,8 +18,6 @@ export function getColumnItems(
   originalSettings: TableColumnOrderSetting[],
 ): ColumnItem[] {
   const originalIndexes = findColumnSettingIndexesForColumns(
-    query,
-    stageIndex,
     columns,
     originalSettings,
   );
@@ -32,6 +30,7 @@ export function getColumnItems(
       updatedIndexes[columnIndex] = updatedSettings.length;
       updatedSettings.push({
         name: column.name,
+        key: getColumnKey(column),
         fieldRef: column.field_ref,
         enabled: false,
       });

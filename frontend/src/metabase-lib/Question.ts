@@ -485,7 +485,7 @@ class Question {
     });
   }
 
-  private _syncStructuredQueryColumnsAndSettings(previousQuestion: Question) {
+  private _syncGraphMetricSettings(previousQuestion: Question) {
     const query = this.query();
     const previousQuery = previousQuestion.query();
     const stageIndex = -1;
@@ -537,37 +537,10 @@ class Question {
       }
     }
 
-    const tableColumns = this.setting("table.columns");
-    if (
-      tableColumns &&
-      (addedColumns.length > 0 || removedColumns.length > 0)
-    ) {
-      return this.updateSettings({
-        "table.columns": [
-          ...tableColumns.filter(
-            column =>
-              !addedColumns.some(
-                ({ columnInfo }) => column.name === columnInfo.name,
-              ) &&
-              !removedColumns.some(
-                ({ columnInfo }) => column.name === columnInfo.name,
-              ),
-          ),
-          ...addedColumns.map(({ column, columnInfo }) => {
-            return {
-              name: columnInfo.name,
-              fieldRef: Lib.legacyRef(query, stageIndex, column),
-              enabled: true,
-            };
-          }),
-        ],
-      });
-    }
-
     return this;
   }
 
-  _syncNativeQuerySettings({ data: { cols = [] } = {} }) {
+  _syncTableColumnSettings({ data: { cols = [] } = {} }: Dataset) {
     const columnSettings = this.setting("table.columns") || [];
     // "table.columns" receive a value only if there are custom settings
     // e.g. some columns are hidden. If it's empty, it means everything is visible
@@ -576,18 +549,11 @@ class Question {
       return this;
     }
 
-    const query = this.query();
-    const stageIndex = -1;
-
     const columnIndexes = findColumnIndexesForColumnSettings(
-      query,
-      stageIndex,
       cols,
       columnSettings,
     );
     const columnSettingIndexes = findColumnSettingIndexesForColumns(
-      query,
-      stageIndex,
       cols,
       columnSettings,
     );
@@ -616,11 +582,12 @@ class Question {
   }
 
   syncColumnsAndSettings(previousQuestion?: Question, queryResults?: Dataset) {
-    const query = this.query();
+    let question = this;
+    const query = question.query();
     const { isNative } = Lib.queryDisplayInfo(query);
 
-    if (isNative && queryResults && !queryResults.error) {
-      return this._syncNativeQuerySettings(queryResults);
+    if (queryResults && !queryResults.error) {
+      question = question._syncTableColumnSettings(queryResults);
     }
 
     if (previousQuestion) {
@@ -629,11 +596,11 @@ class Question {
         Lib.queryDisplayInfo(previousQuery);
 
       if (!isNative && !isPreviousQuestionNative) {
-        return this._syncStructuredQueryColumnsAndSettings(previousQuestion);
+        question = question._syncGraphMetricSettings(previousQuestion);
       }
     }
 
-    return this;
+    return question;
   }
 
   /**

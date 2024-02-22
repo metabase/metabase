@@ -320,8 +320,6 @@ class Table extends Component<TableProps, TableState> {
     const [{ card, data }] = series;
     // construct a Question that is in-sync with query results
     const question = new Question(card, metadata);
-    const query = question.query();
-    const stageIndex = -1;
 
     if (Table.isPivoted(series, settings)) {
       const pivotIndex = _.findIndex(
@@ -343,8 +341,6 @@ class Table extends Component<TableProps, TableState> {
       const { cols, rows, results_timezone } = data;
       const columnSettings = settings["table.columns"] ?? [];
       const columnIndexes = findColumnIndexesForColumnSettings(
-        query,
-        stageIndex,
         cols,
         this.props.isShowingDetailsOnlyColumns
           ? columnSettings

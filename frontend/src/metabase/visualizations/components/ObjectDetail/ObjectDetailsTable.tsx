@@ -7,7 +7,6 @@ import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
-import type Question from "metabase-lib/Question";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
 import { TYPE } from "metabase-lib/types/constants";
 import {
@@ -128,7 +127,6 @@ export interface DetailsTableProps {
   data: DatasetData;
   zoomedRow: unknown[];
   settings: VisualizationSettings;
-  question?: Question;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
 }
@@ -139,20 +137,15 @@ export function DetailsTable({
   settings,
   onVisualizationClick,
   visualizationIsClickable,
-  question,
 }: DetailsTableProps): JSX.Element {
   const { cols: columns } = data;
   const columnSettings = settings["table.columns"];
 
   const { cols, row } = useMemo(() => {
-    if (!columnSettings || !question) {
+    if (!columnSettings) {
       return { cols: columns, row: zoomedRow };
     }
-    const query = question.query();
-    const stageIndex = -1;
     const columnIndexes = findColumnIndexesForColumnSettings(
-      query,
-      stageIndex,
       columns,
       columnSettings.filter(({ enabled }) => enabled),
     ).filter((columnIndex: number) => columnIndex >= 0);
@@ -161,7 +154,7 @@ export function DetailsTable({
       cols: columnIndexes.map((i: number) => columns[i]),
       row: columnIndexes.map((i: number) => zoomedRow[i]),
     };
-  }, [columnSettings, columns, zoomedRow, question]);
+  }, [columnSettings, columns, zoomedRow]);
 
   if (!cols?.length) {
     return (

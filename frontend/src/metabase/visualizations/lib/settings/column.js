@@ -16,8 +16,6 @@ import { hasHour } from "metabase/lib/formatting/datetime-utils";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 import MetabaseSettings from "metabase/lib/settings";
-import Question from "metabase-lib/Question";
-import InternalQuery from "metabase-lib/queries/InternalQuery";
 import {
   isCoordinate,
   isCurrency,
@@ -530,20 +528,11 @@ export const buildTableColumnSettings = ({
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     isValid: ([{ card, data }], vizSettings) => {
-      const question = new Question(card /* metadata */);
-      if (InternalQuery.isDatasetQueryType(question.datasetQuery())) {
-        return true;
-      }
-      const query = question.query();
-      const stageIndex = -1;
       const columnSettings = vizSettings["table.columns"];
       const columnIndexes = findColumnIndexesForColumnSettings(
-        query,
-        stageIndex,
         data.cols,
         columnSettings.filter(({ enabled }) => enabled),
       );
-
       return columnIndexes.every(columnIndex => columnIndex >= 0);
     },
     getDefault: ([
@@ -553,8 +542,8 @@ export const buildTableColumnSettings = ({
     ]) =>
       cols.map(col => ({
         name: col.name,
-        fieldRef: col.field_ref,
         enabled: getIsColumnVisible(col),
+        fieldRef: col.field_ref,
       })),
     getProps: (series, settings) => {
       const [
