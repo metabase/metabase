@@ -527,33 +527,40 @@ export const buildTableColumnSettings = ({
     // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    isValid: ([{ card, data }], vizSettings) => {
+    getValue: (series, vizSettings) => {
+      function isValid([{ card, data }], columnSettings) {
+        const columnIndexes = findColumnIndexesForColumnSettings(
+          data.cols,
+          columnSettings.filter(({ enabled }) => enabled),
+        );
+        return columnIndexes.every(columnIndex => columnIndex >= 0);
+      }
+
+      function getDefault([{ data }]) {
+        return data.cols.map(col => ({
+          name: col.name,
+          key: getColumnKey(col),
+          enabled: getIsColumnVisible(col),
+          fieldRef: col.field_ref,
+        }));
+      }
+
+      function getValue(columnSettings) {
+        return columnSettings.map(setting => ({
+          ...setting,
+          key:
+            setting.key ??
+            getColumnKey({ name: setting.key, field_ref: setting.fieldRef }),
+        }));
+      }
+
       const columnSettings = vizSettings["table.columns"];
-      const columnIndexes = findColumnIndexesForColumnSettings(
-        data.cols,
-        columnSettings.filter(({ enabled }) => enabled),
-      );
-      return columnIndexes.every(columnIndex => columnIndex >= 0);
+      if (!columnSettings || !isValid(series, columnSettings)) {
+        return getDefault(series);
+      } else {
+        return getValue(columnSettings);
+      }
     },
-    getValue: (column, vizSettings) => {
-      const settings = vizSettings["table.columns"] ?? [];
-      return settings.map(setting => ({
-        ...setting,
-        key:
-          setting.key ??
-          getColumnKey({ name: setting.key, field_ref: setting.fieldRef }),
-      }));
-    },
-    getDefault: ([
-      {
-        data: { cols },
-      },
-    ]) =>
-      cols.map(col => ({
-        name: col.name,
-        enabled: getIsColumnVisible(col),
-        fieldRef: col.field_ref,
-      })),
     getProps: (series, settings) => {
       const [
         {
