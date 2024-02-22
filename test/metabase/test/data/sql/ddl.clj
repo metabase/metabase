@@ -41,12 +41,12 @@
 
 (defn- add-pk-if-needed
   [driver {:keys [field-definitions] :as tabledef}]
-  (if (not (some :pk? field-definitions))
+  (if-not (some :pk? field-definitions)
     (update tabledef :field-definitions #(cons (tx/map->FieldDefinition
-                                                 {:field-name    (sql.tx/pk-field-name driver)
-                                                  :base-type     {:native (sql.tx/pk-sql-type driver)}
-                                                  :semantic-type :type/PK
-                                                  :pk?           true})
+                                                {:field-name    (sql.tx/pk-field-name driver)
+                                                 :base-type     {:native (sql.tx/pk-sql-type driver)}
+                                                 :semantic-type :type/PK
+                                                 :pk?           true})
                                                %))
     tabledef))
 
@@ -57,28 +57,26 @@
          :as   dbdef}             (update dbdef :table-definitions #(map (fn [table-def] (add-pk-if-needed driver table-def)) %))
         statements                (atom [])
         add!                      (fn [& stmnts]
-                                   (swap! statements concat (filter some? stmnts)))
-        table-definitions         (map #(add-pk-if-needed driver %) table-definitions)
-        dbdef                     (assoc dbdef :table-definitions table-definitions)]
-   (doseq [tabledef table-definitions]
-     ;; Add the SQL for creating each Table
-     (add! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)
-           (sql.tx/create-table-sql driver dbdef tabledef))
-     ;; Add the SQL for adding table comments
-     (when (:table-comment tabledef)
-       (add! (sql.tx/standalone-table-comment-sql driver dbdef tabledef))))
-   (doseq [{:keys [field-definitions], :as tabledef} table-definitions
-           {:keys [fk indexed?], :as fielddef}       field-definitions]
-     ;; Add the SQL for adding FK constraints
-     (when fk
-       (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef)))
-     ;; Add the SQL for creating index
-     (when indexed?
-       (add! (sql.tx/create-index-sql driver (:table-name tabledef) [(:field-name fielddef)])))
-     ;; Add the SQL for adding column comments
-     (when (:field-comment fielddef)
-       (add! (sql.tx/standalone-column-comment-sql driver dbdef tabledef fielddef))))
-   @statements))
+                                    (swap! statements concat (filter some? stmnts)))]
+    (doseq [tabledef table-definitions]
+      ;; Add the SQL for creating each Table
+      (add! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)
+            (sql.tx/create-table-sql driver dbdef tabledef))
+      ;; Add the SQL for adding table comments
+      (when (:table-comment tabledef)
+        (add! (sql.tx/standalone-table-comment-sql driver dbdef tabledef))))
+    (doseq [{:keys [field-definitions], :as tabledef} table-definitions
+            {:keys [fk indexed?], :as fielddef}       field-definitions]
+      ;; Add the SQL for adding FK constraints
+      (when fk
+        (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef)))
+      ;; Add the SQL for creating index
+      (when indexed?
+        (add! (sql.tx/create-index-sql driver (:table-name tabledef) [(:field-name fielddef)])))
+      ;; Add the SQL for adding column comments
+      (when (:field-comment fielddef)
+        (add! (sql.tx/standalone-column-comment-sql driver dbdef tabledef fielddef))))
+    @statements))
 
 ;; The methods below are currently only used by `:sql-jdbc` drivers, but you can use them to help implement your
 ;; `:sql` driver test extensions as well because there's nothing JDBC specific about them
