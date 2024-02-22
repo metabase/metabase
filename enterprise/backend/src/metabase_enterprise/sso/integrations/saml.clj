@@ -252,11 +252,10 @@
     @*success?))
 
 (defmethod sso.i/sso-handle-slo :saml
-  [{:keys [cookies params] :as req}]
+  [{:keys [cookies params]}]
   (let [xml-str (base64-decode (:SAMLResponse params))
         success? (slo-success? xml-str)]
     (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
       (do (t2/delete! :model/Session :id metabase-session-id)
           (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
       {:status 500 :body "SAML logout failed."})))
-
