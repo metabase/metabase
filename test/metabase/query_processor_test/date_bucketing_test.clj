@@ -1191,7 +1191,7 @@
 
 (deftest ^:parallel native-query-datetime-filter-test
   (testing "Field Filters with datetime values should behave like gui questions (#33492)"
-    (mt/dataset sample-dataset 
+    (mt/dataset sample-dataset
       (are [native-type native-value mbql-filter expected-row-count]
            (let [mbql-rows (-> (mt/mbql-query orders {:fields [$created_at]
                                                       :filter mbql-filter
