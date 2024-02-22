@@ -75,7 +75,6 @@
   "Does a group have permissions for `object` and *all* of its children?"
   [group-id :- ms/PositiveInt
    db-id    :- ms/PositiveInt]
-  ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
   (is (= #{:unrestricted}
          (t2/select-fn-set :value
                            :model/DataPermissions
