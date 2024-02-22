@@ -127,6 +127,8 @@ describe("scenarios > setup", () => {
           // test database setup help card is hidden on the next step
           cy.findByText("Need help connecting?").should("not.be.visible");
 
+          skipLicenseStepOnEE();
+
           // ================
           // Data Preferences
           // ================
@@ -187,6 +189,8 @@ describe("scenarios > setup", () => {
       // Database
       cy.findByText("Add your data");
       cy.findByText("I'll add my data later").click();
+
+      skipLicenseStepOnEE();
 
       // Turns off anonymous data collection
       cy.findByLabelText(
@@ -265,10 +269,7 @@ describe("scenarios > setup", () => {
       cy.button("Connect database").click();
     });
 
-    if (isEE) {
-      // license_token
-      cy.button("Next").click();
-    }
+    skipLicenseStepOnEE();
 
     // usage data
     cy.get("section").last().button("Finish").click();
@@ -315,6 +316,8 @@ describe("scenarios > setup", () => {
 
       // Database
       cy.findByText("Add your data").should("not.exist");
+
+      skipLicenseStepOnEE();
 
       // Turns off anonymous data collection
       cy.findByLabelText(
@@ -528,4 +531,10 @@ const fillUserAndContinue = ({
     cy.findByLabelText("Confirm your password").type(password);
   }
   cy.button("Next").click();
+};
+
+const skipLicenseStepOnEE = () => {
+  if (isEE) {
+    cy.button("Next").click();
+  }
 };
