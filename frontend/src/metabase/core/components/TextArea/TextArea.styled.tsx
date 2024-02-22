@@ -6,7 +6,6 @@ import { color } from "metabase/lib/colors";
 
 export interface TextAreaRootProps {
   readOnly?: boolean;
-  loading?: boolean;
   hasError?: boolean;
   fullWidth?: boolean;
 }
