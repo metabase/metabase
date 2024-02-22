@@ -264,12 +264,13 @@ function DashCardInner({
   return (
     <ErrorBoundary>
       <DashCardRoot
-        data-testid="dashcard"
+        id={`DashCard-${dashcard.id}`}
         className="Card rounded flex flex-column hover-parent hover--visibility"
         hasHiddenBackground={hasHiddenBackground}
         shouldForceHiddenBackground={shouldForceHiddenBackground}
         isNightMode={isNightMode}
         isUsuallySlow={isSlow === "usually-slow"}
+        data-testid="dashcard"
         ref={cardRootRef}
       >
         {isEditingDashboardLayout && (

@@ -4,18 +4,20 @@ import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import { editQuestion } from "metabase/dashboard/actions";
+import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
 import { Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import { saveDashcardPdf } from "metabase/visualizations/lib/save-dashcard-pdf";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
 import type {
+  DashboardCard,
   DashboardId,
-  DashCardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -26,7 +28,7 @@ interface OwnProps {
   question: Question;
   result: Dataset;
   dashboardId?: DashboardId;
-  dashcardId?: DashCardId;
+  dashcard?: DashboardCard;
   uuid?: string;
   token?: string;
   params?: Record<string, unknown>;
@@ -54,7 +56,7 @@ const DashCardMenu = ({
   question,
   result,
   dashboardId,
-  dashcardId,
+  dashcard,
   uuid,
   token,
   params,
@@ -68,14 +70,20 @@ const DashCardMenu = ({
         question,
         result,
         dashboardId,
-        dashcardId,
+        dashcardId: dashcard?.id,
         uuid,
         token,
         params,
       });
     },
-    [question, result, dashboardId, dashcardId, uuid, token, params],
+    [question, result, dashboardId, dashcard, uuid, token, params],
   );
+
+  const handleExportAsPDF = useCallback(() => {
+    const selector = `#DashCard-${dashcard?.id}`;
+    const name = question.displayName() || "Dashcard";
+    saveDashcardPdf(selector, name);
+  }, [dashcard, question]);
 
   const handleMenuContent = useCallback(
     (toggleMenu: () => void) => (
@@ -94,10 +102,16 @@ const DashCardMenu = ({
   const menuItems = useMemo(
     () => [
       canEditQuestion(question) && {
-        title: `Edit question`,
+        title: t`Edit question`,
         icon: "pencil",
         action: () => onEditQuestion(question),
       },
+      dashcard &&
+        isQuestionDashCard(dashcard) && {
+          title: t`Export as PDF`,
+          icon: "document",
+          action: handleExportAsPDF,
+        },
       canDownloadResults(result) && {
         title: loading ? t`Downloading…` : t`Download results`,
         icon: "download",
@@ -105,7 +119,15 @@ const DashCardMenu = ({
         content: handleMenuContent,
       },
     ],
-    [question, result, loading, handleMenuContent, onEditQuestion],
+    [
+      question,
+      dashcard,
+      result,
+      loading,
+      handleExportAsPDF,
+      handleMenuContent,
+      onEditQuestion,
+    ],
   );
 
   return (
