@@ -350,5 +350,6 @@ serdes/meta:
 - id: 0wVIfjBJWclD0lKeABYYl
   label: people
   model: Card
+initially_published_at: null
 metabase_version: null
 type: model
