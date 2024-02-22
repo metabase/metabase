@@ -25,6 +25,7 @@ export interface EditableTextProps extends EditableTextAttributes {
   isMultiline?: boolean;
   isDisabled?: boolean;
   isMarkdown?: boolean;
+  loading?: boolean;
   onChange?: (value: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
