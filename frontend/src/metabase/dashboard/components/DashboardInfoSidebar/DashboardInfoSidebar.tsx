@@ -22,6 +22,7 @@ import {
   HistoryHeader,
   ContentSection,
   DescriptionHeader,
+  StyledEditableText,
 } from "./DashboardInfoSidebar.styled";
 
 type DashboardAttributeType = string | number | null | boolean;
