@@ -13,13 +13,7 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
 };
 
 // custom fetcher that wraps our Api client
-export const apiQuery: BaseQueryFn<
-  any,
-  unknown,
-  unknown,
-  any, // narrow down type (above are fine / same as rtkquery's fetchBaseQuery)
-  any // narrow down type
-> = async (args, ctx, extraOptions: any) => {
+export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions: any) => {
   const method = typeof args === "string" ? "GET" : args?.method;
   const url = typeof args === "string" ? args : args.url;
 
