@@ -14,7 +14,11 @@ import {
   getTextCardDetails,
   closeNavigationSidebar,
   updateDashboardCards,
+  dashboardGrid,
+  createDashboardWithTabs,
+  goToTab,
 } from "e2e/support/helpers";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -290,9 +294,42 @@ describeEE("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { header: false },
       });
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "not.exist",
+      );
+      dashboardGrid().findByText("Rows 1-6 of first 2000").should("be.visible");
+    });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").should("not.exist");
+    it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
+      const FIRST_TAB = { id: 1, name: "Tab 1" };
+      const SECOND_TAB = { id: 2, name: "Tab 2" };
+      createDashboardWithTabs({
+        dashboard: {
+          name: "Dashboard with tabs",
+        },
+        tabs: [FIRST_TAB, SECOND_TAB],
+        dashcards: [
+          createMockDashboardCard({
+            dashboard_tab_id: FIRST_TAB.id,
+            card_id: ORDERS_QUESTION_ID,
+            size_x: 10,
+            size_y: 8,
+          }),
+        ],
+      }).then(dashboard => {
+        visitDashboardUrl({
+          url: `/dashboard/${dashboard.id}`,
+          qs: { header: false },
+        });
+      });
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "not.exist",
+      );
+      dashboardGrid().findByText("Rows 1-6 of first 2000").should("be.visible");
+      goToTab(SECOND_TAB.name);
+      cy.findByTestId("dashboard-parameters-and-cards")
+        .findByText("There's nothing here, yet.")
+        .should("be.visible");
     });
 
     it("should hide the dashboard's additional info by a param", () => {
