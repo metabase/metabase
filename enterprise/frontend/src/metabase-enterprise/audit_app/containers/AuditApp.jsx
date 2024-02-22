@@ -8,8 +8,8 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import fitViewport from "metabase/hoc/FitViewPort";
 import { Icon, Flex, Box } from "metabase/ui";
 
-import { AuditSidebar } from "metabase-enterprise/audit_app/components/AuditSidebar";
 import SidebarLayout from "../components/SidebarLayoutFixedWidth";
+import { AuditSidebar } from "../components/AuditSidebar";
 import { DeprecationNotice } from "./AuditApp.styled";
 
 const Layout = fitViewport(SidebarLayout);

@@ -26,7 +26,6 @@ import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/components/StatusListing";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
-import CS from "metabase/css/core/index.css";
 
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
@@ -100,7 +99,7 @@ function App({
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
-        <AppContainer className={CS.spread}>
+        <AppContainer className="spread">
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>

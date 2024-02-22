@@ -19,7 +19,6 @@ import {
   CreateAlertModalContent,
   UpdateAlertModalContent,
 } from "metabase/query_builder/components/AlertModals";
-import CS from "metabase/css/core/index.css";
 
 class AlertListPopoverContent extends Component {
   state = {
@@ -243,12 +242,7 @@ export const AlertListItem = connect(state => ({ user: getUser(state) }), {
 
 export const UnsubscribedListItem = () => (
   <li className="border-bottom flex align-center py4 text-bold">
-    <div
-      className={cx(
-        CS.circle,
-        "flex align-center justify-center p1 bg-light ml2",
-      )}
-    >
+    <div className="circle flex align-center justify-center p1 bg-light ml2">
       <Icon name="check" className="text-success" />
     </div>
     <h3

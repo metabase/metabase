@@ -4,7 +4,6 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
 // components
 import Button from "metabase/core/components/Button";
@@ -17,7 +16,6 @@ import { Icon } from "metabase/ui";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import CS from "metabase/css/core/index.css";
 
 import User from "metabase/entities/users";
 
@@ -637,12 +635,7 @@ function RawDataAlertTipInner(props) {
 
   return (
     <div className="border-row-divider p3 flex align-center">
-      <div
-        className={cx(
-          CS.circle,
-          "flex align-center justify-center bg-light p2 mr2 text-medium",
-        )}
-      >
+      <div className="circle flex align-center justify-center bg-light p2 mr2 text-medium">
         <Icon name="lightbulb" size="20" />
       </div>
       {showMultiSeriesGoalAlert ? <MultiSeriesAlertTip /> : <NormalAlertTip />}
