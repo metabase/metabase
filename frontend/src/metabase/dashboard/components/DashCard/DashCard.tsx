@@ -23,7 +23,7 @@ import type {
   Card,
   CardId,
   Dashboard,
-  QuestionDashboardCard,
+  DashboardCard,
   DashCardId,
   ParameterId,
   ParameterValueOrArray,
@@ -57,7 +57,7 @@ export interface DashCardProps {
   metadata: Metadata;
   mode?: Mode;
 
-  clickBehaviorSidebarDashcard?: QuestionDashboardCard | null;
+  clickBehaviorSidebarDashcard?: DashboardCard | null;
 
   isEditing?: boolean;
   isEditingParameter?: boolean;
