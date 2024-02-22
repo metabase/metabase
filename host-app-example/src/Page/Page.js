@@ -43,7 +43,7 @@ export const Page = () => {
             />
           </div>
         ) : (
-          <div>Select a question to display here.</div>
+          <div className="tw-grid tw-place-items-center tw-h-full tw-font-bold tw-text-gray-400 tw-text-3xl">Select a question to display here.</div>
         )}
       </div>
 

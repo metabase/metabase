@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 export const StyleLeakFlag = () => {
-  const [styleInfo, setStyleInfo] = useState(''); // Holds the font info
-  const divRef = useRef(null); // Reference to the component's div
+  const [styleInfo, setStyleInfo] = useState('');
+  const divRef = useRef(null);
 
   useEffect(() => {
     const checkFontStyle = () => {
       if (divRef.current) {
         const computedStyle = window.getComputedStyle(divRef.current);
-        const fontFamily = computedStyle.fontFamily.replace(/['"]+/g, ''); // Remove quotes
+        const fontFamily = computedStyle.fontFamily.replace(/['"]+/g, '');
         const fontSize = computedStyle.fontSize;
         setStyleInfo(`Current font is ${fontFamily}, ${fontSize}`);
       }
     };
 
     checkFontStyle();
-    const intervalId = setInterval(checkFontStyle, 1000); // Check every 1000ms (1 second)
+    const intervalId = setInterval(checkFontStyle, 1000);
 
     return () => clearInterval(intervalId);
   }, []);
