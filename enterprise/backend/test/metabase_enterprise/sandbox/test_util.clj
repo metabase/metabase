@@ -3,11 +3,10 @@
   (:require
    [malli.core :as mc]
    [mb.hawk.parallel]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
@@ -16,7 +15,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
@@ -50,7 +48,6 @@
                                                                 :table_id             (data/id table-kw)
                                                                 :card_id              card-id
                                                                 :attribute_remappings remappings}]
-           (perms/grant-permissions! group (perms/table-sandboxed-query-path (t2/select-one Table :id (data/id table-kw))))
            (data-perms/set-table-permission! group (data/id table-kw) :perms/data-access :unrestricted)
            (do-with-gtap-defs! group more f)))))))
 
@@ -66,7 +63,6 @@
 (defn do-with-gtaps-for-user! [args-fn test-user-name-or-user-id f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user!")
   (letfn [(thunk []
-            ;; remove perms for All Users group
             (mt/with-no-data-perms-for-all-users!
               ;; create new perms group
               (test.users/with-group-for-user [group test-user-name-or-user-id]
