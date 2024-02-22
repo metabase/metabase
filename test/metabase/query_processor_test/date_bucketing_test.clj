@@ -1191,30 +1191,31 @@
 
 (deftest ^:parallel native-query-datetime-filter-test
   (testing "Field Filters with datetime values should behave like gui questions (#33492)"
-    (are [native-type native-value mbql-filter expected-row-count]
-        (let [mbql-rows (-> (mt/mbql-query orders {:fields [$created_at]
-                                                   :filter mbql-filter
-                                                   :order-by [[:asc $created_at]]})
-                            qp/process-query
-                            mt/rows)
-              native-rows (-> (mt/native-query {:query (str "SELECT created_at "
-                                                            "FROM orders "
-                                                            "WHERE {{date}} "
-                                                            "ORDER BY created_at")
-                                                :template-tags {"date"
-                                                                {:name "date"
-                                                                 :display-name "Date"
-                                                                 :type :dimension
-                                                                 :widget-type native-type
-                                                                 :dimension (mt/$ids !minute.orders.created_at)}}
-                                                :parameters [{:type native-type
-                                                              :name "date"
-                                                              :target [:dimension [:template-tag "date"]]
-                                                              :value native-value}]})
-                              qp/process-query
-                              mt/rows)]
-          (is (= expected-row-count (count native-rows)))
-          (is (= mbql-rows native-rows)))
+    (mt/dataset sample-dataset 
+      (are [native-type native-value mbql-filter expected-row-count]
+           (let [mbql-rows (-> (mt/mbql-query orders {:fields [$created_at]
+                                                      :filter mbql-filter
+                                                      :order-by [[:asc $created_at]]})
+                               qp/process-query
+                               mt/rows)
+                 native-rows (-> (mt/native-query {:query (str "SELECT created_at "
+                                                               "FROM orders "
+                                                               "WHERE {{date}} "
+                                                               "ORDER BY created_at")
+                                                   :template-tags {"date"
+                                                                   {:name "date"
+                                                                    :display-name "Date"
+                                                                    :type :dimension
+                                                                    :widget-type native-type
+                                                                    :dimension (mt/$ids !minute.orders.created_at)}}
+                                                   :parameters [{:type native-type
+                                                                 :name "date"
+                                                                 :target [:dimension [:template-tag "date"]]
+                                                                 :value native-value}]})
+                                 qp/process-query
+                                 mt/rows)]
+             (is (= expected-row-count (count native-rows)))
+             (is (= mbql-rows native-rows)))
 
         :date/range
         "2020-03-04~2020-03-04"
@@ -1244,7 +1245,7 @@
         :date/single
         "2020-03-04T07:20:00"
         [:= !minute.created_at "2020-03-04T07:20"]
-        2)))
+        2))))
 
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
