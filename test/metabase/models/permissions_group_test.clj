@@ -13,11 +13,9 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
-   [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -77,19 +75,23 @@
 (mu/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
   [group-id :- ms/PositiveInt
-   object   :- perms.u/PathSchema]
-  ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
-  (t2/exists? Permissions
-              :group_id group-id
-              object    [:like (h2x/concat :object (h2x/literal "%"))]))
+   db-id    :- ms/PositiveInt]
+  (is (= #{:unrestricted}
+         (t2/select-fn-set :value
+                           :model/DataPermissions
+                           {:select [[:p.perm_value :value]]
+                            :from [[:data_permissions :p]]
+                            :where [:and
+                                    [:= :p.group_id group-id]
+                                    [:= :p.perm_type (u/qualified-name :perms/data-access)]
+                                    [:= :p.db_id db-id]]}))))
 
 (deftest newly-created-databases-test
   (testing "magic groups should have permissions for newly created databases\n"
     (t2.with-temp/with-temp [Database {database-id :id}]
-      (doseq [group [(perms-group/all-users)
-                     (perms-group/admin)]]
+      (doseq [group [(perms-group/all-users)]]
         (testing (format "Group = %s" (pr-str (:name group)))
-          (is (group-has-full-access? (u/the-id group) (perms/data-perms-path database-id))))))))
+          (is (group-has-full-access? (u/the-id group) database-id)))))))
 
 (deftest add-remove-from-admin-group-test
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"

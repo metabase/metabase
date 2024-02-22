@@ -1,6 +1,7 @@
 (ns metabase.models.table
   (:require
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
@@ -10,7 +11,6 @@
    [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features
@@ -72,7 +72,7 @@
           non-magic-groups (perms-group/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; Data access permissions
-      (if (= (:db_id table) perms/audit-db-id)
+      (if (= (:db_id table) config/audit-db-id)
         ;; Tables in audit DB should start out with no-self-service in all groups
         (data-perms/set-new-table-permissions! non-admin-groups table :perms/data-access :no-self-service)
         (do
@@ -88,10 +88,6 @@
   [table]
   (u/prog1 table
    (set-new-table-permissions! table)))
-
-(t2/define-before-delete :model/Table
-  [{:keys [db_id schema id]}]
-  (t2/delete! Permissions :object [:like (str "%" (perms/data-perms-path db_id schema id) "%")]))
 
 (defmethod mi/can-read? :model/Table
   ([instance]

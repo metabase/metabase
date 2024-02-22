@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.models :refer [Collection NativeQuerySnippet]]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -12,12 +13,14 @@
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
 
-(defn- test-perms
+(defn- test-perms!
   "Test whether we have permissions to see/edit/etc. a Snippet by calling `(has-perms? snippet)`. `required-perms` is
   the permissions we *should* need, either `:read` or `:write`."
   [required-perms has-perms?]
   (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-    (t2.with-temp/with-temp [Collection normal-collection {:name "Normal Collection", :namespace "snippets"}]
+    (t2.with-temp/with-temp [Collection      normal-collection {:name "Normal Collection", :namespace "snippets"}]
+      ;; A user needs native query permissions on *any* database (among other things, in EE) to read/edit/create a NativeQuerySnippet
+      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/native-query-editing :yes)
       ;; run tests with both a normal Collection and the Root Collection
       (doseq [{collection-name :name, :as collection} [normal-collection root-collection]]
         (testing (format "\nSnippet in %s" collection-name)
@@ -51,7 +54,7 @@
 (deftest list-test
   (testing "GET /api/native-query-snippet"
     (testing "\nShould only see Snippet if you have parent Collection perms"
-      (test-perms
+      (test-perms!
        :read
        (fn [snippet]
          (boolean
@@ -63,7 +66,7 @@
 (deftest fetch-test
   (testing "GET /api/native-query-snippet/:id"
     (testing "\nShould only be able to fetch Snippet if you have parent Collection perms"
-      (test-perms
+      (test-perms!
        :read
        (fn [snippet]
          (let [response (mt/user-http-request :rasta :get (format "native-query-snippet/%d" (u/the-id snippet)))]
@@ -72,7 +75,7 @@
 (deftest create-test
   (testing "POST /api/native-query-snippet"
     (testing "\nShould require parent Collection perms to create a new Snippet in that Collection"
-      (test-perms
+      (test-perms!
        :write
        (fn [snippet]
          ;; try creating a copy of the Snippet, but with a different name and with `:id` removed
@@ -87,7 +90,7 @@
 (deftest edit-test
   (testing "PUT /api/native-query-snippet/:id"
     (testing "\nShould require parent Collection perms to edit a Snippet"
-      (test-perms
+      (test-perms!
        :write
        (fn [snippet]
          (let [response (mt/user-http-request :rasta :put (format "native-query-snippet/%d" (u/the-id snippet)) {:name (mt/random-name)})]
@@ -99,6 +102,8 @@
       (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
         (mt/with-temp [Collection source {:name "Current Parent Collection", :namespace "snippets"}
                        Collection dest   {:name "New Parent Collection", :namespace "snippets"}]
+          ;; A user needs native query permissions on *any* database (among other things, in EE) to read/edit/create a NativeQuerySnippet
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/native-query-editing :yes)
           (doseq [source-collection [source root-collection]]
             (t2.with-temp/with-temp [NativeQuerySnippet snippet {:collection_id (:id source-collection)}]
               (doseq [dest-collection [dest root-collection]]
