@@ -472,7 +472,7 @@ class Question {
   }
 
   composeDataset(): Question {
-    if (!this.isDataset() || !this.isSaved()) {
+    if (type === "question" || !this.isSaved()) {
       return this;
     }
 
