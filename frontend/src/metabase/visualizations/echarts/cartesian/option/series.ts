@@ -108,7 +108,7 @@ const getTimeSeriesBarCategoryGap = (
     const fullBarGroupWidthPercent =
       dataset.length / (xAxisModel.lengthInIntervals + 1);
     // Assume 20% padding
-    const barCategoryGapPercent = (1 - fullBarGroupWidthPercent) * 1.2;
+    const barCategoryGapPercent = 1 - fullBarGroupWidthPercent * 0.8;
 
     return `${barCategoryGapPercent * 100}%`;
   }
