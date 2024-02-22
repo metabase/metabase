@@ -96,13 +96,15 @@
   [_query _stage-number [tag :as _clause]]
   (case tag
     :count     "count"
-    :cum-count "cum_count"))
+    :cum-count "cum_count"
+    :count-where "count_where"))
 
-(defmethod lib.metadata.calculation/metadata-method ::count-aggregation
+(defmethod lib.metadata.calculation/metadata-method ::quantity-aggregation
   [query stage-number clause]
   (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
          :semantic-type :type/Quantity))
 
+(lib.hierarchy/derive ::quantity-aggregation ::aggregation)
 (lib.hierarchy/derive ::count-aggregation ::quantity-aggregation)
 (lib.hierarchy/derive :distinct ::quantity-aggregation)
 
@@ -156,11 +158,6 @@
       :sum       (i18n/tru "Sum of {0}"                arg)
       :var       (i18n/tru "Variance of {0}"           arg))))
 
-(defmethod lib.metadata.calculation/metadata-method :distinct
-  [query stage-number clause]
-  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
-         :semantic-type :type/Quantity))
-
 (defmethod lib.metadata.calculation/display-name-method :percentile
   [query stage-number [_percentile _opts x p] style]
   (i18n/tru "{0}th percentile of {1}" p (lib.metadata.calculation/display-name query stage-number x style)))
@@ -213,10 +210,6 @@
 (defmethod lib.metadata.calculation/display-name-method :count-where
   [_query _stage-number _count-where _style]
   (i18n/tru "Count of rows matching condition"))
-
-(defmethod lib.metadata.calculation/column-name-method :count-where
-  [_query _stage-number _count-where]
-  "count-where")
 
 (defmethod lib.metadata.calculation/metadata-method ::aggregation
   [query stage-number [_tag _opts first-arg :as clause]]
