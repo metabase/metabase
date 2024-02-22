@@ -9,7 +9,27 @@ import {
 export const PULSE_PARAM_EMPTY = null;
 export const PULSE_PARAM_USE_DEFAULT = undefined;
 
-export function getValuePopulatedParameters(parameters, parameterValues) {
+export function getValuePopulatedParameters(
+  parameters,
+  parameterValues,
+  collectionPreview,
+) {
+  // when it's collection preview (pinned question), we cannot use URL to get
+  // parameter values without value populated in other cases `value: null` will
+  // be handled on BE
+  if (collectionPreview) {
+    return parameterValues
+      ? parameters.map(parameter => {
+          return parameter.id in parameterValues
+            ? {
+                ...parameter,
+                value: parameterValues[parameter.id],
+              }
+            : parameter;
+        })
+      : parameters;
+  }
+
   return parameters.map(parameter => ({
     ...parameter,
     value: parameterValues?.[parameter.id] ?? null,
