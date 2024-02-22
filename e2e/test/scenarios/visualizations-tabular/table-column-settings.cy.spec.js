@@ -651,7 +651,7 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "ID",
         columnName: "User → ID",
         table: "user",
-        scrollTimes: 3,
+        scrollTimes: 1,
       };
 
       _addColumn(newColumn);
