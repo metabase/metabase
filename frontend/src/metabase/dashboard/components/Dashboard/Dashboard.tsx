@@ -274,12 +274,6 @@ function DashboardInner(props: DashboardProps) {
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
-  const shouldRenderParametersWidgetInViewMode =
-    !isEditing && hasVisibleParameters;
-
-  const shouldRenderParametersWidgetInEditMode =
-    isEditing && hasVisibleParameters;
-
   const handleSetDashboardAttribute = useCallback(
     <Key extends keyof IDashboard>(attribute: Key, value: IDashboard[Key]) => {
       setDashboardAttributes({
@@ -509,7 +503,7 @@ function DashboardInner(props: DashboardProps) {
                 !isFullscreen && (isEditing || isSharing)
               }
             >
-              {shouldRenderParametersWidgetInEditMode && (
+              {isEditing && hasVisibleParameters && (
                 <ParametersWidgetContainer
                   data-testid="edit-dashboard-parameters-widget-container"
                   hasScroll={true}
@@ -523,7 +517,7 @@ function DashboardInner(props: DashboardProps) {
                   </FixedWidthContainer>
                 </ParametersWidgetContainer>
               )}
-              {shouldRenderParametersWidgetInViewMode && (
+              {!isEditing && hasVisibleParameters && (
                 <ParametersWidgetContainer
                   data-testid="dashboard-parameters-widget-container"
                   hasScroll={hasScroll}
