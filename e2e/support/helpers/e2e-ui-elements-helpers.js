@@ -94,7 +94,7 @@ export function clearFilterWidget(index = 0) {
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  return filterWidget().eq(index).icon("refresh").click();
+  return filterWidget().eq(index).icon("time_history").click();
 }
 
 export function setFilterWidgetValue(
