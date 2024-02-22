@@ -6,8 +6,8 @@ import type * as Lib from "metabase-lib";
 
 import { FilterColumnName } from "../FilterColumnName";
 
-import { InfoIcon, HoverParent } from "./FilterTitle.styled";
-export { HoverParent };
+import { InfoIcon } from "./FilterTitle.styled";
+export { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 
 type FilterTitleProps = {
   children?: ReactNode;
