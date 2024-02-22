@@ -497,7 +497,6 @@ function DashboardInner(props: DashboardProps) {
               onEditingChange={handleSetEditing}
               setDashboardAttribute={handleSetDashboardAttribute}
               addParameter={addParameter}
-              parametersWidget={parametersWidget}
               onSharingClick={handleToggleSharing}
             />
           </DashboardHeaderContainer>
