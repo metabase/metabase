@@ -600,8 +600,8 @@ describe("scenarios > visualizations > table column settings", () => {
       openSettings();
 
       const testData = {
-        column: "Products → Ean",
-        columnName: "Products → Ean",
+        column: "Products → Category",
+        columnName: "Products → Category",
         table: "test question",
       };
 
@@ -651,7 +651,7 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "ID",
         columnName: "User → ID",
         table: "user",
-        scrollTimes: 1,
+        scrollTimes: 3,
       };
 
       _addColumn(newColumn);
