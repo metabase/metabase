@@ -245,12 +245,12 @@
          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
 
-        (testing "compount index"
-          (mongo.connection/with-mongo-database [db (mt/db)]
-            (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
-          (sync/sync-database! (mt/db))
-          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
-          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
+       (testing "compount index"
+         (mongo.connection/with-mongo-database [db (mt/db)]
+           (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
+         (sync/sync-database! (mt/db))
+         (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
+         (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
 
        (testing "multi key index"
          (mongo.connection/with-mongo-database [db (mt/db)]
@@ -379,16 +379,16 @@
     (with-redefs [metadata-queries/nested-field-sample-limit 2]
       (binding [tdm/*remove-nil?* true]
         (mt/with-temp-test-data
-          ["bird_species"
-           [{:field-name "name", :base-type :type/Text}
-            {:field-name "favorite_snack", :base-type :type/Text}
-            {:field-name "max_wingspan", :base-type :type/Integer}]
-           [["Sharp-shinned Hawk" nil 68]
-            ["Tropicbird" nil 112]
-            ["House Finch" nil nil]
-            ["Mourning Dove" nil nil]
-            ["Common Blackbird" "earthworms" nil]
-            ["Silvereye" "cherries" nil]]]
+          [["bird_species"
+            [{:field-name "name", :base-type :type/Text}
+             {:field-name "favorite_snack", :base-type :type/Text}
+             {:field-name "max_wingspan", :base-type :type/Integer}]
+            [["Sharp-shinned Hawk" nil 68]
+             ["Tropicbird" nil 112]
+             ["House Finch" nil nil]
+             ["Mourning Dove" nil nil]
+             ["Common Blackbird" "earthworms" nil]
+             ["Silvereye" "cherries" nil]]]]
           ;; do a full sync on the DB to get the correct semantic type info
           (sync/sync-database! (mt/db))
           (is (= #{{:name "_id", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type :type/PK}
@@ -668,14 +668,14 @@
   (mt/test-driver :mongo
     (testing "Negative values in versionArray are ignored (#29678)"
       (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                       "versionArray" [4 0 29 -100]})]
+                                                        "versionArray" [4 0 29 -100]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0 29]}
                (driver/dbms-version :mongo (mt/db))))))
 
     (testing "Any values after rubbish in versionArray are ignored"
       (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                       "versionArray" [4 0 "NaN" 29]})]
+                                                        "versionArray" [4 0 "NaN" 29]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))

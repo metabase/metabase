@@ -128,11 +128,8 @@
 ;; Customize the create table table to include the S3 location
 ;; TODO: Specify a unique location each time
 (defmethod sql.tx/create-table-sql :athena
-  [driver {:keys [database-name]} {:keys [table-name], :as tabledef}]
-  (let [field-definitions (cons
-                           {:field-name "id", :base-type :type/Integer, :semantic-type :type/PK}
-                           (:field-definitions tabledef))
-        fields            (->> field-definitions
+  [driver {:keys [database-name]} {:keys [table-name field-definitions], :as _tabledef}]
+  (let [fields            (->> field-definitions
                                (map (fn [{:keys [field-name base-type]}]
                                       (format "`%s` %s"
                                               (ddl.i/format-name driver field-name)

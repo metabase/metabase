@@ -241,10 +241,9 @@
 
 (defmethod create-table-sql :sql/test-extensions
   [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions table-comment]}]
-  (let [pk-field-name (format-and-quote-field-name driver (pk-field-name driver))]
-    (format "CREATE TABLE %s (%s %s, %s, PRIMARY KEY (%s)) %s;"
+  (let [pk-field-name (->> field-definitions (filter :pk?) first :field-name (sql.u/quote-name driver :field))]
+    (format "CREATE TABLE %s (%s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
-            pk-field-name (pk-sql-type driver)
             (str/join
              ", "
              (for [field-def field-definitions]
@@ -272,9 +271,17 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod add-fk-sql :sql/test-extensions
-  [driver {:keys [database-name]} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
-  (let [quot            #(sql.u/quote-name driver %1 (ddl.i/format-name driver %2))
-        dest-table-name (name dest-table-name)]
+  [driver {:keys [database-name] :as dbdef} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
+  (let [quot               #(sql.u/quote-name driver %1 (ddl.i/format-name driver %2))
+        dest-table-name    (name dest-table-name)
+        dest-table-pk-name (->> dbdef
+                                :table-definitions
+                                (filter #(= (:table-name %) dest-table-name))
+                                first
+                                :field-definitions
+                                (filter :pk?)
+                                first
+                                :field-name)]
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that
@@ -285,7 +292,7 @@
               (quot :constraint fk-name))
             (quot :field field-name)
             (qualify-and-quote driver database-name dest-table-name)
-            (quot :field (pk-field-name driver)))))
+            (quot :field dest-table-pk-name))))
 
 (defmethod tx/count-with-template-tag-query :sql/test-extensions
   [driver table field _param-type]
