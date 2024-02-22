@@ -6,12 +6,12 @@ import type {
   UpdateApiKeyResponse,
   RegenerateApiKeyResponse,
 } from "metabase-types/api/admin";
-import { getListTag, providesList } from "metabase/redux/utils";
+import {
+  providesList,
+  API_KEY_TAG,
+  API_KEY_LIST_TAG,
+} from "metabase/redux/api/tags";
 import { Api } from "./api";
-
-const API_KEY_TAG = "apiKey" as const;
-const API_KEY_LIST_TAG = getListTag(API_KEY_TAG);
-export const API_KEY_TAG_TYPES = [API_KEY_TAG];
 
 const extendedApi = Api.injectEndpoints({
   endpoints: builder => ({
