@@ -31,7 +31,7 @@
 (set! *warn-on-reflection* true)
 
 
-(def ^:private session-cookie @#'mw.session/metabase-session-cookie)
+(def ^:private session-cookie mw.session/metabase-session-cookie)
 (def ^:private session-timeout-cookie @#'mw.session/metabase-session-timeout-cookie)
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")

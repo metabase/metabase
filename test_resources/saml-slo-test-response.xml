@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<samlp:LogoutResponse xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+                      xmlns="urn:oasis:names:tc:SAML:2.0:assertion"
+                      xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+                      Destination="http://localhost:3000/auth/sso/handle_slo"
+                      ID="ID_34f419f0-a7c4-4a93-9bc0-e53efc65bbb3"
+                      InResponseTo="id67c2efc8-c92d-4c65-8974-470953cb49dd"
+                      IssueInstant="2024-02-22T18:32:52.132Z"
+                      Version="2.0"
+                      >
+    <Issuer>http://localhost:9090/realms/master</Issuer>
+    <dsig:Signature xmlns:dsig="http://www.w3.org/2000/09/xmldsig#">
+        <dsig:SignedInfo>
+            <dsig:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+            <dsig:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
+            <dsig:Reference URI="#ID_34f419f0-a7c4-4a93-9bc0-e53efc65bbb3">
+                <dsig:Transforms>
+                    <dsig:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+                    <dsig:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+                </dsig:Transforms>
+                <dsig:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
+                <dsig:DigestValue>35Apmql7ucZdh7rVgwEwrmJQGDqqlHMiss2YV4q9Q5U=</dsig:DigestValue>
+            </dsig:Reference>
+        </dsig:SignedInfo>
+        <dsig:SignatureValue>oL0dRK4iXsRVFrW6lASYb2/ra4/0JMbhVEBQn9aVQHT+eBeSgpmYskEk6oeK4G1+dGFsSPgP8Sa6YAm8YyMyG2oqjrnCRAicJcJ0+tQIyztpK9lUNZeFkrig/tcVaRWu2Y1vyBAUeZRdhPH3HZN3AjDovJTL5ziwI+NkukGtt9xa4F+d/qHNbfM7IIe5mwHj2IWweeulIz8IxvsgiFAu4vWek+b75ykiNiLuJfEvJf+Gdt2IQHD1O8JftMI/RXK4mnjA8VHVYHsoTnWjhFLLCsIsVhAPoZeegp6e05ozPEt+MCCLQ76QF5HtjeeX6UjbIP7ADbohFOnO9tw7Vv9u/w==</dsig:SignatureValue>
+        <dsig:KeyInfo>
+            <dsig:X509Data>
+                <dsig:X509Certificate>MIICmzCCAYMCBgGNix9hpjANBgkqhkiG9w0BAQsFADARMQ8wDQYDVQQDDAZtYXN0ZXIwHhcNMjQwMjA4MjM0NjQ2WhcNMzQwMjA4MjM0ODI2WjARMQ8wDQYDVQQDDAZtYXN0ZXIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCnd6BZgurzPoaBJPmbF/PqZynVsJ8srpdvIN/VKolZTavAl+vYq9L+a6NI21pV9K5rw8EwSm9uO+4tADoOP0av+Ku1r9DsuAY/NsOSdN0kRN32k3ADtaYsx4yIBQaNB6MLojM8XC6ajUvJj49zSoJhr7CGx1NF0zNdn9xzy+VmMANl+OVJ3Ek2QBmvsoO2sN3+iekZ92Te/q4iOFSzcG7nEN6APnH41oXsY2CWp8pqhOkntFKsYKJq8igY19AiZvmOdZ4X9YNoRoSlXppX6G1RV3ns0Ko6JsBjFgyMf46WMNPQyKubPictTbJ5mYoWqVAG34rR5WGV+fa1TxbB4cN3AgMBAAEwDQYJKoZIhvcNAQELBQADggEBAHfHB9nvMfvJuDFX6quGzEFKBvYISDI6PQoUsQXtKJTh15OoT/CoVk3oF2mIqphAv1robCFsujC/QeUKQvrSuDVq1j6Bd0dtvEL3baq33UQq1eDsF94aK/SBG7JFPC2tHr2WDhK57NQM0O4NMGvXA2Leq1f9KCoyWv1pxp9VDT5Gl7meKwWcTvHHyV4G1i0YPax/8cXEkPSOtK4ZRPOH2e3Vffa5pvDyCHCAMV3AUDiUc7u75A3ozSUtMFVuBn6PyV9O/LKPTf45h1zGdgPDH8DyqJSyr5Q2viB8AqjIg1rdSX9++QoDOjP4PxOaZ2waYbwEHI6H3qzw3yNgou2KOQM=</dsig:X509Certificate>
+            </dsig:X509Data>
+        </dsig:KeyInfo>
+    </dsig:Signature>
+    <samlp:Status>
+        <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success" />
+    </samlp:Status>
+</samlp:LogoutResponse>

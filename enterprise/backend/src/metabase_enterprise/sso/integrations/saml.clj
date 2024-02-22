@@ -27,7 +27,7 @@
 
   4. Identity provider logs the user out + redirects client back to Metabase with a LogoutResponse.
 
-  5. Metabase clears the user's session, responds to the client with a redirect to the home page."
+  5. Metabase checks for successful LogoutResponse, clears the user's session, and responds to the client with a redirect to the home page."
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.data.xml :as xml]
@@ -255,15 +255,8 @@
   [{:keys [cookies params] :as req}]
   (let [xml-str (base64-decode (:SAMLResponse params))
         success? (slo-success? xml-str)]
-    (if-let [metabase-session-id (and success?
-                                      (get-in cookies [mw.session/metabase-session-cookie :value]))]
-      (let [{:keys [email sso_source]} (t2/query-one
-                                        {:select [:user.email :user.sso_source]
-                                         :from   [[:core_user :user]]
-                                         :join   [[:core_session :session] [:= :user.id :session.user_id]]
-                                         :where  [:= :session.id metabase-session-id]})]
-        (t2/delete! :model/Session :id metabase-session-id)
-        (mw.session/clear-session-cookie
-         (response/redirect (urls/site-url))))
+    (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
+      (do (t2/delete! :model/Session :id metabase-session-id)
+          (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
       {:status 500 :body "SAML logout failed."})))
 
