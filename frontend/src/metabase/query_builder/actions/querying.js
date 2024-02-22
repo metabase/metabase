@@ -177,14 +177,10 @@ export const queryCompleted = (question, queryResults) => {
     const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      const { isNative } = Lib.queryDisplayInfo(question.query());
-
-      if (isNative) {
-        question = question.syncColumnsAndSettings(
-          originalQuestion,
-          queryResults[0],
-        );
-      }
+      question = question.syncColumnsAndSettings(
+        originalQuestion,
+        queryResults[0],
+      );
 
       question = question.maybeResetDisplay(
         data,

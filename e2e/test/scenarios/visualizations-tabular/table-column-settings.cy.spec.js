@@ -600,8 +600,8 @@ describe("scenarios > visualizations > table column settings", () => {
       openSettings();
 
       const testData = {
-        column: "Products → Ean",
-        columnName: "Products → Ean",
+        column: "Products → Category",
+        columnName: "Products → Category",
         table: "test question",
       };
 
