@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
+import EditableText from "metabase/core/components/EditableText";
 import {
   revertToRevision,
   updateDashboard,
@@ -22,7 +23,6 @@ import {
   HistoryHeader,
   ContentSection,
   DescriptionHeader,
-  StyledEditableText,
 } from "./DashboardInfoSidebar.styled";
 
 type DashboardAttributeType = string | number | null | boolean;
@@ -76,7 +76,7 @@ export function DashboardInfoSidebar({
     <DashboardInfoSidebarRoot data-testid="sidebar-right">
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
-        <StyledEditableText
+        <EditableText
           initialValue={dashboard.description}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}

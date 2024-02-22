@@ -6,7 +6,6 @@ import { color } from "metabase/lib/colors";
 
 export interface TextAreaRootProps {
   readOnly?: boolean;
-  loading?: boolean;
   hasError?: boolean;
   fullWidth?: boolean;
 }
@@ -47,37 +46,5 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
     props.fullWidth &&
     css`
       width: 100%;
-    `}
-
-  ${props =>
-    props.loading &&
-    css`
-      --border-size: 2px;
-      --border-angle: 0turn;
-      background-image: conic-gradient(from var(--border-angle), #fff, #fff),
-        conic-gradient(
-          from var(--border-angle),
-          transparent 5%,
-          ${color("brand")},
-          ${color("brand")}
-        );
-      background-size: calc(100% - (var(--border-size) * 2))
-          calc(100% - (var(--border-size) * 2)),
-        cover;
-      background-position: center center;
-      background-repeat: no-repeat;
-
-      animation: bg-spin 2s linear infinite;
-      @keyframes bg-spin {
-        to {
-          --border-angle: 1turn;
-        }
-      }
-
-      @property --border-angle {
-        syntax: "<angle>";
-        inherits: true;
-        initial-value: 0turn;
-      }
     `}
 `;
