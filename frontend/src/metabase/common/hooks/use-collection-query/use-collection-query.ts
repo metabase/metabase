@@ -1,5 +1,6 @@
 import Collections from "metabase/entities/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
+
 import type {
   UseEntityQueryProps,
   UseEntityQueryResult,

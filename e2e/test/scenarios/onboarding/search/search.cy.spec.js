@@ -1,3 +1,12 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ADMIN_USER_ID,
+  NORMAL_USER_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   createAction,
   describeEE,
@@ -15,15 +24,6 @@ import {
   assertIsEllipsified,
   main,
 } from "e2e/support/helpers";
-import {
-  ADMIN_USER_ID,
-  NORMAL_USER_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
 const typeFilters = [
@@ -197,13 +197,13 @@ describe("scenarios > search", () => {
         description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
 
         Lorem ipsum dolor sit amet.
-        
+
         ----
-        
+
         ## Heading 1
-        
+
         This is a [link](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg).
-        
+
         Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. `,
       }).then(() => {
         cy.signInAsNormalUser();
@@ -220,6 +220,33 @@ describe("scenarios > search", () => {
       cy.findByTestId("result-description")
         .findByRole("img")
         .should("not.exist");
+    });
+
+    it("should not overflow container if results contain descriptions with large unborken strings", () => {
+      cy.createQuestion({
+        name: "Description Test",
+        query: { "source-table": ORDERS_ID },
+        description: `testingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting`,
+      }).then(() => {
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        getSearchBar().type("Test");
+      });
+
+      const resultDescription = cy.findByTestId("result-description");
+      const parentContainer = cy.findByTestId(
+        "search-results-floating-container",
+      );
+
+      parentContainer.invoke("outerWidth").then(parentWidth => {
+        resultDescription
+          .invoke("outerWidth")
+          .should(
+            "be.lessThan",
+            parentWidth,
+            "Result description width should not exceed parent container width",
+          );
+      });
     });
 
     it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {

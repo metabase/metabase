@@ -1,13 +1,10 @@
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createSampleDatabase,
-  SAMPLE_DB_ID,
-} from "metabase-types/api/mocks/presets";
+
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import {
@@ -15,7 +12,13 @@ import {
   createQuery,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
+import {
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+
 import { createMockNotebookStep } from "../../test-utils";
+
 import { DataStep } from "./DataStep";
 
 const createQueryWithFields = (columnNames: string[]) => {

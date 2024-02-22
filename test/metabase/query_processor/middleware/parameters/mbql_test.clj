@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
@@ -204,57 +205,63 @@
 ;; ends up generating a SQL `*or*` clause
 (deftest ^:parallel multiple-values-test
   (testing "Make sure that *multiple* values work."
-    (let [query (mt/query venues
-                  {:query      {:aggregation [[:count]]}
-                   :parameters [{:name   "price"
-                                 :type   :category
-                                 :target $price
-                                 :value  [3 4]}]})]
-      (mt/test-drivers (params-test-drivers)
+    (mt/test-drivers (params-test-drivers)
+      (let [query (mt/query venues
+                    {:query      {:aggregation [[:count]]}
+                     :parameters [{:name   "price"
+                                   :type   :category
+                                   :target $price
+                                   :value  [3 4]}]})]
         (is (= [[19]]
                (mt/formatted-rows [int]
-                 (qp/process-query query)))))
+                 (qp/process-query query))))))))
 
-      ;; now let's make sure the correct query is actually being generated for the same thing above... (NOTE: We're
-      ;; only testing this with H2 because the SQL generated is simply too different between various SQL drivers. we
-      ;; know the features are still working correctly because we're actually checking that we get the right result
-      ;; from running the query above these tests are more of a sanity check to make sure the SQL generated is sane.)
-      (testing "Make sure correct query is generated"
-        (is (= {:query  (str "SELECT COUNT(*) AS \"count\" "
-                             "FROM \"PUBLIC\".\"VENUES\" "
-                             "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
-                :params nil}
-               (qp/compile
-                (mt/query venues
-                  {:query      {:aggregation [[:count]]}
-                   :parameters [{:name   "price"
-                                 :type   :category
-                                 :target $price
-                                 :value  [3 4]}]})))))))
+(deftest ^:parallel multiple-values-test-2
+  (testing "Make sure that *multiple* values work."
+    ;; now let's make sure the correct query is actually being generated for the same thing above... (NOTE: We're
+    ;; only testing this with H2 because the SQL generated is simply too different between various SQL drivers. we
+    ;; know the features are still working correctly because we're actually checking that we get the right result
+    ;; from running the query above these tests are more of a sanity check to make sure the SQL generated is sane.)
+    (testing "Make sure correct query is generated"
+      (is (= {:query  (str "SELECT COUNT(*) AS \"count\" "
+                           "FROM \"PUBLIC\".\"VENUES\" "
+                           "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
+              :params nil}
+             (qp.compile/compile
+              (mt/query venues
+                {:query      {:aggregation [[:count]]}
+                 :parameters [{:name   "price"
+                               :type   :category
+                               :target $price
+                               :value  [3 4]}]})))))))
+
+(deftest ^:parallel multiple-values-test-3
   (testing "Make sure multiple values with operators works"
-    (let [query (mt/query venues
-                  {:query      {:aggregation [[:count]]}
-                   :parameters [{:name   "price"
-                                 :type   :number/between
-                                 :target $price
-                                 :value  [3 4]}]})]
-      (mt/test-drivers (params-test-drivers)
+    (mt/test-drivers (params-test-drivers)
+      (let [query (mt/query venues
+                    {:query      {:aggregation [[:count]]}
+                     :parameters [{:name   "price"
+                                   :type   :number/between
+                                   :target $price
+                                   :value  [3 4]}]})]
         (is (= [[19]]
                (mt/formatted-rows [int]
-                 (qp/process-query query)))))
+                 (qp/process-query query))))))))
 
-      (testing "Make sure correct query is generated"
-        (is (= {:query  (str "SELECT COUNT(*) AS \"count\" "
-                             "FROM \"PUBLIC\".\"VENUES\" "
-                             "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 3 AND 4")
-                :params nil}
-               (qp/compile
-                (mt/query venues
-                  {:query      {:aggregation [[:count]]}
-                   :parameters [{:name   "price"
-                                 :type   :number/between
-                                 :target $price
-                                 :value  [3 4]}]}))))))))
+(deftest ^:parallel multiple-values-test-4
+  (testing "Make sure multiple values with operators works"
+    (testing "Make sure correct query is generated"
+      (is (= {:query  (str "SELECT COUNT(*) AS \"count\" "
+                           "FROM \"PUBLIC\".\"VENUES\" "
+                           "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 3 AND 4")
+              :params nil}
+             (qp.compile/compile
+              (mt/query venues
+                {:query      {:aggregation [[:count]]}
+                 :parameters [{:name   "price"
+                               :type   :number/between
+                               :target $price
+                               :value  [3 4]}]})))))))
 
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
@@ -268,7 +275,7 @@
                    #t "2014-07-01T00:00Z[UTC]"
                    #t "2015-06-01T00:00Z[UTC]"
                    #t "2015-07-01T00:00Z[UTC]"]}
-         (qp/compile
+         (qp.compile/compile
            (mt/query checkins
              {:query      {:aggregation [[:count]]}
               :parameters [{:name   "date"

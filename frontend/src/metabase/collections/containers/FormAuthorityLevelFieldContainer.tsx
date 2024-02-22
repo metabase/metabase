@@ -2,15 +2,12 @@ import { useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import { canManageCollectionAuthorityLevel } from "metabase/collections/utils";
+import Collections from "metabase/entities/collections";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import Collections from "metabase/entities/collections";
-import { canManageCollectionAuthorityLevel } from "metabase/collections/utils";
-
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
 type CollectionsMap = Partial<Record<Collection["id"], Collection>>;
 

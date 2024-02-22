@@ -1,38 +1,39 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { bindActionCreators } from "@reduxjs/toolkit";
+import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component, createRef } from "react";
 import { connect } from "react-redux";
+import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
+import { AdminLayout } from "metabase/components/AdminLayout";
+import SaveStatus from "metabase/components/SaveStatus";
+import { NotFound } from "metabase/containers/ErrorPages";
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import { AdminLayout } from "metabase/components/AdminLayout";
-import { NotFound } from "metabase/containers/ErrorPages";
-
-import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
-import ErrorBoundary from "metabase/ErrorBoundary";
 
 import {
-  getSettings,
-  getSettingValues,
-  getDerivedSettingValues,
-  getSections,
   getActiveSection,
   getActiveSectionName,
+  getDerivedSettingValues,
   getNewVersionAvailable,
+  getSections,
+  getSettings,
+  getSettingValues,
 } from "../../../selectors";
 import {
   initializeSettings,
-  updateSetting,
   reloadSettings,
+  updateSetting,
 } from "../../../settings";
-import { SettingsSection } from "./SettingsSection";
+
 import { NewVersionIndicator } from "./SettingsEditor.styled";
+import { SettingsSection } from "./SettingsSection";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -120,7 +121,13 @@ class SettingsEditor extends Component {
         }
       }
 
-      this.saveStatusRef.current.setSaved();
+      if (setting.key === "application-colors") {
+        this.saveStatusRef.current.setSaved(
+          t`Changes saved. Please refresh the page to see them`,
+        );
+      } else {
+        this.saveStatusRef.current.setSaved();
+      }
 
       const value = prepareAnalyticsValue(setting);
 
@@ -181,6 +188,7 @@ class SettingsEditor extends Component {
     }
     return (
       <SettingsSection
+        tabs={activeSection.tabs}
         settingElements={activeSection.settings}
         settingValues={settingValues}
         derivedSettingValues={derivedSettingValues}
@@ -249,10 +257,8 @@ class SettingsEditor extends Component {
 
   render() {
     return (
-      <AdminLayout
-        saveStatusRef={this.saveStatusRef}
-        sidebar={this.renderSettingsSections()}
-      >
+      <AdminLayout sidebar={this.renderSettingsSections()}>
+        <SaveStatus ref={this.saveStatusRef} />
         <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>
       </AdminLayout>
     );

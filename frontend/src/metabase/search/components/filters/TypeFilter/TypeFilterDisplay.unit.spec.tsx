@@ -1,6 +1,7 @@
 import { render, screen } from "__support__/ui";
 import type { TypeFilterProps } from "metabase/search/types";
 import type { EnabledSearchModelType } from "metabase-types/api";
+
 import { TypeFilterDisplay } from "./TypeFilterDisplay";
 
 const MODEL_TYPE_DISPLAY_NAMES: Record<EnabledSearchModelType, string> = {

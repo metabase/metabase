@@ -1,16 +1,15 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { createRef, Component } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import cx from "classnames";
-import { isSyncCompleted } from "metabase/lib/syncing";
-
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import FormMessage from "metabase/components/form/FormMessage";
 import Modal from "metabase/components/Modal";
+import FormMessage from "metabase/components/form/FormMessage";
 import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import {

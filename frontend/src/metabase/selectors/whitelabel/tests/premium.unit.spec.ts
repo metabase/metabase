@@ -5,6 +5,7 @@ import {
   getShowMetabaseLinks,
   getWhiteLabeledLoadingMessage,
 } from "..";
+
 import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
 

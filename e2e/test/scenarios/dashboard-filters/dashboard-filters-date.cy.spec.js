@@ -1,4 +1,8 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   clearFilterWidget,
@@ -14,12 +18,9 @@ import {
   resetFilterWidgetToDefault,
   sidebar,
 } from "e2e/support/helpers";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
+
 import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
 
 describe("scenarios > dashboard > filters > date", () => {
@@ -199,7 +200,7 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("janvier").click(); // "January"
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mettre à jour le filtre").click(); // "Update filter"
+    cy.findByText("Ajouter un filtre").click(); // "Add filter"
 
     cy.url().should(
       "match",
@@ -221,12 +222,12 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
       DateFilter.setTime({ hours: 11, minutes: 0 });
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Relative Date":

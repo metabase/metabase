@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+
 import { Group, Text } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 interface FilterColumnNameProps {
   query: Lib.Query;

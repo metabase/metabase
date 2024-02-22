@@ -3,8 +3,8 @@ import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import Button from "metabase/core/components/Button";
-import Input from "metabase/core/components/Input";
+
+import { coerceCollectionId } from "metabase/collections/utils";
 import ModalContent from "metabase/components/ModalContent";
 import type {
   DataPickerDataType,
@@ -14,10 +14,17 @@ import DataPicker, {
   useDataPicker,
   useDataPickerValue,
 } from "metabase/containers/DataPicker";
-import Questions from "metabase/entities/questions";
+import Button from "metabase/core/components/Button";
+import Input from "metabase/core/components/Input";
 import Collections from "metabase/entities/collections";
+import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import { coerceCollectionId } from "metabase/collections/utils";
+import type Question from "metabase-lib/Question";
+import {
+  getCollectionVirtualSchemaId,
+  getQuestionIdFromVirtualTableId,
+  getQuestionVirtualTableId,
+} from "metabase-lib/metadata/utils/saved-questions";
 import type {
   CardId,
   Collection,
@@ -25,18 +32,13 @@ import type {
   ValuesSourceConfig,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
-import {
-  getCollectionVirtualSchemaId,
-  getQuestionIdFromVirtualTableId,
-  getQuestionVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
+
 import {
   DataPickerContainer,
   ModalBodyWithSearch,
   SearchInputContainer,
 } from "./ValuesSourceCardModal.styled";
+import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 
 const DATA_PICKER_FILTERS = {
   types: (type: DataPickerDataType) =>

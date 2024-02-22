@@ -1,17 +1,14 @@
 import { t } from "ttag";
 
 import EditableText from "metabase/core/components/EditableText";
-
-import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
-
-import * as Urls from "metabase/lib/urls";
-
 import Link from "metabase/core/components/Link";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-
 import type Question from "metabase-lib/Question";
 
 import ModelCacheManagementSection from "../ModelCacheManagementSection";
+
 import {
   Root,
   ContentSection,

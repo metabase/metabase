@@ -1,3 +1,12 @@
+import { createMockMetadata } from "__support__/metadata";
+import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import Question from "metabase-lib/Question";
+import type {
+  ParameterTarget,
+  ParameterTextTarget,
+  ParameterVariableTarget,
+  QuestionDashboardCard,
+} from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
@@ -8,16 +17,8 @@ import {
   createMockStructuredDatasetQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
-import type {
-  ParameterTarget,
-  ParameterTextTarget,
-  ParameterVariableTarget,
-  QuestionDashboardCard,
-} from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
-import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import Question from "metabase-lib/Question";
+
 import { getMappingOptionByTarget } from "./utils";
 
 describe("dashcard utils", () => {

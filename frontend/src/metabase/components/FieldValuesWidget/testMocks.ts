@@ -1,7 +1,5 @@
 import { createMockEntitiesState } from "__support__/store";
-
 import { getMetadata } from "metabase/selectors/metadata";
-
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,

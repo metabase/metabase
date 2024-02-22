@@ -1,7 +1,9 @@
 import dayjs from "dayjs";
-import * as Lib from "metabase-lib";
+
 import { isNotNull } from "metabase/lib/types";
 import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
+import * as Lib from "metabase-lib";
+
 import { OPERATOR_OPTIONS } from "./constants";
 import type { TimeValue } from "./types";
 

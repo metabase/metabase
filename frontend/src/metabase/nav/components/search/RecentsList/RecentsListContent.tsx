@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import type { RecentItem } from "metabase-types/api";
+
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import EmptyState from "metabase/components/EmptyState";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
@@ -9,7 +9,6 @@ import {
   SearchLoadingSpinner,
   EmptyStateContainer,
 } from "metabase/nav/components/search/SearchResults";
-
 import {
   ItemIcon,
   LoadingSection,
@@ -20,6 +19,8 @@ import {
 } from "metabase/search/components/SearchResult";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Group, Loader, Stack, Title } from "metabase/ui";
+import type { RecentItem } from "metabase-types/api";
+
 import { getItemName, getItemUrl, isItemActive } from "./util";
 
 type RecentsListContentProps = {

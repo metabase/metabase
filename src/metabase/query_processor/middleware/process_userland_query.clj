@@ -1,7 +1,10 @@
 (ns metabase.query-processor.middleware.process-userland-query
   "Middleware related to doing extra steps for queries that are ran via API endpoints (i.e., most of them -- as opposed
-  to queries ran internally e.g. as part of the sync process).
-  These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
+  to queries ran internally e.g. as part of the sync process). These include things like saving QueryExecutions and
+  adding query ViewLogs, storing exceptions and formatting the results.
+
+  ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
+  event -- see [[metabase.events.view-log]]."
   (:require
    [java-time.api :as t]
    [metabase.events :as events]
@@ -9,9 +12,11 @@
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -38,7 +43,7 @@
   (when-not (:cache_hit query-execution)
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
-    (log/warn (trs "Cannot save QueryExecution, missing :context"))
+    (log/warn "Cannot save QueryExecution, missing :context")
     (t2/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-query-execution!
@@ -68,7 +73,10 @@
     (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
-  (save-query-execution! (assoc query-execution :error (str message))))
+  (try
+    (save-query-execution! (assoc query-execution :error (str message)))
+    (catch Throwable e
+      (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -116,7 +124,7 @@
     database-id                                                                      :database
     query-type                                                                       :type
     :as                                                                              query}]
-  {:pre [(instance? (Class/forName "[B") query-hash)]}
+  {:pre [(bytes? query-hash)]}
   {:database_id       database-id
    :executor_id       executed-by
    :action_id         action-id
@@ -133,26 +141,34 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
-(defn process-userland-query
-  "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
-  etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
-  [qp]
-  (fn [query rff {:keys [raisef], :as context}]
-    (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
-          execution-info (query-execution-info query)]
-      (letfn [(rff* [metadata]
-                (add-and-save-execution-info-xform! execution-info (rff metadata)))
-              (raisef* [^Throwable e context]
-                (save-failed-query-execution!
-                  execution-info
-                  (or
-                    (some-> e (.getCause) (.getMessage))
-                    (.getMessage e)))
-                (raisef (ex-info (.getMessage e)
-                          {:query-execution execution-info}
-                          e)
-                        context))]
-        (try
-          (qp query rff* (assoc context :raisef raisef*))
-          (catch Throwable e
-            (raisef* e context)))))))
+(mu/defn process-userland-query-middleware :- ::qp.schema/qp
+  "Around middleware.
+
+  Userland queries only:
+
+  1. Record a `QueryExecution` entry in the application database when this query is finished running
+
+  2. Record a ViewLog entry when running a query for a Card
+
+  3. Add extra info like `running_time` and `started_at` to the results"
+  [qp :- ::qp.schema/qp]
+  (mu/fn [query :- ::qp.schema/query
+          rff   :- ::qp.schema/rff]
+    (if-not (get-in query [:middleware :userland-query?])
+      (qp query rff)
+      (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
+            execution-info (query-execution-info query)]
+        (letfn [(rff* [metadata]
+                  (let [result (rff metadata)]
+                    (add-and-save-execution-info-xform! execution-info result)))]
+          (try
+            (qp query rff*)
+            (catch Throwable e
+              (save-failed-query-execution!
+               execution-info
+               (or
+                (some-> e ex-cause ex-message)
+                (ex-message e)))
+              (throw (ex-info (ex-message e)
+                              {:query-execution execution-info}
+                              e)))))))))

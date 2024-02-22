@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
-import { t } from "ttag";
 import cx from "classnames";
+import { t } from "ttag";
+
 import Radio from "metabase/core/components/Radio";
 import { formatNumber } from "metabase/lib/formatting";
 import LimitInput from "metabase/query_builder/components/LimitInput";

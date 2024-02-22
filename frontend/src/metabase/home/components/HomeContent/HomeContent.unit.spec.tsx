@@ -1,3 +1,14 @@
+import {
+  setupDatabaseCandidatesEndpoint,
+  setupDatabasesEndpoints,
+  setupPopularItemsEndpoints,
+  setupRecentViewsEndpoints,
+} from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import type {
   Database,
   PopularItem,
@@ -14,17 +25,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
-import {
-  setupDatabaseCandidatesEndpoint,
-  setupDatabasesEndpoints,
-  setupPopularItemsEndpoints,
-  setupRecentViewsEndpoints,
-} from "__support__/server-mocks";
+
 import { HomeContent } from "./HomeContent";
 
 interface SetupOpts {
@@ -33,6 +34,7 @@ interface SetupOpts {
   recentItems?: RecentItem[];
   popularItems?: PopularItem[];
   isXrayEnabled?: boolean;
+  hasEmbeddingHomepageFlag?: boolean;
 }
 
 const setup = async ({
@@ -41,6 +43,7 @@ const setup = async ({
   recentItems = [],
   popularItems = [],
   isXrayEnabled = true,
+  hasEmbeddingHomepageFlag = false,
 }: SetupOpts) => {
   const state = createMockState({
     currentUser: user,
@@ -48,6 +51,10 @@ const setup = async ({
       "enable-xrays": isXrayEnabled,
     }),
   });
+
+  if (hasEmbeddingHomepageFlag) {
+    localStorage.setItem("showEmbedHomepage", "true");
+  }
 
   setupDatabasesEndpoints(databases);
   setupRecentViewsEndpoints(recentItems);
@@ -63,6 +70,7 @@ describe("HomeContent", () => {
   beforeEach(() => {
     jest.useFakeTimers({ advanceTimers: true });
     jest.setSystemTime(new Date(2020, 0, 10));
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -172,5 +180,65 @@ describe("HomeContent", () => {
     expect(
       screen.queryByText(/Here are some explorations/),
     ).not.toBeInTheDocument();
+  });
+
+  describe("embed-focused homepage", () => {
+    it("should show it for admins if the localStorage flag is set", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        hasEmbeddingHomepageFlag: true,
+      });
+
+      expect(
+        screen.getByText("Get started with Embedding Metabase in your app"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show it for non-admins even if the flag is set", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: false }),
+        hasEmbeddingHomepageFlag: true,
+      });
+
+      expect(
+        screen.queryByText("Get started with Embedding Metabase in your app"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should be possible to dismiss it", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        hasEmbeddingHomepageFlag: true,
+      });
+
+      screen.getByRole("button", { name: "close icon" }).click();
+
+      expect(
+        screen.queryByText("Get started with Embedding Metabase in your app"),
+      ).not.toBeInTheDocument();
+
+      expect(localStorage.getItem("showEmbedHomepage")).toBeNull();
+    });
+
+    it("should not show it if the user is not admin", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: false }),
+        hasEmbeddingHomepageFlag: true,
+      });
+
+      expect(
+        screen.queryByText("Get started with Embedding Metabase in your app"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show it if the localStorage flag is not set", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      expect(
+        screen.queryByText("Get started with Embedding Metabase in your app"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -1,27 +1,30 @@
 import userEvent from "@testing-library/user-event";
+
+import {
+  setupFieldsValuesEndpoints,
+  setupFieldSearchValuesEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import {
-  setupFieldsValuesEndpoints,
-  setupFieldSearchValuesEndpoints,
-} from "__support__/server-mocks";
 import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
   PEOPLE,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithStringFilter,
   findStringColumn,
   storeInitialState,
 } from "../test-utils";
+
 import { StringFilterPicker } from "./StringFilterPicker";
 
 type SetupOpts = {

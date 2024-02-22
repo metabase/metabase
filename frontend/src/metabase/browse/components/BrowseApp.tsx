@@ -2,20 +2,21 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import type { SearchResult } from "metabase-types/api";
+
 import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
+import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import type { FlexProps } from "metabase/ui";
 import { Flex, Text } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
-import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import type { ActualModelFilters } from "../utils";
-import { isValidBrowseTab, type BrowseTabId, filterModels } from "../utils";
+import type { ActualModelFilters, BrowseTabId } from "../utils";
+import { filterModels, isValidBrowseTab } from "../utils";
+
 import {
   BrowseAppRoot,
   BrowseContainer,
@@ -49,9 +50,7 @@ export const BrowseApp = ({
   const databasesResult = useDatabaseListQuery();
 
   useEffect(() => {
-    if (isValidBrowseTab(tab)) {
-      localStorage.setItem("defaultBrowseTab", tab);
-    }
+    localStorage.setItem("defaultBrowseTab", tab);
   }, [tab]);
 
   const getInitialModelFilters = () => {
@@ -97,10 +96,6 @@ export const BrowseApp = ({
     },
     [setActualModelFilters],
   );
-
-  if (!isValidBrowseTab(tab)) {
-    return <LoadingAndErrorWrapper error />;
-  }
 
   return (
     <BrowseAppRoot data-testid="browse-app">
@@ -174,7 +169,7 @@ const BrowseTabContent = ({
 };
 
 const LearnAboutDataLink = () => (
-  <Flex ml="auto" justify="right" style={{ flexBasis: "40.0%" }}>
+  <Flex ml="auto" justify="right" align="center" style={{ flexBasis: "40.0%" }}>
     <Link to="reference">
       <BrowseHeaderIconContainer>
         <LearnAboutDataIcon size={14} name="reference" />
@@ -187,5 +182,5 @@ const LearnAboutDataLink = () => (
 );
 
 const BrowseSection = (props: FlexProps) => (
-  <Flex maw="64rem" m="0 auto" w="100%" align="center" {...props} />
+  <Flex maw="64rem" m="0 auto" w="100%" {...props} />
 );

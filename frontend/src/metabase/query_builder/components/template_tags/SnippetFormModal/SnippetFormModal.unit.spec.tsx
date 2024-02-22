@@ -1,5 +1,5 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
@@ -7,7 +7,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-
 import type { NativeQuerySnippet } from "metabase-types/api";
 import {
   createMockCollection,

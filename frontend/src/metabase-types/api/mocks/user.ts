@@ -20,6 +20,7 @@ export const createMockUser = (opts?: Partial<User>): User => ({
   date_joined: new Date().toISOString(),
   first_login: new Date().toISOString(),
   last_login: new Date().toISOString(),
+  sso_source: null,
   ...opts,
 });
 

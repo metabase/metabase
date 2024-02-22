@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models.permissions :as perms]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -19,13 +19,13 @@
                          "FROM \"PUBLIC\".\"VENUES\" "
                          "LIMIT 1048575")
             :params nil}
-           (qp/compile (mt/mbql-query venues))))))
+           (qp.compile/compile (mt/mbql-query venues))))))
 
 (deftest ^:parallel already-native-test
   (testing "If query is already native, `compile` should still do stuff like parsing parameters"
     (is (= {:query  "SELECT * FROM VENUES WHERE price = 3;"
             :params []}
-           (qp/compile
+           (qp.compile/compile
             {:database   (mt/id)
              :type       :native
              :native     {:query         "SELECT * FROM VENUES [[WHERE price = {{price}}]];"
@@ -36,7 +36,7 @@
     (let [long-query "SELECT CHECKINS.* FROM CHECKINS LEFT JOIN CHECKINS C2 ON 1=1 LEFT JOIN CHECKINS C3 ON 1=1"]
       (u/with-timeout 2000
         (is (= {:query long-query}
-               (qp/compile
+               (qp.compile/compile
                 {:database (mt/id)
                  :type     :native
                  :native   {:query long-query}})))))))
@@ -50,7 +50,7 @@
             api/*current-user-permissions-set* (delay (cond-> #{}
                                                         object-perms? (conj (perms/data-perms-path database-id "PUBLIC" source-table-id))
                                                         native-perms? (conj (perms/adhoc-native-query-path database-id))))]
-    (qp/compile query)))
+    (qp.compile/compile query)))
 
 (deftest ^:parallel permissions-test
   (testing "If user permissions are bound, we should still NOT do permissions checking when you call `compile`"

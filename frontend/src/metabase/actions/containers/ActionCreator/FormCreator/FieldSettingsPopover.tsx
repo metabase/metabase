@@ -2,21 +2,18 @@ import type { ChangeEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { getInputTypes } from "metabase/actions/constants";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { getInputTypes } from "metabase/actions/constants";
-
 import type {
   FieldSettings,
   FieldType,
   InputSettingType,
 } from "metabase-types/api";
 
-import { getDefaultValueInputType } from "./utils";
 import {
   SettingsTriggerIcon,
   ToggleContainer,
@@ -25,6 +22,7 @@ import {
   RequiredToggleLabel,
   Divider,
 } from "./FieldSettingsPopover.styled";
+import { getDefaultValueInputType } from "./utils";
 
 export interface FieldSettingsPopoverProps {
   fieldSettings: FieldSettings;

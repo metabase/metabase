@@ -1,7 +1,7 @@
 import type { HTMLAttributes, Key, ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
-import type { RadioColorScheme, RadioVariant } from "./types";
+
 import {
   RadioButton,
   RadioContainerBubble,
@@ -14,6 +14,7 @@ import {
   RadioGroupBubble,
   RadioGroupNormal,
 } from "./Radio.styled";
+import type { RadioColorScheme, RadioVariant } from "./types";
 
 const VARIANTS = {
   normal: {

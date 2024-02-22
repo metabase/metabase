@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
 import { alpha, color, darken, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";

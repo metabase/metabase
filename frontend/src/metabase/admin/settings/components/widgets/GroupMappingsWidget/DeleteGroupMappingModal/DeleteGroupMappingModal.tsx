@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
-import { ModalFooter } from "metabase/components/ModalContent";
-import Radio from "metabase/core/components/Radio";
-import Button from "metabase/core/components/Button";
-
 import type {
   DeleteMappingModalValueType,
   GroupIds,
 } from "metabase/admin/types";
+import Modal from "metabase/components/Modal";
+import { ModalFooter } from "metabase/components/ModalContent";
+import Button from "metabase/core/components/Button";
+import Radio from "metabase/core/components/Radio";
+
 import {
   ModalHeader,
   ModalSubtitle,

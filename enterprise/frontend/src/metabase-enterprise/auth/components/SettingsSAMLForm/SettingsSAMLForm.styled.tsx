@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 
 export interface SAMLFormSectionProps {
@@ -22,7 +23,7 @@ export const SAMLFormSection = styled.div<SAMLFormSectionProps>`
 
 export const SAMLFormCaption = styled.div`
   color: ${color("text-medium")};
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
 `;
 
 export const SAMLFormFooter = styled.div`

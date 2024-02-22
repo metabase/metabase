@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 const { execSync } = require("child_process");
 
-const path = require("path");
-const glob = require("glob");
 const chalk = require("chalk");
+const glob = require("glob");
+const path = require("path");
 
 const E2E_FILE_EXTENSION = /\.cy\.spec\.(js|ts)$/;
 const E2E_HOME = "e2e/test/";
@@ -36,7 +36,7 @@ function validateAllFiles() {
 
 function getAllE2EFiles() {
   // Will match all files in the scenarios dir, except the ones in helpers and shared directories
-  const PATTERN = `${E2E_HOME}*/{*.js,!(helpers|shared)/*.js}`;
+  const PATTERN = `${E2E_HOME}*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}`;
 
   return glob.sync(PATTERN);
 }

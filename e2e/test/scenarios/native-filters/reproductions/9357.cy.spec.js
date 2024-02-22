@@ -1,4 +1,5 @@
 import { restore, openNativeEditor } from "e2e/support/helpers";
+
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
 describe("issue 9357", () => {

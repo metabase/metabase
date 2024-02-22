@@ -1,38 +1,19 @@
+import type { Location, LocationDescriptor } from "history";
 import type { MouseEvent, ReactNode } from "react";
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import type { Location, LocationDescriptor } from "history";
 
-import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
-
-import { getIsNavbarOpen } from "metabase/selectors/app";
-
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import ActionButton from "metabase/components/ActionButton";
+import EntityMenu from "metabase/components/EntityMenu";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
-import Button from "metabase/core/components/Button";
-import { Icon, Menu, Tooltip } from "metabase/ui";
-import EntityMenu from "metabase/components/EntityMenu";
-
-import Bookmark from "metabase/entities/bookmarks";
-
-import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-
-import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
-import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
-import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
-import { getPulseFormInput } from "metabase/pulse/selectors";
-import { fetchPulseFormInput } from "metabase/pulse/actions";
-import {
-  getIsBookmarked,
-  getIsShowDashboardInfoSidebar,
-  getMissingRequiredParameters,
-} from "metabase/dashboard/selectors";
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link/Link";
 import type {
   AddSectionOpts,
   NewDashCardOpts,
@@ -42,18 +23,30 @@ import {
   addSectionToDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
-
+import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
+import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
+import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
+import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
+import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { layoutOptions } from "metabase/dashboard/sections";
+import {
+  getIsBookmarked,
+  getIsShowDashboardInfoSidebar,
+  getMissingRequiredParameters,
+} from "metabase/dashboard/selectors";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
-import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
-import { getSetting } from "metabase/selectors/settings";
-import { dismissAllUndo } from "metabase/redux/undo";
-
-import Link from "metabase/core/components/Link/Link";
+import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections/collections";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-
+import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
+import { fetchPulseFormInput } from "metabase/pulse/actions";
+import { getPulseFormInput } from "metabase/pulse/selectors";
+import { dismissAllUndo } from "metabase/redux/undo";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getSetting } from "metabase/selectors/settings";
+import { Icon, Menu, Tooltip } from "metabase/ui";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import type {
   Bookmark as IBookmark,
   DashboardId,
@@ -73,16 +66,15 @@ import type {
   State,
 } from "metabase-types/store";
 
-import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 import { SIDEBAR_NAME } from "../../constants";
-import { DashboardHeaderComponent } from "./DashboardHeaderView";
-import { SectionLayoutPreview } from "./SectionLayoutPreview";
+import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
+
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
 } from "./DashboardHeader.styled";
+import { DashboardHeaderComponent } from "./DashboardHeaderView";
+import { SectionLayoutPreview } from "./SectionLayoutPreview";
 
 interface OwnProps {
   dashboardId: DashboardId;
@@ -361,7 +353,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       closeSidebar,
       databases,
       collection,
-      setDashboardAttribute,
     } = this.props;
 
     const canEdit = dashboard.can_write;
@@ -511,7 +502,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       buttons.push(
         <ExtraEditButtonsMenu
           key="extra-options-button"
-          setDashboardAttribute={setDashboardAttribute}
           dashboard={dashboard}
         />,
       );

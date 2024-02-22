@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -5,9 +7,6 @@ import {
   openNativeEditor,
   addPostgresDatabase,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const databaseName = "Sample Database";
 const databaseCopyName = `${databaseName} copy`;
@@ -35,7 +34,7 @@ describe("issue 21597", { tags: "@external" }, () => {
       parseSpecialCharSequences: false,
     });
 
-    cy.findByTestId("select-button").click();
+    cy.findByTestId("variable-type-select").click();
     popover().within(() => {
       cy.findByText("Field Filter").click();
     });

@@ -1,8 +1,12 @@
 import { useMemo, useState } from "react";
+
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
+
 import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
-import { SingleDatePicker } from "./SingleDatePicker";
+
 import { DateRangePicker } from "./DateRangePicker";
+import { SingleDatePicker } from "./SingleDatePicker";
+import { TabList } from "./SpecificDatePicker.styled";
 import {
   coerceValue,
   getDate,
@@ -13,7 +17,6 @@ import {
   setDateRange,
   setOperator,
 } from "./utils";
-import { TabList } from "./SpecificDatePicker.styled";
 
 interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;

@@ -1,24 +1,24 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { getIn } from "icepick";
 import type { LocationDescriptor } from "history";
-
+import { getIn } from "icepick";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
-import type { IconProps } from "metabase/ui";
 
-import { isJWT } from "metabase/lib/utils";
-
-import { mergeSettings } from "metabase/visualizations/lib/settings";
-
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { isActionCard } from "metabase/actions/utils";
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import { getQuestionByCard } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
-
-import { isActionCard } from "metabase/actions/utils";
-
-import ErrorBoundary from "metabase/ErrorBoundary";
-
+import { useSelector } from "metabase/lib/redux";
+import { isJWT } from "metabase/lib/utils";
+import type { IconProps } from "metabase/ui";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
@@ -33,20 +33,14 @@ import type {
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
-import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-
-import type Metadata from "metabase-lib/metadata/Metadata";
-
+import { DashCardRoot } from "./DashCard.styled";
+import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
+import { DashCardVisualization } from "./DashCardVisualization";
 import type {
   CardSlownessStatus,
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
-import { DashCardVisualization } from "./DashCardVisualization";
-import { DashCardRoot } from "./DashCard.styled";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -142,6 +136,12 @@ function DashCardInner({
       ),
     }),
     [dashcard],
+  );
+
+  const question = useSelector(state =>
+    isQuestionDashCard(dashcard)
+      ? getQuestionByCard(state, { card: dashcard.card })
+      : undefined,
   );
 
   const cards = useMemo(() => {
@@ -279,6 +279,7 @@ function DashCardInner({
             series={series}
             dashboard={dashboard}
             dashcard={dashcard}
+            question={question}
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}

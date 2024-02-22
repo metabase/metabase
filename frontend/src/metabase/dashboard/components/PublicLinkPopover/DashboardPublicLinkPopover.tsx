@@ -1,4 +1,3 @@
-import type { Dashboard } from "metabase-types/api";
 import { createPublicLink, deletePublicLink } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { publicDashboard as getPublicDashboardUrl } from "metabase/lib/urls";
@@ -6,6 +5,8 @@ import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
 } from "metabase/public/lib/analytics";
+import type { Dashboard } from "metabase-types/api";
+
 import { PublicLinkPopover } from "./PublicLinkPopover";
 
 export const DashboardPublicLinkPopover = ({

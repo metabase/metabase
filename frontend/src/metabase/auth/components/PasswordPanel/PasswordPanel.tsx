@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+
 import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import { login } from "../../actions";
 import {
   getExternalAuthProviders,
@@ -10,6 +12,7 @@ import {
 import type { LoginData } from "../../types";
 import { AuthButton } from "../AuthButton";
 import { LoginForm } from "../LoginForm";
+
 import { ActionList, ActionListItem } from "./PasswordPanel.styled";
 
 interface PasswordPanelProps {

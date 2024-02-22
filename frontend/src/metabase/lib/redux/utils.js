@@ -1,11 +1,11 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import _ from "underscore";
-import { getIn } from "icepick";
-import { normalize } from "normalizr";
 import { compose } from "@reduxjs/toolkit";
+import { getIn } from "icepick";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { normalize } from "normalizr";
+import _ from "underscore";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { delay } from "metabase/lib/promise";
 import {
   setRequestLoading,
   setRequestLoaded,
@@ -13,7 +13,6 @@ import {
   setRequestUnloaded,
   setRequestPromise,
 } from "metabase/redux/requests";
-import { delay } from "metabase/lib/promise";
 
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";

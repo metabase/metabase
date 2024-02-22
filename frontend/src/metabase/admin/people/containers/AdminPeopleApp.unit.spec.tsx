@@ -1,3 +1,5 @@
+import { renderWithProviders, screen } from "__support__/ui";
+import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -6,8 +8,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 
 interface SetupOpts {
   activeUsersCount: number;
