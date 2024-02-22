@@ -4,6 +4,12 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.48.7
+
+- The method `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type` is now deprecated.
+  Use `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type-and-value` instead,
+  which has access to `value` and therefore provides more flexibility for choosing the right conversion unit.
+
 ## Metabase 0.48.0
 
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of

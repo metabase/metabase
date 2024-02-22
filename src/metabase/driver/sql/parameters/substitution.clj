@@ -22,6 +22,7 @@
     :as qp.wrap-value-literals]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -95,18 +96,42 @@
   (make-stmt-subs "?" [t]))
 
 (defmulti align-temporal-unit-with-param-type
-  "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver. The resulting keyword
-  will be used to call the corresponding `metabase.driver.sql.query-processor/date` implementation to convert the `field`.
-  Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination."
-  {:added "0.48.0" :arglists '([driver field param-type])}
+  "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver.
+  The resulting keyword will be used to call the corresponding `metabase.driver.sql.query-processor/date`
+  implementation to convert the `field`.
+  Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination.
+  Deprecated: use `align-temporal-unit-with-param-type-and-value` instead, as it has access to `value`."
+  {:added "0.48.0" :deprecated "0.48.7" :arglists '([driver field param-type])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti align-temporal-unit-with-param-type-and-value
+  "Returns a suitable temporal unit conversion keyword for `field`, `param-type`, `value` and the given driver.
+  The resulting keyword will be used to call the corresponding `metabase.driver.sql.query-processor/date`
+  implementation to convert the `field`.
+  Returns `nil` if the conversion is not necessary for this `field`, `param-type` and `value` combination."
+  {:added "0.48.7" :arglists '([driver field param-type value])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod align-temporal-unit-with-param-type :default
   [_driver _field param-type]
   (when (params.dates/date-type? param-type)
     :day))
 
+(defmethod align-temporal-unit-with-param-type-and-value :default
+  [_driver _field param-type value]
+  (when (params.dates/date-type? param-type)
+    (if-let [exclusion-type (params.dates/exclusion-date-type param-type value)]
+      exclusion-type
+      (let [value* (if (params.dates/not-single-date-type? param-type)
+                     (let [param-range (params.dates/date-string->range value)]
+                       (or (:start param-range) (:end param-range))) ;; Before or after filters only have one of these
+                     value)]
+        (if (re-matches shared.ut/local-date-regex value*)
+          :day
+          :minute)))))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
@@ -203,7 +228,6 @@
       {:replacement-snippet     (format "BETWEEN %s AND %s" (:sql-string start) (:sql-string end))
        :prepared-statement-args (concat (:param-values start) (:param-values end))})))
 
-
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
 
 (s/defn ^:private combine-replacement-snippet-maps :- ParamSnippetInfo
@@ -239,7 +263,8 @@
 (mu/defn ^:private field->clause :- mbql.s/field
   [driver     :- :keyword
    field      :- lib.metadata/ColumnMetadata
-   param-type :- ::mbql.s/ParameterType]
+   param-type :- ::mbql.s/ParameterType
+   value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
   ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
@@ -249,7 +274,7 @@
   [:field
    (u/the-id field)
    {:base-type                (:base-type field)
-    :temporal-unit            (align-temporal-unit-with-param-type driver field param-type)
+    :temporal-unit            (align-temporal-unit-with-param-type-and-value driver field param-type value)
     ::add/source-table        (:table-id field)
     ;; in case anyone needs to know we're compiling a Field filter.
     ::compiling-field-filter? true}])
@@ -258,12 +283,12 @@
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
-  [driver field param-type]
+  [driver field param-type value]
   (sql.qp/with-driver-honey-sql-version driver
-    (->> (field->clause driver field param-type)
-         (sql.qp/->honeysql driver)
-         (honeysql->replacement-snippet-info driver)
-         :replacement-snippet)))
+     (->> (field->clause driver field param-type value)
+          (sql.qp/->honeysql driver)
+          (honeysql->replacement-snippet-info driver)
+          :replacement-snippet)))
 
 (s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
@@ -271,23 +296,21 @@
   (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
   (letfn [(prepend-field [x]
             (update x :replacement-snippet
-                    (partial str (field->identifier driver field param-type) " ")))
+                    (partial str (field->identifier driver field param-type value) " ")))
           (->honeysql [form]
             (sql.qp/with-driver-honey-sql-version driver
               (sql.qp/->honeysql driver form)))]
     (cond
       (params.ops/operator? param-type)
-      (->> (assoc params :target [:template-tag (field->clause driver field param-type)])
+      (->> (assoc params :target [:template-tag (field->clause driver field param-type value)])
            params.ops/to-clause
            mbql.u/desugar-filter-clause
            qp.wrap-value-literals/wrap-value-literals-in-mbql
            ->honeysql
            (honeysql->replacement-snippet-info driver))
 
-      (and (params.dates/date-type? param-type)
-           (string? value)
-           (re-matches params.dates/date-exclude-regex value))
-      (let [field-clause (field->clause driver field param-type)]
+      (params.dates/exclusion-date-type param-type value)
+      (let [field-clause (field->clause driver field param-type value)]
         (->> (params.dates/date-string->filter value field-clause)
              mbql.u/desugar-filter-clause
              qp.wrap-value-literals/wrap-value-literals-in-mbql
@@ -326,14 +349,12 @@
     :else
     (field-filter->replacement-snippet-info driver field-filter)))
 
-
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
 (defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
   [_ {:keys [query params]}]
   {:prepared-statement-args (not-empty params)
    :replacement-snippet     (sql.qp/make-nestable-sql query)})
-
 
 ;;; ---------------------------------- Native Query Snippet replacement snippet info ---------------------------------
 

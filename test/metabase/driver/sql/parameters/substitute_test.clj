@@ -83,31 +83,32 @@
   information about"
   []
   (params/map->FieldFilter
-   {:field (meta/field-metadata :checkins :date)
+   {:field (meta/field-metadata :orders :created-at)
     :value {:type  :date/single
-            :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
+            :value (str (t/offset-date-time "2019-09-20T19:52:00.000-07:00"))}}))
 
 (deftest ^:parallel substitute-field-filter-test
-  (testing "field-filters"
-    (testing "non-optional"
-      (let [query ["select * from checkins where " (param "date")]]
-        (testing "param is present"
-          (is (= ["select * from checkins where \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?"
-                  [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
-                 (substitute query {"date" (date-field-filter-value)}))))
-        (testing "param is missing"
-          (is (= ["select * from checkins where 1 = 1" []]
-                 (substitute query {"date" (assoc (date-field-filter-value) :value params/no-value)}))
-              "should be replaced with 1 = 1"))))
-    (testing "optional"
-      (let [query ["select * from checkins " (optional "where " (param "date"))]]
-        (testing "param is present"
-          (is (= ["select * from checkins where \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?"
-                  [#t "2019-09-20T19:52:00.000-07:00"]]
-                 (substitute query {"date" (date-field-filter-value)}))))
-        (testing "param is missing — should be omitted entirely"
-          (is (= ["select * from checkins" nil]
-                 (substitute query {"date" (assoc (date-field-filter-value) :value params/no-value)}))))))))
+  (mt/dataset sample-dataset
+    (testing "field-filters"
+      (testing "non-optional"
+        (let [query ["select * from orders where " (param "created_at")]]
+          (testing "param is present"
+            (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
+                    [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
+                   (substitute query {"created_at" (date-field-filter-value)}))))
+          (testing "param is missing"
+            (is (= ["select * from orders where 1 = 1" []]
+                   (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)}))
+                "should be replaced with 1 = 1"))))
+      (testing "optional"
+        (let [query ["select * from orders " (optional "where " (param "created_at"))]]
+          (testing "param is present"
+            (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
+                    [#t "2019-09-20T19:52:00.000-07:00"]]
+                   (substitute query {"created_at" (date-field-filter-value)}))))
+          (testing "param is missing — should be omitted entirely"
+            (is (= ["select * from orders" nil]
+                   (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)})))))))))
 
 (deftest ^:parallel substitute-field-filter-test-2
   (testing "new operators"
@@ -740,8 +741,9 @@
     (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion "
                   "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
                   "which is fully-tested :D")
-      (doseq [[exclusion-string expected] {"exclude-months-Jan"     14
-                                           "exclude-months-Jan-Feb" 13}]
+      (doseq [[exclusion-string expected] {"exclude-months-Jan" 14
+                                           "exclude-months-Jan-Feb" 13
+                                           "exclude-hours-0-1-2-3-4-5-6-7-8-9-10-11-12" 5}]
         (testing (format "test that excluding dates with %s works correctly" exclusion-string)
           (is (= [expected]
                  (mt/first-row
