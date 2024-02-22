@@ -275,7 +275,7 @@ function DashboardInner(props: DashboardProps) {
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
   const shouldRenderParametersWidgetInViewMode =
-    !isEditing && !isFullscreen && hasVisibleParameters;
+    !isEditing && hasVisibleParameters;
 
   const shouldRenderParametersWidgetInEditMode =
     isEditing && hasVisibleParameters;
