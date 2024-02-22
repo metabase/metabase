@@ -5,6 +5,7 @@ import type * as Lib from "metabase-lib";
 
 export const zoomInBinningDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   drill,
+  isDashboard,
   applyDrill,
 }) => {
   return [
@@ -14,7 +15,9 @@ export const zoomInBinningDrill: Drill<Lib.ZoomDrillThruInfo> = ({
       section: "zoom",
       icon: "zoom_in",
       buttonType: "horizontal",
-      question: () => applyDrill(drill).setDefaultDisplay(),
+      ...(isDashboard
+        ? { question: () => applyDrill(drill).lockDisplay() }
+        : { question: () => applyDrill(drill).setDefaultDisplay() }),
     },
   ];
 };

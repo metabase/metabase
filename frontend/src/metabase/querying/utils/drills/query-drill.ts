@@ -19,12 +19,6 @@ export function queryDrill(
     clicked?.dimensions,
   );
 
-  const isDashboard = clicked?.extraData?.dashboard != null;
-
-  if (isDashboard) {
-    question = question.lockDisplay();
-  }
-
   const applyDrill = (drill: Lib.DrillThru, ...args: unknown[]) => {
     const newQuery = Lib.drillThru(query, stageIndex, drill, ...args);
     return question.setQuery(newQuery);
@@ -39,7 +33,7 @@ export function queryDrill(
       stageIndex,
       drill,
       drillInfo,
-      isDashboard,
+      isDashboard: clicked?.extraData?.dashboard != null,
       applyDrill,
     });
   });
