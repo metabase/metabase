@@ -45,6 +45,7 @@ const ViewFooter = ({
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hasDataPermission = isEditable;
   const hideChartSettings = result.error && !hasDataPermission;
+  const type = question.type();
 
   return (
     <ViewFooterRoot
@@ -139,7 +140,7 @@ const ViewFooter = ({
               }
             />
           ),
-          !question.isDataset() && (
+          type === "question" && (
             <EmbedMenu
               key="embed"
               resource={question}
