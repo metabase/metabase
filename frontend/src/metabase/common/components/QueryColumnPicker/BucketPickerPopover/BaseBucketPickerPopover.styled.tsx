@@ -12,6 +12,14 @@ export const TriggerIcon = styled(Icon)`
   margin-left: 0.5rem;
 `;
 
+export const ChevronDown = styled(Icon)`
+  flex: 0 0 auto;
+  width: 8px;
+  margin-left: 0.25em;
+  color: currentColor;
+  opacity: 0.75;
+`;
+
 export const TriggerButton = styled.button<{ hasDot?: boolean }>`
   display: flex;
   align-items: center;
@@ -26,6 +34,10 @@ export const TriggerButton = styled.button<{ hasDot?: boolean }>`
 
   cursor: pointer;
 
+  ${ChevronDown} {
+    color: currentColor;
+  }
+
   &:hover {
     color: ${color("white")};
   }
@@ -38,15 +50,6 @@ export const Dot = styled.div`
   background: currentColor;
   border-radius: 100%;
   opacity: 0.25;
-`;
-
-export const ChevronDown = styled(Icon)`
-  flex: 0 0 auto;
-  width: 8px;
-  margin-left: 0.25em;
-  color: inherit;
-  opacity: 0.75;
-  color: currentColor !important;
 `;
 
 export const SelectListItem = styled(BaseSelectList.Item)<{
