@@ -546,5 +546,6 @@ dashcards:
         join-alias: People - User
       name: user_id
     table.pivot_column: error
+initially_published_at: null
 tabs: []
 width: full
