@@ -37,6 +37,7 @@ import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import Tools from "metabase/admin/tools/containers/Tools";
+import { Caching } from "metabase/admin/caching/containers/Caching";
 import {
   createAdminRouteGuard,
   createAdminRedirect,
@@ -163,6 +164,21 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
+      </Route>
+
+
+      /* TODO: Make this an enterprise-only plugin */
+      <Route
+        path="caching"
+        component={createAdminRouteGuard("caching")}
+      >
+        <IndexRoute title={t`Caching`} path="" component={Caching}>
+          {/*
+              perhaps eventually something like this will be useful:
+          <IndexRedirect to={PLUGIN_ADMIN_CACHING.INDEX_ROUTE} />
+          {PLUGIN_ADMIN_CACHING.EXTRA_ROUTES}
+          */}
+        </IndexRoute>
       </Route>
 
       <Route
