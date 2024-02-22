@@ -8,8 +8,9 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import fitViewport from "metabase/hoc/FitViewPort";
 import { Icon, Flex, Box } from "metabase/ui";
 
+import { AuditSidebar } from "metabase-enterprise/audit_app/components/AuditSidebar";
 import SidebarLayout from "../components/SidebarLayoutFixedWidth";
-import { AuditSidebarStyled, DeprecationNotice } from "./AuditApp.styled";
+import { DeprecationNotice } from "./AuditApp.styled";
 
 const Layout = fitViewport(SidebarLayout);
 
@@ -66,9 +67,7 @@ const DeprecationSection = () => {
 const AuditApp = ({ children }) => (
   <>
     <DeprecationSection />
-    <Layout
-      sidebar={<AuditSidebarStyled className="absolute top left bottom" />}
-    >
+    <Layout sidebar={<AuditSidebar />}>
       <div>{children}</div>
     </Layout>
   </>

@@ -3,7 +3,7 @@
 import { Component } from "react";
 import ReactDOM from "react-dom";
 import cx from "classnames";
-import styles from "./Legend.css";
+import styles from "./Legend.module.css";
 
 import LegendItem from "./LegendItem";
 

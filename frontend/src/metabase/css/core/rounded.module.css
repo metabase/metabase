@@ -2,7 +2,8 @@
   --default-border-radius: 8px;
 }
 
-:global(.rounded) {
+:global(.rounded),
+.rounded {
   border-radius: var(--default-border-radius);
 }
 

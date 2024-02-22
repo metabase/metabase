@@ -5,11 +5,13 @@
   --border-color: var(--color-border);
 }
 
-:global(.bordered) {
+:global(.bordered),
+.bordered {
   border: var(--border-size) var(--border-style) var(--color-border);
 }
 
-:global(.border-bottom) {
+:global(.border-bottom),
+.border-bottom {
   border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
@@ -18,7 +20,8 @@
   border-bottom: none;
 }
 
-:global(.border-top) {
+:global(.border-top),
+.border-top {
   border-top: var(--border-size) var(--border-style) var(--color-border);
 }
 
@@ -47,7 +50,8 @@
   border-color: color-mod(var(--color-border) alpha(-80%)) !important;
 }
 
-:global(.border-error) {
+:global(.border-error),
+.border-error {
   border-color: var(--color-error) !important;
 }
 
@@ -55,7 +59,8 @@
   border-color: var(--color-success) !important;
 }
 
-:global(.border-brand) {
+:global(.border-brand),
+.border-brand {
   border-color: var(--color-brand) !important;
 }
 
@@ -66,8 +71,13 @@
 /* BORDERLESS IS THE DEFAULT */
 /* ONLY USE IF needing to override an existing border! */
 /* ensure there is no border via important */
-:global(.borderless) {
+:global(.borderless),
+.borderless {
   border: none !important;
+}
+
+.border-bottom {
+  border-bottom: var(--border-size) dashed var(--color-border);
 }
 
 :global(.border-medium) {

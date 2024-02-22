@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { useFormik } from "formik";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import S from "metabase/reference/Reference.css";
+import S from "metabase/reference/Reference.module.css";
 
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

@@ -2,7 +2,7 @@
 import { memo } from "react";
 import PropTypes from "prop-types";
 
-import S from "./List.css";
+import S from "./List.module.css";
 
 const List = ({ children }) => <ul className={S.list}>{children}</ul>;
 

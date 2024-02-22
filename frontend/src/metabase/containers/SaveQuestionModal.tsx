@@ -28,7 +28,7 @@ import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
 
-import "./SaveQuestionModal.css";
+import "./SaveQuestionModal.module.css";
 
 const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   if (questionType === "model") {

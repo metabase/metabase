@@ -8,7 +8,7 @@ import _ from "underscore";
 import cx from "classnames";
 import { Grid, ScrollSync } from "react-virtualized";
 
-import "./TableInteractive.css";
+import "./TableInteractive.module.css";
 
 import { Icon, DelayGroup } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";

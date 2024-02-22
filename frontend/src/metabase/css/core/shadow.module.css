@@ -2,7 +2,8 @@
   --shadow-color: var(--color-shadow);
   --shadow-hover-color: var(--color-shadow);
 }
-:global(.shadowed) {
+:global(.shadowed),
+.shadowed {
   box-shadow: 0 2px 2px var(--color-shadow);
 }
 

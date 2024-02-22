@@ -4,7 +4,8 @@
 }
 
 /* center */
-:global(.text-centered) {
+:global(.text-centered),
+.text-centered {
   text-align: center;
 }
 
@@ -32,7 +33,8 @@
   }
 }
 
-:global(.text-left) {
+:global(.text-left),
+.text-left {
   text-align: left;
 }
 
@@ -60,7 +62,8 @@
   }
 }
 
-:global(.text-right) {
+:global(.text-right),
+.text-right {
   text-align: right;
 }
 
@@ -88,7 +91,8 @@
   }
 }
 
-:global(.text-uppercase) {
+:global(.text-uppercase),
+.text-uppercase {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -108,7 +112,8 @@
 :global(.text-normal) {
   font-weight: 400;
 }
-:global(.text-bold) {
+:global(.text-bold),
+.text-bold {
   font-weight: 700;
 }
 
@@ -123,7 +128,8 @@
 }
 
 /* larger text size used for descriptions  */
-:global(.text-body) {
+:global(.text-body),
+.text-body {
   font-size: 1.286em;
   line-height: 1.457em;
   color: var(--color-text-medium); /* TODO - is this bad? */
@@ -133,16 +139,19 @@
   font-size: 1em;
 }
 
-:global(.text-paragraph) {
+:global(.text-paragraph),
+.text-paragraph {
   font-size: 1.143em;
   line-height: 1.5em;
 }
 
-:global(.text-spaced) {
+:global(.text-spaced),
+.text-spaced {
   line-height: 1.5em;
 }
 
-:global(.text-unspaced) {
+:global(.text-unspaced),
+.text-unspaced {
   line-height: normal;
 }
 
@@ -197,7 +206,8 @@
   white-space: pre-wrap;
 }
 
-:global(.text-monospace) {
+:global(.text-monospace),
+.text-monospace {
   font-family: Monaco, monospace;
 }
 

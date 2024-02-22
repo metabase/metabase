@@ -29,7 +29,7 @@ import {
   getIsFormulaExpanded,
 } from "../selectors";
 
-import S from "../components/Detail.css";
+import S from "../components/Detail.module.css";
 
 const interestingQuestions = (table, segment, metadata) => {
   return [

@@ -1,4 +1,5 @@
-:global(.scroll-y) {
+:global(.scroll-y),
+.scroll-y {
   overflow-y: auto;
 }
 :global(.scroll-x) {

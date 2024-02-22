@@ -2,7 +2,7 @@
 import { Component } from "react";
 import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import styles from "./ChartWithLegend.css";
+import styles from "./ChartWithLegend.module.css";
 
 import LegendVertical from "./LegendVertical";
 import LegendHorizontal from "./LegendHorizontal";

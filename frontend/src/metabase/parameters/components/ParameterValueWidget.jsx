@@ -33,7 +33,7 @@ import {
 import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { areParameterValuesIdentical } from "metabase-lib/parameters/utils/parameter-values";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
-import S from "./ParameterValueWidget.css";
+import S from "./ParameterValueWidget.module.css";
 
 class ParameterValueWidget extends Component {
   static propTypes = {

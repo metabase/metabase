@@ -48,7 +48,7 @@ import {
   Separator,
   DashboardTabsContainer,
 } from "./EmbedFrame.styled";
-import "./EmbedFrame.css";
+import "./EmbedFrame.module.css";
 
 type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 

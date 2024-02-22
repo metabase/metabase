@@ -4,11 +4,11 @@ import { Link } from "react-router";
 import cx from "classnames";
 
 import { t } from "ttag";
-import L from "metabase/components/List/List.css";
+import L from "metabase/components/List/List.module.css";
 
 import { Icon } from "metabase/ui";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import S from "./ReferenceHeader.css";
+import S from "./ReferenceHeader.module.css";
 
 const ReferenceHeader = ({
   name,

@@ -81,12 +81,14 @@ textarea {
   pointer-events: none;
 }
 
-:global(.disabled) {
+:global(.disabled),
+.disabled {
   pointer-events: none;
   opacity: 0.4;
 }
 
-:global(.faded) {
+:global(.faded),
+.faded {
   opacity: 0.4;
 }
 :global(.fade-in-hover:hover) {

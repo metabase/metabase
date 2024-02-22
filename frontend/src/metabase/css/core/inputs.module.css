@@ -3,7 +3,8 @@
   --input-border-radius: 8px;
 }
 
-:global(.input) {
+:global(.input),
+.input {
   color: var(--color-text-dark);
   font-size: 1.12em;
   padding: 0.75rem 0.75rem;

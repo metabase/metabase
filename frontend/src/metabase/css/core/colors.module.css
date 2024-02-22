@@ -22,7 +22,8 @@
   --color-border: #eeecec;
 }
 
-:global(.text-default) {
+:global(.text-default),
+.text-default {
   color: var(--color-text-dark);
 }
 
@@ -31,7 +32,8 @@
 }
 
 /* brand */
-:global(.text-brand) {
+:global(.text-brand),
+.text-brand {
   color: var(--color-brand);
 }
 
@@ -44,6 +46,7 @@
 /* error */
 
 :global(.text-error),
+.text-error,
 :global(.text-error-hover:hover) {
   color: var(--color-error);
 }
@@ -62,16 +65,19 @@
   color: var(--color-text-light);
 }
 
-:global(.text-light) {
+:global(.text-light),
+.text-light {
   color: var(--color-text-light);
 }
 
 :global(.text-medium),
+.text-medium,
 :global(.text-medium-hover:hover) {
   color: var(--color-text-medium);
 }
 
 :global(.text-dark),
+.text-dark,
 :global(.text-dark-hover:hover) {
   color: var(--color-text-dark);
 }
@@ -87,11 +93,13 @@
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 :global(.text-white),
+.text-white,
 :global(.text-white-hover:hover) {
   color: var(--color-text-white);
 }
 
-:global(.bg-white) {
+:global(.bg-white),
+.bg-white {
   background-color: var(--color-bg-white);
 }
 

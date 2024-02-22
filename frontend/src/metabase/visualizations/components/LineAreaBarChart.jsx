@@ -6,7 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
-import "./LineAreaBarChart.css";
+import "./LineAreaBarChart.module.css";
 
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { formatValue } from "metabase/lib/formatting";

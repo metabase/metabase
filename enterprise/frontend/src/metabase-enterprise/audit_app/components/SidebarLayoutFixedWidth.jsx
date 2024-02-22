@@ -19,6 +19,7 @@ const SidebarLayoutFixedWidth = ({
     {cloneElement(
       sidebar,
       {
+        className: "Layout-sidebar absolute top left bottom",
         style: { width: sidebarWidth, ...(sidebar.props.style || {}) },
       },
       sidebar.props.children,

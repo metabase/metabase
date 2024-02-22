@@ -43,12 +43,12 @@ const BABEL_CONFIG = {
 
 const CSS_CONFIG = {
   modules: {
+    auto: filename => !filename.includes("node_modules"),
     mode: "local",
     localIdentName: devMode
       ? "[name]__[local]___[hash:base64:5]"
       : "[hash:base64:5]",
   },
-
   importLoaders: 1,
 };
 

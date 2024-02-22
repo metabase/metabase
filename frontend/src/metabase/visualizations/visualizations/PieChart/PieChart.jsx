@@ -28,7 +28,7 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import ChartWithLegend from "../../components/ChartWithLegend";
-import styles from "./PieChart.css";
+import styles from "./PieChart.module.css";
 
 import { PieArc } from "./PieArc";
 import { getTooltipModel } from "./utils";

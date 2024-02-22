@@ -8,7 +8,7 @@ import cx from "classnames";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import { isCypressActive } from "metabase/env";
 
-import "./Popover.css";
+import "./Popover.module.css";
 
 // space we should leave between page edge and popover edge
 const PAGE_PADDING = 10;

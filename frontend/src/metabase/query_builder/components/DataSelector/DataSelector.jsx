@@ -39,7 +39,7 @@ import {
   TableSearchContainer,
 } from "./DataSelector.styled";
 
-import "./DataSelector.css";
+import "./DataSelector.module.css";
 
 const MIN_SEARCH_LENGTH = 2;
 
