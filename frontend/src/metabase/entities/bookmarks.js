@@ -48,12 +48,12 @@ const Bookmarks = createEntity({
   },
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object) {
-      const { archived, dataset, id, name } = payload.object;
+      const { archived, card_type, id, name } = payload.object;
       const key = `card-${id}`;
       if (archived) {
         return dissoc(state, key);
       } else {
-        return updateIn(state, [key], item => ({ ...item, dataset, name }));
+        return updateIn(state, [key], item => ({ ...item, card_type, name }));
       }
     }
 
@@ -113,7 +113,7 @@ function getIcon(bookmark) {
 }
 
 export function isModelBookmark(bookmark) {
-  return bookmark.type === "card" && bookmark.dataset;
+  return bookmark.type === "card" && bookmark.card_type === "model";
 }
 
 export const getOrderedBookmarks = createSelector(
