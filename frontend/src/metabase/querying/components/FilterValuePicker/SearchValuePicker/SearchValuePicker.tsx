@@ -5,7 +5,7 @@ import type { FieldId, FieldValue } from "metabase-types/api";
 import { MultiSelect } from "metabase/ui";
 import { getEffectiveOptions } from "../utils";
 import { SEARCH_DEBOUNCE } from "./constants";
-import { shouldSearch, getSearchValues } from "./utils";
+import { shouldSearch, getSearchValues, getOptimisticOptions } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -54,35 +54,19 @@ export function SearchValuePicker({
     }
   };
 
-  const handleCreate = (searchValue: string) => {
-    onChange([...selectedValues, searchValue]);
-    return searchValue;
-  };
-
-  const shouldCreate = (searchValue: string) => {
-    return (
-      canAddValue(searchValue) &&
-      !options.some(option => option.label === searchValue)
-    );
-  };
-
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
     <MultiSelect
-      data={options}
+      data={getOptimisticOptions(options, searchValue, canAddValue)}
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
-      shouldCreate={shouldCreate}
-      getCreateLabel={searchValue => searchValue}
-      creatable
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       onChange={onChange}
       onSearchChange={handleSearchChange}
-      onCreate={handleCreate}
     />
   );
 }

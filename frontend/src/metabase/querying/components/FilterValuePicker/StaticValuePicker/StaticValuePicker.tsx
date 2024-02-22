@@ -48,8 +48,8 @@ export function StaticValuePicker({
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
 
-    const canAdd = canAddValue(newSearchValue);
-    if (canAdd) {
+    const isValid = canAddValue(newSearchValue);
+    if (isValid) {
       onChange?.([...lastValues, newSearchValue]);
     } else {
       onChange?.(lastValues);
