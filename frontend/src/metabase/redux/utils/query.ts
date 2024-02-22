@@ -38,9 +38,8 @@ export const apiQuery: BaseQueryFn<
       extraOptions?.requestOptions,
     );
 
-    // ????: perf overhead to contrusting the method on each call
-    const data = await api[method](url)(args?.body, options);
-    return { data };
+    const response = await api[method](url)(args?.body, options);
+    return { data: response };
   } catch (error) {
     return { error };
   }

@@ -10,7 +10,7 @@ export function getStore(reducers, history, intialState) {
   const reducer = combineReducers({
     ...reducers,
     routing,
-    [Api.reducerPath]: Api.reducer, // TODO: move
+    [Api.reducerPath]: Api.reducer,
   });
 
   return configureStore({
