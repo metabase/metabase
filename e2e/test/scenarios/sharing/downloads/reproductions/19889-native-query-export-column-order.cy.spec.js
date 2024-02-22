@@ -77,5 +77,7 @@ describe("issue 19889", () => {
 
 function saveAndOverwrite() {
   cy.findByText("Save").click();
-  cy.button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
+  });
 }

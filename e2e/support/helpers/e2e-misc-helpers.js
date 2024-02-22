@@ -310,8 +310,8 @@ export function saveSavedQuestion() {
   cy.intercept("PUT", "/api/card/**").as("updateQuestion");
   cy.findByText("Save").click();
 
-  modal().within(() => {
-    cy.button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
   });
   cy.wait("@updateQuestion");
 }
