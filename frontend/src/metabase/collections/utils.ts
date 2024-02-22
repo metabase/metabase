@@ -195,8 +195,16 @@ export function canonicalCollectionId(
 }
 
 export function isValidCollectionId(
-  collectionId: string | number | null | undefined,
-): boolean {
+  collectionId: unknown,
+): collectionId is CollectionId {
+  if (
+    typeof collectionId !== "string" &&
+    typeof collectionId !== "number" &&
+    collectionId !== null &&
+    collectionId !== undefined
+  ) {
+    return false;
+  }
   const id = canonicalCollectionId(collectionId);
   return id === null || typeof id === "number";
 }
