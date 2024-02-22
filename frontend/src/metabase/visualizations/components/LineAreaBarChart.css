@@ -234,11 +234,11 @@
   stroke-dasharray: 3, 5;
 }
 
-text :global(.value-label) {
+:global text.value-label {
   pointer-events: none;
 }
 
-text :global(.value-label) {
+:global text.value-label {
   fill: var(--color-text-dark);
   font-size: 12px;
   font-weight: 800;
@@ -248,7 +248,7 @@ text :global(.value-label) {
   paint-order: stroke;
 }
 
-text :global(.value-label-white) {
+:global text.value-label-white {
   fill: var(--color-text-white);
   font-weight: 800;
   stroke: var(--color-text-dark);

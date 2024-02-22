@@ -90,8 +90,8 @@
 }
 
 /* pivot */
-.TableInteractive.TableInteractive--pivot
-  :global
+:global
+  .TableInteractive.TableInteractive--pivot
   .TableInteractive-cellWrapper--firstColumn {
   border-right: 1px solid var(--color-border);
 }
