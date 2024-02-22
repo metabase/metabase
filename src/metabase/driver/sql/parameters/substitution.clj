@@ -101,7 +101,7 @@
   implementation to convert the `field`.
   Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination.
   Deprecated: use `align-temporal-unit-with-param-type-and-value` instead, as it has access to `value`."
-  {:added "0.48.0" :deprecated "0.49.0" :arglists '([driver field param-type])}
+  {:added "0.48.0" :deprecated "0.48.7" :arglists '([driver field param-type])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

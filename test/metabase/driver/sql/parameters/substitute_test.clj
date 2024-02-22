@@ -88,26 +88,27 @@
             :value (str (t/offset-date-time "2019-09-20T19:52:00.000-07:00"))}}))
 
 (deftest ^:parallel substitute-field-filter-test
-  (testing "field-filters"
-    (testing "non-optional"
-      (let [query ["select * from orders where " (param "created_at")]]
-        (testing "param is present"
-          (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
-                  [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
-                 (substitute query {"created_at" (date-field-filter-value)}))))
-        (testing "param is missing"
-          (is (= ["select * from orders where 1 = 1" []]
-                 (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)}))
-              "should be replaced with 1 = 1"))))
-    (testing "optional"
-      (let [query ["select * from orders " (optional "where " (param "created_at"))]]
-        (testing "param is present"
-          (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
-                  [#t "2019-09-20T19:52:00.000-07:00"]]
-                 (substitute query {"created_at" (date-field-filter-value)}))))
-        (testing "param is missing — should be omitted entirely"
-          (is (= ["select * from orders" nil]
-                 (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)}))))))))
+  (mt/dataset sample-dataset
+    (testing "field-filters"
+      (testing "non-optional"
+        (let [query ["select * from orders where " (param "created_at")]]
+          (testing "param is present"
+            (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
+                    [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
+                   (substitute query {"created_at" (date-field-filter-value)}))))
+          (testing "param is missing"
+            (is (= ["select * from orders where 1 = 1" []]
+                   (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)}))
+                "should be replaced with 1 = 1"))))
+      (testing "optional"
+        (let [query ["select * from orders " (optional "where " (param "created_at"))]]
+          (testing "param is present"
+            (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
+                    [#t "2019-09-20T19:52:00.000-07:00"]]
+                   (substitute query {"created_at" (date-field-filter-value)}))))
+          (testing "param is missing — should be omitted entirely"
+            (is (= ["select * from orders" nil]
+                   (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)})))))))))
 
 (deftest ^:parallel substitute-field-filter-test-2
   (testing "new operators"
