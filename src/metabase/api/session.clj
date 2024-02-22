@@ -3,7 +3,6 @@
   (:require
    [compojure.core :refer [DELETE GET POST]]
    [java-time.api :as t]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.ldap :as api.ldap]
@@ -19,6 +18,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
@@ -213,6 +213,12 @@
   "The url that the IdP should respond to. Not all IdPs support this, but it's a good idea to send it just in case."
   "/auth/sso/handle_slo")
 
+(defenterprise sso-info
+  "Returns SSO information, iff ee is enabled."
+  metabase-enterprise.sso.integrations.sso-settings
+  []
+  {})
+
 ;; client initiates slo:
 (api/defendpoint POST "/logout"
   "Logout."
@@ -222,12 +228,13 @@
         (t2/query-one {:select [:u.email :u.sso_source]
                        :from   [[:core_user :u]]
                        :join   [[:core_session :session] [:= :u.id :session.user_id]]
-                       :where  [:= :session.id metabase-session-id]})]
+                       :where  [:= :session.id metabase-session-id]})
+        {:keys [saml-enabled saml-identity-provider-uri saml-application-name]} (sso-info)]
     {:saml-logout-url
-     (when (and (sso-settings/saml-enabled) (= sso_source "saml"))
+     (when (and saml-enabled (= sso_source "saml"))
        (saml/logout-redirect-location
-        :idp-url (sso-settings/saml-identity-provider-uri)
-        :issuer (sso-settings/saml-application-name)
+        :idp-url saml-identity-provider-uri
+        :issuer saml-application-name
         :user-email email
         :relay-state (encode-decode/str->base64
                       (str (urls/site-url) metabase-slo-redirect-url))))}))
