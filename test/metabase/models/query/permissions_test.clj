@@ -10,7 +10,6 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
@@ -127,14 +126,14 @@
     (mt/with-temp [Database db    {}
                    Table    table {:db_id (u/the-id db) :schema nil}
                    Field    _     {:table_id (u/the-id table)}]
-      (perms/revoke-data-perms! (perms-group/all-users) db)
-      (binding [*current-user-permissions-set* (atom nil)
-                *current-user-id*              (mt/user->id :rasta)]
-        (is (= {:perms/data-access {(u/the-id table) :unrestricted}}
-               (query-perms/required-perms
-                {:database (u/the-id db)
-                 :type     :query
-                 :query    {:source-table (u/the-id table)}}))))))
+      (mt/with-no-data-perms-for-all-users!
+        (binding [*current-user-permissions-set* (atom nil)
+                  *current-user-id*              (mt/user->id :rasta)]
+          (is (= {:perms/data-access {(u/the-id table) :unrestricted}}
+                 (query-perms/required-perms
+                  {:database (u/the-id db)
+                   :type     :query
+                   :query    {:source-table (u/the-id table)}})))))))
 
   (testing "should be able to calculate permissions of a query before normalization"
     (is (= {:perms/data-access {(mt/id :venues) :unrestricted}}
