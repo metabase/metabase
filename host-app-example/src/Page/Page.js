@@ -7,7 +7,7 @@ import { LogoutButton } from "../Logout";
 import { ShowVisualizationToggle } from "../ShowVisualizationToggle";
 
 import "./Page.css";
-import {StyleLeakFlag} from "../StyleLeakFlag/StyleLeakFlag";
+import { StyleLeakFlag } from "../StyleLeakFlag/StyleLeakFlag";
 
 export const Page = () => {
   const [question, setQuestion] = useState(null);
@@ -43,13 +43,15 @@ export const Page = () => {
             />
           </div>
         ) : (
-          <div className="tw-grid tw-place-items-center tw-h-full tw-font-bold tw-text-gray-400 tw-text-3xl">Select a question to display here.</div>
+          <div className="tw-grid tw-place-items-center tw-h-full tw-font-bold tw-text-gray-400 tw-text-3xl">
+            Select a question to display here.
+          </div>
         )}
       </div>
 
       <footer className="Page--footer">
         <FontSelector />
-          <StyleLeakFlag/>
+        <StyleLeakFlag />
       </footer>
     </div>
   );
