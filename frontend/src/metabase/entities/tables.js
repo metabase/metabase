@@ -1,31 +1,28 @@
-import { t } from "ttag";
-import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
 import { updateIn } from "icepick";
+import { t } from "ttag";
+import _ from "underscore";
+
+import Questions from "metabase/entities/questions";
+import Metrics from "metabase/entities/metrics"; // eslint-disable-line import/order -- circular dependencies
+import Segments from "metabase/entities/segments";
+import { PUT } from "metabase/lib/api";
+import { color } from "metabase/lib/colors";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
-  createThunkAction,
   compose,
+  createThunkAction,
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/lib/redux";
-
 import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
-
-import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
-
-import Metrics from "metabase/entities/metrics";
-import Segments from "metabase/entities/segments";
-import Questions from "metabase/entities/questions";
-
-import { PUT } from "metabase/lib/api";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+import { MetabaseApi } from "metabase/services";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,

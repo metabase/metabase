@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import type { StackedTooltipModel } from "metabase/visualizations/types";
 
 export function getMaxLabelDimension(

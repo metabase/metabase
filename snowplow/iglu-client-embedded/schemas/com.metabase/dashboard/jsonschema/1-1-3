@@ -28,7 +28,9 @@
         "dashboard_pdf_exported",
         "card_moved_to_tab",
         "dashboard_card_duplicated",
-        "dashboard_card_replaced"
+        "dashboard_card_replaced",
+        "dashboard_section_added",
+        "dashboard_width_toggled"
       ],
       "maxLength": 1024
     },
@@ -73,6 +75,21 @@
       ],
       "minimum": 0,
       "maximum": 2147483647
+    },
+    "section_layout": {
+      "description": "String describing the layout that was selected from the pre-built options",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "full_width": {
+      "description": "Boolean set to True if the dashboard was toggled to full width and False if full width was disabled.",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "required": [

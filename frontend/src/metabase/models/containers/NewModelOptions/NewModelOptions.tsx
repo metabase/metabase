@@ -1,19 +1,18 @@
+import type { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { Location } from "history";
 import { Grid } from "metabase/components/Grid";
-import NewModelOption from "metabase/models/components/NewModelOption";
-
+import Databases from "metabase/entities/databases";
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import Databases from "metabase/entities/databases";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-
-import { useSelector } from "metabase/lib/redux";
+import NewModelOption from "metabase/models/components/NewModelOption";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type Database from "metabase-lib/metadata/Database";
+
 import {
   OptionsGridItem,
   OptionsRoot,
@@ -65,7 +64,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
               to={Urls.newQuestion({
                 mode: "query",
                 creationType: "custom_question",
-                dataset: true,
+                cardType: "model",
                 collectionId,
               })}
             />
@@ -81,7 +80,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
                 mode: "query",
                 type: "native",
                 creationType: "native_question",
-                dataset: true,
+                cardType: "model",
                 collectionId,
               })}
               width={180}

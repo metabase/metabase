@@ -224,14 +224,6 @@
   color: white !important;
 }
 
-:global(.SaveStatus) {
-  line-height: 1;
-}
-
-:global(.SaveStatus:last-child) {
-  border-right: none !important;
-}
-
 :global(.SettingsInput) {
   width: 400px;
 }

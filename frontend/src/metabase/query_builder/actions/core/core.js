@@ -1,34 +1,30 @@
 import { createAction } from "redux-actions";
-
 import _ from "underscore";
+
+import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
+import Questions from "metabase/entities/questions";
+import Revision from "metabase/entities/revisions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
+import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
-import { createThunkAction } from "metabase/lib/redux";
-
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
-
 import { openUrl } from "metabase/redux/app";
-
-import Questions from "metabase/entities/questions";
-import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
-
-import { fetchAlertsForQuestion } from "metabase/alert/alert";
-import Revision from "metabase/entities/revisions";
-import * as Lib from "metabase-lib";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
+import Query from "metabase-lib/queries/Query";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase-lib/queries/utils/card";
-import Query from "metabase-lib/queries/Query";
-import Question from "metabase-lib/Question";
 
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
@@ -40,7 +36,6 @@ import {
   isBasedOnExistingQuestion,
   getParameters,
 } from "../../selectors";
-
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
@@ -173,11 +168,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
-          // When the dataset query changes, we should loose the dataset flag,
+          // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(
-            setCardAndRun({ ...card, dataset: false, type: "question" }),
-          );
+          dispatch(setCardAndRun({ ...card, type: "question" }));
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));
@@ -240,7 +233,8 @@ export const apiCreateQuestion = question => {
 
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
-    const metadataOptions = { reload: createdQuestion.isDataset() };
+    const isModel = question.type() === "model";
+    const metadataOptions = { reload: isModel };
     await dispatch(loadMetadataForCard(card, metadataOptions));
 
     return createdQuestion;
@@ -255,8 +249,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
+    const isModel = question.type() === "model";
 
-    if (question.isDataset()) {
+    if (isModel) {
       resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
         resultsMetadata.columns,
       );
@@ -305,13 +300,13 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       payload: updatedQuestion.card(),
     });
 
-    if (question.isDataset()) {
+    if (isModel) {
       // this needs to happen after the question update completes in case we have changed the type
       // of the primary key field in the same update
       await dispatch(ModelIndexes.actions.updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: question.isDataset() };
+    const metadataOptions = { reload: isModel };
     await dispatch(loadMetadataForCard(question.card(), metadataOptions));
 
     if (rerunQuery) {

@@ -442,4 +442,4 @@
 
 (defmethod driver/execute-reducible-query :athena
   [driver query context respond]
-  ((get-method driver/execute-reducible-query :sql-jdbc) driver (prepare-query driver, query) context respond))
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver (prepare-query driver query) context respond))

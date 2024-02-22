@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import {
   renderWithProviders,
   screen,
@@ -6,6 +7,7 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
 import { CoordinateFilterEditor } from "./CoordinateFilterEditor";
 
 interface SetupOpts {

@@ -1,17 +1,17 @@
-import { useCallback, useMemo, isValidElement } from "react";
 import cx from "classnames";
+import { useCallback, useMemo, isValidElement } from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-
-import type { OptionsType } from "metabase/lib/formatting/types";
 import { formatValue } from "metabase/lib/formatting";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-
+import type { ClickObject } from "metabase-lib";
+import { isID, isFK } from "metabase-lib/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
@@ -20,10 +20,9 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { ClickObject } from "metabase-lib";
-import { isID, isFK } from "metabase-lib/types/utils/isa";
 
 import MiniBar from "../MiniBar";
+
 import { CellRoot, CellContent } from "./TableCell.styled";
 
 type GetCellDataOpts = {

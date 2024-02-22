@@ -9,13 +9,14 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (defn- resolve-card-id-source-tables [query]
   (letfn [(thunk []
-            (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))]
+            (fetch-source-query/resolve-card-id-source-tables query))]
     (if (qp.store/initialized?)
       (thunk)
       (qp.store/with-metadata-provider meta/metadata-provider
@@ -36,7 +37,7 @@
                       :query    inner-query}]
      (assoc-in outer-query [:query :source-metadata]
                (not-empty (if (= metadata ::infer)
-                            (qp/query->expected-cols outer-query)
+                            (qp.preprocess/query->expected-cols outer-query)
                             metadata))))))
 
 (def ^:private mock-metadata-provider
@@ -51,8 +52,9 @@
       (is (= (assoc (default-result-with-inner-query
                      {:source-query   {:source-table (meta/id :venues)}
                       :source-card-id 1}
-                     (qp/query->expected-cols (lib.tu.macros/mbql-query venues)))
-                    :info {:card-id 1})
+                     (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
+                    :info {:card-id 1}
+                    ::fetch-source-query/source-card-id 1)
              (resolve-card-id-source-tables
               (wrap-inner-query
                {:source-table "card__1"})))))))
@@ -66,8 +68,9 @@
                         :breakout       [[:field "price" {:base-type :type/Integer}]]
                         :source-query   {:source-table (meta/id :venues)}
                         :source-card-id 1}
-                       (qp/query->expected-cols (lib.tu.macros/mbql-query venues)))
-                      :info {:card-id 1})
+                       (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
+                      :info {:card-id 1}
+                      ::fetch-source-query/source-card-id 1)
                (resolve-card-id-source-tables
                 (wrap-inner-query
                  {:source-table "card__1"
@@ -82,8 +85,9 @@
                        {:source-query   {:source-table (meta/id :checkins)}
                         :source-card-id 2
                         :filter         [:between [:field "date" {:base-type :type/Date}] "2015-01-01" "2015-02-01"]}
-                       (qp/query->expected-cols (lib.tu.macros/mbql-query checkins)))
-                      :info {:card-id 2})
+                       (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query checkins)))
+                      :info {:card-id 2}
+                      ::fetch-source-query/source-card-id 2)
                (resolve-card-id-source-tables
                 (wrap-inner-query
                  {:source-table "card__2"
@@ -119,7 +123,8 @@
                       :source-query   {:native "SELECT * FROM venues"}
                       :source-card-id 1}
                      nil)
-                    :info {:card-id 1})
+                    :info {:card-id 1}
+                    ::fetch-source-query/source-card-id 1)
              (resolve-card-id-source-tables
               (wrap-inner-query
                {:source-table "card__1"
@@ -146,10 +151,11 @@
                                       :source-card-id  1
                                       :source-metadata nil}
                      :source-card-id 2}
-                    (qp/query->expected-cols (lib.tu.macros/mbql-query venues)))
+                    (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
                   (assoc-in [:query :source-query :source-metadata]
-                            (mt/derecordize (qp/query->expected-cols (lib.tu.macros/mbql-query venues))))
-                  (assoc :info {:card-id 2}))
+                            (mt/derecordize (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))))
+                  (assoc :info {:card-id 2}
+                         ::fetch-source-query/source-card-id 2))
               (resolve-card-id-source-tables
                 (wrap-inner-query
                   {:source-table "card__2", :limit 25})))))))
@@ -172,7 +178,7 @@
                                          :query    {:source-table "card__1"
                                                     :limit        1}
                                          :database lib.schema.id/saved-questions-virtual-database-id})]
-          (is (= {:dataset true :rows 1}
+          (is (= {:dataset true, :rows 1}
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
 
 (deftest ^:parallel nested-nested-queries-test-3
@@ -276,7 +282,7 @@
                                                   :name            "Card 2"
                                                   :database-id     (meta/id)
                                                   :dataset-query   query
-                                                  :result-metadata (qp/query->expected-cols query)})]}))
+                                                  :result-metadata (qp.preprocess/query->expected-cols query)})]}))
     (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
       (is (= (lib.tu.macros/mbql-query venues
                {:joins [{:alias           "c"
@@ -360,13 +366,14 @@
 (deftest ^:parallel dont-overwrite-existing-card-id-test
   (testing "Don't overwrite existing values of `[:info :card-id]`"
     (qp.store/with-metadata-provider mock-metadata-provider
-      (let [query         (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
-                                 :info {:card-id Integer/MAX_VALUE})]
+      (let [query (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
+                         :info {:card-id Integer/MAX_VALUE})]
         (is (= (assoc (lib.tu.macros/mbql-query nil
                         {:source-query    {:source-table (meta/id :venues)}
                          :source-card-id  1
-                         :source-metadata (mt/derecordize (qp/query->expected-cols (lib.tu.macros/mbql-query venues)))})
-                      :info {:card-id Integer/MAX_VALUE})
+                         :source-metadata (mt/derecordize (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))})
+                      :info {:card-id Integer/MAX_VALUE}
+                      ::fetch-source-query/source-card-id 1)
                (resolve-card-id-source-tables query)))))))
 
 (defn- card-id->source-query-and-metadata [card-id]
@@ -417,3 +424,14 @@
                                   :collection "checkins"}
                 :database        (meta/id)}
                (card-id->source-query-and-metadata 1)))))))
+
+(deftest ^:parallel remove-card-id-key-test
+  (testing "Strip out the ::fetch-source-query/source-card-id key for queries that don't have a source card"
+    (is (= {:database (mt/id)
+            :type     :query
+            :query    {:source-table (mt/id :venues)}}
+           (resolve-card-id-source-tables
+            {:database                           (mt/id)
+             :type                               :query
+             :query                              {:source-table (mt/id :venues)}
+             ::fetch-source-query/source-card-id 1})))))

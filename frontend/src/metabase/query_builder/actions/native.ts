@@ -1,11 +1,10 @@
 import { createAction } from "redux-actions";
 
+import Questions from "metabase/entities/questions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
-
-import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
-
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type {
   CardId,
   NativeQuerySnippet,
@@ -13,8 +12,6 @@ import type {
   TemplateTag,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
-
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import {
   getDataReferenceStack,

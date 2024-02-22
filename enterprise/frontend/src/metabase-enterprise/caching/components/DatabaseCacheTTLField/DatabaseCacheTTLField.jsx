@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
+
 import Select, { Option } from "metabase/core/components/Select";
+
 import CacheTTLField from "../CacheTTLField";
+
 import {
   CacheFieldContainer,
   FieldContainer,

@@ -1,16 +1,15 @@
 import { createAction } from "redux-actions";
-import { createThunkAction } from "metabase/lib/redux";
 
-import { PulseApi } from "metabase/services";
 import Pulses from "metabase/entities/pulses";
-
-import { setErrorPage } from "metabase/redux/app";
-
 import {
   getDefaultChannel,
   createChannel,
   NEW_PULSE_TEMPLATE,
 } from "metabase/lib/pulse";
+import { createThunkAction } from "metabase/lib/redux";
+import { setErrorPage } from "metabase/redux/app";
+import { PulseApi } from "metabase/services";
+
 import { getEditingPulse, getPulseFormInput } from "./selectors";
 
 export const SET_EDITING_PULSE = "SET_EDITING_PULSE";

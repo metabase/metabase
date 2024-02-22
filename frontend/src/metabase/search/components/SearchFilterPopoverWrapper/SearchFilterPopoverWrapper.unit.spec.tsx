@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
+
 import { SearchFilterPopoverWrapper } from "./SearchFilterPopoverWrapper";
 
 type SetupProps = {

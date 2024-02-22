@@ -8,7 +8,6 @@
 
 import _ from "underscore";
 
-// eslint-disable-next-line import/no-unresolved
 import SAMPLE_INSTANCE_DATA from "./cypress_sample_instance_data.json";
 
 export const ORDERS_QUESTION_ID = _.findWhere(SAMPLE_INSTANCE_DATA.questions, {

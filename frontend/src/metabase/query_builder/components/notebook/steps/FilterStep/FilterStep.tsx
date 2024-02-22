@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+
 import ErrorBoundary from "metabase/ErrorBoundary";
-import type { PopoverBaseProps } from "metabase/ui";
 import { FilterPicker } from "metabase/querying";
+import type { PopoverBaseProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 

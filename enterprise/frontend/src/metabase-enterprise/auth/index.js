@@ -1,11 +1,9 @@
+import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
-import { updateIn } from "icepick";
+
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-import {
-  hasAnySsoPremiumFeature,
-  hasPremiumFeature,
-} from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -13,13 +11,16 @@ import {
   PLUGIN_IS_PASSWORD_USER,
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
-
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
+import {
+  hasAnySsoPremiumFeature,
+  hasPremiumFeature,
+} from "metabase-enterprise/settings";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
-import SettingsSAMLForm from "./components/SettingsSAMLForm";
+
 import SettingsJWTForm from "./components/SettingsJWTForm";
+import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import { SsoButton } from "./components/SsoButton";
 import JwtAuthCard from "./containers/JwtAuthCard";
 import SamlAuthCard from "./containers/SamlAuthCard";
@@ -93,6 +94,13 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
       {
         key: "saml-enabled",
         getHidden: () => true,
+      },
+      {
+        key: "saml-user-provisioning-enabled?",
+        display_name: t`User Provisioning`,
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        description: t`When a user logs in via SAML, create a Metabase account for them automatically if they don't have one.`,
+        type: "boolean",
       },
       {
         key: "saml-identity-provider-uri",
@@ -179,7 +187,13 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         key: "jwt-enabled",
         display_name: t`JWT Authentication`,
         type: "boolean",
-        getHidden: () => true,
+      },
+      {
+        key: "jwt-user-provisioning-enabled?",
+        display_name: t`User Provisioning`,
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        description: t`When a user logs in via JWT, create a Metabase account for them automatically if they don't have one.`,
+        type: "boolean",
       },
       {
         key: "jwt-identity-provider-uri",

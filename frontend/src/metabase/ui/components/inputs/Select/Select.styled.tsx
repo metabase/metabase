@@ -1,10 +1,11 @@
-import { getSize, getStylesRef, px, rem } from "@mantine/core";
 import type {
   MantineSize,
   MantineTheme,
   MantineThemeOverride,
   CSSObject,
 } from "@mantine/core";
+import { getSize, getStylesRef, px, rem } from "@mantine/core";
+
 import { SelectDropdown } from "./SelectDropdown";
 import { SelectItem } from "./SelectItem";
 
@@ -23,6 +24,14 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
     styles: (theme, _, { size = "md" }) => ({
       ...getSelectInputOverrides(theme, size),
       ...getSelectItemsOverrides(theme, size),
+      // For epic (metabase#38699)
+      dropdown: {
+        ">div": {
+          maxHeight: "none !important",
+        },
+        padding: 0,
+        overflow: "auto",
+      },
     }),
   },
 });

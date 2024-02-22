@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { ClientCodeSampleConfig } from "metabase/public/lib/types";
 
 import { CodeSample } from "./CodeSample";

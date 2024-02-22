@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import TokenField from "metabase/components/TokenField";
-
 import { color, darken } from "metabase/lib/colors";
 
 export const OptionListContainer = styled.div`

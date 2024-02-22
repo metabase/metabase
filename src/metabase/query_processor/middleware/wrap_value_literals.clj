@@ -26,6 +26,7 @@
 
 (defmethod type-info :metadata/column
   [field]
+  ;; Opts should probably override all of these
   (let [field-info (-> (select-keys field [:base-type :effective-type :coercion-strategy :semantic-type :database-type :name])
                        (update-keys u/->snake_case_en))]
     (merge
@@ -38,13 +39,23 @@
 
 (defmethod type-info :field [[_ id-or-name opts]]
   (merge
-   (when (integer? id-or-name)
-     (type-info (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
-   (when (:temporal-unit opts)
-     {:unit (:temporal-unit opts)})
-   (when (:base-type opts)
-     {:base_type (:base-type opts)})))
+    ;; With Mlv2 queries, this could be combined with `:expression` below and use the column from the
+    ;; query rather than metadata/field
+    (when (integer? id-or-name)
+      (type-info (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
+    (when (:temporal-unit opts)
+      {:unit (:temporal-unit opts)})
+    (when (:base-type opts)
+      {:base_type (:base-type opts)})))
 
+(defmethod type-info :expression [[_ _name opts]]
+  (merge
+    (when (isa? (:base-type opts) :type/Temporal)
+      {:unit :default})
+    (when (:temporal-unit opts)
+      {:unit (:temporal-unit opts)})
+    (when (:base-type opts)
+      {:base_type (:base-type opts)})))
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------
 

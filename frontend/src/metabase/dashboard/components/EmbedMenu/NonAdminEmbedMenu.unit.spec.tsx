@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
+
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { NonAdminEmbedMenu } from "metabase/dashboard/components/EmbedMenu/NonAdminEmbedMenu";
 import { createMockDashboard } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { NonAdminEmbedMenu } from "metabase/dashboard/components/EmbedMenu/NonAdminEmbedMenu";
 
 const setup = ({
   hasPublicLink = true,

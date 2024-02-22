@@ -1,8 +1,10 @@
 import type { HTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useContext } from "react";
+
 import type { IconName } from "metabase/ui";
-import { TabContext } from "./TabContext";
+
 import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
+import { TabContext } from "./TabContext";
 import { getTabId, getTabPanelId } from "./utils";
 
 export interface TabProps<T> extends HTMLAttributes<HTMLButtonElement> {

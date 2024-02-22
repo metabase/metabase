@@ -1,8 +1,8 @@
-import _ from "underscore";
-import { t } from "ttag";
-
 import type React from "react";
 import { useState } from "react";
+import { t } from "ttag";
+import _ from "underscore";
+
 import { Button, TextInput, Icon } from "metabase/ui";
 
 type DefaultRenderInputProps = {

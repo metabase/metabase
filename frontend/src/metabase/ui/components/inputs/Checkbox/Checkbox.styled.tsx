@@ -1,9 +1,10 @@
-import { getStylesRef, getSize, rem } from "@mantine/core";
 import type {
   CheckboxStylesParams,
   MantineTheme,
   MantineThemeOverride,
 } from "@mantine/core";
+import { getStylesRef, getSize, rem } from "@mantine/core";
+
 import { CheckboxIcon } from "./CheckboxIcon";
 
 const SIZES = {

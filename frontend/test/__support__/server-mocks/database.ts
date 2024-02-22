@@ -1,8 +1,10 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
+
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
-import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 import { isTypeFK } from "metabase-lib/types/utils/isa";
+import type { Database, DatabaseUsageInfo } from "metabase-types/api";
+
 import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
 

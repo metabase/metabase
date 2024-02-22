@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { CardId, WritebackAction } from "metabase-types/api";
 import {
   createMockQueryAction,

@@ -1,16 +1,17 @@
-import { jt, t } from "ttag";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Box, Center, Stack, Text } from "metabase/ui";
+import { jt, t } from "ttag";
+
+import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
+import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbedResourceType,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
-import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
-import { getPlan } from "metabase/common/utils/plan";
+import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import { Box, Center, Stack, Text } from "metabase/ui";
 
 import { ClientEmbedCodePane } from "./ClientEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";

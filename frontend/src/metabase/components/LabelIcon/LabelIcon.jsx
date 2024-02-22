@@ -1,8 +1,9 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 
-import cx from "classnames";
 import { Icon } from "metabase/ui";
+
 import S from "./LabelIcon.module.css";
 
 const LabelIcon = ({ icon, size = 16, className, style }) =>

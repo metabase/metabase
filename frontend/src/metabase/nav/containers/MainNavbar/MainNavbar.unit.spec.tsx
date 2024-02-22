@@ -1,38 +1,34 @@
-import { Route } from "react-router";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-
-import * as Urls from "metabase/lib/urls";
-
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
+import * as Urls from "metabase/lib/urls";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockDatabase,
   createMockDashboard,
+  createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
-
+import type { DashboardState } from "metabase-types/store";
 import {
-  createMockState,
   createMockDashboardState,
   createMockQueryBuilderState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
-import type { DashboardState } from "metabase-types/store";
 import MainNavbar from "./MainNavbar";
 
 type SetupOpts = {
@@ -406,7 +402,7 @@ describe("nav > containers > MainNavbar", () => {
     it("should highlight model's collection when on model detail page", async () => {
       const model = createMockCard({
         collection_id: TEST_COLLECTION.id as number,
-        dataset: true,
+        type: "model",
       });
       await setup({
         route: "/model/:slug/detail",

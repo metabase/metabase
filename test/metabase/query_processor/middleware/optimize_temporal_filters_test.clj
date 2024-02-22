@@ -5,7 +5,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.optimize-temporal-filters
     :as optimize-temporal-filters]
    [metabase.test :as mt]
@@ -187,7 +187,7 @@
 
 ;; Make sure the optimization logic is actually applied in the resulting native query!
 (defn- filter->sql [filter-clause]
-  (let [result (qp/compile
+  (let [result (qp.compile/compile
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
                     :filter      filter-clause}))]
@@ -322,7 +322,7 @@
                   " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
                   " < DATE_TRUNC('month', NOW()))")
              (:query
-              (qp/compile
+              (qp.compile/compile
                (mt/mbql-query attempts
                  {:aggregation [[:count]]
                   :filter      [:time-interval $datetime :last :month]}))))))))

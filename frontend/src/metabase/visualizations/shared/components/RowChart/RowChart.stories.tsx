@@ -1,7 +1,9 @@
 import type { ComponentStory } from "@storybook/react";
+
+import { color } from "metabase/lib/colors";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/theme";
-import { color } from "metabase/lib/colors";
+
 import { RowChart } from "./RowChart";
 
 export default {

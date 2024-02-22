@@ -1,13 +1,12 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
-import _ from "underscore";
 import { useAsync } from "react-use";
+import _ from "underscore";
 
+import Questions from "metabase/entities/questions";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-
-import Questions from "metabase/entities/questions";
 import Question from "metabase-lib/Question";
 
 // type annotations

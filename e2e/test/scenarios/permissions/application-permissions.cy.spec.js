@@ -1,3 +1,9 @@
+import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   modal,
@@ -10,14 +16,8 @@ import {
   setupSMTP,
   sidebar,
   popover,
+  undoToast,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -229,8 +229,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         // General smoke test
         cy.get("#setting-site-name").clear().type("new name").blur();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Saved");
+        undoToast().findByText("Changes saved").should("be.visible");
       });
     });
   });

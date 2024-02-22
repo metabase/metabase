@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+
 import BrandColorSettings from "../BrandColorSettings";
-import ChartColorSettings from "../ChartColorSettings";
 import ChartColorPreview from "../ChartColorPreview";
+import ChartColorSettings from "../ChartColorSettings";
+
 import {
   BrandColorSection,
   ChartColorSection,
@@ -18,7 +20,7 @@ export interface ColorSettingsProps {
   onChange?: (colors: Record<string, string>) => void;
 }
 
-const ColorSettings = ({
+export const ColorSettings = ({
   initialColors,
   originalColors,
   onChange,
@@ -40,7 +42,10 @@ const ColorSettings = ({
   return (
     <SettingRoot>
       <BrandColorSection>
-        <SettingTitle>{t`User interface colors`}</SettingTitle>
+        <SettingTitle hasDescription>{t`User interface colors`}</SettingTitle>
+        <SettingDescription>
+          {t`Note: deleting each of the values will revert them back to default.`}
+        </SettingDescription>
         <BrandColorSettings
           colors={colors}
           colorPalette={colorPalette}
@@ -50,7 +55,7 @@ const ColorSettings = ({
       <ChartColorSection>
         <SettingTitle hasDescription>{t`Chart colors`}</SettingTitle>
         <SettingDescription>
-          {t`You can choose up to 24 hex values. We’ll auto-generate what you leave blank.`}
+          {t`Choose up to 24 hex values. We’ll auto-generate what you leave blank.`}
         </SettingDescription>
         <SectionContent>
           <ChartColorSettings
@@ -64,6 +69,3 @@ const ColorSettings = ({
     </SettingRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorSettings;

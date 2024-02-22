@@ -1,7 +1,13 @@
 import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
+
 import { createMockMetadata } from "__support__/metadata";
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import * as ML_Urls from "metabase-lib/urls";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -28,11 +34,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
-import Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -110,7 +111,7 @@ const orders_card_without_pk = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset: true,
+  type: "model",
   database_id: SAMPLE_DB_ID,
   table_id: ORDERS_ID,
   dataset_query: {
@@ -684,6 +685,8 @@ describe("Question", () => {
         });
       });
 
+      // Adding a column with same name is covered as well, as name is generated at FE and it will
+      // be unique (e.g. foo -> foo_2)
       it("should handle the addition and removal of columns", () => {
         question._syncNativeQuerySettings({
           data: {
@@ -794,6 +797,16 @@ describe("Question", () => {
             },
           ],
         });
+      });
+
+      it("shouldn't update settings if order of columns has changed", () => {
+        question._syncNativeQuerySettings({
+          data: {
+            cols: [cols[1], cols[0]],
+          },
+        });
+
+        expect(question.updateSettings).not.toHaveBeenCalled();
       });
     });
   });

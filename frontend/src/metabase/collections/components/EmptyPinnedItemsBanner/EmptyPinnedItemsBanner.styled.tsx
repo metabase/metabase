@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
 import Banner from "metabase/components/Banner";
+import { color, lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const EmptyBanner = styled(Banner)`

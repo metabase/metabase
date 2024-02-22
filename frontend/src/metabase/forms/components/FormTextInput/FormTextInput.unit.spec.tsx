@@ -1,6 +1,8 @@
-import * as Yup from "yup";
-import type { AnySchema } from "yup";
 import userEvent from "@testing-library/user-event";
+import type { AnySchema } from "yup";
+import * as Yup from "yup";
+
+import { getIcon, queryIcon, render, screen, waitFor } from "__support__/ui";
 import {
   Form,
   FormProvider,
@@ -8,7 +10,6 @@ import {
   FormTextInput,
   requiredErrorMessage,
 } from "metabase/forms";
-import { getIcon, queryIcon, render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
   name: string | null | undefined;

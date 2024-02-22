@@ -1,5 +1,7 @@
 import { t } from "ttag";
+
 import { Group, NumberInput, Select } from "metabase/ui";
+
 import type { DateIntervalValue } from "../../types";
 import { getInterval, getUnitOptions, setInterval } from "../../utils";
 import { setUnit } from "../utils";
