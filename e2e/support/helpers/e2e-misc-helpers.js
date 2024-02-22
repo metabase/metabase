@@ -288,11 +288,11 @@ export function saveQuestion(
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
 
-  modal().within(() => {
+  cy.findByTestId("save-question-modal").within(modal => {
     if (name) {
       cy.findByLabelText("Name").clear().type(name);
     }
-    cy.button("Save").click();
+    cy.findByText("Save").click();
   });
 
   cy.wait("@saveQuestion").then(({ response: { body } }) => {
