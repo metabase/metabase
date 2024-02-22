@@ -76,7 +76,8 @@
 ;;; count and cumulative count can both be used either with no args (count of rows) or with one arg (count of X, which
 ;;; I think means count where X is not NULL or something like that. Basically `count(x)` in SQL)
 (doseq [tag [:count
-             :cum-count]]
+             :cum-count
+             :count-where]]
   (lib.hierarchy/derive tag ::count-aggregation))
 
 (defmethod lib.metadata.calculation/display-name-method ::count-aggregation
@@ -101,6 +102,9 @@
   [query stage-number clause]
   (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
          :semantic-type :type/Quantity))
+
+(lib.hierarchy/derive ::count-aggregation ::quantity-aggregation)
+(lib.hierarchy/derive :distinct ::quantity-aggregation)
 
 (defmethod lib.metadata.calculation/display-name-method :case
   [_query _stage-number _case _style]
@@ -157,11 +161,6 @@
   (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
          :semantic-type :type/Quantity))
 
-(defmethod lib.metadata.calculation/metadata-method :var
-  [query stage-number clause]
-  (dissoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
-         :semantic-type))
-
 (defmethod lib.metadata.calculation/display-name-method :percentile
   [query stage-number [_percentile _opts x p] style]
   (i18n/tru "{0}th percentile of {1}" p (lib.metadata.calculation/display-name query stage-number x style)))
@@ -170,12 +169,17 @@
   [_query _stage-number _clause]
   "percentile")
 
-(defmethod lib.metadata.calculation/metadata-method :percentile
+(lib.hierarchy/derive ::no-semantic-type ::aggregation)
+(doseq [tag [:percentile :var]]
+  (lib.hierarchy/derive tag ::no-semantic-type))
+
+;; The default preserves the semantic type.
+;; But for ::no-semantic-type we should drop
+
+(defmethod lib.metadata.calculation/metadata-method ::no-semantic-type
   [query stage-number clause]
   (dissoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
-         :semantic-type))
-
-(lib.hierarchy/derive :percentile ::aggregation)
+          :semantic-type))
 
 ;;; we don't currently have sophisticated logic for generating nice display names for filter clauses.
 ;;;
@@ -213,13 +217,6 @@
 (defmethod lib.metadata.calculation/column-name-method :count-where
   [_query _stage-number _count-where]
   "count-where")
-
-(defmethod lib.metadata.calculation/metadata-method :count-where
-  [query stage-number clause]
-  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
-         :semantic-type :type/Quantity))
-
-(lib.hierarchy/derive :count-where ::aggregation)
 
 (defmethod lib.metadata.calculation/metadata-method ::aggregation
   [query stage-number [_tag _opts first-arg :as clause]]
