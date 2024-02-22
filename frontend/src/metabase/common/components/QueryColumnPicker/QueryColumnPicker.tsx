@@ -176,7 +176,7 @@ export function QueryColumnPicker({
         query={query}
         stageIndex={stageIndex}
         column={item.column}
-        position="top-start"
+        position="right"
       />
     ),
     [query, stageIndex],
