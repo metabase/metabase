@@ -470,5 +470,6 @@ dashcards:
       - 0
       name: count
     table.pivot_column: end_timestamp
+initially_published_at: null
 tabs: []
 width: full
