@@ -6,13 +6,28 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
+  CartesianChartDateTimeAbsoluteUnit,
   ChartDataset,
   DimensionModel,
+  TimeSeriesXAxisModel,
+  WaterfallXAxisModel,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getXAxisModel } from "../../model/axis";
 import { isTimeSeriesAxis } from "../../model/guards";
+import { tryGetDate } from "../../utils/time-series";
+
+const getTotalTimeSeriesXValue = ({
+  interval,
+  range,
+}: TimeSeriesXAxisModel) => {
+  const [, lastDate] = range;
+  const { unit, count } = interval;
+
+  // @ts-expect-error fix quarter types in dayjs
+  return lastDate.add(count, unit).toISOString();
+};
 
 export const getWaterfallXAxisModel = (
   dimensionModel: DimensionModel,
@@ -20,7 +35,7 @@ export const getWaterfallXAxisModel = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-) => {
+): WaterfallXAxisModel => {
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
@@ -29,48 +44,63 @@ export const getWaterfallXAxisModel = (
     renderingContext,
   );
 
-  const waterfallFormatter = (value: RowValue) => {
-    const hasTotal = !!settings["waterfall.show_total"];
-    const lastXValue = dataset[dataset.length - 1][X_AXIS_DATA_KEY];
-    const areBooleanXValues =
-      typeof lastXValue === "boolean" || typeof value === "boolean";
+  const hasTotal = !!settings["waterfall.show_total"];
+  let totalXValue = hasTotal ? t`Total` : undefined;
 
-    if (!hasTotal || !isTimeSeriesAxis(xAxisModel) || areBooleanXValues) {
-      return xAxisModel.formatter(value);
-    }
-    const dateValue = dayjs(value);
+  let tickRenderPredicate: XAxisModel["tickRenderPredicate"];
 
-    const totalBucketStart = dayjs(lastXValue).add(
-      xAxisModel.interval.count,
-      // @ts-expect-error daysjs
-      xAxisModel.interval.unit,
-    );
+  if (isTimeSeriesAxis(xAxisModel) && hasTotal) {
+    const timeSeriesTotalXValue = getTotalTimeSeriesXValue(xAxisModel);
 
+    totalXValue = timeSeriesTotalXValue;
+    tickRenderPredicate = (tickValueRaw: string) => {
+      const tickValue = dayjs(tickValueRaw);
+      let tickUnit: CartesianChartDateTimeAbsoluteUnit | undefined;
+
+      // HACK: Due to ECharts default tick selection for weekly and quarterly data
+      // we render for each day and month respectively to select the desired ones only.
+      // This logic of unit selection should be in sync with `getTimeSeriesXAxisModel` in
+      // frontend/src/metabase/visualizations/echarts/cartesian/model/axis.ts
+      if (xAxisModel.interval.unit === "week") {
+        tickUnit = "day";
+      } else if (
+        xAxisModel.interval.unit === "month" &&
+        xAxisModel.interval.count === 3
+      ) {
+        tickUnit = "month";
+      }
+
+      // @ts-expect-error FIXME: dayjs quarter plugin types
+      if (tickValue.isSame(tryGetDate(timeSeriesTotalXValue), tickUnit)) {
+        return true;
+      }
+
+      return xAxisModel.tickRenderPredicate?.(tickValueRaw) ?? true;
+    };
+  }
+
+  const waterfallFormatter = (valueRaw: RowValue) => {
     if (
-      dateValue.isSame(
-        totalBucketStart,
-        // @ts-expect-error daysjs
-        xAxisModel.interval?.unit,
-      )
+      typeof totalXValue === "undefined" ||
+      !isTimeSeriesAxis(xAxisModel) ||
+      typeof valueRaw === "boolean"
     ) {
+      return xAxisModel.formatter(valueRaw);
+    }
+    const dateValue = dayjs(valueRaw);
+
+    // @ts-expect-error FIXME: dayjs quarter plugin types
+    if (dateValue.isSame(totalXValue, xAxisModel.interval.unit)) {
       return t`Total`;
-    } else if (
-      dateValue.isAfter(
-        totalBucketStart,
-        // @ts-expect-error daysjs
-        xAxisModel.interval?.unit,
-      )
-    ) {
-      // If ECharts decides that tick after the Total value should be rendered
-      // we intentionally hide it
-      return " ";
     }
 
-    return xAxisModel.formatter(value);
+    return xAxisModel.formatter(valueRaw);
   };
 
   return {
     ...xAxisModel,
     formatter: waterfallFormatter,
+    totalXValue,
+    tickRenderPredicate,
   };
 };

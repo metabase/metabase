@@ -101,6 +101,7 @@ export type BaseXAxisModel = {
   formatter: AxisFormatter;
   axisType: OptionAxisType;
   canBrush?: boolean;
+  tickRenderPredicate?: (value: string) => boolean;
 };
 
 export type CategoryXAxisModel = BaseXAxisModel & {
@@ -121,13 +122,15 @@ export type TimeSeriesXAxisModel = BaseXAxisModel & {
   range: DateRange;
   ticksMaxInterval?: number;
   ticksMinInterval?: number;
-  tickRenderPredicate: (value: string) => boolean;
+  effectiveTickUnit?: CartesianChartDateTimeAbsoluteUnit;
 };
 
 export type XAxisModel =
   | CategoryXAxisModel
   | NumericXAxisModel
   | TimeSeriesXAxisModel;
+
+export type WaterfallXAxisModel = XAxisModel & { totalXValue?: RowValue };
 
 export type YAxisModel = {
   seriesKeys: DataKey[];

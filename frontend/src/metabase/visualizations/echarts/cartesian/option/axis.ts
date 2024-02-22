@@ -147,13 +147,10 @@ export const buildDimensionAxis = (
       ...getTicksDefaultOption(renderingContext),
       // Value is always converted to a string by ECharts
       formatter: (value: string) => {
-        if (
-          isTimeSeriesAxis(xAxisModel) &&
-          !xAxisModel.tickRenderPredicate(value)
-        ) {
-          return false;
+        if (xAxisModel.tickRenderPredicate?.(value) ?? true) {
+          return ` ${formatter(valueGetter(value))} `; // spaces force padding between ticks
         }
-        return ` ${formatter(valueGetter(value))} `; // spaces force padding between ticks
+        return false;
       },
     },
     axisLine: {

@@ -572,7 +572,7 @@ export function getTimeSeriesXAxisModel(
     isLargerInterval(rangeBasedComputedTicksInterval, dataTimeSeriesInterval);
 
   const isTickWithinRange = getTickWithinRangePredicate(range);
-  let tickRenderPredicate: TimeSeriesXAxisModel["tickRenderPredicate"] =
+  let tickRenderPredicate: XAxisModel["tickRenderPredicate"] =
     isTickWithinRange;
   let ticksMaxInterval;
   let ticksMinInterval = getTimeSeriesIntervalDuration(
