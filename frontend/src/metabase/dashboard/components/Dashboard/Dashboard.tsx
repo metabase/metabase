@@ -467,6 +467,45 @@ function DashboardInner(props: DashboardProps) {
     />
   );
 
+  const renderParameterList = () => {
+    if (!hasVisibleParameters) {
+      return null;
+    }
+
+    if (isEditing) {
+      return (
+        <ParametersWidgetContainer
+          hasScroll
+          isSticky
+          data-testid="edit-dashboard-parameters-widget-container"
+        >
+          <FixedWidthContainer
+            isFixedWidth={dashboard?.width === "fixed"}
+            data-testid="fixed-width-filters"
+          >
+            {parametersWidget}
+          </FixedWidthContainer>
+        </ParametersWidgetContainer>
+      );
+    }
+
+    return (
+      <ParametersWidgetContainer
+        hasScroll={hasScroll}
+        isSticky={isParametersWidgetContainersSticky(visibleParameters.length)}
+        data-testid="dashboard-parameters-widget-container"
+      >
+        <ParametersFixedWidthContainer
+          isFixedWidth={dashboard?.width === "fixed"}
+          data-testid="fixed-width-filters"
+        >
+          {parametersWidget}
+          <FilterApplyButton />
+        </ParametersFixedWidthContainer>
+      </ParametersWidgetContainer>
+    );
+  };
+
   return (
     <DashboardLoadingAndErrorWrapper
       isFullHeight={isEditing || isSharing}
@@ -503,37 +542,7 @@ function DashboardInner(props: DashboardProps) {
                 !isFullscreen && (isEditing || isSharing)
               }
             >
-              {isEditing && hasVisibleParameters && (
-                <ParametersWidgetContainer
-                  data-testid="edit-dashboard-parameters-widget-container"
-                  hasScroll={true}
-                  isSticky={true}
-                >
-                  <FixedWidthContainer
-                    isFixedWidth={dashboard?.width === "fixed"}
-                    data-testid="fixed-width-filters"
-                  >
-                    {parametersWidget}
-                  </FixedWidthContainer>
-                </ParametersWidgetContainer>
-              )}
-              {!isEditing && hasVisibleParameters && (
-                <ParametersWidgetContainer
-                  data-testid="dashboard-parameters-widget-container"
-                  hasScroll={hasScroll}
-                  isSticky={isParametersWidgetContainersSticky(
-                    visibleParameters.length,
-                  )}
-                >
-                  <ParametersFixedWidthContainer
-                    isFixedWidth={dashboard?.width === "fixed"}
-                    data-testid="fixed-width-filters"
-                  >
-                    {parametersWidget}
-                    <FilterApplyButton />
-                  </ParametersFixedWidthContainer>
-                </ParametersWidgetContainer>
-              )}
+              {renderParameterList()}
               <CardsContainer id="Dashboard-Cards-Container">
                 {renderContent()}
               </CardsContainer>
