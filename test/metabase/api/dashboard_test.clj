@@ -2841,28 +2841,29 @@
       (testing "should check perms for the Fields in question"
         (mt/with-temp-copy-of-db
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
+            (mt/with-no-data-perms-for-all-users!
+              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted)
 
-            ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
-            ;; but 200 on calls that we could just use the cache.
-            ;; It's not ideal and we definitely need to have a consistent behavior
-            (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
-              (is (= {:values          [["African"] ["American"] ["Artisan"]]
-                      :has_more_values false}
-                     (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
-                          (mt/user-http-request :rasta :get 200)
-                          (chain-filter-test/take-n-values 3))))))))
+              ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
+              ;; but 200 on calls that we could just use the cache.
+              ;; It's not ideal and we definitely need to have a consistent behavior
+              (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
+                (is (= {:values          [["African"] ["American"] ["Artisan"]]
+                        :has_more_values false}
+                       (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                            (mt/user-http-request :rasta :get 200)
+                            (chain-filter-test/take-n-values 3)))))))))
 
       (testing "missing data perms should not affect perms for the Fields in question when users have collection access"
         (mt/with-temp-copy-of-db
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (is (= {:values          [["African"] ["American"] ["Artisan"]]
-                    :has_more_values false}
-                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
-                        (mt/user-http-request :rasta :get 200)
-                        (chain-filter-test/take-n-values 3))))))))))
+            (mt/with-no-data-perms-for-all-users!
+              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
+              (is (= {:values          [["African"] ["American"] ["Artisan"]]
+                      :has_more_values false}
+                     (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                          (mt/user-http-request :rasta :get 200)
+                          (chain-filter-test/take-n-values 3)))))))))))
 
 (deftest block-data-should-not-expose-field-values
   (testing "block data perms should not allow access to field values (private#196)"
@@ -3379,9 +3380,10 @@
             (is (malli= (dashboard-card-query-expected-results-schema)
                         (mt/user-http-request :rasta :post 202 (url))))
             (testing "Should *not* require data perms"
-              (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-              (is (malli= (dashboard-card-query-expected-results-schema)
-                          (mt/user-http-request :rasta :post 202 (url))))))
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+                (is (malli= (dashboard-card-query-expected-results-schema)
+                            (mt/user-http-request :rasta :post 202 (url)))))))
 
           (testing "Validation"
             (testing "404s"
@@ -3836,24 +3838,25 @@
               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
               ;; this file
               (testing "Works without read rights on the DB (but access not blocked)"
-                (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-                (mt/with-actions-enabled
-                  (is (contains? #{{:ID 76, :NAME "Birds"}
-                                   {:id 76, :name "Birds"}}
-                                 (-> (mt/user-http-request :rasta :post 200 execute-path
-                                                           {:parameters {"name" "Birds"}})
-                                     :created-row)))))
+                (mt/with-no-data-perms-for-all-users!
+                  (data-perms/set-database-permission! (perms-group/all-users)
+                                                       (:id (mt/db))
+                                                       :perms/data-access
+                                                       :no-self-service)
+                  (mt/with-actions-enabled
+                    (is (contains? #{{:ID 76, :NAME "Birds"}
+                                     {:id 76, :name "Birds"}}
+                                   (-> (mt/user-http-request :rasta :post 200 execute-path
+                                                             {:parameters {"name" "Birds"}})
+                                       :created-row))))))
               (testing "Works with execute rights on the DB"
-                (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
-                (try
+                (mt/with-full-data-perms-for-all-users!
                   (mt/with-actions-enabled
                     (is (contains? #{{:ID 77, :NAME "Avians"}
                                      {:id 77, :name "Avians"}}
                                    (-> (mt/user-http-request :rasta :post 200 execute-path
                                                              {:parameters {"name" "Avians"}})
-                                       :created-row))))
-                  (finally
-                    (perms/revoke-data-perms! (perms-group/all-users) (mt/db))))))))))))
+                                       :created-row)))))))))))))
 
 (deftest dashcard-custom-action-execution-auth-test
   (mt/with-temp-copy-of-db
@@ -3876,20 +3879,11 @@
               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
               ;; this file.
               (testing "Works with read rights on the DB"
-                (perms/grant-permissions-for-all-schemas! (perms-group/all-users) (mt/db))
-                (try
+                (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :none}}}
                   (mt/with-actions-enabled
                     (is (= {:rows-affected 1}
                            (mt/user-http-request :rasta :post 200 execute-path
-                                                 {:parameters {"id" 1}}))))
-                  (finally
-                    (perms/revoke-data-perms! (perms-group/all-users) (mt/db)))))
-              (testing "Works with no particular permissions"
-                (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-                (mt/with-actions-enabled
-                  (is (= {:rows-affected 1}
-                         (mt/user-http-request :rasta :post 200 execute-path
-                                               {:parameters {"id" 1}}))))))))))))
+                                                 {:parameters {"id" 1}})))))))))))))
 
 (deftest dashcard-execution-fetch-prefill-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -4017,85 +4011,85 @@
     ;; This is a common case for nested queries
     (mt/dataset test-data
       (mt/with-temp-copy-of-db
-        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-        (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :people)))
-        (let [query (mt/native-query {:query "select * from people"})]
-          (mt/with-temp [Dashboard {dashboard-id :id} {:name       "Test Dashboard"
-                                                       :parameters [{:name      "User Source"
-                                                                     :slug      "user_source"
-                                                                     :id        "_USER_SOURCE_"
-                                                                     :type      :string/=
-                                                                     :sectionId "string"}
-                                                                    {:name      "City is not"
-                                                                     :slug      "city_name"
-                                                                     :id        "_CITY_IS_NOT_"
-                                                                     :type      :string/!=
-                                                                     :sectionId "string"}]}
-                         Card {native-card-id :id} (mt/card-with-source-metadata-for-query query)
-                         Card {final-card-id :id} {:dataset_query {:query    {:source-table (str "card__" native-card-id)}
-                                                                   :type     :query
-                                                                   :database (mt/id)}}
-                         DashboardCard {_ :id} {:dashboard_id       dashboard-id
-                                                :card_id            final-card-id
-                                                :parameter_mappings [{:card_id      final-card-id
-                                                                      :parameter_id "_USER_SOURCE_"
-                                                                      :target       [:dimension
-                                                                                     [:field "SOURCE" {:base-type :type/Text}]]}
-                                                                     {:card_id      final-card-id
-                                                                      :parameter_id "_CITY_IS_NOT_"
-                                                                      :target       [:dimension
-                                                                                     [:field "CITY" {:base-type :type/Text}]]}]}]
-            (let [param    "_USER_SOURCE_"
-                  url      (str "dashboard/" dashboard-id "/params/" param "/values")
-                  response (mt/user-http-request :rasta :get 200 url)]
-              (is (= {:values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]
-                      :has_more_values false}
-                     response)))
-            (let [param    "_CITY_IS_NOT_"
-                  url      (str "dashboard/" dashboard-id "/params/" param "/values")
-                  response (mt/user-http-request :rasta :get 200 url)]
-              (is (= {:values          [["Abbeville"] ["Aberdeen"] ["Abilene"] ["Abiquiu"] ["Ackworth"]]
-                      :has_more_values true}
-                     (update response :values (partial take 5)))))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/data-access :unrestricted)
+          (let [query (mt/native-query {:query "select * from people"})]
+            (mt/with-temp [Dashboard {dashboard-id :id} {:name       "Test Dashboard"
+                                                         :parameters [{:name      "User Source"
+                                                                       :slug      "user_source"
+                                                                       :id        "_USER_SOURCE_"
+                                                                       :type      :string/=
+                                                                       :sectionId "string"}
+                                                                      {:name      "City is not"
+                                                                       :slug      "city_name"
+                                                                       :id        "_CITY_IS_NOT_"
+                                                                       :type      :string/!=
+                                                                       :sectionId "string"}]}
+                           Card {native-card-id :id} (mt/card-with-source-metadata-for-query query)
+                           Card {final-card-id :id} {:dataset_query {:query    {:source-table (str "card__" native-card-id)}
+                                                                     :type     :query
+                                                                     :database (mt/id)}}
+                           DashboardCard {_ :id} {:dashboard_id       dashboard-id
+                                                  :card_id            final-card-id
+                                                  :parameter_mappings [{:card_id      final-card-id
+                                                                        :parameter_id "_USER_SOURCE_"
+                                                                        :target       [:dimension
+                                                                                       [:field "SOURCE" {:base-type :type/Text}]]}
+                                                                       {:card_id      final-card-id
+                                                                        :parameter_id "_CITY_IS_NOT_"
+                                                                        :target       [:dimension
+                                                                                       [:field "CITY" {:base-type :type/Text}]]}]}]
+              (let [param    "_USER_SOURCE_"
+                    url      (str "dashboard/" dashboard-id "/params/" param "/values")
+                    response (mt/user-http-request :rasta :get 200 url)]
+                (is (= {:values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]
+                        :has_more_values false}
+                       response)))
+              (let [param    "_CITY_IS_NOT_"
+                    url      (str "dashboard/" dashboard-id "/params/" param "/values")
+                    response (mt/user-http-request :rasta :get 200 url)]
+                (is (= {:values          [["Abbeville"] ["Aberdeen"] ["Abilene"] ["Abiquiu"] ["Ackworth"]]
+                        :has_more_values true}
+                       (update response :values (partial take 5))))))))))))
 
 (deftest param-values-expression-test
   (testing "Ensure param value lookup works for when the value is an expression"
     (mt/dataset test-data
       (mt/with-temp-copy-of-db
-        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-        (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :products)))
-        (mt/with-temp [Dashboard {dashboard-id :id} {:name       "Test Dashboard"
-                                                     :parameters [{:name      "Vendor Title"
-                                                                   :slug      "vendor_title"
-                                                                   :id        "_VENDOR_TITLE_"
-                                                                   :type      :string/=
-                                                                   :sectionId "string"}]}
-                       Card {base-card-id :id} {:dataset_query {:database (mt/id)
-                                                                :type     :query
-                                                                :query    {:source-table (mt/id :products)}}}
-                       Card {final-card-id :id} {:dataset_query {:database (mt/id)
-                                                                 :type     :query
-                                                                 :query    {:expressions  {"VendorTitle" [:concat
-                                                                                                          [:field
-                                                                                                           "vendor"
-                                                                                                           {:base-type :type/Text}]
-                                                                                                          "🦜🦜🦜"
-                                                                                                          [:field
-                                                                                                           "title"
-                                                                                                           {:base-type :type/Text}]]},
-                                                                            :source-table (format "card__%s" base-card-id)}}}
-                       DashboardCard {_ :id} {:dashboard_id       dashboard-id
-                                              :card_id            final-card-id
-                                              :parameter_mappings [{:card_id      final-card-id
-                                                                    :parameter_id "_VENDOR_TITLE_"
-                                                                    :target       [:dimension [:expression "VendorTitle"]]}]}]
-          (let [param "_VENDOR_TITLE_"
-                url   (str "dashboard/" dashboard-id "/params/" param "/values")
-                {:keys [values has_more_values]} (mt/user-http-request :rasta :get 200 url)]
-            (is (false? has_more_values))
-            (testing "We have values and they all match the expression concatenation"
-              (is (pos? (count values)))
-              (is (every? (partial re-matches #"[^🦜]+🦜🦜🦜[^🦜]+") (map first values))))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/data-access :unrestricted)
+          (mt/with-temp [Dashboard {dashboard-id :id} {:name       "Test Dashboard"
+                                                       :parameters [{:name      "Vendor Title"
+                                                                     :slug      "vendor_title"
+                                                                     :id        "_VENDOR_TITLE_"
+                                                                     :type      :string/=
+                                                                     :sectionId "string"}]}
+                         Card {base-card-id :id} {:dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :products)}}}
+                         Card {final-card-id :id} {:dataset_query {:database (mt/id)
+                                                                   :type     :query
+                                                                   :query    {:expressions  {"VendorTitle" [:concat
+                                                                                                            [:field
+                                                                                                             "vendor"
+                                                                                                             {:base-type :type/Text}]
+                                                                                                            "🦜🦜🦜"
+                                                                                                            [:field
+                                                                                                             "title"
+                                                                                                             {:base-type :type/Text}]]},
+                                                                              :source-table (format "card__%s" base-card-id)}}}
+                         DashboardCard {_ :id} {:dashboard_id       dashboard-id
+                                                :card_id            final-card-id
+                                                :parameter_mappings [{:card_id      final-card-id
+                                                                      :parameter_id "_VENDOR_TITLE_"
+                                                                      :target       [:dimension [:expression "VendorTitle"]]}]}]
+            (let [param "_VENDOR_TITLE_"
+                  url   (str "dashboard/" dashboard-id "/params/" param "/values")
+                  {:keys [values has_more_values]} (mt/user-http-request :rasta :get 200 url)]
+              (is (false? has_more_values))
+              (testing "We have values and they all match the expression concatenation"
+                (is (pos? (count values)))
+                (is (every? (partial re-matches #"[^🦜]+🦜🦜🦜[^🦜]+") (map first values)))))))))))
 
 (deftest param-values-permissions-test
   (testing "Users without permissions should not see all options in a dashboard filter (private#196)"

@@ -495,9 +495,9 @@
                                             :schema nil}
                    Metric   _ {:table_id table-id
                                :name     "test metric"}]
-      (perms/revoke-data-perms! (perms-group/all-users) db-id)
-      (is (= []
-             (search-request-data :rasta :q "test")))))
+      (mt/with-no-data-perms-for-all-users!
+        (is (= []
+               (search-request-data :rasta :q "test"))))))
 
   (testing "Segments on tables for which the user does not have access to should not show up in results"
     (mt/with-temp [Database {db-id :id} {}
@@ -505,9 +505,9 @@
                                             :schema nil}
                    Segment  _ {:table_id table-id
                                :name     "test segment"}]
-      (perms/revoke-data-perms! (perms-group/all-users) db-id)
-      (is (= []
-             (search-request-data :rasta :q "test")))))
+      (mt/with-no-data-perms-for-all-users!
+        (is (= []
+               (search-request-data :rasta :q "test"))))))
 
   (testing "Databases for which the user does not have access to should not show up in results"
       (mt/with-temp [Database _db-1  {:name "db-1"}
