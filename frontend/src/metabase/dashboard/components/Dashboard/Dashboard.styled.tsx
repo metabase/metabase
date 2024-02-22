@@ -90,12 +90,18 @@ export const CardsContainer = styled(FullWidthContainer)`
   margin-top: 8px;
 `;
 
+function getParametersWidgetBgColor(isNightMode: boolean) {
+  return isNightMode ? color("bg-black") : color("bg-light");
+}
+
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   isSticky: boolean;
   hasScroll: boolean;
+  isNightMode: boolean;
 }>`
-  background-color: ${color("bg-light")};
-  border-bottom: 1px solid ${color("bg-light")};
+  background-color: ${props => getParametersWidgetBgColor(props.isNightMode)};
+  border-bottom: 1px solid
+    ${props => getParametersWidgetBgColor(props.isNightMode)};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   /* z-index should be higher than in dashcards */
@@ -104,12 +110,12 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   left: 0;
 
   /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
-  ${({ isSticky, hasScroll }) =>
+  ${({ isNightMode, isSticky, hasScroll }) =>
     isSticky &&
     css`
       position: sticky;
       border-bottom: 1px solid
-        ${hasScroll ? color("border") : color("bg-light")};
+        ${hasScroll ? color("border") : getParametersWidgetBgColor(isNightMode)};
     `}
 `;
 
