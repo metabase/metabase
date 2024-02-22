@@ -2582,11 +2582,11 @@
                    Table       table      {:db_id (u/the-id database)}
                    :model/Card card-1     {:dataset_query (mbql-count-query (u/the-id database) (u/the-id table))}
                    :model/Card card-2     {:dataset_query (mbql-count-query (u/the-id database) (u/the-id table))}]
-      (perms/revoke-data-perms! (perms-group/all-users) (u/the-id database))
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      (is (= {:response    "You don't have permissions to do that."
-              :collections [nil nil]}
-             (POST-card-collections! :rasta 403 collection [card-1 card-2]))))))
+      (mt/with-no-data-perms-for-all-users!
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (is (= {:response    "You don't have permissions to do that."
+                :collections [nil nil]}
+               (POST-card-collections! :rasta 403 collection [card-1 card-2])))))))
 
 ;; Test that we can bulk move some Cards from one collection to another, while updating the collection position of the
 ;; old collection and the new collection

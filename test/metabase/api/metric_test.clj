@@ -229,14 +229,14 @@
                    Metric   {:keys [id]}   {:creator_id (mt/user->id :crowberto)
                                             :table_id   table-id}]
       (mt/with-full-data-perms-for-all-users!
-        (is (= (merge)
-              metric-defaults
-              {:name        "Toucans in the rainforest"
-               :description "Lookin' for a blueberry"
-               :creator_id  (mt/user->id :crowberto)
-               :creator     (user-details (mt/fetch-user :crowberto))}
-             (-> (metric-response (mt/user-http-request :rasta :get 200 (format "metric/%d" id)))
-                 (dissoc :query_description))))))))
+        (is (= (merge
+                metric-defaults
+                {:name        "Toucans in the rainforest"
+                 :description "Lookin' for a blueberry"
+                 :creator_id  (mt/user->id :crowberto)
+                 :creator     (user-details (mt/fetch-user :crowberto))})
+               (-> (metric-response (mt/user-http-request :rasta :get 200 (format "metric/%d" id)))
+                   (dissoc :query_description))))))))
 
 (deftest metric-revisions-test
   (testing "GET /api/metric/:id/revisions"

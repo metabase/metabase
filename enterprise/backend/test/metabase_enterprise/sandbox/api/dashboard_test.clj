@@ -9,7 +9,6 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.params.chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
@@ -24,7 +23,6 @@
                      :attributes {:cat 50}}
       (mt/with-no-data-perms-for-all-users!
         (perms.test-util/with-perm-for-group-and-table! &group (mt/id :categories) :perms/data-access :unrestricted
-          (perms/grant-permissions! &group (perms/table-read-path (mt/id :categories)))
           (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
                          Card          {card-id :id}      {:name "Dashboard Test Card"}
                          DashboardCard {_ :id}            {:dashboard_id       dashboard-id

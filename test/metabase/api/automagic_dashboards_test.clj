@@ -57,11 +57,10 @@
            (when (and result
                       (testing "Endpoint should return 403 if user does not have permissions"
                         (perms.test-util/with-no-data-perms-for-all-users!
-                          (perms.test-util/with-no-perms-for-all-users!
-                            (revoke-fn)
-                            (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
-                              (is (= "You don't have permissions to do that."
-                                     result)))))))
+                          (revoke-fn)
+                          (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
+                            (is (= "You don't have permissions to do that."
+                                   result))))))
              result)))))))
 
 ;;; ------------------- X-ray  -------------------

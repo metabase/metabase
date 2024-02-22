@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -10,7 +11,6 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
@@ -55,7 +55,7 @@
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
   [database-id]
-  (and (not (premium-features/enable-audit-app?)) (= database-id perms/audit-db-id)))
+  (and (not (premium-features/enable-audit-app?)) (= database-id config/audit-db-id)))
 
 (defmethod mi/can-read? Database
   ([instance]
@@ -78,7 +78,7 @@
   ([instance]
    (mi/can-write? :model/Database (u/the-id instance)))
   ([_model pk]
-   (and (not= pk perms/audit-db-id)
+   (and (not= pk config/audit-db-id)
         (current-user-can-write-db? pk))))
 
 (defn- schedule-tasks!
@@ -134,10 +134,6 @@
   [database]
   (u/prog1 database
     (set-new-database-permissions! database)
-    ;; add this database to the All Users permissions group
-    (perms/grant-full-data-permissions! (perms-group/all-users) database)
-    ;; give full download perms for this database to the All Users permissions group
-    (perms/grant-full-download-permissions! (perms-group/all-users) database)
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! (t2.realize/realize database))))
 
@@ -186,8 +182,6 @@
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (t2/query-one {:delete-from :permissions
-                 :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
@@ -298,12 +292,6 @@
         (not details)             (assoc :details {})
         (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
       handle-secrets-changes))
-
-(defmethod mi/perms-objects-set :model/Database
-  [{db-id :id} read-or-write]
-  #{(case read-or-write
-      :read  (perms/data-perms-path db-id)
-      :write (perms/db-details-write-perms-path db-id))})
 
 (defmethod serdes/hash-fields :model/Database
   [_database]

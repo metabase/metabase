@@ -83,19 +83,6 @@
                                             (data-perms/least-permissive-value perm-type)))
     (thunk)))
 
-(defn do-with-no-perms-for-all-users!
-  "Implementation of `with-no-perms-for-all-users!`."
-  [thunk]
-  (with-restored-perms!
-    (perms/revoke-data-perms! (perms-group/all-users) (data/db))
-    (thunk)))
-
-(defmacro with-no-perms-for-all-users!
-  "Runs `body`, and sets every permission for the test dataset to its least-permissive value for the All Users
-  permission group for the duration of the test."
-  [& body]
-  `(do-with-no-perms-for-all-users! (fn [] ~@body)))
-
 (defmacro with-no-data-perms-for-all-users!
   "Runs `body`, and sets every data permission for all databases to its least permissive value for the All Users
   permission group for the duration of the test. Restores the original permissions afterwards."
