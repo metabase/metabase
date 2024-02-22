@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import Toggle from "metabase/core/components/Toggle";
-import { Icon, HoverCard, Stack, Flex, Text } from "metabase/ui";
+import { Icon, HoverCard, Stack, Flex, Text, Switch } from "metabase/ui";
 
 import { SettingRequiredLabel } from "./RequierParamToggle.styled";
 
@@ -20,7 +19,12 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
 
   return (
     <Flex gap="sm" mt="md">
-      <Toggle disabled={disabled} id={id} value={value} onChange={onChange} />
+      <Switch
+        disabled={disabled}
+        id={id}
+        checked={value}
+        onChange={event => onChange(event.currentTarget.checked)}
+      />
       <div>
         <SettingRequiredLabel htmlFor={id}>
           {t`Always require a value`}

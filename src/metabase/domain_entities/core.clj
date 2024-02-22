@@ -8,7 +8,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.util :as u]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan2.core :as t2]))
 
 (def ^:private ^{:arglists '([field])} field-type
   "Return the most specific type of a given field."
@@ -105,7 +106,7 @@
 (defn domain-entity-for-table
   "Find the best fitting domain entity for given table."
   [table]
-  (let [table (assoc table :fields (table/fields table))]
+  (let [table (t2/hydrate table :fields)]
     (some->> @domain-entity-specs
              vals
              (filter (partial satisfies-requierments? table))

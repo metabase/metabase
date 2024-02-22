@@ -1,4 +1,5 @@
 import { RuleTester } from "eslint";
+
 import noUnconditionalMetabaseLinksRender from "../eslint-rules/no-unconditional-metabase-links-render";
 
 const ruleTester = new RuleTester({

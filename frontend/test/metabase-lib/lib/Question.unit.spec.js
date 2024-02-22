@@ -685,6 +685,8 @@ describe("Question", () => {
         });
       });
 
+      // Adding a column with same name is covered as well, as name is generated at FE and it will
+      // be unique (e.g. foo -> foo_2)
       it("should handle the addition and removal of columns", () => {
         question._syncNativeQuerySettings({
           data: {
@@ -795,6 +797,16 @@ describe("Question", () => {
             },
           ],
         });
+      });
+
+      it("shouldn't update settings if order of columns has changed", () => {
+        question._syncNativeQuerySettings({
+          data: {
+            cols: [cols[1], cols[0]],
+          },
+        });
+
+        expect(question.updateSettings).not.toHaveBeenCalled();
       });
     });
   });

@@ -143,7 +143,8 @@ export function getRequiredToggle() {
 }
 
 export function toggleRequiredParameter() {
-  getRequiredToggle().click();
+  // We need force: true because the actual input is hidden in Mantine
+  getRequiredToggle().click({ force: true });
 }
 
 export function createEmptyTextBox() {
