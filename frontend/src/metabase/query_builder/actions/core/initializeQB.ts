@@ -291,7 +291,7 @@ async function handleQBInit(
 
   if (
     isSavedCard(card) &&
-    !card?.dataset &&
+    card.type !== "model" &&
     location.pathname?.startsWith("/model")
   ) {
     dispatch(setErrorPage(NOT_FOUND_ERROR));

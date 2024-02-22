@@ -159,15 +159,29 @@ const getInitialValue = (
 ): Partial<DataPickerValue> | undefined => {
   if (question) {
     const id = question.id();
-    const isDatasets = question.isDataset();
-
     return {
-      type: isDatasets ? "models" : "questions",
-      schemaId: getCollectionVirtualSchemaId(collection, { isDatasets }),
+      type: getInitialTypeValue(question),
+      schemaId: getCollectionVirtualSchemaId(collection, {
+        isDatasets: question.type() === "model",
+      }),
       collectionId: collection?.id,
       tableIds: [getQuestionVirtualTableId(id)],
     };
   }
+};
+
+const getInitialTypeValue = (question: Question) => {
+  const type = question.type();
+
+  if (type === "question") {
+    return "questions";
+  }
+
+  if (type === "model") {
+    return "models";
+  }
+
+  throw new Error(`Unsupported or unknown question.type(): ${type}`);
 };
 
 const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {

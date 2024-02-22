@@ -13,7 +13,7 @@ const mapDispatchToProps = {
 };
 
 const getLabels = question => {
-  const type = question.type() ?? "question";
+  const type = question.type();
 
   if (type === "question") {
     return {

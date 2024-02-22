@@ -168,11 +168,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
-          // When the dataset query changes, we should loose the dataset flag,
+          // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(
-            setCardAndRun({ ...card, dataset: false, type: "question" }),
-          );
+          dispatch(setCardAndRun({ ...card, type: "question" }));
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));
@@ -235,7 +233,8 @@ export const apiCreateQuestion = question => {
 
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
-    const metadataOptions = { reload: createdQuestion.isDataset() };
+    const isModel = question.type() === "model";
+    const metadataOptions = { reload: isModel };
     await dispatch(loadMetadataForCard(card, metadataOptions));
 
     return createdQuestion;
@@ -250,8 +249,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
+    const isModel = question.type() === "model";
 
-    if (question.isDataset()) {
+    if (isModel) {
       resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
         resultsMetadata.columns,
       );
@@ -300,13 +300,13 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       payload: updatedQuestion.card(),
     });
 
-    if (question.isDataset()) {
+    if (isModel) {
       // this needs to happen after the question update completes in case we have changed the type
       // of the primary key field in the same update
       await dispatch(ModelIndexes.actions.updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: question.isDataset() };
+    const metadataOptions = { reload: isModel };
     await dispatch(loadMetadataForCard(question.card(), metadataOptions));
 
     if (rerunQuery) {
