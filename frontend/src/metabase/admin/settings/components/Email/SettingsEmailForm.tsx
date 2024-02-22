@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { push } from "react-router-redux";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import type { Settings, SettingValue } from "metabase-types/api";
 import type { SettingElement } from "metabase/admin/settings/types";
-
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
+import type { Settings, SettingValue } from "metabase-types/api";
+
 import { SettingsSection } from "../../app/components/SettingsEditor/SettingsSection";
+
 import { SMTPConnectionCard } from "./SMTPConnectionCard";
 
 interface SettingsEmailFormProps {

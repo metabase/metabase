@@ -1,6 +1,6 @@
 import Tooltip from "metabase/core/components/Tooltip";
-
 import type { IconName } from "metabase/ui";
+
 import { Root, ShortMessage, StyledIcon } from "./ErrorView.styled";
 
 interface ErrorViewProps {

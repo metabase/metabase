@@ -1,8 +1,9 @@
-import { t } from "ttag";
 import { useState } from "react";
+import { t } from "ttag";
+
+import { SettingInputBlurChange } from "metabase/admin/settings/components/widgets/SettingInput/SettingInput.styled";
 import { Radio, Stack, Text } from "metabase/ui";
 import type { HelpLinkSetting, SettingKey, Settings } from "metabase-types/api";
-import { SettingInputBlurChange } from "metabase/admin/settings/components/widgets/SettingInput/SettingInput.styled";
 
 interface Props {
   setting: {
@@ -58,6 +59,7 @@ export const HelpLinkSettings = ({
     <Stack>
       <Radio.Group value={helpLinkSetting} onChange={handleRadioChange}>
         <Stack>
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
           <Radio label={t`Link to Metabase help`} value="metabase" />
           <Radio label={t`Hide it`} value="hidden" />
           <Radio label={t`Go to a custom destination...`} value="custom" />

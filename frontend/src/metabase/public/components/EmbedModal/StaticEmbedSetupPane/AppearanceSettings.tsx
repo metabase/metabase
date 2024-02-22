@@ -1,22 +1,23 @@
-import { jt, t } from "ttag";
 import type { ChangeEvent } from "react";
-import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
+import { jt, t } from "ttag";
+
+import { getPlan } from "metabase/common/utils/plan";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Select from "metabase/core/components/Select";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
+import type {
+  EmbeddingDisplayOptions,
+  EmbedResourceType,
+} from "metabase/public/lib/types";
 import {
   getDocsUrl,
   getSetting,
   getUpgradeUrl,
 } from "metabase/selectors/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Select from "metabase/core/components/Select";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { color } from "metabase/lib/colors";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import type {
-  EmbeddingDisplayOptions,
-  EmbedResourceType,
-} from "metabase/public/lib/types";
-import { getPlan } from "metabase/common/utils/plan";
+import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
 
 import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
@@ -25,8 +26,8 @@ const THEME_OPTIONS = [
   { label: t`Light`, value: "light" },
   { label: t`Dark`, value: "night" },
   { label: t`Transparent`, value: "transparent" },
-];
-const DEFAULT_THEME = THEME_OPTIONS[0].value;
+] as const;
+type ThemeOptions = typeof THEME_OPTIONS[number]["value"];
 
 export interface AppearanceSettingsProps {
   resourceType: EmbedResourceType;
@@ -59,6 +60,7 @@ export const AppearanceSettings = ({
   const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
 
   const fontControlLabelId = useUniqueId("display-option");
+  const downloadDataId = useUniqueId("download-data");
 
   return (
     <>
@@ -79,23 +81,22 @@ export const AppearanceSettings = ({
         <Stack spacing="1rem">
           <DisplayOptionSection title={t`Background`}>
             <SegmentedControl
-              value={displayOptions.theme || DEFAULT_THEME}
-              data={THEME_OPTIONS}
+              value={displayOptions.theme}
+              // `data` type is required to be mutable, but THEME_OPTIONS is const.
+              data={[...THEME_OPTIONS]}
               fullWidth
               bg={color("bg-light")}
-              onChange={value => {
-                const newValue = value === DEFAULT_THEME ? null : value;
-
+              onChange={(value: ThemeOptions) => {
                 onChangeDisplayOptions({
                   ...displayOptions,
-                  theme: newValue,
+                  theme: value,
                 });
               }}
             />
           </DisplayOptionSection>
 
           <Switch
-            label={t`Dashboard title`}
+            label={getTitleLabel(resourceType)}
             labelPosition="left"
             size="sm"
             variant="stretch"
@@ -159,8 +160,12 @@ export const AppearanceSettings = ({
           {canWhitelabel && resourceType === "question" && (
             // We only show the "Download Data" toggle if the users are pro/enterprise
             // and they're sharing a question metabase#23477
-            <DisplayOptionSection title={t`Download data`}>
+            <DisplayOptionSection
+              title={t`Download data`}
+              titleId={downloadDataId}
+            >
               <Switch
+                aria-labelledby={downloadDataId}
                 label={t`Enable users to download data from this embed`}
                 labelPosition="left"
                 size="sm"
@@ -169,7 +174,7 @@ export const AppearanceSettings = ({
                 onChange={e =>
                   onChangeDisplayOptions({
                     ...displayOptions,
-                    hide_download_button: !e.target.checked ? true : null,
+                    hide_download_button: !e.target.checked,
                   })
                 }
               />
@@ -181,8 +186,10 @@ export const AppearanceSettings = ({
         <>
           <Divider my="2rem" />
           <StaticEmbedSetupPaneSettingsContentSection
+            // eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins
             title={t`Removing the “Powered by Metabase” banner`}
           >
+            {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
             <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
               <ExternalLink
                 key="bannerPlan"
@@ -195,3 +202,15 @@ export const AppearanceSettings = ({
     </>
   );
 };
+
+function getTitleLabel(resourceType: EmbedResourceType) {
+  if (resourceType === "dashboard") {
+    return t`Dashboard title`;
+  }
+
+  if (resourceType === "question") {
+    return t`Question title`;
+  }
+
+  return null;
+}

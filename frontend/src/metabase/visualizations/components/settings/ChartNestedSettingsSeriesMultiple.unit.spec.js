@@ -1,9 +1,9 @@
-import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, within } from "__support__/ui";
-
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
-import registerVisualizations from "metabase/visualizations/register";
+import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen, within } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import registerVisualizations from "metabase/visualizations/register";
 
 registerVisualizations();
 

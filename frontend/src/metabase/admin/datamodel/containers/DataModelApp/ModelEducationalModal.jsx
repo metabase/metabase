@@ -1,8 +1,10 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
+import MetabaseSettings from "metabase/lib/settings";
+
 import {
   Content,
   Description,

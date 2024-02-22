@@ -202,6 +202,7 @@
    :description             nil
    :embedding_params        nil
    :enable_embedding        false
+   :initially_published_at  nil
    :entity_id               true
    :made_public_by_id       nil
    :parameters              []
@@ -280,7 +281,6 @@
      :model/Dashboard {archived-dash  :id} {:archived      true
                                             :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
                                             :creator_id    (mt/user->id :crowberto)}]
-
     (testing "should include creator info and last edited info"
       (revision/push-revision!
        {:entity       :model/Dashboard
@@ -627,27 +627,31 @@
              (mt/with-log-messages-for-level ['metabase.models.params :error]
                (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))))))))
 
-(deftest dashboard-param-link-to-a-field-without-full-field-values-test
-  (testing "GET /api/dashboard/:id"
+(deftest param-values-not-fetched-on-load-test
+  (testing "Param values are not needed on initial dashboard load and should not be fetched. #38826"
     (t2.with-temp/with-temp
-      [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
-       :model/Card {card-id :id} {:name "Dashboard Test Card"}
-       :model/DashboardCard _ {:dashboard_id       dashboard-id
-                               :card_id            card-id
-                               :parameter_mappings [{:card_id      card-id
-                                                     :parameter_id "foo"
-                                                     :target       [:dimension
-                                                                    [:field (mt/id :venues :name) nil]]}]}]
-      (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
-      (testing "Request triggers computation of field values if missing (#30218)"
-        (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
-                                                               "25°"
-                                                               "33 Taps"]
-                                       :field_id              (mt/id :venues :name)
-                                       :human_readable_values []}}
-               (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
-                 (into {} (for [[field-id m] response]
-                            [field-id (update m :values (partial take 3))])))))))))
+        [:model/Dashboard {dashboard-id :id} {:name       "Test Dashboard"
+                                              :parameters [{:name      "FOO"
+                                                            :id        "foo"
+                                                            :type      :string/=
+                                                            :sectionId "string"}]}
+         :model/Card {card-id :id} {:name "Dashboard Test Card"}
+         :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                 :card_id            card-id
+                                 :parameter_mappings [{:card_id      card-id
+                                                       :parameter_id "foo"
+                                                       :target       [:dimension
+                                                                      [:field (mt/id :venues :name) nil]]}]}]
+        (let [dashboard-load-a (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
+              _                (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
+              dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
+              param-values     (mt/user-http-request :rasta :get 200 (format "dashboard/%s/params/%s/values" dashboard-id "foo"))]
+          (testing "The initial dashboard-load fetches parameter values only if they already exist (#38826)"
+            (is (some? (:param_values dashboard-load-a)))
+            (is (nil? (:param_values dashboard-load-b))))
+          (testing "Request to values endpoint triggers computation of field values if missing."
+            (is (= ["20th Century Cafe" "25°" "33 Taps"]
+                   (take 3 (apply concat (:values param-values))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
@@ -666,11 +670,11 @@
 
         (testing "PUT response"
           (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                               {:name        "My Cool Dashboard"
-                                                :description "Some awesome description"
-                                                :cache_ttl   1234
-                                                ;; these things should fail to update
-                                                :creator_id  (mt/user->id :trashbird)})
+                                                   {:name        "My Cool Dashboard"
+                                                    :description "Some awesome description"
+                                                    :cache_ttl   1234
+                                                    ;; these things should fail to update
+                                                    :creator_id  (mt/user->id :trashbird)})
                 get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
             (is (=? (merge dashboard-defaults {:name           "My Cool Dashboard"
                                                :dashcards      []
@@ -2540,34 +2544,34 @@
                      form))
                  x))
 
-(deftest dashcard->query-hashes-test
+(deftest ^:parallel dashcard->query-hashes-test
   (doseq [[dashcard expected]
           [[{:card {:dataset_query {:database 1}}}
             ["k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs="
-             "K6A0F7tRxQ+2xa33kigBwIvUvU+F95UUccWjGTx8kuI="]]
+             "I6mv3dlN4xat/6R+KQVTLDqNe8/B0oymcDnW/aKppwY="]]
 
            [{:card   {:dataset_query {:database 2}}
              :series [{:dataset_query {:database 3}}
                       {:dataset_query {:database 4}}]}
             ["WbWqdd3zu9zvVCVWh8X9ASWLqtaB1rZlU0gKLEuCK0I="
-             "NzgQC4fjR52npCkZV7IiZDb9NfcmKbWHP4krFzkLPyA="
+             "ysJFZA3Gd0vKIlrZWJDYBLCIQBf10X6QjuFtV/8QzbE="
              "pjdBPUgWnbVvMf0VsETyeB6smRC8SYejyTZIVPh2m3I="
-             "dEXUTWQI2L0Z/Bvrb2LTVVPl2Qg/56hKIPb+I2a4mG8="
+             "wf9reZSm1Pz+WDHRYtZXmfQ39U+17mq7u28MqPR8fQI="
              "rP5XFvxpRDCPXeM0A2Z7uoUkH0zwV0Z0o22obH3c1Uk="
-             "Wn9nubTcKZX5862pHFaibkqqbsqAfGa3gVhN3D4FrJw="]]]]
+             "r+C7dsdRXBN32GK+QHLA/n9pr1hzjteFzDCVezLzImQ="]]]]
     (testing (pr-str dashcard)
       (is (= expected
              (base-64-encode-byte-arrays (#'api.dashboard/dashcard->query-hashes dashcard)))))))
 
-(deftest dashcards->query-hashes-test
+(deftest ^:parallel dashcards->query-hashes-test
   (is (= ["k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs="
-          "K6A0F7tRxQ+2xa33kigBwIvUvU+F95UUccWjGTx8kuI="
+          "I6mv3dlN4xat/6R+KQVTLDqNe8/B0oymcDnW/aKppwY="
           "WbWqdd3zu9zvVCVWh8X9ASWLqtaB1rZlU0gKLEuCK0I="
-          "NzgQC4fjR52npCkZV7IiZDb9NfcmKbWHP4krFzkLPyA="
+          "ysJFZA3Gd0vKIlrZWJDYBLCIQBf10X6QjuFtV/8QzbE="
           "pjdBPUgWnbVvMf0VsETyeB6smRC8SYejyTZIVPh2m3I="
-          "dEXUTWQI2L0Z/Bvrb2LTVVPl2Qg/56hKIPb+I2a4mG8="
+          "wf9reZSm1Pz+WDHRYtZXmfQ39U+17mq7u28MqPR8fQI="
           "rP5XFvxpRDCPXeM0A2Z7uoUkH0zwV0Z0o22obH3c1Uk="
-          "Wn9nubTcKZX5862pHFaibkqqbsqAfGa3gVhN3D4FrJw="]
+          "r+C7dsdRXBN32GK+QHLA/n9pr1hzjteFzDCVezLzImQ="]
          (base-64-encode-byte-arrays
            (#'api.dashboard/dashcards->query-hashes
             [{:card {:dataset_query {:database 1}}}

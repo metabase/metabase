@@ -6,22 +6,22 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (deftest ^:parallel and-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing ":and, :>, :>="
-      (is (= [[55 "Dal Rae Restaurant"       67 33.983  -118.096 4]
-              [61 "Lawry's The Prime Rib"    67 34.0677 -118.376 4]
-              [77 "Sushi Nakazawa"           40 40.7318 -74.0045 4]
-              [79 "Sushi Yasuda"             40 40.7514 -73.9736 4]
-              [81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4]]
+    (testing ":and, :<, :>, :!="
+      (is (= [[21 "PizzaHacker"          58 37.7441 -122.421 2]
+              [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]
              (mt/formatted-rows :venues
                (mt/run-mbql-query venues
-                 {:filter   [:and [:> $id 50] [:>= $price 4]]
-                  :order-by [[:asc $id]]})))))
+                 {:filter   [:and [:< $id 24] [:> $id 20] [:!= $id 22]]
+                  :order-by [[:asc $id]]})))))))
 
+(deftest ^:parallel and-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing ":and, :<, :>, :!="
       (is (= [[21 "PizzaHacker"          58 37.7441 -122.421 2]
               [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]
@@ -60,13 +60,22 @@
                  :format-nil-values
                  (mt/run-mbql-query places
                    {:filter   [:= $liked true]
-                    :order-by [[:asc $id]]}))))
+                    :order-by [[:asc $id]]}))))))))
+
+(deftest ^:parallel comparison-test-2
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
+      (testing "Can we use true literal in comparisons"
         (is (= [[3 "The Dentist" false]]
                (mt/formatted-rows [int str ->bool]
                  :format-nil-values
                  (mt/run-mbql-query places
                    {:filter   [:!= $liked true]
-                    :order-by [[:asc $id]]})))))
+                    :order-by [[:asc $id]]}))))))))
+
+(deftest ^:parallel comparison-test-3
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
       (testing "Can we use false literal in comparisons"
         (is (= [[1 "Tempest" true]
                 [2 "Bullit"  true]]
@@ -74,13 +83,22 @@
                  :format-nil-values
                  (mt/run-mbql-query places
                    {:filter   [:!= $liked false]
-                    :order-by [[:asc $id]]})))))
+                    :order-by [[:asc $id]]}))))))))
+
+(deftest ^:parallel comparison-test-4
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
       (testing "Can we use nil literal in comparisons"
         (is (= [[3]]
                (mt/formatted-rows [int]
                  (mt/run-mbql-query places
                    {:filter      [:!= $liked nil]
-                    :aggregation [[:count]]}))))
+                    :aggregation [[:count]]}))))))))
+
+(deftest ^:parallel comparison-test-5
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
+      (testing "Can we use nil literal in comparisons"
         ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround (#5419)
         (is (contains? #{[0] [0M] [nil] nil}
                        (->> (mt/formatted-rows [int]
@@ -89,7 +107,7 @@
                                  :aggregation [[:count]]}))
                             first)))))))
 
-(deftest between-test
+(deftest ^:parallel between-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":between filter, single subclause (neither :and nor :or)"
       (is (= [[21 "PizzaHacker"    58 37.7441 -122.421 2]
@@ -97,8 +115,10 @@
              (mt/formatted-rows :venues
                (mt/run-mbql-query venues
                  {:filter   [:between $id 21 22]
-                  :order-by [[:asc $id]]})))))
+                  :order-by [[:asc $id]]})))))))
 
+(deftest between-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing ":between with dates"
       ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this
       ;; test's results
@@ -252,15 +272,21 @@
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:starts-with $name "CHE"]
-                    :order-by [[:asc $id]]})))))
+                    :order-by [[:asc $id]]}))))))))
 
+(deftest ^:parallel starts-with-case-sensitive-test-2
+  (testing "case sensitivity option"
+    (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
       (testing "case-sensitive (explicitly specified)"
         (is (= []
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:starts-with $name "CHE" {:case-sensitive true}]
-                    :order-by [[:asc $id]]})))))
+                    :order-by [[:asc $id]]}))))))))
 
+(deftest ^:parallel starts-with-case-sensitive-test-3
+  (testing "case sensitivity option"
+    (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
       (testing "case-insensitive"
         (is (= [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
                 [74 "Chez Jay"           2 34.0104 -118.493 2]]
@@ -315,15 +341,21 @@
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:ends-with $name "RESTAURANT"]
-                    :order-by [[:asc $id]]})))))
+                    :order-by [[:asc $id]]}))))))))
 
+(deftest ^:parallel ends-with-case-sensitive-test-2
+  (testing "case sensitivity option"
+    (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
       (testing "case-sensitive (explicitly specified)"
         (is (= []
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:ends-with $name "RESTAURANT" {:case-sensitive true}]
-                    :order-by [[:asc $id]]})))))
+                    :order-by [[:asc $id]]}))))))))
 
+(deftest ^:parallel ends-with-case-sensitive-test-3
+  (testing "case sensitivity option"
+    (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
       (testing "case-insensitive"
         (is (= [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
                 [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
@@ -333,28 +365,31 @@
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:ends-with $name "RESTAURANT" {:case-sensitive false}]
-                    :order-by [[:asc $id]]})))))))
+                    :order-by [[:asc $id]]}))))))))
 
-      (mt/test-drivers (mt/normal-drivers)
-        (testing "expression argument"
-          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
-                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
-                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
-                 (mt/formatted-rows :venues
-                                    (mt/run-mbql-query venues
-                                      {:filter   [:ends-with $name [:upper $name] {:case-sensitive false}]
-                                       :order-by [[:asc $id]]
-                                       :limit 3})))))
+(deftest ^:parallel ends-with-expression-argument-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (testing "expression argument"
+      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+              [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+              [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+             (mt/formatted-rows :venues
+               (mt/run-mbql-query venues
+                 {:filter   [:ends-with $name [:upper $name] {:case-sensitive false}]
+                  :order-by [[:asc $id]]
+                  :limit 3})))))))
 
-        (testing "field argument"
-          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
-                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
-                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
-                 (mt/formatted-rows :venues
-                                    (mt/run-mbql-query venues
-                                      {:filter   [:ends-with $name $name]
-                                       :order-by [[:asc $id]]
-                                       :limit 3})))))))
+(deftest ^:parallel ends-with-field-argument-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "field argument"
+      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+              [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+              [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+             (mt/formatted-rows :venues
+               (mt/run-mbql-query venues
+                 {:filter   [:ends-with $name $name]
+                  :order-by [[:asc $id]]
+                  :limit 3})))))))
 
 ;;; ---------------------------------------------------- contains ----------------------------------------------------
 
@@ -376,15 +411,21 @@
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:contains $name "bbq"]
-                    :order-by [[:asc $id]]})))))
+                    :order-by [[:asc $id]]}))))))))
 
+(deftest ^:parallel contains-case-sensitive-test-2
+  (testing "case sensitivity option"
+    (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
       (testing "case-sensitive (explicitly specified)"
         (is (= []
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:contains $name "bbq" {:case-sensitive true}]
-                    :order-by [[:asc $id]]})))))
+                    :order-by [[:asc $id]]}))))))))
 
+(deftest ^:parallel contains-case-sensitive-test-3
+  (testing "case sensitivity option"
+    (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
       (testing "case-insensitive"
         (is (= [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
                 [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
@@ -392,28 +433,31 @@
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:contains $name "bbq" {:case-sensitive false}]
-                    :order-by [[:asc $id]]})))))))
+                    :order-by [[:asc $id]]}))))))))
 
-      (mt/test-drivers (mt/normal-drivers)
-        (testing "expression argument"
-          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
-                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
-                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
-                 (mt/formatted-rows :venues
-                                    (mt/run-mbql-query venues
-                                      {:filter   [:contains $name [:lower [:substring $name 1 3]] {:case-sensitive false}]
-                                       :order-by [[:asc $id]]
-                                       :limit 3})))))
+(deftest ^:parallel contains-expression-argument-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (testing "expression argument"
+      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+              [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+              [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+             (mt/formatted-rows :venues
+               (mt/run-mbql-query venues
+                 {:filter   [:contains $name [:lower [:substring $name 1 3]] {:case-sensitive false}]
+                  :order-by [[:asc $id]]
+                  :limit 3})))))))
 
-        (testing "field argument"
-          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
-                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
-                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
-                 (mt/formatted-rows :venues
-                                    (mt/run-mbql-query venues
-                                      {:filter   [:contains $name $name]
-                                       :order-by [[:asc $id]]
-                                       :limit 3})))))))
+(deftest ^:parallel contains-field-argument-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "field argument"
+      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+              [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+              [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+             (mt/formatted-rows :venues
+               (mt/run-mbql-query venues
+                 {:filter   [:contains $name $name]
+                  :order-by [[:asc $id]]
+                  :limit 3})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             NESTED AND/OR CLAUSES                                              |
@@ -441,13 +485,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest ^:parallel equals-and-not-equals-with-extra-args-test
-  (mt/test-drivers (mt/normal-drivers))
-  (testing ":= with >2 args"
-    (is (= 81
-           (count-with-filter-clause [:= $price 1 2]))))
-  (testing ":!= with >2 args"
-    (is (= 19
-           (count-with-filter-clause [:!= $price 1 2])))))
+  (mt/test-drivers (mt/normal-drivers)
+    (testing ":= with >2 args"
+      (is (= 81
+             (count-with-filter-clause [:= $price 1 2]))))))
+
+(deftest ^:parallel equals-and-not-equals-with-extra-args-test-2
+  (mt/test-drivers (mt/normal-drivers)
+    (testing ":!= with >2 args"
+      (is (= 19
+             (count-with-filter-clause [:!= $price 1 2]))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -460,76 +507,114 @@
 ;; equivalent expressions but I already wrote them so in this case it doesn't hurt to have a little more test coverage
 ;; than we need
 
-(deftest ^:parallel not-filter-test
+(deftest ^:parallel not-filter-test-1
   (mt/test-drivers (mt/normal-drivers)
     (testing "="
       (is (= 99
-             (count-with-filter-clause [:not [:= $id 1]]))))
+             (count-with-filter-clause [:not [:= $id 1]]))))))
+
+(deftest ^:parallel not-filter-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "!="
       (is (= 1
-             (count-with-filter-clause [:not [:!= $id 1]]))))
+             (count-with-filter-clause [:not [:!= $id 1]]))))))
+
+(deftest ^:parallel not-filter-test-3
+  (mt/test-drivers (mt/normal-drivers)
     (testing "<"
       (is (= 61
-             (count-with-filter-clause [:not [:< $id 40]]))))
+             (count-with-filter-clause [:not [:< $id 40]]))))))
+
+(deftest ^:parallel not-filter-test-4
+  (mt/test-drivers (mt/normal-drivers)
     (testing ">"
       (is (= 40
-             (count-with-filter-clause [:not [:> $id 40]]))))
+             (count-with-filter-clause [:not [:> $id 40]]))))))
+
+(deftest ^:parallel not-filter-test-5
+  (mt/test-drivers (mt/normal-drivers)
     (testing "<="
       (is (= 60
-             (count-with-filter-clause [:not [:<= $id 40]]))))
+             (count-with-filter-clause [:not [:<= $id 40]]))))))
+
+(deftest ^:parallel not-filter-test-6
+  (mt/test-drivers (mt/normal-drivers)
     (testing ">="
       (is (= 39
-             (count-with-filter-clause [:not [:>= $id 40]]))))
+             (count-with-filter-clause [:not [:>= $id 40]]))))))
+
+(deftest ^:parallel not-filter-test-7
+  (mt/test-drivers (mt/normal-drivers)
     (testing "is-null"
       (is (= 100
-             (count-with-filter-clause [:not [:is-null $id]]))))
+             (count-with-filter-clause [:not [:is-null $id]]))))))
+
+(deftest ^:parallel not-filter-test-8
+  (mt/test-drivers (mt/normal-drivers)
     (testing "between"
       (is (= 89
-             (count-with-filter-clause [:not [:between $id 30 40]]))))
+             (count-with-filter-clause [:not [:between $id 30 40]]))))))
+
+(deftest ^:parallel not-filter-test-9
+  (mt/test-drivers (mt/normal-drivers)
     (testing "inside"
       (is (= 39
-             (count-with-filter-clause [:not [:inside $latitude $longitude 40 -120 30 -110]]))))
+             (count-with-filter-clause [:not [:inside $latitude $longitude 40 -120 30 -110]]))))))
+
+(deftest ^:parallel not-filter-test-10
+  (mt/test-drivers (mt/normal-drivers)
     (testing "starts-with"
       (is (= 80
-             (count-with-filter-clause [:not [:starts-with $name "T"]]))))
+             (count-with-filter-clause [:not [:starts-with $name "T"]]))))))
+
+(deftest ^:parallel not-filter-test-11
+  (mt/test-drivers (mt/normal-drivers)
     (testing "contains"
       (is (= 97
-             (count-with-filter-clause [:not [:contains $name "BBQ"]]))))
+             (count-with-filter-clause [:not [:contains $name "BBQ"]]))))))
+
+(deftest ^:parallel not-filter-test-12
+  (mt/test-drivers (mt/normal-drivers)
     (testing "does-not-contain"
       (is (= 97
              (count-with-filter-clause [:does-not-contain $name "BBQ"]))
-          "sanity check — does-not-contain should get converted to `:not` + `:contains` by QP middleware"))
+          "sanity check — does-not-contain should get converted to `:not` + `:contains` by QP middleware"))))
+
+(deftest ^:parallel not-filter-test-13
+  (mt/test-drivers (mt/normal-drivers)
     (testing "ends-with"
       (is (= 87
-             (count-with-filter-clause [:not [:ends-with $name "a"]]))))
+             (count-with-filter-clause [:not [:ends-with $name "a"]]))))))
+
+(deftest ^:parallel not-filter-test-14
+  (mt/test-drivers (mt/normal-drivers)
     (testing "and"
       (is (= 98
-             (count-with-filter-clause [:not [:and
-                                              [:> $id 32]
-                                              [:contains $name "BBQ"]]]))))
+             (count-with-filter-clause [:not [:and [:> $id 32] [:contains $name "BBQ"]]]))))))
+
+(deftest ^:parallel not-filter-test-15
+  (mt/test-drivers (mt/normal-drivers)
     (testing "or"
       (is (= 31
-             (count-with-filter-clause [:not [:or
-                                              [:> $id 32]
-                                              [:contains $name "BBQ"]]]))))
+             (count-with-filter-clause [:not [:or [:> $id 32] [:contains $name "BBQ"]]]))))))
 
+(deftest ^:parallel not-filter-test-16
+  (mt/test-drivers (mt/normal-drivers)
     (testing "nested and/or"
       (is (= 96
-             (count-with-filter-clause [:not [:or
-                                              [:and
-                                               [:> $id 32]
-                                               [:< $id 35]]
-                                              [:contains $name "BBQ"]]]))))
+             (count-with-filter-clause [:not [:or [:and [:> $id 32] [:< $id 35]] [:contains $name "BBQ"]]]))))))
 
+(deftest ^:parallel not-filter-test-17
+  (mt/test-drivers (mt/normal-drivers)
     (testing "nested not"
       (is (= 3
-             (count-with-filter-clause [:not [:not [:contains $name "BBQ"]]]))))
+             (count-with-filter-clause [:not [:not [:contains $name "BBQ"]]]))))))
 
+(deftest ^:parallel not-filter-test-18
+  (mt/test-drivers (mt/normal-drivers)
     (testing "not nested inside and/or"
       (is (= 1
-             (count-with-filter-clause [:and
-                                        [:not [:> $id 32]]
-                                        [:contains $name "BBQ"]]))))))
+             (count-with-filter-clause [:and [:not [:> $id 32]] [:contains $name "BBQ"]]))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -544,7 +629,10 @@
                (count-with-filter-clause checkins [:between
                                                    !minute.timestamp
                                                    "2019-01-01T12:30:00"
-                                                   "2019-01-14"])))))
+                                                   "2019-01-14"])))))))
+
+(deftest ^:parallel etc-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "make sure that filtering with dates bucketing by weeks works (#4956)"
       (is (= 7
              (count-with-filter-clause checkins [:= !week.date "2015-06-21T07:00:00.000000000-00:00"]))))))
@@ -563,15 +651,18 @@
           (let [query (mt/mbql-query venues
                         {:aggregation [[:count]]
                          :filter      [:= $name v]})]
-            (testing (format "\nquery = %s" (pr-str (:query (qp/compile-and-splice-parameters query))))
+            (testing (format "\nquery = %s" (pr-str (:query (qp.compile/compile-and-splice-parameters query))))
               ;; Mongo returns empty results if count is zero -- see #5419
               (is (= (if (and (= driver/*driver* :mongo)
                               (zero? expected-count))
                        []
                        [[expected-count]])
                      (mt/formatted-rows [int]
-                       (qp/process-query query)))))))))
+                       (qp/process-query query)))))))))))
 
+(deftest ^:parallel string-escape-test-2
+  ;; test `:sql` drivers that support native parameters
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (testing "Make sure we're not being too aggressive and encoding percent signs (e.g. SQL `LIKE`)"
       (is (= [[1]]
              (mt/formatted-rows [int]
@@ -598,7 +689,13 @@
         (testing "nil"
           (is (= [[8]]
                  (mt/formatted-rows [int]
-                   (mt/run-mbql-query region {:aggregation [:count], :filter [:= $name nil]}))))
+                   (mt/run-mbql-query region {:aggregation [:count], :filter [:= $name nil]})))))))))
+
+(deftest ^:parallel text-equals-nil-empty-string-test-2
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":= against a text column should match the correct columns when value is"
+        (testing "nil"
           (testing "an empty string (#13158)"
             (is (= [[1]]
                    (mt/formatted-rows [int]
@@ -611,7 +708,13 @@
         (testing "should match non-nil, non-empty strings"
           (is (= [[414]]
                  (mt/formatted-rows [int]
-                   (mt/run-mbql-query region {:aggregation [:count], :filter [:!= $name "California"]}))))
+                   (mt/run-mbql-query region {:aggregation [:count], :filter [:!= $name "California"]})))))))))
+
+(deftest ^:parallel text-not-equals-nil-test-2
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":!= against a nil/NULL in a text column should be truthy"
+        (testing "should match non-nil, non-empty strings"
           (is (= [[600]]
                  (mt/formatted-rows [int]
                    (mt/run-mbql-query airport {:aggregation [:count], :filter [:!= $code "SFO"]})))))))))
@@ -624,16 +727,34 @@
           (testing "should match nil strings"
             (is (= [[8]]
                    (mt/formatted-rows [int]
-                     (mt/run-mbql-query region {:aggregation [:count], :filter [:is-empty $name]})))))
+                     (mt/run-mbql-query region {:aggregation [:count], :filter [:is-empty $name]}))))))))))
+
+(deftest ^:parallel is-empty-not-empty-test-2
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":is-empty and :not-empty filters should work correctly (#13158)"
+        (testing :is-empty
           (testing "should match EMPTY strings"
             (is (= [[1]]
                    (mt/formatted-rows [int]
-                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:is-empty $code]}))))))
+                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:is-empty $code]}))))))))))
+
+(deftest ^:parallel is-empty-not-empty-test-3
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":is-empty and :not-empty filters should work correctly (#13158)"
         (testing :not-empty
           (testing "should match non-nil, non-empty strings"
             (is (= [[407]]
                    (mt/formatted-rows [int]
-                     (mt/run-mbql-query region {:aggregation [:count], :filter [:not-empty $name]}))))
+                     (mt/run-mbql-query region {:aggregation [:count], :filter [:not-empty $name]}))))))))))
+
+(deftest ^:parallel is-empty-not-empty-test-4
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":is-empty and :not-empty filters should work correctly (#13158)"
+        (testing :not-empty
+          (testing "should match non-nil, non-empty strings"
             (is (= [[600]]
                    (mt/formatted-rows [int]
                      (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))

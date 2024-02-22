@@ -1,36 +1,35 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
 import cx from "classnames";
 import d3 from "d3";
-import _ from "underscore";
+import { createRef, Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { color } from "metabase/lib/colors";
+import { getColorsForValues } from "metabase/lib/colors/charts";
+import { formatValue } from "metabase/lib/formatting";
 import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  metricSetting,
+  dimensionSetting,
+} from "metabase/visualizations/lib/settings/utils";
 import {
   getFriendlyName,
   computeMaxDecimalsForValues,
 } from "metabase/visualizations/lib/utils";
 import {
-  metricSetting,
-  dimensionSetting,
-} from "metabase/visualizations/lib/settings/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import { formatValue } from "metabase/lib/formatting";
-
-import { color } from "metabase/lib/colors";
-import { getColorsForValues } from "metabase/lib/colors/charts";
-import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+
 import ChartWithLegend from "../../components/ChartWithLegend";
-import styles from "./PieChart.css";
 
 import { PieArc } from "./PieArc";
+import styles from "./PieChart.css";
 import { getTooltipModel } from "./utils";
 
 const SIDE_PADDING = 24;

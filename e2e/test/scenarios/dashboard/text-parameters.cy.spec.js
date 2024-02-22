@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   editDashboard,
@@ -10,7 +11,6 @@ import {
   addHeadingWhileEditing,
   popover,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -199,7 +199,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
         .click();
       popover().within(() => {
         cy.findByRole("textbox").click().clear().type("07/19/2023").blur();
-        cy.button("Update filter").click();
+        cy.button("Add filter").click();
       });
 
       // Question should be filtered appropriately

@@ -1,7 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+
 import Radio from "metabase/core/components/Radio";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { slugify } from "metabase/lib/formatting";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type {
   Parameter,
   ParameterId,
@@ -9,10 +12,11 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { slugify } from "metabase/lib/formatting";
+
 import { canUseLinkedFilters } from "../../utils/linked-filters";
-import { ParameterSettings } from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
+import { ParameterSettings } from "../ParameterSettings";
+
 import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {
@@ -44,6 +48,9 @@ export interface ParameterSidebarProps {
   onRemoveParameter: (parameterId: ParameterId) => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
+  getEmbeddedParameterVisibility: (
+    slug: string,
+  ) => EmbeddingParameterVisibility | null;
 }
 
 export const ParameterSidebar = ({
@@ -60,6 +67,7 @@ export const ParameterSidebar = ({
   onRemoveParameter,
   onShowAddParameterPopover,
   onClose,
+  getEmbeddedParameterVisibility,
 }: ParameterSidebarProps): JSX.Element => {
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -142,6 +150,9 @@ export const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
+            embeddedParameterVisibility={getEmbeddedParameterVisibility(
+              parameter.slug,
+            )}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}

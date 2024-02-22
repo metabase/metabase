@@ -1,11 +1,12 @@
 import type { Location } from "history";
 import querystring from "querystring";
-import * as Urls from "metabase/lib/urls";
+
 import { serializeCardForUrl } from "metabase/lib/card";
-import type { Card } from "metabase-types/api";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
+import type { Card } from "metabase-types/api";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -82,27 +83,21 @@ export const isNavigationAllowed = ({
   const { hash, pathname } = destination;
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
+  const isRunningModel = pathname === "/model" && hash.length > 0;
 
-  const runModelPathnames = !isNative
-    ? ["/model", "/model/notebook"]
-    : ["/model"];
-  const isRunningModel =
-    runModelPathnames.includes(pathname) && hash.length > 0;
   const validSlugs = [question.id(), question.slug()]
     .filter(Boolean)
     .map(String);
 
-  if (question.isDataset()) {
-    if (isNewQuestion) {
-      const allowedPathnames = ["/model/query", "/model/metadata"];
-      return isRunningModel || allowedPathnames.includes(pathname);
-    }
-
-    const allowedPathnames = validSlugs.flatMap(slug => [
-      `/model/${slug}`,
-      `/model/${slug}/query`,
-      `/model/${slug}/metadata`,
-    ]);
+  if (question.type() === "model") {
+    const allowedPathnames = isNewQuestion
+      ? ["/model/query", "/model/metadata"]
+      : validSlugs.flatMap(slug => [
+          `/model/${slug}`,
+          `/model/${slug}/query`,
+          `/model/${slug}/metadata`,
+          `/model/${slug}/notebook`,
+        ]);
 
     return isRunningModel || allowedPathnames.includes(pathname);
   }

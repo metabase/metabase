@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 
 export const MonospaceErrorDisplay = styled.div`
@@ -10,4 +11,6 @@ export const MonospaceErrorDisplay = styled.div`
   border-radius: 0.5rem;
   background-color: ${color("bg-light")};
   border: 1px solid ${color("border")};
+  max-height: 16rem;
+  overflow-y: auto;
 `;

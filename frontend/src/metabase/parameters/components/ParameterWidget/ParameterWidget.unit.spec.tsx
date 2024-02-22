@@ -1,9 +1,10 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMockField, createMockParameter } from "metabase-types/api/mocks";
+
 import { renderWithProviders } from "__support__/ui";
-import type { FieldFilterUiParameter } from "metabase-lib/parameters/types";
 import Field from "metabase-lib/metadata/Field";
+import type { FieldFilterUiParameter } from "metabase-lib/parameters/types";
+import { createMockField, createMockParameter } from "metabase-types/api/mocks";
 
 import { ParameterWidget } from "./ParameterWidget";
 
@@ -60,7 +61,11 @@ describe("ParameterWidget", () => {
     userEvent.type(textInput, "{backspace}".repeat(text.length));
     expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
 
-    userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    userEvent.click(
+      screen.getByRole("button", { name: "Add filter" }),
+      undefined,
+      { skipPointerEventsCheck: true },
+    );
     expect(setValue).not.toHaveBeenCalled();
   });
 
@@ -85,7 +90,11 @@ describe("ParameterWidget", () => {
     userEvent.type(textInput, "{backspace}".repeat(text.length));
     expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
 
-    userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    userEvent.click(
+      screen.getByRole("button", { name: "Add filter" }),
+      undefined,
+      { skipPointerEventsCheck: true },
+    );
     expect(setValue).not.toHaveBeenCalled();
   });
 });

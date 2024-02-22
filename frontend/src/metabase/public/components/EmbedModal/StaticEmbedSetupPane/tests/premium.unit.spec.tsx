@@ -1,5 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { FONTS_MOCK_VALUES, getMockResource, setup } from "./setup";
@@ -118,15 +119,9 @@ describe("Static Embed Setup phase - EE, with token", () => {
           });
 
           expect(screen.getByText("Download data")).toBeVisible();
-          expect(
-            screen.getByLabelText(
-              "Enable users to download data from this embed",
-            ),
-          ).toBeChecked();
+          expect(screen.getByLabelText("Download data")).toBeChecked();
 
-          userEvent.click(
-            screen.getByText("Enable users to download data from this embed"),
-          );
+          userEvent.click(screen.getByLabelText("Download data"));
 
           expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
             `hide_download_button=true`,

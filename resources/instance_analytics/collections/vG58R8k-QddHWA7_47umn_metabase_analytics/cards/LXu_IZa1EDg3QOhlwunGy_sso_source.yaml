@@ -36,3 +36,4 @@ serdes/meta:
   label: sso_source
   model: Card
 metabase_version: null
+type: question

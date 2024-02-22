@@ -1,23 +1,20 @@
-import _ from "underscore";
-import { createAction } from "redux-actions";
 import { push } from "react-router-redux";
+import { createAction } from "redux-actions";
+import _ from "underscore";
+
+import { updateSetting } from "metabase/admin/settings/settings";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { getDefaultEngine } from "metabase/lib/engine";
 import {
   combineReducers,
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { getDefaultEngine } from "metabase/lib/engine";
-
 import { MetabaseApi } from "metabase/services";
-import Databases from "metabase/entities/databases";
-import Tables from "metabase/entities/tables";
-import { updateSetting } from "metabase/admin/settings/settings";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
-
-// Default schedules for db sync and deep analysis
-export const DB_EDIT_FORM_CONNECTION_TAB = "connection";
 
 export const RESET = "metabase/admin/databases/RESET";
 export const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";

@@ -1,25 +1,8 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
-import {
-  screen,
-  renderWithProviders,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
-import type { Dashboard } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockCollectionItem,
-  createMockDashboard,
-  createMockDatabase,
-  createMockTable,
-} from "metabase-types/api/mocks";
-import { createMockDashboardState } from "metabase-types/store/mocks";
+import { callMockEvent } from "__support__/events";
 import {
   setupActionsEndpoints,
   setupBookmarksEndpoints,
@@ -32,7 +15,24 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { callMockEvent } from "__support__/events";
+import {
+  screen,
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { checkNotNull } from "metabase/lib/types";
+import type { Dashboard } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockCollectionItem,
+  createMockDashboard,
+  createMockDatabase,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 const TEST_COLLECTION = createMockCollection();
 

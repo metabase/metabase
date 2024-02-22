@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 
 export const SectionHeader = styled.h4`
@@ -38,7 +39,7 @@ export const ExplorePaidPlansContainer = styled.div<ExplorePaidPlansContainerPro
 
 export const SettingsLicenseContainer = styled.div`
   width: 580px;
-  padding: 16px;
+  padding: 0 16px;
 `;
 
 export const LoaderContainer = styled.div`

@@ -1,34 +1,122 @@
-import fetchMock from "fetch-mock";
-import { screen } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
-import { createMockUpload, createMockState } from "metabase-types/store/mocks";
 
+import {
+  setupBookmarksEndpoints,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
-import CollectionHeader from "metabase/collections/containers/CollectionHeader";
+import { CollectionContent } from "metabase/collections/components/CollectionContent";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+  createMockUpload,
+} from "metabase-types/store/mocks";
+
 import { FileUploadStatus } from "./FileUploadStatus";
 
-describe("FileUploadStatus", () => {
-  const firstCollectionId = 1;
-  const firstCollection = createMockCollection({
-    id: firstCollectionId,
-    can_write: true,
+const firstCollectionId = 1;
+const firstCollection = createMockCollection({
+  id: firstCollectionId,
+  can_write: true,
+});
+
+const secondCollectionId = 2;
+const secondCollection = createMockCollection({
+  id: secondCollectionId,
+  name: "Second Collection",
+});
+
+const thirdCollection = createMockCollection({
+  id: 3,
+  name: "Second Collection",
+});
+
+const uploadedModel = createMockCollectionItem({
+  id: 3,
+  name: "my uploaded model",
+  collection: secondCollection,
+  model: "dataset",
+  based_on_upload: 123,
+});
+
+const uploadedModel2 = createMockCollectionItem({
+  id: 4,
+  name: "my second uploaded model",
+  collection: secondCollection,
+  model: "dataset",
+  based_on_upload: 123,
+});
+
+async function setupCollectionContent(overrides = {}) {
+  setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
+  setupSearchEndpoints([]);
+  setupBookmarksEndpoints([]);
+
+  const settings = createMockSettingsState({
+    "uploads-enabled": true,
+    "uploads-database-id": 1,
   });
 
-  const secondCollectionId = 2;
-
-  beforeEach(() => {
-    fetchMock.get("path:/api/collection/1", firstCollection);
-
-    fetchMock.get(
-      "path:/api/collection/2",
-      createMockCollection({
-        id: 2,
-        name: "Second Collection",
+  renderWithProviders(
+    <Route
+      path="/"
+      component={() => {
+        return (
+          <>
+            <CollectionContent
+              collectionId={firstCollectionId}
+              {...overrides}
+            />
+            <FileUploadStatus />
+          </>
+        );
+      }}
+    />,
+    {
+      withRouter: true,
+      withDND: true,
+      storeInitialState: createMockState({
+        settings,
       }),
-    );
+    },
+  );
 
+  // wait for loading to complete
+  await screen.findByTestId("upload-input");
+}
+
+describe("FileUploadStatus", () => {
+  beforeEach(() => {
+    setupCollectionByIdEndpoint({
+      collections: [firstCollection, secondCollection, thirdCollection],
+    });
+    setupCollectionsEndpoints({
+      collections: [firstCollection, secondCollection, thirdCollection],
+    });
+    setupCollectionItemsEndpoint({
+      collection: firstCollection,
+      collectionItems: [],
+    });
+    setupCollectionItemsEndpoint({
+      collection: secondCollection,
+      collectionItems: [uploadedModel],
+    });
+    setupCollectionItemsEndpoint({
+      collection: thirdCollection,
+      collectionItems: [uploadedModel, uploadedModel2],
+    });
     fetchMock.get(
       "path:/api/table/123",
       createMockCollection({
@@ -104,10 +192,6 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Uploading data to Fancy Table …"),
     ).toBeInTheDocument();
 
-    expect(
-      await screen.findByText("Uploading data to Fancy Table …"),
-    ).toBeInTheDocument();
-
     expect(await screen.findByText("test.csv")).toBeInTheDocument();
   });
 
@@ -115,44 +199,144 @@ describe("FileUploadStatus", () => {
     jest.useFakeTimers({ advanceTimers: true });
     fetchMock.post("path:/api/card/from-csv", "3", { delay: 1000 });
 
-    renderWithProviders(
-      <Route
-        path="/"
-        component={() => {
-          return (
-            <>
-              <CollectionHeader
-                collection={firstCollection}
-                isAdmin={true}
-                isBookmarked={false}
-                isPersonalCollectionChild={false}
-                onCreateBookmark={jest.fn()}
-                onDeleteBookmark={jest.fn()}
-                canUpload
-                uploadsEnabled
-              />
-              <FileUploadStatus />
-            </>
-          );
-        }}
-      />,
-      {
-        withRouter: true,
-      },
-    );
+    await setupCollectionContent();
 
     userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
 
-    jest.advanceTimersByTime(500);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
 
     expect(
       await screen.findByText("Uploading data to Collection …"),
     ).toBeInTheDocument();
 
-    jest.advanceTimersByTime(1000);
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Start exploring" }),
+    ).toHaveAttribute("href", "/model/3");
+  });
+
+  it("Should allow new model creation when an appendable model exists", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    fetchMock.post("path:/api/card/from-csv", "3", { delay: 1000 });
+
+    await setupCollectionContent({ collectionId: secondCollectionId });
+
+    userEvent.upload(
+      screen.getByTestId("upload-input"),
+      new File(["foo, bar"], "test.csv", { type: "text/csv" }),
+    );
+
+    expect(
+      await screen.findByText("Select upload destination"),
+    ).toBeInTheDocument();
+
+    userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(
+      await screen.findByText("Uploading data to Second Collection …"),
+    ).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Start exploring" }),
+    ).toHaveAttribute("href", "/model/3");
+  });
+
+  it("Should default to appending to a single selectable model", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    fetchMock.post("path:/api/table/123/append-csv", "3", { delay: 1000 });
+
+    await setupCollectionContent({ collectionId: secondCollectionId });
+
+    userEvent.upload(
+      screen.getByTestId("upload-input"),
+      new File(["foo, bar"], "test.csv", { type: "text/csv" }),
+    );
+
+    expect(
+      await screen.findByText("Select upload destination"),
+    ).toBeInTheDocument();
+
+    userEvent.click(screen.getByText("Append to a model"));
+    const submitButton = await screen.findByRole("button", { name: "Append" });
+
+    // only appendable model should be pre-selected
+    await screen.findByText("my uploaded model");
+
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    userEvent.click(submitButton);
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(
+      await screen.findByText(/Uploading data to Fancy Table/i),
+    ).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Start exploring" }),
+    ).toHaveAttribute("href", "/model/3");
+  });
+
+  it("Should allow selecting from appendable models", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    fetchMock.post("path:/api/table/123/append-csv", "3", { delay: 1000 });
+
+    await setupCollectionContent({ collectionId: thirdCollection.id });
+
+    userEvent.upload(
+      screen.getByTestId("upload-input"),
+      new File(["foo, bar"], "test.csv", { type: "text/csv" }),
+    );
+
+    expect(
+      await screen.findByText("Select upload destination"),
+    ).toBeInTheDocument();
+
+    userEvent.click(screen.getByText("Append to a model"));
+    const submitButton = await screen.findByRole("button", { name: "Append" });
+
+    userEvent.click(await screen.findByPlaceholderText("Select a model"));
+    userEvent.click(
+      await within(await screen.findByRole("listbox")).findByText(
+        "my uploaded model",
+      ),
+    );
+
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    userEvent.click(submitButton);
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(
+      await screen.findByText(/Uploading data to Fancy Table/i),
+    ).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
 
     expect(
       await screen.findByRole("link", { name: "Start exploring" }),
@@ -170,48 +354,29 @@ describe("FileUploadStatus", () => {
         status: 400,
       },
       { delay: 1000 },
-    ),
-      renderWithProviders(
-        <Route
-          path="/"
-          component={() => {
-            return (
-              <>
-                <CollectionHeader
-                  collection={firstCollection}
-                  isAdmin={true}
-                  isBookmarked={false}
-                  isPersonalCollectionChild={false}
-                  onCreateBookmark={jest.fn()}
-                  onDeleteBookmark={jest.fn()}
-                  canUpload
-                  uploadsEnabled
-                />
-                <FileUploadStatus />
-              </>
-            );
-          }}
-        />,
-        {
-          withRouter: true,
-        },
-      );
+    );
+
+    await setupCollectionContent();
 
     userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
 
-    jest.advanceTimersByTime(500);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
 
     expect(
       await screen.findByText("Uploading data to Collection …"),
     ).toBeInTheDocument();
 
-    jest.advanceTimersByTime(500);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
 
     expect(
-      await screen.findByText("There was an error uploading the file"),
+      await screen.findByText("Error uploading your file"),
     ).toBeInTheDocument();
 
     userEvent.click(await screen.findByText("Show error details"));
@@ -226,54 +391,38 @@ describe("FileUploadStatus", () => {
       jest.useFakeTimers({ advanceTimers: true });
       fetchMock.post("path:/api/card/from-csv", "3", { delay: 90 * 1000 });
 
-      renderWithProviders(
-        <Route
-          path="/"
-          component={() => {
-            return (
-              <>
-                <CollectionHeader
-                  collection={firstCollection}
-                  isAdmin={true}
-                  isBookmarked={false}
-                  isPersonalCollectionChild={false}
-                  onCreateBookmark={jest.fn()}
-                  onDeleteBookmark={jest.fn()}
-                  canUpload
-                  uploadsEnabled
-                />
-                <FileUploadStatus />
-              </>
-            );
-          }}
-        />,
-        {
-          withRouter: true,
-        },
-      );
+      await setupCollectionContent();
 
       userEvent.upload(
         screen.getByTestId("upload-input"),
         new File(["foo, bar"], "test.csv", { type: "text/csv" }),
       );
 
-      jest.advanceTimersByTime(1 * 1000);
+      act(() => {
+        jest.advanceTimersByTime(1 * 1000);
+      });
 
       expect(
         await screen.findByText("Uploading data to Collection …"),
       ).toBeInTheDocument();
 
-      jest.advanceTimersByTime(30 * 1000);
+      act(() => {
+        jest.advanceTimersByTime(30 * 1000);
+      });
 
       expect(await screen.findByText("Still working …")).toBeInTheDocument();
 
-      jest.advanceTimersByTime(30 * 1000);
+      act(() => {
+        jest.advanceTimersByTime(30 * 1000);
+      });
 
       expect(
         await screen.findByText("Arranging bits and bytes …"),
       ).toBeInTheDocument();
 
-      jest.advanceTimersByTime(30 * 1000);
+      act(() => {
+        jest.advanceTimersByTime(30 * 1000);
+      });
 
       expect(
         await screen.findByRole("link", { name: "Start exploring" }),

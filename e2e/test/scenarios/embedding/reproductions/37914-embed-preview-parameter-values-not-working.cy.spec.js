@@ -1,13 +1,13 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  visitDashboard,
   addOrUpdateDashboardCard,
   dashboardHeader,
-  modal,
   getIframeBody,
+  modal,
+  popover,
+  restore,
+  visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -56,6 +56,7 @@ describe("issue 37914", () => {
     cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
       "previewDashboard",
     );
+    cy.intercept("GET", "/api/dashboard/**/params/**/values").as("values");
 
     restore();
     cy.signInAsAdmin();
@@ -125,6 +126,7 @@ describe("issue 37914", () => {
           "Set filter 2 value, so filter 1 should be filtered by filter 2",
         );
         cy.button(filter2.name).click();
+        cy.wait("@values");
         popover().within(() => {
           cy.findByText("Gadget").should("be.visible");
           cy.findByText("Gizmo").should("be.visible");

@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { t } from "ttag";
+
+import LogoIcon from "metabase/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import LogoIcon from "metabase/components/LogoIcon";
 import { Button, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { AdminPath } from "metabase-types/store";
+
 import StoreLink from "../StoreLink";
+
+import { AdminNavItem } from "./AdminNavItem";
 import {
   AdminExitLink,
   AdminLogoContainer,
@@ -18,7 +22,6 @@ import {
   AdminMobileNavBarItems,
   MobileHide,
 } from "./AdminNavbar.styled";
-import { AdminNavItem } from "./AdminNavItem";
 
 interface AdminNavbarProps {
   path: string;
@@ -37,6 +40,7 @@ export const AdminNavbar = ({
       <AdminLogoLink to="/admin">
         <AdminLogoContainer>
           <LogoIcon className="text-brand my2" dark />
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
           <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
         </AdminLogoContainer>
       </AdminLogoLink>

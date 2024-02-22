@@ -1,14 +1,17 @@
 import _ from "underscore";
+
+import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
 import type {
   NativeQuery,
   NormalizedDatabase,
   StructuredQuery,
 } from "metabase-types/api";
-import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
+
 import Question from "../Question";
-import type Table from "./Table";
-import type Schema from "./Schema";
+
 import type Metadata from "./Metadata";
+import type Schema from "./Schema";
+import type Table from "./Table";
 
 interface Database extends Omit<NormalizedDatabase, "tables" | "schemas"> {
   tables?: Table[];
@@ -116,7 +119,7 @@ class Database {
   }
 
   newQuestion() {
-    return this.question().setDefaultQuery().setDefaultDisplay();
+    return this.question().setDefaultDisplay();
   }
 
   question(

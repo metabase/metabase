@@ -1,5 +1,6 @@
-import { forwardRef, useEffect } from "react";
 import type { HTMLAttributes, Ref } from "react";
+import { forwardRef, useEffect } from "react";
+
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
 // hack to prevent parent TippyPopover from closing when selecting an item in Select

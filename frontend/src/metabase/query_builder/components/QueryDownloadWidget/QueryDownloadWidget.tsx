@@ -1,16 +1,19 @@
+import { useState } from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
-import { useState } from "react";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Tooltip from "metabase/core/components/Tooltip";
+
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Tooltip from "metabase/core/components/Tooltip";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
-import type { Dataset, VisualizationSettings } from "metabase-types/api";
 import { Flex, Popover } from "metabase/ui";
 import type Question from "metabase-lib/Question";
+import type { Dataset, VisualizationSettings } from "metabase-types/api";
+
 import QueryDownloadPopover from "../QueryDownloadPopover";
+
 import { DownloadIcon } from "./QueryDownloadWidget.styled";
 
 interface OwnProps {

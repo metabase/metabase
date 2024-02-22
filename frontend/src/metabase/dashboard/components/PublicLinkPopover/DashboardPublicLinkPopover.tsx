@@ -1,7 +1,12 @@
-import type { Dashboard } from "metabase-types/api";
 import { createPublicLink, deletePublicLink } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { publicDashboard as getPublicDashboardUrl } from "metabase/lib/urls";
+import {
+  trackPublicLinkCopied,
+  trackPublicLinkRemoved,
+} from "metabase/public/lib/analytics";
+import type { Dashboard } from "metabase-types/api";
+
 import { PublicLinkPopover } from "./PublicLinkPopover";
 
 export const DashboardPublicLinkPopover = ({
@@ -25,7 +30,17 @@ export const DashboardPublicLinkPopover = ({
     await dispatch(createPublicLink(dashboard));
   };
   const deletePublicDashboardLink = () => {
+    trackPublicLinkRemoved({
+      artifact: "dashboard",
+      source: "public-share",
+    });
     dispatch(deletePublicLink(dashboard));
+  };
+
+  const onCopyLink = () => {
+    trackPublicLinkCopied({
+      artifact: "dashboard",
+    });
   };
 
   return (
@@ -36,6 +51,7 @@ export const DashboardPublicLinkPopover = ({
       createPublicLink={createPublicDashboardLink}
       deletePublicLink={deletePublicDashboardLink}
       url={url}
+      onCopyLink={onCopyLink}
     />
   );
 };

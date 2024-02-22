@@ -235,3 +235,4 @@ serdes/meta:
   label: most_viewed_tables
   model: Card
 metabase_version: vUNKNOWN (901f705)
+type: question

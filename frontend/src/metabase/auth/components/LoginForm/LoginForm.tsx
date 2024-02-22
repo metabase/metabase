@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import { Form, FormProvider } from "metabase/forms";
+
 import FormCheckBox from "metabase/core/components/FormCheckBox";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+
 import type { LoginData } from "../../types";
 
 const LOGIN_SCHEMA = Yup.object().shape({

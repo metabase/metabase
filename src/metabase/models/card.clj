@@ -31,7 +31,6 @@
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features
@@ -42,6 +41,7 @@
    [metabase.shared.util.i18n :refer [trs]]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.util :as u]
+   [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -181,7 +181,7 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
+  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version :initially_published_at
    ;; we'll use type now
    :dataset])
 
@@ -255,9 +255,8 @@
     (do
       (log/debug "Attempting to infer result metadata for Card")
       (let [inferred-metadata (not-empty (mw.session/with-current-user nil
-                                           (classloader/require 'metabase.query-processor)
                                            (u/ignore-exceptions
-                                             ((resolve 'metabase.query-processor/query->expected-cols) query))))]
+                                             ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query))))]
         (assoc card :result_metadata inferred-metadata)))))
 
 (defn- check-for-circular-source-query-references
@@ -560,6 +559,7 @@
       populate-result-metadata
       pre-update
       populate-query-fields
+      maybe-populate-initially-published-at
       (dissoc :id)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests

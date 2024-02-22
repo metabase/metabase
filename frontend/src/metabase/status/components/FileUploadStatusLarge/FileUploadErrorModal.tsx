@@ -1,8 +1,9 @@
 import { t } from "ttag";
-import { Text } from "metabase/ui";
+
+import { ErrorBox } from "metabase/components/ErrorDetails";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
-import { ErrorBox } from "metabase/components/ErrorDetails";
+import { Text } from "metabase/ui";
 
 export const FileUploadErrorModal = ({
   onClose,
@@ -16,7 +17,9 @@ export const FileUploadErrorModal = ({
   return (
     <Modal small>
       <ModalContent title={t`Upload error details`} onClose={onClose}>
-        {fileName && <Text>{t`Errors uploading ${fileName}:`}</Text>}
+        {fileName && (
+          <Text>{t`There were some errors while uploading ${fileName}:`}</Text>
+        )}
         <ErrorBox>{children}</ErrorBox>
       </ModalContent>
     </Modal>

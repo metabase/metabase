@@ -23,7 +23,6 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.order-by :as lib.order-by]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
@@ -31,11 +30,11 @@
    [metabase.util.malli :as mu]))
 
 (defn- orderable-column?
-  "Is `column` orderable? (Does it appear in [[lib.order-by/orderable-columns]]?)"
-  [query stage-number column]
+  "Is `column-ref` orderable? (Does it appear in [[lib.order-by/orderable-columns]]?)"
+  [query stage-number column-ref]
   (lib.equality/find-matching-column query
                                      stage-number
-                                     (lib.ref/ref column)
+                                     column-ref
                                      (lib.order-by/orderable-columns query stage-number)))
 
 (mu/defn ^:private existing-order-by-clause :- [:maybe ::lib.schema.order-by/order-by]
@@ -51,16 +50,16 @@
 
 (mu/defn sort-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.sort]
   "Sorting on a clicked column."
-  [query                                :- ::lib.schema/query
-   stage-number                         :- :int
-   {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
+  [query                                           :- ::lib.schema/query
+   stage-number                                    :- :int
+   {:keys [column column-ref value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; if we have a context with a `:column`, but no `:value`...
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
              (not (lib.types.isa/structured? column)))
     ;; ...and the column is orderable, we can return a sort drill-thru.
-    (when (orderable-column? query stage-number column)
+    (when (orderable-column? query stage-number column-ref)
       ;; check and see if there is already a sort on this column. If there is, we should only suggest flipping the
       ;; direction to the opposite of what it is now. If there is no existing sort, then return both directions as
       ;; options.

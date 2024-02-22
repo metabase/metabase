@@ -1,6 +1,8 @@
 import { jt, t } from "ttag";
 import _ from "underscore";
+
 import type { Engine } from "metabase-types/api";
+
 import { Warning, WarningLink } from "./DatabaseEngineWarning.styled";
 
 export interface DatabaseEngineWarningProps {
@@ -104,6 +106,7 @@ const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
 
 const CommunityEngineWarning = () => (
   <Warning icon="info">
+    {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
     {t`This is a community-developed driver and not supported by Metabase. `}
   </Warning>
 );
@@ -131,6 +134,7 @@ const PartnerEngineWarning = ({
 
   return (
     <Warning icon="info">
+      {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
       {t`This is a partner-developed driver. Though Metabase can’t provide support for it, if you need help you can contact the fine folks at `}
       {contactLink}
       {!contactLink && (sourceName || "our partner")}.

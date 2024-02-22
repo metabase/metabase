@@ -1,12 +1,11 @@
-import { t } from "ttag";
 import type { Location } from "history";
-
-import { getSetting } from "metabase/selectors/settings";
-import { useSelector } from "metabase/lib/redux";
+import { t } from "ttag";
 
 import Link from "metabase/core/components/Link/Link";
+import { useSelector } from "metabase/lib/redux";
 import { trackDatabasePromptBannerClicked } from "metabase/nav/analytics";
 import { useShouldShowDatabasePromptBanner } from "metabase/nav/hooks";
+import { getSetting } from "metabase/selectors/settings";
 
 import {
   ConnectDatabaseButton,
@@ -39,6 +38,7 @@ export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
 
   return (
     <DatabasePromptBannerRoot role="banner">
+      {/* eslint-disable-next-line no-literal-metabase-strings -- Only shows for admins*/}
       <Prompt>{t`Connect to your database to get the most from Metabase.`}</Prompt>
       <CallToActions>
         <GetHelpButton

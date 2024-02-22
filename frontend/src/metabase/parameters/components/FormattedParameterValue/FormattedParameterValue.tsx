@@ -1,5 +1,5 @@
-import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
+import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import {
   getFields,

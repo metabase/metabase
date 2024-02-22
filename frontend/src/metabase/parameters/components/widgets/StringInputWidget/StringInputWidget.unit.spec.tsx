@@ -1,9 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import StringInputWidget from "./StringInputWidget";
+import { createMockParameter } from "metabase-types/api/mocks";
+
+import { StringInputWidget } from "./StringInputWidget";
 
 const mockSetValue = jest.fn();
+const mockParameter = createMockParameter();
 
 describe("StringInputWidget", () => {
   beforeEach(() => {
@@ -12,7 +15,13 @@ describe("StringInputWidget", () => {
 
   describe("arity of 1", () => {
     it("should render an input populated with a value", () => {
-      render(<StringInputWidget value={["foo"]} setValue={mockSetValue} />);
+      render(
+        <StringInputWidget
+          value={["foo"]}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const textbox = screen.getByRole("textbox");
       expect(textbox).toBeInTheDocument();
@@ -20,7 +29,13 @@ describe("StringInputWidget", () => {
     });
 
     it("should render an empty input", () => {
-      render(<StringInputWidget value={undefined} setValue={mockSetValue} />);
+      render(
+        <StringInputWidget
+          value={undefined}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const textbox = screen.getByRole("textbox");
       expect(textbox).toBeInTheDocument();
@@ -28,7 +43,13 @@ describe("StringInputWidget", () => {
     });
 
     it("should render a disabled update button, until the value is changed", () => {
-      render(<StringInputWidget value={["foo"]} setValue={mockSetValue} />);
+      render(
+        <StringInputWidget
+          value={["foo"]}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const button = screen.getByRole("button", { name: "Update filter" });
       expect(button).toBeInTheDocument();
@@ -39,7 +60,13 @@ describe("StringInputWidget", () => {
     });
 
     it("should let you update the input with a new value", () => {
-      render(<StringInputWidget value={["foo"]} setValue={mockSetValue} />);
+      render(
+        <StringInputWidget
+          value={["foo"]}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const textbox = screen.getByRole("textbox");
       userEvent.type(textbox, "{backspace}{backspace}{backspace}bar");
@@ -49,7 +76,13 @@ describe("StringInputWidget", () => {
     });
 
     it("should let you update the input with an undefined value", () => {
-      render(<StringInputWidget value={["a"]} setValue={mockSetValue} />);
+      render(
+        <StringInputWidget
+          value={["a"]}
+          setValue={mockSetValue}
+          parameter={mockParameter}
+        />,
+      );
 
       const textbox = screen.getByRole("textbox");
       const button = screen.getByRole("button", { name: "Update filter" });
@@ -66,6 +99,7 @@ describe("StringInputWidget", () => {
           arity="n"
           value={["foo", "bar"]}
           setValue={mockSetValue}
+          parameter={mockParameter}
         />,
       );
 
@@ -79,6 +113,7 @@ describe("StringInputWidget", () => {
           arity="n"
           value={undefined}
           setValue={mockSetValue}
+          parameter={mockParameter}
         />,
       );
 
@@ -99,6 +134,7 @@ describe("StringInputWidget", () => {
           arity="n"
           value={["foo", "bar"]}
           setValue={mockSetValue}
+          parameter={mockParameter}
         />,
       );
 

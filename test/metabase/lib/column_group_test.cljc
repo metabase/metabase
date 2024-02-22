@@ -349,10 +349,10 @@
                 {:name field-name
                  :lib/desired-column-alias (str "Orders__" field-name)
                  :lib/source :source/joins})}
-             (implicit user-cols    "PEOPLE__via__USER_ID__" "")
              (implicit product-cols "PRODUCTS__via__PRODUCT_ID__" "")
-             (implicit user-cols    "PEOPLE__via__USER_ID__" "_2")
-             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__" "_2")]
+             (implicit user-cols    "PEOPLE__via__USER_ID__" "")
+             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__" "_2")
+             (implicit user-cols    "PEOPLE__via__USER_ID__" "_2")]
             (lib/group-columns marked)))))
 
 (deftest ^:parallel self-joined-cards-duplicate-implicit-columns-test
@@ -413,3 +413,44 @@
                {:lib/desired-column-alias "PEOPLE__via__USER_ID__LATITUDE_2", :fk-join-alias "Mock orders card"}
                {:lib/desired-column-alias "PEOPLE__via__USER_ID__CREATED_AT_2", :fk-join-alias "Mock orders card"}]
               (::lib.column-group/columns product-2))))))
+
+(deftest ^:parallel column-group-order-test
+  (testing "column groups should be returned in order: main, explicit joins, implicit joins"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                               [(lib/= (meta/field-metadata :orders :id)
+                                                       (-> (meta/field-metadata :orders :id)
+                                                           (lib/with-join-alias "Orders")))]))
+                    (lib/join (lib/join-clause (meta/table-metadata :reviews)
+                                               [(lib/= (meta/field-metadata :reviews :product-id)
+                                                       (meta/field-metadata :orders :product-id))])))
+          ;; Deliberately randomizing the order of the columns.
+          cols  (shuffle (lib/visible-columns query))]
+      (is (=? [{::lib.column-group/group-type :group-type/main}
+               ;; Explicit joins, ordered by join alias.
+               {::lib.column-group/group-type :group-type/join.explicit
+                :join-alias                   "Orders"}
+               {::lib.column-group/group-type :group-type/join.explicit
+                :join-alias                   "Reviews - Product"}
+               ;; Implicit joins, ordered by the join alias and then the FK column name:
+               ;; - "PRODUCT_ID"
+               ;; - "USER_ID"
+               ;; - Orders.PRODUCT_ID
+               ;; - Orders.USER_ID
+               ;; - "Reviews - Product.PRODUCT_ID"
+               {::lib.column-group/group-type :group-type/join.implicit
+                :fk-join-alias                nil
+                :fk-field-id                  (meta/id :orders :product-id)}
+               {::lib.column-group/group-type :group-type/join.implicit
+                :fk-join-alias                nil
+                :fk-field-id                  (meta/id :orders :user-id)}
+               {::lib.column-group/group-type :group-type/join.implicit
+                :fk-join-alias                "Orders"
+                :fk-field-id                  (meta/id :orders :product-id)}
+               {::lib.column-group/group-type :group-type/join.implicit
+                :fk-join-alias                "Orders"
+                :fk-field-id                  (meta/id :orders :user-id)}
+               {::lib.column-group/group-type :group-type/join.implicit
+                :fk-join-alias                "Reviews - Product"
+                :fk-field-id                  (meta/id :reviews :product-id)}]
+              (lib/group-columns cols))))))

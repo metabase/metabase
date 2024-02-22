@@ -1,3 +1,5 @@
+import { color, colors } from "metabase/lib/colors";
+import { formatValue } from "metabase/lib/formatting/value";
 import {
   CHANGE_ARROW_ICONS,
   computeChange,
@@ -11,8 +13,6 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { color, colors } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting/value";
 import { COMPARISON_TYPES } from "./constants";
 import { formatChange } from "./utils";
 
@@ -1082,7 +1082,7 @@ describe("SmartScalar > compute", () => {
               comparisonValue: value,
               metricValue: 300,
             }),
-            comparisonDescStr: `vs. ${label.toLowerCase()}`,
+            comparisonDescStr: `vs. ${label}`,
           },
           ...getMetricProperties({
             dateStr: "2019",

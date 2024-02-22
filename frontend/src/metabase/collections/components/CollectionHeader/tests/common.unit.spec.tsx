@@ -1,7 +1,8 @@
 import userEvent, { specialChars } from "@testing-library/user-event";
-import { getIcon, screen } from "__support__/ui";
 
+import { getIcon, screen } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
+
 import { setup } from "./setup";
 
 describe("CollectionHeader", () => {
@@ -170,7 +171,7 @@ describe("CollectionHeader", () => {
         collection,
         isBookmarked: true,
       });
-      userEvent.click(screen.getByLabelText("bookmark icon"));
+      userEvent.click(screen.getByLabelText("bookmark_filled icon"));
 
       expect(onDeleteBookmark).toHaveBeenCalledWith(myCollection);
     });

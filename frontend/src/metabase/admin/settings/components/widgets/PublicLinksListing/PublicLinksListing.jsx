@@ -2,19 +2,20 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Icon, Stack, Text } from "metabase/ui";
-import { getSetting } from "metabase/selectors/settings";
-import Link from "metabase/core/components/Link";
-import ExternalLink from "metabase/core/components/ExternalLink";
+
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { ActionsApi, CardApi, DashboardApi } from "metabase/services";
-import * as Urls from "metabase/lib/urls";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import * as Urls from "metabase/lib/urls";
+import { getSetting } from "metabase/selectors/settings";
+import { ActionsApi, CardApi, DashboardApi } from "metabase/services";
+import { Icon, Stack, Text } from "metabase/ui";
 
 import { RevokeIconWrapper } from "./PublicLinksListing.styled";
 
-export default class PublicLinksListing extends Component {
+class PublicLinksListing extends Component {
   constructor(props) {
     super(props);
     this.state = {

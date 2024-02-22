@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { getSetting } from "metabase/selectors/settings";
-import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+
 import Modal from "metabase/components/Modal";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { useSelector } from "metabase/lib/redux";
 import type { EmbedModalStep } from "metabase/public/lib/types";
+import { getSetting } from "metabase/selectors/settings";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 
 import { EmbedModalHeader } from "./EmbedModal.styled";
 

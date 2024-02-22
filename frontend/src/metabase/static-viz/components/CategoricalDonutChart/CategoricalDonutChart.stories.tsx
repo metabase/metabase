@@ -1,5 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
+
 import { DEFAULT } from "metabase/static-viz/components/CategoricalDonutChart/stories-data";
+
 import CategoricalDonutChart from "./CategoricalDonutChart";
 
 export default {

@@ -1,11 +1,14 @@
 import _ from "underscore";
+
+import * as Lib from "metabase-lib";
+import Dimension from "metabase-lib/Dimension";
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import type {
   DatasetColumn,
   DatasetData,
   FieldReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import Dimension from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
@@ -23,51 +26,68 @@ export function fieldRefForColumn(
   );
 }
 
-export function normalizeFieldRef(fieldRef: FieldReference) {
-  const dimension = Dimension.parseMBQL(fieldRef);
-  return dimension && dimension.mbql();
-}
-
 export function findColumnIndexForColumnSetting(
   columns: DatasetColumn[],
   columnSetting: TableColumnOrderSetting,
+  query?: Lib.Query,
 ) {
   const fieldRef = columnSetting.fieldRef;
   // NOTE: need to normalize field refs because they may be old style [fk->, 1, 2]
-  const normalizedFieldRef = fieldRef ? normalizeFieldRef(fieldRef) : undefined;
+  const normalizedFieldRef = normalize(fieldRef);
   // first try to find by fieldRef
-  if (normalizedFieldRef != null) {
-    const dimension = Dimension.parseMBQL(normalizedFieldRef);
-    const index = dimension
-      ? _.findIndex(columns, col =>
-          dimension.isSameBaseDimension(fieldRefForColumn(col)),
-        )
-      : -1;
+  if (normalizedFieldRef != null && query) {
+    const stageIndex = -1;
+    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      columns,
+      [normalizedFieldRef],
+    );
 
-    if (index >= 0) {
-      return index;
+    if (columnIndex >= 0) {
+      return columnIndex;
     }
   }
+
   // if that fails, find by column name
   return _.findIndex(columns, col => col.name === columnSetting.name);
 }
 
-export function findColumnSettingIndexForColumn(
+type FieldRefWithIndex = {
+  fieldRef: FieldReference;
+  originalIndex: number;
+};
+
+export function findColumnSettingIndexesForColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
-  column: DatasetColumn,
 ) {
-  const fieldRef = fieldRefForColumn(column);
-  const normalizedFieldRef = fieldRef ? normalizeFieldRef(fieldRef) : undefined;
-  if (normalizedFieldRef == null) {
-    return columnSettings.findIndex(
-      columnSetting => columnSetting.name === column.name,
-    );
-  }
-  const index = columnSettings.findIndex(
-    columnSetting =>
-      columnSetting.fieldRef &&
-      _.isEqual(normalizedFieldRef, normalizeFieldRef(columnSetting.fieldRef)),
+  const fieldRefs = columnSettings.reduce(
+    (fieldRefs: FieldRefWithIndex[], { fieldRef }, originalIndex) => {
+      if (fieldRef != null) {
+        fieldRefs.push({ fieldRef, originalIndex });
+      }
+      return fieldRefs;
+    },
+    [],
   );
 
-  return index;
+  const columnIndexByFieldRefIndex = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    stageIndex,
+    columns,
+    fieldRefs.map(({ fieldRef }) => fieldRef),
+  );
+
+  return columnIndexByFieldRefIndex.reduce(
+    (settingIndexes: number[], columnIndex, fieldRefIndex) => {
+      if (columnIndex >= 0) {
+        settingIndexes[columnIndex] = fieldRefs[fieldRefIndex].originalIndex;
+      }
+      return settingIndexes;
+    },
+    new Array(columns.length).fill(-1),
+  );
 }

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { DateInput, DatePicker, Stack, TimeInput } from "metabase/ui";
+
 import type { DateValue } from "metabase/ui";
+import { DateInput, DatePicker, Stack, TimeInput } from "metabase/ui";
+
 import { setDatePart, setTimePart } from "../../utils";
 
 interface SingleDatePickerBodyProps {

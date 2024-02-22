@@ -1,6 +1,7 @@
 (ns metabase.query-processor.util-test
   "Tests for various functions that provide information about the query."
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
    [metabase.query-processor.util :as qp.util]))
 
@@ -81,3 +82,8 @@
                  (qp.util/query-hash {:database 2
                                       :type     "native"
                                       :native   {:query "SELECT pg_sleep(15), 2 AS two"}})))))))
+
+(deftest ^:parallel key-order-should-not-affect-query-hash-test
+  (is (= "7e144bc5b43ee850648f353cda978b2911e2f66260ac03c5e1744bce6ca668ff"
+         (codecs/bytes->hex (qp.util/query-hash {:parameters [{:value 1, :name "parameter"}]}))
+         (codecs/bytes->hex (qp.util/query-hash {:parameters [{:name "parameter", :value 1}]})))))

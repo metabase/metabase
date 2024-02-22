@@ -1,16 +1,16 @@
-import { useCallback } from "react";
 import PropTypes from "prop-types";
+import { useCallback } from "react";
 import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+
+import { ActionSidebarConnected } from "./ActionSidebar";
+import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
-import { AddCardSidebar } from "./AddCardSidebar";
-import { ActionSidebarConnected } from "./ActionSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -46,6 +46,7 @@ DashboardSidebars.propTypes = {
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
   selectedTabId: PropTypes.number,
+  getEmbeddedParameterVisibility: PropTypes.func.isRequired,
 };
 
 export function DashboardSidebars({
@@ -75,6 +76,7 @@ export function DashboardSidebars({
   closeSidebar,
   setDashboardAttribute,
   selectedTabId,
+  getEmbeddedParameterVisibility,
 }) {
   const handleAddCard = useCallback(
     cardId => {
@@ -136,6 +138,7 @@ export function DashboardSidebars({
       );
       return (
         <ParameterSidebar
+          getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
           parameter={parameter}
           otherParameters={otherParameters}
           onChangeName={setParameterName}

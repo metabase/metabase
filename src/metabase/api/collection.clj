@@ -406,14 +406,12 @@
 
 (defmethod post-process-collection-children :dataset
   [_ rows]
-  (let [dataset_queries (map :dataset_query rows)]
-    (->> rows
-         ;; normalize dataset queries just for based_on_upload hydration
-         (map #(update % :dataset_query (comp mbql.normalize/normalize json/parse-string)))
+  (let [queries-before (map :dataset_query rows)
+        queries-parsed (map (comp mbql.normalize/normalize json/parse-string) queries-before)]
+    ;; We need to normalize the dataset queries for hydration, but reset the field to avoid leaking that transform.
+    (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
-         (map (fn [dataset_query row]
-                (assoc row :dataset_query dataset_query))
-              dataset_queries)
+         (map #(assoc %2 :dataset_query %1) queries-before)
          (post-process-collection-children :card))))
 
 (defmethod collection-children-query :card
@@ -968,11 +966,7 @@
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority_level) (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-      (api/check-403 (and api/*is-superuser?*
-                          ;; pre-update of model checks if the collection is a personal collection and rejects changes
-                          ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
-                          ;; here
-                          (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
+      (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :archived :authority_level])]

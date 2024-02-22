@@ -1,12 +1,13 @@
-import { useState } from "react";
 import PropTypes from "prop-types";
+import { useState } from "react";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
-import { recipientIsValid } from "metabase/lib/pulse";
-import Button from "metabase/core/components/Button";
-import FormMessage from "metabase/components/form/FormMessage";
+
 import ModalContent from "metabase/components/ModalContent";
 import UserPicker from "metabase/components/UserPicker";
+import FormMessage from "metabase/components/form/FormMessage";
+import Button from "metabase/core/components/Button";
+import { recipientIsValid } from "metabase/lib/pulse";
+import MetabaseSettings from "metabase/lib/settings";
 import { ModalErrorMessage } from "metabase-enterprise/audit_app/components/AuditNotificationEditModal/AuditNotificationEditModal.styled";
 
 const propTypes = {

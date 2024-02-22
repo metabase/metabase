@@ -1,9 +1,3 @@
-import {
-  restore,
-  navigationSidebar,
-  popover,
-  getFullName,
-} from "e2e/support/helpers";
 import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   ORDERS_QUESTION_ID,
@@ -12,7 +6,12 @@ import {
   FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-
+import {
+  restore,
+  navigationSidebar,
+  popover,
+  getFullName,
+} from "e2e/support/helpers";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 
 const { admin, normal } = USERS;
@@ -42,7 +41,7 @@ describe("URLs", () => {
     ].forEach(url => {
       it("should open 'Saved Questions' database correctly", () => {
         cy.visit(url);
-        cy.findByTestId("browse-data");
+        cy.findByTestId("browse-app");
         cy.location("pathname").should("eq", url);
       });
     });

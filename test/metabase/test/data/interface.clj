@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
+   [mb.hawk.hooks]
    [mb.hawk.init]
    [medley.core :as m]
    [metabase.config :as config]
@@ -19,13 +20,15 @@
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.test.data.env :as tx.env]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
    [toucan2.core :as t2]))
@@ -122,7 +125,7 @@
 
 (defonce ^:private has-done-before-run (atom #{}))
 
-;; this gets called below by `load-test-extensions-namespace-if-needed`
+;; this gets called below by [[load-test-extensions-namespace-if-needed]]
 (defn- do-before-run-if-needed [driver]
   (when-not (@has-done-before-run driver)
     (locking has-done-before-run
@@ -133,7 +136,6 @@
         ;; a circular call back to this function
         ((get-method before-run driver) driver)
         (swap! has-done-before-run conj driver)))))
-
 
 (defn- require-driver-test-extensions-ns [driver & require-options]
   (let [expected-ns (symbol (or (namespace driver)
@@ -277,6 +279,16 @@
                  :engine (u/qualified-name driver)
                  {:order-by [[:id :asc]]}))
 
+(declare after-run)
+
+(methodical/defmethod mb.hawk.hooks/after-run ::run-drivers-after-run
+  "Run [[metabase.test.data.interface/after-run]] methods for drivers."
+  [_options]
+  (doseq [driver (tx.env/test-drivers)
+          :when  (isa? driver/hierarchy driver ::test-extensions)]
+    (log/infof "Running after-run hooks for %s..." driver)
+    (after-run driver)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -295,7 +307,24 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod before-run ::test-extensions [_]) ; default-impl is a no-op
+(defmethod before-run ::test-extensions [_]) ; default impl is a no-op
+
+(defmulti after-run
+  "Do cleanup after the test suite finishes running for a driver, when running from the CLI (this is not done when
+  running tests from the REPL). This is a good place to clean up after yourself, e.g. delete any cloud databases you
+  no longer need.
+
+  Will only be called once for a given driver; only called when running tests against that driver. This method does
+  not need to call the implementation for any parent drivers; that is done automatically.
+
+  DO NOT CALL THIS METHOD DIRECTLY; THIS IS CALLED AUTOMATICALLY WHEN APPROPRIATE."
+  {:arglists '([driver]), :added "0.49.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod after-run ::test-extensions
+  [driver]
+  (log/infof "%s has no after-run hooks." driver))
 
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
@@ -394,10 +423,10 @@
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
    (merge
-    (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
-                                     :type     :query
-                                     :query    {:source-table table-id
-                                                :aggregation  [[aggregation-type [:field-id field-id]]]}}))
+    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
+                                                :type     :query
+                                                :query    {:source-table table-id
+                                                           :aggregation  [[aggregation-type [:field-id field-id]]]}}))
     (when (= aggregation-type :cum-count)
       {:base_type     :type/BigInteger
        :semantic_type :type/Quantity}))))

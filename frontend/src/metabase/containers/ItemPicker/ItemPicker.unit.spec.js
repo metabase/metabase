@@ -11,15 +11,15 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import SnippetCollections from "metabase/entities/snippet-collections";
 import {
   createMockCollection,
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import { isPersonalCollectionOrChild } from "metabase/collections/utils";
 
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import ItemPicker from "./ItemPicker";
 import {
   getItemPickerHeader,

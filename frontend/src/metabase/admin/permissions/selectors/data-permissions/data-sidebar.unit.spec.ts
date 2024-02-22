@@ -1,6 +1,9 @@
 import type { State } from "metabase-types/store";
+
 import type { RawDataRouteParams } from "../../types";
+
 import { state as mockState } from "./data-permissions.unit.spec.fixtures";
+
 import { getDataFocusSidebar } from ".";
 
 const state = mockState as unknown as State;

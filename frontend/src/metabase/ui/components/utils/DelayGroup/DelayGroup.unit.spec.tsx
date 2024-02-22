@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import { render, screen, waitFor } from "__support__/ui";
+
+import { render, screen, act } from "__support__/ui";
+
 import { DelayGroup, useDelayGroup } from "./DelayGroup";
 
 interface SetupOpts {
@@ -25,10 +27,13 @@ function Child() {
 
 describe("DelayGroup", () => {
   it("should be delayed by default and only remove delay after a timeout", async () => {
-    const timeout = 50;
+    jest.useFakeTimers();
+
+    const timeout = 500;
     setup({ timeout });
 
     const button = screen.getByRole("button");
+
     expect(button).toHaveTextContent("delay: true");
 
     userEvent.hover(button);
@@ -36,13 +41,13 @@ describe("DelayGroup", () => {
 
     userEvent.unhover(button);
     expect(button).toHaveTextContent("delay: false");
-    const start = Date.now();
 
-    await waitFor(function () {
+    act(function () {
+      jest.advanceTimersByTime(timeout / 2);
+      expect(button).toHaveTextContent("delay: false");
+
+      jest.advanceTimersByTime(timeout / 2 + 1);
       expect(button).toHaveTextContent("delay: true");
     });
-
-    const elapsed = Date.now() - start;
-    expect(elapsed).toBeCloseTo(timeout, -1);
   });
 });

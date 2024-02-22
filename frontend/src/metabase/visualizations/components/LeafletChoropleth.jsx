@@ -2,8 +2,8 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 import { color } from "metabase/lib/colors";
+import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
 import CardRenderer from "./CardRenderer";
 

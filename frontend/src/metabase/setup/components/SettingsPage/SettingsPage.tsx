@@ -1,16 +1,18 @@
 import LogoIcon from "metabase/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
 import { getSteps } from "metabase/setup/selectors";
+
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { CompletedStep } from "../CompletedStep";
+import { DataUsageStep } from "../DataUsageStep";
 import { DatabaseHelp } from "../DatabaseHelp";
 import { DatabaseStep } from "../DatabaseStep";
 import { LanguageStep } from "../LanguageStep";
-import { PreferencesStep } from "../PreferencesStep";
 import { SetupHelp } from "../SetupHelp";
-import type { NumberedStepProps } from "../types";
 import { UsageQuestionStep } from "../UsageQuestionStep";
 import { UserStep } from "../UserStep";
+import type { NumberedStepProps } from "../types";
+
 import { PageBody, PageHeader } from "./SettingsPage.styled";
 
 const STEP_COMPONENTS: Record<
@@ -21,7 +23,7 @@ const STEP_COMPONENTS: Record<
   user_info: UserStep,
   usage_question: UsageQuestionStep,
   db_connection: DatabaseStep,
-  data_usage: PreferencesStep,
+  data_usage: DataUsageStep,
 };
 
 export const SettingsPage = (): JSX.Element => {

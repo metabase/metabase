@@ -52,3 +52,4 @@ serdes/meta:
   label: last_content_viewed_at
   model: Card
 metabase_version: vUNKNOWN (901f705)
+type: question

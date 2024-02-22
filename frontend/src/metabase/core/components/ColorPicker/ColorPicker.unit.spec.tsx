@@ -1,7 +1,8 @@
-import { useState } from "react";
-import Color from "color";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import Color from "color";
+import { useState } from "react";
+
 import ColorPicker from "./ColorPicker";
 
 const TestColorPicker = () => {

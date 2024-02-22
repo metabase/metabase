@@ -9,7 +9,7 @@ const questionDetails = {
 
 const testCases = ["csv", "xlsx"];
 
-describe("issue 19889", { tags: "@flaky" }, () => {
+describe("issue 19889", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

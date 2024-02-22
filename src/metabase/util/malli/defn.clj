@@ -7,11 +7,27 @@
    [metabase.util.malli.fn :as mu.fn]
    [net.cgrand.macrovich :as macros]))
 
+(set! *warn-on-reflection* true)
+
 ;;; TODO -- this should generate type hints from the schemas and from the return type as well.
 (defn- deparameterized-arglist [{:keys [args]}]
   (-> (malli.destructure/parse args)
       :arglist
-      (with-meta (meta args))))
+      (with-meta (macros/case
+                  :cljs
+                   (meta args)
+
+                   ;; make sure we resolve classnames e.g. `java.sql.Connection` intstead of `Connection`, otherwise the
+                   ;; tags won't work if you use them in another namespace that doesn't import that class. (Clj only)
+                   :clj
+                   (let [args-meta    (meta args)
+                         tag          (:tag args-meta)
+                         resolved-tag (when (symbol? tag)
+                                        (let [resolved (ns-resolve *ns* tag)]
+                                          (when (class? resolved)
+                                            (symbol (.getName ^Class resolved)))))]
+                     (cond-> args-meta
+                       resolved-tag (assoc :tag resolved-tag)))))))
 
 (defn- deparameterized-arglists [{:keys [arities], :as _parsed}]
   (let [[arities-type arities-value] arities]
@@ -75,8 +91,8 @@
                            :schema   (mu.fn/fn-schema parsed)}
                           attr-map)
         docstring        (annotated-docstring parsed)
-        skip?            (#'mu.fn/*skip-ns-decision-fn* *ns*)]
-    (if skip?
+        instrument?      (mu.fn/instrument-ns? *ns*)]
+    (if-not instrument?
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
          ~(mu.fn/deparameterized-fn-form parsed))

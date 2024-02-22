@@ -1,20 +1,48 @@
 import _ from "underscore";
-import { getParameterType } from "./parameter-type";
+
 import {
   getQueryType,
   getSourceConfig,
   getSourceType,
 } from "./parameter-source";
+import { getParameterType } from "./parameter-type";
 
 export const PULSE_PARAM_EMPTY = null;
 export const PULSE_PARAM_USE_DEFAULT = undefined;
 
-export function getValuePopulatedParameters(parameters, parameterValues) {
+/**
+ * In some cases, we need to use default parameter value in place of an absent one.
+ * Please use this function when dealing with the required parameters.
+ */
+export function getParameterValue({
+  parameter,
+  values = {},
+  defaultRequired = false,
+}) {
+  const value = values?.[parameter.id];
+  const useDefault = defaultRequired && parameter.required;
+  return value ?? (useDefault ? parameter.default : null);
+}
+
+/**
+ * In some cases, we need to use default parameter value in place of an absent one.
+ * Please use this function when dealing with the required parameters.
+ */
+export function getValuePopulatedParameters({
+  parameters,
+  values = {},
+  defaultRequired = false,
+}) {
   return parameters.map(parameter => ({
     ...parameter,
-    value: parameterValues?.[parameter.id] ?? null,
+    value: getParameterValue({
+      parameter,
+      values,
+      defaultRequired,
+    }),
   }));
 }
+
 export function getDefaultValuePopulatedParameters(
   parameters,
   parameterValues,

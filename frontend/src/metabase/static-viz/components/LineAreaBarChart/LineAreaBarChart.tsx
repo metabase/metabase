@@ -1,19 +1,22 @@
 import _ from "underscore";
+
 import type { ColorGetter } from "metabase/static-viz/lib/colors";
+
 import { XYChart } from "../XYChart";
 import type { CardSeries, ChartSettings, ChartStyle } from "../XYChart/types";
+
 import type { Colors } from "./types";
-import {
-  adjustSettings,
-  calculateChartSize,
-  getXValuesCount,
-} from "./utils/settings";
 import {
   getSeriesWithColors,
   getSeriesWithLegends,
   removeNoneSeriesFields,
   reorderSeries,
 } from "./utils/series";
+import {
+  adjustSettings,
+  calculateChartSize,
+  getXValuesCount,
+} from "./utils/settings";
 
 interface LineAreaBarChartProps {
   multipleSeries: CardSeries[];

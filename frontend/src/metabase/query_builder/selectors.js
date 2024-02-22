@@ -1,45 +1,46 @@
+/* eslint-disable import/order */
 /*eslint no-use-before-define: "error"*/
 
-import d3 from "d3";
 import { createSelector } from "@reduxjs/toolkit";
-import _ from "underscore";
+import d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
+import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 
 // Needed due to wrong dependency resolution order
+import { MetabaseApi } from "metabase/services";
 import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Databases from "metabase/entities/databases";
 import Timelines from "metabase/entities/timelines";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { parseTimestamp } from "metabase/lib/time";
-import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
-import { getSortedTimelines } from "metabase/lib/timelines";
-import { getSetting } from "metabase/selectors/settings";
 import { getDashboardById } from "metabase/dashboard/selectors";
+import { parseTimestamp } from "metabase/lib/time";
+import { getSortedTimelines } from "metabase/lib/timelines";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
+import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
 
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   normalizeParameters,
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
-import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
 import Question from "metabase-lib/Question";
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
+import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 export const getUiControls = state => state.qb.uiControls;
 const getQueryStatus = state => state.qb.queryStatus;
@@ -336,6 +337,8 @@ export const getQuestion = createSelector(
       return question.lockDisplay();
     }
 
+    const type = question.type();
+
     // When opening a model, we swap it's `dataset_query`
     // with clean query using the model as a source table,
     // to enable "simple mode" like features
@@ -343,7 +346,7 @@ export const getQuestion = createSelector(
     // as it would be blocked by the backend as an ad-hoc query
     // see https://github.com/metabase/metabase/issues/20042
     const hasDataPermission = !!question.database();
-    return question.isDataset() && hasDataPermission && !isEditingModel
+    return type !== "question" && hasDataPermission && !isEditingModel
       ? question.composeDataset()
       : question;
   },
@@ -367,7 +370,8 @@ function areModelsEquivalent({
   currentQuestion,
   tableMetadata,
 }) {
-  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
+  const isModel = originalQuestion?.type() === "model";
+  if (!lastRunQuestion || !currentQuestion || !isModel) {
     return false;
   }
 
@@ -563,7 +567,9 @@ export const getIsSavedQuestionChanged = createSelector(
     const hasUnsavedChanges = hasChanges && !wereChangesSaved;
 
     return (
-      isSavedQuestion && hasUnsavedChanges && !originalQuestion.isDataset()
+      isSavedQuestion &&
+      hasUnsavedChanges &&
+      originalQuestion.type() === "question"
     );
   },
 );
@@ -633,7 +639,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const isNewQuestion = !originalQuestion;
 
       if (isNewQuestion) {
-        return !question.isEmpty();
+        return !question.legacyQuery().isEmpty();
       }
 
       return isSavedQuestionChanged;
@@ -669,16 +675,17 @@ export const getRawSeries = createSelector(
     // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
     // BUT the last executed "dataset_query" (to ensure data matches the query)
     return (
-      results &&
-      question.atomicQueries().map((metricQuery, index) => ({
-        card: {
-          ...question.card(),
-          display: display,
-          visualization_settings: settings,
-          dataset_query: lastRunDatasetQuery,
+      results && [
+        {
+          card: {
+            ...question.card(),
+            display: display,
+            visualization_settings: settings,
+            dataset_query: lastRunDatasetQuery,
+          },
+          data: results[0] && results[0].data,
         },
-        data: results[index] && results[index].data,
-      }))
+      ]
     );
   },
 );
@@ -1024,3 +1031,24 @@ export const getRequiredTemplateTags = createSelector(
           .map(key => templateTags[key])
       : [],
 );
+
+export const getEmbeddingParameters = createSelector([getCard], card => {
+  if (!card?.enable_embedding) {
+    return {};
+  }
+
+  return card.embedding_params ?? {};
+});
+
+// Embeddings might be published without passing embedding_params to the server,
+// in which case it's an empty object. We should treat such situations with
+// caution, assuming that an absent parameter is "disabled".
+export function getEmbeddedParameterVisibility(state, slug) {
+  const card = getCard(state);
+  if (!card?.enable_embedding) {
+    return null;
+  }
+
+  const embeddingParams = card.embedding_params ?? {};
+  return embeddingParams[slug] ?? "disabled";
+}

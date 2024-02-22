@@ -1,12 +1,12 @@
-import { t } from "ttag";
 import type { Location } from "history";
+import { t } from "ttag";
 
-import type { DashboardId } from "metabase-types/api";
-import { TabRow } from "metabase/core/components/TabRow";
+import { Sortable } from "metabase/core/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
+import { TabRow } from "metabase/core/components/TabRow";
+import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
-import { Sortable } from "metabase/core/components/Sortable";
 
 import { Container, CreateTabButton } from "./DashboardTabs.styled";
 import { useDashboardTabs } from "./use-dashboard-tabs";
@@ -15,12 +15,14 @@ interface DashboardTabsProps {
   dashboardId: DashboardId;
   location: Location;
   isEditing?: boolean;
+  className?: string;
 }
 
 export function DashboardTabs({
   dashboardId,
   location,
   isEditing = false,
+  className,
 }: DashboardTabsProps) {
   const {
     tabs,
@@ -54,7 +56,7 @@ export function DashboardTabs({
   }
 
   return (
-    <Container>
+    <Container className={className}>
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}

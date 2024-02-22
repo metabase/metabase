@@ -1,13 +1,14 @@
-import { t } from "ttag";
 import { assocIn } from "icepick";
+import { t } from "ttag";
+
 import { color } from "metabase/lib/colors";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+
 import LineAreaBarChart from "../components/LineAreaBarChart";
 import { waterfallRenderer } from "../lib/LineAreaBarRenderer";
-
 import {
   GRAPH_DATA_SETTINGS,
   GRAPH_AXIS_SETTINGS,

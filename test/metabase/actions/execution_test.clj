@@ -30,6 +30,5 @@
             (process-userland-query-test/with-query-execution [qe query]
               (is (= {"id" 1 "name" "Red Medicine"}
                      (actions.execution/fetch-values (action/select-action :id action-id) {"id" 1})))
-              (is (= action-id
-                     (:action_id
-                      (qe)))))))))))
+              (is (=? {:action_id action-id}
+                      (qe))))))))))

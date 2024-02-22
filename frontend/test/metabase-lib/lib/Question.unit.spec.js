@@ -1,7 +1,13 @@
 import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
+
 import { createMockMetadata } from "__support__/metadata";
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import * as ML_Urls from "metabase-lib/urls";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -28,11 +34,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
-import Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -110,7 +111,7 @@ const orders_card_without_pk = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset: true,
+  type: "model",
   database_id: SAMPLE_DB_ID,
   table_id: ORDERS_ID,
   dataset_query: {
@@ -282,9 +283,6 @@ const orders_count_by_id_question = new Question(
 describe("Question", () => {
   describe("CREATED WITH", () => {
     describe("new Question(alreadyDefinedCard, metadata)", () => {
-      it("isn't empty", () => {
-        expect(orders_raw_question.isEmpty()).toBe(false);
-      });
       it("has an id", () => {
         expect(orders_raw_question.id()).toBe(orders_raw_card.id);
       });
@@ -687,6 +685,8 @@ describe("Question", () => {
         });
       });
 
+      // Adding a column with same name is covered as well, as name is generated at FE and it will
+      // be unique (e.g. foo -> foo_2)
       it("should handle the addition and removal of columns", () => {
         question._syncNativeQuerySettings({
           data: {
@@ -728,28 +728,41 @@ describe("Question", () => {
       });
 
       it("should handle the mutation of extraneous column props", () => {
+        const updatedColumn = {
+          display_name: "num with mutated display_name",
+          source: "native",
+          field_ref: [
+            "field",
+            "foo",
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          name: "foo",
+          base_type: "type/Float",
+        };
         question._syncNativeQuerySettings({
           data: {
-            cols: [
-              {
-                display_name: "num with mutated display_name",
-                source: "native",
-                field_ref: [
-                  "field",
-                  "num",
-                  {
-                    "base-type": "type/Float",
-                  },
-                ],
-                name: "foo",
-                base_type: "type/Float",
-              },
-              ...cols.slice(1),
-            ],
+            cols: [updatedColumn, ...cols.slice(1)],
           },
         });
 
-        expect(question.updateSettings).not.toHaveBeenCalled();
+        expect(question.updateSettings).toHaveBeenCalledWith({
+          "table.columns": [
+            ...vizSettingCols.slice(1),
+            {
+              enabled: true,
+              fieldRef: [
+                "field",
+                "foo",
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+              name: "foo",
+            },
+          ],
+        });
       });
 
       it("should handle the mutation of a field_ref on an existing column", () => {
@@ -785,6 +798,16 @@ describe("Question", () => {
           ],
         });
       });
+
+      it("shouldn't update settings if order of columns has changed", () => {
+        question._syncNativeQuerySettings({
+          data: {
+            cols: [cols[1], cols[0]],
+          },
+        });
+
+        expect(question.updateSettings).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -809,7 +832,7 @@ describe("Question", () => {
       expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
     });
 
-    it("should return skip with with FK target field which are not FKs semantically", () => {
+    it("should skip FK field targets which are not FKs semantically", () => {
       const question = base_question.setResultsMetadata({
         columns: [{ fk_target_field_id: 5 }],
       });

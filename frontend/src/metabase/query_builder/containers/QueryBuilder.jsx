@@ -2,39 +2,36 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { useMount, useUnmount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useMount, useUnmount, usePrevious } from "react-use";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { getSetting } from "metabase/selectors/settings";
-
+import favicon from "metabase/hoc/Favicon";
+import title from "metabase/hoc/Title";
+import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/hooks/use-web-notification";
+import { useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import {
   getUser,
   getUserIsAdmin,
   canManageSubscriptions,
 } from "metabase/selectors/user";
-
-import { useForceUpdate } from "metabase/hooks/use-force-update";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
-import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
-import { useWebNotification } from "metabase/hooks/use-web-notification";
-
-import title from "metabase/hoc/Title";
-import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import favicon from "metabase/hoc/Favicon";
-
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 
+import * as actions from "../actions";
 import View from "../components/view/View";
-
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDatabasesList,
@@ -89,9 +86,8 @@ import {
   isResultsMetadataDirty,
   getShouldShowUnsavedChangesWarning,
   getRequiredTemplateTags,
+  getEmbeddedParameterVisibility,
 } from "../selectors";
-import * as actions from "../actions";
-import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import { isNavigationAllowed } from "../utils";
 
 const timelineProps = {
@@ -182,6 +178,8 @@ const mapStateToProps = (state, props) => {
     reportTimezone: getSetting(state, "report-timezone-long"),
 
     requiredTemplateTags: getRequiredTemplateTags(state),
+    getEmbeddedParameterVisibility: slug =>
+      getEmbeddedParameterVisibility(state, slug),
   };
 };
 
@@ -274,7 +272,7 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async newQuestion => {
-      const shouldBePinned = newQuestion.isDataset();
+      const shouldBePinned = newQuestion.type() === "model";
       const createdQuestion = await apiCreateQuestion(
         newQuestion.setPinned(shouldBePinned),
       );

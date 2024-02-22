@@ -193,3 +193,4 @@ serdes/meta:
   label: subscriptions_on_this_dashboard
   model: Card
 metabase_version: null
+type: question

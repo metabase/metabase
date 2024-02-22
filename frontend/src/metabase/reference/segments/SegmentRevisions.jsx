@@ -1,17 +1,17 @@
-import { Component } from "react";
+import { getIn } from "icepick";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { getIn } from "icepick";
-
-import S from "metabase/components/List/List.css";
-
-import * as metadataActions from "metabase/redux/metadata";
-import { assignUserColors } from "metabase/lib/formatting";
 
 import Revision from "metabase/admin/datamodel/components/revisions/Revision";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EmptyState from "metabase/components/EmptyState";
+import S from "metabase/components/List/List.css";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { assignUserColors } from "metabase/lib/formatting";
+import * as metadataActions from "metabase/redux/metadata";
+
+import ReferenceHeader from "../components/ReferenceHeader";
 import {
   getSegmentRevisions,
   getMetric,
@@ -21,7 +21,6 @@ import {
   getLoading,
   getError,
 } from "../selectors";
-import ReferenceHeader from "../components/ReferenceHeader";
 
 const emptyStateData = {
   message: t`There are no revisions for this segment`,

@@ -1,15 +1,14 @@
+import PropTypes from "prop-types";
 import { isValidElement } from "react";
 import { t } from "ttag";
-import PropTypes from "prop-types";
 
-import { color } from "metabase/lib/colors";
-import * as Urls from "metabase/lib/urls";
-import { isNotNull } from "metabase/lib/types";
+import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+import Tooltip from "metabase/core/components/Tooltip";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
-import Tooltip from "metabase/core/components/Tooltip";
-import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
-
+import { color } from "metabase/lib/colors";
+import { isNotNull } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import {
   isVirtualCardId,
@@ -19,6 +18,7 @@ import {
 import * as ML_Urls from "metabase-lib/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
+
 import { TablesDivider } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
@@ -79,7 +79,7 @@ export function QuestionDataSource({
             if (!sourceQuestion || loading) {
               return null;
             }
-            if (sourceQuestion.isDataset()) {
+            if (sourceQuestion.type() === "model") {
               return (
                 <SourceDatasetBreadcrumbs
                   model={sourceQuestion}

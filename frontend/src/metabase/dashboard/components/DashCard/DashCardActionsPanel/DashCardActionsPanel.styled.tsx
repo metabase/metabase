@@ -1,6 +1,6 @@
-import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 import isPropValid from "@emotion/is-prop-valid";
+import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 

@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
   restore,
@@ -13,9 +15,6 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   queryBuilderMain,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -474,6 +473,23 @@ describe("scenarios > question > custom column", () => {
 
     cy.get(".cellData").should("contain", "37.65");
     cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
+  });
+
+  // unskip when metabase#38944 is fixed
+  it.skip("should handle using `case()` with boolean expressions (metabase#38944)", () => {
+    const expression = 'case(isempty([Discount]), "true", "false")';
+    openOrdersTable({ mode: "notebook" });
+
+    addCustomColumn();
+
+    popover().within(() => {
+      cy.findByLabelText("Expression").type(expression);
+      cy.findByLabelText("Name").type("Discount is empty");
+
+      cy.findByRole("button", { name: "Done" }).click();
+    });
+
+    getNotebookStep("expression").should("contain", "Discount is empty");
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {

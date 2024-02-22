@@ -411,6 +411,8 @@
 
   You can use [[metabase.query-processor.reducible/reducible-rows]] to create reducible, streaming results.
 
+  `respond` MUST BE CALLED SYNCHRONOUSLY!!!
+
   Example impl:
 
     (defmethod reducible-query :my-driver
@@ -702,7 +704,7 @@
 
   For databases that do not feature concepts like 'prepared statements', this method need not be implemented; the
   default implementation is an identity function."
-  {:added "0.32.0", :arglists '([driver query]), :style/indent 1}
+  {:added "0.32.0", :arglists '([driver inner-query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -968,7 +970,7 @@
 (defmethod create-auto-pk-with-append-csv? ::driver [_] false)
 
 (defmulti current-user-table-privileges
-  "Returns the rows of data as arrays needed to populate the tabel_privileges table
+  "Returns the rows of data as arrays needed to populate the table_privileges table
    with the DB connection's current user privileges.
    The data contains the privileges that the user has on the given `database`.
    The privileges include select, insert, update, and delete.
@@ -984,7 +986,7 @@
 
    Either:
    (1) role is null, corresponding to the privileges of the DB connection's current user
-   (2) role is not null, corresponing to the privileges of the role"
-  {:added "0.48.0", :arglists '([driver database])}
+   (2) role is not null, corresponding to the privileges of the role"
+  {:added "0.48.0", :arglists '([driver database & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

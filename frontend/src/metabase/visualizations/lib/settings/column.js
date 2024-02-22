@@ -1,6 +1,6 @@
+/* eslint-disable import/order */
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
@@ -56,6 +56,7 @@ import {
 } from "metabase-lib/types/utils/isa";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import Question from "metabase-lib/Question";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
@@ -345,9 +346,16 @@ export const NUMBER_COLUMN_SETTINGS = {
       ],
     },
     default: true,
-    getHidden: (column, settings, { series }) =>
-      settings["number_style"] !== "currency" ||
-      series[0].card.display !== "table",
+    getHidden: (_column, settings, { series, forAdminSettings }) => {
+      if (forAdminSettings === true) {
+        return false;
+      } else {
+        return (
+          settings["number_style"] !== "currency" ||
+          series[0].card.display !== "table"
+        );
+      }
+    },
     readDependencies: ["number_style"],
   },
   number_separators: {
@@ -523,12 +531,24 @@ export const buildTableColumnSettings = ({
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     isValid: ([{ card, data }]) => {
+      const question = new Question(card /* metadata */);
       const columns = card.visualization_settings["table.columns"];
       const enabledColumns = columns.filter(column => column.enabled);
+
+      let query;
+
+      // before we fully migrate from Audit v1
+      // it's possible to have internal query here, which throws
+      try {
+        query = question.query();
+      } catch (e) {
+        console.warn(e);
+      }
+
       return _.all(
         enabledColumns,
         columnSetting =>
-          findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+          findColumnIndexForColumnSetting(data.cols, columnSetting, query) >= 0,
       );
     },
     getDefault: ([

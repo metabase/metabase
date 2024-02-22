@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+
 import { render, screen } from "__support__/ui";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 
 interface SetupOpts {
   label?: string;

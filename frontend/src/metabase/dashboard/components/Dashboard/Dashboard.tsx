@@ -1,18 +1,21 @@
+import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePrevious, useUnmount } from "react-use";
 import type { Route } from "react-router";
+import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
-import type { Location } from "history";
-
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
-import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
-
+import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import type Database from "metabase-lib/metadata/Database";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   Dashboard as IDashboard,
   DashboardId,
@@ -38,19 +41,10 @@ import type {
   StoreDashcard,
 } from "metabase-types/store";
 
-import type Database from "metabase-lib/metadata/Database";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
-
 import { SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardSidebars } from "../DashboardSidebars";
 
-import {
-  DashboardEmptyState,
-  DashboardEmptyStateWithoutAddPrompt,
-} from "./DashboardEmptyState/DashboardEmptyState";
 import {
   CardsContainer,
   DashboardStyled,
@@ -59,7 +53,13 @@ import {
   DashboardHeaderContainer,
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
+  FixedWidthContainer,
+  ParametersFixedWidthContainer,
 } from "./Dashboard.styled";
+import {
+  DashboardEmptyState,
+  DashboardEmptyStateWithoutAddPrompt,
+} from "./DashboardEmptyState/DashboardEmptyState";
 
 type SuccessfulFetchDashboardResult = { payload: { dashboard: IDashboard } };
 type FailedFetchDashboardResult = { error: unknown; payload: unknown };
@@ -181,6 +181,9 @@ interface DashboardProps {
     columnKey: string,
     settings?: Record<string, unknown> | null,
   ) => void;
+  getEmbeddedParameterVisibility: (
+    slug: string,
+  ) => EmbeddingParameterVisibility | null;
 }
 
 function DashboardInner(props: DashboardProps) {
@@ -202,7 +205,6 @@ function DashboardInner(props: DashboardProps) {
     isAutoApplyFilters,
     isEditing,
     isFullscreen,
-    isHeaderVisible,
     isNavigatingBackToDashboard,
     isNightMode,
     isSharing,
@@ -453,10 +455,10 @@ function DashboardInner(props: DashboardProps) {
 
   const parametersWidget = (
     <SyncedParametersList
-      parameters={getValuePopulatedParameters(
+      parameters={getValuePopulatedParameters({
         parameters,
-        isAutoApplyFilters ? parameterValues : draftParameterValues,
-      )}
+        values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+      })}
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}
       dashboard={dashboard}
@@ -481,32 +483,24 @@ function DashboardInner(props: DashboardProps) {
     >
       {() => (
         <DashboardStyled>
-          {isHeaderVisible && (
-            <DashboardHeaderContainer
-              isFullscreen={isFullscreen}
-              isNightMode={shouldRenderAsNightMode}
-            >
-              <DashboardHeader
-                {...props}
-                onEditingChange={handleSetEditing}
-                setDashboardAttribute={handleSetDashboardAttribute}
-                addParameter={addParameter}
-                parametersWidget={parametersWidget}
-                onSharingClick={handleToggleSharing}
-              />
-
-              {shouldRenderParametersWidgetInEditMode && (
-                <ParametersWidgetContainer
-                  data-testid="edit-dashboard-parameters-widget-container"
-                  isEditing={!!isEditing}
-                  hasScroll={false}
-                  isSticky={false}
-                >
-                  {parametersWidget}
-                </ParametersWidgetContainer>
-              )}
-            </DashboardHeaderContainer>
-          )}
+          <DashboardHeaderContainer
+            isFullscreen={isFullscreen}
+            isNightMode={shouldRenderAsNightMode}
+          >
+            {/**
+             * Do not conditionally render `<DashboardHeader />` as it calls
+             * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
+             * in Redux state which kicks off a fetch for the dashboard cards.
+             */}
+            <DashboardHeader
+              {...props}
+              onEditingChange={handleSetEditing}
+              setDashboardAttribute={handleSetDashboardAttribute}
+              addParameter={addParameter}
+              parametersWidget={parametersWidget}
+              onSharingClick={handleToggleSharing}
+            />
+          </DashboardHeaderContainer>
 
           <DashboardBody isEditingOrSharing={isEditing || isSharing}>
             <ParametersAndCardsContainer
@@ -515,17 +509,35 @@ function DashboardInner(props: DashboardProps) {
                 !isFullscreen && (isEditing || isSharing)
               }
             >
+              {shouldRenderParametersWidgetInEditMode && (
+                <ParametersWidgetContainer
+                  data-testid="edit-dashboard-parameters-widget-container"
+                  hasScroll={true}
+                  isSticky={true}
+                >
+                  <FixedWidthContainer
+                    isFixedWidth={dashboard?.width === "fixed"}
+                    data-testid="fixed-width-filters"
+                  >
+                    {parametersWidget}
+                  </FixedWidthContainer>
+                </ParametersWidgetContainer>
+              )}
               {shouldRenderParametersWidgetInViewMode && (
                 <ParametersWidgetContainer
                   data-testid="dashboard-parameters-widget-container"
-                  isEditing={false}
                   hasScroll={hasScroll}
                   isSticky={isParametersWidgetContainersSticky(
                     visibleParameters.length,
                   )}
                 >
-                  {parametersWidget}
-                  <FilterApplyButton />
+                  <ParametersFixedWidthContainer
+                    isFixedWidth={dashboard?.width === "fixed"}
+                    data-testid="fixed-width-filters"
+                  >
+                    {parametersWidget}
+                    <FilterApplyButton />
+                  </ParametersFixedWidthContainer>
                 </ParametersWidgetContainer>
               )}
               <CardsContainer id="Dashboard-Cards-Container">

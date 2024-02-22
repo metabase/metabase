@@ -1,3 +1,13 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   saveDashboard,
@@ -30,18 +40,8 @@ import {
   selectDashboardFilter,
   filterWidget,
   popover,
+  createDashboardWithTabs,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-  NORMAL_PERSONAL_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -644,16 +644,6 @@ function delayResponse(delayMs) {
       res.setDelay(delayMs);
     });
   };
-}
-
-function createDashboardWithTabs({ dashcards, tabs, ...dashboardDetails }) {
-  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-      ...dashboard,
-      dashcards,
-      tabs,
-    }).then(({ body: dashboard }) => cy.wrap(dashboard));
-  });
 }
 
 const createTextFilterMapping = ({ card_id }) => {

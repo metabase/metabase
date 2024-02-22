@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { ClientCodeSampleConfig } from "metabase/public/lib/types";
 
 import { CodeSample } from "./CodeSample";
@@ -10,17 +11,19 @@ import "ace/mode-html_ruby";
 
 interface ClientEmbedCodePaneProps {
   clientCodeOptions: ClientCodeSampleConfig[];
-  selectedClientCodeOptionName: string;
-  setSelectedClientCodeOptionName: (languageName: string) => void;
+  selectedClientCodeOptionId: string;
+  setSelectedClientCodeOptionId: (languageName: string) => void;
+  onCopy: () => void;
 }
 
 export const ClientEmbedCodePane = ({
   clientCodeOptions,
-  selectedClientCodeOptionName,
-  setSelectedClientCodeOptionName,
+  selectedClientCodeOptionId,
+  setSelectedClientCodeOptionId,
+  onCopy,
 }: ClientEmbedCodePaneProps): JSX.Element | null => {
   const selectedClientCodeOption = clientCodeOptions.find(
-    ({ name }) => name === selectedClientCodeOptionName,
+    ({ id }) => id === selectedClientCodeOptionId,
   );
 
   if (!selectedClientCodeOption) {
@@ -31,11 +34,12 @@ export const ClientEmbedCodePane = ({
     <CodeSample
       dataTestId="embed-frontend"
       title={t`Then insert this code snippet in your HTML template or single page app.`}
-      selectedOptionName={selectedClientCodeOptionName}
-      languageOptions={clientCodeOptions.map(({ name }) => name)}
+      selectedOptionId={selectedClientCodeOptionId}
+      languageOptions={clientCodeOptions}
       source={selectedClientCodeOption.source}
       textHighlightMode={selectedClientCodeOption.mode}
-      onChangeOption={setSelectedClientCodeOptionName}
+      onChangeOption={setSelectedClientCodeOptionId}
+      onCopy={onCopy}
     />
   );
 };

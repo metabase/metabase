@@ -3,12 +3,10 @@ import { t } from "ttag";
 import type { ButtonProps } from "metabase/core/components/Button";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-
 import * as Urls from "metabase/lib/urls";
-
 import type { Card, CollectionItem } from "metabase-types/api";
 
-type ModelCard = Card & { dataset: true; type: "model" };
+type ModelCard = Card & { type: "model" };
 
 /**
  * Omitting the "type" attribute is hopefully a temporary workaround
@@ -17,7 +15,7 @@ type ModelCard = Card & { dataset: true; type: "model" };
  *
  * @see https://github.com/metabase/metabase/issues/37350#issuecomment-1910284020
  */
-type ModelCollectionItem = Omit<CollectionItem, "type">;
+type ModelCollectionItem = Omit<CollectionItem, "type" | "based_on_upload">;
 
 interface Props extends ButtonProps {
   model: ModelCard | ModelCollectionItem;

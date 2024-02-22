@@ -8,10 +8,10 @@ export const createMockModelIndex = (
   pk_ref: ["field", 1, null],
   value_ref: ["field", 2, null],
   state: "indexed",
-  generation: 1,
   creator_id: 1,
   error: null,
   schedule: "0 0 22 * * ? *",
-  state_changed_at: "2020-01-01T00:00:00.000Z",
+  created_at: "2020-01-01T00:00:00.000Z",
+  indexed_at: "2020-01-01T00:01:00.000Z",
   ...opts,
 });

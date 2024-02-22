@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   navigationSidebar,
@@ -5,8 +6,6 @@ import {
   openNavigationSidebar,
   visitQuestion,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-
 import { getSidebarSectionTitle as getSectionTitle } from "e2e/support/helpers/e2e-collection-helpers";
 
 describe("scenarios > question > bookmarks", () => {
@@ -54,7 +53,7 @@ describe("scenarios > question > bookmarks", () => {
     });
 
     // Remove bookmark
-    toggleBookmark();
+    toggleBookmark({ wasSelected: true });
 
     navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/).should("not.exist");
@@ -63,9 +62,10 @@ describe("scenarios > question > bookmarks", () => {
   });
 });
 
-function toggleBookmark() {
+function toggleBookmark({ wasSelected = false } = {}) {
+  const iconName = wasSelected ? "bookmark_filled" : "bookmark";
   cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon("bookmark").click();
+    cy.icon(iconName).click();
   });
   cy.wait("@toggleBookmark");
 }

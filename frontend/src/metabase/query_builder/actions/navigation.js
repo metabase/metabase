@@ -1,14 +1,14 @@
-import { parse as parseUrl } from "url";
-import { createAction } from "redux-actions";
 import { push, replace } from "react-router-redux";
-
-import { createThunkAction } from "metabase/lib/redux";
-import { equals } from "metabase/lib/utils";
+import { createAction } from "redux-actions";
+import { parse as parseUrl } from "url";
 
 import { isEqualCard } from "metabase/lib/card";
-
+import { createThunkAction } from "metabase/lib/redux";
+import { equals } from "metabase/lib/utils";
+import { getLocation } from "metabase/selectors/routing";
 import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
+
 import {
   getCard,
   getDatasetEditorTab,
@@ -40,8 +40,7 @@ export const popState = createThunkAction(
 
     const zoomedObjectId = getZoomedObjectId(getState());
     if (zoomedObjectId) {
-      const { locationBeforeTransitions = {} } = getState().routing;
-      const { state, query } = locationBeforeTransitions;
+      const { state, query } = getLocation(getState());
       const previouslyZoomedObjectId = state?.objectId || query?.objectId;
 
       if (

@@ -1,4 +1,4 @@
-import { filterWidget, popover } from "e2e/support/helpers";
+import { filterWidget, focusNativeEditor, popover } from "e2e/support/helpers";
 
 // FILTER TYPES
 
@@ -9,7 +9,7 @@ import { filterWidget, popover } from "e2e/support/helpers";
  * @param {("Text"|"Number"|"Date"|"Field Filter")} filterType
  */
 export function openTypePickerFromSelectedFilterType(filterType) {
-  cy.findAllByTestId("select-button-content").contains(filterType).click();
+  cy.findByTestId("variable-type-select").click();
 }
 
 /**
@@ -58,11 +58,19 @@ export function setDefaultValue(value) {
 
 // UI PATTERNS
 
+export function getRequiredToggle() {
+  return cy.findByText("Always require a value");
+}
+
+export function getRequiredInput() {
+  return cy.findByLabelText("Always require a value");
+}
+
 /**
  * Toggle the required SQL filter on or off. It is off by default.
  */
 export function toggleRequired() {
-  cy.findByText("Always require a value").click();
+  getRequiredToggle().click();
 }
 
 // FILTER QUERY
@@ -84,6 +92,7 @@ export function runQuery(xhrAlias = "dataset") {
  * @param {string} query
  */
 export function enterParameterizedQuery(query, options = {}) {
+  focusNativeEditor();
   cy.get("@editor").type(query, {
     parseSpecialCharSequences: false,
     ...options,

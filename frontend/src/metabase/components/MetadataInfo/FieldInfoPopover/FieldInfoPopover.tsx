@@ -1,7 +1,7 @@
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
-import type { DatasetColumn } from "metabase-types/api";
 import type Field from "metabase-lib/metadata/Field";
+import type { DatasetColumn } from "metabase-types/api";
 
 import {
   WidthBoundFieldInfo,

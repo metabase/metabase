@@ -1,6 +1,8 @@
 import { jt, t } from "ttag";
+
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+
 import {
   ModalMessage,
   ModalIllustration,
@@ -31,7 +33,8 @@ const DatabaseSyncModal = ({ sampleUrl, onClose }: DatabaseSyncModalProps) => {
             ? jt`In the meantime, you can take a look at the ${(
                 <strong key="name">{t`Sample Database`}</strong>
               )} if you want to get a head start. Want to explore?`
-            : t`Have a look around your Metabase in the meantime if you want to get a head start.`}
+            : // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+              t`Have a look around your Metabase in the meantime if you want to get a head start.`}
         </ModalMessage>
         {sampleUrl ? (
           <Link className="Button Button--primary" to={sampleUrl}>

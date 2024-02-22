@@ -1,9 +1,11 @@
 import _ from "underscore";
+
 import type {
   SearchResult,
   SearchResults,
   SearchScore,
 } from "metabase-types/api";
+
 import { createMockCollection } from "./collection";
 
 export const createMockSearchResult = (
@@ -75,3 +77,6 @@ export const createMockSearchResults = ({
     ...options,
   };
 };
+
+export const createMockModelResult = (model: Partial<SearchResult>) =>
+  createMockSearchResult({ model: "dataset", ...model });

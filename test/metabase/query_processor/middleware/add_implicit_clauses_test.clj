@@ -7,11 +7,11 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.util :as mbql.u]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses
     :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-source-metadata
     :as add-source-metadata]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
@@ -210,7 +210,7 @@
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
     (qp.store/with-metadata-provider meta/metadata-provider
       (let [expected-cols (fn [query]
-                            (qp/query->expected-cols
+                            (qp.preprocess/query->expected-cols
                               {:database (meta/id)
                                :type     :query
                                :query    query}))

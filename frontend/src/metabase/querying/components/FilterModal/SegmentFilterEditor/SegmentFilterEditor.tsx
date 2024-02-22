@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { Flex, Grid, MultiSelect, Text, Icon } from "metabase/ui";
 
 import type { SegmentItem } from "../types";

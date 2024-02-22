@@ -1,14 +1,14 @@
+import EventEmitter from "events";
 import querystring from "querystring";
 
-import EventEmitter from "events";
-
-import { delay } from "metabase/lib/promise";
-import { isWithinIframe } from "metabase/lib/dom";
 import { isTest } from "metabase/env";
+import { isWithinIframe } from "metabase/lib/dom";
+import { delay } from "metabase/lib/promise";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
 
+// eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
 const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
 
 let ANTI_CSRF_TOKEN = null;
@@ -90,6 +90,7 @@ export class Api extends EventEmitter {
         }
 
         if (isWithinIframe()) {
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
           headers["X-Metabase-Embedded"] = "true";
         }
 

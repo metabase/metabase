@@ -1,3 +1,4 @@
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type {
   ClickBehavior,
   Collection,
@@ -8,9 +9,9 @@ import type {
 } from "metabase-types/api";
 
 import type { ActionDisplayType, WritebackAction } from "./actions";
-import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
+import type { SearchModelType } from "./search";
 
 // x-ray dashboard have string ids
 export type DashboardId = number | string;
@@ -20,8 +21,12 @@ export type DashboardCard =
   | QuestionDashboardCard
   | VirtualDashboardCard;
 
+export type DashboardWidth = "full" | "fixed";
+
 export interface Dashboard {
   id: DashboardId;
+  created_at: string;
+  updated_at: string;
   collection?: Collection | null;
   collection_id: number | null;
   name: string;
@@ -43,8 +48,9 @@ export interface Dashboard {
   auto_apply_filters: boolean;
   archived: boolean;
   public_uuid: string | null;
-  embedding_params?: Record<string, string> | null;
-  width: "full" | "fixed";
+  initially_published_at: string | null;
+  embedding_params?: EmbeddingParameters | null;
+  width: DashboardWidth;
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;

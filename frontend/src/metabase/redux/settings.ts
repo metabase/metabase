@@ -1,7 +1,6 @@
 import { createAsyncThunk, createReducer } from "@reduxjs/toolkit";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 import { SessionApi } from "metabase/services";
 
 export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
@@ -10,6 +9,7 @@ export const refreshSiteSettings = createAsyncThunk(
   REFRESH_SITE_SETTINGS,
   async ({ locale }: { locale?: string } = {}) => {
     const settings = await SessionApi.properties(null, {
+      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
       headers: locale ? { "X-Metabase-Locale": locale } : {},
     });
     MetabaseSettings.setAll(settings);

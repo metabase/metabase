@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import { Box } from "metabase/ui";
+
 import { SearchFilterDateDisplay } from "metabase/search/components/SearchFilterDateDisplay";
 import { SearchFilterDatePicker } from "metabase/search/components/SearchFilterDatePicker";
 import type { SearchFilterDropdown } from "metabase/search/types";
+import { Box } from "metabase/ui";
 
 export const CreatedAtFilter: SearchFilterDropdown<"created_at"> = {
   iconName: "calendar",

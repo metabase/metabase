@@ -1,5 +1,6 @@
-import { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
+import { useState } from "react";
+
 import AutocompleteInput from "./AutocompleteInput";
 
 export default {

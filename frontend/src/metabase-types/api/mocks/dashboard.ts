@@ -6,10 +6,13 @@ import type {
   ActionDashboardCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+
 import { createMockCard } from "./card";
 
 export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   id: 1,
+  created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2024-01-01T00:00:00Z",
   collection_id: null,
   name: "Dashboard",
   dashcards: [],
@@ -28,6 +31,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   public_uuid: null,
   enable_embedding: false,
   embedding_params: null,
+  initially_published_at: null,
   width: "fixed",
   ...opts,
 });

@@ -1,20 +1,18 @@
 /* eslint-disable react/prop-types */
-import { t } from "ttag";
 import cx from "classnames";
+import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
 import ButtonBar from "metabase/components/ButtonBar";
-
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
-import ViewButton from "./ViewButton";
+import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import * as Lib from "metabase-lib";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
-import QuestionTimelineWidget from "./QuestionTimelineWidget";
-
-import QuestionRowCount from "./QuestionRowCount";
-import QuestionLastUpdated from "./QuestionLastUpdated";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
+import QuestionLastUpdated from "./QuestionLastUpdated";
+import QuestionRowCount from "./QuestionRowCount";
+import QuestionTimelineWidget from "./QuestionTimelineWidget";
+import ViewButton from "./ViewButton";
 import { ViewFooterRoot, FooterButtonGroup } from "./ViewFooter.styled";
 
 const ViewFooter = ({
@@ -47,6 +45,7 @@ const ViewFooter = ({
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hasDataPermission = isEditable;
   const hideChartSettings = result.error && !hasDataPermission;
+  const type = question.type();
 
   return (
     <ViewFooterRoot
@@ -141,7 +140,7 @@ const ViewFooter = ({
               }
             />
           ),
-          !question.isDataset() && (
+          type === "question" && (
             <EmbedMenu
               key="embed"
               resource={question}

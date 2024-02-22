@@ -1,6 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
+
 const LAYOUT_PROPS = [
   "m",
   "ml",
@@ -205,3 +207,5 @@ export function compareVersions(
   }
   return 0;
 }
+
+export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();

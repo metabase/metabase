@@ -2,35 +2,35 @@ import type { ChangeEvent } from "react";
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
+import EntityMenu from "metabase/components/EntityMenu";
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
-import EntityMenu from "metabase/components/EntityMenu";
-
-import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
-
-import { MODAL_TYPES } from "metabase/query_builder/constants";
-
-import { softReloadCard } from "metabase/query_builder/actions";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { uploadFile } from "metabase/redux/uploads";
-
 import { color } from "metabase/lib/colors";
-
-import BookmarkToggle from "metabase/core/components/BookmarkToggle";
-import { getSetting } from "metabase/selectors/settings";
-import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import {
+  PLUGIN_MODEL_PERSISTENCE,
+  PLUGIN_MODERATION,
+  PLUGIN_QUERY_BUILDER_HEADER,
+} from "metabase/plugins";
+import { softReloadCard } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { uploadFile } from "metabase/redux/uploads";
+import { getSetting } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
-
 import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
 } from "metabase-lib/metadata/utils/models";
+
 import { canUploadToQuestion } from "../../../../../selectors";
 import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
+
 import {
   QuestionActionsDivider,
   StrengthIndicator,
@@ -87,7 +87,8 @@ export const QuestionActions = ({
     ? color("brand")
     : undefined;
 
-  const isDataset = question.isDataset();
+  const isQuestion = question.type() === "question";
+  const isModel = question.type() === "model";
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
@@ -97,7 +98,7 @@ export const QuestionActions = ({
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
     canWrite &&
     isSaved &&
-    isDataset &&
+    isModel &&
     checkDatabaseCanPersistDatasets(question.database());
 
   const handleEditQuery = useCallback(() => {
@@ -124,7 +125,7 @@ export const QuestionActions = ({
 
   if (
     isMetabotEnabled &&
-    isDataset &&
+    isModel &&
     database &&
     canUseMetabotOnDatabase(database)
   ) {
@@ -143,7 +144,7 @@ export const QuestionActions = ({
     ),
   );
 
-  if (canWrite && isDataset) {
+  if (canWrite && isModel) {
     extraButtons.push(
       {
         title: t`Edit query definition`,
@@ -172,7 +173,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (!isDataset) {
+  if (isQuestion) {
     extraButtons.push({
       title: t`Add to dashboard`,
       icon: "add_to_dash",
@@ -188,7 +189,7 @@ export const QuestionActions = ({
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
     });
-    if (!isDataset) {
+    if (isQuestion) {
       extraButtons.push({
         title: t`Turn into a model`,
         icon: "model",
@@ -196,7 +197,7 @@ export const QuestionActions = ({
         testId: TURN_INTO_DATASET_TESTID,
       });
     }
-    if (isDataset) {
+    if (isModel) {
       extraButtons.push({
         title: t`Turn back to saved question`,
         icon: "insight",
@@ -224,6 +225,8 @@ export const QuestionActions = ({
     });
   }
 
+  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploadClick = () => {
@@ -238,6 +241,7 @@ export const QuestionActions = ({
       uploadFile({
         file,
         tableId: question._card.based_on_upload,
+        reloadQuestionData: true,
       })(dispatch);
 
       // reset the file input so that subsequent uploads of the same file trigger the change handler
