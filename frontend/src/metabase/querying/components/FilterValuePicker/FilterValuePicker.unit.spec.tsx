@@ -384,8 +384,8 @@ describe("StringFilterValuePicker", () => {
       });
 
       userEvent.type(screen.getByPlaceholderText("Search by Email"), "a@b.com");
-      userEvent.hover(screen.getByText("New a@b.com"));
-      userEvent.click(screen.getByText("New a@b.com"));
+      userEvent.hover(screen.getByText("a@b.com"));
+      userEvent.click(screen.getByText("a@b.com"));
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 
@@ -404,7 +404,7 @@ describe("StringFilterValuePicker", () => {
       });
 
       userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
-      expect(screen.queryByText("New a@b.com")).not.toBeInTheDocument();
+      expect(screen.getByText("a@b.com")).toBeInTheDocument();
       expect(onChange).not.toHaveBeenCalled();
     });
   });
