@@ -1082,7 +1082,7 @@ describe("SmartScalar > compute", () => {
               comparisonValue: value,
               metricValue: 300,
             }),
-            comparisonDescStr: `vs. ${label.toLowerCase()}`,
+            comparisonDescStr: `vs. ${label}`,
           },
           ...getMetricProperties({
             dateStr: "2019",
