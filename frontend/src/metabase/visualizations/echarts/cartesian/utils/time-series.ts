@@ -33,11 +33,11 @@ const getApproximateUnitDurationMs = (
   }
 };
 
-export const getTimeSeriesMinInterval = ({
-  interval,
+export const getTimeSeriesIntervalDuration = ({
+  unit,
   count,
 }: TimeSeriesInterval) => {
-  return getApproximateUnitDurationMs(interval) * count;
+  return getApproximateUnitDurationMs(unit) * count;
 };
 
 export const tryGetDate = (rowValue: RowValue): Dayjs | null => {

@@ -12,6 +12,7 @@ import type {
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getXAxisModel } from "../../model/axis";
+import { isTimeSeriesAxis } from "../../model/guards";
 
 export const getWaterfallXAxisModel = (
   dimensionModel: DimensionModel,
@@ -34,27 +35,22 @@ export const getWaterfallXAxisModel = (
     const areBooleanXValues =
       typeof lastXValue === "boolean" || typeof value === "boolean";
 
-    if (
-      !hasTotal ||
-      settings["graph.x_axis.scale"] !== "timeseries" ||
-      areBooleanXValues ||
-      !xAxisModel.timeSeriesInterval
-    ) {
+    if (!hasTotal || !isTimeSeriesAxis(xAxisModel) || areBooleanXValues) {
       return xAxisModel.formatter(value);
     }
     const dateValue = dayjs(value);
 
     const totalBucketStart = dayjs(lastXValue).add(
-      xAxisModel.timeSeriesInterval?.count,
+      xAxisModel.interval.count,
       // @ts-expect-error daysjs
-      xAxisModel.timeSeriesInterval?.interval,
+      xAxisModel.interval.unit,
     );
 
     if (
       dateValue.isSame(
         totalBucketStart,
         // @ts-expect-error daysjs
-        xAxisModel.timeSeriesInterval?.interval,
+        xAxisModel.interval?.unit,
       )
     ) {
       return t`Total`;
@@ -62,7 +58,7 @@ export const getWaterfallXAxisModel = (
       dateValue.isAfter(
         totalBucketStart,
         // @ts-expect-error daysjs
-        xAxisModel.timeSeriesInterval?.interval,
+        xAxisModel.interval?.unit,
       )
     ) {
       // If ECharts decides that tick after the Total value should be rendered

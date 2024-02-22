@@ -7,6 +7,7 @@ import type {
   ChartDataset,
   XAxisModel,
   Datum,
+  TimeSeriesXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   applySquareRootScaling,
@@ -27,6 +28,7 @@ import { isNotNull, isNumber } from "metabase/lib/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { tryGetDate } from "../../utils/time-series";
+import { isTimeSeriesAxis } from "../../model/guards";
 
 const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
   let hasZeros = false;
@@ -63,20 +65,20 @@ const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
 
 const getTotalTimeSeriesXValue = (
   lastDimensionValue: RowValue,
-  { timeSeriesInterval }: XAxisModel,
+  { interval }: TimeSeriesXAxisModel,
 ) => {
   const lastDimensionValueDate = tryGetDate(lastDimensionValue);
-  if (lastDimensionValueDate == null || timeSeriesInterval == null) {
+  if (lastDimensionValueDate == null || interval == null) {
     return null;
   }
-  const { interval, count } = timeSeriesInterval;
+  const { unit, count } = interval;
 
-  if (!isAbsoluteDateTimeUnit(interval)) {
+  if (!isAbsoluteDateTimeUnit(unit)) {
     return null;
   }
 
   // @ts-expect-error fix quarter types in dayjs
-  return dayjs(lastDimensionValue).add(count, interval).toISOString();
+  return dayjs(lastDimensionValue).add(count, unit).toISOString();
 };
 
 export const getWaterfallDataset = (
@@ -116,7 +118,7 @@ export const getWaterfallDataset = (
 
     let totalXValue;
     if (
-      settings["graph.x_axis.scale"] === "timeseries" &&
+      isTimeSeriesAxis(xAxisModel) &&
       (typeof lastValue === "string" || typeof lastValue === "number")
     ) {
       totalXValue = getTotalTimeSeriesXValue(

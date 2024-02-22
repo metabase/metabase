@@ -93,19 +93,41 @@ export type CartesianChartDateTimeAbsoluteUnit =
 
 export type TimeSeriesInterval = {
   count: number;
-  interval: CartesianChartDateTimeAbsoluteUnit;
-  timezone: string;
-  lengthInIntervals: number;
-  range?: DateRange;
+  unit: CartesianChartDateTimeAbsoluteUnit;
 };
 
-export type XAxisModel = {
+export type BaseXAxisModel = {
   label?: string;
   formatter: AxisFormatter;
   axisType: OptionAxisType;
   canBrush?: boolean;
-  timeSeriesInterval?: TimeSeriesInterval;
 };
+
+export type CategoryXAxisModel = BaseXAxisModel & {
+  isHistogram: boolean;
+  axisType: "category";
+};
+
+export type NumericXAxisModel = BaseXAxisModel & {
+  axisType: "value" | "log";
+};
+
+export type TimeSeriesXAxisModel = BaseXAxisModel & {
+  axisType: "time";
+  columnUnit?: DateTimeAbsoluteUnit;
+  timezone: string;
+  interval: TimeSeriesInterval;
+  lengthInIntervals: number;
+  range: DateRange;
+  ticksMaxInterval?: number;
+  ticksMinInterval?: number;
+  tickRenderPredicate: (value: string) => boolean;
+};
+
+export type XAxisModel =
+  | CategoryXAxisModel
+  | NumericXAxisModel
+  | TimeSeriesXAxisModel;
 
 export type YAxisModel = {
   seriesKeys: DataKey[];

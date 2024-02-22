@@ -16,8 +16,8 @@ import type {
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import { getTimeSeriesMinInterval } from "metabase/visualizations/echarts/cartesian/utils/time-series";
 import type { ChartMeasurements } from "../chart-measurements/types";
+import { isTimeSeriesAxis } from "../model/guards";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -108,7 +108,8 @@ export const buildDimensionAxis = (
   renderingContext: RenderingContext,
 ): AxisBaseOption => {
   const { getColor } = renderingContext;
-  const { axisType, formatter, timeSeriesInterval } = chartModel.xAxisModel;
+  const xAxisModel = chartModel.xAxisModel;
+  const { axisType, formatter } = xAxisModel;
 
   const boundaryGap =
     axisType === "value" || axisType === "log"
@@ -119,6 +120,7 @@ export const buildDimensionAxis = (
     chartMeasurements.ticksDimensions.xTicksHeight,
   );
   const valueGetter = getDimensionDisplayValueGetter(chartModel, settings);
+  const isTimeSeries = isTimeSeriesAxis(xAxisModel);
 
   return {
     ...getAxisNameDefaultOption(
@@ -144,7 +146,15 @@ export const buildDimensionAxis = (
       rotate: getRotateAngle(settings),
       ...getTicksDefaultOption(renderingContext),
       // Value is always converted to a string by ECharts
-      formatter: (value: string) => ` ${formatter(valueGetter(value))} `, // spaces force padding between ticks
+      formatter: (value: string) => {
+        if (
+          isTimeSeriesAxis(xAxisModel) &&
+          !xAxisModel.tickRenderPredicate(value)
+        ) {
+          return false;
+        }
+        return ` ${formatter(valueGetter(value))} `; // spaces force padding between ticks
+      },
     },
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
@@ -152,10 +162,8 @@ export const buildDimensionAxis = (
         color: getColor("border"),
       },
     },
-    minInterval:
-      timeSeriesInterval != null
-        ? getTimeSeriesMinInterval(timeSeriesInterval)
-        : undefined,
+    minInterval: isTimeSeries ? xAxisModel.ticksMinInterval : undefined,
+    maxInterval: isTimeSeries ? xAxisModel.ticksMaxInterval : undefined,
   } as AxisBaseOption;
 };
 

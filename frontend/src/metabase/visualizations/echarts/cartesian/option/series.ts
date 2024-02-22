@@ -14,6 +14,7 @@ import type {
   StackTotalDataKey,
   ChartDataset,
   Datum,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -36,6 +37,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { buildEChartsScatterSeries } from "../scatter/series";
+import { isTimeSeriesAxis } from "../model/guards";
 import { getSeriesYAxisIndex } from "./utils";
 
 export const getBarLabelLayout =
@@ -121,27 +123,40 @@ export const buildEChartsLabelOptions = (
 
 const buildEChartsBarSeries = (
   dataset: ChartDataset,
+  xAxisModel: XAxisModel,
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   barSeriesCount: number,
   hasMultipleSeries: boolean,
+  chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["bar"] => {
   const stackName =
     settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
 
   const isHistogram = settings["graph.x_axis.scale"] === "histogram";
+  const stackedOrSingleSeries = stackName !== undefined || barSeriesCount === 1;
 
-  let barWidth: string | undefined = undefined;
+  let barWidth: string | number | undefined = undefined;
+  let barCategoryGap: string | number | undefined = undefined;
+
   if (isHistogram) {
-    const stackedOrSingleSeries =
-      stackName !== undefined || barSeriesCount === 1;
-
     if (stackedOrSingleSeries) {
       barWidth = "99.5%"; // a tiny gap looks better than 100%
     } else {
       barWidth = `${99.5 / barSeriesCount}%`;
+    }
+  } else if (isTimeSeriesAxis(xAxisModel)) {
+    /*
+      ECharts calculates category width based on the number of values in the dataset.
+      However, for time series, we want category width be based on the computed interval of data and the number of units within the extent.
+      For example, if data consists of only two points 1st and 20th days and the unit is day, then we want the bar category to have the width of the single day on the axis.
+    */
+    if (dataset.length < xAxisModel.lengthInIntervals + 1) {
+      const barCategoryGapPercent =
+        1 - (dataset.length / (xAxisModel.lengthInIntervals + 1)) * 0.4;
+      barCategoryGap = `${barCategoryGapPercent * 100}%`;
     }
   }
 
@@ -166,6 +181,7 @@ const buildEChartsBarSeries = (
     yAxisIndex,
     barGap: 0,
     stack: stackName,
+    barCategoryGap,
     barWidth,
     encode: {
       y: seriesModel.dataKey,
@@ -442,11 +458,13 @@ export const buildEChartsSeries = (
         case "bar":
           return buildEChartsBarSeries(
             chartModel.transformedDataset,
+            chartModel.xAxisModel,
             seriesModel,
             settings,
             yAxisIndex,
             barSeriesCount,
             hasMultipleSeries,
+            chartMeasurements,
             renderingContext,
           );
         case "scatter":
