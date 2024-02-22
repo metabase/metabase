@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import orderBy from "lodash.orderby";
 import _ from "underscore";
 
 import type { Log } from "metabase-types/api";
@@ -11,18 +12,14 @@ function logEventKey(ev: Log) {
 
 export function mergeLogs(logArrays: Log[][]) {
   let prevLogKey = "";
-  return logArrays
-    .flat()
-    .sort((logA, logB) => {
-      return (
-        logA.timestamp - logB.timestamp ||
-        logA.process_uuid.localeCompare(logB.process_uuid) ||
-        logA.msg.localeCompare(logB.msg)
-      );
-    })
+  return orderBy(
+    logArrays.flat(),
+    ["timestamp", "process_uuid", "msg"],
+    ["asc", "asc", "asc"],
+  )
     .filter(log => {
       const key = logEventKey(log);
-      const keep = key !== prevLogKey;
+      const keep = prevLogKey !== key;
       if (keep) {
         prevLogKey = key;
       }
@@ -31,15 +28,18 @@ export function mergeLogs(logArrays: Log[][]) {
     .slice(-1 * MAX_LOGS);
 }
 
+export function maybeMergeLogs(logs: Log[], newLogs: Log[]) {
+  const newestLog = _.first(newLogs);
+  const hasFetchedNewLogs = newestLog && !hasLog(logs, newestLog);
+  if (hasFetchedNewLogs) {
+    return mergeLogs([logs, newLogs.reverse()]);
+  }
+  return logs;
+}
+
 export function hasLog(logs: Log[], targetLog: Log): boolean {
-  return (
-    logs.findIndex(
-      log =>
-        log.timestamp === targetLog?.timestamp &&
-        log.process_uuid === targetLog?.process_uuid &&
-        log.msg === targetLog?.msg,
-    ) > -1
-  );
+  // search from back as newer logs are last
+  return _.findLastIndex(logs, targetLog) > -1;
 }
 
 export function filterLogs(logs: Log[], processUUID: string) {

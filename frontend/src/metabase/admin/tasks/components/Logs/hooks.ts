@@ -7,7 +7,7 @@ import _ from "underscore";
 import { UtilApi } from "metabase/services";
 import type { Log } from "metabase-types/api";
 
-import { mergeLogs, hasLog } from "./utils";
+import { maybeMergeLogs } from "./utils";
 
 export function usePollingLogsQuery(pollingDurationMs: number) {
   const [loaded, setLoaded] = useState(false);
@@ -29,14 +29,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
       if (isMountedRef.current) {
         setLoaded(true);
         setError(null);
-        setLogs(logs => {
-          const newestLog = _.first(newLogs);
-          const hasFetchedNewLogs = newestLog && !hasLog(logs, newestLog);
-          if (hasFetchedNewLogs) {
-            return mergeLogs([logs, newLogs.reverse()]);
-          }
-          return logs;
-        });
+        setLogs(logs => maybeMergeLogs(logs, newLogs));
         isFetchingRef.current = false;
       }
     } catch (err: any) {
