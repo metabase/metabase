@@ -10,6 +10,7 @@ import {
   getInstanceAnalyticsCustomCollection,
 } from "metabase/collections/utils";
 import { useCollectionListQuery } from "metabase/common/hooks";
+import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -26,18 +27,28 @@ import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import type { CollectionId } from "metabase-types/api";
 
-import { CreateCollectionOnTheGo } from "./CreateCollectionOnTheGo";
-
 import "./SaveQuestionModal.css";
 
-const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
-  if (questionType === "model") {
-    return t`Save model`;
-  } else if (showSaveType) {
-    return t`Save question`;
+const getLabels = (question: Question, showSaveType: boolean) => {
+  const type = question.type();
+
+  if (type === "question") {
+    return {
+      singleStepTitle: showSaveType ? t`Save question` : t`Save new question`,
+      multiStepTitle: t`First, save your question`,
+      nameInputPlaceholder: t`What is the name of your question?`,
+    };
   }
 
-  return t`Save new question`;
+  if (type === "model") {
+    return {
+      singleStepTitle: t`Save model`,
+      multiStepTitle: t`First, save your model`,
+      nameInputPlaceholder: t`What is the name of your model?`,
+    };
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
 };
 
 const SAVE_QUESTION_SCHEMA = Yup.object({
@@ -111,9 +122,7 @@ export const SaveQuestionModal = ({
           ? initialCollectionId
           : question.collectionId(),
       saveType:
-        originalQuestion &&
-        !originalQuestion.isDataset() &&
-        originalQuestion.canWrite()
+        originalQuestion && originalQuestion.canWrite()
           ? "overwrite"
           : "create",
     }),
@@ -181,12 +190,12 @@ export const SaveQuestionModal = ({
     [originalQuestion, handleOverwrite, handleCreate],
   );
 
-  const questionType = question.isDataset() ? "model" : "question";
-
-  const multiStepTitle =
-    questionType === "question"
-      ? t`First, save your question`
-      : t`First, save your model`;
+  if (collections && isInInstanceAnalyticsQuestion) {
+    const customCollection = getInstanceAnalyticsCustomCollection(collections);
+    if (customCollection) {
+      initialCollectionId = customCollection.id;
+    }
+  }
 
   const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
   const showSaveType =
@@ -194,14 +203,11 @@ export const SaveQuestionModal = ({
     originalQuestion != null &&
     originalQuestion.canWrite();
 
-  const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
-
+  const { multiStepTitle, singleStepTitle, nameInputPlaceholder } = getLabels(
+    question,
+    showSaveType,
+  );
   const title = multiStep ? multiStepTitle : singleStepTitle;
-
-  const nameInputPlaceholder =
-    questionType === "question"
-      ? t`What is the name of your question?`
-      : t`What is the name of your model?`;
 
   return (
     <Modal.Root onClose={onClose} opened={true}>
