@@ -49,7 +49,6 @@ import {
   getParameters,
   getDatabaseFields,
   getSampleDatabaseId,
-  getNativeDatabases,
   getIsRunnable,
   getIsResultDirty,
   getMode,
@@ -114,7 +113,6 @@ const mapStateToProps = (state, props) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
-    nativeDatabases: getNativeDatabases(state),
     tables: getTables(state),
 
     metadata: getMetadata(state),
