@@ -112,7 +112,6 @@
 (defsetting custom-geojson
   (deferred-tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
   :type    :json
-  :default {}
   :getter  (fn [] (merge (setting/get-value-of-type :json :custom-geojson) (builtin-geojson)))
   :setter  (fn [new-value]
              ;; remove the built-in keys you can't override them and we don't want those to be subject to validation.

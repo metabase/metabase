@@ -254,4 +254,4 @@
       (is (= {}
              (@#'api.geojson/builtin-geojson)))
       (is (= "Invalid custom GeoJSON key: us_states"
-             (mt/user-real-request :crowberto :get 400 "geojson/us_states"))))));)
+             (mt/user-real-request :crowberto :get 400 "geojson/us_states"))))))
