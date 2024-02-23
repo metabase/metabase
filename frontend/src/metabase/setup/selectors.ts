@@ -1,3 +1,4 @@
+import MetabaseSettings from "metabase/lib/settings";
 import { isEEBuild } from "metabase/lib/utils";
 import { getSetting } from "metabase/selectors/settings";
 import type { DatabaseData, LocaleData } from "metabase-types/api";
@@ -82,7 +83,12 @@ export const getIsEmailConfigured = (state: State): boolean => {
 export const getSteps = (state: State) => {
   const usageReason = getUsageReason(state);
   const activeStep = getStep(state);
-  const isPaidPlan = state.setup.isPaidPlan;
+
+  // TODO: avoid using MetabaseSettings in a selector
+  // we can't do it right now as this selector is used in the reducer that doesn't have access to the whole state
+  const tokenFeatures = MetabaseSettings.get("token-features");
+  const isPaidPlan =
+    tokenFeatures && Object.values(tokenFeatures).some(value => value === true);
 
   const shouldShowDBConnectionStep = usageReason !== "embedding";
   const shouldShowLicenseStep = isEEBuild() && !isPaidPlan;

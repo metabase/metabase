@@ -6,7 +6,6 @@ import {
 } from "metabase/home/utils";
 import { loadLocalization } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
-import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
@@ -213,20 +212,5 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     } catch (error) {
       return rejectWithValue(error);
     }
-  },
-);
-
-export const initSetup = createAsyncThunk(
-  "metabase/setup/INIT_SETUP",
-  async (_, thunkApi) => {
-    const state = thunkApi.getState() as State;
-
-    const tokenFeatures = getSetting(state, "token-features");
-
-    const hasAnyFeature =
-      tokenFeatures &&
-      Object.values(tokenFeatures).some(value => value === true);
-
-    return { isPaidPlan: hasAnyFeature };
   },
 );
