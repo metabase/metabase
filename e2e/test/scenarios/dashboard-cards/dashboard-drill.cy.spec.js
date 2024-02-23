@@ -667,7 +667,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get(".bar").eq(0).click({ force: true });
 
         // intercept the POST to question's query via api dataset
-        cy.intercept("POST", `/api/dataset`).as("dataset");
+        cy.intercept("POST", "/api/dataset").as("dataset");
         cy.findByText("See this month by week").click();
         cy.wait("@dataset");
 
