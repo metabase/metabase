@@ -4168,18 +4168,17 @@
           (testing "The pulse is active"
             (is (false? (t2/select-one-fn :archived :model/Pulse pulse-id))))
           (mt/with-fake-inbox
-            (u/with-timeout 5000
-              (mt/with-expected-messages 2
-                (let [{:keys [parameters]} (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id)
-                                                                                     {:parameters []}))
-                      inbox     @mt/inbox
-                      html-body (get-in inbox ["rasta@metabase.com" 0 :body 0 :content])]
-                  (testing "The dashboard parameters were removed"
-                    (is (empty? parameters)))
-                  (testing "The broken pulse was archived"
-                    (is (true? (t2/select-one-fn :archived :model/Pulse pulse-id))))
-                  (testing "A notification email was sent that the subscription was removed"
-                    (is (true? (str/includes? html-body "Subscription to My Awesome Dashboard has been removed"))))
-                  (testing "The dashboard and pulse creators were emailed about the removed pulse"
-                    (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
-                           (set (keys inbox))))))))))))))
+            (mt/with-expected-messages 2
+              (let [{:keys [parameters]} (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id)
+                                                                                   {:parameters []}))
+                    inbox     @mt/inbox
+                    html-body (get-in inbox ["rasta@metabase.com" 0 :body 0 :content])]
+                (testing "The dashboard parameters were removed"
+                  (is (empty? parameters)))
+                (testing "The broken pulse was archived"
+                  (is (true? (t2/select-one-fn :archived :model/Pulse pulse-id))))
+                (testing "A notification email was sent that the subscription was removed"
+                  (is (true? (some-> html-body (str/includes? "Subscription to My Awesome Dashboard has been removed")))))
+                (testing "The dashboard and pulse creators were emailed about the removed pulse"
+                  (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
+                         (set (keys inbox)))))))))))))
