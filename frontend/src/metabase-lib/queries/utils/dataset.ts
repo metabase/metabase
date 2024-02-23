@@ -5,6 +5,7 @@ import type {
 } from "metabase-types/api";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { normalize } from "metabase-lib/queries/utils/normalize";
+import Dimension from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
@@ -43,4 +44,9 @@ export function findColumnSettingIndexesForColumns(
   return columns.map(
     column => columnSettingIndexByKey.get(getColumnKey(column)) ?? -1,
   );
+}
+
+export function normalizeFieldRef(fieldRef: FieldReference) {
+  const dimension = Dimension.parseMBQL(fieldRef);
+  return dimension && dimension.mbql();
 }
