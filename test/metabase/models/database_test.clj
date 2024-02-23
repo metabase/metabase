@@ -203,7 +203,23 @@
                   "id"          2
                   "settings"    {"database-enable-actions" true}
                   "engine"      "bigquery-cloud-sdk"}
-                 (encode-decode bq-db))))))))
+                 (encode-decode bq-db)))))
+
+      (testing "We avoid adding or removing the redacted fields"
+        (let [redact (fn [m] (encode-decode (mi/instance :model/Database m)))]
+          (is (= {"id" 1 "name" "testbg"}
+                 (redact {:id 1 :name "testbg"})))
+          (is (= {"id" 1 "name" "testbg" "details" "**MetabaseDatabaseDetails**"}
+                 (redact {:id 1 :name "testbg" :details {}})))
+          (is (= {"id" 1 "name" "testbg" "settings" "**MetabaseDatabaseSettings**"}
+                 (redact {:id 1 :name "testbg" :settings "not-a-map"})))
+          (is (= {"id" 1 "name" "testbg" "settings" {}}
+                 (redact {:id 1 :name "testbg" :settings {}})))
+          (is (= {"id" 1
+                  "name" "testbg"
+                  "details" "**MetabaseDatabaseDetails**"
+                  "settings" "**MetabaseDatabaseSettings**"}
+                 (redact {:id 1 :name "testbg" :details {} :settings "not-a-map"}))))))))
 
 ;; register a dummy "driver" for the sole purpose of running sensitive-fields-test
 (driver/register! :test-sensitive-driver, :parent #{:h2})

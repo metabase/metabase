@@ -357,7 +357,8 @@
   Also remove settings that the User doesn't have read perms for."
   [db json-generator]
   (next-method
-   (-> db redact-db-details (m/update-existing :settings redact-settings))
+   (-> (redact-db-details db)
+       (m/update-existing :settings redact-settings))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
