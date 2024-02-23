@@ -5821,7 +5821,7 @@ databaseChangeLog:
       comment: Clear data permission paths
       changes:
         - sql: >-
-            DELETE FROM permissions WHERE object LIKE '/db/%' OR object LIKE '/data/%' OR object LIKE '/query/%';
+            DELETE FROM permissions WHERE object LIKE '%/db/%';
       rollback: # not needed; handled by the permission migrations above
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
