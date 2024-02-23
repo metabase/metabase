@@ -407,7 +407,7 @@
   "Enable restrict email recipients?"
   :email-restrict-recipients)
 
-(define-premium-feature ^{:added "0.49.0"} enable-llm-autodescription?
+(define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
   "Enable automatic descriptions of questions and dashboards by LLMs?"
   :llm-autodescription)
 
