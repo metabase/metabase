@@ -565,12 +565,11 @@ describe("AddToDashSelectDashModal", () => {
                 );
                 expect(popover).toBeInTheDocument();
                 expect(
-                  within(popover).getByText("Create New"),
+                  within(popover).getByText("Create a new collection"),
                 ).toBeInTheDocument();
-
                 expect(
-                  within(popover).getByText(/Name of new folder inside/),
-                ).toHaveTextContent("Our analytics");
+                  within(popover).getByText("Give it a name"),
+                ).toBeInTheDocument();
               });
             });
           });

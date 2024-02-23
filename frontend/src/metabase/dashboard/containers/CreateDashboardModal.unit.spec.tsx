@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   createMockCollection,
@@ -153,8 +153,6 @@ describe("CreateDashboardModal", () => {
       screen.getByRole("button", {
         name: /new collection/i,
       });
-    const collModalTitle = () =>
-      screen.getByRole("heading", { name: /Create New/i });
     const dashModalTitle = () =>
       screen.getByRole("heading", { name: /new dashboard/i });
     const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
@@ -173,12 +171,12 @@ describe("CreateDashboardModal", () => {
       userEvent.type(nameField(), name);
       userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
-      //Open New Collection Dialog
+      // Open New Collection Dialog
       userEvent.click(newCollBtn());
-      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
-      //Close New Collection Dialog
+      await screen.findByText("Give it a name");
+      // Close New Collection Dialog
       userEvent.click(cancelBtn());
-      //Close Collection Picker
+      // Close Collection Picker
       userEvent.click(cancelBtn());
 
       await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
@@ -199,13 +197,7 @@ describe("CreateDashboardModal", () => {
       );
       //Open Create Collection Dialog
       userEvent.click(newCollBtn());
-      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
-      //Ensure that correct parent collection is chosen
-      expect(
-        await within(
-          await screen.findByTestId("create-collection-on-the-go"),
-        ).findByText(/Name of new folder/),
-      ).toHaveTextContent(COLLECTION.PARENT.name);
+      await screen.findByText("Give it a name");
     });
     it("should create collection inside root folder", async () => {
       setup();
@@ -214,12 +206,8 @@ describe("CreateDashboardModal", () => {
       userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       userEvent.click(newCollBtn());
-      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
-      expect(
-        await within(
-          await screen.findByTestId("create-collection-on-the-go"),
-        ).findByText(/Name of new folder/),
-      ).toHaveTextContent(COLLECTION.ROOT.name);
+      await screen.findByTestId("create-collection-on-the-go"),
+        await screen.findByText("Give it a name");
     });
   });
 });

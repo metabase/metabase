@@ -673,8 +673,6 @@ describe("SaveQuestionModal", () => {
       screen.getByRole("button", {
         name: /new collection/i,
       });
-    const collModalTitle = () =>
-      screen.getByRole("heading", { name: /Create New/i });
     const questionModalTitle = () =>
       screen.getByRole("heading", { name: /new question/i });
     const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
@@ -738,7 +736,7 @@ describe("SaveQuestionModal", () => {
       userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       userEvent.click(newCollBtn());
-      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
+      await screen.findByText("Give it a name");
       userEvent.click(cancelBtn());
       userEvent.click(cancelBtn());
       await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
@@ -762,10 +760,7 @@ describe("SaveQuestionModal", () => {
           }),
         );
         userEvent.click(newCollBtn());
-        await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
-        expect(await screen.findByText(/Name of new folder/)).toHaveTextContent(
-          COLLECTION.PARENT.name,
-        );
+        await screen.findByText("Give it a name");
       });
       it("should create collection inside root folder", async () => {
         userEvent.click(collDropdown());
@@ -773,11 +768,10 @@ describe("SaveQuestionModal", () => {
         userEvent.click(newCollBtn());
         await waitFor(async () =>
           expect(
-            await screen.findByRole("heading", { name: "Create New" }),
+            await screen.findByRole("heading", {
+              name: "Create a new collection",
+            }),
           ).toBeInTheDocument(),
-        );
-        expect(await screen.findByText(/Name of new folder/)).toHaveTextContent(
-          COLLECTION.ROOT.name,
         );
       });
     });

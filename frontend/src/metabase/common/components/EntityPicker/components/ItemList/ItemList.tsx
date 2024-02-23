@@ -1,4 +1,5 @@
 import type React from "react";
+import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
@@ -30,7 +31,7 @@ export const ItemList = <TItem extends TypeWithModel>({
 }: ItemListProps<TItem>) => {
   if (isLoading) {
     return (
-      <Box miw={310} h="100%">
+      <Box miw={310} h="100%" aria-label={t`loading`}>
         <Center p="lg" h="100%">
           <Loader />
         </Center>
@@ -47,7 +48,7 @@ export const ItemList = <TItem extends TypeWithModel>({
       <Flex justify="center" align="center" direction="column" h="100%">
         <EmptyState
           illustrationElement={
-            <Box>
+            <Box aria-label={t`empty`}>
               <img src={NoResults} />
             </Box>
           }

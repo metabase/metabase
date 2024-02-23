@@ -173,7 +173,7 @@ describe("CollectionPicker", () => {
       await screen.findByRole("button", { name: /Collection 3/ }),
     ).toHaveAttribute("data-active", "true");
 
-    expect(await screen.findByText("No collections here")).toBeInTheDocument();
+    expect(await screen.findByLabelText("empty")).toBeInTheDocument();
   });
 
   it("should render the path back to personal collection", async () => {
