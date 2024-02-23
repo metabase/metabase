@@ -22,7 +22,7 @@ interface setupProps {
   tabs?: EntityTab[];
   options?: EntityPickerModalOptions;
   selectedItem?: null | CollectionPickerItem;
-  actions?: JSX.Element[];
+  actionButtons?: JSX.Element[];
 }
 
 const TestPicker = ({ name }: { name: string }) => (
@@ -45,6 +45,10 @@ const setup = ({
   selectedItem = null,
   ...rest
 }: setupProps = {}) => {
+  window.Element.prototype.getBoundingClientRect = jest
+    .fn()
+    .mockReturnValue({ height: 100, width: 200 });
+
   renderWithProviders(
     <EntityPickerModal
       title={title}
@@ -60,6 +64,9 @@ const setup = ({
 };
 
 describe("EntityPickerModal", () => {
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
   it("should render a picker", async () => {
     setup({});
     expect(await screen.findByText("Test picker foo")).toBeInTheDocument();
@@ -163,13 +170,13 @@ describe("EntityPickerModal", () => {
   it("should accept an array of action buttons", async () => {
     const actionFn = jest.fn();
 
-    const actions = [
+    const actionButtons = [
       <Button onClick={actionFn} key="1">
         Click Me
       </Button>,
     ];
 
-    setup({ actions });
+    setup({ actionButtons });
 
     expect(
       await screen.findByRole("button", { name: "Click Me" }),
