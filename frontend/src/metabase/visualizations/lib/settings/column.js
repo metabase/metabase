@@ -346,16 +346,9 @@ export const NUMBER_COLUMN_SETTINGS = {
       ],
     },
     default: true,
-    getHidden: (_column, settings, { series, forAdminSettings }) => {
-      if (forAdminSettings === true) {
-        return false;
-      } else {
-        return (
-          settings["number_style"] !== "currency" ||
-          series[0].card.display !== "table"
-        );
-      }
-    },
+    getHidden: (_column, settings, { series }) =>
+      settings["number_style"] !== "currency" ||
+      series[0].card.display !== "table",
     readDependencies: ["number_style"],
   },
   number_separators: {
