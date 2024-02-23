@@ -227,10 +227,10 @@ function DashboardInner(props: DashboardProps) {
     toggleSidebar,
   } = props;
 
-  const isDashboardSidebarOpen = useSelector(getIsSidebarOpen);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [hasScroll, setHasScroll] = useState(getMainElement()?.scrollTop > 0);
+  const isDashboardSidebarOpen = useSelector(getIsSidebarOpen);
 
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
@@ -539,7 +539,7 @@ function DashboardInner(props: DashboardProps) {
             />
           </DashboardHeaderContainer>
 
-          <DashboardBody hasOwnScrollbar={isEditing || isDashboardSidebarOpen}>
+          <DashboardBody>
             <ParametersAndCardsContainer
               id={DASHBOARD_PDF_EXPORT_ROOT_ID}
               data-testid="dashboard-parameters-and-cards"

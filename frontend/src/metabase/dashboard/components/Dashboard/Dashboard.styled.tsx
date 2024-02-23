@@ -48,18 +48,14 @@ export const DashboardStyled = styled.div`
   width: 100%;
 `;
 
-export const DashboardBody = styled.div<{ hasOwnScrollbar: boolean }>`
+export const DashboardBody = styled.div`
   position: relative;
   display: flex;
   flex: 1 0 auto;
   min-width: 0;
   min-height: 0;
 
-  ${({ hasOwnScrollbar }) =>
-    hasOwnScrollbar &&
-    css`
-      flex-basis: 0;
-    `}
+  flex-basis: 0;
 `;
 
 export const DashboardHeaderContainer = styled.header<{
@@ -126,8 +122,7 @@ export const ParametersAndCardsContainer = styled.div<{
 }>`
   flex: auto;
   min-width: 0;
-  overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
-    shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
+  overflow-y: scroll;
   overflow-x: auto;
   padding-bottom: 40px;
 
