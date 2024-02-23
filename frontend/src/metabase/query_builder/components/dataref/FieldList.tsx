@@ -4,6 +4,7 @@ import type { IconName } from "metabase/ui";
 import type Field from "metabase-lib/metadata/Field";
 
 import {
+  NodeListItem,
   NodeListItemLink,
   NodeListItemName,
   NodeListItemIcon,
@@ -11,6 +12,7 @@ import {
   NodeListContainer,
   NodeListIcon,
   NodeListTitleText,
+  NodeListInfoIcon,
 } from "./NodeList.styled";
 
 interface FieldListProps {
@@ -36,12 +38,13 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
       const iconName = field.icon() as IconName;
       const tooltip = iconName === "unknown" ? t`Unknown type` : null;
       return (
-        <li key={field.getUniqueId()}>
+        <NodeListItem as="li" key={field.getUniqueId()}>
           <NodeListItemLink onClick={() => onFieldClick(field)}>
             <NodeListItemIcon name={iconName} tooltip={tooltip} />
             <NodeListItemName>{field.name}</NodeListItemName>
+            <NodeListInfoIcon field={field} position="top-end" />
           </NodeListItemLink>
-        </li>
+        </NodeListItem>
       );
     })}
   </NodeListContainer>
