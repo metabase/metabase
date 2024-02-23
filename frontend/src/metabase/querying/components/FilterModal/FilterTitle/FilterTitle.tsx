@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { FilterColumnName } from "../FilterColumnName";
 
-import { InfoIcon, HoverParent } from "./FilterTitle.styled";
-export { HoverParent };
+import { InfoIcon } from "./FilterTitle.styled";
 
 type FilterTitleProps = {
   children?: ReactNode;
@@ -17,6 +17,8 @@ type FilterTitleProps = {
   query: Lib.Query;
   stageIndex: number;
 };
+
+export { HoverParent };
 
 export function FilterTitle({
   children,
@@ -28,7 +30,12 @@ export function FilterTitle({
 }: FilterTitleProps) {
   return (
     <Flex h="100%" align="center" gap="sm">
-      <InfoIcon query={query} stageIndex={stageIndex} column={column} />
+      <InfoIcon
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        position="left"
+      />
       <Icon name={columnIcon} />
       <FilterColumnName
         query={query}

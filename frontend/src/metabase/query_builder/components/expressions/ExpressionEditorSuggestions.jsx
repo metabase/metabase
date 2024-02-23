@@ -151,7 +151,7 @@ function ExpressionEditorSuggestionsListItem({
           className="mr1"
           data-ignore-outside-clicks
         />
-        <SuggestionTitle>
+        <SuggestionTitle data-ignore-outside-clicks>
           <SuggestionSpan
             suggestion={suggestion}
             isHighlighted={isHighlighted}

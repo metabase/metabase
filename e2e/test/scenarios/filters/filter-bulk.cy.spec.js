@@ -365,7 +365,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("can add a date shortcut filter from the popover", () => {
       filterField("Created At").findByLabelText("More options").click();
-      popover().findByText("Last 3 months").click();
+      popover().contains("Last 3 months").findByText("Last 3 months").click();
       modal().findByText("Previous 3 Months").should("be.visible");
       applyFilters();
 
@@ -410,8 +410,7 @@ describe("scenarios > filters > bulk filtering", () => {
     it("Can cancel adding date filter", () => {
       filterField("Created At").findByLabelText("More options").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount").click();
+      filterField("Created At").click({ position: "topRight", force: true });
 
       filterField("Created At").within(() => {
         // there should be no filter so the X should not populate
