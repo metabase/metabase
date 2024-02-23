@@ -477,6 +477,7 @@ function DashboardInner(props: DashboardProps) {
         <ParametersWidgetContainer
           hasScroll
           isSticky
+          isFullscreen={isFullscreen}
           isNightMode={shouldRenderAsNightMode}
           data-testid="edit-dashboard-parameters-widget-container"
         >
@@ -493,6 +494,7 @@ function DashboardInner(props: DashboardProps) {
     return (
       <ParametersWidgetContainer
         hasScroll={hasScroll}
+        isFullscreen={isFullscreen}
         isNightMode={shouldRenderAsNightMode}
         isSticky={isParametersWidgetContainersSticky(visibleParameters.length)}
         data-testid="dashboard-parameters-widget-container"
