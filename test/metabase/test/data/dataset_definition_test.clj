@@ -6,8 +6,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(mt/set-test-drivers! #{:h2 :postgres :oracle})
-
 (deftest dataset-with-custom-pk-test
   (mt/test-drivers (mt/sql-jdbc-drivers)
     (mt/dataset (mt/dataset-definition "custom-pk"
