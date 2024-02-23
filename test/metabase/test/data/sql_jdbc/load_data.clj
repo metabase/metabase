@@ -144,6 +144,7 @@
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time."
   (make-load-data-fn load-data-chunked))
 
+;; TODO pretty sure we dont' need this anymore
 (defn load-data-maybe-add-ids!
   "Implementation of `load-data!`. Insert all rows at once;
   add IDs if tabledef does not contains PK."
@@ -202,35 +203,59 @@
 (defonce ^:private reference-load-durations
   (delay (edn/read-string (slurp "test_resources/load-durations.edn"))))
 
+(defn- rows-add-ids
+  "Add to the begining of each row an auto-increment int value."
+  [rows]
+  (map-indexed (fn [i row]
+                 (cons (inc i) row)) rows))
+
+(defn- add-pks-if-needed
+  "Add a pk for table that doesn't have one."
+  [driver tabledefs]
+  (map (fn [{:keys [field-definitions] :as tabledef}]
+         (if-not (some :pk? field-definitions)
+           (-> tabledef
+               (update :field-definitions #(cons (tx/map->FieldDefinition
+                                                  {:field-name    (sql.tx/pk-field-name driver)
+                                                   :base-type     {:native (sql.tx/pk-sql-type driver)}
+                                                   :semantic-type :type/PK
+                                                   :pk?           true})
+                                                 %))
+               (update :rows rows-add-ids))
+           tabledef))
+       tabledefs))
+
 (defn create-db!
   "Default implementation of `create-db!` for SQL drivers."
   {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
-  [driver {:keys [table-definitions], :as dbdef} & options]
+  [driver dbdef & options]
   ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
-  (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
-    (execute/execute-sql! driver :server dbdef statement))
-  ;; now execute statements to create the DB
-  (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
-    (execute/execute-sql! driver :server dbdef statement))
-  ;; next, get a set of statements for creating the tables
-  (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
-    ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
-    ;; DB rather than on `:server` (no DB in particular)
-    (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
-  ;; Now load the data for each Table
-  (doseq [tabledef table-definitions
-          :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
-                                                   u/format-nanoseconds)
-                                           "NONE")]]
-    (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
-                       (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-               (try
-                (load-data! driver dbdef tabledef)
-                (catch Throwable e
-                  (throw (ex-info (format "Error loading data: %s" (ex-message e))
-                                  {:driver driver, :tabledef (update tabledef :rows (fn [rows]
-                                                                                      (concat (take 10 rows) ['...])))}
-                                  e)))))))
+  (let [{:keys [table-definitions]
+         :as   dbdef}              (update dbdef :table-definitions (partial add-pks-if-needed driver))]
+    (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
+      (execute/execute-sql! driver :server dbdef statement))
+    ;; now execute statements to create the DB
+    (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
+      (execute/execute-sql! driver :server dbdef statement))
+    ;; next, get a set of statements for creating the tables
+    (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
+      ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
+      ;; DB rather than on `:server` (no DB in particular)
+      (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
+    ;; Now load the data for each Table
+    (doseq [tabledef table-definitions
+            :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
+                                                     u/format-nanoseconds)
+                                             "NONE")]]
+      (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
+                         (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
+                 (try
+                  (load-data! driver dbdef tabledef)
+                  (catch Throwable e
+                    (throw (ex-info (format "Error loading data: %s" (ex-message e))
+                                    {:driver driver, :tabledef (update tabledef :rows (fn [rows]
+                                                                                        (concat (take 10 rows) ['...])))}
+                                    e))))))))
 
 (defn destroy-db!
   "Default impl of [[metabase.test.data.interface/destroy-db!]] for SQL drivers."
