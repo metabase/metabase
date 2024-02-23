@@ -1,20 +1,15 @@
+import type React from "react";
+
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { Flex } from "metabase/ui";
 
 import type {
   EntityPickerOptions,
   TypeWithModel,
-  CollectionPickerItem,
   PickerState,
   TisFolder,
 } from "../../types";
 import type { EntityItemListProps } from "../ItemList";
-import {
-  RootItemList,
-  EntityItemList,
-  PersonalCollectionsItemList,
-} from "../ItemList";
 
 import { AutoScrollBox } from "./AutoScrollBox";
 import { ListBox } from "./NestedItemPicker.styled";
@@ -26,6 +21,11 @@ export interface NestedItemPickerProps<TItem extends TypeWithModel> {
   options: EntityPickerOptions;
   path: PickerState<TItem>;
   isFolder: TisFolder<TItem>;
+  listResolver: React.FC<
+    EntityItemListProps<TItem> & {
+      options: EntityPickerOptions;
+    }
+  >;
 }
 
 export function NestedItemPicker<TItem extends TypeWithModel>({
@@ -35,6 +35,7 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
   options,
   path,
   isFolder,
+  listResolver: ListResolver,
 }: NestedItemPickerProps<TItem>) {
   const handleFolderSelect = (folder: TItem) => {
     onFolderSelect({ folder });
@@ -60,14 +61,13 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
               data-testid={`item-picker-level-${index}`}
             >
               <ErrorBoundary>
-                <ListComponent
+                <ListResolver
                   query={query}
                   selectedItem={selectedItem}
                   options={options}
                   onClick={(item: TItem) => handleClick(item)}
                   itemName={itemName}
                   isCurrentLevel={index === path.length - 2}
-                  // @ts-expect-error - don't worry it's fine
                   isFolder={isFolder}
                 />
               </ErrorBoundary>
@@ -76,53 +76,5 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
         })}
       </Flex>
     </AutoScrollBox>
-  );
-}
-
-function ListComponent({
-  onClick,
-  selectedItem,
-  itemName,
-  options,
-  query,
-  isFolder,
-  isCurrentLevel,
-}: EntityItemListProps<CollectionPickerItem> & {
-  options: EntityPickerOptions;
-}) {
-  if (!query) {
-    return (
-      <RootItemList
-        options={options}
-        selectedItem={selectedItem}
-        onClick={onClick}
-        itemName={itemName}
-        isFolder={isFolder}
-        isCurrentLevel={isCurrentLevel}
-      />
-    );
-  }
-
-  if (query.collection === PERSONAL_COLLECTIONS.id) {
-    return (
-      <PersonalCollectionsItemList
-        onClick={onClick}
-        selectedItem={selectedItem}
-        itemName={itemName}
-        isFolder={isFolder}
-        isCurrentLevel={isCurrentLevel}
-      />
-    );
-  }
-
-  return (
-    <EntityItemList
-      query={query}
-      onClick={onClick}
-      selectedItem={selectedItem}
-      itemName={itemName}
-      isFolder={isFolder}
-      isCurrentLevel={isCurrentLevel}
-    />
   );
 }

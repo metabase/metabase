@@ -5,10 +5,11 @@ import type { IconName } from "metabase/ui";
 import { Button, Icon } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
-import { CollectionPicker } from "../../SpecificEntityPickers/CollectionPicker";
 import type { EntityPickerOptions, CollectionPickerItem } from "../../types";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
 import { NewCollectionDialog } from "../EntityPickerModal/NewCollectionDialog";
+
+import { CollectionPicker } from "./CollectionPicker";
 
 interface CollectionPickerModalProps {
   title: string;

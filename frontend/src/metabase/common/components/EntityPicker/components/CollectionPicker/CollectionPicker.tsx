@@ -8,13 +8,16 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { CollectionId } from "metabase-types/api";
 
-import { LoadingSpinner, NestedItemPicker } from "../components";
 import type {
   PickerState,
   CollectionPickerItem,
   TypeWithModel,
   TisFolder,
-} from "../types";
+} from "../../types";
+import { LoadingSpinner } from "../LoadingSpinner";
+import { NestedItemPicker } from "../NestedItemPicker";
+
+import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
 
 export type CollectionPickerOptions = {
   showPersonalCollections?: boolean;
@@ -105,6 +108,7 @@ export const CollectionPicker = ({
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
       path={path}
+      listResolver={CollectionItemPickerResolver}
     />
   );
 };
