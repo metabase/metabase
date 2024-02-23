@@ -442,6 +442,7 @@
 (defsetting last-used-database-id
   (deferred-tru "The last database a user has used for a native query.")
   :user-local :only
+  :visibility :authenticated
   :type :integer)
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
