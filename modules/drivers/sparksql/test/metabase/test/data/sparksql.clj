@@ -100,7 +100,7 @@
            (throw e)))))))
 
 (defmethod load-data/load-data! :sparksql [& args]
-  (apply load-data/load-data-add-ids! args))
+  (apply load-data/load-data-maybe-add-ids! args))
 
 (defmethod sql.tx/create-table-sql :sparksql
   [driver {:keys [database-name]} {:keys [table-name field-definitions]}]

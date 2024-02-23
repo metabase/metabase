@@ -144,13 +144,21 @@
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time."
   (make-load-data-fn load-data-chunked))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids!
-  "Implementation of `load-data!`. Insert all rows at once; add IDs."
-  (make-load-data-fn load-data-add-ids))
+(defn load-data-maybe-add-ids!
+  "Implementation of `load-data!`. Insert all rows at once;
+  add IDs if tabledef does not contains PK."
+  [_driver _dbdef tabledef]
+  (if-not (some :pk? (:field-definitions tabledef))
+    (make-load-data-fn load-data-add-ids)
+    (make-load-data-fn load-data-chunked)))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-chunked!
-  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time; add IDs."
-  (make-load-data-fn load-data-add-ids load-data-chunked))
+(defn load-data-maybe-add-ids-chunked!
+  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time;
+  add IDs if tabledef does not contains PK."
+  [_driver _dbdef tabledef]
+  (if-not (some :pk? (:field-definitions tabledef))
+    (make-load-data-fn load-data-chunked)
+    (make-load-data-fn load-data-add-ids load-data-chunked)))
 
 ;; Default impl
 
