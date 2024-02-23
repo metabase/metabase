@@ -14,7 +14,6 @@ import {
   enableTracking,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  modal,
   popover,
   resetSnowplow,
   restore,
@@ -683,7 +682,9 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            modal().findByText("Save").click();
+            cy.findByTestId("save-question-modal").within(modal => {
+              cy.findByText("Save").click();
+            });
           },
         );
 
@@ -697,7 +698,9 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            modal().findByText("Save").click();
+            cy.findByTestId("save-question-modal").within(modal => {
+              cy.findByText("Save").click();
+            });
           },
         );
       });
@@ -1012,7 +1015,9 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            modal().findByText("Save").click();
+            cy.findByTestId("save-question-modal").within(modal => {
+              cy.findByText("Save").click();
+            });
             cy.signOut();
             cy.signInAsAdmin();
           },

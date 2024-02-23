@@ -456,7 +456,7 @@ describe("scenarios > question > settings", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
-      cy.get(".ModalContent").contains("button", "Save").click();
+      cy.findByTestId("save-question-modal").contains("button", "Save").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Yes please!").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

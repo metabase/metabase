@@ -1,4 +1,4 @@
-import { restore, modal, openNativeEditor } from "e2e/support/helpers";
+import { restore, openNativeEditor } from "e2e/support/helpers";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
@@ -53,10 +53,9 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").focus().type("sql count");
-
-      cy.button("Save").should("not.be.disabled").click();
+      cy.findByText("Save").should("not.be.disabled").click();
     });
 
     cy.wait("@createQuestion");

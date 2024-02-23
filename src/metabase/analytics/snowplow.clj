@@ -42,6 +42,7 @@
    ::task                 "1-0-0"
    ::action               "1-0-0"
    ::embed_share          "1-0-0"
+   ::llm_usage            "1-0-0"
    ::serialization_export "1-0-0"
    ::serialization_import "1-0-0"})
 
@@ -70,6 +71,7 @@
    ::metabot-feedback-received      ::metabot
    ::embedding-enabled              ::embed_share
    ::embedding-disabled             ::embed_share
+   ::llm-usage                      ::llm_usage
    ::serialization-export           ::serialization_export
    ::serialization-import           ::serialization_import})
 
