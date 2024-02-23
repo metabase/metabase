@@ -17,22 +17,27 @@ interface NewCollectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   parentCollectionId: CollectionId;
+  onNewCollection: (item: any) => void;
 }
 
 export const NewCollectionDialog = ({
   isOpen,
   onClose,
   parentCollectionId,
+  onNewCollection,
 }: NewCollectionDialogProps) => {
   const dispatch = useDispatch();
 
   const onCreateNewCollection = async ({ name }: { name: string }) => {
-    await dispatch(
+    const {
+      payload: { collection: newCollection },
+    } = await dispatch(
       Collections.actions.create({
         name,
         parent_id: parentCollectionId === "root" ? null : parentCollectionId,
       }),
     );
+    onNewCollection({ ...newCollection, model: "collection" });
     onClose();
   };
 

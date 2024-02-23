@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import { t } from "ttag";
 
 import type { IconName } from "metabase/ui";
@@ -30,6 +30,9 @@ export const CollectionPickerModal = ({
     null,
   );
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const pickerRef = useRef<{
+    onFolderSelect: (item: { folder: CollectionPickerItem }) => void;
+  }>();
 
   const searchFilter = useCallback(
     searchResults =>
@@ -75,10 +78,15 @@ export const CollectionPickerModal = ({
           onItemSelect={handleItemSelect}
           initialValue={value}
           options={options}
+          ref={pickerRef}
         />
       ),
     },
   ];
+
+  const handleNewCollectionCreate = (folder: CollectionPickerItem) => {
+    pickerRef.current?.onFolderSelect({ folder });
+  };
 
   return (
     <>
@@ -98,6 +106,7 @@ export const CollectionPickerModal = ({
         isOpen={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         parentCollectionId={selectedItem?.id || value?.id || "root"}
+        onNewCollection={handleNewCollectionCreate}
       />
     </>
   );

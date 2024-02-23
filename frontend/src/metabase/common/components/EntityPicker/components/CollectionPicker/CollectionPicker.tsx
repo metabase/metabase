@@ -1,4 +1,11 @@
-import { useEffect, useState } from "react";
+import type React from "react";
+import {
+  useEffect,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+  useCallback,
+} from "react";
 import { t } from "ttag";
 
 import { isRootCollection } from "metabase/collections/utils";
@@ -40,11 +47,14 @@ const isFolder: TisFolder<CollectionPickerItem> = <TItem extends TypeWithModel>(
   item: TItem,
 ) => item.model === "collection";
 
-export const CollectionPicker = ({
-  onItemSelect,
-  initialValue,
-  options = defaultOptions,
-}: CollectionPickerProps) => {
+export const CollectionPickerInner = (
+  {
+    onItemSelect,
+    initialValue,
+    options = defaultOptions,
+  }: CollectionPickerProps,
+  ref: React.Ref<unknown>,
+) => {
   const [path, setPath] = useState<PickerState<CollectionPickerItem>>(() =>
     getStateFromIdPath({
       idPath: ["root"],
@@ -60,14 +70,27 @@ export const CollectionPicker = ({
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
-  const onFolderSelect = ({ folder }: { folder: CollectionPickerItem }) => {
-    const newPath = getStateFromIdPath({
-      idPath: getCollectionIdPath(folder, userPersonalCollectionId),
-      namespace: options.namespace,
-    });
-    setPath(newPath);
-    onItemSelect(folder);
-  };
+  const onFolderSelect = useCallback(
+    ({ folder }: { folder: CollectionPickerItem }) => {
+      const newPath = getStateFromIdPath({
+        idPath: getCollectionIdPath(folder, userPersonalCollectionId),
+        namespace: options.namespace,
+      });
+      setPath(newPath);
+      onItemSelect(folder);
+    },
+    [setPath, onItemSelect, options.namespace, userPersonalCollectionId],
+  );
+
+  // Exposing onFolderSelect so that parent can select newly created
+  // folder
+  useImperativeHandle(
+    ref,
+    () => ({
+      onFolderSelect,
+    }),
+    [onFolderSelect],
+  );
 
   useEffect(
     function setInitialPath() {
@@ -112,6 +135,8 @@ export const CollectionPicker = ({
     />
   );
 };
+
+export const CollectionPicker = forwardRef(CollectionPickerInner);
 
 const getCollectionIdPath = (
   collection: Pick<
