@@ -733,10 +733,10 @@
                      :attributes {"cat" 50}}
       (letfn [(run-query []
                 (qp/process-query (assoc (mt/mbql-query venues {:aggregation [[:count]]})
-                                         :cache-strategy {:type           :ttl
-                                                          :multiplier     60
-                                                          :execution-time 10
-                                                          :min-duration   0})))]
+                                         :cache-strategy {:type             :ttl
+                                                          :multiplier       60
+                                                          :avg-execution-ms 10
+                                                          :min-duration     0})))]
         (testing "Run the query, should not be cached"
           (let [result (run-query)]
             (is (= nil
@@ -1048,10 +1048,10 @@
               _         (is (integer? card-id))
               query     (t2/select-one-fn :dataset_query Card :id card-id)
               run-query (fn []
-                          (let [results (qp/process-query (assoc query :cache-strategy {:type           :ttl
-                                                                                        :multiplier     60
-                                                                                        :execution-time 10
-                                                                                        :min-duration   0}))]
+                          (let [results (qp/process-query (assoc query :cache-strategy {:type             :ttl
+                                                                                        :multiplier       60
+                                                                                        :avg-execution-ms 10
+                                                                                        :min-duration     0}))]
                             {:cached?  (boolean (:cached (:cache/details results)))
                              :num-rows (count (mt/rows results))}))]
           (mt/with-temporary-setting-values [enable-query-caching true]

@@ -5871,7 +5871,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: updated_at
-                  remarks: Timestamp when the config was updated (by a user action or by a run)
+                  remarks: Timestamp when the config was updated
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
@@ -5889,14 +5889,20 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: payload
-                  remarks: payload for strategies needing to keep some data between runs
+                  name: state
+                  remarks: state for strategies needing to keep some data between runs
                   type: ${text.type}
                   constraints:
                     nullable: true
               - column:
+                  name: last_expired_at
+                  remarks: indicates when a cache was expired last time for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
                   name: next_run_at
-                  remarks: Keeps next time to run for schedule-based strategies
+                  remarks: keeps next time to run for schedule-based strategies
                   type: ${timestamp_type}
                   constraints:
                     nullable: true
@@ -5905,7 +5911,6 @@ databaseChangeLog:
       id: v50.2024-02-16T16:00:01
       author: piranha
       comment: 'Effective caching #36847'
-      rollback: # will be removed with the table
       changes:
         - addUniqueConstraint:
             remarks: Unique config for cache_config (model, model_id)
@@ -5917,7 +5922,6 @@ databaseChangeLog:
       id: v50.2024-02-16T16:00:02
       author: piranha
       comment: 'Effective caching #36847'
-      rollback: # will be removed with the table
       changes:
         - createIndex:
             tableName: cache_config

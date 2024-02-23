@@ -58,10 +58,10 @@
       i/CacheBackend
       (cached-results [this query-hash strategy respond]
         (assert (= :ttl (:type strategy)))
-        (assert (contains? strategy :execution-time))
+        (assert (contains? strategy :avg-execution-ms))
         (let [hex-hash (codecs/bytes->hex query-hash)
               max-age-seconds (* (:multiplier strategy)
-                                 (:execution-time strategy))]
+                                 (:avg-execution-ms strategy))]
           (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
           (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
                                                                                (when (= hash hex-hash)
@@ -117,7 +117,7 @@
 (defn ^:private ttl-strategy []
   {:type           :ttl
    :multiplier     60
-   :execution-time 1
+   :avg-execution-ms 1
    :min-duration   (public-settings/query-caching-min-ttl)})
 
 (defn- test-query [query-kvs]
