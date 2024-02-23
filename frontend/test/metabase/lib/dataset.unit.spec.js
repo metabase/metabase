@@ -1,10 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
+import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

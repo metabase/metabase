@@ -1,12 +1,12 @@
+import Dimension from "metabase-lib/Dimension";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import type {
   DatasetColumn,
   DatasetData,
   FieldReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { normalize } from "metabase-lib/queries/utils/normalize";
-import Dimension from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;

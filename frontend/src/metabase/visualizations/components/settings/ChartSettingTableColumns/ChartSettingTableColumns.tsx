@@ -4,11 +4,11 @@ import { t } from "ttag";
 import { FieldPanel } from "metabase/querying";
 import { Button } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
 
 import { TableColumnPanel } from "./TableColumnPanel";
 import type { EditWidgetData } from "./types";
