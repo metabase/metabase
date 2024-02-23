@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+export { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -7,7 +8,6 @@ import type * as Lib from "metabase-lib";
 import { FilterColumnName } from "../FilterColumnName";
 
 import { InfoIcon } from "./FilterTitle.styled";
-export { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 
 type FilterTitleProps = {
   children?: ReactNode;
