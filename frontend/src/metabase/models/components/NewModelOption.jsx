@@ -4,6 +4,7 @@ import { Component } from "react";
 import { Link } from "react-router";
 
 import { color } from "metabase/lib/colors";
+
 import S from "./NewModelOption.module.css";
 
 export default class NewModelOption extends Component {

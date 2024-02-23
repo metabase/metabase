@@ -8,15 +8,15 @@ import { t } from "ttag";
 
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import CS from "metabase/css/core/index.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import CS from "metabase/css/core/index.css";
-
 import { AggregationWidget } from "../AggregationWidget";
 import { FilterPopover } from "../FilterPopover";
 import { FilterWidgetList } from "../FilterWidgetList";
+
 import S from "./GuiQueryEditor.module.css";
 
 /**
