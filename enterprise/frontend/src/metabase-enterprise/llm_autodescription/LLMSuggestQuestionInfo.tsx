@@ -17,13 +17,14 @@ export const LLMSuggestQuestionInfo = ({
   question,
   onAccept,
 }: TLLMIndicatorProps) => {
-  const state = useSelector(state => state);
-  const inactive = !getSetting(state, "ee-openai-api-key");
-
   const [acceptedSuggestion, setAcceptedSuggestion] = useState(false);
 
+  const isActive = useSelector(
+    state => !!getSetting(state, "ee-openai-api-key"),
+  );
+
   const { loading, value } = useAsync(async () => {
-    if (inactive) {
+    if (!isActive) {
       return { name: undefined, description: undefined };
     }
     const response = await postSummarizeCard(question.card());
@@ -40,7 +41,7 @@ export const LLMSuggestQuestionInfo = ({
     }
   };
 
-  if (inactive || acceptedSuggestion) {
+  if (!isActive || acceptedSuggestion) {
     return null;
   }
 
