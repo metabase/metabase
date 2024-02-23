@@ -3,14 +3,17 @@ import { rem } from "@mantine/core";
 
 export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
   NavLink: {
-    styles: {
+    styles: theme => ({
       root: {
         borderRadius: rem(8),
       },
       label: {
         fontSize: rem(14),
       },
-    },
+      icon: {
+        color: theme.fn.themeColor("text-dark"),
+      },
+    }),
     variants: {
       "mb-light": theme => ({
         root: {
@@ -22,9 +25,6 @@ export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
             backgroundColor: theme.fn.themeColor("brand-lighter"),
             color: theme.fn.themeColor("text-dark"),
           },
-        },
-        icon: {
-          color: theme.fn.themeColor("text-dark"),
         },
       }),
       "mb-dark": theme => ({
