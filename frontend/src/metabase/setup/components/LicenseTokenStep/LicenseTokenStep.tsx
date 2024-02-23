@@ -3,14 +3,11 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
+import { useStep } from "metabase/setup/useStep";
 import { Button, Divider, Text } from "metabase/ui";
 
-import { selectStep, submitLicenseToken } from "../../actions";
-import {
-  getIsSetupCompleted,
-  getIsStepActive,
-  getIsStepCompleted,
-} from "../../selectors";
+import { submitLicenseToken } from "../../actions";
+import { getIsSetupCompleted } from "../../selectors";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
@@ -18,19 +15,16 @@ import type { NumberedStepProps } from "../types";
 import { LicenseTokenForm } from "./LicenseTokenForm";
 
 export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
+  const { isStepActive, isStepCompleted, selectThisStep } =
+    useStep("license_token");
+
   const storeToken = useSelector(state => state.setup.licenseToken);
 
-  const isStepActive = useSelector(state =>
-    getIsStepActive(state, "license_token"),
-  );
-  const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, "license_token"),
-  );
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
   const handleStepSelect = () => {
-    dispatch(selectStep("license_token"));
+    selectThisStep();
   };
 
   const handleValidSubmit = (token: string | null) => {
