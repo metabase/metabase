@@ -48,14 +48,18 @@ export const DashboardStyled = styled.div`
   width: 100%;
 `;
 
-export const DashboardBody = styled.div`
+export const DashboardBody = styled.div<{ hasOwnScrollbar: boolean }>`
   position: relative;
   display: flex;
   flex: 1 0 auto;
   min-width: 0;
   min-height: 0;
 
-  flex-basis: 0;
+  ${({ hasOwnScrollbar }) =>
+    hasOwnScrollbar &&
+    css`
+      flex-basis: 0;
+    `}
 `;
 
 export const DashboardHeaderContainer = styled.header<{
@@ -83,6 +87,7 @@ export const DashboardHeaderContainer = styled.header<{
 `;
 
 export const CardsContainer = styled(FullWidthContainer)`
+  box-sizing: border-box;
   margin-top: 8px;
 `;
 
@@ -103,7 +108,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   /* z-index should be higher than in dashcards */
   z-index: 3;
   top: 0;
-  left: 0;
 
   transition: background-color 1s linear, border-color 1s linear,
     color 1s linear;

@@ -7,7 +7,9 @@ import _ from "underscore";
 
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
+import { getIsSidebarOpen } from "metabase/dashboard/selectors";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -225,6 +227,7 @@ function DashboardInner(props: DashboardProps) {
     toggleSidebar,
   } = props;
 
+  const isDashboardSidebarOpen = useSelector(getIsSidebarOpen);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [hasScroll, setHasScroll] = useState(getMainElement()?.scrollTop > 0);
@@ -510,7 +513,7 @@ function DashboardInner(props: DashboardProps) {
 
   return (
     <DashboardLoadingAndErrorWrapper
-      isFullHeight={isEditing || isSharing}
+      isFullHeight={isEditing || isDashboardSidebarOpen}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       loading={!dashboard}
@@ -536,7 +539,7 @@ function DashboardInner(props: DashboardProps) {
             />
           </DashboardHeaderContainer>
 
-          <DashboardBody>
+          <DashboardBody hasOwnScrollbar={isEditing || isDashboardSidebarOpen}>
             <ParametersAndCardsContainer
               id={DASHBOARD_PDF_EXPORT_ROOT_ID}
               data-testid="dashboard-parameters-and-cards"
