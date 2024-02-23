@@ -1,12 +1,12 @@
 import { useCallback, useState, useMemo } from "react";
 import { t } from "ttag";
-import { Checkbox, TextInput, Box, Flex, Text } from "metabase/ui";
 
-import { Icon } from "metabase/core/components/Icon";
-import type { TableColumnOrderSetting } from "metabase-types/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
-
+import { Icon } from "metabase/core/components/Icon";
+import { Checkbox, TextInput, Box, Flex, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { TableColumnOrderSetting } from "metabase-types/api";
+
 import type {
   ColumnSetting,
   ColumnMetadataItem,

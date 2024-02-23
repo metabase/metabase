@@ -1,14 +1,12 @@
 import { t } from "ttag";
 
-import type { CollectionItemModel } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
-
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import CheckBox from "metabase/core/components/CheckBox";
+import type { IconName } from "metabase/core/components/Icon";
 import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import { color as c } from "metabase/lib/colors";
-import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+import type { CollectionItemModel } from "metabase-types/api";
 
 import { ActionIcon, ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 

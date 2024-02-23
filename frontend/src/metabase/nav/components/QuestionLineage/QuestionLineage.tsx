@@ -1,7 +1,8 @@
 import { t } from "ttag";
-import Link from "metabase/core/components/Link/Link";
+
 import Badge from "metabase/components/Badge";
 import type { IconName } from "metabase/core/components/Icon";
+import Link from "metabase/core/components/Link/Link";
 import type Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
 

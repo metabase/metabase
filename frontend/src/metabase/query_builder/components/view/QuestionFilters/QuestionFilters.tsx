@@ -1,18 +1,17 @@
 import { t } from "ttag";
 
-import { Flex, Tooltip } from "metabase/ui";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
-
 import { color } from "metabase/lib/colors";
-
-import type { QueryBuilderMode } from "metabase-types/store";
+import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
+import { Flex, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Filter from "metabase-lib/queries/structured/Filter";
+import type { QueryBuilderMode } from "metabase-types/store";
 
-import ViewPill from "../ViewPill";
 import type { ViewPillProps } from "../ViewPill";
+import ViewPill from "../ViewPill";
+
 import {
   FilterHeaderContainer,
   FilterHeaderButton,

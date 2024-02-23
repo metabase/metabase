@@ -1,9 +1,11 @@
 import { t } from "ttag";
+
+import type { IconName } from "metabase/core/components/Icon";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";
-import type { InitialSyncStatus } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
 import type Database from "metabase-lib/metadata/Database";
+import type { InitialSyncStatus } from "metabase-types/api";
+
 import StatusSmall from "../StatusSmall";
 
 export interface DatabaseStatusSmallProps {

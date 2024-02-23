@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { ClickMappingsConnected } from "metabase/dashboard/components/ClickMappings";
-
 import type {
   ClickBehavior,
   Dashboard,

@@ -6,9 +6,11 @@ import {
   compile,
   ResolverError,
 } from "metabase-lib/expressions/pratt";
-import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
+
 import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
+import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
 import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
+
 import {
   MBQL_CLAUSES,
   getMBQLName,

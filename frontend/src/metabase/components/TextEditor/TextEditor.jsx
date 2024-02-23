@@ -1,7 +1,7 @@
 /*global ace*/
 /* eslint-disable react/prop-types */
-import { Component, createRef } from "react";
 import PropTypes from "prop-types";
+import { Component, createRef } from "react";
 
 import "ace/ace";
 import "ace/mode-plain_text";

@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import type { LegacyDrill } from "metabase/visualizations/types";
+
 import { getColumnFilterDrillPopover } from "metabase/visualizations/click-actions/components/ColumnFilterDrillPopover";
+import type { LegacyDrill } from "metabase/visualizations/types";
 import { columnFilterDrill } from "metabase-lib/queries/drills/column-filter-drill";
 
 export const ColumnFilterDrill: LegacyDrill = ({ question, clicked }) => {

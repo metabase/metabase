@@ -1,11 +1,14 @@
-import { t } from "ttag";
 import { useCallback, useMemo } from "react";
-import type { DashCardId } from "metabase-types/api";
-import { Divider, Menu } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
+import { t } from "ttag";
+
 import { moveDashCardToTab } from "metabase/dashboard/actions";
+import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { Divider, Menu } from "metabase/ui";
+import type { DashCardId } from "metabase-types/api";
+
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
+
 import { MoveDashCardActionStyled } from "./DashCardTabMenu.styled";
 
 interface DashCardTabMenuProps {

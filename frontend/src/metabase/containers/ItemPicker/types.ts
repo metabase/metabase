@@ -1,5 +1,4 @@
 import type { IconProps } from "metabase/core/components/Icon";
-
 import type { Collection } from "metabase-types/api";
 
 export type PickerModel = "card" | "collection" | "dataset" | "dashboard";

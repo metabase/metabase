@@ -1,6 +1,8 @@
+import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
-import { DefaultMode } from "metabase/visualizations/click-actions/modes/DefaultMode";
 import { checkNotNull } from "metabase/lib/types";
+import { Mode } from "metabase/visualizations/click-actions/Mode";
+import { DefaultMode } from "metabase/visualizations/click-actions/modes/DefaultMode";
 import type {
   RegularClickAction,
   QueryClickActionsMode,
@@ -9,8 +11,6 @@ import {
   createSampleDatabase,
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
-import { Mode } from "metabase/visualizations/click-actions/Mode";
 
 import { ClickActionsView } from "./ClickActionsView";
 

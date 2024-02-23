@@ -2,6 +2,7 @@
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
+
 import { ButtonRoot } from "./QuestionNotebookButton.styled";
 
 export function QuestionNotebookButton({

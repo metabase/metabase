@@ -1,10 +1,12 @@
-import { t } from "ttag";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import * as Urls from "metabase/lib/urls";
-import type { Collection, Timeline } from "metabase-types/api";
-import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import { t } from "ttag";
+
 import Link from "metabase/core/components/Link";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import type { Collection, Timeline } from "metabase-types/api";
+
 import {
   EmptyStateBody,
   EmptyStateChart,

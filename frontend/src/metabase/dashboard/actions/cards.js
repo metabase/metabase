@@ -1,20 +1,20 @@
-import _ from "underscore";
 import { t } from "ttag";
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import _ from "underscore";
 
+import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import Questions from "metabase/entities/questions";
-
+import { createCard } from "metabase/lib/card";
 import {
   getPositionForNewDashCard,
   DEFAULT_CARD_SIZE,
 } from "metabase/lib/dashboard_grid";
-import { createCard } from "metabase/lib/card";
-
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { getVisualizationRaw } from "metabase/visualizations";
-import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+
 import { trackCardCreated } from "../analytics";
 import { getDashCardById } from "../selectors";
 import { isVirtualDashCard } from "../utils";
+
 import {
   ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,

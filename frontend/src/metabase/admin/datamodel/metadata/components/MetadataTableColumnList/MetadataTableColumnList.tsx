@@ -1,23 +1,26 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
-import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
-import Tables from "metabase/entities/tables";
-import { Icon } from "metabase/core/components/Icon";
-import AccordionList from "metabase/core/components/AccordionList";
+
 import Grabber from "metabase/components/Grabber";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import {
   SortableContainer,
   SortableElement,
   SortableHandle,
 } from "metabase/components/sortable";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import type { FieldId, SchemaId, TableFieldOrder } from "metabase-types/api";
-import type Table from "metabase-lib/metadata/Table";
+import AccordionList from "metabase/core/components/AccordionList";
+import { Icon } from "metabase/core/components/Icon";
+import Tables from "metabase/entities/tables";
 import type Field from "metabase-lib/metadata/Field";
+import type Table from "metabase-lib/metadata/Table";
+import type { FieldId, SchemaId, TableFieldOrder } from "metabase-types/api";
+
 import MetadataTableColumn from "../MetadataTableColumn";
+
 import { SortButtonContainer } from "./MetadataTableColumnList.styled";
 
 const ORDER_SECTIONS = [

@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
+import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import {
   BrowseHeaderContent,
   BrowseHeaderRoot,

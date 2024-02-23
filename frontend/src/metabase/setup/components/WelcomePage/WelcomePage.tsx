@@ -1,12 +1,15 @@
 import { useEffect } from "react";
 import { useTimeout } from "react-use";
 import { t } from "ttag";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import LogoIcon from "metabase/components/LogoIcon";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import { loadDefaults, selectStep } from "../../actions";
 import { LANGUAGE_STEP, LOCALE_TIMEOUT } from "../../constants";
 import { getIsLocaleLoaded } from "../../selectors";
 import { SetupHelp } from "../SetupHelp";
+
 import {
   PageRoot,
   PageMain,

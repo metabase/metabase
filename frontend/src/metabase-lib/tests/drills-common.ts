@@ -1,9 +1,13 @@
 /* istanbul ignore file */
+import type * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
+import { DEFAULT_QUERY, SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import type {
   RowValue,
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryApi,
 } from "metabase-types/api";
+import { createMockColumn } from "metabase-types/api/mocks";
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersDiscountDatasetColumn,
@@ -28,10 +32,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockColumn } from "metabase-types/api/mocks";
-import type * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { DEFAULT_QUERY, SAMPLE_METADATA } from "metabase-lib/test-helpers";
 
 export type BaseTestCase = {
   clickType: "cell" | "header";

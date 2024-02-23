@@ -1,9 +1,18 @@
-import _ from "underscore";
 import userEvent from "@testing-library/user-event";
+import _ from "underscore";
+
 import { createMockMetadata } from "__support__/metadata";
 import { render, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import {
+  createQuery,
+  columnFinder,
+  findAggregationOperator,
+} from "metabase-lib/test-helpers";
 import type { Metric, StructuredDatasetQuery } from "metabase-types/api";
 import {
   createMockMetric,
@@ -22,15 +31,6 @@ import {
   PRODUCTS,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import {
-  createQuery,
-  columnFinder,
-  findAggregationOperator,
-} from "metabase-lib/test-helpers";
 
 import { AggregationPicker } from "./AggregationPicker";
 

@@ -1,3 +1,4 @@
+import { renderWithProviders, screen } from "__support__/ui";
 import type { DatabaseData } from "metabase-types/api";
 import { createMockDatabaseData } from "metabase-types/api/mocks";
 import {
@@ -5,8 +6,9 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { DATABASE_STEP, PREFERENCES_STEP } from "../../constants";
+
 import { DatabaseStep } from "./DatabaseStep";
 
 interface SetupOpts {

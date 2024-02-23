@@ -1,11 +1,13 @@
-import { useState } from "react";
 import PropTypes from "prop-types";
+import { useState } from "react";
 import { t } from "ttag";
-import { formatChannels } from "metabase/lib/notifications";
+
+import ModalContent from "metabase/components/ModalContent";
+import FormMessage from "metabase/components/form/FormMessage";
 import Button from "metabase/core/components/Button";
 import CheckBox from "metabase/core/components/CheckBox";
-import FormMessage from "metabase/components/form/FormMessage";
-import ModalContent from "metabase/components/ModalContent";
+import { formatChannels } from "metabase/lib/notifications";
+
 import { CheckboxLabel } from "./AuditNotificationDeleteModal.styled";
 
 const propTypes = {

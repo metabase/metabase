@@ -1,5 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import type Dimension from "metabase-lib/Dimension";
+import { FieldDimension } from "metabase-lib/Dimension";
+import DimensionOptions from "metabase-lib/DimensionOptions";
 import type {
   Join as JoinObject,
   JoinFields,
@@ -7,10 +10,9 @@ import type {
   JoinCondition,
   JoinedFieldReference,
 } from "metabase-types/api";
-import DimensionOptions from "metabase-lib/DimensionOptions";
-import type Dimension from "metabase-lib/Dimension";
-import { FieldDimension } from "metabase-lib/Dimension";
+
 import StructuredQuery from "../StructuredQuery";
+
 import { MBQLObjectClause } from "./MBQLClause";
 
 const JOIN_OPERATORS = ["=", ">", "<", ">=", "<=", "!="];

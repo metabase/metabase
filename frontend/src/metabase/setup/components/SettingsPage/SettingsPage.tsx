@@ -1,12 +1,14 @@
 import LogoIcon from "metabase/components/LogoIcon";
+
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
+import { CompletedStep } from "../CompletedStep";
 import { DatabaseHelp } from "../DatabaseHelp";
 import { DatabaseStep } from "../DatabaseStep";
-import { CompletedStep } from "../CompletedStep";
 import { LanguageStep } from "../LanguageStep";
 import { PreferencesStep } from "../PreferencesStep";
-import { UserStep } from "../UserStep";
 import { SetupHelp } from "../SetupHelp";
+import { UserStep } from "../UserStep";
+
 import { PageBody, PageHeader } from "./SettingsPage.styled";
 
 export const SettingsPage = (): JSX.Element => {

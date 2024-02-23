@@ -1,16 +1,12 @@
-import { Fragment, useState, memo } from "react";
 import PropTypes from "prop-types";
+import { Fragment, useState, memo } from "react";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
 import Tooltip from "metabase/core/components/Tooltip";
+import { lighten } from "metabase/lib/colors";
 
-import {
-  PermissionsSelectOption,
-  optionShape,
-} from "./PermissionsSelectOption";
 
 import {
   PermissionsSelectRoot,
@@ -23,6 +19,10 @@ import {
   DisabledPermissionOption,
   SelectedOption,
 } from "./PermissionsSelect.styled";
+import {
+  PermissionsSelectOption,
+  optionShape,
+} from "./PermissionsSelectOption";
 
 const propTypes = {
   options: PropTypes.arrayOf(PropTypes.shape(optionShape)).isRequired,

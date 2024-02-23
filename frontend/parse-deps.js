@@ -3,11 +3,12 @@
 /* eslint-disable import/no-commonjs, no-undef, no-console */
 const fs = require("fs");
 const readline = require("readline");
-const path = require("path");
 
+const babel = require("@babel/core");
 const glob = require("glob");
 const minimatch = require("minimatch");
-const babel = require("@babel/core");
+const path = require("path");
+
 
 const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}";
 

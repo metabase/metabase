@@ -1,5 +1,5 @@
-import { getSize, rem } from "@mantine/core";
 import type { InputStylesParams, MantineThemeOverride } from "@mantine/core";
+import { getSize, rem } from "@mantine/core";
 
 const SIZES = {
   xs: rem(32),

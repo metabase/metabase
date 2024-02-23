@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import type { FontWidgetProps } from "./FontWidget";
 import FontWidget from "./FontWidget";
 import type { FontSetting, FontSettingValues } from "./types";

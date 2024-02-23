@@ -1,18 +1,17 @@
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { getFullName } from "metabase/lib/user";
-import { Icon } from "metabase/core/components/Icon";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import PaginationControls from "metabase/components/PaginationControls";
-
+import { Icon } from "metabase/core/components/Icon";
 import User from "metabase/entities/users";
-
-import type { Group, Member, User as IUser } from "metabase-types/api";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import type { State } from "metabase-types/store";
+import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
+import { getFullName } from "metabase/lib/user";
+import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import type { Group, Member, User as IUser } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import AddMemberRow from "../AddMemberRow";
 
 const canEditMembership = (group: Group) =>

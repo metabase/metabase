@@ -9,11 +9,11 @@ import {
   getFilteringParameterValuesMap,
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
+import Field from "metabase-lib/metadata/Field";
 import {
   createSampleDatabase,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import Field from "metabase-lib/metadata/Field";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

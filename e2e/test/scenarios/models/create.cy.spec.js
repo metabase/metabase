@@ -1,6 +1,6 @@
+import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { modal, popover, restore, visitCollection } from "e2e/support/helpers";
 
-import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const modelName = "A name";
 

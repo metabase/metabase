@@ -1,8 +1,10 @@
 import { t } from "ttag";
+
+import Databases from "metabase/entities/databases";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Databases from "metabase/entities/databases";
 import type Database from "metabase-lib/metadata/Database";
+
 import MetadataHeader from "../MetadataHeader";
 import MetadataTable from "../MetadataTable";
 import MetadataTablePicker from "../MetadataTablePicker";

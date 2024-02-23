@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import debounce from "lodash.debounce";
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import cx from "classnames";
 import _ from "underscore";
-import debounce from "lodash.debounce";
 
-import resizeObserver from "metabase/lib/resize-observer";
 import { isCypressActive } from "metabase/env";
+import resizeObserver from "metabase/lib/resize-observer";
 
 const WAIT_TIME = 300;
 

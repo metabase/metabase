@@ -1,10 +1,11 @@
 import type { Location } from "history";
 import querystring from "querystring";
-import * as Urls from "metabase/lib/urls";
+
 import { serializeCardForUrl } from "metabase/lib/card";
+import * as Urls from "metabase/lib/urls";
+import type Question from "metabase-lib/Question";
 import type { Card } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;

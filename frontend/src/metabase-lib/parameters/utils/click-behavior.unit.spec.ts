@@ -1,6 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as dateFormatUtils from "metabase/lib/formatting/date";
 import { checkNotNull } from "metabase/lib/types";
+import Question from "metabase-lib/Question";
+import type Field from "metabase-lib/metadata/Field";
 import type { FieldId, TemplateTagType } from "metabase-types/api";
 import {
   createMockCard,
@@ -27,8 +29,7 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import type Field from "metabase-lib/metadata/Field";
-import Question from "metabase-lib/Question";
+
 import {
   getDataFromClicked,
   formatSourceForTarget,

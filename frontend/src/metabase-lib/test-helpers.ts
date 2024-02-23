@@ -1,6 +1,8 @@
 /* istanbul ignore file */
 
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type {
   DatabaseId,
   DatasetQuery,
@@ -11,8 +13,7 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import type Metadata from "./metadata/Metadata";
 import * as ML from "./v2";
 

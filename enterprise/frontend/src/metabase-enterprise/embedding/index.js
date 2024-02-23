@@ -1,9 +1,11 @@
 import { t } from "ttag";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
 } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+
 import { EmbeddingAppOriginDescription } from "./components/EmbeddingAppOriginDescription";
 import {
   EmbeddingAppSameSiteCookieDescription,

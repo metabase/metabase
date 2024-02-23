@@ -1,9 +1,9 @@
-import { t } from "ttag";
 import { isValidCronExpression } from "cron-expression-validator";
 import cronstrue from "cronstrue";
+import { t } from "ttag";
 
-import { has24HourModeSetting } from "metabase/lib/time";
 import MetabaseSettings from "metabase/lib/settings";
+import { has24HourModeSetting } from "metabase/lib/time";
 
 function translateErrorMessage(message: string) {
   const errorMessageMap: Record<string, string> = {

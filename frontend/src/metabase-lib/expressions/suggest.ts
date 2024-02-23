@@ -1,6 +1,12 @@
 import _ from "underscore";
 
 import {
+  formatDimensionName,
+  formatMetricName,
+  formatSegmentName,
+  getDimensionName,
+} from "metabase-lib/expressions";
+import {
   enclosingFunction,
   partialMatch,
 } from "metabase-lib/expressions/completer";
@@ -11,19 +17,13 @@ import {
   getMBQLName,
   MBQL_CLAUSES as MBQL_CLAUSES_CONFIG,
 } from "metabase-lib/expressions/config";
-import {
-  formatDimensionName,
-  formatMetricName,
-  formatSegmentName,
-  getDimensionName,
-} from "metabase-lib/expressions";
+import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
 import type {
   HelpText,
   MBQLClauseFunctionConfig,
   MBQLClauseMap,
 } from "metabase-lib/expressions/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
 
 const MBQL_CLAUSES = MBQL_CLAUSES_CONFIG as MBQLClauseMap;
 

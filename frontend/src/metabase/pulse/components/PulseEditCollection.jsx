@@ -3,6 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import CollectionSelect from "metabase/containers/CollectionSelect";
+
 import { CollectionSelectContainer } from "./PulseEditCollection.styled";
 
 export default class PulseEditCollection extends Component {

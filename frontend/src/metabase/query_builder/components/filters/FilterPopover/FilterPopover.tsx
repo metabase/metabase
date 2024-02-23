@@ -1,34 +1,33 @@
-import { useState, useEffect } from "react";
 import type * as React from "react";
+import { useState, useEffect } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { usePrevious } from "react-use";
-
-import { color } from "metabase/lib/colors";
-
 import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-import type { Expression } from "metabase-types/api";
-import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import type { FieldDimension } from "metabase-lib/Dimension";
+import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
-import { isExpression } from "metabase-lib/expressions";
+import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
+import type { Expression } from "metabase-types/api";
 
-import DatePicker from "../pickers/DatePicker/DatePicker";
-import TimePicker from "../pickers/TimePicker";
-import type { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
 import DimensionList from "../../DimensionList";
+import DatePicker from "../pickers/DatePicker/DatePicker";
+import type { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
+import TimePicker from "../pickers/TimePicker";
+
 import {
   Button,
   EmptyFilterPickerPlaceholder,
   FilterPopoverSeparator,
 } from "./FilterPopover.styled";
 import { FilterPopoverFooter } from "./FilterPopoverFooter";
-import { FilterPopoverPicker } from "./FilterPopoverPicker";
 import { FilterPopoverHeader } from "./FilterPopoverHeader";
+import { FilterPopoverPicker } from "./FilterPopoverPicker";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;

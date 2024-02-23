@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { useInterval } from "react-use";
 import { t } from "ttag";
-import { Box, Stack } from "metabase/ui";
-import Link from "metabase/core/components/Link";
-import Button from "metabase/core/components/Button";
-import type { Collection } from "metabase-types/api";
-import type { FileUpload } from "metabase-types/store/upload";
 
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import {
   isUploadInProgress,
   isUploadCompleted,
   isUploadAborted,
 } from "metabase/lib/uploads";
+import { Box, Stack } from "metabase/ui";
+import type { Collection } from "metabase-types/api";
+import type { FileUpload } from "metabase-types/store/upload";
 
 import StatusLarge from "../StatusLarge";
+
 import { FileUploadErrorModal } from "./FileUploadErrorModal";
 
 const UPLOAD_MESSAGE_UPDATE_INTERVAL = 30 * 1000;

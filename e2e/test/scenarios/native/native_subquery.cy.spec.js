@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   openNativeEditor,
   openQuestionActions,
@@ -7,7 +8,6 @@ import {
   runNativeQuery,
 } from "e2e/support/helpers";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > question > native subquery", () => {

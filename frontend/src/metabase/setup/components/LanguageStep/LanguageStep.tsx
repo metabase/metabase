@@ -1,9 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import Button from "metabase/core/components/Button";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { Locale } from "metabase-types/store";
+
 import { selectStep, updateLocale } from "../../actions";
 import { LANGUAGE_STEP, USER_STEP } from "../../constants";
 import {
@@ -16,6 +18,7 @@ import {
 import { getLocales } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InvactiveStep";
+
 import {
   LocaleGroup,
   LocaleInput,

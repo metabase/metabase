@@ -1,6 +1,7 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import AutosizeTextarea from "react-textarea-autosize";
+
 import { color } from "metabase/lib/colors";
 
 export interface TextPickerInputProps {

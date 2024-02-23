@@ -1,6 +1,9 @@
 import { assocIn } from "icepick";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+
 import { createMockMetadata } from "__support__/metadata";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   createSampleDatabase,
   ORDERS,
@@ -9,8 +12,7 @@ import {
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
+
 import UnderlyingRecordsDrill from "./UnderlyingRecordsDrill";
 
 const metadata = createMockMetadata({

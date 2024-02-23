@@ -1,6 +1,6 @@
+import { MonospaceErrorDisplay } from "./ErrorDetails.styled";
 import type { ErrorDetails } from "./types";
 
-import { MonospaceErrorDisplay } from "./ErrorDetails.styled";
 
 export const ErrorBox = ({ children }: { children: ErrorDetails }) => (
   <MonospaceErrorDisplay>

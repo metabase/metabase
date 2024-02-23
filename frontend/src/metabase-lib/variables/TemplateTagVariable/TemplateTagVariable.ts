@@ -1,6 +1,7 @@
-import type { TemplateTag } from "metabase-types/api";
-import Variable from "metabase-lib/variables/Variable";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Variable from "metabase-lib/variables/Variable";
+import type { TemplateTag } from "metabase-types/api";
+
 import { VARIABLE_ICONS } from "./constants";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

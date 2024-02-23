@@ -1,5 +1,6 @@
 import { waitFor } from "@testing-library/react";
 import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
+
 import {
   setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
@@ -8,6 +9,8 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { IconName } from "metabase/core/components/Icon";
+import type { WrappedResult } from "metabase/search/types";
 import type { SearchModelType, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -16,8 +19,7 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { IconName } from "metabase/core/components/Icon";
-import type { WrappedResult } from "metabase/search/types";
+
 import { InfoText } from "./InfoText";
 
 const MOCK_COLLECTION = createMockCollection({

@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import { Fragment } from "react";
 import PropTypes from "prop-types";
+import { Fragment } from "react";
 
 const Code = ({ children, block }) => {
   if (block) {

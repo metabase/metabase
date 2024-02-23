@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/no-unknown-property */
+import cx from "classnames";
 import { Component } from "react";
 
-import cx from "classnames";
 import { PreviewPaneContainer } from "./PreviewPane.styled";
 
 export default class PreviewPane extends Component {

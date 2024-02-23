@@ -1,18 +1,17 @@
-import _ from "underscore";
 import { assocIn } from "icepick";
+import _ from "underscore";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
-
+import type Question from "metabase-lib/Question";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { Dataset, Series } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
   QueryBuilderMode,
 } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import {
   getFirstQueryResult,
@@ -21,9 +20,8 @@ import {
   getQuestion,
   getRawSeries,
 } from "../../selectors";
-
-import { updateUrl } from "../navigation";
 import { setIsShowingTemplateTagsEditor } from "../native";
+import { updateUrl } from "../navigation";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
 

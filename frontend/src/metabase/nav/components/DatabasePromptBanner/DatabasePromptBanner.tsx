@@ -1,5 +1,5 @@
-import { t } from "ttag";
 import type { Location } from "history";
+import { t } from "ttag";
 
 import Link from "metabase/core/components/Link/Link";
 import { trackDatabasePromptBannerClicked } from "metabase/nav/analytics";

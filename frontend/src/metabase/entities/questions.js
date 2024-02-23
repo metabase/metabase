@@ -1,24 +1,23 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
+import { t } from "ttag";
 
+import { canonicalCollectionId } from "metabase/collections/utils";
+import Collections, {
+  getCollectionType,
+  normalizedCollection,
+} from "metabase/entities/collections";
+import { color } from "metabase/lib/colors";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
+import {
+  API_UPDATE_QUESTION,
+  SOFT_RELOAD_CARD,
+} from "metabase/query_builder/actions";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 
-import Collections, {
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections";
-import {
-  API_UPDATE_QUESTION,
-  SOFT_RELOAD_CARD,
-} from "metabase/query_builder/actions";
-
-import { canonicalCollectionId } from "metabase/collections/utils";
 import forms from "./questions/forms";
 
 const Questions = createEntity({

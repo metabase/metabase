@@ -1,11 +1,10 @@
 import { t } from "ttag";
+
 import { zoomInRow } from "metabase/query_builder/actions";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
   ClickActionProps,
   DefaultClickAction,
 } from "metabase/visualizations/types";
-
 import type Question from "metabase-lib/Question";
 import type { ObjectDetailDrillType } from "metabase-lib/queries/drills/object-detail-drill";
 import {
@@ -13,6 +12,7 @@ import {
   objectDetailFKDrillQuestion,
   objectDetailPKDrillQuestion,
 } from "metabase-lib/queries/drills/object-detail-drill";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 function getAction({
   question,

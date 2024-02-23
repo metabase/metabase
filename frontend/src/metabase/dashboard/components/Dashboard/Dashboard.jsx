@@ -1,18 +1,18 @@
 // TODO: merge with metabase/dashboard/containers/Dashboard.jsx
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import _ from "underscore";
 
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
-import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
+import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
-import { DashboardSidebars } from "../DashboardSidebars";
-import { DashboardGridConnected } from "../DashboardGrid";
 import { SIDEBAR_NAME } from "../../constants";
+import { DashboardGridConnected } from "../DashboardGrid";
+import { DashboardSidebars } from "../DashboardSidebars";
 
 import {
   CardsContainer,

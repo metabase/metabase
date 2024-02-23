@@ -1,10 +1,12 @@
 import { jt, t } from "ttag";
+
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { isSameOrigin } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
+import { isEmpty } from "metabase/lib/utils";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import { Box, Center, Stack, Text } from "metabase/ui";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { isEmpty } from "metabase/lib/utils";
-import { isSameOrigin } from "metabase/lib/dom";
+
 import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
 
 export const EmbeddingAppSameSiteCookieDescription = () => {

@@ -1,8 +1,9 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { getMetadata } from "metabase/selectors/metadata";
+
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders } from "__support__/ui";
+import { getMetadata } from "metabase/selectors/metadata";
 import type { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
   createMockCollection,
@@ -13,6 +14,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
+
 import ActionMenu from "./ActionMenu";
 
 interface SetupOpts {

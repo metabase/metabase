@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openNativeEditor,
@@ -6,9 +7,8 @@ import {
   popover,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 

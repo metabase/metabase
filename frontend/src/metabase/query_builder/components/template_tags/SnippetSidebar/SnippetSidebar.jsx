@@ -1,29 +1,29 @@
 /* eslint-disable react/prop-types */
-import * as React from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import * as React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
 
+import { canonicalCollectionId } from "metabase/collections/utils";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { Icon } from "metabase/core/components/Icon";
+import Search from "metabase/entities/search";
+import SnippetCollections from "metabase/entities/snippet-collections";
+import Snippets from "metabase/entities/snippets";
+import { color } from "metabase/lib/colors";
 import {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
   PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
 } from "metabase/plugins";
-import { Icon } from "metabase/core/components/Icon";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import { color } from "metabase/lib/colors";
 
-import Snippets from "metabase/entities/snippets";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import { canonicalCollectionId } from "metabase/collections/utils";
-
-import Search from "metabase/entities/search";
 import { SnippetRow } from "../SnippetRow";
+
 import {
   SidebarFooter,
   SidebarIcon,

@@ -1,14 +1,14 @@
+import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import type { ClickActionProps } from "metabase/visualizations/types";
+import type { DatasetColumn } from "metabase-types/api";
 import {
   createSampleDatabase,
   PEOPLE,
   PEOPLE_ID,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import { checkNotNull } from "metabase/lib/types";
-import { createMockMetadata } from "__support__/metadata";
-import type { DatasetColumn } from "metabase-types/api";
-import type { ClickActionProps } from "metabase/visualizations/types";
 
 import { PivotDrill } from "./PivotDrill";
 

@@ -1,19 +1,21 @@
 import { t } from "ttag";
 import _ from "underscore";
+
 import Button from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
-import { setUIControls } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/lib/redux";
-import type { State } from "metabase-types/store";
+import { setUIControls } from "metabase/query_builder/actions";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import NotebookSteps from "./NotebookSteps";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { State } from "metabase-types/store";
+
 import { NotebookRoot } from "./Notebook.styled";
+import NotebookSteps from "./NotebookSteps";
 
 interface NotebookOwnProps {
   className?: string;

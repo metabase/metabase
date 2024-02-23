@@ -1,16 +1,16 @@
-import { useCallback } from "react";
 import PropTypes from "prop-types";
+import { useCallback } from "react";
 import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+
+import { ActionSidebarConnected } from "./ActionSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar/AddCardSidebar";
-import { ActionSidebarConnected } from "./ActionSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,

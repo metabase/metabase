@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import { has24HourModeSetting } from "metabase/lib/time";
+
 import NumericInput from "metabase/components/NumericInput";
 import { Icon } from "metabase/core/components/Icon";
+import { has24HourModeSetting } from "metabase/lib/time";
 
 import { AmPmLabel } from "./HoursMinutesInput.styled";
 

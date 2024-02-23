@@ -1,16 +1,18 @@
-import { push } from "react-router-redux";
 import { getIn } from "icepick";
-import { SessionApi, UtilApi } from "metabase/services";
-import { getSetting } from "metabase/selectors/settings";
+import { push } from "react-router-redux";
+
+import { deleteSession } from "metabase/lib/auth";
+import { reload } from "metabase/lib/dom";
+import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { loadLocalization } from "metabase/lib/i18n";
-import { deleteSession } from "metabase/lib/auth";
 import * as Urls from "metabase/lib/urls";
-import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
+import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { reload } from "metabase/lib/dom";
+import { SessionApi, UtilApi } from "metabase/services";
+
 import {
   trackLogin,
   trackLoginGoogle,

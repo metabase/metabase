@@ -1,11 +1,12 @@
 import { t } from "ttag";
+
 import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,

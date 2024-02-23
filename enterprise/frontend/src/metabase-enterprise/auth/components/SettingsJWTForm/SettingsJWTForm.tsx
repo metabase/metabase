@@ -2,7 +2,11 @@ import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
+
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateSettings } from "metabase/admin/settings/settings";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { FormSection } from "metabase/containers/FormikForm";
 import {
   Form,
   FormErrorMessage,
@@ -11,10 +15,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Flex, Stack } from "metabase/ui";
-import { FormSection } from "metabase/containers/FormikForm";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import type { SettingValue } from "metabase-types/api";
 
 type SettingValues = { [key: string]: SettingValue };

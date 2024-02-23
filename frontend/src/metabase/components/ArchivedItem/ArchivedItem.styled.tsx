@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+
 import IconWrapper from "metabase/components/IconWrapper";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 
 export const ItemIcon = styled(Icon)`
   display: block;

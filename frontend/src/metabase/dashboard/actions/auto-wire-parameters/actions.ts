@@ -1,11 +1,3 @@
-import type {
-  Card,
-  DashboardCard,
-  DashCardId,
-  ParameterId,
-  ParameterTarget,
-} from "metabase-types/api";
-import type { Dispatch, GetState, StoreDashcard } from "metabase-types/store";
 import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
@@ -20,12 +12,19 @@ import {
   getAutoWiredMappingsForDashcards,
   getParameterMappings,
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
-
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { getDashCardById } from "metabase/dashboard/selectors";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
+import type {
+  Card,
+  DashboardCard,
+  DashCardId,
+  ParameterId,
+  ParameterTarget,
+} from "metabase-types/api";
+import type { Dispatch, GetState, StoreDashcard } from "metabase-types/store";
 
 export function autoWireDashcardsWithMatchingParameters(
   parameter_id: ParameterId,

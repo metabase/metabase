@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type { DatabaseId, FieldReference, TableId } from "metabase-types/api";
+
 import type Metadata from "./metadata/Metadata";
 import type {
   AggregationClause,

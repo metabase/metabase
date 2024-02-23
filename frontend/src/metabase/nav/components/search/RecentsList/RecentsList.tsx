@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { push } from "react-router-redux";
-import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
+
 import { useRecentItemListQuery } from "metabase/common/hooks";
 import type { IconName } from "metabase/core/components/Icon";
 import RecentItems from "metabase/entities/recent-items";
@@ -11,6 +11,7 @@ import {
   getItemUrl,
 } from "metabase/nav/components/search/RecentsList/util";
 import { Paper } from "metabase/ui";
+import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
 
 type RecentsListProps = {
   onClick?: (elem: UnrestrictedLinkEntity) => void;

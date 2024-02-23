@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { Icon } from "metabase/core/components/Icon";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 
 export const HeaderRoot = styled.div`
   display: flex;

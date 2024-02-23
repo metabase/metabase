@@ -1,3 +1,5 @@
+import { createMockMetadata } from "__support__/metadata";
+import { createMockMetric, createMockSegment } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
   createPeopleTable,
@@ -9,8 +11,6 @@ import {
   PEOPLE,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
-import { createMockMetric, createMockSegment } from "metabase-types/api/mocks";
 
 const SEGMENT_ID = 1;
 const METRIC_ID = 1;

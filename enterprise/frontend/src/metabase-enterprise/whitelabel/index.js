@@ -1,4 +1,6 @@
 import { t } from "ttag";
+
+import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_APP_INIT_FUCTIONS,
   PLUGIN_LANDING_PAGE,
@@ -6,25 +8,23 @@ import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_SELECTORS,
 } from "metabase/plugins";
-
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   getApplicationName,
   getIsWhiteLabeling,
   getLoadingMessage,
 } from "metabase-enterprise/settings/selectors";
-import MetabaseSettings from "metabase/lib/settings";
 
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
+import FontFilesWidget from "./components/FontFilesWidget";
 import FontWidget from "./components/FontWidget";
 import { LandingPageWidget } from "./components/LandingPageWidget";
-import FontFilesWidget from "./components/FontFilesWidget";
 import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
-import MetabotToggleWidget from "./components/MetabotToggleWidget";
-import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
-import { updateColors } from "./lib/whitelabel";
+import LogoUpload from "./components/LogoUpload";
+import MetabotToggleWidget from "./components/MetabotToggleWidget";
 import { getLoadingMessageOptions } from "./lib/loading-message";
+import { updateColors } from "./lib/whitelabel";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));

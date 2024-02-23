@@ -1,4 +1,8 @@
 import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   adhocQuestionHash,
   popover,
   appBar,
@@ -11,10 +15,6 @@ import {
   closeNavigationSidebar,
   updateDashboardCards,
 } from "e2e/support/helpers";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {

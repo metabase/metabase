@@ -1,21 +1,18 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import S from "metabase/components/List/List.css";
-
-import List from "metabase/components/List";
-import ListItem from "metabase/components/ListItem";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-
+import List from "metabase/components/List";
+import S from "metabase/components/List/List.css";
+import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
 import MetabaseSettings from "metabase/lib/settings";
 import * as metadataActions from "metabase/redux/metadata";
-import ReferenceHeader from "../components/ReferenceHeader";
 
+import ReferenceHeader from "../components/ReferenceHeader";
 import { getMetrics, getError, getLoading } from "../selectors";
 
 const emptyStateData = {

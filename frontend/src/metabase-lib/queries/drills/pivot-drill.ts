@@ -1,4 +1,4 @@
-import { isAddress, isCategory, isDate } from "metabase-lib/types/utils/isa";
+import type DimensionOptions from "metabase-lib/DimensionOptions";
 import type Question from "metabase-lib/Question";
 import type Field from "metabase-lib/metadata/Field";
 /* eslint-disable import/no-duplicates */
@@ -9,7 +9,7 @@ import type {
   ClickObject,
   ClickObjectDimension,
 } from "metabase-lib/queries/drills/types";
-import type DimensionOptions from "metabase-lib/DimensionOptions";
+import { isAddress, isCategory, isDate } from "metabase-lib/types/utils/isa";
 
 type DrillOptions = {
   question: Question;

@@ -1,20 +1,20 @@
-import { useState } from "react";
 import type * as React from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-
-import { isAdminGroup } from "metabase/lib/groups";
-import Tooltip from "metabase/core/components/Tooltip";
-import { Icon } from "metabase/core/components/Icon";
-import Confirm from "metabase/components/Confirm";
 
 import type {
   DeleteMappingModalValueType,
   GroupIds,
   UserGroupsType,
 } from "metabase/admin/types";
-import Selectbox from "../GroupSelect";
+import Confirm from "metabase/components/Confirm";
+import { Icon } from "metabase/core/components/Icon";
+import Tooltip from "metabase/core/components/Tooltip";
+import { isAdminGroup } from "metabase/lib/groups";
+
 import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
+import Selectbox from "../GroupSelect";
 
 import { DeleteMappingButton } from "./MappingRow.styled";
 

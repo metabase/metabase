@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import * as Urls from "metabase/lib/urls";
-import EntityMenu from "metabase/components/EntityMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isInstanceAnalyticsCustomCollection,
   isRootPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
+import EntityMenu from "metabase/components/EntityMenu";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 
 export interface CollectionMenuProps {

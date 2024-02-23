@@ -1,6 +1,8 @@
 import { t } from "ttag";
+
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+
 import { ButtonRoot } from "./NativeVariablesButton.styled";
 
 interface NativeVariablesButtonProps {

@@ -1,3 +1,9 @@
+import type Question from "metabase-lib/Question";
+import type Database from "metabase-lib/metadata/Database";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import { isStructured } from "metabase-lib/queries/utils";
+import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import type {
   Card,
   DatasetColumn,
@@ -8,12 +14,6 @@ import type {
   StructuredDatasetQuery,
   FieldId,
 } from "metabase-types/api";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import type Database from "metabase-lib/metadata/Database";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
-import { isStructured } from "metabase-lib/queries/utils";
 
 type FieldMetadata = {
   id?: FieldId | FieldReference;

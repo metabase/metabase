@@ -1,9 +1,11 @@
-import _ from "underscore";
-import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
-import type { Series as D3Series } from "d3-shape";
 import d3 from "d3";
-import type { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
+import type { Series as D3Series } from "d3-shape";
+import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
+import _ from "underscore";
+
 import { formatNullable } from "metabase/lib/formatting/nullable";
+import type { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
+
 import type { BarData, Series, SeriesData, StackOffset } from "../types";
 
 export const StackOffsetFn = {

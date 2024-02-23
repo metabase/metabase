@@ -1,7 +1,14 @@
 import { combineReducers } from "@reduxjs/toolkit";
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
+import {
+  setupDatabaseEndpoints,
+  setupUserAttributesEndpoint,
+  setupExistingImpersonationEndpoint,
+  setupMissingImpersonationEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -9,18 +16,12 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
-import { shared } from "metabase-enterprise/shared/reducer";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
-import {
-  setupDatabaseEndpoints,
-  setupUserAttributesEndpoint,
-  setupExistingImpersonationEndpoint,
-  setupMissingImpersonationEndpoint,
-} from "__support__/server-mocks";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
-import { createMockImpersonation } from "metabase-types/api/mocks/permissions";
 import { getImpersonations } from "metabase-enterprise/advanced_permissions/selectors";
 import type { AdvancedPermissionsStoreState } from "metabase-enterprise/advanced_permissions/types";
+import { shared } from "metabase-enterprise/shared/reducer";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import { createMockImpersonation } from "metabase-types/api/mocks/permissions";
 
 const groupId = 2;
 const databaseId = 1;

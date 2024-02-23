@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-
 import _ from "underscore";
-import Select, { Option } from "metabase/core/components/Select";
-import CopyButton from "metabase/components/CopyButton";
 
+import CopyButton from "metabase/components/CopyButton";
 import AceEditor from "metabase/components/TextEditor";
+import Select, { Option } from "metabase/core/components/Select";
+
 import { CopyButtonContainer } from "./CodeSample.styled";
 
 export default class CodeSample extends Component {

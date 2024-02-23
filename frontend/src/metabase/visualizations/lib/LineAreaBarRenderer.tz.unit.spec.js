@@ -1,9 +1,9 @@
 import "__support__/ui-mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
-import _ from "underscore";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import _ from "underscore";
+
 import testAcrossTimezones from "__support__/timezones";
-import { createMockCard } from "metabase-types/api/mocks";
 import {
   NumberColumn,
   DateTimeColumn,
@@ -12,6 +12,7 @@ import {
   getFormattedTooltips,
 } from "__support__/visualizations";
 import registerVisualizations from "metabase/visualizations/register";
+import { createMockCard } from "metabase-types/api/mocks";
 
 registerVisualizations();
 

@@ -1,10 +1,8 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
+import { t } from "ttag";
+
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-import {
-  hasAnySsoPremiumFeature,
-  hasPremiumFeature,
-} from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -12,13 +10,16 @@ import {
   PLUGIN_IS_PASSWORD_USER,
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
-
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
+import {
+  hasAnySsoPremiumFeature,
+  hasPremiumFeature,
+} from "metabase-enterprise/settings";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
-import SettingsSAMLForm from "./components/SettingsSAMLForm";
+
 import SettingsJWTForm from "./components/SettingsJWTForm";
+import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import { SsoButton } from "./components/SsoButton";
 import JwtAuthCard from "./containers/JwtAuthCard";
 import SamlAuthCard from "./containers/SamlAuthCard";

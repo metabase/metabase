@@ -1,10 +1,10 @@
 import { createMockEntitiesState } from "__support__/store";
-
 import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as questionActions from "metabase/questions/actions";
+import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
-
+import Question from "metabase-lib/Question";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import type {
   Card,
   ConcreteFieldReference,
@@ -14,7 +14,6 @@ import type {
   TemplateTag,
   UnsavedCard,
 } from "metabase-types/api";
-import type { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockDataset,
   createMockNativeDatasetQuery,
@@ -40,20 +39,18 @@ import {
   PEOPLE,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import type { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockState,
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
 } from "metabase-types/store/mocks";
 
-import Question from "metabase-lib/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-
-import * as navigation from "../navigation";
 import * as native from "../native";
+import * as navigation from "../navigation";
 import * as querying from "../querying";
-
 import * as ui from "../ui";
+
 import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
 
 registerVisualizations();

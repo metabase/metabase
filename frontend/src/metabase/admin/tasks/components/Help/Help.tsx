@@ -7,10 +7,10 @@ import _ from "underscore";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import CopyButton from "metabase/components/CopyButton";
-
-import { UtilApi } from "metabase/services";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
+import { UtilApi } from "metabase/services";
+
 import {
   HelpBody,
   HelpExternalLink,

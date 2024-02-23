@@ -1,5 +1,20 @@
 import { createMockMetadata } from "__support__/metadata";
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
+import { checkNotNull } from "metabase/lib/types";
 import { ZOOM_IN_ROW } from "metabase/query_builder/actions";
+import type {
+  QuestionChangeClickAction,
+  ReduxClickAction,
+  ClickObject,
+} from "metabase/visualizations/types";
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import * as ML_Urls from "metabase-lib/urls";
+import type {
+  StructuredDatasetQuery,
+  DatasetColumn,
+  RowValue,
+} from "metabase-types/api";
 import {
   createSampleDatabase,
   ORDERS,
@@ -8,23 +23,8 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
-import { checkNotNull } from "metabase/lib/types";
-import type {
-  QuestionChangeClickAction,
-  ReduxClickAction,
-  ClickObject,
-} from "metabase/visualizations/types";
-import type {
-  StructuredDatasetQuery,
-  DatasetColumn,
-  RowValue,
-} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import * as ML_Urls from "metabase-lib/urls";
 import { ObjectDetailDrill } from "./ObjectDetailDrill";
 
 const metadata = createMockMetadata({

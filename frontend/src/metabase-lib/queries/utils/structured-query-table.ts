@@ -1,11 +1,12 @@
-import type { FieldReference } from "metabase-types/api";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type Field from "metabase-lib/metadata/Field";
 import type Table from "metabase-lib/metadata/Table";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import type { FieldReference } from "metabase-types/api";
 
 import type StructuredQuery from "../StructuredQuery";
-import { createVirtualTable, createVirtualField } from "./virtual-table";
+
 import { getDatasetTable, getNestedCardTable } from "./nested-card-query-table";
+import { createVirtualTable, createVirtualField } from "./virtual-table";
 
 export function getStructuredQueryTable(query: StructuredQuery): Table | null {
   const sourceQuery = query.sourceQuery();

@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { unique_expression_name } from "cljs/metabase.domain_entities.queries.util";
 
 export function getExpressions(expressions = {}) {

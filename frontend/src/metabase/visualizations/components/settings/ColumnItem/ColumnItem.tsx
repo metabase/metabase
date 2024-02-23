@@ -1,5 +1,6 @@
 import type { IconProps } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
+
 import {
   ColumnItemIcon,
   ColumnItemSpan,

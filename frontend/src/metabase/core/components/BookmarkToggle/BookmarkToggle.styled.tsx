@@ -1,8 +1,9 @@
-import styled from "@emotion/styled";
 import { keyframes } from "@emotion/react";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 
 const expandKeyframes = keyframes`
   50% {

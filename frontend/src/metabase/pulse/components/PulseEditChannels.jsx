@@ -1,20 +1,19 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
-import PropTypes from "prop-types";
-import _ from "underscore";
 import { assoc, assocIn } from "icepick";
+import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
-import SchedulePicker from "metabase/containers/SchedulePicker";
 import ActionButton from "metabase/components/ActionButton";
-import Toggle from "metabase/core/components/Toggle";
-import { Icon } from "metabase/core/components/Icon";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
+import SchedulePicker from "metabase/containers/SchedulePicker";
+import { Icon } from "metabase/core/components/Icon";
+import Toggle from "metabase/core/components/Toggle";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { channelIsValid, createChannel } from "metabase/lib/pulse";
 import SlackChannelField from "metabase/sharing/components/SlackChannelField";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-import { channelIsValid, createChannel } from "metabase/lib/pulse";
 import RecipientPicker from "./RecipientPicker";
 
 export const CHANNEL_ICONS = {

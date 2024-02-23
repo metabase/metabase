@@ -1,4 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
+import {
+  getMode,
+  getQueryMode,
+} from "metabase/visualizations/click-actions/lib/modes";
+import { SegmentMode } from "metabase/visualizations/click-actions/modes/SegmentMode";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Filter } from "metabase-types/api";
 import {
   createSampleDatabase,
   ORDERS,
@@ -6,14 +14,6 @@ import {
   PEOPLE,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import {
-  getMode,
-  getQueryMode,
-} from "metabase/visualizations/click-actions/lib/modes";
-import { checkNotNull } from "metabase/lib/types";
-import type { Filter } from "metabase-types/api";
-import { SegmentMode } from "metabase/visualizations/click-actions/modes/SegmentMode";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

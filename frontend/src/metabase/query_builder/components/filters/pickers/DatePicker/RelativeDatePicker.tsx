@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { t } from "ttag";
 import { assoc } from "icepick";
 import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import { isValidTimeInterval } from "metabase/lib/time";
+import { useState } from "react";
+import { t } from "ttag";
+
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { isValidTimeInterval } from "metabase/lib/time";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import {
   formatStartingFrom,
   getRelativeDatetimeInterval,
@@ -14,7 +16,6 @@ import {
   toTimeInterval,
 } from "metabase-lib/queries/utils/query-time";
 
-import type Filter from "metabase-lib/queries/structured/Filter";
 import {
   GridContainer,
   GridText,

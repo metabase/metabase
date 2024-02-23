@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
+
 import { getIcon, queryIcon, screen } from "__support__/ui";
 import type { CollectionType } from "metabase-types/api";
+
 import { setup } from "./setup";
 
 describe("Instance Analytics Collection Header", () => {

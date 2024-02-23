@@ -1,5 +1,6 @@
-import { t } from "ttag";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+
 import { CollectionIcon } from "./CollectionIcon";
 import { HeaderRoot, HeaderTitle } from "./SavedQuestionHeaderButton.styled";
 

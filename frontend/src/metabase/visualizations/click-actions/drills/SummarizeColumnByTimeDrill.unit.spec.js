@@ -6,6 +6,7 @@ import {
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
+
 import SummarizeColumnByTimeDrill from "./SummarizeColumnByTimeDrill";
 
 describe("SummarizeColumnByTimeDrill", () => {

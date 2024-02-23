@@ -6,11 +6,11 @@ import type {
   ClickActionBase,
   LegacyDrill,
 } from "metabase/visualizations/types";
-import type { Dispatch } from "metabase-types/store";
 import {
   summarizeColumnDrill,
   summarizeColumnDrillQuestion,
 } from "metabase-lib/queries/drills/summarize-column-drill";
+import type { Dispatch } from "metabase-types/store";
 
 type AggregationOperator = {
   short: string;

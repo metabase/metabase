@@ -2,8 +2,8 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import type Filter from "metabase-lib/queries/structured/Filter";
 import type Field from "metabase-lib/metadata/Field";
+import type Filter from "metabase-lib/queries/structured/Filter";
 
 import {
   ValuesPickerContainer,
@@ -11,7 +11,6 @@ import {
   NumberInput,
   NumberSeparator,
 } from "./InlineValuePicker.styled";
-
 import { getFieldWidth } from "./utils";
 
 interface InlineValuePickerProps {

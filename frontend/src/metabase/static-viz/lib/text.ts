@@ -1,4 +1,5 @@
 import { init } from "server-text-width";
+
 import { CHAR_SIZES, CHAR_SIZES_FONT_SIZE } from "../constants/char-sizes";
 
 const CHAR_ELLIPSES = "…";

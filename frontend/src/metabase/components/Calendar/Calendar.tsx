@@ -1,7 +1,8 @@
-import { Component } from "react";
 import cx from "classnames";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { Component } from "react";
+
 import { Icon } from "metabase/core/components/Icon";
 import {
   getDayOfWeekOptions,

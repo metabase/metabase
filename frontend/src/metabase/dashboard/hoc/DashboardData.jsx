@@ -2,10 +2,9 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-
 import _ from "underscore";
-import { setErrorPage } from "metabase/redux/app";
 
+import * as dashboardActions from "metabase/dashboard/actions";
 import {
   getDashboardComplete,
   getCardData,
@@ -15,8 +14,9 @@ import {
   getIsNavigatingBackToDashboard,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
+import { setErrorPage } from "metabase/redux/app";
 
-import * as dashboardActions from "metabase/dashboard/actions";
+
 
 const mapStateToProps = (state, props) => {
   return {

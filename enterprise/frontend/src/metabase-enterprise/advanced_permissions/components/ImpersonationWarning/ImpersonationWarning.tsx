@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
+import * as Urls from "metabase/lib/urls";
 import { isEmpty } from "metabase/lib/validate";
 import type Database from "metabase-lib/metadata/Database";
+
 import { ImpersonationAlert } from "./ImpersonationWarning.styled";
 
 interface ImpersonationWarningProps {

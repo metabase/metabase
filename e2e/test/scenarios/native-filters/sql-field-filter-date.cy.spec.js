@@ -1,10 +1,9 @@
 import { restore, openNativeEditor } from "e2e/support/helpers";
 
-import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
-
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
-import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
+import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
+import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const dateFilters = Object.entries(DATE_FILTER_SUBTYPES);
 

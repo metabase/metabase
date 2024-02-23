@@ -1,23 +1,16 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import cx from "classnames";
-
 import _ from "underscore";
-import { isWithinIframe } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
-import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
+import * as dashboardActions from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import title from "metabase/hoc/Title";
-
-import { setErrorPage } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
-
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
-
+import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
+import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import {
   getDashboardComplete,
   getCardData,
@@ -27,14 +20,16 @@ import {
   getDraftParameterValues,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
-
-import * as dashboardActions from "metabase/dashboard/actions";
-
+import title from "metabase/hoc/Title";
+import { isWithinIframe } from "metabase/lib/dom";
+import { setErrorPage } from "metabase/redux/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+
 import EmbedFrame from "../components/EmbedFrame";
 
 import {

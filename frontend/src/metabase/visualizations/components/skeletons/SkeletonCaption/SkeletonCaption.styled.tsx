@@ -1,8 +1,10 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 import { animationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
+
 import type { SkeletonCaptionSize } from "./types";
 
 export const SkeletonCaptionRoot = styled.div`

@@ -1,16 +1,17 @@
+import cx from "classnames";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
-import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import * as Urls from "metabase/lib/urls";
-import Schemas from "metabase/entities/schemas";
+
 import { Icon } from "metabase/core/components/Icon";
+import Schemas from "metabase/entities/schemas";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import type Schema from "metabase-lib/metadata/Schema";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
-import type Schema from "metabase-lib/metadata/Schema";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;

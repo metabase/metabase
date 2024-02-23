@@ -1,3 +1,11 @@
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
+import { getMode } from "metabase/visualizations/click-actions/lib/modes";
+import type { ClickAction } from "metabase/visualizations/types";
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { ClickObject } from "metabase-lib/queries/drills/types";
+import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import {
   createOrdersIdDatasetColumn,
   createSampleDatabase,
@@ -5,15 +13,6 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { getMode } from "metabase/visualizations/click-actions/lib/modes";
-import { createMockMetadata } from "__support__/metadata";
-
-import { checkNotNull } from "metabase/lib/types";
-import type { ClickAction } from "metabase/visualizations/types";
-import type { ClickObject } from "metabase-lib/queries/drills/types";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Question from "metabase-lib/Question";
 
 describe("Mode", function () {
   const metadata = createMockMetadata({

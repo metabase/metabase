@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { FieldDimension } from "metabase-lib/Dimension";
 
 export function isLocalField(field) {

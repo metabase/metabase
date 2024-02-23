@@ -3,22 +3,20 @@ import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
-
 import { useToggle } from "metabase/hooks/use-toggle";
-
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-
+import * as Lib from "metabase-lib";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
+import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import type {
   Aggregation as LegacyAggregationClause,
   Expression as LegacyExpressionClause,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
-import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
+
 import {
   Root,
   ColumnPickerContainer,

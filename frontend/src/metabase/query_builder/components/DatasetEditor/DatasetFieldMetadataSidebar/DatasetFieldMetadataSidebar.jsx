@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import {
   memo,
   Fragment,
@@ -7,32 +8,28 @@ import {
   useRef,
   useState,
 } from "react";
-import PropTypes from "prop-types";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { usePrevious } from "react-use";
 
+import RootForm from "metabase/containers/FormikForm";
 import Radio from "metabase/core/components/Radio";
-
+import { ModelIndexes } from "metabase/entities/model-indexes";
 import {
   field_visibility_types,
   field_semantic_types,
 } from "metabase/lib/core";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import RootForm from "metabase/containers/FormikForm";
-
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import { ModelIndexes } from "metabase/entities/model-indexes";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { isFK } from "metabase-lib/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
-import MappedFieldPicker from "./MappedFieldPicker";
-import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
+
 import {
   MainFormContainer,
   SecondaryFormContainer,
@@ -40,6 +37,8 @@ import {
   ViewAsFieldContainer,
   Divider,
 } from "./DatasetFieldMetadataSidebar.styled";
+import MappedFieldPicker from "./MappedFieldPicker";
+import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,

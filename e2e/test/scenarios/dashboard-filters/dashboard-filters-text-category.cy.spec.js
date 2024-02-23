@@ -1,4 +1,8 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   clearFilterWidget,
@@ -8,12 +12,9 @@ import {
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 
 describe("scenarios > dashboard > filters > text/category", () => {

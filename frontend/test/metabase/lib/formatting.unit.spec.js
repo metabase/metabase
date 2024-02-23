@@ -1,6 +1,7 @@
-import { isElementOfType } from "react-dom/test-utils";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { isElementOfType } from "react-dom/test-utils";
 
+import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   capitalize,
   formatNumber,
@@ -12,7 +13,6 @@ import {
   slugify,
   getCurrencySymbol,
 } from "metabase/lib/formatting";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { TYPE } from "metabase-lib/types/constants";
 
 describe("formatting", () => {

@@ -1,17 +1,16 @@
-import { t } from "ttag";
 import { createAction } from "redux-actions";
+import { t } from "ttag";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
-
-import { getSensibleDisplays } from "metabase/visualizations";
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
+import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
+import { getSensibleDisplays } from "metabase/visualizations";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
   getIsRunning,
   getOriginalQuestion,

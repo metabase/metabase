@@ -1,12 +1,13 @@
 import styled from "@emotion/styled";
+
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Icon } from "metabase/core/components/Icon";
+import TabList from "metabase/core/components/TabList";
+import TabPanel from "metabase/core/components/TabPanel";
 import { color } from "metabase/lib/colors";
 import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
 
-import TabList from "metabase/core/components/TabList";
-import TabPanel from "metabase/core/components/TabPanel";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { Icon } from "metabase/core/components/Icon";
 
 interface ModalRootProps {
   hasSideNav?: boolean;

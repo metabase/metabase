@@ -1,3 +1,6 @@
+
+import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitDashboard,
@@ -6,9 +9,6 @@ import {
   setupSMTP,
   sendEmailAndAssert,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { admin } = USERS;
 

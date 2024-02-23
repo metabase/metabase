@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
   modal,
@@ -7,7 +8,6 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DETAILS_PERMISSION_INDEX = 4;

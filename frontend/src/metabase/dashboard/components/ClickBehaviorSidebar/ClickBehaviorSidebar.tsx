@@ -1,11 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMount, usePrevious } from "react-use";
 
 import { useDashboardQuery } from "metabase/common/hooks";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
-
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import {
+  canSaveClickBehavior,
+  clickBehaviorIsValid,
+} from "metabase-lib/parameters/utils/click-behavior";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   Dashboard,
   DashboardCard,
@@ -15,17 +20,10 @@ import type {
   DatasetData,
   DatasetColumn,
 } from "metabase-types/api";
-import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import {
-  canSaveClickBehavior,
-  clickBehaviorIsValid,
-} from "metabase-lib/parameters/utils/click-behavior";
 
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { getClickBehaviorForColumn } from "./utils";
 import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";
 import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader/ClickBehaviorSidebarHeader";
+import { getClickBehaviorForColumn } from "./utils";
 
 function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;

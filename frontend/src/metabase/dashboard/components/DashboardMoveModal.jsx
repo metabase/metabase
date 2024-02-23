@@ -4,14 +4,13 @@ import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import { Icon } from "metabase/core/components/Icon";
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
-
+import { Icon } from "metabase/core/components/Icon";
+import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
+import Dashboards from "metabase/entities/dashboards";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
-import Dashboards from "metabase/entities/dashboards";
-import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { ToastRoot } from "./DashboardMoveModal.styled";
 
 const mapDispatchToProps = {

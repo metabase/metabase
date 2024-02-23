@@ -1,4 +1,8 @@
 import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   modal,
@@ -11,10 +15,6 @@ import {
   appBar,
 } from "e2e/support/helpers";
 
-import {
-  ORDERS_QUESTION_ID,
-  SECOND_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {

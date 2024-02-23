@@ -1,11 +1,12 @@
-import type { SVGAttributes, MouseEvent } from "react";
-
-import { forwardRef } from "react";
 import isPropValid from "@emotion/is-prop-valid";
 import cx from "classnames";
+import type { SVGAttributes, MouseEvent } from "react";
+import { forwardRef } from "react";
+
 import Tooltip from "../Tooltip";
-import { Icons } from "./icons";
+
 import type { IconName } from "./icons";
+import { Icons } from "./icons";
 
 const defaultSize = 16;
 

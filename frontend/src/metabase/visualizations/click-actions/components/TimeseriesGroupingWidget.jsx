@@ -1,11 +1,10 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
-
+import { Component } from "react";
 import _ from "underscore";
 
-import TimeGroupingPopover from "metabase/query_builder/components/TimeGroupingPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
+import TimeGroupingPopover from "metabase/query_builder/components/TimeGroupingPopover";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 export class TimeseriesGroupingWidget extends Component {

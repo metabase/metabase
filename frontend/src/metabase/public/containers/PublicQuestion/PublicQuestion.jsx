@@ -1,17 +1,18 @@
 /* eslint-disable react/prop-types */
+
+import { updateIn } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import { updateIn } from "icepick";
-import Visualization from "metabase/visualizations/components/Visualization";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import title from "metabase/hoc/Title";
-
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-
+import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import { setErrorPage } from "metabase/redux/app";
+import { addParamValues, addFields } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   PublicApi,
   EmbedApi,
@@ -19,17 +20,14 @@ import {
   setEmbedQuestionEndpoints,
   maybeUsePivotEndpoint,
 } from "metabase/services";
-
-import { setErrorPage } from "metabase/redux/app";
-import { addParamValues, addFields } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
-
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import Visualization from "metabase/visualizations/components/Visualization";
 import Question from "metabase-lib/Question";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import { applyParameters } from "metabase-lib/queries/utils/card";
+
 import EmbedFrame from "../../components/EmbedFrame";
 
 const mapStateToProps = state => ({

@@ -1,5 +1,5 @@
-import { main, restore, setupSMTP } from "e2e/support/helpers";
 import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
+import { main, restore, setupSMTP } from "e2e/support/helpers";
 
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 

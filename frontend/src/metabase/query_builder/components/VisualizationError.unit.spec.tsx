@@ -1,9 +1,10 @@
+import { createMockEntitiesState } from "__support__/store";
+import { render, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Database } from "metabase-types/api";
 import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { render, screen } from "__support__/ui";
+
 import VisualizationError, {
   adjustPositions,
   stripRemarks,

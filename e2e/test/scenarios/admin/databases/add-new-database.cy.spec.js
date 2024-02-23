@@ -1,14 +1,14 @@
 import {
+  QA_MONGO_PORT,
+  QA_MYSQL_PORT,
+  QA_POSTGRES_PORT,
+} from "e2e/support/cypress_data";
+import {
   restore,
   popover,
   typeAndBlurUsingLabel,
   isEE,
 } from "e2e/support/helpers";
-import {
-  QA_MONGO_PORT,
-  QA_MYSQL_PORT,
-  QA_POSTGRES_PORT,
-} from "e2e/support/cypress_data";
 
 describe("admin > database > add", () => {
   beforeEach(() => {

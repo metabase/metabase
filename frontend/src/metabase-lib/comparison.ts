@@ -4,6 +4,7 @@ import type {
   DatasetQuery,
   FieldReference,
 } from "metabase-types/api";
+
 import type { ColumnMetadata, Query } from "./types";
 
 export function areLegacyQueriesEqual(

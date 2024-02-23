@@ -1,8 +1,14 @@
-import { IndexRedirect, Redirect, Route } from "react-router";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import { IndexRedirect, Redirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
+import {
+  setupModelActionsEndpoints,
+  setupCardsEndpoints,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import {
   fireEvent,
   getIcon,
@@ -13,22 +19,14 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import {
-  setupModelActionsEndpoints,
-  setupCardsEndpoints,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
-
-import { checkNotNull } from "metabase/lib/types";
-import { ActionsApi } from "metabase/services";
-
+import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-
-import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-
+import { checkNotNull } from "metabase/lib/types";
+import { ActionsApi } from "metabase/services";
+import { TYPE } from "metabase-lib/types/constants";
+import * as ML_Urls from "metabase-lib/urls";
 import type {
   Card,
   Collection,
@@ -62,9 +60,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-
-import * as ML_Urls from "metabase-lib/urls";
-import { TYPE } from "metabase-lib/types/constants";
 
 import ModelDetailPage from "./ModelDetailPage";
 

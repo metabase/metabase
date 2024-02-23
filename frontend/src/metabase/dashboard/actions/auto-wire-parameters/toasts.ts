@@ -1,16 +1,17 @@
 import { t } from "ttag";
 import _ from "underscore";
+
+import {
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+} from "metabase/dashboard/actions";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 import type {
   DashboardCard,
   DashboardParameterMapping,
   DashCardId,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
-import {
-  setDashCardAttributes,
-  setMultipleDashCardAttributes,
-} from "metabase/dashboard/actions";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 export const AUTO_WIRE_TOAST_ID = _.uniqueId();
 

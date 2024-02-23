@@ -1,5 +1,6 @@
-import { t } from "ttag";
 import { Link } from "react-router";
+import { t } from "ttag";
+
 import {
   Description,
   Header,

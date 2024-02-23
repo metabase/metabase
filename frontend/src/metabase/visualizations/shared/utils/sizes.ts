@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { DEFAULT_CARD_SIZE, GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import type { CardDisplayType } from "metabase-types/api";
 

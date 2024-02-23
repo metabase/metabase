@@ -1,14 +1,14 @@
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
+import Dimension from "metabase-lib/Dimension";
 import {
   createSampleDatabase,
   PRODUCTS,
   PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import Dimension from "metabase-lib/Dimension";
 
 import { DimensionInfo } from "./DimensionInfo";
 

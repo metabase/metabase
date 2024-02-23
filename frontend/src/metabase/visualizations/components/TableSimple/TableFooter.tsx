@@ -1,10 +1,9 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 
 import { Icon } from "metabase/core/components/Icon";
-
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
 import {

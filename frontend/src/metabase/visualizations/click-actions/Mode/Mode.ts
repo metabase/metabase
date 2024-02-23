@@ -1,4 +1,5 @@
 import type Question from "metabase-lib/Question";
+
 import type {
   ClickAction,
   ClickObject,

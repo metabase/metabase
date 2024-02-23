@@ -1,8 +1,8 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
-import Question from "metabase-lib/Question";
 import { ExpressionDimension } from "metabase-lib/Dimension";
+import Question from "metabase-lib/Question";
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,

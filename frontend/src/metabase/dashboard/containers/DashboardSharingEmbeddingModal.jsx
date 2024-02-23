@@ -3,11 +3,10 @@ import { Component } from "react";
 import { connect } from "react-redux";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
-import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getParameters } from "metabase/dashboard/selectors";
-import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import * as Urls from "metabase/lib/urls";
+import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 
 import {
   createPublicLink,
@@ -15,6 +14,7 @@ import {
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../actions";
+
 import { ModalTrigger } from "./DashboardSharingEmbeddingModal.styled";
 
 const defaultProps = {

@@ -1,6 +1,6 @@
-import * as ML_Urls from "metabase-lib/urls";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { ClickActionProps } from "metabase-lib/queries/drills/types";
+import * as ML_Urls from "metabase-lib/urls";
 
 export function automaticInsightsDrill({
   question,

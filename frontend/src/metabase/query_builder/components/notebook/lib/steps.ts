@@ -1,9 +1,9 @@
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Query } from "metabase-lib/types";
 
 import type { NotebookStep, NotebookStepFn, OpenSteps } from "../types";
 

@@ -8,6 +8,8 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -16,8 +18,6 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 
 const { NativeQueryEditor } = jest.requireActual(
   "metabase/query_builder/components/NativeQueryEditor",

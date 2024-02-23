@@ -1,6 +1,7 @@
+import { getSetting } from "metabase/selectors/settings";
 import type { DatabaseData, LocaleData } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
-import { getSetting } from "metabase/selectors/settings";
+
 import { COMPLETED_STEP } from "./constants";
 
 const DEFAULT_LOCALES: LocaleData[] = [];

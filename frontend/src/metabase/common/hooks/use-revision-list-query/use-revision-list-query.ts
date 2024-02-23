@@ -1,9 +1,9 @@
-import RevisionEntity from "metabase/entities/revisions";
 import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
 import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
+import RevisionEntity from "metabase/entities/revisions";
 import type { Revision, RevisionListQuery } from "metabase-types/api";
 
 export const useRevisionListQuery = (

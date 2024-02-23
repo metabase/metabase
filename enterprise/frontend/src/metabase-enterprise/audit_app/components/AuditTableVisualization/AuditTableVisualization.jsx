@@ -1,21 +1,20 @@
-import { Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import { registerVisualization } from "metabase/visualizations/index";
-
+import NoResults from "assets/img/no_results.svg";
+import EmptyState from "metabase/components/EmptyState";
+import CheckBox from "metabase/core/components/CheckBox";
+import { Icon } from "metabase/core/components/Icon";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
+import { registerVisualization } from "metabase/visualizations/index";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
-
 import Table from "metabase/visualizations/visualizations/Table";
 
-import EmptyState from "metabase/components/EmptyState";
-import { Icon } from "metabase/core/components/Icon";
-import CheckBox from "metabase/core/components/CheckBox";
-import NoResults from "assets/img/no_results.svg";
 import { getRowValuesByColumns, getColumnName } from "../../lib/mode";
+
 import {
   HeaderCell,
   RemoveRowButton,

@@ -1,12 +1,14 @@
-import { Component } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import type Database from "metabase-lib/metadata/Database";
+import type Field from "metabase-lib/metadata/Field";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type {
   Card,
   DatabaseId,
@@ -17,12 +19,9 @@ import type {
   TemplateTag,
   TemplateTagId,
 } from "metabase-types/api";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type Database from "metabase-lib/metadata/Database";
-import type Field from "metabase-lib/metadata/Field";
 
-import { TagEditorParam } from "./TagEditorParam";
 import { TagEditorHelp } from "./TagEditorHelp";
+import { TagEditorParam } from "./TagEditorParam";
 
 interface TagEditorSidebarProps {
   card: Card;

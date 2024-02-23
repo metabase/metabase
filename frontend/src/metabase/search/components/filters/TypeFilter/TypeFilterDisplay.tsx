@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import { Text } from "metabase/ui";
+
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import type { SearchFilterDropdown } from "metabase/search/types";
-import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+import { Text } from "metabase/ui";
 
 export const TypeFilterDisplay: SearchFilterDropdown<"type">["DisplayComponent"] =
   ({ value }) => {

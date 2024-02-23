@@ -1,6 +1,7 @@
 import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Field from "metabase-lib/metadata/Field";
+
 import { PaneContent } from "./Pane.styled";
 
 interface FieldPaneProps {

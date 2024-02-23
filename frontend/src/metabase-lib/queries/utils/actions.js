@@ -1,15 +1,14 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { parseTimestamp } from "metabase/lib/time";
-import { isDate, isNumber } from "metabase-lib/types/utils/isa";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
+import { FieldDimension } from "metabase-lib/Dimension";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   fieldRefForColumn,
   fieldRefWithOption,
 } from "metabase-lib/queries/utils/dataset";
-
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { FieldDimension } from "metabase-lib/Dimension";
+import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
+import { isDate, isNumber } from "metabase-lib/types/utils/isa";
 
 export { drillDownForDimensions } from "./drilldown";
 

@@ -1,3 +1,4 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   enterCustomColumnDetails,
   isScrollableHorizontally,
@@ -15,7 +16,6 @@ import {
   leftSidebar,
 } from "e2e/support/helpers";
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {

@@ -1,6 +1,7 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import Draggable from "react-draggable";
+
 import Button from "metabase/core/components/Button";
 import { alpha, color, lighten } from "metabase/lib/colors";
 import { TableRoot } from "metabase/visualizations/components/TableRoot";

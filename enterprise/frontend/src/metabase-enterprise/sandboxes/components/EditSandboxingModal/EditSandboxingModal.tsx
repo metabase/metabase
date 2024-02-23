@@ -1,26 +1,26 @@
-import { useState } from "react";
 import type * as React from "react";
-import _ from "underscore";
-import { jt, t } from "ttag";
+import { useState } from "react";
 import { useAsyncFn } from "react-use";
+import { jt, t } from "ttag";
+import _ from "underscore";
 
+import ActionButton from "metabase/components/ActionButton";
+import QuestionLoader from "metabase/containers/QuestionLoader";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
-import ActionButton from "metabase/components/ActionButton";
-import Radio from "metabase/core/components/Radio";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
+import Radio from "metabase/core/components/Radio";
 import { EntityName } from "metabase/entities/containers/EntityName";
-
-import QuestionLoader from "metabase/containers/QuestionLoader";
-import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+import { GTAPApi } from "metabase/services";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
 } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
-import { GTAPApi } from "metabase/services";
 import type Question from "metabase-lib/Question";
+import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+
 import AttributeMappingEditor, {
   AttributeOptionsEmptyState,
 } from "../AttributeMappingEditor";

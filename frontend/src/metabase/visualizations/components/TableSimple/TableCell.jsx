@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
-import { useCallback, useMemo } from "react";
 import cx from "classnames";
+import { useCallback, useMemo } from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-
 import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
@@ -14,6 +13,7 @@ import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { isID, isFK } from "metabase-lib/types/utils/isa";
 
 import MiniBar from "../MiniBar";
+
 import { CellRoot, CellContent } from "./TableCell.styled";
 
 function getCellData({

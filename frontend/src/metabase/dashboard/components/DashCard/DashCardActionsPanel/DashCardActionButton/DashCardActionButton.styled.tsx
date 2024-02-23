@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { Icon } from "metabase/core/components/Icon";
-
 import { color } from "metabase/lib/colors";
 
 export const HEADER_ICON_SIZE = 16;

@@ -1,6 +1,6 @@
+import * as entitiesMap from "metabase/entities";
 import { combineEntities } from "metabase/lib/entities";
 
-import * as entitiesMap from "metabase/entities";
 
 const entitiesArray = Object.values(entitiesMap);
 

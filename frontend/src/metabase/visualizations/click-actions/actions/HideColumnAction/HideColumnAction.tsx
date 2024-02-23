@@ -1,10 +1,11 @@
 import { t } from "ttag";
-import type { LegacyDrill } from "metabase/visualizations/types";
+
 import { onUpdateVisualizationSettings } from "metabase/query_builder/actions";
 import {
   findColumnSettingIndex,
   getColumnSettingsWithRefs,
 } from "metabase/visualizations/components/settings/ChartSettingTableColumns/utils";
+import type { LegacyDrill } from "metabase/visualizations/types";
 
 export const HideColumnAction: LegacyDrill = ({
   question,

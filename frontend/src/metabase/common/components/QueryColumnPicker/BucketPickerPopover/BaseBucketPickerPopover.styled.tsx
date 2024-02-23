@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+
+import BaseSelectList from "metabase/components/SelectList";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
-import BaseSelectList from "metabase/components/SelectList";
 import { alpha, color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 

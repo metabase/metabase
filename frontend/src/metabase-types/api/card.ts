@@ -1,10 +1,10 @@
-import type { DatabaseId } from "./database";
+import type { Collection } from "./collection";
 import type { DashboardId, DashCardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { UserInfo } from "./user";
-import type { Collection } from "./collection";
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {

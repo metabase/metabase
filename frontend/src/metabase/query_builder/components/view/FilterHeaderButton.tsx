@@ -1,8 +1,10 @@
 import { t } from "ttag";
+
 import { color } from "metabase/lib/colors";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import type { QueryBuilderMode } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
+import type { QueryBuilderMode } from "metabase-types/store";
+
 import { HeaderButton } from "./ViewHeader.styled";
 
 interface FilterHeaderButtonProps {

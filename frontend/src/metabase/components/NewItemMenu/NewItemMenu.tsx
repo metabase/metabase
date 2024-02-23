@@ -1,17 +1,14 @@
+import type { LocationDescriptor } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import type { LocationDescriptor } from "history";
-
-import Modal from "metabase/components/Modal";
-import EntityMenu from "metabase/components/EntityMenu";
-
-import * as Urls from "metabase/lib/urls";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import EntityMenu from "metabase/components/EntityMenu";
+import Modal from "metabase/components/Modal";
 import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
-
+import * as Urls from "metabase/lib/urls";
 import type { CollectionId, WritebackAction } from "metabase-types/api";
 
 type ModalType = "new-action" | "new-dashboard" | "new-collection";

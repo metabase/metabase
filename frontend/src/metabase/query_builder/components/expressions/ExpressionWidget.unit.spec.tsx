@@ -1,17 +1,19 @@
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/lib/types";
-import { getIcon, render, screen } from "__support__/ui";
+
 import { createMockEntitiesState } from "__support__/store";
+import { getIcon, render, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Expression } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
 import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
+import { createMockState } from "metabase-types/store/mocks";
+
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
+import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {

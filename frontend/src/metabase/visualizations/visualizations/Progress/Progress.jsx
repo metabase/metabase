@@ -1,15 +1,15 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import Color from "color";
 import { createRef, Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import _ from "underscore";
-import Color from "color";
-import cx from "classnames";
-import { formatValue } from "metabase/lib/formatting";
-import { Icon } from "metabase/core/components/Icon";
-import IconBorder from "metabase/components/IconBorder";
-import { color } from "metabase/lib/colors";
 
+import IconBorder from "metabase/components/IconBorder";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
+import { formatValue } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,

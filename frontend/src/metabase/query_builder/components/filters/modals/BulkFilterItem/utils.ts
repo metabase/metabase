@@ -1,4 +1,5 @@
 import type Field from "metabase-lib/metadata/Field";
+
 import type { FieldPicker } from "./types";
 
 export const getFieldPickerType = (field: Field): FieldPicker => {

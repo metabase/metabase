@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import PinDropZone from "metabase/collections/components/PinDropZone";
+import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 import BaseItemsTable from "./BaseItemsTable";
 import { ItemsTableRoot } from "./ItemsTable.styled";

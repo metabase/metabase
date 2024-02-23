@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { Segment } from "metabase-types/api";
 import { createMockSegment } from "metabase-types/api/mocks";
 

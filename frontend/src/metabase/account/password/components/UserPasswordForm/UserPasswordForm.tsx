@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
+
 import {
   Form,
   FormProvider,
@@ -12,6 +13,7 @@ import {
 } from "metabase/forms";
 import { Group, Stack } from "metabase/ui";
 import type { User } from "metabase-types/api";
+
 import type { UserPasswordData } from "../../types";
 
 const USER_PASSWORD_SCHEMA = Yup.object({

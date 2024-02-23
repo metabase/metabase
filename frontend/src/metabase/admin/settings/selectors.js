@@ -1,32 +1,38 @@
-import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
 import { t, jt } from "ttag";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import _ from "underscore";
 
+import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { DashboardSelector } from "metabase/components/DashboardSelector";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
-import { PersistedModelsApi, UtilApi } from "metabase/services";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
 } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { PersistedModelsApi, UtilApi } from "metabase/services";
 
-import { isPersonalCollectionOrChild } from "metabase/collections/utils";
-
-import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-
-import { updateSetting } from "./settings";
-
-import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
-import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
-import { UploadSettings } from "./components/UploadSettings";
+import {
+  trackTrackingPermissionChanged,
+  trackCustomHomepageDashboardEnabled,
+} from "./analytics";
+import { BccToggleWidget } from "./components/Email/BccToggleWidget";
+import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
 import SettingsLicense from "./components/SettingsLicense";
-import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
-import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
+import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { UploadSettings } from "./components/UploadSettings";
+import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import { EmbeddingCustomizationWidget } from "./components/widgets/EmbeddingCustomizationWidget";
+import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+import EmbeddingOption from "./components/widgets/EmbeddingOption";
+import FormattingWidget from "./components/widgets/FormattingWidget";
+import { FullAppEmbeddingLinkWidget } from "./components/widgets/FullAppEmbeddingLinkWidget";
+import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
+import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -34,25 +40,14 @@ import {
   EmbeddedQuestionListing,
   EmbeddedDashboardListing,
 } from "./components/widgets/PublicLinksListing";
+import RedirectWidget from "./components/widgets/RedirectWidget";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
-import FormattingWidget from "./components/widgets/FormattingWidget";
-import { FullAppEmbeddingLinkWidget } from "./components/widgets/FullAppEmbeddingLinkWidget";
-import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
-
-import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
-import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
-import { BccToggleWidget } from "./components/Email/BccToggleWidget";
+import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
+import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
+import { updateSetting } from "./settings";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
-import {
-  trackTrackingPermissionChanged,
-  trackCustomHomepageDashboardEnabled,
-} from "./analytics";
-
-import EmbeddingOption from "./components/widgets/EmbeddingOption";
-import RedirectWidget from "./components/widgets/RedirectWidget";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {

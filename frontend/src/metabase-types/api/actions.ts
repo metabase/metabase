@@ -1,9 +1,9 @@
-import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
-import type { NativeDatasetQuery } from "./query";
+import type { Card, CardId } from "./card";
 import type { ClickBehavior } from "./click-behavior";
 import type { BaseDashboardCard, DashboardParameterMapping } from "./dashboard";
-import type { Card, CardId } from "./card";
 import type { DatabaseId } from "./database";
+import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
+import type { NativeDatasetQuery } from "./query";
 import type { UserId, UserInfo } from "./user";
 
 export interface WritebackParameter extends Parameter {

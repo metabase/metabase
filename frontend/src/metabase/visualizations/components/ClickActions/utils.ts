@@ -1,5 +1,6 @@
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
 import type {
   RegularClickAction,
   ClickActionSection,

@@ -1,4 +1,5 @@
 import innerText from "react-innertext";
+
 import { formatNumber } from "metabase/lib/formatting";
 import { measureText } from "metabase/lib/measure-text";
 

@@ -8,8 +8,9 @@ import {
   MODE_TYPE_DEFAULT,
 } from "metabase/visualizations/click-actions/Mode/constants";
 import type Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import type { ModeType } from "./types";
 
 export function getModeType(question: Question): ModeType | null {

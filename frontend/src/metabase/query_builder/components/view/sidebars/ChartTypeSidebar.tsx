@@ -1,15 +1,13 @@
-import { useCallback, useMemo } from "react";
 import type * as React from "react";
-import _ from "underscore";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import _ from "underscore";
 
+import { Icon } from "metabase/core/components/Icon";
+import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import visualizations from "metabase/visualizations";
 import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
-
-import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
-
 import type { Visualization } from "metabase/visualizations/types";
 import type Question from "metabase-lib/Question";
 import type Query from "metabase-lib/queries/Query";
