@@ -15,7 +15,6 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.types :as types]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.ui-logic :as ui-logic]
    [schema.core :as s])
@@ -277,7 +276,7 @@
   [col-settings col]
   (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
       (backfill-currency)
-      (u/update-if-exists :date_style update-date-style (:unit col) col-settings)))
+      (m/update-existing :date_style update-date-style (:unit col) col-settings)))
 
 (defn- settings-from-column
   [col column-settings]

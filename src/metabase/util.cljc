@@ -532,22 +532,6 @@
        :cljs (js/Math.floor (/ (js/Math.log (abs x))
                                (js/Math.log 10))))))
 
-(defn update-if-exists
-  "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
-  cruft."
-  [m k f & args]
-  (if (contains? m k)
-    (apply update m k f args)
-    m))
-
-(defn update-in-if-exists
-  "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
-  cruft."
-  [m ks f & args]
-  (if (not= ::not-found (get-in m ks ::not-found))
-    (apply update-in m ks f args)
-    m))
-
 (defn index-of
   "Return index of the first element in `coll` for which `pred` reutrns true."
   [pred coll]
@@ -889,3 +873,11 @@
   "Given two maps, are any keys on which they disagree? We only consider keys that are present in both."
   [m1 m2]
   (boolean (some identity (conflicting-keys m1 m2))))
+
+(defn assoc-existing
+  "Updates a value in a map to a given value, if and only if the key already exists in the map.
+   See: [[clojure.core/assoc]] and [[medley.core/update-existing]]."
+  [m k v]
+  (if (contains? m k)
+    (assoc m k v)
+    m))

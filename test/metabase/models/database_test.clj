@@ -75,24 +75,26 @@
                        {:description nil
                         :name        "testpg"
                         :details     {}
-                        :settings    {:database-enable-actions          true   ; visibility: :public
-                                      :unaggregated-query-row-limit 2000}  ; visibility: :authenticated
+                        :settings    {:database-enable-actions      true  ; visibility: :public
+                                      :unaggregated-query-row-limit 2000} ; visibility: :authenticated
                         :id          3})]
     (testing "authenticated users should see settings with authenticated visibility"
       (mw.session/with-current-user
         (mt/user->id :rasta)
         (is (= {"description" nil
                 "name"        "testpg"
-                "settings"    {"database-enable-actions"          true
+                "settings"    {"database-enable-actions"      true
                                "unaggregated-query-row-limit" 2000}
-                "id"          3}
+                "id"          3
+                "details"     "**MetabaseDatabaseDetails**"}
                (encode-decode pg-db)))))
     (testing "non-authenticated users shouldn't see settings with authenticated visibility"
       (mw.session/with-current-user nil
         (is (= {"description" nil
                 "name"        "testpg"
                 "settings"    {"database-enable-actions" true}
-                "id"          3}
+                "id"          3
+                "details"     "**MetabaseDatabaseDetails**"}
                (encode-decode pg-db)))))))
 
 (deftest driver-supports-actions-and-database-enable-actions-test
@@ -157,13 +159,15 @@
                     "name"        "testpg"
                     "engine"      "postgres"
                     "settings"    {"database-enable-actions" true}
-                    "id"          3}
+                    "id"          3
+                    "details"     "**MetabaseDatabaseDetails**"}
                    (encode-decode pg-db))))
           (is (= {"description" nil
                   "name"        "testbq"
                   "id"          2
                   "engine"      "bigquery-cloud-sdk"
-                  "settings"    {"database-enable-actions" true}}
+                  "settings"    {"database-enable-actions" true}
+                  "details"     "**MetabaseDatabaseDetails**"}
                  (encode-decode bq-db)))))
 
       (testing "details are obfuscated for admin users"
