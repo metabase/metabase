@@ -1,7 +1,7 @@
 import { useQuestionSearch } from "metabase-embedding-sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ResultsDropdown } from "./ResultsDropdown/ResultsDropdown";
-import { QuestionSearchBar } from "./QuestionSearchBar/QuestionSearchBar";
+import { ResultsDropdown } from "./ResultsDropdown";
+import { QuestionSearchBar } from "./QuestionSearchBar";
 
 
 export const QuestionSearchDropdown = ({

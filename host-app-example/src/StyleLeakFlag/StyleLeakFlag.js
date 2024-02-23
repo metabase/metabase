@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 export const StyleLeakFlag = () => {
-  const [styleInfo, setStyleInfo] = useState('');
+  const [currentFontFamily, setCurrentFontFamily] = useState('');
+  const [currentFontSize, setCurrentFontSize] = useState('');
   const divRef = useRef(null);
 
   useEffect(() => {
@@ -10,7 +11,8 @@ export const StyleLeakFlag = () => {
         const computedStyle = window.getComputedStyle(divRef.current);
         const fontFamily = computedStyle.fontFamily.replace(/['"]+/g, '');
         const fontSize = computedStyle.fontSize;
-        setStyleInfo(`Current font is ${fontFamily}, ${fontSize}`);
+        setCurrentFontFamily(fontFamily.split(", ")[0]);
+        setCurrentFontSize(fontSize);
       }
     };
 
@@ -19,11 +21,21 @@ export const StyleLeakFlag = () => {
 
     return () => clearInterval(intervalId);
   }, []);
+  
+  const isFontLeaking = currentFontFamily !== 'IBM Plex Sans' || currentFontSize !== '16px';
+  const pillClasses = isFontLeaking ? "tw-bg-red-400" : "tw-bg-green-400";
+  const pillText = isFontLeaking ? "Fonts are leaking 🫠" : "Fonts aren't leaking 😎";
 
   return (
-      <div ref={divRef}>
-        This should be IBM Sans, 16px. <br />
-        {styleInfo}
+    <>
+      <div
+        className={
+          `tw-text-white tw-font-bold tw-grid tw-place-items-center tw-px-2 tw-py-1 tw-rounded ${pillClasses}`
+        }
+        ref={divRef}
+      >
+        {pillText}
       </div>
+    </>
   );
 };

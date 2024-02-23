@@ -75,7 +75,6 @@ module.exports = env => {
           generator: {
             publicPath: pathData => {
               const filePath = pathData.module.rawRequest.replace(/\/[^\/]*$/, '');
-              console.log(filePath)
               return `http://localhost:3000/app/${filePath}/`;
             },
             filename: "[name][ext]",
@@ -155,7 +154,7 @@ module.exports = env => {
         // with ie11 point to the minified version
         icepick: __dirname + "/node_modules/icepick/icepick.min",
 
-        // conditionally load either the EE plugins file or a empty file in the CE code tree
+        // conditionally load either the EE plugins file or an empty file in the CE code tree
         "ee-plugins":
           process.env.MB_EDITION === "ee"
             ? ENTERPRISE_SRC_PATH + "/plugins"
