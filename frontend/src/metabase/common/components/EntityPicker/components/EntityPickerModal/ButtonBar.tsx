@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -13,25 +14,39 @@ export const ButtonBar = ({
   onCancel: () => void;
   canConfirm?: boolean;
   actions: JSX.Element[];
-}) => (
-  <Flex
-    justify="space-between"
-    p="md"
-    style={{
-      borderTop: `1px solid ${color("border")}`,
-    }}
-  >
-    <Flex gap="md">{actions}</Flex>
-    <Flex gap="md">
-      <Button onClick={onCancel}>{t`Cancel`}</Button>
-      <Button
-        ml={1}
-        variant="filled"
-        onClick={onConfirm}
-        disabled={!canConfirm}
-      >
-        {t`Select`}
-      </Button>
+}) => {
+  useEffect(() => {
+    const handleEnter = (e: KeyboardEvent) => {
+      if (canConfirm && e.key === "Enter") {
+        onConfirm();
+      }
+    };
+    document.addEventListener("keypress", handleEnter);
+    return () => {
+      document.removeEventListener("keypress", handleEnter);
+    };
+  }, [canConfirm, onConfirm]);
+
+  return (
+    <Flex
+      justify="space-between"
+      p="md"
+      style={{
+        borderTop: `1px solid ${color("border")}`,
+      }}
+    >
+      <Flex gap="md">{actions}</Flex>
+      <Flex gap="md">
+        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button
+          ml={1}
+          variant="filled"
+          onClick={onConfirm}
+          disabled={!canConfirm}
+        >
+          {t`Select`}
+        </Button>
+      </Flex>
     </Flex>
-  </Flex>
-);
+  );
+};
