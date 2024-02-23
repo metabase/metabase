@@ -486,30 +486,27 @@ class Question {
       return this;
     }
 
-    const metricColumnNameByKey = Object.fromEntries(
+    const metricColumnNames = new Set(
       cols
         .filter(column => column.source === "aggregation")
-        .map(column => [getColumnKey(column), column.name]),
+        .map(column => column.name),
     );
-    const prevMetricColumnNameByKey = Object.fromEntries(
+    const prevMetricColumnNames = new Set(
       prevCols
         .filter(column => column.source === "aggregation")
-        .map(column => [getColumnKey(column), column.name]),
+        .map(column => column.name),
     );
-    const addedMetricColumnNames = Object.entries(metricColumnNameByKey)
-      .filter(([key]) => prevMetricColumnNameByKey[key] == null)
-      .map(([_key, name]) => name);
-    const removedMetricColumnNames = Object.entries(prevMetricColumnNameByKey)
-      .filter(([key]) => metricColumnNameByKey[key] == null)
-      .map(([_key, name]) => name);
+    const addedMetricColumnNames = new Set(
+      [...metricColumnNames].filter(name => !prevMetricColumnNames.has(name)),
+    );
+    const removedMetricColumnNames = new Set(
+      [...prevMetricColumnNames].filter(name => !metricColumnNames.has(name)),
+    );
 
-    if (
-      addedMetricColumnNames.length > 0 ||
-      removedMetricColumnNames.length > 0
-    ) {
+    if (addedMetricColumnNames.size > 0 || removedMetricColumnNames.size > 0) {
       return this.updateSettings({
         "graph.metrics": [
-          ..._.difference(graphMetrics, removedMetricColumnNames),
+          ...graphMetrics.filter(name => !removedMetricColumnNames.has(name)),
           ...addedMetricColumnNames,
         ],
       });
