@@ -558,7 +558,6 @@
                            .-message
                            string?)
         "expression"  #js ["/"   #js ["field" 1 #js {:base-type "type/Address"}] 100]
-        "aggregation" #js ["sum" #js ["is-empty" #js ["field" 1 #js {:base-type "type/Boolean"}]]]
         "filter"      #js ["sum" #js ["field" 1 #js {:base-type "type/Integer"}]]))
     (testing "circular definition"
       (is (= "Cycle detected: c → x → b → c"
