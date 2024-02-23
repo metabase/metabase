@@ -21,6 +21,7 @@ import {
   entityPickerModal,
   collectionOnTheGoModal,
   modal,
+  pickEntity,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -352,13 +353,13 @@ describe("scenarios > question > new", () => {
       cy.findByTestId("save-question-modal")
         .findByLabelText(/Which collection/)
         .click();
-      entityPickerModal().findByText(myPersonalCollectionName).click();
-      entityPickerModal().findByText("Select").click();
 
-      cy.findByTestId("save-question-modal").within(modal => {
-        cy.findByText("Save").click();
-        cy.wait("@createQuestion");
-      });
+      pickEntity({ path: [myPersonalCollectionName], select: true });
+
+      cy.findByTestId("save-question-modal").button("Save").click();
+      cy.wait("@createQuestion");
+
+      cy.findByTestId("save-question-modal").should("not.exist");
 
       modal().within(() => {
         cy.findByText(/add this to a dashboard/i);
