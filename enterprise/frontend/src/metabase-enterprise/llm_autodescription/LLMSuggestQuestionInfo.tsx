@@ -13,16 +13,12 @@ import {
   getTransformedSeries,
 } from "metabase/query_builder/selectors";
 import { getSetting } from "metabase/selectors/settings";
-import { Flex, Tooltip, Icon, Button } from "metabase/ui";
-import "./loading.css";
+import { Button, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
+import "./loading.css";
 
-type TSummarizeCardResponse = () => Promise<{
-  name?: string;
-  description?: string;
-}>;
+const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
 
 export const LLMSuggestQuestionInfo = ({
   question,
@@ -31,7 +27,9 @@ export const LLMSuggestQuestionInfo = ({
   const state = useSelector(state => state);
   const inactive = !getSetting(state, "ee-openai-api-key");
 
-  const { loading, value } = useAsync<TSummarizeCardResponse>(async () => {
+  const [acceptedSuggestion, setAcceptedSuggestion] = useState(false);
+
+  const { loading, value } = useAsync(async () => {
     if (inactive) {
       return { name: undefined, description: undefined };
     }
@@ -60,8 +58,6 @@ export const LLMSuggestQuestionInfo = ({
     };
   }, [question]);
 
-  const [acceptedSuggestion, setAcceptedSuggestion] = useState(false);
-
   const handleClick = () => {
     if (value) {
       setAcceptedSuggestion(true);
@@ -73,32 +69,21 @@ export const LLMSuggestQuestionInfo = ({
     return null;
   }
 
-  if (loading) {
-    return (
-      <Flex justify="flex-end">
-        <Tooltip
-          label={t`Generating descriptions`}
-          className="llm-pulse-icon"
-          position="top-end"
-        >
-          <Button variant="unstyled" p="xs">
-            <Icon name="ai" size={16} />
-          </Button>
-        </Tooltip>
-      </Flex>
-    );
-  }
+  const tooltip = loading
+    ? t`Generating descriptions`
+    : t`Description generated. Click to auto-fill.`;
+
+  const className = loading ? "llm-pulse-icon" : undefined;
+  const iconColor = loading ? color("text-medium") : color("brand");
 
   return (
-    <Flex justify="flex-end">
-      <Tooltip
-        label={t`Description generated. Click to auto-fill.`}
-        position="top-end"
-      >
-        <Button onClick={handleClick} variant="unstyled" p="xs">
-          <Icon name="ai" color={color("brand")} size={16} />
-        </Button>
-      </Tooltip>
-    </Flex>
+    <Tooltip label={tooltip} position="top-end">
+      <Button
+        onClick={handleClick}
+        className={className}
+        leftIcon={<Icon name="ai" color={iconColor} />}
+        variant="subtle"
+      />
+    </Tooltip>
   );
 };

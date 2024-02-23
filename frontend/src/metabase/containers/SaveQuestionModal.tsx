@@ -220,7 +220,7 @@ export const SaveQuestionModal = ({
               <Modal.Content p="md" data-testid="save-question-modal">
                 <Modal.Header>
                   <Modal.Title>{title}</Modal.Title>
-                  <Flex align="center" gap="sm">
+                  <Flex align="center" justify="flex-end" gap="sm">
                     <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
                       question={questionWithCollectionId}
                       onAccept={nextValues =>
