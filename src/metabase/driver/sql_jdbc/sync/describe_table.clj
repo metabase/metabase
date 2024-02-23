@@ -301,6 +301,7 @@
                        ^ResultSet rs (if (sql-jdbc.execute/statement-supported? driver)
                                        (sql-jdbc.execute/execute-statement! driver stmt sql)
                                        (sql-jdbc.execute/execute-prepared-statement! driver stmt))]
+             (.setFetchSize stmt (sql-jdbc.execute/sql-jdbc-fetch-size))
              (reduce
               rf
               init
