@@ -44,7 +44,7 @@ describe("scenarios > question > summarize sidebar", () => {
   it("selected dimensions becomes pinned to the top of the dimensions list", () => {
     getDimensionByName({ name: "Total" })
       .should("have.attr", "aria-selected", "false")
-      .click();
+      .click({ position: "left" });
 
     getDimensionByName({ name: "Total" }).should(
       "have.attr",
@@ -101,7 +101,7 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("selecting a binning adds a dimension", () => {
-    getDimensionByName({ name: "Total" }).click();
+    getDimensionByName({ name: "Total" }).click({ position: "left" });
 
     changeBinningForDimension({
       name: "Quantity",
