@@ -2,6 +2,17 @@
   --selection-color: var(--color-text-light);
 }
 
+/* @layout */
+.QueryBuilder {
+  transition: margin-right 0.35s;
+}
+
+/* a section of the graphical query itself */
+:global(.Query-section) {
+  display: flex;
+  align-items: center;
+}
+
 :global(.QueryName) {
   font-weight: 200;
   margin-top: 0;

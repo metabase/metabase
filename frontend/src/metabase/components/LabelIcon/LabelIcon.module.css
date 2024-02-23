@@ -11,6 +11,6 @@
 }
 
 .icon {
-  transition: color 0.3s linear;
+  composes: transition-color from "style";
   color: currentColor;
 }

@@ -6,12 +6,6 @@
   --page-header-padding: 2.375rem;
 }
 
-/* utility to get a simple common hover state for admin items */
-:global(.HoverItem:hover) {
-  background-color: var(--color-bg-medium);
-  transition: background 0.2s linear;
-}
-
 :global(.ContentTable) {
   width: 100%;
   border-collapse: collapse;
@@ -269,6 +263,6 @@
   box-shadow: 0 7px 20px var(--color-shadow);
 }
 
-:global #formField-details-password .Form-input {
+:global(#formField-details-password .Form-input) {
   margin-bottom: 2em;
 }

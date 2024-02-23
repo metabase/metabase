@@ -14,8 +14,6 @@ export const QueryBuilderViewRoot = styled.div`
   background-color: ${color("bg-white")};
   height: 100%;
   position: relative;
-
-  transition: margin-right 0.35s;
 `;
 
 export const QueryBuilderContentContainer = styled.div`

@@ -43,13 +43,8 @@ const BABEL_CONFIG = {
 
 const CSS_CONFIG = {
   modules: {
-    auto: filename => {
-      console.log("AUTO", filename);
-
-      return !(
-        filename.includes("node_modules") || filename.includes("vendor.css")
-      );
-    },
+    auto: filename =>
+      !filename.includes("node_modules") && !filename.includes("vendor.css"),
     mode: "local",
     localIdentName: devMode
       ? "[name]__[local]___[hash:base64:5]"
@@ -245,7 +240,7 @@ const config = (module.exports = {
     new HtmlWebpackPlugin({
       filename: "../../public.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", '"vendor-styles", styles', "app-public"],
+      chunks: ["vendor", "vendor-styles", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({

@@ -17,22 +17,22 @@
   composes: p2 from "style";
 }
 
-:global .formulaDefinition {
+:global(.formulaDefinition) {
   overflow: hidden;
 }
 
-:global .formulaDefinition-enter {
+:global(.formulaDefinition-enter) {
   max-height: 0px;
 }
-:global .formulaDefinition-enter.formulaDefinition-enter-active {
+:global(.formulaDefinition-enter.formulaDefinition-enter-active) {
   /* using 100% max-height breaks the transition */
   max-height: 150px;
   transition: max-height 300ms ease-out;
 }
-:global .formulaDefinition-exit {
+:global(.formulaDefinition-exit) {
   max-height: 150px;
 }
-:global .formulaDefinition-exit.formulaDefinition-exit-active {
+:global(.formulaDefinition-exit.formulaDefinition-exit-active) {
   max-height: 0px;
   transition: max-height 300ms ease-out;
 }

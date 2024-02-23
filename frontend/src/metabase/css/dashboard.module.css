@@ -26,11 +26,11 @@
   height: auto;
 }
 
-:global .Dashboard.Dashboard--fullscreen .Header-button {
+:global(.Dashboard.Dashboard--fullscreen .Header-button) {
   color: var(--color-text-light);
 }
 
-:global .Dashboard.Dashboard--fullscreen .Header-title-description {
+:global(.Dashboard.Dashboard--fullscreen .Header-title-description) {
   display: none;
 }
 
@@ -39,62 +39,60 @@
   background-color: var(--color-bg-black);
 }
 
-:global .Dashboard.Dashboard--night .Card {
+:global(.Dashboard.Dashboard--night .Card) {
   color: var(--color-text-white);
 }
 
-:global .Dashboard.Dashboard--night .Header-button {
+:global(.Dashboard.Dashboard--night .Header-button) {
   color: var(--color-text-medium);
 }
 
-:global .Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
+:global(.Dashboard.Dashboard--fullscreen .fullscreen-normal-text) {
   color: var(--color-text-dark);
   transition: color 1s linear;
 }
 
-:global
-  .Dashboard.Dashboard--night.Dashboard--fullscreen
-  .fullscreen-night-text {
+:global(.Dashboard.Dashboard--night.Dashboard--fullscreen
+    .fullscreen-night-text) {
   color: color-mod(var(--color-text-white) alpha(-14%));
   transition: color 1s linear;
 }
 
-:global .Dashboard.Dashboard--night .DashCard .Card svg text {
+:global(.Dashboard.Dashboard--night .DashCard .Card svg text) {
   fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
   stroke: none !important;
 }
 
-:global
-  .Dashboard.Dashboard--night
-  .enable-dots-onhover
-  .dc-tooltip
-  circle.dot:hover,
-:global .Dashboard.Dashboard--night .enable-dots .dc-tooltip circle.dot {
+:global(.Dashboard.Dashboard--night
+    .enable-dots-onhover
+    .dc-tooltip
+    circle.dot:hover),
+:global(.Dashboard.Dashboard--night .enable-dots .dc-tooltip circle.dot) {
   fill: currentColor;
 }
 
-:global .Dashboard.Dashboard--night .bg-light {
+:global(.Dashboard.Dashboard--night .bg-light) {
   background-color: var(--color-bg-black);
 }
 
-:global .Dashboard.Dashboard--night .bg-medium {
+:global(.Dashboard.Dashboard--night .bg-medium) {
   background-color: #596269;
 }
 
-:global .Dashboard.Dashboard--night .text-dark {
+:global(.Dashboard.Dashboard--night .text-dark) {
   color: var(--color-bg-light);
 }
 
-:global .Dashboard.Dashboard--night .border-top,
-:global .Dashboard.Dashboard--night .border-left,
-:global .Dashboard.Dashboard--night .border-bottom,
-:global .Dashboard.Dashboard--night .border-right {
+:global(.Dashboard.Dashboard--night .border-top),
+:global(.Dashboard.Dashboard--night .border-left),
+:global(.Dashboard.Dashboard--night .border-bottom),
+:global(.Dashboard.Dashboard--night .border-right) {
   border-color: var(--color-bg-dark);
 }
 
 /* Night mode transition */
-:global .Dashboard.Dashboard--fullscreen,
-:global .Dashboard.Dashboard--fullscreen .DashCard .Card {
+:global(.Dashboard.Dashboard--fullscreen),
+:global(.Dashboard.Dashboard--fullscreen .DashCard .Card) {
   transition: background-color 1s linear, border 1s linear;
 }
 
@@ -102,19 +100,19 @@
   margin-top: 1.5em;
 }
 
-:global .Dash--editing .DashCard .Card {
+:global(.Dash--editing .DashCard .Card) {
   transition: border 0.3s, background-color 0.3s;
 }
 
-:global .Dash--editing .Card-title:first-of-type {
+:global(.Dash--editing .Card-title:first-of-type) {
   margin-top: 0.5rem;
 }
 
-:global .Dash--editing .DashCard:hover .Card .Card-heading {
+:global(.Dash--editing .DashCard:hover .Card .Card-heading) {
   z-index: 2;
 }
 
-:global .Dash--editing .PinMap {
+:global(.Dash--editing .PinMap) {
   /* allow map to pan. need to stopPropagation in PinMap to prevent weird dragging interaction */
   pointer-events: all;
 }
@@ -124,40 +122,40 @@
   color: var(--color-text-light);
 }
 
-:global .Dash--editing .DashCard.react-draggable-dragging .Card {
+:global(.Dash--editing .DashCard.react-draggable-dragging .Card) {
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
-:global .BrandColorResizeHandle .react-resizable-handle:after {
+:global(.BrandColorResizeHandle .react-resizable-handle:after) {
   border-color: var(--color-brand) !important;
 }
 
-:global .Dash--editing .DashCard.react-draggable-dragging,
-:global .Dash--editing .DashCard.react-resizable-resizing {
+:global(.Dash--editing .DashCard.react-draggable-dragging),
+:global(.Dash--editing .DashCard.react-resizable-resizing) {
   z-index: 3;
 }
 
-:global .Dash--editing .DashCard.react-draggable-dragging .Card,
-:global .Dash--editing .DashCard.react-resizable-resizing .Card {
+:global(.Dash--editing .DashCard.react-draggable-dragging .Card),
+:global(.Dash--editing .DashCard.react-resizable-resizing .Card) {
   background-color: var(--color-bg-medium) !important;
   border: 1px solid var(--color-brand);
 }
 
-:global .Dash--editing .DashCard .Visualization-slow-spinner {
+:global(.Dash--editing .DashCard .Visualization-slow-spinner) {
   position: absolute;
   right: -2px;
   top: -2px;
 }
-:global .Dash--editing .DashCard:hover .Visualization-slow-spinner {
+:global(.Dash--editing .DashCard:hover .Visualization-slow-spinner) {
   opacity: 0;
   transition: opacity 0.15s linear;
 }
 
-:global .Dash--editing .DashCard {
+:global(.Dash--editing .DashCard) {
   cursor: move;
 }
 
-:global .Dash--editing .DashCard .react-resizable-handle {
+:global(.Dash--editing .DashCard .react-resizable-handle) {
   position: absolute;
   width: 40px;
   height: 40px;
@@ -170,7 +168,7 @@
   background: none; /* hide default RGL's resize handle */
 }
 
-:global .Dash--editing .DashCard .react-resizable-handle:after {
+:global(.Dash--editing .DashCard .react-resizable-handle:after) {
   content: "";
   position: absolute;
   width: 8px;
@@ -184,32 +182,30 @@
   opacity: 0.01;
 }
 
-:global .Dash--editing .DashCard .react-resizable-handle:hover:after {
+:global(.Dash--editing .DashCard .react-resizable-handle:hover:after) {
   border-color: var(--color-border);
 }
 
-:global .Dash--editing .DashCard:hover .react-resizable-handle:after {
+:global(.Dash--editing .DashCard:hover .react-resizable-handle:after) {
   opacity: 1;
 }
 
-:global
-  .Dash--editing
-  .DashCard.react-draggable-dragging
-  .react-resizable-handle:after,
-:global
-  .Dash--editing
-  .DashCard.react-resizable-resizing
-  .react-resizable-handle:after {
+:global(.Dash--editing
+    .DashCard.react-draggable-dragging
+    .react-resizable-handle:after),
+:global(.Dash--editing
+    .DashCard.react-resizable-resizing
+    .react-resizable-handle:after) {
   opacity: 0.01;
 }
 
-:global .Dash--editing .react-grid-placeholder {
+:global(.Dash--editing .react-grid-placeholder) {
   z-index: 0;
   background-color: var(--color-bg-light) !important;
   transition: all 0.15s linear;
 }
 
-:global .Dash--editing .Card-title {
+:global(.Dash--editing .Card-title) {
   pointer-events: none;
 }
 
@@ -227,9 +223,9 @@
     display: none;
   }
   /* improve label contrast */
-  :global .dc-chart .axis .tick text,
-  :global .dc-chart .x-axis-label,
-  :global .dc-chart .y-axis-label {
+  :global(.dc-chart .axis .tick text),
+  :global(.dc-chart .x-axis-label),
+  :global(.dc-chart .y-axis-label) {
     fill: var(--color-text-dark);
   }
 }
@@ -239,23 +235,23 @@
 }
 
 /* when in night mode goal lines should be more visible */
-:global .Dashboard--night .goal .line,
-:global .Dashboard--night .trend .line {
+:global(.Dashboard--night .goal .line),
+:global(.Dashboard--night .trend .line) {
   stroke: white;
 }
 
 /* when in night mode code snippets should have a more readable background-color */
-:global .Dashboard--night pre code {
+:global(.Dashboard--night pre code) {
   background-color: color-mod(var(--color-bg-white) alpha(-86%));
 }
 
-:global .Dashboard--night .text-card-markdown code {
+:global(.Dashboard--night .text-card-markdown code) {
   background-color: color-mod(var(--color-bg-white) alpha(-86%));
 }
 
-:global .Dashboard text.value-label,
-:global .Dashboard text.value-label-white,
-:global .Dashboard .LineAreaBarChart .dc-chart .axis text {
+:global(.Dashboard text.value-label),
+:global(.Dashboard text.value-label-white),
+:global(.Dashboard .LineAreaBarChart .dc-chart .axis text) {
   font-size: 12px;
 }
 
@@ -268,7 +264,7 @@
   font-size: 1.4em;
 }
 
-:global .Dashboard .SmartWrapper {
+:global(.Dashboard .SmartWrapper) {
   position: relative;
   font-size: inherit;
 }
@@ -276,7 +272,7 @@
 /*
  * Override d3 styles so the chart axis labels are selectable. See issue #17613
  */
-:global .dc-chart g.axis g.tick text {
+:global(.dc-chart g.axis g.tick text) {
   pointer-events: all;
   user-select: auto;
 }

@@ -352,7 +352,10 @@ class View extends Component {
 
     return (
       <div className="full-height">
-        <QueryBuilderViewRoot data-testid="query-builder-root">
+        <QueryBuilderViewRoot
+          className="QueryBuilder"
+          data-testid="query-builder-root"
+        >
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {!isNative && (

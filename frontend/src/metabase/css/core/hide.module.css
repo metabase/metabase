@@ -1,30 +1,30 @@
-:global .hide {
+:global(.hide) {
   display: none !important;
 }
-:global .show {
+:global(.show) {
   display: inherit;
 }
 
-:global .hidden {
+:global(.hidden) {
   visibility: hidden;
 }
 
-:global .sm-show,
-:global .md-show,
-:global .lg-show,
-:global .xl-show {
+:global(.sm-show),
+:global(.md-show),
+:global(.lg-show),
+:global(.xl-show) {
   display: none;
 }
 
 /* extra-small */
 
 @media screen and (--breakpoint-min-xs) {
-  :global .xs-hide {
+  :global(.xs-hide) {
     display: none !important;
   }
 }
 @media screen and (--breakpoint-min-xs) {
-  :global .xs-show {
+  :global(.xs-show) {
     display: inherit !important;
   }
 }
@@ -32,12 +32,12 @@
 /* small */
 
 @media screen and (--breakpoint-min-sm) {
-  :global .sm-hide {
+  :global(.sm-hide) {
     display: none !important;
   }
 }
 @media screen and (--breakpoint-min-sm) {
-  :global .sm-show {
+  :global(.sm-show) {
     display: inherit !important;
   }
 }
@@ -45,36 +45,36 @@
 /* medium */
 
 @media screen and (--breakpoint-min-md) {
-  :global .md-hide {
+  :global(.md-hide) {
     display: none !important;
   }
 }
 @media screen and (--breakpoint-min-md) {
-  :global .md-show {
+  :global(.md-show) {
     display: inherit !important;
   }
 }
 /* large */
 
 @media screen and (--breakpoint-min-lg) {
-  :global .lg-hide {
+  :global(.lg-hide) {
     display: none !important;
   }
 }
 @media screen and (--breakpoint-min-lg) {
-  :global .lg-show {
+  :global(.lg-show) {
     display: inherit !important;
   }
 }
 
 /* xl */
 @media screen and (--breakpoint-min-xl) h {
-  :global .xl-hide {
+  :global(.xl-hide) {
     display: none !important;
   }
 }
 @media screen and (--breakpoint-min-xl) {
-  :global .xl-show {
+  :global(.xl-show) {
     display: inherit !important;
   }
 }
