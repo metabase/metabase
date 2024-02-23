@@ -27,7 +27,8 @@
   Only supported for databases that support `fast-sync-fks`."
   [database :- i/DatabaseInstance & {:as args}]
   (cond->> (driver/describe-fks (driver.u/database->driver database) database args)
-    ;; this is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
+    ;; Validate the output against the schema, except in prod.
+    ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
     (not config/is-prod?)
     (eduction (map #(mu.fn/validate-output {} i/FastFKMetadataEntry %)))))
 
