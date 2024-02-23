@@ -78,26 +78,46 @@
                          :actual      (:base_type col)}))))))
 
 (defn- merge-sandbox-into-graph
-  "Merges a single sandboxing policy into the permissions graph. If perms were previously set at the DB-level, we need
-to make sure that perms for all other tables in that DB are set at the table-level in the updated graph."
+  "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
+  ensuring table-level permissions are set appropriately."
   [graph group-id table-id db-id schema]
-  (let [db-perm        (get-in graph [group-id db-id :data :schemas])
-        tables        (when (keyword? db-perm)
-                        (t2/select [:model/Table :id :db_id :schema]
-                                   {:where [:= :db_id db-id]}))
+  (let [db-perm (get-in graph [group-id db-id :data :schemas])
+        schema-perm (get db-perm schema)
+        default-table-perm (if (keyword? db-perm)
+                             db-perm
+                             (when (keyword schema-perm) schema-perm))
+        ;; If perms were set at the database or schema-level before, we might need to add granular values for all tables
+        ;; in the database or schema, so they show correctly in the UI.
+        tables (when (or (keyword? db-perm) (keyword? schema-perm))
+                 (t2/select [:model/Table :id :db_id :schema]
+                            {:where [:and
+                                     [:= :db_id db-id]
+                                     (when (keyword? schema-perm)
+                                       [:= :schema schema])]}))
+        ;; Remove the overarching database or schema permission so that we can add the granular table-level permissions
+        graph (cond
+                (and tables (keyword? db-perm))
+                (m/dissoc-in graph [group-id db-id :data :schemas])
+
+                (and tables (keyword? schema-perm))
+                (m/dissoc-in graph [group-id db-id :data :schemas (or schema "")])
+
+                :else
+                graph)
+        ;; Apply granular permissions to each table
         granular-graph (if tables
-                         (reduce
-                          (fn [g {:keys [id schema]}]
-                            (assoc-in g [group-id db-id :data :schemas (or schema "") id] db-perm))
-                          (m/dissoc-in graph [group-id db-id :data :schemas])
-                          tables)
+                         (reduce (fn [g {:keys [id schema]}]
+                                   (assoc-in g [group-id db-id :data :schemas (or schema "") id] default-table-perm))
+                                 graph
+                                 tables)
                          graph)]
+    ;; Set `:segmented` (aka sandboxed) permissions for the target table
     (assoc-in granular-graph
               [group-id db-id :data :schemas (or schema "") table-id]
               {:query :segmented, :read :all})))
 
 (defenterprise add-sandboxes-to-permissions-graph
-  "Augment a provided permissions graph with active sandboxing policies."
+  "Augments a provided permissions graph with active sandboxing policies."
   :feature :sandboxes
   [graph & {:keys [group-id db-id audit?]}]
   (let [sandboxes (t2/select :model/GroupTableAccessPolicy
@@ -108,6 +128,7 @@ to make sure that perms for all other tables in that DB are set at the table-lev
                                       (when group-id [:= :s.group_id group-id])
                                       (when db-id [:= :t.db_id db-id])
                                       (when-not audit? [:not [:= :t.db_id config/audit-db-id]])]})]
+    ;; Incorporate each sandbox policy into the permissions graph.
     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
               (merge-sandbox-into-graph acc group_id table_id db_id schema))
             graph
