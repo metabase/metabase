@@ -1,5 +1,5 @@
 import type { Location, LocationDescriptor } from "history";
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent } from "react";
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -95,7 +95,6 @@ interface OwnProps {
   isAddParameterPopoverOpen: boolean;
   canManageSubscriptions: boolean;
   hasNightModeToggle: boolean;
-  parametersWidget: ReactNode;
 
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -338,7 +337,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
   getHeaderButtons() {
     const {
       dashboard,
-      parametersWidget,
       isBookmarked,
       isEditing,
       isFullscreen,
@@ -364,10 +362,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
     const buttons = [];
     const extraButtons = [];
-
-    if (isFullscreen && parametersWidget) {
-      buttons.push(parametersWidget);
-    }
 
     if (isEditing) {
       const activeSidebarName = sidebar.name;
