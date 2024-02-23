@@ -1,16 +1,8 @@
 import styled from "@emotion/styled";
 
-import {
-  QueryColumnInfoIcon,
-  HoverParent,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
-export { HoverParent };
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 
 export const InfoIcon = styled(QueryColumnInfoIcon)`
   position: relative;
-  left: -0.5em;
+  left: 0.25rem;
 `;
-
-InfoIcon.defaultProps = {
-  position: "left",
-};
