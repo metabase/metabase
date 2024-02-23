@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { Locale } from "metabase-types/store";
 
 import { useStep } from "../..//useStep";
-import { selectStep, updateLocale } from "../../actions";
+import { goToNextStep, selectStep, updateLocale } from "../../actions";
 import {
   getAvailableLocales,
   getIsSetupCompleted,
@@ -44,7 +44,7 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   };
 
   const handleStepSubmit = () => {
-    dispatch(selectStep("user_info"));
+    dispatch(goToNextStep());
   };
 
   if (!isStepActive) {
