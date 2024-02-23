@@ -535,6 +535,18 @@
         (mw.session/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
 
+(deftest last-used-database-id-can-be-read-and-set
+  (testing "last-used-database-id can be read and set"
+    (mt/with-test-user :rasta
+      (let [old-db-id (user/last-used-database-id)
+            new-db-id 42]
+        (try
+          (is (not= new-db-id old-db-id))
+          (user/last-used-database-id! new-db-id)
+          (is (= new-db-id (user/last-used-database-id)))
+          (finally
+            (user/last-used-database-id! old-db-id)))))))
+
 (deftest common-name-test
   (testing "common_name should be present depending on what is selected"
     (mt/with-temp [User user {:first_name "John"
