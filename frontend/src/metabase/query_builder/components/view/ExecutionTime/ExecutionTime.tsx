@@ -11,6 +11,6 @@ interface Props {
 
 export const ExecutionTime: FunctionComponent<Props> = ({ time }) => (
   <Tooltip label={t`Query execution time`}>
-    <span>{formatDuration(time)}</span>
+    <span data-testid="execution-time">{formatDuration(time)}</span>
   </Tooltip>
 );

@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
-import { createMockCard } from "metabase-types/api/mocks";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import {
   TEST_CARD,
@@ -101,6 +101,28 @@ describe("QueryBuilder", () => {
           expect(element).toBeVisible();
         },
       );
+    });
+
+    describe("query execution time", () => {
+      it("renders query execution time for native questions", async () => {
+        await setup({
+          card: TEST_NATIVE_CARD,
+          dataset: createMockDataset({
+            running_time: 123,
+          }),
+        });
+
+        expect(screen.getByTestId("execution-time")).toBeInTheDocument();
+        expect(screen.getByTestId("execution-time")).toHaveTextContent(
+          "123 ms",
+        );
+      });
+
+      it("does not render query execution time for non-native questions", async () => {
+        await setup({ card: TEST_CARD });
+
+        expect(screen.queryByTestId("execution-time")).not.toBeInTheDocument();
+      });
     });
   });
 
