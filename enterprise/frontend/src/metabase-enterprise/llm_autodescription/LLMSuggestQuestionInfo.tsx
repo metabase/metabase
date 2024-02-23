@@ -6,7 +6,6 @@ import { POST } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type { TLLMIndicatorProps } from "metabase/plugins/types";
-import { getSubmittableQuestion } from "metabase/query_builder/selectors";
 import { getSetting } from "metabase/selectors/settings";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
@@ -27,10 +26,7 @@ export const LLMSuggestQuestionInfo = ({
     if (inactive) {
       return { name: undefined, description: undefined };
     }
-
-    const submittableQuestion = getSubmittableQuestion(state, question);
-    const response = await postSummarizeCard(submittableQuestion.card());
-
+    const response = await postSummarizeCard(question.card());
     return {
       name: response?.summary?.title ?? undefined,
       description: response?.summary?.description ?? undefined,

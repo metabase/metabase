@@ -22,7 +22,10 @@ import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
-import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
+import {
+  getIsSavedQuestionChanged,
+  getSubmittableQuestion,
+} from "metabase/query_builder/selectors";
 import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import type { CollectionId } from "metabase-types/api";
@@ -141,6 +144,10 @@ export const SaveQuestionModal = ({
   const questionWithCollectionId: Question =
     question.setCollectionId(collectionId);
 
+  const submittableQuestion = useSelector(state =>
+    getSubmittableQuestion(state, questionWithCollectionId),
+  );
+
   const handleOverwrite = useCallback(
     async (originalQuestion: Question) => {
       const collectionId = canonicalCollectionId(
@@ -222,7 +229,7 @@ export const SaveQuestionModal = ({
                   <Modal.Title>{title}</Modal.Title>
                   <Flex align="center" justify="flex-end" gap="sm">
                     <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
-                      question={questionWithCollectionId}
+                      question={submittableQuestion}
                       onAccept={nextValues =>
                         setValues({ ...values, ...nextValues })
                       }
