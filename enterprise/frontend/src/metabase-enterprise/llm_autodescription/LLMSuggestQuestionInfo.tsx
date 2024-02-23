@@ -32,7 +32,7 @@ export const LLMSuggestQuestionInfo = ({
       name: response?.summary?.title ?? undefined,
       description: response?.summary?.description ?? undefined,
     };
-  }, [question]);
+  }, [isActive]);
 
   const handleClick = () => {
     if (value) {
