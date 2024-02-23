@@ -36,9 +36,9 @@ describe("issue 26091", () => {
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").clear().type("New model");
-      cy.button("Save").click();
+      cy.findByText("Save").click();
       cy.wait("@saveQuestion");
     });
     modal().within(() => {

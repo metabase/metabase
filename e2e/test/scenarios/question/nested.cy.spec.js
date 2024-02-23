@@ -557,7 +557,7 @@ describe("scenarios > question > nested", () => {
 
       cy.findByTestId("save-question-modal").then(modal => {
         cy.findByLabelText("Name").type("Q").blur();
-        cy.button("Save").click();
+        cy.findByTestId("save-question-button").click();
       });
 
       cy.wait("@cardCreated");
