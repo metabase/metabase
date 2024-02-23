@@ -8,12 +8,12 @@ export const ButtonBar = ({
   onConfirm,
   onCancel,
   canConfirm,
-  actions,
+  actionButtons,
 }: {
   onConfirm: () => void;
   onCancel: () => void;
   canConfirm?: boolean;
-  actions: JSX.Element[];
+  actionButtons: JSX.Element[];
 }) => {
   useEffect(() => {
     const handleEnter = (e: KeyboardEvent) => {
@@ -35,7 +35,7 @@ export const ButtonBar = ({
         borderTop: `1px solid ${color("border")}`,
       }}
     >
-      <Flex gap="md">{actions}</Flex>
+      <Flex gap="md">{actionButtons}</Flex>
       <Flex gap="md">
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         <Button

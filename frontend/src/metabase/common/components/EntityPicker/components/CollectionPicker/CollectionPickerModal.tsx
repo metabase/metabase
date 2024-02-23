@@ -99,7 +99,7 @@ export const CollectionPickerModal = ({
         tabs={tabs}
         options={options}
         searchResultFilter={searchFilter}
-        actions={modalActions}
+        actionButtons={modalActions}
         trapFocus={!createDialogOpen}
       />
       <NewCollectionDialog

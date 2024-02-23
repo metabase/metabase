@@ -41,9 +41,9 @@ export interface EntityPickerModalProps {
   onItemSelect: (item: CollectionPickerItem) => void;
   onClose: () => void;
   tabs: EntityTab[];
-  options?: EntityPickerOptions;
+  options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
-  actions?: JSX.Element[];
+  actionButtons?: JSX.Element[];
   trapFocus?: boolean;
 }
 
@@ -54,14 +54,22 @@ export function EntityPickerModal({
   selectedItem,
   onClose,
   tabs,
-  options = defaultOptions,
-  actions = [],
+  options,
+  actionButtons = [],
   searchResultFilter,
   trapFocus = true,
 }: EntityPickerModalProps) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
+  );
+
+  const hydratedOptions = useMemo(
+    () => ({
+      ...defaultOptions,
+      ...options,
+    }),
+    [options],
   );
 
   const { open } = useModalOpen();
@@ -81,7 +89,7 @@ export function EntityPickerModal({
         <Modal.Header px="1.5rem" pt="1rem" pb={hasTabs ? "1rem" : "1.5rem"}>
           <GrowFlex justify="space-between">
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
-            {options.showSearch && (
+            {hydratedOptions.showSearch && (
               <EntityPickerSearchInput
                 models={tabModels}
                 setSearchResults={setSearchResults}
@@ -109,12 +117,12 @@ export function EntityPickerModal({
             ) : (
               <SinglePickerView tab={tabs[0]} />
             )}
-            {!!options.hasConfirmButtons && (
+            {!!hydratedOptions.hasConfirmButtons && (
               <ButtonBar
                 onConfirm={onConfirm}
                 onCancel={onClose}
                 canConfirm={!!selectedItem && selectedItem?.can_write !== false}
-                actions={actions}
+                actionButtons={actionButtons}
               />
             )}
           </ErrorBoundary>
