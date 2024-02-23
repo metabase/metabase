@@ -1,10 +1,15 @@
-import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { useDispatch } from "metabase/lib/redux";
-import { Tabs } from "metabase/ui";
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
+
+import { Tabs } from "metabase/ui";
+
+import {
+  CachingTab,
+  CachingTabContent,
+  CachingTabsList,
+  CachingTabsPanel,
+} from "./Caching.styled";
+import { DataCachingSettings } from "./DataCachingSettings";
 
 enum CachingTabId {
   DataCachingSettings = "dataCachingSettings",
@@ -13,37 +18,10 @@ enum CachingTabId {
   CachingStats = "cachingStats",
 }
 const isValidCachingTabId = (tab: unknown): tab is CachingTabId =>
-  typeof tab === "string" && Object.values(CachingTabId).includes(tab as CachingTabId);
-
-export const CachingTabsList = styled(Tabs.List)`
-  padding: 0 2.5rem;
-  background-color: ${color("white")};
-  border-bottom-width: 1px;
-`;
-
-export const CachingTab = styled(Tabs.Tab)`
-  top: 1px;
-  margin-bottom: 1px;
-  border-bottom-width: 3px !important;
-  padding: 10px 0px;
-  margin-right: 10px;
-  &:hover {
-    color: ${color("brand")};
-    background-color: inherit;
-    border-color: transparent;
-  }
-`;
-
-export const CachingTabsPanel = styled(Tabs.Panel)`
-  display: flex;
-  flex-flow: column nowrap;
-  flex: 1;
-  height: 100%;
-  padding: 0 2.5rem;
-`;
+  typeof tab === "string" &&
+  Object.values(CachingTabId).includes(tab as CachingTabId);
 
 export const Caching = () => {
-  const dispatch = useDispatch();
   const [tab, setTab] = useState<CachingTabId>(
     CachingTabId.DataCachingSettings,
   );
@@ -84,11 +62,13 @@ export const Caching = () => {
         </CachingTab>
       </CachingTabsList>
       <CachingTabsPanel key={tab} value={tab}>
-        {tab === CachingTabId.DataCachingSettings && "data caching settings"}
-        {tab === CachingTabId.ModelPersistence && "model persistence"}
-        {tab === CachingTabId.DashboardAndQuestionCaching &&
-          "dashboard and question caching"}
-        {tab === CachingTabId.CachingStats && "caching stats"}
+        <CachingTabContent>
+          {tab === CachingTabId.DataCachingSettings && <DataCachingSettings />}
+          {tab === CachingTabId.ModelPersistence && "model persistence"}
+          {tab === CachingTabId.DashboardAndQuestionCaching &&
+            "dashboard and question caching"}
+          {tab === CachingTabId.CachingStats && "caching stats"}
+        </CachingTabContent>
       </CachingTabsPanel>
     </Tabs>
   );
