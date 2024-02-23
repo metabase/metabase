@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -36,6 +37,7 @@
 
 (doseq [[feature supported?] {:test/jvm-timezone-setting false
                               :nested-field-columns      false
+                              :fast-sync-fks             true
                               :connection-impersonation  true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
@@ -48,6 +50,32 @@
 (defmethod driver/describe-table :redshift
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
+
+(defmethod sql-jdbc.sync/describe-fks-sql :redshift
+  [_ & {:keys [schema-names table-names]}]
+  (sql/format {:select (vec
+                        {:source_ns.nspname     "fk-table-schema"
+                         :source_table.relname  "fk-table-name"
+                         :source_column.attname "fk-column-name"
+                         :dest_ns.nspname       "dest-table-schema"
+                         :dest_column.attname   "dest-column-name"
+                         :dest_table.relname    "dest-table-name"})
+               :from   [[:pg_constraint :c]]
+               :join   [[:pg_namespace :source_ns]     [:= :c.connamespace :source_ns.oid]
+                        [:pg_class     :source_table]  [:= :c.conrelid :source_table.oid]
+                        [:pg_attribute :source_column] [:= :c.conrelid :source_column.attrelid]
+                        [:pg_class     :dest_table]    [:= :c.confrelid :dest_table.oid]
+                        [:pg_namespace :dest_ns]       [:= :dest_table.relnamespace :dest_ns.oid]
+                        [:pg_attribute :dest_column]   [:= :c.confrelid :dest_column.attrelid]]
+               :where  (cond-> [:and
+                                [:= :c.contype [:raw "'f'::char"]]
+                                [:= :source_column.attnum [:raw "ANY(c.conkey)"]]
+                                [:= :dest_column.attnum [:raw "ANY(c.confkey)"]]]
+                         (seq table-names)
+                         (conj [:in :source_table.relname table-names])
+                         (seq schema-names)
+                         (conj [:in :source_ns.nspname schema-names]))}
+              {:pretty true}))
 
 (defmethod driver/db-start-of-week :redshift
   [_]

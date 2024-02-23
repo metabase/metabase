@@ -271,9 +271,24 @@
    (fn [^Connection conn]
      (describe-table-fks* driver conn table db-name-or-nil))))
 
-(defn describe-fks
-  "Default implementation of [[metabase.driver/describe-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db & {:keys [catalog-name schema-name table-name]}]
+(defmulti describe-fks-sql
+ "Returns a SQL query that produces results with the following columns:
+  - fk-column-name
+  - fk-table-schema
+  - fk-table-name
+  - dest-column-name
+  - dest-table-name
+  - dest-table-schema
+
+ Results are ordered by fk-table-schema, fk-table-name, and fk-column-name.
+ Results are filtered by the schema-names and table-names provided."
+ {:added    "0.50.0"
+  :arglists '([driver & {:keys [schema-names table-names]}])}
+ driver/dispatch-on-initialized-driver
+ :hierarchy #'driver/hierarchy)
+
+(defn- describe-fks*
+  [driver db & {:keys [schema-names table-names]}]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
       (sql-jdbc.execute/do-with-connection-with-options
@@ -281,19 +296,28 @@
        db
        nil
        (fn [^Connection conn]
-         (with-open [^ResultSet rs (.getImportedKeys (.getMetaData conn) catalog-name schema-name table-name)]
-           (reduce
-            ((take-while some?) rf)
-            init
-            (let [row-thunk (fn []
-                              {:fk-table         {:name   (.getString rs "FKTABLE_NAME")
-                                                  :schema (.getString rs "FKTABLE_SCHEM")}
-                               :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                  :schema (.getString rs "PKTABLE_SCHEM")}
-                               :fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                               :dest-column-name (.getString rs "PKCOLUMN_NAME")})]
-              (repeatedly #(when (.next rs)
-                             (row-thunk)))))))))))
+         (let [[sql & params] (describe-fks-sql driver schema-names table-names)]
+           (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)
+                       ^ResultSet rs (if (sql-jdbc.execute/statement-supported? driver)
+                                       (sql-jdbc.execute/execute-statement! driver stmt sql)
+                                       (sql-jdbc.execute/execute-prepared-statement! driver stmt))]
+             (reduce
+              rf
+              init
+              (jdbc/reducible-result-set rs {})))))))))
+
+(defn describe-fks
+  "Default implementation of [[metabase.driver/describe-fks]] for JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver db & {:as args}]
+  (eduction
+   (map (fn [x]
+          {:fk-column-name   (:fk-column-name x)
+           :fk-table         {:name   (:fk-table-name x)
+                              :schema (:fk-table-schema x)}
+           :dest-column-name (:dest-column-name x)
+           :dest-table       {:name   (:fk-table-name x)
+                              :schema (:fk-table-schema x)}}))
+   (describe-fks* driver db args)))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

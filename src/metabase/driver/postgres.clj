@@ -63,7 +63,6 @@
                               :persist-models           true
                               :table-privileges         true
                               :schemas                  true
-                              :fast-sync-fks            true
                               :connection-impersonation true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 

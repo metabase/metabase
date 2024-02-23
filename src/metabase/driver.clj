@@ -354,7 +354,7 @@
   catalog, schema or table.
 
   Required for drivers that support `:fast-sync-fks`."
-  {:added "0.50.0" :arglists '([driver database & {:keys [catalog-name schema-name table-name]}])}
+  {:added "0.50.0" :arglists '([driver database & {:keys [schema-names table-names]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
