@@ -1,4 +1,4 @@
-import { restore, modal } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
@@ -42,10 +42,10 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
 
     cy.findByTextEnsureVisible("Save new question");
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");
 
-      cy.button("Save").should("not.be.disabled").click();
+      cy.findByText("Save").should("not.be.disabled").click();
     });
 
     cy.wait("@createQuestion");

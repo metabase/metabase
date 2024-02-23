@@ -107,9 +107,9 @@ describe("scenarios > dashboard", () => {
       });
 
       queryBuilderHeader().findByText("Save").click();
-      modal().within(() => {
+      cy.findByTestId("save-question-modal").within(modal => {
         cy.findByLabelText("Name").clear().type(newQuestionName);
-        cy.button("Save").click();
+        cy.findByText("Save").click();
       });
       cy.wait("@createQuestion");
       modal().within(() => {

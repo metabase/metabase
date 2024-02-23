@@ -70,7 +70,7 @@ describe("scenarios > models > create", () => {
       cy.contains("button", "Save").click();
     });
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
     });
   });
