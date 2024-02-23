@@ -1,6 +1,5 @@
 import _ from "underscore";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 // mappings of allowed operators
 const EXPRESSION_OPERATORS = new Map([

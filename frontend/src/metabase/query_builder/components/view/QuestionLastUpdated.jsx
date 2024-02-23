@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";

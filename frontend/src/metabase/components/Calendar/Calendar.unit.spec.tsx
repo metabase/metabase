@@ -1,5 +1,4 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import mockDate from "mockdate";
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "__support__/ui";

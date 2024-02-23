@@ -3,8 +3,7 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import cx from "classnames";
 import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar from "metabase/components/Calendar";

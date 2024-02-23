@@ -1,8 +1,7 @@
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { getUser } from "metabase/selectors/user";
 import { getFullName } from "metabase/lib/user";
