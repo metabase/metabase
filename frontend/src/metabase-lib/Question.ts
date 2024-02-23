@@ -470,56 +470,42 @@ class Question {
     });
   }
 
-  private _syncGraphMetricSettings(previousQuestion: Question) {
-    const query = this.query();
-    const previousQuery = previousQuestion.query();
-    const stageIndex = -1;
-    const columns = Lib.returnedColumns(query, stageIndex);
-    const previousColumns = Lib.returnedColumns(previousQuery, stageIndex);
-
-    const addedColumns = columns
-      .filter(
-        column =>
-          !Lib.findMatchingColumn(query, stageIndex, column, previousColumns),
-      )
-      .map(column => ({
-        column,
-        columnInfo: Lib.displayInfo(query, stageIndex, column),
-      }));
-    const removedColumns = previousColumns
-      .filter(
-        column =>
-          !Lib.findMatchingColumn(previousQuery, stageIndex, column, columns),
-      )
-      .map(column => ({
-        column,
-        columnInfo: Lib.displayInfo(previousQuery, stageIndex, column),
-      }));
+  private _syncGraphMetricSettings(
+    queryResults: Dataset,
+    prevQueryResults: Dataset,
+  ) {
     const graphMetrics = this.setting("graph.metrics");
+    if (!graphMetrics) {
+      return this;
+    }
+
+    const metricColumnNameByKey = Object.fromEntries(
+      queryResults.data.cols
+        .filter(column => column.source === "aggregation")
+        .map(column => [getColumnKey(column), column.name]),
+    );
+    const prevMetricColumnNameByKey = Object.fromEntries(
+      prevQueryResults.data.cols
+        .filter(column => column.source === "aggregation")
+        .map(column => [getColumnKey(column), column.name]),
+    );
+    const addedMetricColumnNames = Object.entries(metricColumnNameByKey)
+      .filter(([key]) => prevMetricColumnNameByKey[key] == null)
+      .map(([_key, name]) => name);
+    const removedMetricColumnNames = Object.entries(prevMetricColumnNameByKey)
+      .filter(([key]) => metricColumnNameByKey[key] == null)
+      .map(([_key, name]) => name);
 
     if (
-      graphMetrics &&
-      (addedColumns.length > 0 || removedColumns.length > 0)
+      addedMetricColumnNames.length > 0 ||
+      removedMetricColumnNames.length > 0
     ) {
-      const addedMetricColumnNames = addedColumns
-        .filter(({ columnInfo }) => columnInfo.isAggregation)
-        .map(({ columnInfo }) => columnInfo.name);
-
-      const removedMetricColumnNames = removedColumns
-        .filter(({ columnInfo }) => columnInfo.isAggregation)
-        .map(({ columnInfo }) => columnInfo.name);
-
-      if (
-        addedMetricColumnNames.length > 0 ||
-        removedMetricColumnNames.length > 0
-      ) {
-        return this.updateSettings({
-          "graph.metrics": [
-            ..._.difference(graphMetrics, removedMetricColumnNames),
-            ...addedMetricColumnNames,
-          ],
-        });
-      }
+      return this.updateSettings({
+        "graph.metrics": [
+          ..._.difference(graphMetrics, removedMetricColumnNames),
+          ...addedMetricColumnNames,
+        ],
+      });
     }
 
     return this;
@@ -567,22 +553,17 @@ class Question {
     });
   }
 
-  syncColumnsAndSettings(previousQuestion?: Question, queryResults?: Dataset) {
+  syncColumnsAndSettings(queryResults?: Dataset, prevQueryResults?: Dataset) {
     let question = this;
-    const query = question.query();
-    const { isNative } = Lib.queryDisplayInfo(query);
 
     if (queryResults && !queryResults.error) {
       question = question._syncTableColumnSettings(queryResults);
-    }
 
-    if (previousQuestion) {
-      const previousQuery = previousQuestion.query();
-      const { isNative: isPreviousQuestionNative } =
-        Lib.queryDisplayInfo(previousQuery);
-
-      if (!isNative && !isPreviousQuestionNative) {
-        question = question._syncGraphMetricSettings(previousQuestion);
+      if (prevQueryResults && !prevQueryResults.error) {
+        question = question._syncGraphMetricSettings(
+          queryResults,
+          prevQueryResults,
+        );
       }
     }
 
