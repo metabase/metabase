@@ -120,7 +120,7 @@ describe("scenarios > admin > databases > sample database", () => {
       "discard_values",
     );
     cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/usage_info`).as(
-      `usage_info`,
+      "usage_info",
     );
     cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
     // model

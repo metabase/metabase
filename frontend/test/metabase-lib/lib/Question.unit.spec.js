@@ -610,7 +610,7 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype._syncNativeQuerySettings", () => {
+  describe("Question.prototype._syncTableColumnSettings", () => {
     let question;
     const cols = [
       {
@@ -662,15 +662,15 @@ describe("Question", () => {
 
     describe("when columns have not been defined", () => {
       it("should do nothing when given no cols", () => {
-        question._syncNativeQuerySettings({});
-        question._syncNativeQuerySettings({ data: { cols: [] } });
-        question._syncNativeQuerySettings({ data: { cols } });
+        question._syncTableColumnSettings({});
+        question._syncTableColumnSettings({ data: { cols: [] } });
+        question._syncTableColumnSettings({ data: { cols } });
 
         expect(question.updateSettings).not.toHaveBeenCalled();
       });
 
       it("should do nothing when given cols", () => {
-        question._syncNativeQuerySettings({ data: { cols } });
+        question._syncTableColumnSettings({ data: { cols } });
 
         expect(question.updateSettings).not.toHaveBeenCalled();
       });
@@ -688,7 +688,7 @@ describe("Question", () => {
       // Adding a column with same name is covered as well, as name is generated at FE and it will
       // be unique (e.g. foo -> foo_2)
       it("should handle the addition and removal of columns", () => {
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [
               ...cols.slice(1),
@@ -714,6 +714,7 @@ describe("Question", () => {
             ...vizSettingCols.slice(1),
             {
               name: "foo",
+              key: '["name","foo"]',
               fieldRef: [
                 "field",
                 "foo",
@@ -741,7 +742,7 @@ describe("Question", () => {
           name: "foo",
           base_type: "type/Float",
         };
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [updatedColumn, ...cols.slice(1)],
           },
@@ -759,6 +760,7 @@ describe("Question", () => {
                   "base-type": "type/Float",
                 },
               ],
+              key: '["name","foo"]',
               name: "foo",
             },
           ],
@@ -766,7 +768,7 @@ describe("Question", () => {
       });
 
       it("should handle the mutation of a field_ref on an existing column", () => {
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [
               {
@@ -793,6 +795,7 @@ describe("Question", () => {
             {
               name: "foo",
               fieldRef: ["field", "foo", { "base-type": "type/Integer" }],
+              key: '["name","foo"]',
               enabled: true,
             },
           ],
@@ -800,7 +803,7 @@ describe("Question", () => {
       });
 
       it("shouldn't update settings if order of columns has changed", () => {
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [cols[1], cols[0]],
           },

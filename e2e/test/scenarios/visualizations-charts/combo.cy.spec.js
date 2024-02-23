@@ -10,7 +10,7 @@ describe("scenarios > visualizations > combo", () => {
     cy.signInAsAdmin();
   });
 
-  it(`should render values on data points`, () => {
+  it("should render values on data points", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,

@@ -517,3 +517,17 @@
         (testing "unless it's missing in the input"
           (let [di (lib.js/display-info query -1 (dissoc discount :fingerprint))]
             (is (not (gobject/containsKey di "fingerprint")))))))))
+
+(deftest ^:parallel returned-columns-unique-names-test
+  (testing "returned-columns should ensure the :name fields are unique (#37517)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                               [(lib/= (meta/field-metadata :orders :id)
+                                                       (lib/with-join-alias (meta/field-metadata :orders :id)
+                                                         "Orders"))])))]
+      (is (= #{1}
+             (->> (lib.js/returned-columns query -1)
+                  (map :name)
+                  frequencies
+                  vals
+                  set))))))

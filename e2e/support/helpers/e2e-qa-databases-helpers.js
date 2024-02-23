@@ -82,7 +82,7 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
 
       // it's important that we don't enable actions until sync is complete
       if (dbId && enable_actions) {
-        cy.log(`**-- Enabling actions --**`);
+        cy.log("**-- Enabling actions --**");
         cy.request("PUT", `/api/database/${dbId}`, {
           settings: { "database-enable-actions": true },
         }).then(({ status }) => {

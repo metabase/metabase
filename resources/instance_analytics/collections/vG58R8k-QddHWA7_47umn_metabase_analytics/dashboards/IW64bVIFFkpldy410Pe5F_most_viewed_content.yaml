@@ -359,5 +359,6 @@ dashcards:
       - 0
       name: count
     table.pivot_column: name_2
+initially_published_at: null
 tabs: []
 width: full

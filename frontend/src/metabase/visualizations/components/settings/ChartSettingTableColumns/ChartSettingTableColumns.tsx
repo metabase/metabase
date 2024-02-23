@@ -28,22 +28,17 @@ export const ChartSettingTableColumns = ({
   value,
   columns,
   question,
-  isDashboard,
   getColumnName,
   onChange,
   onShowWidget,
 }: ChartSettingTableColumnsProps) => {
-  const [isEditingQuery, setIsEditingQuery] = useState(false);
-  if (!question) {
-    return null;
-  }
-
-  const query = question.query();
+  const query = question?.query();
   const stageIndex = -1;
-  const hasEditButton = canEditQuery(query, isDashboard);
+  const hasEditButton = canEditQuery(query);
+  const [isEditingQuery, setIsEditingQuery] = useState(false);
 
   const handleQueryChange = (query: Lib.Query) => {
-    onChange(value, question.setQuery(query));
+    onChange(value, question?.setQuery(query));
   };
 
   return (
@@ -57,7 +52,7 @@ export const ChartSettingTableColumns = ({
           {isEditingQuery ? t`Done picking columns` : t`Add or remove columns`}
         </Button>
       )}
-      {isEditingQuery ? (
+      {query != null && isEditingQuery ? (
         <FieldPanel
           query={query}
           stageIndex={stageIndex}
@@ -65,8 +60,6 @@ export const ChartSettingTableColumns = ({
         />
       ) : (
         <TableColumnPanel
-          query={query}
-          stageIndex={stageIndex}
           columns={columns}
           columnSettings={value}
           getColumnName={getColumnName}

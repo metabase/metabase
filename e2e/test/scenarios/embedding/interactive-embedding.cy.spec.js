@@ -28,9 +28,9 @@ describeEE("scenarios > embedding > full app", () => {
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
-    cy.intercept("POST", `/api/card/*/query`).as("getCardQuery");
+    cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
     cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
-    cy.intercept("GET", `/api/dashboard/*`).as("getDashboard");
+    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept("GET", "/api/automagic-dashboards/**").as("getXrayDashboard");
   });
 

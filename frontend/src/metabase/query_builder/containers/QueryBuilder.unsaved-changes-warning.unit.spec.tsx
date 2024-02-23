@@ -83,9 +83,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
       userEvent.click(screen.getByRole("button", { name: "Save" }));
       userEvent.click(
-        within(screen.getByTestId("save-question-modal")).getByRole("button", {
-          name: "Save",
-        }),
+        within(screen.getByTestId("save-question-modal")).getByText("Save"),
       );
 
       await waitFor(() => {
@@ -128,10 +126,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
         userEvent.click(screen.getByText("Save"));
         userEvent.click(
-          within(screen.getByTestId("save-question-modal")).getByRole(
-            "button",
-            { name: "Save" },
-          ),
+          within(screen.getByTestId("save-question-modal")).getByText("Save"),
         );
 
         await waitFor(() => {
@@ -488,9 +483,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
           within(saveQuestionModal).getByTestId("select-button"),
         ).toHaveTextContent(TEST_COLLECTION.name);
       });
-      userEvent.click(
-        within(saveQuestionModal).getByRole("button", { name: "Save" }),
-      );
+      userEvent.click(within(saveQuestionModal).getByText("Save"));
 
       await waitFor(() => {
         expect(saveQuestionModal).not.toBeInTheDocument();
@@ -570,9 +563,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       userEvent.click(screen.getByText("Save"));
 
       userEvent.click(
-        within(screen.getByTestId("save-question-modal")).getByRole("button", {
-          name: "Save",
-        }),
+        within(screen.getByTestId("save-question-modal")).getByText("Save"),
       );
 
       await waitFor(() => {
@@ -614,9 +605,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         "New question",
       );
       expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
-      userEvent.click(
-        within(saveQuestionModal).getByRole("button", { name: "Save" }),
-      );
+      userEvent.click(within(saveQuestionModal).getByText("Save"));
 
       await waitFor(() => {
         expect(
@@ -715,9 +704,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       userEvent.click(screen.getByText("Save"));
 
       userEvent.click(
-        within(screen.getByTestId("save-question-modal")).getByRole("button", {
-          name: "Save",
-        }),
+        within(screen.getByTestId("save-question-modal")).getByText("Save"),
       );
 
       await waitFor(() => {
@@ -759,9 +746,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         "New question",
       );
       expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
-      userEvent.click(
-        within(saveQuestionModal).getByRole("button", { name: "Save" }),
-      );
+      userEvent.click(within(saveQuestionModal).getByText("Save"));
 
       await waitFor(() => {
         expect(

@@ -275,7 +275,10 @@ function getStageSteps(
     }),
   );
 
-  let previewQuery: Lib.Query | null = query;
+  let previewQuery = _.range(Lib.stageCount(query) - 1, stageIndex, -1).reduce(
+    Lib.dropStage,
+    query,
+  );
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions
@@ -302,7 +305,7 @@ function getStageSteps(
       steps.splice(i, 1);
     }
     // revert the previewQuery for this step
-    if (step.revert && previewQuery) {
+    if (step.revert) {
       previewQuery = step.revert(
         previewQuery,
         step.stageIndex,
