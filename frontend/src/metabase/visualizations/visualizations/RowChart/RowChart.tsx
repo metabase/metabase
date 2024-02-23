@@ -3,7 +3,6 @@ import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { IconProps } from "metabase/core/components/Icon";
 import { measureTextWidth } from "metabase/lib/measure-text";

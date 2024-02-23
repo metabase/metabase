@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Icon } from "metabase/core/components/Icon";
@@ -10,7 +9,6 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
-
 
 import { DataSelectorSection as Section } from "../DataSelector.styled";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";

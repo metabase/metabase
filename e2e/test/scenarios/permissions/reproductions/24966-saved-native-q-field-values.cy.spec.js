@@ -8,7 +8,6 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const sandboxingQuestion = {

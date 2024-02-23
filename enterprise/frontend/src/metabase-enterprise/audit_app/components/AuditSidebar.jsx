@@ -3,7 +3,6 @@ import cx from "classnames";
 import { IndexLink } from "react-router";
 import { t } from "ttag";
 
-
 import Link from "metabase/core/components/Link";
 
 const AuditSidebarSection = ({ title, children }) => (

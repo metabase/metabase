@@ -14,7 +14,6 @@ import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
 
-
 import {
   updatePolicy,
   fetchPolicy,

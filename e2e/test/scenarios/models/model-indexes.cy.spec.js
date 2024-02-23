@@ -7,7 +7,6 @@ import {
   openColumnOptions,
 } from "e2e/support/helpers";
 
-
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > model indexes", () => {

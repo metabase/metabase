@@ -10,7 +10,6 @@ import StructuredQuery, {
 import Filter from "metabase-lib/queries/structured/Filter";
 import { isBoolean, isDate } from "metabase-lib/types/utils/isa";
 
-
 import {
   SelectFilterButton,
   SelectFilterPopover,

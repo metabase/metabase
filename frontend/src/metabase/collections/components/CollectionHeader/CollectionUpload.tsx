@@ -1,7 +1,6 @@
 import { useState, ChangeEvent } from "react";
 import { t } from "ttag";
 
-
 import Tooltip, {
   TooltipContainer,
   TooltipTitle,

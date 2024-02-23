@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useAsync } from "react-use";
 import { t, jt } from "ttag";
 
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import LogoIcon from "metabase/components/LogoIcon";
 import { NotFound } from "metabase/containers/ErrorPages";

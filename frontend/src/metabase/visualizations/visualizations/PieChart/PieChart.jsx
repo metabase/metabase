@@ -5,8 +5,6 @@ import { createRef, Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-
-
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatValue } from "metabase/lib/formatting";
@@ -29,7 +27,6 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 import ChartWithLegend from "../../components/ChartWithLegend";
-
 
 import { PieArc } from "./PieArc";
 import styles from "./PieChart.css";

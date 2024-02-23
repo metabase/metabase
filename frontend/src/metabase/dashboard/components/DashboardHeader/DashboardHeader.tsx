@@ -18,7 +18,6 @@ import { getScrollY } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 import { Dashboard } from "metabase-types/api";
 
-
 import {
   EditWarning,
   HeaderRow,

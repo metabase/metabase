@@ -1,4 +1,3 @@
-
 import type { IconName } from "metabase/core/components/Icon";
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";

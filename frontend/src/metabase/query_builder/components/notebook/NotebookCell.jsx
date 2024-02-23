@@ -3,7 +3,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { isValidElement } from "react";
 
-
 import { Icon } from "metabase/core/components/Icon";
 import { alpha } from "metabase/lib/colors";
 

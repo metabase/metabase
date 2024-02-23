@@ -17,7 +17,6 @@ import useSelectedTables from "../useSelectedTables";
 import CardPickerView from "./CardPickerView";
 import { buildCollectionTree } from "./utils";
 
-
 interface CardPickerOwnProps extends DataPickerProps {
   targetModel: "model" | "question";
   isMultiSelect?: boolean;

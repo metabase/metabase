@@ -10,7 +10,6 @@ import title from "metabase/hoc/Title";
 import { getUser } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
 
-
 import {
   setEditingPulse,
   updateEditingPulse,

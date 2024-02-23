@@ -15,7 +15,6 @@ import * as Urls from "metabase/lib/urls";
 import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
 
-
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
 const mapStateToProps = state => ({

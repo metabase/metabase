@@ -2,7 +2,6 @@ import cx from "classnames";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-
 import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { formatValue, formatColumn } from "metabase/lib/formatting";

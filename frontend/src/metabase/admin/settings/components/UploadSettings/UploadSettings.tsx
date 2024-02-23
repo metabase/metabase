@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-
 import { updateSettings } from "metabase/admin/settings/settings";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";

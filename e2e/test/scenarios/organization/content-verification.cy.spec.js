@@ -9,7 +9,6 @@ import {
   popover,
 } from "e2e/support/helpers";
 
-
 describeEE("scenarios > premium > content verification", () => {
   beforeEach(() => {
     restore();

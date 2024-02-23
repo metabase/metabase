@@ -7,7 +7,6 @@ import {
   PopulatedFormObject,
 } from "metabase-types/forms";
 
-
 import CustomFormField, { CustomFormFieldProps } from "./CustomFormField";
 import CustomFormFooter, { CustomFormFooterProps } from "./CustomFormFooter";
 import CustomFormMessage, { CustomFormMessageProps } from "./CustomFormMessage";

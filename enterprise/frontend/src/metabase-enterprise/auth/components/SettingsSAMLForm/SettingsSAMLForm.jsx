@@ -18,7 +18,6 @@ import Form, {
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 
-
 import {
   SAMLFormCaption,
   SAMLFormFooter,

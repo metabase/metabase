@@ -7,7 +7,6 @@ import Toggle from "metabase/core/components/Toggle";
 import Tooltip from "metabase/core/components/Tooltip";
 import { lighten } from "metabase/lib/colors";
 
-
 import {
   PermissionsSelectRoot,
   OptionsList,

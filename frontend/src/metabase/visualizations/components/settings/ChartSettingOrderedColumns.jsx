@@ -10,7 +10,6 @@ import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 import ColumnItem from "./ColumnItem";
 
-
 export const ChartSettingOrderedColumns = ({
   value,
   onChange,

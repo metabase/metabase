@@ -12,7 +12,6 @@ import {
   CheckBoxLabelProps,
 } from "./types";
 
-
 export const CheckBoxRoot = styled.label`
   display: block;
   position: relative;

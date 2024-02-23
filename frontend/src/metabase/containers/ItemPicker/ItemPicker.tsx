@@ -12,7 +12,6 @@ import { getCrumbs } from "metabase/lib/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-
 import { ScrollAwareLoadingAndErrorWrapper } from "./ItemPicker.styled";
 import ItemPickerView from "./ItemPickerView";
 import type {

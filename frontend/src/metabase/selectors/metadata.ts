@@ -1,6 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import Field from "metabase-lib/metadata/Field";

@@ -6,7 +6,6 @@ import { renderWithProviders, screen } from "__support__/ui";
 import type Question from "metabase-lib/Question";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-
 import { createMockNotebookStep, DEFAULT_QUESTION } from "../test-utils";
 import type { NotebookStep as INotebookStep, NotebookStepType } from "../types";
 

@@ -28,7 +28,6 @@ import {
 } from "../selectors";
 import { getQuestionUrl } from "../utils";
 
-
 const interestingQuestions = table => {
   return [
     {

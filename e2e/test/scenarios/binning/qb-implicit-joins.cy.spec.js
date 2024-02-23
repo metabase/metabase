@@ -7,7 +7,6 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
-
 /**
  * The list of issues this spec covers:
  *  - metabase#15648

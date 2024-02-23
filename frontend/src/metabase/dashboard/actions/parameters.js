@@ -13,7 +13,6 @@ import {
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 
-
 import { trackAutoApplyFiltersDisabled } from "../analytics";
 import {
   getDashboard,

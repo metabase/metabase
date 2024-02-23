@@ -9,7 +9,6 @@ import {
   openCollectionMenu,
 } from "e2e/support/helpers";
 
-
 const ADMIN_PERSONAL_COLLECTION_ID = 1;
 const NODATA_PERSONAL_COLLECTION_ID = 5;
 

@@ -9,7 +9,6 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-
 type CollectionsMap = Partial<Record<Collection["id"], Collection>>;
 
 interface OwnProps {

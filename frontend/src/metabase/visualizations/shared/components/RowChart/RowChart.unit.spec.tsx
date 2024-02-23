@@ -9,7 +9,6 @@ import { ChartFont } from "../../types/style";
 import { RowChart, RowChartProps } from "./RowChart";
 import type { RowChartTheme } from "./types";
 
-
 type TestDatum = { y: string; x: number; x1: number };
 
 const testFont: ChartFont = {

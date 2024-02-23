@@ -8,7 +8,6 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-
 const DEFAULT_PROPS = {
   series: [
     { card: { visualization_settings: {} }, data: { rows: [], cols: [] } },

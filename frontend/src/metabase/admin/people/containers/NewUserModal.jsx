@@ -6,7 +6,6 @@ import { t } from "ttag";
 import User from "metabase/entities/users";
 import * as Urls from "metabase/lib/urls";
 
-
 const NewUserModal = ({ onClose, onSaved, ...props }) => (
   <User.ModalForm
     {...props}

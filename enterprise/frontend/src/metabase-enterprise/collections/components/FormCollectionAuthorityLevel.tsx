@@ -6,7 +6,6 @@ import { SegmentedControl } from "metabase/components/SegmentedControl";
 import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
-
 import { REGULAR_COLLECTION, OFFICIAL_COLLECTION } from "../constants";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {

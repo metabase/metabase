@@ -8,7 +8,6 @@ import {
   sendEmailAndAssert,
 } from "e2e/support/helpers";
 
-
 const {
   admin: { first_name, last_name },
 } = USERS;

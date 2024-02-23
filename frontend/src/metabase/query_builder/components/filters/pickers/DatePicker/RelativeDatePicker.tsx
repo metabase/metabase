@@ -3,7 +3,6 @@ import { DurationInputArg2 } from "moment-timezone";
 import { useState } from "react";
 import { t } from "ttag";
 
-
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { isValidTimeInterval } from "metabase/lib/time";
 import Filter from "metabase-lib/queries/structured/Filter";

@@ -5,8 +5,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-
-
 import ActionButton from "metabase/components/ActionButton";
 import EntityMenu from "metabase/components/EntityMenu";
 import TippyPopover from "metabase/components/Popover/TippyPopover";

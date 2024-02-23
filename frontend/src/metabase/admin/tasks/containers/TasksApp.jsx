@@ -3,7 +3,6 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import AdminHeader from "metabase/components/AdminHeader";
 import PaginationControls from "metabase/components/PaginationControls";
 import { Icon } from "metabase/core/components/Icon";

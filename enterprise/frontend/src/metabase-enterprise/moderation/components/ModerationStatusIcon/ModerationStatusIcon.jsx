@@ -4,7 +4,6 @@ import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { getStatusIcon } from "metabase-enterprise/moderation/service";
 
-
 ModerationStatusIcon.propTypes = {
   status: PropTypes.string,
 };

@@ -6,7 +6,6 @@ import {
   getFullName,
 } from "e2e/support/helpers";
 
-
 const { admin } = USERS;
 
 describe("issue 17658", { tags: "@external" }, () => {

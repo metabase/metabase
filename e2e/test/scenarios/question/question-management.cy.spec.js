@@ -1,6 +1,5 @@
 import { onlyOn } from "@cypress/skip-test";
 
-
 import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {

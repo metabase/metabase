@@ -7,7 +7,6 @@ import { Icon, IconProps } from "metabase/core/components/Icon";
 import Search from "metabase/entities/search";
 import type { Collection } from "metabase-types/api";
 
-
 import Item from "./Item";
 import {
   ItemPickerRoot,

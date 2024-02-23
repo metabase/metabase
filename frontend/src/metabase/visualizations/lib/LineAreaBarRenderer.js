@@ -14,11 +14,6 @@ import {
 } from "metabase-lib/queries/utils/actions";
 import { isStructured } from "metabase-lib/queries/utils/card";
 
-
-
-
-
-
 import lineAndBarOnRender from "./LineAreaBarPostRender";
 import {
   applyChartTimeseriesXAxis,

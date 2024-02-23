@@ -25,7 +25,6 @@ import { createStructuredModelCard } from "metabase-types/api/mocks/presets";
 import { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-
 import Metabot from "./Metabot";
 
 const PROMPT = "average orders total";

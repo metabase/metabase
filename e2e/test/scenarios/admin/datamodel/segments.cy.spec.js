@@ -8,7 +8,6 @@ import {
   filterField,
 } from "e2e/support/helpers";
 
-
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > segments", () => {

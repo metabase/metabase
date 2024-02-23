@@ -28,7 +28,6 @@ import {
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import type { SelectedItem } from "../types";
 
-
 import BookmarkList from "./BookmarkList";
 
 interface CollectionTreeItem extends Collection {

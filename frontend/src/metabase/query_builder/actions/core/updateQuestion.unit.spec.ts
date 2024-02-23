@@ -45,7 +45,6 @@ import {
   createMockQueryBuilderUIControlsState,
 } from "metabase-types/store/mocks";
 
-
 import * as native from "../native";
 import * as navigation from "../navigation";
 import * as querying from "../querying";

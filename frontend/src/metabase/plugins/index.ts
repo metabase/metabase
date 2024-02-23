@@ -26,7 +26,6 @@ import type {
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
-
 import { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started

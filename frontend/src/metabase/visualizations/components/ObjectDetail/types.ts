@@ -7,7 +7,6 @@ import type {
   DashboardOrderedCard,
 } from "metabase-types/api";
 
-
 export type ObjectId = number | string;
 
 export type OnVisualizationClickType =

@@ -1,4 +1,3 @@
-
 import type { NumberValue } from "d3-scale";
 import { useMemo } from "react";
 

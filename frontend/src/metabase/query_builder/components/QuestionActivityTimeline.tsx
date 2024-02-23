@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";

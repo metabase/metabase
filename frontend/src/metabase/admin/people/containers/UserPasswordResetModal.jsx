@@ -11,7 +11,6 @@ import Button from "metabase/core/components/Button";
 import User from "metabase/entities/users";
 import MetabaseSettings from "metabase/lib/settings";
 
-
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 

@@ -12,7 +12,6 @@ import { assignUserColors } from "metabase/lib/formatting";
 import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.css";
 
-
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
   getMetricRevisions,

@@ -4,7 +4,6 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-
 export const Loading = styled(LoadingSpinner)`
   margin: ${space(1)} 0;
   color: ${color("brand")};

@@ -9,7 +9,6 @@ import {
 import TimelineEvents from "metabase/entities/timeline-events";
 import Utils from "metabase/lib/utils";
 
-
 import {
   RESET_QB,
   INITIALIZE_QB,

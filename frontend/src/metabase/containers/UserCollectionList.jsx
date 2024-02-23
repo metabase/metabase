@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import { connect } from "react-redux";
 
-
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
 import { Grid } from "metabase/components/Grid";

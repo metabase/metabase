@@ -16,7 +16,6 @@ import {
   getColumnValues,
 } from "./utils";
 
-
 describe("Visualizations > Visualizations > PivotTable > utils", () => {
   const cols = [
     { source: "field", field_ref: ["field", 123, null], name: "field-123" },

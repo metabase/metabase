@@ -5,8 +5,6 @@ import { connect } from "react-redux";
 import { usePrevious, useMount } from "react-use";
 import _ from "underscore";
 
-
-
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
@@ -30,7 +28,6 @@ import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import UploadOverlay from "../components/UploadOverlay";
-
 
 import {
   CollectionEmptyContent,

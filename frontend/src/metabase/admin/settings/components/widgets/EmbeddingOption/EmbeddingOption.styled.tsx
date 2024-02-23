@@ -5,7 +5,6 @@ import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-
 export const StyledCard = styled(Card)`
   padding: 2rem;
   width: 100%;

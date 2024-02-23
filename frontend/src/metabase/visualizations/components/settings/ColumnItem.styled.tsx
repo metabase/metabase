@@ -4,7 +4,6 @@ import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
-
 import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ColumnItemRootProps {

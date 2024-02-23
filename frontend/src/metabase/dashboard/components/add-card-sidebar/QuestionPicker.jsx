@@ -15,7 +15,6 @@ import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
-
 import { QuestionList } from "./QuestionList";
 import {
   BreadcrumbsWrapper,

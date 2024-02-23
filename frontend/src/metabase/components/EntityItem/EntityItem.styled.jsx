@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { color, darken } from "metabase/lib/colors";

@@ -2,7 +2,6 @@
 import NumericInput from "metabase/components/NumericInput";
 import { formDomOnlyProps } from "metabase/lib/redux";
 
-
 const FormInputWidget = ({ placeholder, field }) => (
   <NumericInput
     className="Form-input full"

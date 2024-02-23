@@ -17,7 +17,6 @@ import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-
 import { getStore } from "./entities-store";
 
 type ReducerValue = ReducerObject | Reducer;

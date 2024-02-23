@@ -1,7 +1,5 @@
 import moment from "moment-timezone";
 
-
-
 import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
 import { isEmpty } from "metabase/lib/validate";

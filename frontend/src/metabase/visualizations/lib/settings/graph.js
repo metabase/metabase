@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import {
   getMaxMetricsSupported,
   getMaxDimensionsSupported,

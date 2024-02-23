@@ -7,7 +7,6 @@ import {
 } from "react";
 import { usePrevious } from "react-use";
 
-
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import { TreeNodeProps } from "metabase/components/tree/types";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";

@@ -38,7 +38,6 @@ import {
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 
-
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];
 

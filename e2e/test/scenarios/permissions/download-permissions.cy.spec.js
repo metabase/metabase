@@ -15,8 +15,6 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-
-
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const {

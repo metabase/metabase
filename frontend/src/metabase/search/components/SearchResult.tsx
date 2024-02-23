@@ -20,7 +20,6 @@ import {
 } from "./SearchResult.styled";
 import type { WrappedResult } from "./types";
 
-
 const DEFAULT_ICON_SIZE = 20;
 
 function TableIcon() {

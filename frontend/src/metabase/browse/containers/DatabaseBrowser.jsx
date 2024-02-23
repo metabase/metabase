@@ -11,7 +11,6 @@ import Database from "metabase/entities/databases";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
-
 import { DatabaseGridItem } from "./DatabaseBrowser.styled";
 
 function DatabaseBrowser({ databases }) {

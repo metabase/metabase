@@ -20,7 +20,6 @@ import {
 } from "./ActionPicker.styled";
 import { sortAndGroupActions } from "./utils";
 
-
 export function ActionPicker({
   models,
   actions,

@@ -7,7 +7,6 @@ import {
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-
 import { ApplyButton } from "./FilterApplyButton.styled";
 
 export function FilterApplyButton() {

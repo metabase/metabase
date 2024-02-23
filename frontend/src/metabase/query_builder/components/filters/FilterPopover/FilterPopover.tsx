@@ -3,7 +3,6 @@ import * as React from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";

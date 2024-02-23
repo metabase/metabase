@@ -22,7 +22,6 @@ import {
   DatasetData,
 } from "metabase-types/api";
 
-
 import { getChartMetrics } from "./series";
 
 const getMetricValue = (value: RowValue): MetricValue => {

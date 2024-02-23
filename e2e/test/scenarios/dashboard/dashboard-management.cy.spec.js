@@ -14,7 +14,6 @@ import {
   toggleDashboardInfoSidebar,
 } from "e2e/support/helpers";
 
-
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
   view: ["readonly"],

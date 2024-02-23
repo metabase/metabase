@@ -7,7 +7,6 @@ import {
   updateDashboardCards,
 } from "e2e/support/helpers";
 
-
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const q1IdFilter = {

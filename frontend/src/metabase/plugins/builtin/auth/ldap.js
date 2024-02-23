@@ -1,7 +1,6 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-
 import LdapAuthCard from "metabase/admin/settings/auth/containers/LdapAuthCard";
 import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";

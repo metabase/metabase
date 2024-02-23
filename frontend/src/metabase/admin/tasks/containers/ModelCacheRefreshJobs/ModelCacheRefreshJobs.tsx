@@ -17,7 +17,6 @@ import * as Urls from "metabase/lib/urls";
 import { checkCanRefreshModelCache } from "metabase-lib/metadata/utils/models";
 import { ModelCacheRefreshStatus } from "metabase-types/api";
 
-
 import {
   ErrorBox,
   IconButtonContainer,

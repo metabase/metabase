@@ -10,7 +10,6 @@ import {
   isOSS,
 } from "e2e/support/helpers";
 
-
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {

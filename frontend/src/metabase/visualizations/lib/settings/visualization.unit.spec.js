@@ -8,7 +8,6 @@ import {
   getStoredSettingsForSeries,
 } from "metabase/visualizations/lib/settings/visualization";
 
-
 describe("visualization_settings", () => {
   describe("getComputedSettingsForSeries", () => {
     describe("stackable.stack_type", () => {
