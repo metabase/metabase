@@ -52,8 +52,8 @@
     :model/Field
     :model/FieldValues
     :model/Segment
-    :model/Metric
-    :model/MetricImportantField
+    :model/LegacyMetric
+    :model/LegacyMetricImportantField
     :model/ModerationReview
     :model/Revision
     :model/ViewLog

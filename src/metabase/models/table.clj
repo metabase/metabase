@@ -177,7 +177,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (t2/select :model/Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/LegacyMetric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields

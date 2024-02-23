@@ -1085,14 +1085,14 @@
        :model/Card       {lucky-model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {rasta-dash-id :id}   {:name search-term}
        :model/Dashboard  {lucky-dash-id :id}   {:name search-term}
-       :model/Metric     {rasta-metric-id :id} {:name search-term :table_id (mt/id :checkins)}
-       :model/Metric     {lucky-metric-id :id} {:name search-term :table_id (mt/id :checkins)}]
+       :model/LegacyMetric     {rasta-metric-id :id} {:name search-term :table_id (mt/id :checkins)}
+       :model/LegacyMetric     {lucky-metric-id :id} {:name search-term :table_id (mt/id :checkins)}]
       (let [rasta-user-id (mt/user->id :rasta)
             lucky-user-id (mt/user->id :lucky)]
         (doseq [[model id user-id] [[:model/Card rasta-card-id rasta-user-id] [:model/Card rasta-model-id rasta-user-id]
-                                    [:model/Dashboard rasta-dash-id rasta-user-id] [:model/Metric rasta-metric-id rasta-user-id]
+                                    [:model/Dashboard rasta-dash-id rasta-user-id] [:model/LegacyMetric rasta-metric-id rasta-user-id]
                                     [:model/Card lucky-card-id lucky-user-id] [:model/Card lucky-model-id lucky-user-id]
-                                    [:model/Dashboard lucky-dash-id lucky-user-id] [:model/Metric lucky-metric-id lucky-user-id]]]
+                                    [:model/Dashboard lucky-dash-id lucky-user-id] [:model/LegacyMetric lucky-metric-id lucky-user-id]]]
           (revision/push-revision!
            {:entity       model
             :id           id
@@ -1226,12 +1226,12 @@
       [:model/Card       {card-id :id}   {:name search-term}
        :model/Card       {model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {dash-id :id}   {:name search-term}
-       :model/Metric     {metric-id :id} {:name search-term :table_id (mt/id :checkins)}
+       :model/LegacyMetric {metric-id :id} {:name search-term :table_id (mt/id :checkins)}
        :model/Action     {action-id :id} {:name       search-term
                                           :model_id   model-id
                                           :type       :http}]
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
-                          [:model/Dashboard dash-id] [:model/Metric metric-id]]]
+                          [:model/Dashboard dash-id] [:model/LegacyMetric metric-id]]]
         (revision/push-revision!
          {:entity       model
           :id           id
@@ -1258,7 +1258,7 @@
 
       (testing "works with the last_edited_by filter too"
         (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
-                            [:model/Dashboard dash-id] [:model/Metric metric-id]]]
+                            [:model/Dashboard dash-id] [:model/LegacyMetric metric-id]]]
           (revision/push-revision!
            {:entity       model
             :id           id
@@ -1320,7 +1320,7 @@
                                                :created_at two-years-ago}
          :model/Segment    {_segment-new :id} {:name       search-term
                                                :created_at new}
-         :model/Metric     {_metric-new :id}  {:name       search-term
+         :model/LegacyMetric     {_metric-new :id}  {:name       search-term
                                                :created_at new
                                                :table_id (mt/id :checkins)}]
         ;; with clock doesn't work if calling via API, so we call the search function directly
@@ -1379,8 +1379,8 @@
                                                 :type       :model}
          :model/Card       {model-old :id}     {:name       search-term
                                                 :type       :model}
-         :model/Metric     {metric-new :id}    {:name       search-term :table_id (mt/id :checkins)}
-         :model/Metric     {metric-old :id}    {:name       search-term :table_id (mt/id :checkins)}
+         :model/LegacyMetric {metric-new :id}    {:name       search-term :table_id (mt/id :checkins)}
+         :model/LegacyMetric {metric-old :id}    {:name       search-term :table_id (mt/id :checkins)}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
                                                 :type       :http

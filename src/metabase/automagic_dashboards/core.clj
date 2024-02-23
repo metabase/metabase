@@ -124,7 +124,7 @@
     :arglists '([entity])}
   linked-metrics mi/model)
 
-(defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition]}]
+(defmethod linked-metrics :model/LegacyMetric [{metric-name :name :keys [definition]}]
   [{:metric-name       metric-name
     :metric-title      metric-name
     :metric-definition definition
@@ -133,7 +133,7 @@
 (defmethod linked-metrics :model/Table [{table-id :id}]
   (mapcat
    linked-metrics
-   (t2/select :model/Metric :table_id table-id)))
+   (t2/select :model/LegacyMetric :table_id table-id)))
 
 (defmethod linked-metrics :default [_] [])
 
