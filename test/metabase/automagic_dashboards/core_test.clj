@@ -165,7 +165,7 @@
           (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
 
 (deftest source-root-metric-test
-  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Metric"
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/LegacyMetric"
     (testing "The source of a metric is its underlying table."
       (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
                                               :definition {:aggregation [[:count]]}}]
@@ -1484,7 +1484,7 @@
                 grounded-metrics            (concat (set-score 50 template-grounded-metrics) (set-score 95 user-defined-metrics)
                                                     (let [entity (-> base-context :root :entity)]
                                                       ;; metric x-rays talk about "this" in the template
-                                                      (when (mi/instance-of? :model/Metric entity)
+                                                      (when (mi/instance-of? :model/LegacyMetric entity)
                                                         [{:metric-name       "this"
                                                           :metric-title      (:name entity)
                                                           :metric-definition {:aggregation [(interesting/->reference :mbql entity)]}

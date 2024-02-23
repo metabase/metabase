@@ -11,7 +11,7 @@
 (def ^:private model->entity
   {"card"      :model/Card
    "dashboard" :model/Dashboard
-   "metric"    :model/Metric
+   "metric"    :model/LegacyMetric
    "pulse"     :model/Pulse
    "segment"   :model/Segment})
 

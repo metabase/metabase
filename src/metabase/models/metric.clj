@@ -30,11 +30,11 @@
 (def Metric
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
   We'll keep this till we replace all these symbols in our codebase."
-  :model/Metric)
+  :model/LegacyMetric)
 
-(methodical/defmethod t2/table-name :model/Metric [_model] :metric)
+(methodical/defmethod t2/table-name :model/LegacyMetric [_model] :metric)
 
-(doto :model/Metric
+(doto :model/LegacyMetric
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
@@ -42,10 +42,10 @@
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
 
-(t2/deftransforms :model/Metric
+(t2/deftransforms :model/LegacyMetric
   {:definition mi/transform-metric-segment-definition})
 
-(t2/define-before-update :model/Metric
+(t2/define-before-update :model/LegacyMetric
   [{:keys [creator_id id], :as metric}]
   (u/prog1 (t2/changes metric)
     ;; throw an Exception if someone tries to update creator_id
@@ -53,7 +53,7 @@
       (when (not= (:creator_id <>) (t2/select-one-fn :creator_id Metric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
-(t2/define-before-delete :model/Metric
+(t2/define-before-delete :model/LegacyMetric
   [{:keys [id] :as _metric}]
   (t2/delete! :model/Revision :model "Metric" :model_id id))
 
@@ -66,7 +66,7 @@
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Metric's definition."
   [metadata-provider :- lib.metadata/MetadataProvider
-   {:keys [definition], table-id :table_id, :as _metric} :- (ms/InstanceOf :model/Metric)]
+   {:keys [definition], table-id :table_id, :as _metric} :- (ms/InstanceOf :model/LegacyMetric)]
   (when (seq definition)
     (try
       (let [database-id (u/the-id (lib.metadata.protocols/database metadata-provider))
@@ -80,7 +80,7 @@
 
 (mu/defn ^:private warmed-metadata-provider :- lib.metadata/MetadataProvider
   [database-id :- ::lib.schema.id/database
-   metrics     :- [:maybe [:sequential (ms/InstanceOf :model/Metric)]]]
+   metrics     :- [:maybe [:sequential (ms/InstanceOf :model/LegacyMetric)]]]
   (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
                             (lib.metadata.protocols/store-metadatas!
                              :metadata/metric
@@ -104,7 +104,7 @@
     metadata-provider))
 
 (mu/defn ^:private metrics->table-id->warmed-metadata-provider :- fn?
-  [metrics :- [:maybe [:sequential (ms/InstanceOf :model/Metric)]]]
+  [metrics :- [:maybe [:sequential (ms/InstanceOf :model/LegacyMetric)]]]
   (let [table-id->db-id             (when-let [table-ids (not-empty (into #{} (map :table_id metrics)))]
                                       (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
         db-id->metadata-provider    (memoize
@@ -186,7 +186,7 @@
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
-(defmethod audit-log/model-details :model/Metric
+(defmethod audit-log/model-details :model/LegacyMetric
   [metric _event-type]
   (let [table-id (:table_id metric)
         db-id    (table/table-id->database-id table-id)]
