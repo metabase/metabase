@@ -1,8 +1,10 @@
 import { replace } from "react-router-redux";
-import { renderWithProviders, waitFor } from "__support__/ui";
+
 import { setupSearchEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, waitFor } from "__support__/ui";
 import type { SearchResult } from "metabase-types/api";
 import { createMockModelResult } from "metabase-types/api/mocks";
+
 import { BrowseRedirect } from "./BrowseRedirect";
 
 const mockModels: SearchResult[] = [

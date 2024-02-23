@@ -5,6 +5,7 @@ import {
   getWhiteLabeledLoadingMessage,
   getCanWhitelabel,
 } from "..";
+
 import { setup } from "./setup";
 
 describe("getWhiteLabeledLoadingMessage (OSS)", () => {

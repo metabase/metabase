@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import * as Lib from "metabase-lib";
 import { FieldDimension } from "metabase-lib/Dimension";
 

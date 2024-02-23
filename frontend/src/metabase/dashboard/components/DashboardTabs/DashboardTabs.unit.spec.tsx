@@ -1,15 +1,15 @@
-import { Link, Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
+import { Link, Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DashboardState, State } from "metabase-types/store";
-import type { DashboardTab } from "metabase-types/api";
-import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
-
-import { useSelector } from "metabase/lib/redux";
+import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
+import type { DashboardTab } from "metabase-types/api";
+import type { DashboardState, State } from "metabase-types/store";
+
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";

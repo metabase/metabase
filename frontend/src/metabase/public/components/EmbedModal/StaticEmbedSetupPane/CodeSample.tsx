@@ -1,7 +1,8 @@
 import type { ChangeEvent } from "react";
-import Select, { Option } from "metabase/core/components/Select";
+
 import { CopyButton } from "metabase/components/CopyButton";
 import AceEditor from "metabase/components/TextEditor";
+import Select, { Option } from "metabase/core/components/Select";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 
 import { CopyButtonContainer } from "./CodeSample.styled";

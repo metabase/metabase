@@ -1,4 +1,5 @@
 import LogoIcon from "metabase/components/LogoIcon";
+
 import { LogoLink } from "./AppBarLogo.styled";
 
 export interface AppBarLogoProps {

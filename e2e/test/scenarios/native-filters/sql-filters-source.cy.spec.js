@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
   modal,
@@ -13,10 +15,9 @@ import {
   visitQuestion,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
+
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 const { COLLECTION_GROUP } = USER_GROUPS;

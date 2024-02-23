@@ -1,8 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
-import type { User } from "metabase-types/api";
 
-import * as Errors from "metabase/lib/errors";
+import FormFooter from "metabase/core/components/FormFooter";
 import {
   FormTextInput,
   Form,
@@ -11,10 +10,10 @@ import {
   FormErrorMessage,
   FormGroupsWidget,
 } from "metabase/forms";
-import FormFooter from "metabase/core/components/FormFooter";
-import { Button } from "metabase/ui";
-
+import * as Errors from "metabase/lib/errors";
 import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
+import { Button } from "metabase/ui";
+import type { User } from "metabase-types/api";
 
 const localUserScmeha = Yup.object({
   first_name: Yup.string().max(100, Errors.maxLength).default(""),

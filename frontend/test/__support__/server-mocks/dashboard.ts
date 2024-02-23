@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { Dashboard, DashboardId } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 

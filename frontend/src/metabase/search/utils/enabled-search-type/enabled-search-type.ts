@@ -1,5 +1,5 @@
-import type { EnabledSearchModelType } from "metabase-types/api";
 import { enabledSearchTypes } from "metabase/search/constants";
+import type { EnabledSearchModelType } from "metabase-types/api";
 
 export function isEnabledSearchModelType(
   value: unknown,

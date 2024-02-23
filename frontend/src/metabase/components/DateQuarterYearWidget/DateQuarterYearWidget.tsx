@@ -1,9 +1,10 @@
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Component } from "react";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
 import YearPicker from "metabase/components/YearPicker";
+
 import { QuarterRoot } from "./DateQuarterYearWidget.styled";
 
 // translator: this is a "moment" format string (https://momentjs.com/docs/#/displaying/format/) It should include "Q" for the quarter number, and raw text can be escaped by brackets. For eample "[Quarter] Q" will be rendered as "Quarter 1" etc

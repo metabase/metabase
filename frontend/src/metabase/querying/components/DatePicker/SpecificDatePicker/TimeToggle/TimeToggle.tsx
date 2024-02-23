@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import { Button, Icon } from "metabase/ui";
+
 import type { ButtonProps } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 
 interface TimeToggleProps extends ButtonProps {
   hasTime: boolean;

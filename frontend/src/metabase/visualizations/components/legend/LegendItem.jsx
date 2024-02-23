@@ -1,6 +1,8 @@
-import { memo } from "react";
 import PropTypes from "prop-types";
+import { memo } from "react";
+
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+
 import {
   LegendItemDot,
   LegendItemLabel,

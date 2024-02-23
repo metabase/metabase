@@ -1,10 +1,12 @@
 import { t } from "ttag";
+
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import type {
   DashboardCardLayoutAttrs,
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+
 import { createVirtualCard } from "./utils";
 
 type Position = Pick<DashboardCardLayoutAttrs, "col" | "row">;

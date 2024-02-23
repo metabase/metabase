@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker/QueryColumnPicker";
 import { alpha, color, lighten } from "metabase/lib/colors";
 

@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { BadgeRoot, BadgeIcon, BadgeText } from "./SlackBadge.styled";
 
 export interface SlackBadgeProps {

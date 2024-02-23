@@ -1,8 +1,10 @@
 import { screen } from "@testing-library/react";
-import { createMockPopularItem } from "metabase-types/api/mocks";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+
 import { setupPopularItemsEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import type { PopularItem } from "metabase-types/api";
+import { createMockPopularItem } from "metabase-types/api/mocks";
+
 import { HomePopularSection } from "./HomePopularSection";
 
 interface SetupOpts {

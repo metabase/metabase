@@ -1,4 +1,5 @@
 import { RuleTester } from "eslint";
+
 import rule from "../eslint-rules/no-unscoped-text-selectors";
 
 const ruleTester = new RuleTester({ parserOptions: { ecmaVersion: 2015 } });

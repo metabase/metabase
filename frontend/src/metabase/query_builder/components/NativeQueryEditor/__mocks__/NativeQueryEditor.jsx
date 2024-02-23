@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
 import DataSourceSelectors from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
+import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
 
 const MockNativeQueryEditor = ({
   canChangeDatabase = true,

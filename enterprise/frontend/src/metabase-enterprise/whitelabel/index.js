@@ -1,4 +1,6 @@
 import { t } from "ttag";
+
+import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_APP_INIT_FUCTIONS,
   PLUGIN_LANDING_PAGE,
@@ -6,7 +8,7 @@ import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_SELECTORS,
 } from "metabase/plugins";
-
+import { Anchor } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   getApplicationName,
@@ -14,24 +16,22 @@ import {
   getLoadingMessage,
   getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
-import MetabaseSettings from "metabase/lib/settings";
 
-import { Anchor } from "metabase/ui";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
-import FontWidget from "./components/FontWidget";
-import { LandingPageWidget } from "./components/LandingPageWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
-import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
-import MetabotToggleWidget from "./components/MetabotToggleWidget";
-import LogoUpload from "./components/LogoUpload";
-import LogoIcon from "./components/LogoIcon";
-import { updateColors } from "./lib/whitelabel";
-import { getLoadingMessageOptions } from "./lib/loading-message";
+import FontWidget from "./components/FontWidget";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
+import { LandingPageWidget } from "./components/LandingPageWidget";
+import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
+import LogoIcon from "./components/LogoIcon";
+import LogoUpload from "./components/LogoUpload";
 import {
   MetabaseLinksToggleDescription,
   MetabaseLinksToggleWidget,
 } from "./components/MetabaseLinksToggleWidget";
+import MetabotToggleWidget from "./components/MetabotToggleWidget";
+import { getLoadingMessageOptions } from "./lib/loading-message";
+import { updateColors } from "./lib/whitelabel";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));

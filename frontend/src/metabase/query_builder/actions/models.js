@@ -1,14 +1,14 @@
-import { createAction } from "redux-actions";
-import { push } from "react-router-redux";
 import { merge } from "icepick";
+import { push } from "react-router-redux";
+import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { addUndo } from "metabase/redux/undo";
-import { loadMetadataForQueries } from "metabase/redux/metadata";
 import Questions from "metabase/entities/questions";
-
+import { loadMetadataForQueries } from "metabase/redux/metadata";
+import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
+
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";

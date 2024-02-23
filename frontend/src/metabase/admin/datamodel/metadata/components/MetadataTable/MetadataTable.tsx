@@ -3,10 +3,13 @@ import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+
+import Radio from "metabase/core/components/Radio/Radio";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
-import Radio from "metabase/core/components/Radio/Radio";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import type Field from "metabase-lib/metadata/Field";
+import type Table from "metabase-lib/metadata/Table";
 import type {
   DatabaseId,
   SchemaId,
@@ -14,10 +17,10 @@ import type {
   TableVisibilityType,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Field from "metabase-lib/metadata/Field";
-import type Table from "metabase-lib/metadata/Table";
-import MetadataTableSchema from "../MetadataTableSchema";
+
 import MetadataTableColumnList from "../MetadataTableColumnList";
+import MetadataTableSchema from "../MetadataTableSchema";
+
 import {
   TableDescription,
   TableDescriptionInput,

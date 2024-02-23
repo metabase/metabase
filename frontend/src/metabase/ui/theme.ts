@@ -1,5 +1,6 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
+
 import {
   getAccordionOverrides,
   getActionIconOverrides,

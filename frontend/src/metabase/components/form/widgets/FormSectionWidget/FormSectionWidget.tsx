@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+
 import { WidgetButton } from "./FormSectionWidget.styled";
 import type { FormField } from "./types";
 

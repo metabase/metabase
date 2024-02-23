@@ -1,19 +1,19 @@
+import { fireEvent } from "@testing-library/react";
 import { Route } from "react-router";
 
-import { fireEvent } from "@testing-library/react";
-import { renderWithProviders, screen, within } from "__support__/ui";
 import {
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
 } from "__support__/server-mocks";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
-import { createMockState } from "metabase-types/store/mocks";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   createMockPublicCard,
   createMockEmbedDataset,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
-import type { VisualizationProps } from "metabase/visualizations/types";
 import { PublicQuestion } from "./PublicQuestion";
 
 registerVisualizations();

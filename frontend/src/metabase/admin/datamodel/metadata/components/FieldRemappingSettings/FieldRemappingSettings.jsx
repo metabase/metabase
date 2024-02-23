@@ -1,24 +1,23 @@
 /* eslint-disable react/prop-types */
 import { createRef, Component } from "react";
 import { connect } from "react-redux";
-
 import { t } from "ttag";
 import _ from "underscore";
 
-import Select from "metabase/core/components/Select";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Select from "metabase/core/components/Select";
 import Fields from "metabase/entities/fields";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
-
-import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
 import {
   hasSourceField,
   getFieldTargetId,
 } from "metabase-lib/queries/utils/field-ref";
+import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
+
 import FieldSeparator from "../FieldSeparator";
+
 import {
   FieldMappingContainer,
   FieldMappingRoot,

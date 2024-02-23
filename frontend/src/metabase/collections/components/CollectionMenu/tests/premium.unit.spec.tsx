@@ -5,6 +5,7 @@ import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 

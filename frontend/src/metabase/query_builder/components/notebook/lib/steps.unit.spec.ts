@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
-import { getQuestionSteps } from "metabase/query_builder/components/notebook/lib/steps";
 import { checkNotNull } from "metabase/lib/types";
+import { getQuestionSteps } from "metabase/query_builder/components/notebook/lib/steps";
+import * as Lib from "metabase-lib";
 import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
 import {
   createSampleDatabase,
@@ -9,7 +10,6 @@ import {
   PRODUCTS,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

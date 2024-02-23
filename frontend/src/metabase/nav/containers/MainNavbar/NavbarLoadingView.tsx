@@ -1,5 +1,7 @@
 import { t } from "ttag";
+
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+
 import {
   LoadingAndErrorContainer,
   LoadingAndErrorContent,

@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import { isEmail } from "metabase/lib/utils";
+
 import Settings from "metabase/lib/settings";
+import { isEmail } from "metabase/lib/utils";
 
 // we need this to allow 0 as a valid form value
 export const isEmpty = value =>

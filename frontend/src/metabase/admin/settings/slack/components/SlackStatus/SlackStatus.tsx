@@ -1,13 +1,16 @@
 import type { ComponentType } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
-import Settings from "metabase/lib/settings";
+
+import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Modal from "metabase/components/Modal";
-import SlackBadge from "../SlackBadge";
+import Settings from "metabase/lib/settings";
+
 import SlackAppsLink from "../SlackAppsLink";
+import SlackBadge from "../SlackBadge";
 import SlackDeleteModal from "../SlackDeleteModal";
+
 import {
   StatusFooter,
   StatusHeader,

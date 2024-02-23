@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
@@ -8,7 +9,6 @@ import {
   PEOPLE_ID,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
 
 const setup = ({ tables = [] } = {}) => {
   const metadata = createMockMetadata({

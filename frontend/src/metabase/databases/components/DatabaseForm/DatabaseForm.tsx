@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormikContext } from "formik";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import { useSelector } from "metabase/lib/redux";
+
 import Button from "metabase/core/components/Button";
-import { Form, FormProvider } from "metabase/forms";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import { Form, FormProvider } from "metabase/forms";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import type { DatabaseData, Engine } from "metabase-types/api";
+
 import { getEngines, getIsCachingEnabled, getIsHosted } from "../../selectors";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
@@ -16,10 +18,11 @@ import {
   getValidationSchema,
   getVisibleFields,
 } from "../../utils/schema";
-import DatabaseEngineField from "../DatabaseEngineField";
-import DatabaseNameField from "../DatabaseNameField";
 import DatabaseDetailField from "../DatabaseDetailField";
+import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
+import DatabaseNameField from "../DatabaseNameField";
+
 import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
 interface DatabaseFormProps {

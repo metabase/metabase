@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 
-import { getAccentColors } from "metabase/lib/colors/groups";
-import ColorSelector from "metabase/core/components/ColorSelector";
 import IconWrapper from "metabase/components/IconWrapper";
+import ColorSelector from "metabase/core/components/ColorSelector";
+import { getAccentColors } from "metabase/lib/colors/groups";
+
 import {
   OptionsIcon,
   SeriesNameInput,

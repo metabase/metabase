@@ -1,14 +1,16 @@
 import type { ChangeEvent, SyntheticEvent } from "react";
 import { memo, useCallback } from "react";
 import { t } from "ttag";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
-import Settings from "metabase/lib/settings";
-import { parseTimestamp } from "metabase/lib/time";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+
 import EntityMenu from "metabase/components/EntityMenu";
 import Checkbox from "metabase/core/components/CheckBox/CheckBox";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import Settings from "metabase/lib/settings";
+import { parseTimestamp } from "metabase/lib/time";
 import type { IconName } from "metabase/ui";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
+
 import {
   CardAside,
   CardBody,

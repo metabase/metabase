@@ -1,13 +1,13 @@
 import type { Location } from "history";
 import type { ComponentType } from "react";
 
+import type { SearchFilterKeys } from "metabase/search/constants";
+import type { IconName } from "metabase/ui";
 import type {
   EnabledSearchModelType,
   SearchResult,
   UserId,
 } from "metabase-types/api";
-import type { IconName } from "metabase/ui";
-import type { SearchFilterKeys } from "metabase/search/constants";
 
 export interface WrappedResult extends SearchResult {
   getUrl: () => string;

@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const AdminWrapper = styled.div<{ headerHeight?: number }>`

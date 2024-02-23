@@ -1,4 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
+
 import ProgressBar from "./ProgressBar";
 import { BELOW_GOAL, EXCEEDS_GOAL, REACHED_GOAL, ZERO } from "./stories-data";
 
