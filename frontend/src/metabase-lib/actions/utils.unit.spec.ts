@@ -1,9 +1,10 @@
+import { createMockMetadata } from "__support__/metadata";
 import type { WritebackAction, Database } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
+
 import { canRunAction } from "./utils";
 
 interface SetupOpts {

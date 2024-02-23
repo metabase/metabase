@@ -2,25 +2,26 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+
 import {
   setupCollectionByIdEndpoint,
   setupSearchEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/lib/types";
-import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
-import { SearchResults } from "metabase/nav/components/search/SearchResults";
 
 type SearchResultsSetupProps = {
   searchResults?: SearchResult[];

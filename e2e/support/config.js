@@ -1,11 +1,11 @@
 import * as dbTasks from "./db_tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
-const replay = require("@replayio/cypress");
-const { verifyDownloadTasks } = require("cy-verify-downloads");
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
+const replay = require("@replayio/cypress");
+const { verifyDownloadTasks } = require("cy-verify-downloads");
 
 const {
   removeDirectory,

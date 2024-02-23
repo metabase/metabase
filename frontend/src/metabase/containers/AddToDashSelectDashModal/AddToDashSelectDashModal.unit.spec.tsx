@@ -1,6 +1,7 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
 import {
   setupMostRecentlyViewedDashboard,
   setupCollectionsEndpoints,
@@ -9,6 +10,15 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { getNextId } from "__support__/utils";
+import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
+import type {
+  Card,
+  Collection,
+  Dashboard,
+  SearchResult,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -16,15 +26,7 @@ import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type {
-  Card,
-  Collection,
-  Dashboard,
-  SearchResult,
-} from "metabase-types/api";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import { checkNotNull, isNotNull } from "metabase/lib/types";
-import { getNextId } from "__support__/utils";
+
 import { ConnectedAddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const CURRENT_USER = createMockUser({

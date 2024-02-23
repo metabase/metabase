@@ -1,11 +1,12 @@
 import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import _ from "underscore";
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+import _ from "underscore";
+
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
+import { isEmpty } from "metabase/lib/validate";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import { isEmpty } from "metabase/lib/validate";
+import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 export function computeTrend(

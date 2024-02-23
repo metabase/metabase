@@ -1,6 +1,9 @@
 import { assocIn } from "icepick";
 
 import { createMockMetadata } from "__support__/metadata";
+import NativeQuery, {
+  updateCardTemplateTagNames,
+} from "metabase-lib/queries/NativeQuery";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -8,9 +11,6 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
-import NativeQuery, {
-  updateCardTemplateTagNames,
-} from "metabase-lib/queries/NativeQuery";
 
 const MONGO_DB_ID = SAMPLE_DB_ID + 1;
 

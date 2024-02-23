@@ -1,24 +1,27 @@
-import { useCallback } from "react";
-import { usePreviousDistinct } from "react-use";
-import { t } from "ttag";
-import _ from "underscore";
-import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
+import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
+import {
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
 import {
   arrayMove,
   verticalListSortingStrategy,
   SortableContext,
 } from "@dnd-kit/sortable";
-import {
-  restrictToVerticalAxis,
-  restrictToParentElement,
-} from "@dnd-kit/modifiers";
-import { uuid } from "metabase/lib/utils";
+import { useCallback } from "react";
+import { usePreviousDistinct } from "react-use";
+import { t } from "ttag";
+import _ from "underscore";
+
 import { Sortable } from "metabase/core/components/Sortable";
+import { uuid } from "metabase/lib/utils";
 import { Stack } from "metabase/ui";
 import type { DatasetColumn, SmartScalarComparison } from "metabase-types/api";
+
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
+
 import { ComparisonPicker } from "./ComparisonPicker";
 import {
   AddComparisonButton,

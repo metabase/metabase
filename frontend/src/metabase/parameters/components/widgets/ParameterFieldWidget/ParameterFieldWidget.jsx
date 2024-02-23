@@ -1,6 +1,6 @@
-import { useState } from "react";
 import cx from "classnames";
 import PropTypes from "prop-types";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,12 +10,12 @@ import {
   Footer,
   UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
   isFuzzyOperator,
 } from "metabase-lib/operators/utils";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 
 import { normalizeValue } from "./normalizeValue";
 

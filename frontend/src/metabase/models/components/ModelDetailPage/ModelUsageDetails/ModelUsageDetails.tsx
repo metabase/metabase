@@ -2,17 +2,15 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
-
-import * as Urls from "metabase/lib/urls";
 import Questions, {
   getIcon as getQuestionIcon,
 } from "metabase/entities/questions";
-
-import type { State } from "metabase-types/store";
+import * as Urls from "metabase/lib/urls";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
+import type { State } from "metabase-types/store";
 
 import {
   EmptyStateContainer,

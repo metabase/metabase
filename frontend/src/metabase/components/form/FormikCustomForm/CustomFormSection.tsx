@@ -1,8 +1,8 @@
 import type * as React from "react";
 
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
-
 import { useToggle } from "metabase/hooks/use-toggle";
+
 import { CollapsibleSectionContent } from "./CustomFormSection.styled";
 
 interface SectionProps {

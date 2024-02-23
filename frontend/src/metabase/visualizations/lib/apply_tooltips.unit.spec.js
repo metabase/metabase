@@ -1,18 +1,18 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import {
-  getClickHoverObject,
-  getStackedTooltipModel,
-} from "metabase/visualizations/lib/apply_tooltips";
-import { getDatas } from "metabase/visualizations/lib/renderer_utils";
-
-import {
   getFormattedTooltips,
   BooleanColumn,
   DateTimeColumn,
   StringColumn,
   NumberColumn,
 } from "__support__/visualizations";
+import {
+  getClickHoverObject,
+  getStackedTooltipModel,
+} from "metabase/visualizations/lib/apply_tooltips";
+import { getDatas } from "metabase/visualizations/lib/renderer_utils";
+
 
 describe("getClickHoverObject", () => {
   it("should return data for tooltip", () => {

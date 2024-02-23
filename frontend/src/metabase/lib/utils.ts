@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
+
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 const LAYOUT_PROPS = [

@@ -1,12 +1,13 @@
-import { renderWithProviders, screen } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
+import Dimension from "metabase-lib/Dimension";
 import {
   createSampleDatabase,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import Dimension from "metabase-lib/Dimension";
+
 import FieldFingerprintInfo from "./FieldFingerprintInfo";
 
 const state = createMockState({

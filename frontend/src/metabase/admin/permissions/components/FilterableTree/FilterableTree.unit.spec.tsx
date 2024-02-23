@@ -1,6 +1,7 @@
 import { render, fireEvent, act, screen } from "@testing-library/react";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+
 import { FilterableTree } from "./FilterableTree";
 
 const itemGroups = [

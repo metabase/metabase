@@ -1,25 +1,22 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import type { CollectionItem } from "metabase-types/api";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-
-import Search from "metabase/entities/search";
-import { useListSelect } from "metabase/hooks/use-list-select";
 import { useSearchListQuery } from "metabase/common/hooks";
-import { getMainElement } from "metabase/lib/dom";
-
-import { getIsNavbarOpen } from "metabase/selectors/app";
-
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import { Button } from "metabase/ui";
+import { ArchivedItem } from "metabase/components/ArchivedItem/ArchivedItem";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
-import PageHeading from "metabase/components/type/PageHeading";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
-import { ArchivedItem } from "metabase/components/ArchivedItem/ArchivedItem";
+import PageHeading from "metabase/components/type/PageHeading";
+import Search from "metabase/entities/search";
+import { useListSelect } from "metabase/hooks/use-list-select";
+import { getMainElement } from "metabase/lib/dom";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import { Button } from "metabase/ui";
+import type { CollectionItem } from "metabase-types/api";
 
 import {
   ArchiveBarContent,

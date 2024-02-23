@@ -2,22 +2,22 @@
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import MetabaseSettings from "metabase/lib/settings";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   metricSetting,
   dimensionSetting,
   fieldSetting,
 } from "metabase/visualizations/lib/settings/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-import MetabaseSettings from "metabase/lib/settings";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
-import { getAccentColors } from "metabase/lib/colors/groups";
-import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
 import {
   getDefaultSize,
   getMinSize,
@@ -31,11 +31,13 @@ import {
   isState,
   isCountry,
 } from "metabase-lib/types/utils/isa";
-import LeafletGridHeatMap from "../../components/LeafletGridHeatMap";
-import PinMap from "../../components/PinMap";
+
 import ChoroplethMap, {
   getColorplethColorScale,
 } from "../../components/ChoroplethMap";
+import LeafletGridHeatMap from "../../components/LeafletGridHeatMap";
+import PinMap from "../../components/PinMap";
+
 import { CustomMapFooter } from "./CustomMapFooter";
 
 export class Map extends Component {

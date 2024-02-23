@@ -1,9 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const NodeListItemName = styled.span`
   font-weight: 700;

@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 
+import Card from "metabase/components/Card";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-import Card from "metabase/components/Card";
-import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const StyledCard = styled(Card)`
   padding: 2.5rem;

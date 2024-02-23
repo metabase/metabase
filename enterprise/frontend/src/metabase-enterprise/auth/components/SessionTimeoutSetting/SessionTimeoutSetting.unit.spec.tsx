@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
 describe("SessionTimeoutSetting", () => {

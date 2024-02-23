@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
+import NumericInput from "metabase/components/NumericInput";
 import { formDomOnlyProps } from "metabase/lib/redux";
 
-import NumericInput from "metabase/components/NumericInput";
 
 const FormInputWidget = ({ placeholder, field }) => (
   <NumericInput

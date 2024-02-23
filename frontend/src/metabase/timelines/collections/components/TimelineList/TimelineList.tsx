@@ -1,5 +1,7 @@
 import type { Timeline } from "metabase-types/api";
+
 import TimelineCard from "../TimelineCard";
+
 import { ListRoot } from "./TimelineList.styled";
 
 export interface TimelineListProps {

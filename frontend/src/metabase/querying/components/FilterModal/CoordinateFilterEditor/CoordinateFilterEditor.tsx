@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import type * as Lib from "metabase-lib";
-import { isNumber } from "metabase/lib/types";
-import { Flex, Grid, NumberInput, Text, Icon } from "metabase/ui";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
+import { isNumber } from "metabase/lib/types";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
+import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
+import { Flex, Grid, NumberInput, Text, Icon } from "metabase/ui";
+import type * as Lib from "metabase-lib";
+
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";

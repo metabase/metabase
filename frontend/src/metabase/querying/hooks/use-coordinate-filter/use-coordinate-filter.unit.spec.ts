@@ -1,8 +1,10 @@
 import { act, renderHook } from "@testing-library/react-hooks";
+
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import { PEOPLE_ID } from "metabase-types/api/mocks/presets";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { PEOPLE_ID } from "metabase-types/api/mocks/presets";
+
 import { useCoordinateFilter } from "./use-coordinate-filter";
 
 interface CreateFilterCase {

@@ -1,11 +1,10 @@
-import _ from "underscore";
-import { t, ngettext, msgid } from "ttag";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { t, ngettext, msgid } from "ttag";
+import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
 import { numberToWord, compareVersions } from "metabase/lib/utils";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
-
 import type {
   PasswordComplexity,
   SettingKey,

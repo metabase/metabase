@@ -1,6 +1,11 @@
 import _ from "underscore";
 
-import { getFieldType, isFieldType } from "metabase-lib/types/utils/isa";
+import {
+  FIELD_FILTER_OPERATORS,
+  FILTER_OPERATORS_BY_TYPE_ORDERED,
+  AGGREGATION_OPERATORS,
+  MORE_VERBOSE_NAMES,
+} from "metabase-lib/operators/constants";
 import {
   FOREIGN_KEY,
   PRIMARY_KEY,
@@ -8,12 +13,7 @@ import {
   STRING_LIKE,
   UNKNOWN,
 } from "metabase-lib/types/constants";
-import {
-  FIELD_FILTER_OPERATORS,
-  FILTER_OPERATORS_BY_TYPE_ORDERED,
-  AGGREGATION_OPERATORS,
-  MORE_VERBOSE_NAMES,
-} from "metabase-lib/operators/constants";
+import { getFieldType, isFieldType } from "metabase-lib/types/utils/isa";
 
 export function doesOperatorExist(operatorName) {
   return !!FIELD_FILTER_OPERATORS[operatorName];

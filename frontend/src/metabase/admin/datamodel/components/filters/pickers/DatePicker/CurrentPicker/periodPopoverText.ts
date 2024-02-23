@@ -1,6 +1,6 @@
-import { t } from "ttag";
 import type { unitOfTime } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { t } from "ttag";
 
 const buildStartAndEndDates = (period: unitOfTime.StartOf, format: string) => {
   const now = moment();

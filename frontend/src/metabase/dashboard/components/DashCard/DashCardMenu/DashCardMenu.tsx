@@ -2,22 +2,24 @@ import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
+
+import { editQuestion } from "metabase/dashboard/actions";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Icon } from "metabase/ui";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
-import { editQuestion } from "metabase/dashboard/actions";
+import { Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
+import InternalQuery from "metabase-lib/queries/InternalQuery";
 import type {
   DashboardId,
   DashCardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import InternalQuery from "metabase-lib/queries/InternalQuery";
+
 import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {

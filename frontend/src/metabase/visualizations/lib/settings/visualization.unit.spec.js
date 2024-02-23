@@ -1,11 +1,12 @@
 import icepick from "icepick";
-import registerVisualizations from "metabase/visualizations/register";
+
+import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import {
   getComputedSettingsForSeries,
   getStoredSettingsForSeries,
 } from "metabase/visualizations/lib/settings/visualization";
+import registerVisualizations from "metabase/visualizations/register";
 
-import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 
 registerVisualizations();
 

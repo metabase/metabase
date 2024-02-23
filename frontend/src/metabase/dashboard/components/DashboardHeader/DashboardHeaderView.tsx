@@ -1,8 +1,8 @@
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import type * as React from "react";
-import { t } from "ttag";
 import cx from "classnames";
 import type { Location } from "history";
+import type * as React from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { t } from "ttag";
 
 import EditBar from "metabase/components/EditBar";
 import { updateDashboard } from "metabase/dashboard/actions";

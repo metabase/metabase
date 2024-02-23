@@ -4,13 +4,12 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
-import { Group, Loader, Icon } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
-
 import type { WrappedResult } from "metabase/search/types";
+import { Group, Loader, Icon } from "metabase/ui";
 
 import { InfoText } from "../InfoText";
-import { ItemIcon } from "./components";
+
 
 import {
   DescriptionDivider,
@@ -24,6 +23,7 @@ import {
   XRayButton,
   XRaySection,
 } from "./SearchResult.styled";
+import { ItemIcon } from "./components";
 
 export function SearchResult({
   result,

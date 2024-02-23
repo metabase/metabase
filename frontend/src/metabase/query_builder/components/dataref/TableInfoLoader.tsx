@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Tables from "metabase/entities/tables";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import type Table from "metabase-lib/metadata/Table";
 
 type OwnProps = {

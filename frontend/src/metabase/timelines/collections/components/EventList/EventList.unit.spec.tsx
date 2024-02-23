@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
+
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+
 import type { EventListProps } from "./EventList";
 import EventList from "./EventList";
 

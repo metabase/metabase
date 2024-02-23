@@ -1,7 +1,8 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import * as ML from "cljs/metabase.lib.js";
 
+import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn } from "metabase-types/api";
+
 import {
   isBoolean,
   isTime,

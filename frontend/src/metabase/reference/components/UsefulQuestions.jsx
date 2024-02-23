@@ -1,9 +1,10 @@
-import { memo } from "react";
 import PropTypes from "prop-types";
+import { memo } from "react";
 import { t } from "ttag";
-import D from "metabase/reference/components/Detail.css";
 
 import QueryButton from "metabase/components/QueryButton";
+import D from "metabase/reference/components/Detail.css";
+
 import S from "./UsefulQuestions.css";
 
 const UsefulQuestions = ({ questions }) => (

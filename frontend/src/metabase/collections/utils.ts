@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
 import type {
   Collection,
   CollectionId,

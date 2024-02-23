@@ -1,8 +1,7 @@
 import { color } from "metabase/lib/colors";
-import { getStatusIcon } from "metabase-enterprise/moderation/service";
-
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import { getStatusIcon } from "metabase-enterprise/moderation/service";
 
 type ModerationStatusIconProps = {
   status: string | null | undefined;

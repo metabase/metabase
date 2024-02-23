@@ -2,12 +2,12 @@ import { t } from "ttag";
 
 import type ValidationError from "metabase-lib/ValidationError";
 
+import ErrorActionButton from "./ErrorActionButton";
 import {
   QueryValidationErrorRoot,
   QueryValidationErrorHeader,
   QueryValidationErrorMessage,
 } from "./QueryValidationError.styled";
-import ErrorActionButton from "./ErrorActionButton";
 
 type QueryBuilderUiControls = {
   isShowingTemplateTagsEditor?: boolean;

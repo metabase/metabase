@@ -1,10 +1,10 @@
-import _ from "underscore";
 import { updateIn } from "icepick";
+import _ from "underscore";
 
 import { copy } from "metabase/lib/utils";
 import * as Lib from "metabase-lib";
-import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
+import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils"; // legacy
 
 export function isNative(card) {

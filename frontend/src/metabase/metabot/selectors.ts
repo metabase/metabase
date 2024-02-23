@@ -1,9 +1,11 @@
 import { createSelector } from "@reduxjs/toolkit";
+
 import { getMetadata } from "metabase/selectors/metadata";
-import type { State } from "metabase-types/store";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type { State } from "metabase-types/store";
+
 import { DEFAULT_TABLE_SETTINGS } from "./constants";
 
 export const getEntityId = (state: State) => {

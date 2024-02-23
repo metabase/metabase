@@ -1,6 +1,8 @@
-import * as Yup from "yup";
-import type { AnySchema } from "yup";
 import userEvent from "@testing-library/user-event";
+import type { AnySchema } from "yup";
+import * as Yup from "yup";
+
+import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
   FormCheckboxGroup,
@@ -9,7 +11,6 @@ import {
   requiredErrorMessage,
 } from "metabase/forms";
 import { Checkbox } from "metabase/ui";
-import { render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
   columns: string[];

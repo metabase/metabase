@@ -1,19 +1,12 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import { getColumnGroupName } from "metabase/common/utils/column-groups";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import * as Lib from "metabase-lib";
-import type {
-  BaseDashboardCard,
-  Card,
-  NativeParameterDimensionTarget,
-  Parameter,
-  ParameterTarget,
-  ParameterVariableTarget,
-  StructuredParameterDimensionTarget,
-  WritebackParameter,
-} from "metabase-types/api";
+import { TemplateTagDimension } from "metabase-lib/Dimension";
+import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
+import type Question from "metabase-lib/Question";
 import {
   columnFilterForParameter,
   dimensionFilterForParameter,
@@ -25,10 +18,17 @@ import {
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
 } from "metabase-lib/parameters/utils/targets";
-import type Question from "metabase-lib/Question";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
-import { TemplateTagDimension } from "metabase-lib/Dimension";
+import type {
+  BaseDashboardCard,
+  Card,
+  NativeParameterDimensionTarget,
+  Parameter,
+  ParameterTarget,
+  ParameterVariableTarget,
+  StructuredParameterDimensionTarget,
+  WritebackParameter,
+} from "metabase-types/api";
 
 export type StructuredQuerySectionOption = {
   sectionName: string;

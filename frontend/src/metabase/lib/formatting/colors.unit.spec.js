@@ -1,4 +1,5 @@
 import { color } from "metabase/lib/colors";
+
 import { assignUserColors } from "./colors";
 
 describe("lib/formatting/colors", () => {

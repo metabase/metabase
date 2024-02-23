@@ -1,10 +1,8 @@
 import { useCallback, useLayoutEffect, useState } from "react";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-
 import * as Lib from "metabase-lib";
 
 import { FilterColumnPicker } from "./FilterColumnPicker";

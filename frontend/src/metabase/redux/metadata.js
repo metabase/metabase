@@ -1,17 +1,16 @@
 import { getIn } from "icepick";
 import _ from "underscore";
+
+import Databases from "metabase/entities/databases";
+import Fields from "metabase/entities/fields";
+import Metrics from "metabase/entities/metrics";
+import Schemas from "metabase/entities/schemas";
+import Segments from "metabase/entities/segments";
+import Tables from "metabase/entities/tables";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
-
 import { getMetadata } from "metabase/selectors/metadata";
-
 import { MetabaseApi, RevisionsApi } from "metabase/services";
 
-import Schemas from "metabase/entities/schemas";
-import Tables from "metabase/entities/tables";
-import Fields from "metabase/entities/fields";
-import Segments from "metabase/entities/segments";
-import Metrics from "metabase/entities/metrics";
-import Databases from "metabase/entities/databases";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 

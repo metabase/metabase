@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+
 import type * as Lib from "metabase-lib";
+
+import { FilterPanelRoot } from "./FilterPanel.styled";
 import { FilterPanelPopover } from "./FilterPanelPopover";
 import { dropStageIfEmpty, getFilterItems } from "./utils";
-import { FilterPanelRoot } from "./FilterPanel.styled";
 
 interface FilterPanelProps {
   query: Lib.Query;

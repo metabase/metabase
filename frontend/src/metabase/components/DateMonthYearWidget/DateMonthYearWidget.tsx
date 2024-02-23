@@ -1,5 +1,5 @@
-import { Component } from "react";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { Component } from "react";
 import _ from "underscore";
 
 import YearPicker from "metabase/components/YearPicker";

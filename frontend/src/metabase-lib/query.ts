@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
+
 import type LegacyMetadata from "./metadata/Metadata";
 import type {
   CardMetadata,

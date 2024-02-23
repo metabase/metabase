@@ -1,5 +1,6 @@
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbeddingDisplayOptions,
@@ -16,9 +17,10 @@ import "ace/mode-python";
 
 import { useSelector } from "metabase/lib/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import type { EmbedCodePaneVariant } from "./types";
-import { getDefaultDisplayOptions } from "./config";
+
 import { CodeSample } from "./CodeSample";
+import { getDefaultDisplayOptions } from "./config";
+import type { EmbedCodePaneVariant } from "./types";
 
 type EmbedCodePaneProps = {
   siteUrl: string;

@@ -1,8 +1,12 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
+
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
+import type Field from "metabase-lib/metadata/Field";
+import Table from "metabase-lib/metadata/Table";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   createMockField,
   createMockSavedQuestionsDatabase,
@@ -19,9 +23,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Table from "metabase-lib/metadata/Table";
-import type Field from "metabase-lib/metadata/Field";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 import { getStructuredQueryTable } from "./structured-query-table";
 

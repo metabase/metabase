@@ -1,3 +1,5 @@
+
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type {
   ClickBehavior,
   Collection,
@@ -7,11 +9,10 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 
-import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { ActionDisplayType, WritebackAction } from "./actions";
-import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
+import type { SearchModelType } from "./search";
 
 // x-ray dashboard have string ids
 export type DashboardId = number | string;

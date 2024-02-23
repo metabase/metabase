@@ -1,10 +1,10 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
-import { space } from "metabase/styled-components/theme";
-import { alpha, color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 import Button from "metabase/core/components/Button";
+import { alpha, color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const Container = styled.div<{ isSmall: boolean }>`
   margin: ${({ isSmall }) => (isSmall ? 0 : space(1))} 0;

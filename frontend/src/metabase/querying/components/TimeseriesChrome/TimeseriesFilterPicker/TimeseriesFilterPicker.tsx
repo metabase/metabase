@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+
+import { SimpleDateFilterPicker } from "metabase/querying/components/FilterPicker";
 import { Button, Popover, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { SimpleDateFilterPicker } from "metabase/querying/components/FilterPicker";
 
 export interface TimeseriesFilterPickerProps {
   query: Lib.Query;

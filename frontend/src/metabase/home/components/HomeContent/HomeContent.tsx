@@ -1,21 +1,23 @@
 import { useUpdate } from "react-use";
-import { useSelector } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
 import {
   useDatabaseListQuery,
   usePopularItemListQuery,
   useRecentItemListQuery,
 } from "metabase/common/hooks";
-import type { PopularItem, RecentItem, User } from "metabase-types/api";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/metadata/Database";
-import { HomePopularSection } from "../HomePopularSection";
-import { HomeRecentSection } from "../HomeRecentSection";
-import { HomeXraySection } from "../HomeXraySection";
+import type { PopularItem, RecentItem, User } from "metabase-types/api";
+
 import { getIsXrayEnabled } from "../../selectors";
 import { isWithinWeeks, shouldShowEmbedHomepage } from "../../utils";
 import { EmbedMinimalHomepage } from "../EmbedMinimalHomepage";
+import { HomePopularSection } from "../HomePopularSection";
+import { HomeRecentSection } from "../HomeRecentSection";
+import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
   const update = useUpdate();

@@ -2,8 +2,8 @@ import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
 import Card from "metabase/components/Card";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { Collapse, Icon, type ButtonProps, Box } from "metabase/ui";

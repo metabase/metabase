@@ -1,3 +1,4 @@
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
   setupSMTP,
@@ -6,7 +7,6 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 

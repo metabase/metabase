@@ -11,6 +11,7 @@ import {
 } from "e2e/support/helpers";
 
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import {
   DASHBOARD_SQL_TEXT_FILTERS,
   questionDetails,

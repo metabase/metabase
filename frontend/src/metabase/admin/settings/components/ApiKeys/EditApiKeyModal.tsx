@@ -1,8 +1,7 @@
-import { t } from "ttag";
 import { useCallback, useState } from "react";
+import { t } from "ttag";
 
 import type { ApiKey } from "metabase-types/api";
-
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 import {
   Form,

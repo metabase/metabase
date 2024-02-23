@@ -1,5 +1,5 @@
-import type { CollectionEssentials, SearchResult } from "metabase-types/api";
 import type { AvailableModelFilters } from "metabase/browse/utils";
+import type { CollectionEssentials, SearchResult } from "metabase-types/api";
 
 export const sortCollectionsByVerification = (
   collection1: CollectionEssentials,

@@ -1,9 +1,9 @@
+import { optionsToHashParams } from "./embed";
 import type {
   CodeSampleParameters,
   EmbeddingDisplayOptions,
   EmbeddingParametersValues,
 } from "./types";
-import { optionsToHashParams } from "./embed";
 
 function getIframeQuerySource(displayOptions: EmbeddingDisplayOptions) {
   return JSON.stringify(

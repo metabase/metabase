@@ -1,8 +1,9 @@
 import { t } from "ttag";
-import { Box, Popover, Icon, Tooltip, Stack, Switch } from "metabase/ui";
+
 import { setDashboardWidth } from "metabase/dashboard/actions";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { useDispatch } from "metabase/lib/redux";
+import { Box, Popover, Icon, Tooltip, Stack, Switch } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;

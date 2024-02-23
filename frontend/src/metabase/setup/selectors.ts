@@ -1,6 +1,7 @@
+import { getSetting } from "metabase/selectors/settings";
 import type { DatabaseData, LocaleData } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
-import { getSetting } from "metabase/selectors/settings";
+
 import { isNotFalsy } from "./../lib/types";
 import type { SetupStep } from "./types";
 

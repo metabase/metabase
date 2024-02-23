@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 
+import { color, darken } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-import { color, darken } from "metabase/lib/colors";
 
 import { commonLabelStyle } from "./ModelCachingScheduleWidget.styled";
 

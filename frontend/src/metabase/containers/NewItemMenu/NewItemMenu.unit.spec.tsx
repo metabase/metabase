@@ -1,9 +1,8 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen } from "__support__/ui";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
-
+import { renderWithProviders, screen } from "__support__/ui";
 import type { Database } from "metabase-types/api";
 import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
