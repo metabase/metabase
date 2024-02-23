@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { VariableSizeItemsVirtualizedList } from "metabase/components/VirtualizedList";
 import Search from "metabase/entities/search";
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 import { useDispatch } from "metabase/lib/redux";
@@ -80,24 +81,21 @@ export const EntityPickerSearchResults = ({
   }
 
   return (
-    <Box
-      p="lg"
-      style={{
-        height: "100%",
-        overflowY: "auto",
-      }}
-    >
-      <Stack maw="640px">
-        {searchResults?.map(item => (
-          <EntityPickerSearchResult
-            key={item.model + item.id}
-            result={Search.wrapEntity(item, dispatch)}
-            onClick={onItemSelect}
-            isSelected={
-              selectedItem?.id === item.id && selectedItem?.model === item.model
-            }
-          />
-        ))}
+    <Box p="lg" h="100%">
+      <Stack h="100%">
+        <VariableSizeItemsVirtualizedList>
+          {searchResults?.map(item => (
+            <EntityPickerSearchResult
+              key={item.model + item.id}
+              result={Search.wrapEntity(item, dispatch)}
+              onClick={onItemSelect}
+              isSelected={
+                selectedItem?.id === item.id &&
+                selectedItem?.model === item.model
+              }
+            />
+          ))}
+        </VariableSizeItemsVirtualizedList>
       </Stack>
     </Box>
   );
