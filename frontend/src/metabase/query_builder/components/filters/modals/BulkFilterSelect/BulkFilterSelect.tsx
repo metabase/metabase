@@ -5,17 +5,14 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import type { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 import type Dimension from "metabase-lib/Dimension";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-/* eslint-disable import/no-duplicates */
 import type { SegmentOption } from "metabase-lib/queries/StructuredQuery";
-/* eslint-enable import/no-duplicates */
-
 import Filter from "metabase-lib/queries/structured/Filter";
 import { isBoolean, isDate } from "metabase-lib/types/utils/isa";
 
 import {
+  SegmentSelect,
   SelectFilterButton,
   SelectFilterPopover,
-  SegmentSelect,
 } from "./BulkFilterSelect.styled";
 
 export interface BulkFilterSelectProps {

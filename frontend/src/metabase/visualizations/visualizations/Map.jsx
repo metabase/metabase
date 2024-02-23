@@ -14,26 +14,23 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
-  metricSetting,
   dimensionSetting,
   fieldSetting,
+  metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
-
-const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
-
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import {
-  isNumeric,
+  hasLatitudeAndLongitudeColumns,
+  isCountry,
   isLatitude,
   isLongitude,
   isMetric,
-  hasLatitudeAndLongitudeColumns,
+  isNumeric,
   isState,
-  isCountry,
 } from "metabase-lib/types/utils/isa";
 
 import ChoroplethMap, {
@@ -43,6 +40,8 @@ import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
 import PinMap from "../components/PinMap";
 
 import { CustomMapContent } from "./Maps.styled";
+
+const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 export default class Map extends Component {
   static uiName = t`Map`;

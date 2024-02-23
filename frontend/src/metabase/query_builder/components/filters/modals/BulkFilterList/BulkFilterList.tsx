@@ -5,14 +5,11 @@ import EmptyState from "metabase/components/EmptyState";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import type Dimension from "metabase-lib/Dimension";
-/* eslint-disable import/no-duplicates */
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type {
   DimensionOption,
   SegmentOption,
 } from "metabase-lib/queries/StructuredQuery";
-/* eslint-enable import/no-duplicates */
-
 import {
   isDimensionOption,
   isSegmentOption,
@@ -23,8 +20,8 @@ import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
 import { InlineOperatorSelector } from "../InlineOperatorSelector";
 
-import { ListRoot, ListRow, FilterContainer } from "./BulkFilterList.styled";
-import { sortDimensions, isDimensionValid } from "./utils";
+import { FilterContainer, ListRoot, ListRow } from "./BulkFilterList.styled";
+import { isDimensionValid, sortDimensions } from "./utils";
 
 export interface BulkFilterListProps {
   query: StructuredQuery;

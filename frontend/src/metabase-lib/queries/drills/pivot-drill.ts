@@ -1,10 +1,8 @@
 import type DimensionOptions from "metabase-lib/DimensionOptions";
 import type Question from "metabase-lib/Question";
 import type Field from "metabase-lib/metadata/Field";
-/* eslint-disable import/no-duplicates */
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { FieldFilterFn } from "metabase-lib/queries/StructuredQuery";
-/* eslint-enable import/no-duplicates */
 import type {
   ClickObject,
   ClickObjectDimension,
