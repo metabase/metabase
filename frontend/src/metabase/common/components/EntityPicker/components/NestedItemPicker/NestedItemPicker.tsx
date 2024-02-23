@@ -19,38 +19,32 @@ import {
 import { AutoScrollBox } from "./AutoScrollBox";
 import { ListBox } from "./NestedItemPicker.styled";
 
-export interface NestedItemPickerProps<
-  TItem extends TypeWithModel,
-  TFolder extends TypeWithModel,
-> {
-  onFolderSelect: ({ folder }: { folder: TFolder }) => void;
+export interface NestedItemPickerProps<TItem extends TypeWithModel> {
+  onFolderSelect: ({ folder }: { folder: TItem }) => void;
   onItemSelect: (item: TItem) => void;
   itemName: string;
   options: EntityPickerOptions;
-  path: PickerState<TFolder>;
-  isFolder: TisFolder<TItem, TFolder>;
+  path: PickerState<TItem>;
+  isFolder: TisFolder<TItem>;
 }
 
-export function NestedItemPicker<
-  TItem extends TypeWithModel,
-  TFolder extends TypeWithModel,
->({
+export function NestedItemPicker<TItem extends TypeWithModel>({
   onFolderSelect,
   onItemSelect,
   itemName,
   options,
   path,
   isFolder,
-}: NestedItemPickerProps<TItem, TFolder>) {
-  const handleFolderSelect = (folder: TFolder) => {
+}: NestedItemPickerProps<TItem>) {
+  const handleFolderSelect = (folder: TItem) => {
     onFolderSelect({ folder });
   };
 
-  const handleClick = (item: TItem | TFolder) => {
+  const handleClick = (item: TItem) => {
     if (isFolder(item)) {
-      handleFolderSelect(item as TFolder);
+      handleFolderSelect(item);
     } else {
-      onItemSelect(item as TItem);
+      onItemSelect(item);
     }
   };
 
@@ -70,7 +64,7 @@ export function NestedItemPicker<
                   query={query}
                   selectedItem={selectedItem}
                   options={options}
-                  onClick={(item: TItem | TFolder) => handleClick(item)}
+                  onClick={(item: TItem) => handleClick(item)}
                   itemName={itemName}
                   isCurrentLevel={index === path.length - 2}
                   // @ts-expect-error - don't worry it's fine
@@ -93,7 +87,7 @@ function ListComponent({
   query,
   isFolder,
   isCurrentLevel,
-}: EntityItemListProps<CollectionPickerItem, CollectionPickerItem> & {
+}: EntityItemListProps<CollectionPickerItem> & {
   options: EntityPickerOptions;
 }) {
   if (!query) {

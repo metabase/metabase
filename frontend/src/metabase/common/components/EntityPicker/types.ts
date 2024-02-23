@@ -1,5 +1,9 @@
 import type { IconName } from "metabase/ui";
-import type { SearchResult, SearchListQuery } from "metabase-types/api";
+import type {
+  SearchResult,
+  SearchListQuery,
+  SearchModelType,
+} from "metabase-types/api";
 
 import type { CollectionPickerOptions } from "./SpecificEntityPickers/CollectionPicker";
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
@@ -7,13 +11,10 @@ import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 export type TypeWithModel = {
   id: any;
   name: string;
-  model: string;
+  model: SearchModelType;
 };
 
-export type TisFolder<
-  TFolder extends TypeWithModel,
-  TItem extends TypeWithModel,
-> = (item: TFolder | TItem) => boolean;
+export type TisFolder<TItem extends TypeWithModel> = (item: TItem) => boolean;
 
 export type PickerState<T> = PickerStateItem<T>[];
 

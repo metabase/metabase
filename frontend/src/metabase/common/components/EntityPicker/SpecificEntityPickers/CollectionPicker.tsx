@@ -33,12 +33,9 @@ interface CollectionPickerProps {
   options?: CollectionPickerOptions;
 }
 
-const isFolder: TisFolder<CollectionPickerItem, CollectionPickerItem> = <
-  TFolder extends TypeWithModel,
-  TItem extends TypeWithModel,
->(
-  item: TFolder | TItem,
-): item is TFolder => item.model === "collection";
+const isFolder: TisFolder<CollectionPickerItem> = <TItem extends TypeWithModel>(
+  item: TItem,
+) => item.model === "collection";
 
 export const CollectionPicker = ({
   onItemSelect,

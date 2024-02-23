@@ -1,33 +1,31 @@
 import { useMemo } from "react";
 
 import { useCollectionListQuery } from "metabase/common/hooks";
-import type { Collection } from "metabase-types/api";
+import type { Collection, SearchModelType } from "metabase-types/api";
 
-import type { TypeWithModel, TisFolder } from "../../types";
+import type {
+  TypeWithModel,
+  TisFolder,
+  CollectionPickerItem,
+} from "../../types";
 
 import { ItemList } from "./ItemList";
 
-interface PersonalCollectionsItemListProps<
-  TItem extends TypeWithModel,
-  TFolder extends TypeWithModel,
-> {
-  onClick: (val: TItem | TFolder) => void;
-  selectedItem: TItem | TFolder | null;
+interface PersonalCollectionsItemListProps<TItem extends TypeWithModel> {
+  onClick: (val: TItem) => void;
+  selectedItem: TItem | null;
   itemName: string;
-  isFolder: TisFolder<TItem, TFolder>;
+  isFolder: TisFolder<TItem>;
   isCurrentLevel: boolean;
 }
 
-export const PersonalCollectionsItemList = <
-  TItem extends TypeWithModel,
-  TFolder extends TypeWithModel,
->({
+export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
   onClick,
   selectedItem,
   itemName,
   isFolder,
   isCurrentLevel,
-}: PersonalCollectionsItemListProps<TItem, TFolder>) => {
+}: PersonalCollectionsItemListProps<TItem>) => {
   const { data: collections, isLoading } = useCollectionListQuery({
     query: { "personal-only": true },
   });
@@ -53,12 +51,12 @@ export const PersonalCollectionsItemList = <
 
 const getSortedTopLevelPersonalCollections = (
   personalCollections?: Collection[],
-) =>
+): CollectionPickerItem[] =>
   personalCollections
     ?.filter(isRootPersonalCollection)
     .map((collection: Collection) => ({
       ...collection,
-      model: "collection",
+      model: "collection" as SearchModelType,
     }))
     .sort((a, b) => a?.name.localeCompare(b.name)) ?? [];
 

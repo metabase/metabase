@@ -5,6 +5,7 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import type { CollectionId } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -28,7 +29,7 @@ interface RootItemListProps<CollectionPickerItem extends TypeWithModel> {
   selectedItem: CollectionPickerItem | null;
   itemName: string;
   options: EntityPickerOptions;
-  isFolder: TisFolder<CollectionPickerItem, CollectionPickerItem>;
+  isFolder: TisFolder<CollectionPickerItem>;
   isCurrentLevel: boolean;
 }
 /**
@@ -77,7 +78,7 @@ export const RootItemList = ({
       } else if (rootCollectionError) {
         collectionsData.push({
           name: t`Collections`,
-          id: "root",
+          id: "root" as CollectionId,
           description: null,
           can_write: false,
           model: "collection",

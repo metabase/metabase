@@ -4,30 +4,24 @@ import type { TypeWithModel, TisFolder } from "../../types";
 
 import { ItemList } from "./ItemList";
 
-export interface EntityItemListProps<
-  TItem extends TypeWithModel,
-  TFolder extends TypeWithModel,
-> {
+export interface EntityItemListProps<TItem extends TypeWithModel> {
   query: any;
   onClick: (val: any) => void;
-  selectedItem: TItem | TFolder | null;
+  selectedItem: TItem | null;
   itemName: string;
-  isFolder: TisFolder<TItem, TFolder>;
+  isFolder: TisFolder<TItem>;
   isCurrentLevel: boolean;
 }
 
-export const EntityItemList = <
-  TItem extends TypeWithModel,
-  TFolder extends TypeWithModel,
->({
+export const EntityItemList = <TItem extends TypeWithModel>({
   query,
   onClick,
   selectedItem,
   itemName,
   isFolder,
   isCurrentLevel,
-}: EntityItemListProps<TItem, TFolder>) => {
-  const { data, isLoading } = useSearchListQuery<TItem | TFolder>({ query });
+}: EntityItemListProps<TItem>) => {
+  const { data, isLoading } = useSearchListQuery<TItem>({ query });
 
   return (
     <ItemList

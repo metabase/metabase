@@ -12,23 +12,17 @@ import { getIcon, isSelectedItem } from "../../utils";
 
 import { PickerColumn } from "./ItemList.styled";
 
-interface ItemListProps<
-  TItem extends TypeWithModel,
-  TFolder extends TypeWithModel,
-> {
-  items?: (TItem | TFolder)[];
+interface ItemListProps<TItem extends TypeWithModel> {
+  items?: TItem[];
   isLoading?: boolean;
-  onClick: (val: TItem | TFolder) => void;
-  selectedItem: TItem | TFolder | null;
+  onClick: (val: TItem) => void;
+  selectedItem: TItem | null;
   itemName: string;
-  isFolder: (item: TItem | TFolder) => boolean;
+  isFolder: (item: TItem) => boolean;
   isCurrentLevel: boolean;
 }
 
-export const ItemList = <
-  TItem extends TypeWithModel,
-  TFolder extends TypeWithModel,
->({
+export const ItemList = <TItem extends TypeWithModel>({
   items,
   isLoading = false,
   onClick,
@@ -36,7 +30,7 @@ export const ItemList = <
   itemName,
   isFolder,
   isCurrentLevel,
-}: ItemListProps<TItem, TFolder>) => {
+}: ItemListProps<TItem>) => {
   if (isLoading) {
     return (
       <Box miw={310} h="100%">
@@ -64,7 +58,7 @@ export const ItemList = <
 
   return (
     <VariableSizeItemsVirtualizedList Wrapper={PickerColumn}>
-      {items.map((item: TItem | TFolder) => (
+      {items.map((item: TItem) => (
         <div key={`${item.model ?? "collection"}-${item.id}`}>
           <NavLink
             rightSection={
