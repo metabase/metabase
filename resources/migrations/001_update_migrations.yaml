@@ -5911,6 +5911,7 @@ databaseChangeLog:
       id: v50.2024-02-16T16:00:01
       author: piranha
       comment: 'Effective caching #36847'
+      rollback: # will be removed with the table
       changes:
         - addUniqueConstraint:
             remarks: Unique config for cache_config (model, model_id)
@@ -5922,6 +5923,7 @@ databaseChangeLog:
       id: v50.2024-02-16T16:00:02
       author: piranha
       comment: 'Effective caching #36847'
+      rollback: # will be removed with the table
       changes:
         - createIndex:
             tableName: cache_config
