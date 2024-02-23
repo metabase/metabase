@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
-// components
 import Button from "metabase/core/components/Button";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import ModalContent from "metabase/components/ModalContent";
@@ -19,12 +18,10 @@ import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 
 import User from "metabase/entities/users";
 
-// actions
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
 import { apiUpdateQuestion, updateUrl } from "metabase/query_builder/actions";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
 
-// selectors
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
   getQuestion,
@@ -37,11 +34,9 @@ import {
   hasLoadedChannelInfoSelector,
 } from "metabase/pulse/selectors";
 
-// lib
 import MetabaseCookies from "metabase/lib/cookies";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-// types
 import { alertIsValid } from "metabase/lib/alert";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
