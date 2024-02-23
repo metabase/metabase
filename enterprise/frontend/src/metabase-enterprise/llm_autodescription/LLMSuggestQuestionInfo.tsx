@@ -6,15 +6,9 @@ import { POST } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type { TLLMIndicatorProps } from "metabase/plugins/types";
-import { getQuestionWithDefaultVisualizationSettings } from "metabase/query_builder/actions/core/utils";
-import {
-  getIsResultDirty,
-  getResultsMetadata,
-  getTransformedSeries,
-} from "metabase/query_builder/selectors";
+import { getSubmittableQuestion } from "metabase/query_builder/selectors";
 import { getSetting } from "metabase/selectors/settings";
 import { Button, Icon, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import "./loading.css";
 
@@ -34,23 +28,8 @@ export const LLMSuggestQuestionInfo = ({
       return { name: undefined, description: undefined };
     }
 
-    let questionWithVizSettings = question;
-    const series = getTransformedSeries(state);
-    if (series) {
-      questionWithVizSettings = getQuestionWithDefaultVisualizationSettings(
-        question,
-        series,
-      );
-    }
-
-    const resultsMetadata = getResultsMetadata(state);
-    const isResultDirty = getIsResultDirty(state);
-    const cleanQuery = Lib.dropEmptyStages(questionWithVizSettings.query());
-    questionWithVizSettings
-      .setQuery(cleanQuery)
-      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
-
-    const response = await postSummarizeCard(questionWithVizSettings.card());
+    const submittableQuestion = getSubmittableQuestion(state, question);
+    const response = await postSummarizeCard(submittableQuestion.card());
 
     return {
       name: response?.summary?.title ?? undefined,
