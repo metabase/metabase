@@ -1,6 +1,7 @@
 import type {
   DatasetColumn,
   DatasetData,
+  FieldReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
