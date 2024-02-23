@@ -112,10 +112,9 @@ describe("QueryBuilder", () => {
           }),
         });
 
-        expect(screen.getByTestId("execution-time")).toBeInTheDocument();
-        expect(screen.getByTestId("execution-time")).toHaveTextContent(
-          "123 ms",
-        );
+        const executionTime = screen.getByTestId("execution-time");
+        expect(executionTime).toBeInTheDocument();
+        expect(executionTime).toHaveTextContent("123 ms");
       });
 
       it("does not render query execution time for non-native questions", async () => {
