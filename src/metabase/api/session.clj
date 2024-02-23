@@ -18,7 +18,6 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
@@ -27,9 +26,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   [metabase.util.urls :as urls]
-   [saml20-clj.core :as saml]
-   [saml20-clj.encode-decode :as encode-decode]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -208,36 +204,6 @@
   (api/check-exists? Session metabase-session-id)
   (t2/delete! Session :id metabase-session-id)
   (mw.session/clear-session-cookie api/generic-204-no-content))
-
-(def metabase-slo-redirect-url
-  "The url that the IdP should respond to. Not all IdPs support this, but it's a good idea to send it just in case."
-  "/auth/sso/handle_slo")
-
-(defenterprise sso-info
-  "Returns SSO information, iff ee is enabled."
-  metabase-enterprise.sso.integrations.sso-settings
-  []
-  {})
-
-;; client initiates slo:
-(api/defendpoint POST "/logout"
-  "Logout."
-  [:as {:keys [metabase-session-id]}]
-  (api/check-exists? Session metabase-session-id)
-  (let [{:keys [email sso_source]}
-        (t2/query-one {:select [:u.email :u.sso_source]
-                       :from   [[:core_user :u]]
-                       :join   [[:core_session :session] [:= :u.id :session.user_id]]
-                       :where  [:= :session.id metabase-session-id]})
-        {:keys [saml-enabled saml-identity-provider-uri saml-application-name]} (sso-info)]
-    {:saml-logout-url
-     (when (and saml-enabled (= sso_source "saml"))
-       (saml/logout-redirect-location
-        :idp-url saml-identity-provider-uri
-        :issuer saml-application-name
-        :user-email email
-        :relay-state (encode-decode/str->base64
-                      (str (urls/site-url) metabase-slo-redirect-url))))}))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.

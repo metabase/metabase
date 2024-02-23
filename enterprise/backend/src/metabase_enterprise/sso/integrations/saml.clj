@@ -234,7 +234,6 @@
           response      (response/redirect (or continue-url (public-settings/site-url)))]
       (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
 
-
 (def ^:private saml2-success-status "urn:oasis:names:tc:SAML:2.0:status:Success")
 
 (mu/defn slo-success? :- :boolean

@@ -8,7 +8,6 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -256,12 +255,3 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :visibility :public
   :setter     :none
   :getter     (fn [] (or (saml-enabled) (jwt-enabled))))
-
-(defenterprise sso-info
-  "Information about the SSO settings, so that it is accessable from OSS code."
-  ;; you could call it: SSO OSS
-  :feature :sso
-  []
-  {:saml-enabled (saml-enabled)
-   :saml-identity-provider-uri (saml-identity-provider-uri)
-   :saml-application-name (saml-application-name)})
