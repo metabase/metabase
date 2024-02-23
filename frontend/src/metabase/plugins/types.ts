@@ -56,15 +56,12 @@ export type PluginGroupManagersType = {
 
 export type TLLMIndicatorProps = {
   question: Question;
-  setFieldValue: (field: string, value: string) => void;
-  validateForm: (values?: Record<string, boolean>) => void;
+  onAccept: (values: { name?: string; description?: string }) => void;
 };
 
-export type TLLMSuggestQuestionInfo = ({
-  question,
-  setFieldValue,
-  validateForm,
-}: TLLMIndicatorProps) => JSX.Element | null;
+export type TLLMSuggestQuestionInfo = (
+  props: TLLMIndicatorProps,
+) => JSX.Element | null;
 
 export type PluginLLMAutoDescription = {
   LLMSuggestQuestionInfo: TLLMSuggestQuestionInfo;

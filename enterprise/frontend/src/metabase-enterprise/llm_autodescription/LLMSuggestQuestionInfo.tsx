@@ -20,24 +20,20 @@ import * as Lib from "metabase-lib";
 const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
 
 type TSummarizeCardResponse = () => Promise<{
-  generatedName?: string;
-  generatedDescription?: string;
+  name?: string;
+  description?: string;
 }>;
 
 export const LLMSuggestQuestionInfo = ({
   question,
-  setFieldValue,
-  validateForm,
+  onAccept,
 }: TLLMIndicatorProps) => {
   const state = useSelector(state => state);
   const inactive = !getSetting(state, "ee-openai-api-key");
 
   const { loading, value } = useAsync<TSummarizeCardResponse>(async () => {
     if (inactive) {
-      return {
-        generatedName: undefined,
-        generatedDescription: undefined,
-      };
+      return { name: undefined, description: undefined };
     }
 
     let questionWithVizSettings = question;
@@ -59,22 +55,18 @@ export const LLMSuggestQuestionInfo = ({
     const response = await postSummarizeCard(questionWithVizSettings.card());
 
     return {
-      generatedName: response?.summary?.title ?? undefined,
-      generatedDescription: response?.summary?.description ?? undefined,
+      name: response?.summary?.title ?? undefined,
+      description: response?.summary?.description ?? undefined,
     };
   }, [question]);
-
-  const generatedName = value?.generatedName;
-  const generatedDescription = value?.generatedDescription;
 
   const [acceptedSuggestion, setAcceptedSuggestion] = useState(false);
 
   const handleClick = () => {
-    setAcceptedSuggestion(true);
-
-    setFieldValue("name", generatedName ?? "");
-    setFieldValue("description", generatedDescription ?? "");
-    validateForm({ name: true, description: true });
+    if (value) {
+      setAcceptedSuggestion(true);
+      onAccept(value);
+    }
   };
 
   if (inactive || acceptedSuggestion) {

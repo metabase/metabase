@@ -216,15 +216,16 @@ export const SaveQuestionModal = ({
             validationSchema={SAVE_QUESTION_SCHEMA}
             enableReinitialize
           >
-            {({ values, setFieldValue, validateForm }) => (
+            {({ values, setValues }) => (
               <Modal.Content p="md" data-testid="save-question-modal">
                 <Modal.Header>
                   <Modal.Title>{title}</Modal.Title>
                   <Flex align="center" gap="sm">
                     <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
                       question={questionWithCollectionId}
-                      setFieldValue={setFieldValue}
-                      validateForm={validateForm}
+                      onAccept={nextValues =>
+                        setValues({ ...values, ...nextValues })
+                      }
                     />
                     <Modal.CloseButton />
                   </Flex>
