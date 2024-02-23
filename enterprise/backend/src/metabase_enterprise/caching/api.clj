@@ -1,7 +1,6 @@
 (ns metabase-enterprise.caching.api
   (:require
    [compojure.core :refer [GET]]
-   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.routes.common :refer [+auth]]
@@ -24,9 +23,7 @@
 
   (let [model (cond-> model
                 (some #{"dashboard" "question"} model) (conj "collection"))
-        opts  [:model [:in model]
-               :collection_id collection]
-        items (apply t2/select :model/CacheConfig opts)]
+        items (t2/select :model/CacheConfig :model [:in model] :collection_id collection)]
     {:items items}))
 
 (api/defendpoint PUT "/"
@@ -55,7 +52,7 @@
                           [:type keyword?]
                           [:field_id int?]
                           [:aggregation [:enum "max" "count"]]
-                          [:schedule string?]]]]]}
+                          [:schedule u.cron/CronScheduleString]]]]]}
   (validation/check-has-application-permission :setting)
   (when (and (= model "root") (not= model_id 0))
     (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
@@ -73,7 +70,6 @@
         data   {:model         model
                 :model_id      model_id
                 :collection_id cid
-                :updated_at    (t/offset-date-time)
                 :strategy      (:type strategy)
                 :config        (dissoc strategy :type)}]
     {:id (or (first (t2/update-returning-pks! :model/CacheConfig {:model model :model_id model_id} data))
