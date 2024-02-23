@@ -133,7 +133,7 @@ describe("scenarios > question > native", () => {
       name: "13332",
       native: {
         query:
-          'SELECT null AS "V", 1 as "N" UNION ALL SELECT "This has a value" AS "V", 2 as "N"',
+          'SELECT null AS "V", 1 as "N" UNION ALL SELECT \'This has a value\' AS "V", 2 as "N"',
         "template-tags": {},
       },
     };
