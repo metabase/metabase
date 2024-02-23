@@ -31,12 +31,10 @@ import "ee-plugins"; // eslint-disable-line import/no-duplicates
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
 
-// router
 import { Router, useRouterHistory } from "react-router";
 import { createHistory } from "history";
 import { syncHistoryWithStore } from "react-router-redux";
 
-// drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
 import { ThemeProvider } from "metabase/ui";
