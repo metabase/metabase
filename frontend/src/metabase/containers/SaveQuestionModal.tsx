@@ -192,13 +192,6 @@ export const SaveQuestionModal = ({
     [originalQuestion, handleOverwrite, handleCreate],
   );
 
-  if (collections && isInInstanceAnalyticsQuestion) {
-    const customCollection = getInstanceAnalyticsCustomCollection(collections);
-    if (customCollection) {
-      initialCollectionId = customCollection.id;
-    }
-  }
-
   const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
   const showSaveType =
     isSavedQuestionChanged &&
@@ -209,6 +202,7 @@ export const SaveQuestionModal = ({
     question,
     showSaveType,
   );
+
   const title = multiStep ? multiStepTitle : singleStepTitle;
 
   return (
