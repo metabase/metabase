@@ -83,9 +83,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
       userEvent.click(screen.getByRole("button", { name: "Save" }));
       userEvent.click(
-        within(screen.getByTestId("save-question-modal")).getByRole("button", {
-          name: "Save",
-        }),
+        within(screen.getByTestId("save-question-modal")).getByText("Save"),
       );
 
       await waitFor(() => {
@@ -128,10 +126,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
         userEvent.click(screen.getByText("Save"));
         userEvent.click(
-          within(screen.getByTestId("save-question-modal")).getByRole(
-            "button",
-            { name: "Save" },
-          ),
+          within(screen.getByTestId("save-question-modal")).getByText("Save"),
         );
 
         await waitFor(() => {
@@ -568,9 +563,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       userEvent.click(screen.getByText("Save"));
 
       userEvent.click(
-        within(screen.getByTestId("save-question-modal")).getByRole("button", {
-          name: "Save",
-        }),
+        within(screen.getByTestId("save-question-modal")).getByText("Save"),
       );
 
       await waitFor(() => {
@@ -713,9 +706,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       userEvent.click(screen.getByText("Save"));
 
       userEvent.click(
-        within(screen.getByTestId("save-question-modal")).getByRole("button", {
-          name: "Save",
-        }),
+        within(screen.getByTestId("save-question-modal")).getByText("Save"),
       );
 
       await waitFor(() => {
