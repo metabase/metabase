@@ -43,7 +43,7 @@ export const NewCollectionDialog = ({
 
   return (
     <Modal
-      title="Create a new collection"
+      title={t`Create a new collection`}
       opened={isOpen}
       onClose={onClose}
       data-testid="create-collection-on-the-go"

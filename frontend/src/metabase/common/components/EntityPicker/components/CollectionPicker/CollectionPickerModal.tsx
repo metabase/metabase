@@ -7,9 +7,9 @@ import type { SearchResult } from "metabase-types/api";
 
 import type { EntityPickerOptions, CollectionPickerItem } from "../../types";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
-import { NewCollectionDialog } from "../EntityPickerModal/NewCollectionDialog";
 
 import { CollectionPicker } from "./CollectionPicker";
+import { NewCollectionDialog } from "./NewCollectionDialog";
 
 interface CollectionPickerModalProps {
   title: string;

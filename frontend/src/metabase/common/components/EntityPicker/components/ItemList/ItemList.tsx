@@ -17,6 +17,7 @@ interface ItemListProps<TItem extends TypeWithModel> {
   selectedItem: TItem | null;
   isFolder: (item: TItem) => boolean;
   isCurrentLevel: boolean;
+  itemName?: string;
 }
 
 export const ItemList = <TItem extends TypeWithModel>({
