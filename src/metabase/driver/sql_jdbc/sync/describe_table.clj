@@ -249,6 +249,28 @@
      (fn [^Connection conn]
        (describe-table* driver conn table)))))
 
+(defn- describe-table-fks*
+  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
+  (into
+   #{}
+   (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
+                                           (fn [^ResultSet rs]
+                                             (fn []
+                                               {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                                :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                                   :schema (.getString rs "PKTABLE_SCHEM")}
+                                                :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+
+(defn describe-table-fks
+  "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db-or-id-or-spec-or-conn
+   nil
+   (fn [^Connection conn]
+     (describe-table-fks* driver conn table db-name-or-nil))))
+
 (defn describe-fks
   "Default implementation of [[metabase.driver/describe-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db & {:keys [catalog-name schema-name table-name]}]
@@ -272,13 +294,6 @@
                                :dest-column-name (.getString rs "PKCOLUMN_NAME")})]
               (repeatedly #(when (.next rs)
                              (row-thunk)))))))))))
-
-(defn describe-table-fks
-  "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db table]
-  (into
-   #{}
-   (describe-fks driver db :table-name (:name table) :schema-name (:schema table))))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
