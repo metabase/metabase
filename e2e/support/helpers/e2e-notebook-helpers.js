@@ -75,9 +75,7 @@ export function selectSavedQuestionsToJoin(
   secondQuestionName,
 ) {
   cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Saved Questions").click();
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText(firstQuestionName).click();
   cy.wait("@loadSchemas");
 
