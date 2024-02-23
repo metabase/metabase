@@ -605,9 +605,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         "New question",
       );
       expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
-      userEvent.click(
-        within(saveQuestionModal).getByRole("button", { name: "Save" }),
-      );
+      userEvent.click(within(saveQuestionModal).getByText("Save"));
 
       await waitFor(() => {
         expect(
