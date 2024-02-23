@@ -1,4 +1,3 @@
-/* eslint-disable import/order */
 import { t } from "ttag";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";

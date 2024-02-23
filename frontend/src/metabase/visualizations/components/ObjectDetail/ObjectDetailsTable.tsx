@@ -7,6 +7,7 @@ import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
 import { TYPE } from "metabase-lib/types/constants";
 import {
@@ -15,7 +16,6 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
   ObjectDetailsTable,

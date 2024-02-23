@@ -23,6 +23,12 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
+import type {
+  DatasetColumn,
+  DatasetData,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import { isNative } from "metabase-lib/queries/utils/card";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
@@ -35,12 +41,6 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase-lib/types/utils/isa";
-import type {
-  DatasetColumn,
-  DatasetData,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
 
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 import { TableSimple } from "../components/TableSimple";

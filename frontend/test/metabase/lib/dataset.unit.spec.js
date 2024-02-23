@@ -5,7 +5,6 @@ import {
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

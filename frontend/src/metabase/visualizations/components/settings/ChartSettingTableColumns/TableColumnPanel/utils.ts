@@ -1,11 +1,11 @@
 import type { IconName } from "metabase/ui";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
-import { findColumnSettingIndexesForColumns } from "metabase-lib/queries/utils/dataset";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+import { getIconForField } from "metabase-lib/metadata/utils/fields";
+import { findColumnSettingIndexesForColumns } from "metabase-lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import type { EditWidgetData } from "../types";
 

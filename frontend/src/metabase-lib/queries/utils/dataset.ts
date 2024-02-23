@@ -1,10 +1,10 @@
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { normalize } from "metabase-lib/queries/utils/normalize";
 import type {
   DatasetColumn,
   DatasetData,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { normalize } from "metabase-lib/queries/utils/normalize";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
