@@ -825,7 +825,9 @@ describe("scenarios > question > filter", () => {
     cy.get(".line").should("have.length", 3);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.button("Save").click();
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save").click();
+    });
     cy.button("Not now").click();
     assertOnLegendLabels();
     cy.get(".line").should("have.length", 3);

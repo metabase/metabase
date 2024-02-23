@@ -13,6 +13,8 @@ import add_row_component from "./add_row.svg?component";
 import add_row_source from "./add_row.svg?source";
 import add_to_dash_component from "./add_to_dash.svg?component";
 import add_to_dash_source from "./add_to_dash.svg?source";
+import ai_component from "./ai.svg?component";
+import ai_source from "./ai.svg?source";
 import alert_component from "./alert.svg?component";
 import alert_source from "./alert.svg?source";
 import alert_confirm_component from "./alert_confirm.svg?component";
@@ -384,6 +386,10 @@ export const Icons = {
   add_to_dash: {
     component: add_to_dash_component,
     source: add_to_dash_source,
+  },
+  ai: {
+    component: ai_component,
+    source: ai_source,
   },
   alert: {
     component: alert_component,

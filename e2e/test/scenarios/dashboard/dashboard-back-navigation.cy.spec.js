@@ -205,8 +205,8 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
       cy.findByText("Save").click();
     });
 
-    modal().within(() => {
-      cy.button("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByText("Save").click();
       cy.wait("@updateCard");
     });
 
