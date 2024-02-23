@@ -1,4 +1,4 @@
-DELETE FROM permissions WHERE object LIKE '/download/db/%';
+DELETE FROM permissions WHERE object LIKE '/download/%';
 
 INSERT INTO permissions (object, group_id)
 SELECT concat('/download/db/', dp.db_id, '/'),
