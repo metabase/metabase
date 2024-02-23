@@ -1,14 +1,15 @@
-import { createSelector } from "@reduxjs/toolkit";
 import type { Selector } from "@reduxjs/toolkit";
+import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
 import Groups from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
-
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import Schema from "metabase-lib/metadata/Schema";
 import {
   DatabaseId,
   Group,
@@ -16,8 +17,13 @@ import {
   TableId,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Schema from "metabase-lib/metadata/Schema";
+
+
+import {
+  DataRouteParams,
+  RawGroupRouteParams,
+  PermissionSectionConfig,
+} from "../../types";
 import {
   getTableEntityId,
   getSchemaEntityId,
@@ -26,19 +32,14 @@ import {
 } from "../../utils/data-entity-id";
 
 import {
-  DataRouteParams,
-  RawGroupRouteParams,
-  PermissionSectionConfig,
-} from "../../types";
-import { buildFieldsPermissions } from "./fields";
-import { buildTablesPermissions } from "./tables";
-import { buildSchemasPermissions } from "./schemas";
-import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
   EditorBreadcrumb,
 } from "./breadcrumbs";
+import { buildFieldsPermissions } from "./fields";
 import { getOrderedGroups } from "./groups";
+import { buildSchemasPermissions } from "./schemas";
+import { buildTablesPermissions } from "./tables";
 
 export const getIsLoadingDatabaseTables = (
   state: State,

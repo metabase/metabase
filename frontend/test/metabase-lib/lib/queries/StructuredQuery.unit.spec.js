@@ -1,4 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/Question";
+import Segment from "metabase-lib/metadata/Segment";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   createMockDatabase,
   createMockMetric,
@@ -23,9 +26,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Segment from "metabase-lib/metadata/Segment";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Question from "metabase-lib/Question";
 
 const ANOTHER_DB_ID = SAMPLE_DB_ID + 1;
 

@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import { Metric } from "metabase-types/api";
 
 export function setupMetricEndpoint(metric: Metric) {

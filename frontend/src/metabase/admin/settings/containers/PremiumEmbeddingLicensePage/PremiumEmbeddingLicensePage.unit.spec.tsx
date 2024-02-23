@@ -1,9 +1,3 @@
-import { StoreTokenStatus } from "metabase-types/api";
-import {
-  createMockSettingDefinition,
-  createMockSettings,
-  createMockStoreTokenStatus,
-} from "metabase-types/api/mocks";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -14,6 +8,13 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { StoreTokenStatus } from "metabase-types/api";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+  createMockStoreTokenStatus,
+} from "metabase-types/api/mocks";
+
 import PremiumEmbeddingLicensePage from "./PremiumEmbeddingLicensePage";
 
 interface SetupOpts {

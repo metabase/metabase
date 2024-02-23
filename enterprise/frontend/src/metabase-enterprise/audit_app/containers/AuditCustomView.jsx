@@ -5,6 +5,7 @@ import "./AuditTableVisualization";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/Question";

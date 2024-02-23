@@ -1,11 +1,13 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+
 import {
   isPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { Collection } from "metabase-types/api";
+
 import {
   CaptionDescription,
   CaptionRoot,

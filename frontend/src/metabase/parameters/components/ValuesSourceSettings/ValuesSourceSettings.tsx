@@ -1,15 +1,18 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import Radio from "metabase/core/components/Radio/Radio";
+
 import Modal from "metabase/components/Modal";
+import Radio from "metabase/core/components/Radio/Radio";
+import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import {
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
+
 import ValuesSourceModal from "../ValuesSourceModal";
+
 import {
   RadioLabelButton,
   RadioLabelRoot,

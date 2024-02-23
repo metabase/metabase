@@ -1,6 +1,5 @@
 import { Icon, IconName } from "metabase/core/components/Icon";
 
-import { HoveredTimelineEvent } from "./types";
 import {
   TimelineEventDate,
   TimelineEventIconContainer,
@@ -9,6 +8,7 @@ import {
   TimelineEventRow,
   TimelineEventList,
 } from "./TimelineEventTooltip.styled";
+import { HoveredTimelineEvent } from "./types";
 
 export interface TimelineEventTooltipProps {
   hovered: HoveredTimelineEvent;

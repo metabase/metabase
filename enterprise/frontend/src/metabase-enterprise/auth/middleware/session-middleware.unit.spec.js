@@ -1,7 +1,9 @@
 import FakeTimers from "@sinonjs/fake-timers";
 import Cookie from "js-cookie";
 import { replace } from "react-router-redux";
+
 import { logout, refreshSession } from "metabase/auth/actions";
+
 import {
   createSessionMiddleware,
   SESSION_KEY,

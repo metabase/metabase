@@ -3,13 +3,13 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { findColumnForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
-import ColumnItem from "./ColumnItem";
+import { findColumnForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
+import ColumnItem from "./ColumnItem";
+
 
 export const ChartSettingOrderedColumns = ({
   value,

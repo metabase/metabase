@@ -1,6 +1,6 @@
 import * as React from "react";
 import { t } from "ttag";
-import { RowValue } from "metabase-types/api";
+
 import type {
   ClickActionButtonType,
   ClickActionProps,
@@ -13,7 +13,10 @@ import {
   quickFilterDrillQuestion,
   QuickFilterOperatorType,
 } from "metabase-lib/queries/drills/quick-filter-drill";
+import { RowValue } from "metabase-types/api";
+
 import { getColumnFilterDrillPopover } from "../common/ColumnFilterDrillPopover";
+
 import { TextIcon } from "./QuickFilterDrill.styled";
 
 export type DateQuickFilterOperatorType = "<" | ">" | "=" | "≠";

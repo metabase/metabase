@@ -1,6 +1,7 @@
 import moment from "moment-timezone";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
 import { DayOfWeekId } from "metabase-types/api";
 
 // returns 0-6 where Sunday as 0 and Saturday as 6

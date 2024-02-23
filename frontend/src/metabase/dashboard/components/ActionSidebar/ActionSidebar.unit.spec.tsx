@@ -1,7 +1,13 @@
-import * as React from "react";
 import userEvent from "@testing-library/user-event";
-import { screen, waitFor, renderWithProviders } from "__support__/ui";
+import * as React from "react";
 
+import {
+  setupActionsEndpoints,
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import { screen, waitFor, renderWithProviders } from "__support__/ui";
 import {
   createMockDashboard,
   createMockActionDashboardCard,
@@ -12,12 +18,6 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import {
-  setupActionsEndpoints,
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
 import { ActionSidebarFn } from "./ActionSidebar";
 
 const dashcard = createMockDashboardOrderedCard();

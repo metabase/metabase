@@ -1,7 +1,8 @@
 import { t } from "ttag";
-import type { ModeFooterComponentProps } from "metabase/modes/types";
+
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
+import type { ModeFooterComponentProps } from "metabase/modes/types";
 import type Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 

@@ -1,8 +1,10 @@
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
+
 import {
   ColumnNameCell,
   DataTypeCell,

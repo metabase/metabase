@@ -1,4 +1,10 @@
 import { assocIn } from "icepick";
+
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import {
   setActionsEnabledForDB,
   modal,
@@ -12,15 +18,8 @@ import {
   queryWritableDB,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
-import {
-  SAMPLE_DB_ID,
-  USER_GROUPS,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
-
-import { createMockActionParameter } from "metabase-types/api/mocks";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
+import { createMockActionParameter } from "metabase-types/api/mocks";
 
 const PG_DB_ID = 2;
 const PG_ORDERS_TABLE_ID = 9;

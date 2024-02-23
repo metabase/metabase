@@ -1,16 +1,16 @@
 import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
 import Select, {
   Option,
   SelectChangeEvent,
 } from "metabase/core/components/Select";
-import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
-import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
+import Tooltip from "metabase/core/components/Tooltip";
 import { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
-import QuestionParameterTargetWidget from "../../containers/QuestionParameterTargetWidget";
+import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
+import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
 
+import QuestionParameterTargetWidget from "../../containers/QuestionParameterTargetWidget";
 import MappingEditor from "../MappingEditor";
 
 interface AttributeMappingEditorProps {

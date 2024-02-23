@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -5,7 +6,6 @@ import {
   summarize,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { TIME_OPTIONS } from "./shared/constants";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;

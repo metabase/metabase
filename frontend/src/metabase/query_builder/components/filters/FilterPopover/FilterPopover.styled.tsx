@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
 
 import BaseButton from "metabase/core/components/Button";
+import { color, alpha } from "metabase/lib/colors";
+
 
 type Props = {
   primaryColor?: string;

@@ -1,15 +1,11 @@
-import { IconName, IconProps } from "metabase/core/components/Icon";
-
-import { color } from "metabase/lib/colors";
-
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
   isRootCollection,
   isPersonalCollection,
 } from "metabase/collections/utils";
-
+import { IconName, IconProps } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

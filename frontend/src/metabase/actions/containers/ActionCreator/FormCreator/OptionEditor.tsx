@@ -5,7 +5,6 @@ import { t } from "ttag";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
-
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import {

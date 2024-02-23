@@ -3,27 +3,25 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
-import Link from "metabase/core/components/Link";
+import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Icon } from "metabase/core/components/Icon";
-
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import Link from "metabase/core/components/Link";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import MetabaseSettings from "metabase/lib/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   metricSetting,
   dimensionSetting,
   fieldSetting,
 } from "metabase/visualizations/lib/settings/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import MetabaseSettings from "metabase/lib/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
-import { getAccentColors } from "metabase/lib/colors/groups";
-import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
 import {
   getDefaultSize,
   getMinSize,
@@ -37,11 +35,12 @@ import {
   isState,
   isCountry,
 } from "metabase-lib/types/utils/isa";
-import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
-import PinMap from "../components/PinMap";
+
 import ChoroplethMap, {
   getColorplethColorScale,
 } from "../components/ChoroplethMap";
+import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
+import PinMap from "../components/PinMap";
 
 import { CustomMapContent } from "./Maps.styled";
 

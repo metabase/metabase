@@ -1,9 +1,10 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import type { Breakout as BreakoutObject } from "metabase-types/api";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/Dimension";
 import Field from "metabase-lib/metadata/Field";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Breakout as BreakoutObject } from "metabase-types/api";
+
 import MBQLClause from "./MBQLClause";
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Breakout extends MBQLClause {

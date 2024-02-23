@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
 import { NumberColumn, DateTimeColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";

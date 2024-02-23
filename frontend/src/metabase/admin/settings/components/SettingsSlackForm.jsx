@@ -1,16 +1,17 @@
+import PropTypes from "prop-types";
 import { Component } from "react";
 import { connect } from "react-redux";
-import PropTypes from "prop-types";
-
-import _ from "underscore";
 import { t, jt } from "ttag";
+import _ from "underscore";
+
+import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { Icon } from "metabase/core/components/Icon";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
 
-import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/core/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { updateSlackSettings } from "../settings";
+
 import SettingsSetting from "./SettingsSetting";
 
 class SettingsSlackForm extends Component {

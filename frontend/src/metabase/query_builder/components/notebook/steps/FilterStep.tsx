@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
 
 import type { NotebookStepUiComponentProps } from "../types";
+
 import ClauseStep from "./ClauseStep";
 
 function FilterStep({

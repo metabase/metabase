@@ -1,5 +1,5 @@
-import { VisualizationSettings } from "metabase-types/api";
 import { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import { VisualizationSettings } from "metabase-types/api";
 
 export type Step = string | number;
 export type Measure = number;

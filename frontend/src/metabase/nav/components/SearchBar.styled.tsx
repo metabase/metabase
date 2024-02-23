@@ -1,17 +1,14 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import { Icon } from "metabase/core/components/Icon";
-
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-
 import { color } from "metabase/lib/colors";
-
+import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 const activeInputCSS = css`
   border-radius: 6px;

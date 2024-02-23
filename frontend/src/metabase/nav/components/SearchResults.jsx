@@ -1,15 +1,16 @@
-import { useEffect } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { useEffect } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
-import Search from "metabase/entities/search";
-import { SearchResult } from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
+import Search from "metabase/entities/search";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
+import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import { SearchResult } from "metabase/search/components/SearchResult";
+
 import { EmptyStateContainer } from "./SearchResults.styled";
 
 const propTypes = {

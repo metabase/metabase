@@ -1,11 +1,10 @@
 import { useState } from "react";
 import * as React from "react";
-
 import { t } from "ttag";
 
+import type { MappingsType } from "metabase/admin/types";
 import Button from "metabase/core/components/Button";
 
-import type { MappingsType } from "metabase/admin/types";
 
 type AddMappingRowProps = {
   mappings: MappingsType;

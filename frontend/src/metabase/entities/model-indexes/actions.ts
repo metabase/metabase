@@ -1,10 +1,10 @@
-import _ from "underscore";
 import { dissocIn } from "icepick";
+import _ from "underscore";
 
-import { Dispatch } from "metabase-types/store";
-import type { ModelIndex } from "metabase-types/api/modelIndexes";
-import type { FieldReference, Field } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
+import type { FieldReference, Field } from "metabase-types/api";
+import type { ModelIndex } from "metabase-types/api/modelIndexes";
+import { Dispatch } from "metabase-types/store";
 
 import { ModelIndexes } from "./model-indexes";
 

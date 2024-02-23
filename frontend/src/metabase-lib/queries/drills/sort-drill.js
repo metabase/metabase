@@ -1,6 +1,6 @@
-import { isa } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
 import Dimension from "metabase-lib/Dimension";
+import { TYPE } from "metabase-lib/types/constants";
+import { isa } from "metabase-lib/types/utils/isa";
 
 const INVALID_TYPES = [TYPE.Structured];
 

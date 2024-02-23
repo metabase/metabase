@@ -1,8 +1,9 @@
+import { screen } from "__support__/ui";
 import {
   createMockCard,
   createMockModerationReview,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+
 import { setup, SetupOpts } from "./setup";
 
 const setupEnterprise = (opts: SetupOpts) => {

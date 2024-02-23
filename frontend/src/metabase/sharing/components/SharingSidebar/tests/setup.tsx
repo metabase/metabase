@@ -1,11 +1,11 @@
 /* istanbul ignore file */
 import fetchMock from "fetch-mock";
-import { renderWithProviders } from "__support__/ui";
-import type { Screen } from "__support__/ui";
-import { mockSettings } from "__support__/settings";
-import { createMockState } from "metabase-types/store/mocks";
-import { setupEnterprisePlugins } from "__support__/enterprise";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import type { Screen } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
+import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockActionDashboardCard,
@@ -14,8 +14,8 @@ import {
   createMockCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import type { TokenFeatures } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import SharingSidebar from "../SharingSidebar";
 

@@ -1,5 +1,6 @@
-import * as React from "react";
 import cx from "classnames";
+import * as React from "react";
+
 import { SettingInputBlurChange } from "./SettingInput.styled";
 
 const getValue = (value: string, type: string) => {

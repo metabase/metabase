@@ -1,8 +1,9 @@
 import { screen } from "@testing-library/react";
-import { DataPermissionsHelp } from "metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp";
+
 import { mockSettings } from "__support__/settings";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { renderWithProviders, waitForElementToBeRemoved } from "__support__/ui";
+import { DataPermissionsHelp } from "metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 async function setup({ hasAdvancedPermissions = false } = {}) {
   const settings = mockSettings({

@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { Drill } from "metabase/modes/types";
 import {
   distributionDrill,

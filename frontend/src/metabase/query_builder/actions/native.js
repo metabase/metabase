@@ -1,10 +1,10 @@
 import { createAction } from "redux-actions";
 
+import Questions from "metabase/entities/questions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
-
-import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
+
 import {
   getDataReferenceStack,
   getNativeEditorCursorOffset,

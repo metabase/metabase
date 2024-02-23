@@ -1,10 +1,11 @@
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDataFromClicked } from "metabase-lib/parameters/utils/click-behavior";
 import { isURL } from "metabase-lib/types/utils/isa";
+
 import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
+import type { OptionsType } from "./types";
 import { formatValue, getRemappedValue } from "./value";
 
-import type { OptionsType } from "./types";
 
 function isSafeProtocol(protocol: string) {
   return (

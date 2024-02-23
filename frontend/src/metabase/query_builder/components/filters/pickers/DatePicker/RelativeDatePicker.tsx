@@ -1,10 +1,12 @@
+import { assoc } from "icepick";
+import { DurationInputArg2 } from "moment-timezone";
 import { useState } from "react";
 import { t } from "ttag";
-import { assoc } from "icepick";
 
-import { DurationInputArg2 } from "moment-timezone";
-import { isValidTimeInterval } from "metabase/lib/time";
+
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { isValidTimeInterval } from "metabase/lib/time";
+import Filter from "metabase-lib/queries/structured/Filter";
 import {
   formatStartingFrom,
   getRelativeDatetimeInterval,
@@ -15,7 +17,6 @@ import {
   toTimeInterval,
 } from "metabase-lib/queries/utils/query-time";
 
-import Filter from "metabase-lib/queries/structured/Filter";
 import {
   GridContainer,
   GridText,

@@ -3,29 +3,25 @@ import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { formatValue } from "metabase/lib/formatting";
-import { color } from "metabase/lib/colors";
-
 import Tooltip from "metabase/core/components/Tooltip";
-
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { NoBreakoutError } from "metabase/visualizations/lib/errors";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
-
+import { color } from "metabase/lib/colors";
+import { formatValue } from "metabase/lib/formatting";
 import ScalarValue, {
   ScalarTitle,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
-import * as Lib from "metabase-lib";
+import { NoBreakoutError } from "metabase/visualizations/lib/errors";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 
-import { ICON_SIZE, TOOLTIP_ICON_SIZE } from "./constants";
 import {
   PreviousValue,
   PreviousValueContainer,
@@ -37,6 +33,7 @@ import {
   VariationTooltip,
   VariationValue,
 } from "./SmartScalar.styled";
+import { ICON_SIZE, TOOLTIP_ICON_SIZE } from "./constants";
 import {
   formatChange,
   formatChangeAutoPrecision,

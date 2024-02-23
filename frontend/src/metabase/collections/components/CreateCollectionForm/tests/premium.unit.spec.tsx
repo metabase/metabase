@@ -1,8 +1,9 @@
+import { screen } from "__support__/ui";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+
 import { setup, SetupOpts } from "./setup";
 
 const setupPremium = (opts?: SetupOpts) => {

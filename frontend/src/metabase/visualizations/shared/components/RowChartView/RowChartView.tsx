@@ -1,15 +1,18 @@
-import * as React from "react";
-import { Group } from "@visx/group";
 import { AxisBottom, AxisLeft, AxisScale } from "@visx/axis";
-import { Bar } from "@visx/shape";
-import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
-import { Text } from "@visx/text";
 import { GridColumns } from "@visx/grid";
+import { Group } from "@visx/group";
 import { scaleBand, StringLike, NumberLike } from "@visx/scale";
+import { Bar } from "@visx/shape";
+import { Text } from "@visx/text";
+import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
+import * as React from "react";
+
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { Margin } from "metabase/visualizations/shared/types/layout";
-import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
+
 import { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
+import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
+
 import { DATA_LABEL_OFFSET } from "./constants";
 import { getDataLabel } from "./utils/data-labels";
 

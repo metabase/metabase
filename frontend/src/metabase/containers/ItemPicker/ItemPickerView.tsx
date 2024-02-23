@@ -4,17 +4,9 @@ import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Icon, IconProps } from "metabase/core/components/Icon";
-
 import Search from "metabase/entities/search";
-
 import type { Collection } from "metabase-types/api";
 
-import type {
-  CollectionPickerItem,
-  PickerItem,
-  PickerModel,
-  SearchQuery,
-} from "./types";
 
 import Item from "./Item";
 import {
@@ -24,6 +16,12 @@ import {
   SearchInput,
   SearchToggle,
 } from "./ItemPicker.styled";
+import type {
+  CollectionPickerItem,
+  PickerItem,
+  PickerModel,
+  SearchQuery,
+} from "./types";
 
 interface SearchEntityListLoaderProps<TId> {
   list: PickerItem<TId>[];

@@ -1,15 +1,8 @@
 import { Component } from "react";
 import { t } from "ttag";
 
-import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
-import { capitalize } from "metabase/lib/formatting/strings";
-import type {
-  ScheduleDayType,
-  ScheduleFrameType,
-  ScheduleSettings,
-  ScheduleType,
-} from "metabase-types/api";
+import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import {
   AM_PM_OPTIONS,
   getDayOfWeekOptions,
@@ -17,6 +10,13 @@ import {
   MINUTE_OPTIONS,
   MONTH_DAY_OPTIONS,
 } from "metabase/lib/date-time";
+import { capitalize } from "metabase/lib/formatting/strings";
+import type {
+  ScheduleDayType,
+  ScheduleFrameType,
+  ScheduleSettings,
+  ScheduleType,
+} from "metabase-types/api";
 
 import {
   PickerRoot,

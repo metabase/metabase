@@ -1,6 +1,6 @@
+import { createMockMetadata } from "__support__/metadata";
 import { Segment } from "metabase-types/api";
 import { createMockSegment } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
 
 interface SetupOpts {
   segment?: Segment;

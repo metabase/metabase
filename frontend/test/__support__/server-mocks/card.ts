@@ -1,10 +1,12 @@
 import fetchMock from "fetch-mock";
-import { Card, Dataset } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+
 import {
   getQuestionVirtualTableId,
   convertSavedQuestionToVirtualTable,
 } from "metabase-lib/metadata/utils/saved-questions";
+import { Card, Dataset } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
+
 import { PERMISSION_ERROR } from "./constants";
 
 export function setupCardEndpoints(card: Card) {

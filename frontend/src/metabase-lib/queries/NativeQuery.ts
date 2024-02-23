@@ -1,10 +1,20 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
-import _ from "underscore";
 import slugg from "slugg";
+import { t } from "ttag";
+import _ from "underscore";
+
 import * as ML from "cljs/metabase.lib.js";
+import Question from "metabase-lib/Question";
+import ValidationError from "metabase-lib/ValidationError";
+import Database from "metabase-lib/metadata/Database";
+import Table from "metabase-lib/metadata/Table";
+import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
+import AtomicQuery from "metabase-lib/queries/AtomicQuery";
+import { isFieldReference } from "metabase-lib/references";
+import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import Variable from "metabase-lib/variables/Variable";
 import {
   Card,
   DatabaseId,
@@ -15,15 +25,7 @@ import {
   TemplateTag,
   TemplateTags,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
-import Table from "metabase-lib/metadata/Table";
-import Database from "metabase-lib/metadata/Database";
-import AtomicQuery from "metabase-lib/queries/AtomicQuery";
-import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
-import Variable from "metabase-lib/variables/Variable";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import ValidationError from "metabase-lib/ValidationError";
-import { isFieldReference } from "metabase-lib/references";
+
 import Dimension, { FieldDimension, TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 

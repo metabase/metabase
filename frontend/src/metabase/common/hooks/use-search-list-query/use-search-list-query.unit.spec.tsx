@@ -1,11 +1,12 @@
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { createMockCollectionItem } from "metabase-types/api/mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { createMockCollectionItem } from "metabase-types/api/mocks";
+
 import { useSearchListQuery } from "./use-search-list-query";
 
 const TEST_ITEM = createMockCollectionItem();

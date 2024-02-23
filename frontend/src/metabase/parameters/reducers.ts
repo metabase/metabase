@@ -1,4 +1,5 @@
 import { handleActions } from "redux-actions";
+
 import {
   INITIALIZE,
   RESET,
@@ -10,6 +11,7 @@ import {
   RESET_QB,
 } from "metabase/query_builder/actions";
 import { ParameterValuesCache } from "metabase-types/store/parameters";
+
 import { FETCH_PARAMETER_VALUES, FetchParameterValuesPayload } from "./actions";
 
 export const parameterValuesCache = handleActions<

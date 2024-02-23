@@ -1,12 +1,14 @@
-import { VisualizationSettings } from "metabase-types/api";
 import {
   ChartColumns,
   getChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
 import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
+import { VisualizationSettings } from "metabase-types/api";
+
 import { TwoDimensionalChartData } from "../types/data";
-import { getOrderedSeries, getSeries } from "./data";
+
 import { getSeriesColors } from "./colors";
+import { getOrderedSeries, getSeries } from "./data";
 
 export const getTwoDimensionalChartSeries = (
   data: TwoDimensionalChartData,

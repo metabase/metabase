@@ -1,5 +1,7 @@
 import { css } from "@emotion/react";
+
 import { getFocusColor } from "metabase/lib/colors";
+
 import { InputSize } from "./types";
 
 const inputPaddingBySize = {

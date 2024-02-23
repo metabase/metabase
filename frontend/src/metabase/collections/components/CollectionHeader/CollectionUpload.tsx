@@ -1,15 +1,14 @@
 import { useState, ChangeEvent } from "react";
 import { t } from "ttag";
 
-import type { Collection, CollectionId } from "metabase-types/api";
 
 import Tooltip, {
   TooltipContainer,
   TooltipTitle,
   TooltipSubtitle,
 } from "metabase/core/components/Tooltip";
-
 import { MAX_UPLOAD_STRING } from "metabase/redux/uploads";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
 import { UploadInput } from "./CollectionUpload.styled";

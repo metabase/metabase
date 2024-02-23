@@ -1,5 +1,5 @@
-import { restore, enterCustomColumnDetails } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { restore, enterCustomColumnDetails } from "e2e/support/helpers";
 
 const ccName = "CTax";
 

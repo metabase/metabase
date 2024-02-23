@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import { memo } from "react";
 
+import { ITreeNodeItem } from "metabase/components/tree/types";
 import Text from "metabase/components/type/Text";
 
-import { ITreeNodeItem } from "metabase/components/tree/types";
+import { EntityViewSwitch } from "../EntityViewSwitch";
 import { FilterableTree } from "../FilterableTree";
 
-import { EntityViewSwitch } from "../EntityViewSwitch";
 import {
   SidebarHeader,
   BackButton,

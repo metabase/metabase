@@ -1,5 +1,6 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import {
   getIcon,
   queryIcon,
@@ -8,9 +9,10 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import FormProvider from "metabase/core/components/FormProvider";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
+import FormProvider from "metabase/core/components/FormProvider";
 import type { FieldSettings } from "metabase-types/api";
+
 import FormFieldEditor, { FormFieldEditorProps } from "./FormFieldEditor";
 
 const DEFAULT_FIELD: FormFieldEditorProps["field"] = {

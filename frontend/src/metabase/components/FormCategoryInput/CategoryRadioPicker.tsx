@@ -3,7 +3,6 @@ import { useMount } from "react-use";
 
 import Radio from "metabase/core/components/Radio";
 import Fields from "metabase/entities/fields";
-
 import { State } from "metabase-types/store";
 
 import { CategoryWidgetProps as CategoryWidgetOwnProps } from "./types";

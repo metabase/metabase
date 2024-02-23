@@ -1,25 +1,25 @@
-import { Component, Fragment, useRef } from "react";
 import PropTypes from "prop-types";
-import _ from "underscore";
+import { Component, Fragment, useRef } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { DATA_BUCKET } from "metabase/containers/DataPicker";
-import FieldList from "metabase/query_builder/components/FieldList";
 import Select from "metabase/core/components/Select";
-import { isDateTimeField } from "metabase-lib/queries/utils/field-ref";
-import Join from "metabase-lib/queries/structured/Join";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import FieldList from "metabase/query_builder/components/FieldList";
 import Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Join from "metabase-lib/queries/structured/Join";
+import { isDateTimeField } from "metabase-lib/queries/utils/field-ref";
 
-import { NotebookCellAdd, NotebookCellItem } from "../NotebookCell";
 import {
   FieldPickerContentContainer,
   FIELDS_PICKER_STYLES,
   FieldsPickerIcon,
 } from "../FieldsPickerIcon";
+import { NotebookCellAdd, NotebookCellItem } from "../NotebookCell";
+
 import FieldsPicker from "./FieldsPicker";
 import {
   DimensionContainer,

@@ -1,11 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import type { NumberValue } from "d3-scale";
 import userEvent from "@testing-library/user-event";
+import type { NumberValue } from "d3-scale";
+
 import { measureTextWidth } from "metabase/lib/measure-text";
+
 import { ChartFont } from "../../types/style";
-import type { RowChartTheme } from "./types";
 
 import { RowChart, RowChartProps } from "./RowChart";
+import type { RowChartTheme } from "./types";
+
 
 type TestDatum = { y: string; x: number; x1: number };
 

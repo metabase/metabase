@@ -1,4 +1,8 @@
 import userEvent from "@testing-library/user-event";
+
+import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Dataset } from "metabase-types/api";
@@ -9,9 +13,7 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+
 import QueryDownloadWidget from "./QueryDownloadWidget";
 
 const TEST_CARD = createMockCard({

@@ -1,4 +1,5 @@
 import { Timeline } from "metabase-types/api";
+
 import TimelineDetailsModal from "../../containers/TimelineDetailsModal";
 import TimelineListModal from "../../containers/TimelineListModal";
 import { ModalParams } from "../../types";

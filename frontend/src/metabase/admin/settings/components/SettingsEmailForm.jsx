@@ -1,20 +1,20 @@
-import { createRef, Fragment, Component } from "react";
 import PropTypes from "prop-types";
+import { createRef, Fragment, Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
-
+import Button from "metabase/core/components/Button";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
 
+import { SettingsSection } from "../app/components/SettingsEditor/SettingsSection";
 import {
   sendTestEmail,
   updateEmailSettings,
   clearEmailSettings,
 } from "../settings";
-import { SettingsSection } from "../app/components/SettingsEditor/SettingsSection";
+
 import SettingsBatchForm from "./SettingsBatchForm";
 import { EmailFormRoot } from "./SettingsEmailForm.styled";
 import SectionDivider from "./widgets/SectionDivider";

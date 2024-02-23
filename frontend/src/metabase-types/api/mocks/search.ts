@@ -1,4 +1,5 @@
 import { SearchResult, SearchScore } from "metabase-types/api";
+
 import { createMockCollection } from "./collection";
 
 export const createMockSearchResult = (

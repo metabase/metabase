@@ -1,5 +1,6 @@
 import RecentItems from "metabase/entities/recent-items";
 import { RecentItem } from "metabase-types/api";
+
 import {
   useEntityListQuery,
   UseEntityListQueryProps,

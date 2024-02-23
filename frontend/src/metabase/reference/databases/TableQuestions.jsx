@@ -1,31 +1,29 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
-import PropTypes from "prop-types";
-import { connect } from "react-redux";
 import moment from "moment-timezone";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
-import visualizations from "metabase/visualizations";
-import * as Urls from "metabase/lib/urls";
 
-import S from "metabase/components/List/List.css";
 
-import List from "metabase/components/List";
-import ListItem from "metabase/components/ListItem";
+
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-
+import List from "metabase/components/List";
+import S from "metabase/components/List/List.css";
+import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import * as Urls from "metabase/lib/urls";
 import * as metadataActions from "metabase/redux/metadata";
+import visualizations from "metabase/visualizations";
+
 import ReferenceHeader from "../components/ReferenceHeader";
-
-import { getQuestionUrl } from "../utils";
-
 import {
   getTableQuestions,
   getError,
   getLoading,
   getTable,
 } from "../selectors";
+import { getQuestionUrl } from "../utils";
 
 const emptyStateData = table => {
   return {

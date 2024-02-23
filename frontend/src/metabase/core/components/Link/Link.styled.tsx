@@ -1,9 +1,10 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import { Link } from "react-router";
+
+import { focusOutlineStyle } from "metabase/core/style/input";
 import { color as metabaseColor } from "metabase/lib/colors";
 import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
-import { focusOutlineStyle } from "metabase/core/style/input";
 
 import type { LinkProps } from "./types";
 

@@ -1,7 +1,9 @@
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import { AggregationPicker } from "../SummarizeSidebar.styled";
+
 import { AggregationName, RemoveIcon, Root } from "./AggregationItem.styled";
 
 const STAGE_INDEX = -1;

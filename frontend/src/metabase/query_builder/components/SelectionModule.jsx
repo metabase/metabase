@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
-
+import { createRef, Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
+
 import Popover from "metabase/components/Popover";
 import { Icon } from "metabase/core/components/Icon";
 

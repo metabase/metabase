@@ -1,6 +1,13 @@
 import _ from "underscore";
+
 import { createMockMetadata } from "__support__/metadata";
 import * as dateFormatUtils from "metabase/lib/formatting/date";
+import Question from "metabase-lib/Question";
+import {
+  getDataFromClicked,
+  getTargetsWithSourceFilters,
+  formatSourceForTarget,
+} from "metabase-lib/parameters/utils/click-behavior";
 import { createMockCard, createMockField } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
@@ -18,12 +25,6 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import {
-  getDataFromClicked,
-  getTargetsWithSourceFilters,
-  formatSourceForTarget,
-} from "metabase-lib/parameters/utils/click-behavior";
-import Question from "metabase-lib/Question";
 
 const FLOAT_CATEGORY_FIELD = createMockField({
   id: 100,

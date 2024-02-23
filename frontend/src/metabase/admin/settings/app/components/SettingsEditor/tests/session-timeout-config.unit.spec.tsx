@@ -1,9 +1,10 @@
+import { setupGroupsEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import {
   createMockGroup,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { setupGroupsEndpoint } from "__support__/server-mocks";
+
 import { setup, SetupOpts } from "./setup";
 
 const setupPremium = (opts?: SetupOpts) => {

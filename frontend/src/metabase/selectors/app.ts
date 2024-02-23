@@ -1,6 +1,6 @@
-import { Location } from "history";
 import { createSelector } from "@reduxjs/toolkit";
-import { getUser } from "metabase/selectors/user";
+import { Location } from "history";
+
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
@@ -11,6 +11,7 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getUser } from "metabase/selectors/user";
 import { State } from "metabase-types/store";
 
 export interface RouterProps {

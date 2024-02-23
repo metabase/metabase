@@ -1,10 +1,11 @@
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import ColumnCount from "./ColumnCount";
 
 interface SetupOpts {

@@ -1,4 +1,3 @@
-import reducer from "./reducers";
 import {
   INITIALIZE,
   SET_EDITING_DASHBOARD,
@@ -9,6 +8,7 @@ import {
   FETCH_DASHBOARD_CARD_DATA,
   FETCH_CARD_DATA,
 } from "./actions";
+import reducer from "./reducers";
 
 describe("dashboard reducers", () => {
   let initState;

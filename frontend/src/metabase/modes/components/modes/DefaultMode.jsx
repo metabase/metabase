@@ -1,13 +1,13 @@
-import SortDrill from "../drill/SortDrill";
+import { AutomaticInsightsDrill } from "../drill/AutomaticInsightsDrill";
+import { ColumnFilterDrill } from "../drill/ColumnFilterDrill";
+import DashboardClickDrill from "../drill/DashboardClickDrill";
+import ForeignKeyDrill from "../drill/ForeignKeyDrill";
+import FormatDrill from "../drill/FormatDrill";
 import { ObjectDetailDrill } from "../drill/ObjectDetailDrill";
 import { QuickFilterDrill } from "../drill/QuickFilterDrill";
-import ForeignKeyDrill from "../drill/ForeignKeyDrill";
-import { ColumnFilterDrill } from "../drill/ColumnFilterDrill";
+import SortDrill from "../drill/SortDrill";
 import UnderlyingRecordsDrill from "../drill/UnderlyingRecordsDrill";
-import { AutomaticInsightsDrill } from "../drill/AutomaticInsightsDrill";
 import ZoomDrill from "../drill/ZoomDrill";
-import FormatDrill from "../drill/FormatDrill";
-import DashboardClickDrill from "../drill/DashboardClickDrill";
 
 const DefaultMode = {
   name: "default",

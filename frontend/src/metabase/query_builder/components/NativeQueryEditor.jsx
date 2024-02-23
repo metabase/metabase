@@ -1,8 +1,8 @@
 /*global ace*/
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import { createRef, Component } from "react";
 import cx from "classnames";
+import { createRef, Component } from "react";
 import "ace/ace";
 import "ace/ext-language_tools";
 import "ace/ext-searchbox";
@@ -11,30 +11,30 @@ import "ace/mode-json";
 import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/json";
-import _ from "underscore";
-import { ResizableBox } from "react-resizable";
 import { connect } from "react-redux";
+import { ResizableBox } from "react-resizable";
 import slugg from "slugg";
+import _ from "underscore";
 
-import { isEventOverElement } from "metabase/lib/dom";
-import { getEngineNativeAceMode } from "metabase/lib/engine";
-import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
-import { getSetting } from "metabase/selectors/settings";
-import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
-
 import Databases from "metabase/entities/databases";
-import Snippets from "metabase/entities/snippets";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import Questions from "metabase/entities/questions";
+import SnippetCollections from "metabase/entities/snippet-collections";
+import Snippets from "metabase/entities/snippets";
+import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
+import { isEventOverElement } from "metabase/lib/dom";
+import { getEngineNativeAceMode } from "metabase/lib/engine";
+import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
+import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
+import { getSetting } from "metabase/selectors/settings";
 import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
+
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
-import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
-import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
-import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
 import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
+import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
+import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
+import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import {
   ACE_ELEMENT_ID,
   SCROLL_MARGIN,

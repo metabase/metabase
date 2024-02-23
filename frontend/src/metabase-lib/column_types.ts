@@ -1,4 +1,5 @@
 import * as TYPES from "cljs/metabase.lib.types.isa";
+
 import type { ColumnMetadata } from "./types";
 
 type TypeFn = (column: ColumnMetadata) => boolean;

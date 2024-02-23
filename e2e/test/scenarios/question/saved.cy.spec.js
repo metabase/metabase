@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -12,7 +13,6 @@ import {
   getCollectionIdFromSlug,
 } from "e2e/support/helpers";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {

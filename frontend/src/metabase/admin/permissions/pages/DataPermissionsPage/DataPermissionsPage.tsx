@@ -1,23 +1,23 @@
 import { useEffect, useCallback, ReactNode } from "react";
-import _ from "underscore";
 import { Route } from "react-router";
+import _ from "underscore";
 
-import Tables from "metabase/entities/tables";
-import Groups from "metabase/entities/groups";
 import Databases from "metabase/entities/databases";
-
-import { DatabaseId, Group } from "metabase-types/api";
+import Groups from "metabase/entities/groups";
+import Tables from "metabase/entities/tables";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import Database from "metabase-lib/metadata/Database";
-import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
+import { DatabaseId, Group } from "metabase-types/api";
+
+import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
+import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
+import ToolbarUpsell from "../../components/ToolbarUpsell";
 import {
   saveDataPermissions,
   loadDataPermissions,
   initializeDataPermissions,
 } from "../../permissions";
-import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
-import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
-import ToolbarUpsell from "../../components/ToolbarUpsell";
+import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
 
 type DataPermissionsPageProps = {
   children: ReactNode;

@@ -1,15 +1,14 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 
-import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
-import ParametersList from "metabase/parameters/components/ParametersList";
+import { Icon } from "metabase/core/components/Icon";
 import Select, { Option } from "metabase/core/components/Select";
-
-import { color } from "metabase/lib/colors";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { color } from "metabase/lib/colors";
+import ParametersList from "metabase/parameters/components/ParametersList";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import DisplayOptionsPane from "./DisplayOptionsPane";

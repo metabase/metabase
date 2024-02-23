@@ -1,3 +1,14 @@
+import {
+  setupDatabaseCandidatesEndpoint,
+  setupDatabasesEndpoints,
+  setupPopularItemsEndpoints,
+  setupRecentViewsEndpoints,
+} from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import { Database, PopularItem, RecentItem, User } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -9,17 +20,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
-import {
-  setupDatabaseCandidatesEndpoint,
-  setupDatabasesEndpoints,
-  setupPopularItemsEndpoints,
-  setupRecentViewsEndpoints,
-} from "__support__/server-mocks";
+
 import { HomeContent } from "./HomeContent";
 
 interface SetupOpts {

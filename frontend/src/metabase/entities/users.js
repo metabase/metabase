@@ -1,13 +1,11 @@
 import { assocIn } from "icepick";
 
-import { UserSchema } from "metabase/schema";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
-
 import { createEntity } from "metabase/lib/entities";
-
-import { UserApi, SessionApi } from "metabase/services";
 import { generatePassword } from "metabase/lib/security";
+import MetabaseSettings from "metabase/lib/settings";
+import { UserSchema } from "metabase/schema";
+import { UserApi, SessionApi } from "metabase/services";
 
 import forms from "./users/forms";
 

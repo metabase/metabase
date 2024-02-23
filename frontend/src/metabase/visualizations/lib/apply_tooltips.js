@@ -1,13 +1,14 @@
 /// code to "apply" chart tooltips. (How does one apply a tooltip?)
 
 import d3 from "d3";
-import moment from "moment-timezone";
 import { getIn } from "icepick";
+import moment from "moment-timezone";
 import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+
 import { isNormalized, isStacked } from "./renderer_utils";
 import {
   determineSeriesIndexFromElement,

@@ -1,3 +1,6 @@
+
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   enterCustomColumnDetails,
   restore,
@@ -15,9 +18,6 @@ import {
   setupBooleanQuery,
   checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;

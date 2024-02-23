@@ -1,5 +1,6 @@
 import { formatValue } from "metabase/lib/formatting";
 import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
+
 import { VisualizationSettings } from "./types";
 
 export const formatValueForTooltip = ({

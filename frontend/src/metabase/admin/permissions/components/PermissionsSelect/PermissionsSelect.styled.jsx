@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 
 import Label from "metabase/components/type/Label";
-import { color, lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
+import { color, lighten } from "metabase/lib/colors";
 
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
 

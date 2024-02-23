@@ -3,9 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
-
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import SavedQuestionHeaderButton from "./SavedQuestionHeaderButton";
 

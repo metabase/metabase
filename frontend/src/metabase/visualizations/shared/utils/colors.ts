@@ -1,5 +1,6 @@
-import { VisualizationSettings } from "metabase-types/api";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import { VisualizationSettings } from "metabase-types/api";
+
 import { Series } from "../components/RowChart/types";
 
 export const getSeriesColors = <TDatum, TSeriesInfo>(

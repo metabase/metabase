@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { getIcon } from "__support__/ui";
 
+import { createMockEntitiesState } from "__support__/store";
+import { getIcon } from "__support__/ui";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   createMockCard,
   createMockDashboardOrderedCard,
@@ -9,11 +11,8 @@ import {
   createMockTextDashboardCard,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-
-import { getMetadata } from "metabase/selectors/metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
 
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
 

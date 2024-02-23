@@ -1,16 +1,18 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { SetupCheckListItem } from "metabase-types/api";
-import {
-  createMockSetupCheckListItem,
-  createMockSetupCheckListTask,
-} from "metabase-types/api/mocks";
+import { Route } from "react-router";
+
 import { setupAdminCheckListEndpoint } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { SetupCheckListItem } from "metabase-types/api";
+import {
+  createMockSetupCheckListItem,
+  createMockSetupCheckListTask,
+} from "metabase-types/api/mocks";
+
 import SetupCheckList from "./SetupCheckList";
 
 const ADD_DB_TASK = createMockSetupCheckListTask({

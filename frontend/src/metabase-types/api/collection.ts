@@ -1,6 +1,6 @@
-import { UserId } from "./user";
 import { CardDisplayType } from "./card";
 import { DatabaseId } from "./database";
+import { UserId } from "./user";
 
 export type RegularCollectionId = number;
 

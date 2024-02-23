@@ -1,12 +1,13 @@
-import { useCallback } from "react";
 import cx from "classnames";
+import { useCallback } from "react";
 import { t } from "ttag";
-import * as MetabaseCore from "metabase/lib/core";
+
 import Select, {
   SelectChangeEvent,
 } from "metabase/core/components/Select/Select";
-import { FieldVisibilityType } from "metabase-types/api";
+import * as MetabaseCore from "metabase/lib/core";
 import Field from "metabase-lib/metadata/Field";
+import { FieldVisibilityType } from "metabase-types/api";
 
 interface FieldVisibilityPickerProps {
   className?: string;

@@ -4,8 +4,8 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import { createMockUserInfo } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { createMockUserInfo } from "metabase-types/api/mocks";
 
 import { useUserListQuery } from "./use-user-list-query";
 

@@ -1,14 +1,16 @@
-import { connect } from "react-redux";
-import _ from "underscore";
 import type { LocationDescriptorObject } from "history";
+import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import _ from "underscore";
+
 import { checkNotNull } from "metabase/core/utils/types";
-import { extractEntityId } from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
-import { DatabaseId } from "metabase-types/api";
-import { MetabotEntityType, State } from "metabase-types/store";
+import { extractEntityId } from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Database from "metabase-lib/metadata/Database";
+import { DatabaseId } from "metabase-types/api";
+import { MetabotEntityType, State } from "metabase-types/store";
+
 import Metabot from "../../components/Metabot";
 
 interface RouterParams {

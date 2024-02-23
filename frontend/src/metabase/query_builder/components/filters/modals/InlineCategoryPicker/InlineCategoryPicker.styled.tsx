@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
+
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export const Loading = styled(LoadingSpinner)`
   margin: ${space(1)} 0;

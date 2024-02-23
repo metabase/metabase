@@ -1,6 +1,8 @@
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
+
 import { color } from "metabase/lib/colors";
+
 import {
   getAccordionOverrides,
   getAnchorOverrides,

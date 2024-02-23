@@ -1,3 +1,10 @@
+
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   modal,
@@ -11,13 +18,6 @@ import {
   visitCollection,
   popover,
 } from "e2e/support/helpers";
-
-import {
-  SAMPLE_DB_ID,
-  USER_GROUPS,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 

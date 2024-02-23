@@ -1,15 +1,14 @@
 import styled from "@emotion/styled";
 
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-
-import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
-
 import { color, alpha } from "metabase/lib/colors";
+import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
-import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
+
 import QuestionDataSource from "./QuestionDataSource";
+import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
 
 export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};

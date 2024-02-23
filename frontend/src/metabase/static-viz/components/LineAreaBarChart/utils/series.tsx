@@ -1,9 +1,11 @@
-import _ from "underscore";
 import { merge } from "icepick";
+import _ from "underscore";
+
 import { isNotNull } from "metabase/core/utils/types";
 import { getColorsForValues } from "metabase/lib/colors/charts";
-import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { ColorPalette } from "metabase/lib/colors/types";
+import { formatStaticValue } from "metabase/static-viz/lib/format";
+
 import {
   CardSeries,
   ChartSettings,

@@ -1,9 +1,5 @@
 import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import lineAreaBarRenderer, {
-  getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
-} from "metabase/visualizations/lib/LineAreaBarRenderer";
 import {
   NumberColumn,
   DateTimeColumn,
@@ -12,6 +8,10 @@ import {
   renderLineAreaBar,
   getFormattedTooltips,
 } from "__support__/visualizations";
+import lineAreaBarRenderer, {
+  getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
+} from "metabase/visualizations/lib/LineAreaBarRenderer";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 // jsdom doesn't support layout methods like getBBox, so we need to mock it.
 window.SVGElement.prototype.getBBox = () => ({

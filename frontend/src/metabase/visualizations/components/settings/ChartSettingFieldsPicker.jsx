@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
-import { t } from "ttag";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { t } from "ttag";
 
 import { moveElement } from "metabase/core/utils/arrays";
 

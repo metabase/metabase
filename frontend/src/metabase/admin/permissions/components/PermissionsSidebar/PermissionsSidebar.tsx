@@ -1,9 +1,10 @@
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+import { SidebarRoot } from "./PermissionsSidebar.styled";
 import {
   PermissionsSidebarContent,
   PermissionsSidebarContentProps,
 } from "./PermissionsSidebarContent";
-import { SidebarRoot } from "./PermissionsSidebar.styled";
 
 interface PermissionsSidebarProps extends PermissionsSidebarContentProps {
   isLoading?: boolean;

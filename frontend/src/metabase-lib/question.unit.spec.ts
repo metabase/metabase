@@ -1,9 +1,3 @@
-import {
-  createAdHocNativeCard,
-  createSampleDatabase,
-  createSavedStructuredCard,
-  createSavedNativeCard,
-} from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import {
   createMockCard,
@@ -11,6 +5,13 @@ import {
   createMockParameter,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
+import {
+  createAdHocNativeCard,
+  createSampleDatabase,
+  createSavedStructuredCard,
+  createSavedNativeCard,
+} from "metabase-types/api/mocks/presets";
+
 import Question from "./Question";
 
 describe("Question.canExploreResults", () => {

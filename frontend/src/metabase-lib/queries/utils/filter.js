@@ -1,14 +1,16 @@
 import _ from "underscore";
+
 import {
   STANDARD_FILTERS,
   FILTER_OPERATORS,
   isLiteral,
 } from "metabase-lib/expressions";
 import { getOperatorByTypeAndName } from "metabase-lib/operators/utils";
-import { STRING } from "metabase-lib/types/constants";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
-import { op, args, noNullValues, add, update, remove, clear } from "./util";
+import { STRING } from "metabase-lib/types/constants";
+
 import { isValidField } from "./field-ref";
+import { op, args, noNullValues, add, update, remove, clear } from "./util";
 
 // returns canonical list of Filters
 export function getFilters(filter) {

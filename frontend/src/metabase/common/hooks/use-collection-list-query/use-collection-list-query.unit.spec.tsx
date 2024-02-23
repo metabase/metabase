@@ -7,8 +7,9 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { createMockCollection } from "metabase-types/api/mocks";
+
 import { useCollectionListQuery } from "./use-collection-list-query";
 
 const TEST_COLLECTION = createMockCollection();

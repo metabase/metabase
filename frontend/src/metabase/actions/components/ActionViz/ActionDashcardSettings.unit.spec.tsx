@@ -1,18 +1,18 @@
-import * as React from "react";
 import userEvent from "@testing-library/user-event";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-  within,
-} from "__support__/ui";
+import * as React from "react";
 
 import {
   setupActionsEndpoints,
   setupCardsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+  within,
+} from "__support__/ui";
+import { WritebackParameter } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockActionDashboardCard,
@@ -26,7 +26,6 @@ import {
   createMockImplicitCUDActions,
 } from "metabase-types/api/mocks";
 
-import { WritebackParameter } from "metabase-types/api";
 import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
 
 const dashboardParameter = createMockParameter({

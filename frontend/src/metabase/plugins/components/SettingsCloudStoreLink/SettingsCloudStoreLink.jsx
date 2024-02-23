@@ -1,5 +1,7 @@
 import { t } from "ttag";
+
 import MetabaseSettings from "metabase/lib/settings";
+
 import { Description, Link, LinkIcon } from "./SettingsCloudStoreLink.styled";
 
 export function SettingsCloudStoreLink() {

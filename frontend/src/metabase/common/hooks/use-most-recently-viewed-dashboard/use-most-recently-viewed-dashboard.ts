@@ -1,6 +1,7 @@
 import { useAsync } from "react-use";
-import { Dashboard } from "metabase-types/api";
+
 import { ActivityApi } from "metabase/services";
+import { Dashboard } from "metabase-types/api";
 
 export const useMostRecentlyViewedDashboard = () => {
   const {

@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import FieldSet from "metabase/components/FieldSet";
 import { color } from "metabase/lib/colors";
 

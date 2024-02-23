@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import cx from "classnames";
+import { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
+import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
-
 import QueryDefinition from "metabase/query_builder/components/QueryDefinition";
 import { fetchTableMetadata } from "metabase/redux/metadata";
+
 import S from "./Formula.css";
 
 const mapDispatchToProps = {

@@ -1,11 +1,6 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { useDispatch } from "metabase/lib/redux";
-import Databases from "metabase/entities/databases";
-import Tables from "metabase/entities/tables";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { TableListQuery } from "metabase-types/api";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import fetchMock from "fetch-mock";
+
 import {
   setupDatabasesEndpoints,
   setupTablesEndpoints,
@@ -16,8 +11,15 @@ import {
   waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import { useDispatch } from "metabase/lib/redux";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
+import { TableListQuery } from "metabase-types/api";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+
 import { useEntityListQuery } from "./use-entity-list-query";
 
 const TEST_DB = createMockDatabase();

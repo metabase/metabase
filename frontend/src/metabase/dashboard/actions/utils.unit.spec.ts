@@ -2,6 +2,7 @@ import {
   createMockDashboard,
   createMockDashboardOrderedCard,
 } from "metabase-types/api/mocks";
+
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
 describe("dashboard > actions > utils", () => {

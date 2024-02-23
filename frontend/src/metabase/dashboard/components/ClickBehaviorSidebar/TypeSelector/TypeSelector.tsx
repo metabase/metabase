@@ -2,12 +2,11 @@ import { useCallback, useMemo } from "react";
 
 import { Icon, IconName } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
-
-import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
 import type { UiParameter } from "metabase-lib/parameters/types";
+import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
 
-import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import { SidebarItem } from "../SidebarItem";
+import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 
 import { BehaviorOptionIcon } from "./TypeSelector.styled";
 

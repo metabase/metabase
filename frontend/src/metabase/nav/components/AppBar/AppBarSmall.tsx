@@ -1,10 +1,12 @@
 import { useCallback, useState } from "react";
+
 import { User } from "metabase-types/api";
-import SearchBar from "../SearchBar";
-import ProfileLink from "../ProfileLink";
+
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import AppBarToggle from "./AppBarToggle";
+import ProfileLink from "../ProfileLink";
+import SearchBar from "../SearchBar";
+
 import AppBarLogo from "./AppBarLogo";
 import {
   AppBarHeader,
@@ -16,6 +18,7 @@ import {
   AppBarSubheader,
   AppBarToggleContainer,
 } from "./AppBarSmall.styled";
+import AppBarToggle from "./AppBarToggle";
 
 export interface AppBarSmallProps {
   currentUser: User;

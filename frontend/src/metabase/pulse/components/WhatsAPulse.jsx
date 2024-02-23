@@ -1,7 +1,8 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
+
 import { EmptyPulseIllustration } from "./WhatsAPulse.styled";
 
 export default class WhatsAPulse extends Component {

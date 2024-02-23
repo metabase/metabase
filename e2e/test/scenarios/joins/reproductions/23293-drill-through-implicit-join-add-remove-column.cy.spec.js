@@ -1,10 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   openOrdersTable,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 

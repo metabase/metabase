@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+
 import { BaseBucketPickerPopover } from "./BaseBucketPickerPopover";
 import { BinningStrategyPickerPopover } from "./BinningStrategyPickerPopover";
 import { TemporalBucketPickerPopover } from "./TemporalBucketPickerPopover";

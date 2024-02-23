@@ -1,3 +1,5 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
   dashboardHeader,
@@ -14,8 +16,6 @@ import {
   visitDashboard,
   visitEmbeddedPage,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
 const POINT_INDEX = 4;

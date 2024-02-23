@@ -1,17 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupSearchEndpoints,
+  setupRecentViewsEndpoints,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   fireEvent,
   getIcon,
 } from "__support__/ui";
-import {
-  setupSearchEndpoints,
-  setupRecentViewsEndpoints,
-} from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
-
 import type {
   DashboardOrderedCard,
   LinkCardSettings,

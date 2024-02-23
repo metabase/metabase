@@ -1,5 +1,8 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
+
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   modal,
@@ -15,8 +18,6 @@ import {
   getPinnedSection,
   moveOpenedCollectionTo,
 } from "e2e/support/helpers";
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 

@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen, getIcon, queryIcon } from "__support__/ui";
-
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 
 import { createMockNotebookStep } from "../../test-utils";
+
 import SortStep from "./SortStep";
 
 function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {

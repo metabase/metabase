@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { CollectionItem } from "metabase-types/api";
 
 export function setupSearchEndpoints(items: CollectionItem[]) {

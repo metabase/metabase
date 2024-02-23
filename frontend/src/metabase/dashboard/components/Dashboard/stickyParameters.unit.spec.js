@@ -1,4 +1,5 @@
 import * as domUtils from "metabase/lib/dom";
+
 import {
   MAXIMUM_PARAMETERS_FOR_STICKINESS,
   updateParametersWidgetStickiness,

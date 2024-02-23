@@ -1,6 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
+
 import { FontFile, FontFormat } from "metabase-types/api";
+
 import { FontFileOption } from "./types";
 
 export const FONT_OPTIONS: FontFileOption[] = [

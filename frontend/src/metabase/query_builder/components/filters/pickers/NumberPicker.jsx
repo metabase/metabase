@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
+
 import TextPicker from "./TextPicker";
 
 export default class NumberPicker extends Component {

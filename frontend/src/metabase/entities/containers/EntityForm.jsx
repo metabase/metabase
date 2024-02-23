@@ -3,6 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
+
 import entityType from "./EntityType";
 
 export function getForm(entityDef) {

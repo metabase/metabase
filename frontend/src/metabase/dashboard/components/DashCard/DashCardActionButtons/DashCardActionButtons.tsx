@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import { isActionDashCard } from "metabase/actions/utils";
 import { Icon } from "metabase/core/components/Icon";
-
+import { isLinkDashCard } from "metabase/dashboard/utils";
 import { getVisualizationRaw } from "metabase/visualizations";
-
 import type {
   Dashboard,
   DashboardOrderedCard,
@@ -11,16 +11,11 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { isActionDashCard } from "metabase/actions/utils";
-import { isLinkDashCard } from "metabase/dashboard/utils";
-
-import DashCardActionButton from "./DashCardActionButton";
-
+import ActionSettingsButton from "./ActionSettingsButton";
 import AddSeriesButton from "./AddSeriesButton";
 import ChartSettingsButton from "./ChartSettingsButton";
-
+import DashCardActionButton from "./DashCardActionButton";
 import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
-import ActionSettingsButton from "./ActionSettingsButton";
 import LinkCardEditButton from "./LinkCardEditButton";
 
 interface Props {

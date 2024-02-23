@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import { Revision } from "metabase-types/api";
 
 export function setupRevisionsEndpoints(revisions: Revision[]) {

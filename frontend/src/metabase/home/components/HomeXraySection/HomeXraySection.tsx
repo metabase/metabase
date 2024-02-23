@@ -1,19 +1,22 @@
 import { ChangeEvent, useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 import { t } from "ttag";
-import * as Urls from "metabase/lib/urls";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import Select from "metabase/core/components/Select";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import _ from "underscore";
+
 import {
   useDatabaseCandidateListQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
-import { DatabaseCandidate } from "metabase-types/api";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Select from "metabase/core/components/Select";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import * as Urls from "metabase/lib/urls";
 import Database from "metabase-lib/metadata/Database";
+import { DatabaseCandidate } from "metabase-types/api";
+
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeXrayCard } from "../HomeXrayCard";
+
 import {
   DatabaseLinkIcon,
   DatabaseLink,

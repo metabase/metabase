@@ -1,5 +1,5 @@
+import { createMockMetadata } from "__support__/metadata";
 import { queryIcon, renderWithProviders, screen } from "__support__/ui";
-
 import {
   createMockCard,
   createMockDashboard,
@@ -10,9 +10,8 @@ import {
   createMockHeadingDashboardCard,
   createMockLinkDashboardCard,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
-
 import { createMockState } from "metabase-types/store/mocks";
+
 import Dashcard, { DashCardProps } from "./DashCard";
 
 const dashboard = createMockDashboard();

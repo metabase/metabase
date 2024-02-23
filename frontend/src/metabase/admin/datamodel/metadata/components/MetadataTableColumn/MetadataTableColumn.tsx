@@ -1,14 +1,17 @@
 import { ChangeEvent, ReactNode, useCallback } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
 import { Link } from "react-router";
-import * as Urls from "metabase/lib/urls";
-import Fields from "metabase/entities/fields";
+import { t } from "ttag";
+
 import Button from "metabase/core/components/Button/Button";
-import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import Fields from "metabase/entities/fields";
+import * as Urls from "metabase/lib/urls";
 import Field from "metabase-lib/metadata/Field";
+import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
+
 import { ColumnInput } from "./MetadataTableColumn.styled";
 
 interface OwnProps {

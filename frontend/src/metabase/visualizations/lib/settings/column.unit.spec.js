@@ -1,6 +1,6 @@
+import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
 
 function seriesWithColumn(col) {
   return [

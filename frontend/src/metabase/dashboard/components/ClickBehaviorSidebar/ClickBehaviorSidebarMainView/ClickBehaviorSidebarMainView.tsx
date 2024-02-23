@@ -1,19 +1,19 @@
+import type { UiParameter } from "metabase-lib/parameters/types";
 import type {
   Dashboard,
   DashboardOrderedCard,
   ClickBehavior,
 } from "metabase-types/api";
 
-import type { UiParameter } from "metabase-lib/parameters/types";
 
-import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
-import CrossfilterOptions from "../CrossfilterOptions";
-import LinkOptions from "../LinkOptions";
-import { SidebarItem } from "../SidebarItem";
 import {
   SidebarContentBordered,
   SelectedClickBehaviorItemIcon,
 } from "../ClickBehaviorSidebar.styled";
+import CrossfilterOptions from "../CrossfilterOptions";
+import LinkOptions from "../LinkOptions";
+import { SidebarItem } from "../SidebarItem";
+import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 
 interface ClickBehaviorOptionsProps {
   clickBehavior: ClickBehavior;

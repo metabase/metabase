@@ -1,3 +1,4 @@
+import moment, { Moment } from "moment-timezone";
 import {
   ChangeEvent,
   FocusEvent,
@@ -9,8 +10,8 @@ import {
   useMemo,
   useState,
 } from "react";
-import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
+
 import Input from "metabase/core/components/Input";
 
 const DATE_FORMAT = "MM/DD/YYYY";

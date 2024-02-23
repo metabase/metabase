@@ -1,4 +1,4 @@
-import { isAddress, isCategory, isDate } from "metabase-lib/types/utils/isa";
+import type DimensionOptions from "metabase-lib/DimensionOptions";
 import Question from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import StructuredQuery, {
@@ -8,7 +8,7 @@ import type {
   ClickObject,
   ClickObjectDimension,
 } from "metabase-lib/queries/drills/types";
-import type DimensionOptions from "metabase-lib/DimensionOptions";
+import { isAddress, isCategory, isDate } from "metabase-lib/types/utils/isa";
 
 type DrillOptions = {
   question: Question;

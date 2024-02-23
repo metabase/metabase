@@ -1,8 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import { Icon } from "metabase/core/components/Icon";
+import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 
 export const ActionHeader = styled.div`

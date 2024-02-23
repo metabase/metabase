@@ -1,8 +1,10 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
+
 import { AppBarLeftContainer } from "./AppBarLarge.styled";
 
 interface SidebarButtonProps {

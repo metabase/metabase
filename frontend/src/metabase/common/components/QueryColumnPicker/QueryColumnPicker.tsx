@@ -2,9 +2,8 @@ import { useCallback, useMemo } from "react";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Icon, IconName } from "metabase/core/components/Icon";
-import { singularize } from "metabase/lib/formatting";
 import type { ColorName } from "metabase/lib/colors/types";
-
+import { singularize } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";

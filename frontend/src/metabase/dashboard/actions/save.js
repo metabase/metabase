@@ -1,18 +1,16 @@
 import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
-import { createThunkAction } from "metabase/lib/redux";
-
 import Dashboards from "metabase/entities/dashboards";
-
+import { createThunkAction } from "metabase/lib/redux";
 import { DashboardApi, CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import { getDashboardBeforeEditing } from "../selectors";
 
 import { fetchDashboard } from "./data-fetching";
-import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 import { saveCardsAndTabs } from "./tabs";
+import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
 export const UPDATE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";

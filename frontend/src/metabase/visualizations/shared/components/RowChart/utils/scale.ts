@@ -6,6 +6,7 @@ import {
   scalePower,
 } from "@visx/scale";
 import type { ScaleContinuousNumeric } from "d3-scale";
+
 import { ValueFormatter } from "metabase/visualizations/shared/types/format";
 import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import {
@@ -13,8 +14,10 @@ import {
   Range,
 } from "metabase/visualizations/shared/types/scale";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
+
 import { DATA_LABEL_OFFSET } from "../../RowChartView";
 import { SeriesData, StackOffset } from "../types";
+
 import { createXDomain, createYDomain } from "./domain";
 
 export const createXScale = (

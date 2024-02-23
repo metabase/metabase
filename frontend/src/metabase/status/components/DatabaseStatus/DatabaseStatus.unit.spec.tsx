@@ -1,11 +1,13 @@
 import userEvent from "@testing-library/user-event";
+
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Database, User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import DatabaseStatus from "./DatabaseStatus";
 
 interface SetupOpts {

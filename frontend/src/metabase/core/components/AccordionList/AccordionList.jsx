@@ -1,14 +1,14 @@
+import { getIn } from "icepick";
+import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import PropTypes from "prop-types";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
-
 import _ from "underscore";
-import { getIn } from "icepick";
 
 import { Icon } from "metabase/core/components/Icon";
-import { AccordionListCell } from "./AccordionListCell";
+
 import { AccordionListRoot } from "./AccordionList.styled";
+import { AccordionListCell } from "./AccordionListCell";
 import { getNextCursor, getPrevCursor } from "./utils";
 
 export default class AccordionList extends Component {

@@ -2,13 +2,6 @@ import { useCallback, useState } from "react";
 import * as React from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
-import { FormCreator } from "metabase/actions/containers/ActionCreator/FormCreator";
-import {
-  DataReferenceTriggerButton,
-  DataReferenceInline,
-} from "metabase/actions/containers/ActionCreator/InlineDataReference";
 import {
   ActionCreatorBodyContainer,
   EditorContainer,
@@ -17,14 +10,20 @@ import {
   ModalLeft,
   ModalRight,
 } from "metabase/actions/containers/ActionCreator/ActionCreator.styled";
-
+import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
+import { FormCreator } from "metabase/actions/containers/ActionCreator/FormCreator";
+import {
+  DataReferenceTriggerButton,
+  DataReferenceInline,
+} from "metabase/actions/containers/ActionCreator/InlineDataReference";
+import Button from "metabase/core/components/Button";
 import { isNotNull } from "metabase/core/utils/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
-import type { ActionCreatorUIProps, SideView } from "./types";
 import InlineActionSettings, {
   ActionSettingsTriggerButton,
 } from "./InlineActionSettings";
+import type { ActionCreatorUIProps, SideView } from "./types";
 
 interface ActionCreatorProps extends ActionCreatorUIProps {
   action: Partial<WritebackAction>;

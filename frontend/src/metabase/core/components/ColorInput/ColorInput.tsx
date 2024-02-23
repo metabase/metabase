@@ -1,3 +1,4 @@
+import Color from "color";
 import {
   ChangeEvent,
   FocusEvent,
@@ -9,7 +10,7 @@ import {
   useState,
 } from "react";
 import _ from "underscore";
-import Color from "color";
+
 import Input from "metabase/core/components/Input";
 
 export type ColorInputAttributes = Omit<

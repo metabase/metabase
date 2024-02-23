@@ -1,9 +1,11 @@
 import { MouseEvent, useMemo } from "react";
 import _ from "underscore";
-import { getEventTarget } from "metabase/lib/dom";
+
 import Tooltip from "metabase/core/components/Tooltip";
-import StackedDataTooltip from "./StackedDataTooltip";
+import { getEventTarget } from "metabase/lib/dom";
+
 import KeyValuePairChartTooltip from "./KeyValuePairChartTooltip";
+import StackedDataTooltip from "./StackedDataTooltip";
 import TimelineEventTooltip from "./TimelineEventTooltip";
 import {
   HoveredObject,

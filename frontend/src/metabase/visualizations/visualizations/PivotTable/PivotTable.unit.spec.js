@@ -1,8 +1,11 @@
-import { useState } from "react";
-import { thaw } from "icepick";
 import userEvent from "@testing-library/user-event";
+import { thaw } from "icepick";
+import { useState } from "react";
+
 import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
+import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import Question from "metabase-lib/Question";
 import {
   createSampleDatabase,
   ORDERS,
@@ -10,8 +13,6 @@ import {
   PEOPLE,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import Question from "metabase-lib/Question";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

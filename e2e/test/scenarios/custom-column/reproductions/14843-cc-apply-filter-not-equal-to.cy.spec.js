@@ -1,6 +1,6 @@
-import { restore, popover, visualize, filter } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visualize, filter } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 const CC_NAME = "City Length";

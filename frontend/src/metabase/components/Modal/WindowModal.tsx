@@ -1,15 +1,15 @@
+import cx from "classnames";
 import { Component, CSSProperties } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
-import cx from "classnames";
+
+import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 import {
   getModalContent,
   ModalSize,
   modalSizes,
   BaseModalProps,
 } from "metabase/components/Modal/utils";
-
 import SandboxedPortal from "metabase/components/SandboxedPortal";
-import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 
 export type WindowModalProps = BaseModalProps & {
   isOpen?: boolean;

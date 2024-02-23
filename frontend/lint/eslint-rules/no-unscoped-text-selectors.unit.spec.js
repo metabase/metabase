@@ -1,5 +1,6 @@
 /* eslint-disable import/no-commonjs */
 const RuleTester = require("eslint").RuleTester;
+
 const rule = require("./no-unscoped-text-selectors");
 
 const ruleTester = new RuleTester({ parserOptions: { ecmaVersion: 2015 } });

@@ -1,4 +1,5 @@
 import { NormalizedForeignKey } from "metabase-types/api";
+
 import Field from "./Field";
 import Metadata from "./Metadata";
 

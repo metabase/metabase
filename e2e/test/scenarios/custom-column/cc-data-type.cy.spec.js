@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openTable,
@@ -9,7 +10,6 @@ import {
   getNotebookStep,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 

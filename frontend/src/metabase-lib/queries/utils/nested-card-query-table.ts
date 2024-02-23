@@ -1,11 +1,13 @@
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
 import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import type Table from "metabase-lib/metadata/Table";
-import type Question from "metabase-lib/Question";
-import type StructuredQuery from "../StructuredQuery";
+
 import type NativeQuery from "../NativeQuery";
+import type StructuredQuery from "../StructuredQuery";
+
 import { createVirtualField, createVirtualTable } from "./virtual-table";
 
 // This function expects a `sourceTableId` to exist in the `metadata.table` cache

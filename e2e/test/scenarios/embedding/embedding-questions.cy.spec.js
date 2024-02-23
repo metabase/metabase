@@ -1,10 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestion,
   popover,
   visitIframe,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import {
   regularQuestion,

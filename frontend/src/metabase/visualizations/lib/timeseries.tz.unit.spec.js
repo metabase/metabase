@@ -1,6 +1,6 @@
 import moment from "moment-timezone";
-import testAcrossTimezones from "__support__/timezones";
 
+import testAcrossTimezones from "__support__/timezones";
 import { computeTimeseriesDataInverval } from "metabase/visualizations/lib/timeseries";
 
 // jsdom doesn't support layout methods like getBBox, so we need to mock it.

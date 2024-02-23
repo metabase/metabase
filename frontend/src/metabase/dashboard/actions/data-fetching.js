@@ -1,22 +1,19 @@
 import { getIn } from "icepick";
-
+import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 
-import { denormalize, normalize, schema } from "normalizr";
+import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
+import { defer } from "metabase/lib/promise";
 import {
   createAction,
   createAsyncThunk,
   createThunkAction,
 } from "metabase/lib/redux";
-import { defer } from "metabase/lib/promise";
-
+import Utils from "metabase/lib/utils";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-
-import Utils from "metabase/lib/utils";
-
 import { addParamValues, addFields } from "metabase/redux/metadata";
-
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   DashboardApi,
   CardApi,
@@ -26,11 +23,10 @@ import {
   MetabaseApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { applyParameters } from "metabase-lib/queries/utils/card";
+
+import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import {
   getDashboardComplete,
   getParameterValues,
@@ -40,7 +36,6 @@ import {
   getDashCardById,
   getSelectedTabId,
 } from "../selectors";
-
 import {
   expandInlineDashboard,
   isVirtualDashCard,
@@ -50,7 +45,7 @@ import {
   getDatasetQueryParams,
   getCurrentTabDashboardCards,
 } from "../utils";
-import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
+
 import { loadMetadataForDashboard } from "./metadata";
 
 // normalizr schemas

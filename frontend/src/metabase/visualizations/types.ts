@@ -1,3 +1,4 @@
+import type { ClickObject } from "metabase/modes/types";
 import type {
   Card,
   DatasetColumn,
@@ -5,7 +6,6 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { ClickObject } from "metabase/modes/types";
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;

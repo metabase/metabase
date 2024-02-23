@@ -1,28 +1,26 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
-import _ from "underscore";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
+import { t } from "ttag";
+import _ from "underscore";
 
-import Schemas from "metabase/entities/schemas";
-import Toggle from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/core/components/Select";
-
+import Toggle from "metabase/core/components/Toggle";
+import Schemas from "metabase/entities/schemas";
+import MetabaseSettings from "metabase/lib/settings";
 import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
-
+import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
-import MetabaseSettings from "metabase/lib/settings";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
-
 import {
   getDefaultParameterOptions,
   getDefaultParameterWidgetType,
   getParameterOptionsForField,
 } from "metabase-lib/parameters/utils/template-tag-options";
+
 import {
   ContainerLabel,
   DefaultParameterValueWidget,

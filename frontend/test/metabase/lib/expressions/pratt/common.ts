@@ -1,17 +1,17 @@
+import { getMBQLName } from "metabase-lib/expressions/config";
 import {
   lexify,
   parse,
   compile as newCompile,
   Expr,
 } from "metabase-lib/expressions/pratt";
-import { resolve } from "metabase-lib/expressions/resolver";
-import { getMBQLName } from "metabase-lib/expressions/config";
 import {
   parse as oldParser,
   useShorthands,
   adjustCase,
   adjustOptions,
 } from "metabase-lib/expressions/recursive-parser";
+import { resolve } from "metabase-lib/expressions/resolver";
 
 import { generateExpression } from "../generator";
 

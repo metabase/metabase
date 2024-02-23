@@ -1,7 +1,9 @@
 import { t } from "ttag";
+
+import HelpCard from "metabase/components/HelpCard";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import HelpCard from "metabase/components/HelpCard";
+
 import { COMPLETED_STEP } from "../../constants";
 import { getIsHosted, getIsStepActive } from "../../selectors";
 import { SetupCardContainer } from "../SetupCardContainer";

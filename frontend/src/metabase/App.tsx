@@ -1,8 +1,8 @@
+import { Location } from "history";
 import { ReactNode, useEffect, useState } from "react";
 import { connect } from "react-redux";
-import { Location } from "history";
 
-import ScrollToTop from "metabase/hoc/ScrollToTop";
+import { AppBanner } from "metabase/components/AppBanner";
 import {
   Archived,
   GenericError,
@@ -10,22 +10,19 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 import { UndoListing } from "metabase/containers/UndoListing";
-
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import ScrollToTop from "metabase/hoc/ScrollToTop";
+import { initializeIframeResizer } from "metabase/lib/dom";
+import AppBar from "metabase/nav/containers/AppBar";
+import Navbar from "metabase/nav/containers/Navbar";
+import { setErrorPage } from "metabase/redux/app";
 import {
   getErrorPage,
   getIsAdminApp,
   getIsAppBarVisible,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
-import { setErrorPage } from "metabase/redux/app";
-import { initializeIframeResizer } from "metabase/lib/dom";
-
-import { AppBanner } from "metabase/components/AppBanner";
-import AppBar from "metabase/nav/containers/AppBar";
-import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/components/StatusListing";
-import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
-
 import { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";

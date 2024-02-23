@@ -1,4 +1,5 @@
 import type { Bookmark, Collection } from "metabase-types/api";
+
 import { REGULAR_COLLECTION } from "./constants";
 
 export function isRegularCollection({

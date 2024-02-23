@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
+import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import { isValidElement } from "react";
 
-import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 
 import { Icon } from "metabase/core/components/Icon";
-
 import { alpha } from "metabase/lib/colors";
 
 const CONTAINER_PADDING = "10px";

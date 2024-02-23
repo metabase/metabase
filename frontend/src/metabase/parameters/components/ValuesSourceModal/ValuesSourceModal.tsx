@@ -1,17 +1,19 @@
 import { useCallback, useState } from "react";
-import {
-  Parameter,
-  ValuesSourceConfig,
-  ValuesSourceType,
-} from "metabase-types/api";
+
+import { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
 import {
   getSourceConfig,
   getSourceConfigForType,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
-import { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
-import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
+import {
+  Parameter,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
+
 import ValuesSourceCardModal from "./ValuesSourceCardModal";
+import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 
 type ModalStep = "main" | "card";
 

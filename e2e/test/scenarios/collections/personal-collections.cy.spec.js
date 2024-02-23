@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   restore,
   popover,
@@ -8,7 +9,6 @@ import {
   openCollectionMenu,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
 
 const ADMIN_PERSONAL_COLLECTION_ID = 1;
 const NODATA_PERSONAL_COLLECTION_ID = 5;

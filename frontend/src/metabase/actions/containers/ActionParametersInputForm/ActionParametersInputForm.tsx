@@ -2,13 +2,10 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/components/EmptyState";
-
-import { ActionsApi, PublicApi } from "metabase/services";
-
 import ActionForm from "metabase/actions/components/ActionForm";
+import EmptyState from "metabase/components/EmptyState";
 import { getDashboardType } from "metabase/dashboard/utils";
-
+import { ActionsApi, PublicApi } from "metabase/services";
 import type {
   WritebackParameter,
   OnSubmitActionForm,

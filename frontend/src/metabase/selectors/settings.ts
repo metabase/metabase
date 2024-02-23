@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getPlan } from "metabase/common/utils/plan";
 import type {
   SettingKey,
   Settings,
@@ -7,7 +8,6 @@ import type {
   Version,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import { getPlan } from "metabase/common/utils/plan";
 
 export const getSettings = createSelector(
   (state: State) => state.settings,

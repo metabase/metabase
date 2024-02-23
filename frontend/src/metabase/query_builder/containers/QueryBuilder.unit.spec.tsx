@@ -1,25 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
-import fetchMock from "fetch-mock";
-import { Card, Dataset, UnsavedCard } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockColumn,
-  createMockDataset,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
-  createMockUnsavedCard,
-} from "metabase-types/api/mocks";
 
-import {
-  createSampleDatabase,
-  ORDERS,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-} from "metabase-types/api/mocks/presets";
+import { callMockEvent } from "__support__/events";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
@@ -38,9 +22,26 @@ import {
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
-import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { serializeCardForUrl } from "metabase/lib/card";
+import { Card, Dataset, UnsavedCard } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
+  createMockStructuredDatasetQuery,
+  createMockStructuredQuery,
+  createMockUnsavedCard,
+} from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+
 import QueryBuilder from "./QueryBuilder";
 
 const TEST_DB = createSampleDatabase();

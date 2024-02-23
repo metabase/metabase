@@ -1,3 +1,5 @@
+import { createMockMetadata } from "__support__/metadata";
+import { mockSettings } from "__support__/settings";
 import { checkNotNull } from "metabase/core/utils/types";
 import { msToSeconds, hoursToSeconds } from "metabase/lib/time";
 import {
@@ -5,8 +7,7 @@ import {
   createMockDatabase,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { mockSettings } from "__support__/settings";
-import { createMockMetadata } from "__support__/metadata";
+
 import {
   getQuestionsImplicitCacheTTL,
   hasQuestionCacheSection,

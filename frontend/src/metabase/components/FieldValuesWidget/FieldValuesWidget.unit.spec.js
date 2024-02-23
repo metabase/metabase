@@ -1,17 +1,15 @@
 import "mutationobserver-shim";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
-
-import { checkNotNull } from "metabase/core/utils/types";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   FieldValuesWidget,
   searchField,
   isSearchable,
   getValuesMode,
 } from "metabase/components/FieldValuesWidget";
+import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,

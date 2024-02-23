@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import querystring from "querystring";
+import { useEffect } from "react";
 
 export function useSyncedQueryString(
   fn: () => Record<string, any>,

@@ -1,4 +1,5 @@
 import MetabaseUtils from "metabase/lib/utils";
+
 import { Avatar as StyledAvatar, AvatarProps } from "./UserAvatar.styled";
 
 interface UserAvatarProps extends AvatarProps {

@@ -2,15 +2,14 @@
 import fetchMock from "fetch-mock";
 
 import {
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import {
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
-
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,

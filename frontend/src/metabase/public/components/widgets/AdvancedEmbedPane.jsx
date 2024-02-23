@@ -1,13 +1,14 @@
 /* eslint-disable react/prop-types */
+import { t } from "ttag";
 import _ from "underscore";
 
-import { t } from "ttag";
+import ActionButton from "metabase/components/ActionButton";
 import ToggleLarge from "metabase/components/ToggleLarge";
 import Button from "metabase/core/components/Button";
-import ActionButton from "metabase/components/ActionButton";
+
 import AdvancedSettingsPane from "./AdvancedSettingsPane";
-import PreviewPane from "./PreviewPane";
 import EmbedCodePane from "./EmbedCodePane";
+import PreviewPane from "./PreviewPane";
 
 const AdvancedEmbedPane = ({
   pane,

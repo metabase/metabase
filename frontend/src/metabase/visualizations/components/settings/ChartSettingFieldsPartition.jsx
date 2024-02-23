@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import cx from "classnames";
-import { t } from "ttag";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import _ from "underscore";
 import { splice } from "icepick";
+import { Component } from "react";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { t } from "ttag";
+import _ from "underscore";
 
 import Label from "metabase/components/type/Label";
-
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+
 import {
   DroppableContainer,
   FieldPartitionColumn,

@@ -1,6 +1,8 @@
-import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
+import type { ComponentStory } from "@storybook/react";
+
 import { color } from "metabase/lib/colors";
+
 import ColorPicker from "./ColorPicker";
 
 export default {

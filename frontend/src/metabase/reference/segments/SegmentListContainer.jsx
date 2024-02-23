@@ -1,14 +1,13 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 
-import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
-import SegmentList from "metabase/reference/segments/SegmentList";
-
 import * as metadataActions from "metabase/redux/metadata";
+import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
+import SegmentList from "metabase/reference/segments/SegmentList";
 
 import { getDatabaseId, getIsEditing } from "../selectors";
 

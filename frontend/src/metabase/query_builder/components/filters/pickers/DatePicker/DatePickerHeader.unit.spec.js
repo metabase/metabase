@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+
 import DatePickerHeader from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerHeader";
 
 const nop = () => {};

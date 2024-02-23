@@ -1,8 +1,10 @@
-import React, { SVGAttributes, forwardRef } from "react";
 import cx from "classnames";
+import React, { SVGAttributes, forwardRef } from "react";
+
 import Tooltip from "../Tooltip";
-import { Icons } from "./icons";
+
 import type { IconName } from "./icons";
+import { Icons } from "./icons";
 
 const defaultSize = 16;
 

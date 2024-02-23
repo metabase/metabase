@@ -1,5 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
+import {
+  API_ERROR,
+  setupCardDataset,
+  setupDatabaseEndpoints,
+  setupBadRequestMetabotDatabaseEndpoint,
+  setupBadRequestMetabotModelEndpoint,
+  setupMetabotDatabaseEndpoint,
+  setupMetabotModelEndpoint,
+} from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Database } from "metabase-types/api";
@@ -12,18 +24,8 @@ import {
 import { createStructuredModelCard } from "metabase-types/api/mocks/presets";
 import { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
-import {
-  API_ERROR,
-  setupCardDataset,
-  setupDatabaseEndpoints,
-  setupBadRequestMetabotDatabaseEndpoint,
-  setupBadRequestMetabotModelEndpoint,
-  setupMetabotDatabaseEndpoint,
-  setupMetabotModelEndpoint,
-} from "__support__/server-mocks";
 
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import Metabot from "./Metabot";
 
 const PROMPT = "average orders total";

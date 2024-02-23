@@ -1,14 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
-import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Query } from "metabase-lib/types";
 
-import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
-import { getQuestionSteps } from "../lib/steps";
 import NotebookStep from "../NotebookStep";
+import { getQuestionSteps } from "../lib/steps";
+import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
+
 import { Container } from "./NotebookSteps.styled";
 
 interface NotebookStepsProps {

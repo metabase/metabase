@@ -1,24 +1,26 @@
-import { RefObject } from "react";
+import { Ace } from "ace-builds";
+import * as ace from "ace-builds/src-noconflict/ace";
 import * as React from "react";
+import { RefObject } from "react";
+import AceEditor, { ICommand, IMarker } from "react-ace";
 import { t } from "ttag";
 import _ from "underscore";
-import AceEditor, { ICommand, IMarker } from "react-ace";
-import * as ace from "ace-builds/src-noconflict/ace";
-import { Ace } from "ace-builds";
-import type { Expression } from "metabase-types/api";
+
 import ExplicitSize from "metabase/components/ExplicitSize";
+import { isExpression } from "metabase-lib/expressions";
+import { diagnose } from "metabase-lib/expressions/diagnostics";
 import { format } from "metabase-lib/expressions/format";
 import { processSource } from "metabase-lib/expressions/process";
-import { diagnose } from "metabase-lib/expressions/diagnostics";
-import { tokenize } from "metabase-lib/expressions/tokenizer";
-import { isExpression } from "metabase-lib/expressions";
 import { suggest, Suggestion } from "metabase-lib/expressions/suggest";
+import { tokenize } from "metabase-lib/expressions/tokenizer";
 import type { HelpText } from "metabase-lib/expressions/types";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Expression } from "metabase-types/api";
 
 import ExpressionEditorHelpText from "../ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
+
 import {
   EditorContainer,
   EditorEqualsSign,

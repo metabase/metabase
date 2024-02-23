@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import { assoc, getIn } from "icepick";
 
 import Dashboards from "metabase/entities/dashboards";
-
 import { resourceListToMap } from "metabase/lib/redux";
 import {
   getShallowDatabases as getDatabases,
@@ -11,7 +10,6 @@ import {
   getShallowMetrics as getMetrics,
   getShallowSegments as getSegments,
 } from "metabase/selectors/metadata";
-
 import Question from "metabase-lib/Question";
 
 import { idsToObjectMap, databaseToForeignKeys } from "./utils";

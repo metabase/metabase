@@ -1,19 +1,20 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { t } from "ttag";
 import { getIn } from "icepick";
+import { t } from "ttag";
 import _ from "underscore";
 
-import Group from "metabase/entities/groups";
+import { nonPersonalOrArchivedCollection } from "metabase/collections/utils";
 import Collections, {
   getCollectionIcon,
   ROOT_COLLECTION,
 } from "metabase/entities/collections";
+import Group from "metabase/entities/groups";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import { nonPersonalOrArchivedCollection } from "metabase/collections/utils";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
+
 import { getPermissionWarningModal } from "./confirmations";
 
 export const collectionsQuery = {

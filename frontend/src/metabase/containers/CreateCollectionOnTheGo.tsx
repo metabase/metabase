@@ -1,7 +1,8 @@
-import { useState, useCallback, ReactElement } from "react";
 import type { FormikValues } from "formik";
-import { Collection, CollectionId } from "metabase-types/api";
+import { useState, useCallback, ReactElement } from "react";
+
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import { Collection, CollectionId } from "metabase-types/api";
 
 export interface Values extends FormikValues {
   collection_id: CollectionId;

@@ -3,9 +3,9 @@ import _ from "underscore";
 import { startNewCard } from "metabase/lib/card";
 import { createThunkAction } from "metabase/lib/redux";
 import { MetabaseApi } from "metabase/services";
+import { FieldDimension } from "metabase-lib/Dimension";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
-import { FieldDimension } from "metabase-lib/Dimension";
 
 import {
   getCard,
@@ -17,6 +17,7 @@ import {
   getPreviousRowPKValue,
   getTableForeignKeys,
 } from "../selectors";
+
 import { setCardAndRun } from "./core";
 import { updateUrl } from "./navigation";
 

@@ -1,21 +1,19 @@
-import { MouseEvent, useEffect, useCallback, useRef, useState } from "react";
-import { t } from "ttag";
-import { push } from "react-router-redux";
-import { withRouter } from "react-router";
 import { Location, LocationDescriptorObject } from "history";
-
+import { MouseEvent, useEffect, useCallback, useRef, useState } from "react";
+import { withRouter } from "react-router";
+import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
-import { Icon } from "metabase/core/components/Icon";
+import { t } from "ttag";
 
+import { Icon } from "metabase/core/components/Icon";
 import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
-import MetabaseSettings from "metabase/lib/settings";
 import { useDispatch } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import { zoomInRow } from "metabase/query_builder/actions";
 
-import SearchResults from "./SearchResults";
 import RecentsList from "./RecentsList";
 import {
   SearchInputContainer,
@@ -26,6 +24,7 @@ import {
   SearchResultsContainer,
   SearchBarRoot,
 } from "./SearchBar.styled";
+import SearchResults from "./SearchResults";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 

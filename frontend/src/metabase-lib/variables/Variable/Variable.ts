@@ -1,5 +1,5 @@
-import Query from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
+import Query from "metabase-lib/queries/Query";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Variable {

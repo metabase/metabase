@@ -1,9 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon } from "metabase/core/components/Icon";
-
 import { color } from "metabase/lib/colors";
 
 export interface ItemRootProps {

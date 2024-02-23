@@ -1,4 +1,3 @@
-import { createMockDashboard } from "metabase-types/api/mocks";
 import {
   setupDashboardEndpoints,
   setupDashboardNotFoundEndpoint,
@@ -8,6 +7,8 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { createMockDashboard } from "metabase-types/api/mocks";
+
 import { useDashboardQuery } from "./use-dashboard-query";
 
 const TEST_DASHBOARD = createMockDashboard();

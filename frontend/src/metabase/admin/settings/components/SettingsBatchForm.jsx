@@ -1,18 +1,19 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-
-import * as React from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
+import * as React from "react";
+import Collapse from "react-collapse";
 import { connect } from "react-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
-import Collapse from "react-collapse";
-import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Button from "metabase/core/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
+import Button from "metabase/core/components/Button";
 import MetabaseUtils from "metabase/lib/utils";
+
 import { updateSettings as defaultUpdateSettings } from "../settings";
+
 import SettingsSetting from "./SettingsSetting";
 
 const VALIDATIONS = {

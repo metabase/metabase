@@ -1,5 +1,6 @@
 import { getPivotDrill } from "metabase/modes/components/drill/PivotDrill";
 import { TimeseriesModeFooter } from "metabase/visualizations/click-actions/components/TimeseriesModeFooter";
+
 import DefaultMode from "./DefaultMode";
 
 const TimeseriesMode = {

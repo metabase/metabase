@@ -1,4 +1,5 @@
 import Color from "color";
+
 import { getDefaultChartColors, getAutoChartColors } from "./utils";
 
 describe("getDefaultChartColors", () => {

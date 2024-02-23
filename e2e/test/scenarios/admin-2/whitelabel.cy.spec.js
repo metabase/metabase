@@ -1,5 +1,5 @@
-import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
 
 function checkFavicon() {
   cy.request("/api/setting/application-favicon-url")

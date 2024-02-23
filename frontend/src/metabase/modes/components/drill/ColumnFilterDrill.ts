@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import type { Drill } from "metabase/modes/types";
+
 import { getColumnFilterDrillPopover } from "metabase/modes/components/drill/common/ColumnFilterDrillPopover";
+import type { Drill } from "metabase/modes/types";
 import { columnFilterDrill } from "metabase-lib/queries/drills/column-filter-drill";
 
 export const ColumnFilterDrill: Drill = ({ question, clicked }) => {

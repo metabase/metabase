@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import { render, screen, getIcon } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -6,7 +7,9 @@ import {
   columnFinder,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
+
 import { createMockNotebookStep } from "../../test-utils";
+
 import { AggregateStep } from "./AggregateStep";
 
 function createAggregatedQuery({

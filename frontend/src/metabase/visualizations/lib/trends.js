@@ -1,5 +1,5 @@
-import _ from "underscore";
 import moment from "moment-timezone";
+import _ from "underscore";
 
 // mappings of allowed operators
 const EXPRESSION_OPERATORS = new Map([

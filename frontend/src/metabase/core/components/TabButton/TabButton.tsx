@@ -1,3 +1,5 @@
+import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import {
   useEffect,
   useContext,
@@ -11,13 +13,11 @@ import {
   forwardRef,
   Ref,
 } from "react";
-import styled from "@emotion/styled";
 import { t } from "ttag";
 
-import { css } from "@emotion/react";
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
-
 import { color, lighten } from "metabase/lib/colors";
+
 import {
   getTabButtonInputId,
   getTabId,
@@ -25,7 +25,7 @@ import {
   TabContext,
   TabContextType,
 } from "../Tab";
-import { TabButtonMenu } from "./TabButtonMenu";
+
 import {
   TabButtonInput,
   TabButtonRoot,
@@ -33,6 +33,7 @@ import {
   TabButtonInputWrapper,
   TabButtonInputResizer,
 } from "./TabButton.styled";
+import { TabButtonMenu } from "./TabButtonMenu";
 
 export const INPUT_WRAPPER_TEST_ID = "tab-button-input-wrapper";
 

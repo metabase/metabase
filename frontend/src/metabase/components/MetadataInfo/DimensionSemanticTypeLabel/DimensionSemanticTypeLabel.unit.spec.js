@@ -1,13 +1,14 @@
-import { renderWithProviders, screen, getIcon } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, getIcon } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
+import Dimension from "metabase-lib/Dimension";
 import {
   createSampleDatabase,
   PRODUCTS,
   ORDERS,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import Dimension from "metabase-lib/Dimension";
+
 import DimensionSemanticTypeLabel from "./DimensionSemanticTypeLabel";
 
 const state = createMockState({

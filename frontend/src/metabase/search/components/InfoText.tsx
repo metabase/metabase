@@ -1,18 +1,15 @@
 import { t, jt } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
-
-import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
+import Schema from "metabase/entities/schemas";
 import Table from "metabase/entities/tables";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { getTranslatedEntityName } from "metabase/common/utils/model-names";
-
-import type { Collection } from "metabase-types/api";
 import type TableType from "metabase-lib/metadata/Table";
+import type { Collection } from "metabase-types/api";
 
 import { CollectionBadge } from "./CollectionBadge";
 import type { WrappedResult } from "./types";

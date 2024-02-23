@@ -1,10 +1,10 @@
-import Databases from "metabase/entities/databases";
 import {
   EntityInfo,
   useEntityUpdate,
 } from "metabase/common/hooks/use-entity-update";
-import { DatabaseData, DatabaseId } from "metabase-types/api";
+import Databases from "metabase/entities/databases";
 import Database from "metabase-lib/metadata/Database";
+import { DatabaseData, DatabaseId } from "metabase-types/api";
 
 export const useDatabaseUpdate = () => {
   return useEntityUpdate<

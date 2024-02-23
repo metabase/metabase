@@ -1,6 +1,8 @@
 import { isValidElement, useMemo } from "react";
+
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
+
 import {
   DataPoint,
   HoveredDimension,
@@ -8,6 +10,7 @@ import {
   VisualizationSettings,
 } from "../types";
 import { formatValueForTooltip } from "../utils";
+
 import { TooltipTableCell } from "./KeyValuePairChartTooltip.styled";
 
 export interface StackedDataTooltipProps {

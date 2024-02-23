@@ -1,13 +1,13 @@
-import { t } from "ttag";
 import cx from "classnames";
+import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
-import NightModeIcon from "metabase/components/icons/NightModeIcon";
-import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
-import Tooltip from "metabase/core/components/Tooltip";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
-
+import NightModeIcon from "metabase/components/icons/NightModeIcon";
+import Tooltip from "metabase/core/components/Tooltip";
+import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
+import MetabaseSettings from "metabase/lib/settings";
+
 import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 
 export const getDashboardActions = (

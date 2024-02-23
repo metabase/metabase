@@ -1,19 +1,19 @@
-import _ from "underscore";
 import { getIn } from "icepick";
+import _ from "underscore";
 
-import { parseTimestamp } from "metabase/lib/time";
 import {
   formatDateTimeForParameter,
   formatDateToRangeForParameter,
 } from "metabase/lib/formatting/date";
+import { parseTimestamp } from "metabase/lib/time";
+import { TemplateTagDimension } from "metabase-lib/Dimension";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/parameters/utils/filters";
-import { isa, isDate } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
+import { isa, isDate } from "metabase-lib/types/utils/isa";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import { TemplateTagDimension } from "metabase-lib/Dimension";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},

@@ -1,9 +1,9 @@
-import { getSize, rem } from "@mantine/core";
 import type {
   ContextStylesParams,
   MantineThemeOverride,
   NumberInputStylesParams,
 } from "@mantine/core";
+import { getSize, rem } from "@mantine/core";
 
 const CONTROL_SIZES = {
   xs: rem(16),

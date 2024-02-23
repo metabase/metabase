@@ -1,8 +1,17 @@
 import { TickRendererProps } from "@visx/axis";
 import { getTicks } from "@visx/scale";
+import type { TimeInterval } from "d3-time";
 import { timeWeek, timeMonth } from "d3-time";
 
-import type { TimeInterval } from "d3-time";
+import { MAX_ROTATED_TICK_WIDTH } from "metabase/static-viz/components/XYChart/constants";
+import type {
+  Series,
+  XAxisType,
+  XValue,
+  XScale,
+  ChartSettings,
+} from "metabase/static-viz/components/XYChart/types";
+import { getX } from "metabase/static-viz/components/XYChart/utils/series";
 import { formatDate, DateFormatOptions } from "metabase/static-viz/lib/dates";
 import {
   formatNumber,
@@ -13,16 +22,6 @@ import {
   measureTextHeight,
   truncateText,
 } from "metabase/static-viz/lib/text";
-import { MAX_ROTATED_TICK_WIDTH } from "metabase/static-viz/components/XYChart/constants";
-import { getX } from "metabase/static-viz/components/XYChart/utils/series";
-
-import type {
-  Series,
-  XAxisType,
-  XValue,
-  XScale,
-  ChartSettings,
-} from "metabase/static-viz/components/XYChart/types";
 import { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 const getRotatedXTickHeight = (tickWidth: number) => {

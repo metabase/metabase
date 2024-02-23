@@ -1,18 +1,18 @@
+import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import { Box } from "metabase/ui";
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
+import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+
+import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 import { ExpressionWidget } from "../expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
-import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 
 import {
   AggregationItemList,

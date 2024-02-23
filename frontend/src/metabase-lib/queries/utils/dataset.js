@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Dimension, { FieldDimension } from "metabase-lib/Dimension";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 export const datasetContainsNoResults = data =>
   data.rows == null || data.rows.length === 0;

@@ -1,7 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import NumericInput from "metabase/components/NumericInput";
+import { color } from "metabase/lib/colors";
 
 export const CacheTTLFieldContainer = styled.div`
   display: flex;

@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { t, jt } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
 import ActionButton from "metabase/components/ActionButton";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
-import { MetabaseApi } from "metabase/services";
-
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
+import { MetabaseApi } from "metabase/services";
 import Database from "metabase-lib/metadata/Database";
 import { getModelCacheSchemaName } from "metabase-lib/metadata/utils/models";
 

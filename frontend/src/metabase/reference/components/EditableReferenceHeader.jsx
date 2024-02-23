@@ -1,14 +1,15 @@
-import { memo } from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { memo } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
-import L from "metabase/components/List/List.css";
 
-import { Icon } from "metabase/core/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import L from "metabase/components/List/List.css";
 import Button from "metabase/core/components/Button";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Icon } from "metabase/core/components/Icon";
+
 import S from "./ReferenceHeader.css";
 
 const EditableReferenceHeader = ({

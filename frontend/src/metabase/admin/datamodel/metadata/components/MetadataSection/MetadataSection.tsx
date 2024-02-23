@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
 import cx from "classnames";
+import { ReactNode } from "react";
 
 interface MetadataSectionProps {
   first?: boolean;

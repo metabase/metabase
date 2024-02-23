@@ -4,8 +4,8 @@ import { t } from "ttag";
 import LimitInput from "metabase/query_builder/components/LimitInput";
 import * as Lib from "metabase-lib";
 
-import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCell } from "../../NotebookCell";
+import type { NotebookStepUiComponentProps } from "../../types";
 
 function LimitStep({
   topLevelQuery,

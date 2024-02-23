@@ -1,10 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
+import { drillDownForDimensions } from "metabase-lib/queries/utils/drilldown";
 import {
   createSampleDatabase,
   ORDERS,
   PEOPLE,
 } from "metabase-types/api/mocks/presets";
-import { drillDownForDimensions } from "metabase-lib/queries/utils/drilldown";
 
 describe("drilldown", () => {
   const metadata = createMockMetadata({

@@ -3,9 +3,9 @@ import _ from "underscore";
 
 import { Icon, IconName, IconProps } from "metabase/core/components/Icon";
 
+import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 import type { PickerItem } from "./types";
 
-import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 
 interface Props<TId> {
   item: PickerItem<TId>;

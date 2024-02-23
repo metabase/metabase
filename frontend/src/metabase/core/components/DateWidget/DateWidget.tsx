@@ -1,3 +1,4 @@
+import { Moment } from "moment-timezone";
 import {
   forwardRef,
   InputHTMLAttributes,
@@ -5,10 +6,10 @@ import {
   useCallback,
   useState,
 } from "react";
-import { Moment } from "moment-timezone";
+
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import DateInput from "metabase/core/components/DateInput";
 import DateSelector from "metabase/core/components/DateSelector";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 export type DateWidgetAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,

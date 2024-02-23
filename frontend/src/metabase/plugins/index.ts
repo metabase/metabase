@@ -2,15 +2,16 @@ import { HTMLAttributes } from "react";
 import * as React from "react";
 import { t } from "ttag";
 
-import type { IconName, IconProps } from "metabase/core/components/Icon";
-import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
-
 import type {
   DataPermission,
   DatabaseEntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
-
+import { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import type { IconName, IconProps } from "metabase/core/components/Icon";
+import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import type Question from "metabase-lib/Question";
+import type Database from "metabase-lib/metadata/Database";
 import type {
   Bookmark,
   Collection,
@@ -24,10 +25,8 @@ import type {
   UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
-import { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
-import type Question from "metabase-lib/Question";
 
-import type Database from "metabase-lib/metadata/Database";
+
 import { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started

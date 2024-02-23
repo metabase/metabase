@@ -1,11 +1,11 @@
+import Users from "metabase/entities/users";
 import {
   createAction,
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
-import { UserApi } from "metabase/services";
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
-import Users from "metabase/entities/users";
+import { UserApi } from "metabase/services";
 
 export const REFRESH_CURRENT_USER = "metabase/user/REFRESH_CURRENT_USER";
 export const refreshCurrentUser = createAction(REFRESH_CURRENT_USER, () => {

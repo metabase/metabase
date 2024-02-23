@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { monospaceFontFamily } from "metabase/styled-components/theme";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
+import { monospaceFontFamily } from "metabase/styled-components/theme";
 
 export const Container = styled.div`
   padding: 1.25rem 1rem 1.25rem;

@@ -1,7 +1,6 @@
 import * as React from "react";
 
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
-
 import { useToggle } from "metabase/hooks/use-toggle";
 
 interface SectionProps {

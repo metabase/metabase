@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { TimelineIcon } from "./QuestionTimelineWidget.styled";
 
 export interface QuestionTimelineWidgetProps {

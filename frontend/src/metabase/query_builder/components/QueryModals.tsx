@@ -1,44 +1,41 @@
 import { Component } from "react";
 import { connect } from "react-redux";
-
 import { t } from "ttag";
 import _ from "underscore";
 
-import Questions from "metabase/entities/questions";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import Modal from "metabase/components/Modal";
-
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
-
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
-import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
-import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
-
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import Questions from "metabase/entities/questions";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import BulkFilterModal from "metabase/query_builder/components/filters/modals/BulkFilterModal";
-import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
+import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
+import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
+import { getQuestionWithParameters } from "metabase/query_builder/selectors";
+import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
+import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
-import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
-import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
-import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
+import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
+import Question from "metabase-lib/Question";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { Alert, Card, Collection, User } from "metabase-types/api";
 import {
   QueryBuilderMode,
   QueryBuilderUIControls,
   State,
 } from "metabase-types/store";
-import { getQuestionWithParameters } from "metabase/query_builder/selectors";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Question from "metabase-lib/Question";
+
 import { UpdateQuestionOpts } from "../actions/core/updateQuestion";
 
 const mapDispatchToProps = {

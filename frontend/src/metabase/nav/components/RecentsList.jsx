@@ -1,15 +1,20 @@
-import { Fragment, useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
-import _ from "underscore";
+import { Fragment, useState, useEffect } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { t } from "ttag";
+import _ from "underscore";
 
-import RecentItems from "metabase/entities/recent-items";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+import EmptyState from "metabase/components/EmptyState";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Text from "metabase/components/type/Text";
-import * as Urls from "metabase/lib/urls";
+import RecentItems from "metabase/entities/recent-items";
+import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { ItemIcon } from "metabase/search/components/SearchResult";
 import {
   ResultLink,
   ResultButton,
@@ -17,12 +22,7 @@ import {
   Title,
   TitleWrapper,
 } from "metabase/search/components/SearchResult.styled";
-import { ItemIcon } from "metabase/search/components/SearchResult";
-import EmptyState from "metabase/components/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 
-import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import {
   Root,
   EmptyStateContainer,

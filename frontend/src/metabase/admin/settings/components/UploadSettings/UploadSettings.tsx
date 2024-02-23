@@ -1,30 +1,27 @@
 import { useState, useRef } from "react";
-
 import * as React from "react";
-import { jt, t } from "ttag";
 import { connect } from "react-redux";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
-import Databases from "metabase/entities/databases";
-import Schemas from "metabase/entities/schemas";
 
-import { getSetting } from "metabase/selectors/settings";
 import { updateSettings } from "metabase/admin/settings/settings";
-
-import type { State } from "metabase-types/store";
-
-import { Stack, Group, Text } from "metabase/ui";
-import Link from "metabase/core/components/Link";
-import Select, { SelectChangeEvent } from "metabase/core/components/Select";
-import Input from "metabase/core/components/Input";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
 import Alert from "metabase/core/components/Alert";
-
+import Input from "metabase/core/components/Input";
+import Link from "metabase/core/components/Link";
+import Select, { SelectChangeEvent } from "metabase/core/components/Select";
+import Databases from "metabase/entities/databases";
+import Schemas from "metabase/entities/schemas";
+import { getSetting } from "metabase/selectors/settings";
+import { Stack, Group, Text } from "metabase/ui";
 import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
+import type { State } from "metabase-types/store";
 
 import SettingHeader from "../SettingHeader";
+
 import { SectionTitle, ColorText, PaddedForm } from "./UploadSetting.styled";
 import { getDatabaseOptions, getSchemaOptions, dbHasSchema } from "./utils";
 

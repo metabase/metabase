@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
+
+import { setupGroupsEndpoint } from "__support__/server-mocks";
+import { screen } from "__support__/ui";
 import {
   createMockGroup,
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
-import { setupGroupsEndpoint } from "__support__/server-mocks";
 
 import { setup, SetupOpts, EMAIL_URL } from "./setup";
 

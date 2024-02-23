@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { ClickActionBase, Drill } from "metabase/modes/types";
 import {
   sortDrill,

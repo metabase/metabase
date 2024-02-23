@@ -1,7 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color, lighten } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import { Icon, IconProps } from "metabase/core/components/Icon";
+import { color, lighten } from "metabase/lib/colors";
 import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 interface TreeNodeRootProps {

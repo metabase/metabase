@@ -1,4 +1,5 @@
 import api from "metabase/lib/api";
+
 import * as downloading from "./downloading";
 
 describe("getDatasetResponse", () => {

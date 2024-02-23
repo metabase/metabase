@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import Join from "metabase-lib/queries/structured/Join";
 import {
   createSampleDatabase,
   ORDERS,
@@ -8,7 +9,6 @@ import {
   REVIEWS,
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
-import Join from "metabase-lib/queries/structured/Join";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

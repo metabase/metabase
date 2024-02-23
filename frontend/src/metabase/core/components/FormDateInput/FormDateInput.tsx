@@ -1,11 +1,12 @@
-import { forwardRef, ReactNode, Ref, useCallback, useMemo } from "react";
-import moment, { Moment } from "moment-timezone";
 import { useField } from "formik";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import moment, { Moment } from "moment-timezone";
+import { forwardRef, ReactNode, Ref, useCallback, useMemo } from "react";
+
 import DateWidget, {
   DateWidgetProps,
 } from "metabase/core/components/DateWidget";
 import FormField from "metabase/core/components/FormField";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 export interface FormDateInputProps
   extends Omit<

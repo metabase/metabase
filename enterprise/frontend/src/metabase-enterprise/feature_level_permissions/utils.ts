@@ -1,6 +1,8 @@
 import { t } from "ttag";
+
 import { PermissionSubject } from "metabase/admin/permissions/types";
 import { AdminPathKey } from "metabase-types/store";
+
 import { UserWithFeaturePermissions } from "./types/user";
 
 const canAccessDataModel = (user?: UserWithFeaturePermissions) =>

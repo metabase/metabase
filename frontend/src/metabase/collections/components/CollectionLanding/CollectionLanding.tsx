@@ -1,5 +1,7 @@
 import { ReactNode } from "react";
+
 import { extractCollectionId } from "metabase/lib/urls";
+
 import CollectionContent from "../../containers/CollectionContent";
 
 export interface CollectionLandingProps {

@@ -1,6 +1,8 @@
 import type Tether from "tether";
-import { Icon } from "metabase/core/components/Icon";
+
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { Icon } from "metabase/core/components/Icon";
+
 import {
   NotebookCell,
   NotebookCellAdd,

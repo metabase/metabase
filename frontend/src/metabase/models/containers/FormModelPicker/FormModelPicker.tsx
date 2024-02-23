@@ -1,3 +1,4 @@
+import { useField } from "formik";
 import {
   useCallback,
   useEffect,
@@ -6,13 +7,12 @@ import {
   HTMLAttributes,
 } from "react";
 import { t } from "ttag";
-import { useField } from "formik";
 
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useQuestionQuery } from "metabase/common/hooks";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import FormField from "metabase/core/components/FormField";
 import SelectButton from "metabase/core/components/SelectButton";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { useQuestionQuery } from "metabase/common/hooks";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 import { PopoverItemPicker, MIN_POPOVER_WIDTH } from "./FormModelPicker.styled";
 

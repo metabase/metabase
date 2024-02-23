@@ -1,18 +1,19 @@
 import { useState } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { connect } from "react-redux";
 
 import Modal from "metabase/components/Modal";
-
 import Actions, {
   CreateActionParams,
   UpdateActionParams,
 } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { getMetadata } from "metabase/selectors/metadata";
-
+import Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import type {
   CardId,
   DatabaseId,
@@ -22,11 +23,8 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
-
 import { isSavedAction } from "../../utils";
+
 import ActionContext, { useActionContext } from "./ActionContext";
 import { ACE_ELEMENT_ID } from "./ActionContext/QueryActionContextProvider";
 import ActionCreatorView from "./ActionCreatorView";

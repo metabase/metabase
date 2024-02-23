@@ -1,10 +1,11 @@
-import { useState, useRef, useLayoutEffect } from "react";
-import PropTypes from "prop-types";
+import styled from "@emotion/styled";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { useState, useRef, useLayoutEffect } from "react";
 import { t } from "ttag";
 
-import styled from "@emotion/styled";
 import { TextButton } from "metabase/components/Button.styled";
+
 import { ClampedDiv } from "./ClampedText.styled";
 
 const PaddedTextButton = styled(TextButton)`

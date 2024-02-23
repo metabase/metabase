@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   runNativeQuery,
@@ -5,7 +6,7 @@ import {
   popover,
   openQuestionActions,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 import { selectFromDropdown } from "./helpers/e2e-models-helpers";
 
 describe("scenarios > models query editor", () => {

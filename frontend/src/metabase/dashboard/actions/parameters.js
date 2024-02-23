@@ -1,19 +1,20 @@
 import { assoc } from "icepick";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { isActionDashCard } from "metabase/actions/utils";
+import { updateDashboard } from "metabase/dashboard/actions/save";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
-
 import {
   createParameter,
   setParameterName as setParamName,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
-import { isActionDashCard } from "metabase/actions/utils";
-import { updateDashboard } from "metabase/dashboard/actions/save";
+
+import { trackAutoApplyFiltersDisabled } from "../analytics";
 import {
   getDashboard,
   getDraftParameterValues,
@@ -23,9 +24,7 @@ import {
   getDashboardId,
   getAutoApplyFiltersToastId,
 } from "../selectors";
-
 import { isVirtualDashCard } from "../utils";
-import { trackAutoApplyFiltersDisabled } from "../analytics";
 
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
 import { setSidebar, closeSidebar } from "./ui";

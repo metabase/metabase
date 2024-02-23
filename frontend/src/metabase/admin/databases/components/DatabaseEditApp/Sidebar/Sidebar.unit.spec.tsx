@@ -1,13 +1,6 @@
-import _ from "underscore";
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/core/utils/types";
-import { getMetadata } from "metabase/selectors/metadata";
-import type { Database, InitialSyncStatus } from "metabase-types/api";
-import {
-  createMockDatabase,
-  COMMON_DATABASE_FEATURES,
-} from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
+import _ from "underscore";
+
 import { setupDatabaseUsageInfo } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -16,6 +9,15 @@ import {
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { Database, InitialSyncStatus } from "metabase-types/api";
+import {
+  createMockDatabase,
+  COMMON_DATABASE_FEATURES,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+
 import Sidebar from "./Sidebar";
 
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];

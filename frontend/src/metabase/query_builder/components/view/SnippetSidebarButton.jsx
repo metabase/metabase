@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
-import { t } from "ttag";
 import cx from "classnames";
+import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";

@@ -4,19 +4,18 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
-import PageHeading from "metabase/components/type/PageHeading";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
-
+import PageHeading from "metabase/components/type/PageHeading";
+import Button from "metabase/core/components/Button";
 import Search from "metabase/entities/search";
 import listSelect from "metabase/hoc/ListSelect";
-
+import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+
 import ArchivedItem from "../../components/ArchivedItem";
 
 import {

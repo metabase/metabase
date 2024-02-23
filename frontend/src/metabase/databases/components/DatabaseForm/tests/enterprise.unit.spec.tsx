@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
+
 import { setup, SetupOpts } from "./setup";
 
 const setupEnterprise = (opts?: SetupOpts) => {

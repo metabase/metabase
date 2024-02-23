@@ -1,4 +1,6 @@
 import { onlyOn } from "@cypress/skip-test";
+
+import { USERS } from "e2e/support/cypress_data";
 import {
   restore,
   popover,
@@ -12,7 +14,6 @@ import {
   toggleDashboardInfoSidebar,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

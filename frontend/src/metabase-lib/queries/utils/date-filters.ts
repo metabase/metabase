@@ -1,6 +1,9 @@
 import moment from "moment-timezone";
 import _ from "underscore";
 
+import Dimension, { FieldDimension } from "metabase-lib/Dimension";
+import type Field from "metabase-lib/metadata/Field";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import {
   updateRelativeDatetimeFilter,
   isRelativeDatetime,
@@ -9,10 +12,6 @@ import {
   getTimeComponent,
   setTimeComponent,
 } from "metabase-lib/queries/utils/query-time";
-import Dimension, { FieldDimension } from "metabase-lib/Dimension";
-
-import type Filter from "metabase-lib/queries/structured/Filter";
-import type Field from "metabase-lib/metadata/Field";
 
 const testTemporalUnit = (unit: string) => (filter: Filter) => {
   const dimension = FieldDimension.parseMBQLOrWarn(filter[1]);

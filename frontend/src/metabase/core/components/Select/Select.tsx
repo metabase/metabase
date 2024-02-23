@@ -1,3 +1,5 @@
+import { createSelector } from "@reduxjs/toolkit";
+import cx from "classnames";
 import {
   createRef,
   Children,
@@ -8,20 +10,17 @@ import {
   ReactNode,
   RefObject,
 } from "react";
-
 import _ from "underscore";
-import cx from "classnames";
-import { createSelector } from "@reduxjs/toolkit";
-import { Icon, IconName } from "metabase/core/components/Icon";
+
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import SelectButton, {
   SelectButtonProps,
 } from "metabase/core/components/SelectButton";
-
-import { color } from "metabase/lib/colors";
-
 import Uncontrollable from "metabase/hoc/Uncontrollable";
+import { color } from "metabase/lib/colors";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+
 import { SelectAccordionList } from "./Select.styled";
 
 const MIN_ICON_WIDTH = 20;

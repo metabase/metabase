@@ -1,3 +1,7 @@
+
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -15,10 +19,6 @@ import {
   selectPermissionRow,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 

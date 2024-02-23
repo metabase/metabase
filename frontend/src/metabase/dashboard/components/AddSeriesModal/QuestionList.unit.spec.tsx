@@ -1,12 +1,14 @@
-import fetchMock from "fetch-mock";
 import { screen, render } from "@testing-library/react";
-import _ from "underscore";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import _ from "underscore";
+
+import { Card, GetCompatibleCardsPayload } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardOrderedCard,
 } from "metabase-types/api/mocks";
-import { Card, GetCompatibleCardsPayload } from "metabase-types/api";
+
 import { QuestionList } from "./QuestionList";
 
 const compatibleCardsFirstPage = _.range(50).map(index =>

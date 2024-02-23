@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
 import { t } from "ttag";
+
 import NativeCodePanel from "../NativeCodePanel";
+
 import {
   ModalBody,
   ModalCloseButton,

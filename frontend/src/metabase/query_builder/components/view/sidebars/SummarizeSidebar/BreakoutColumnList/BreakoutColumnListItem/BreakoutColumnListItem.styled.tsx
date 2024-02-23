@@ -1,8 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
+import { BucketPickerPopover as BaseBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
-import { BucketPickerPopover as BaseBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { color, alpha } from "metabase/lib/colors";
 
 const triggerButtonStyle = css`

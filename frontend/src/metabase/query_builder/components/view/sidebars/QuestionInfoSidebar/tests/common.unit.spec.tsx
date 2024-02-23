@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
+
+import { screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import {
   createMockCard,
   createMockModerationReview,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+
 import { setup } from "./setup";
 
 const DESCRIPTION = "abc";

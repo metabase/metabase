@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 
 export const SqlButton = styled(IconButtonWrapper)`
   color: ${color("text-dark")};

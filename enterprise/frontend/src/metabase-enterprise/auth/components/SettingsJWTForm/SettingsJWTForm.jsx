@@ -1,9 +1,11 @@
-import { useCallback } from "react";
 import PropTypes from "prop-types";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { updateSettings } from "metabase/admin/settings/settings";
+
 import SettingsBatchForm from "metabase/admin/settings/components/SettingsBatchForm";
+import { updateSettings } from "metabase/admin/settings/settings";
+
 import { FormButton } from "./SettingsJWTForm.styled";
 
 const propTypes = {

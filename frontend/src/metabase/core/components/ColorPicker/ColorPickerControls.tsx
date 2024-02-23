@@ -1,5 +1,6 @@
 import { CustomPicker, CustomPickerInjectedProps } from "react-color";
 import { Hue, Saturation } from "react-color/lib/components/common";
+
 import {
   HueContainer,
   HuePointer,

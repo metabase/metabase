@@ -3,9 +3,9 @@ import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
 
+import User from "metabase/entities/users";
 import * as Urls from "metabase/lib/urls";
 
-import User from "metabase/entities/users";
 
 const NewUserModal = ({ onClose, onSaved, ...props }) => (
   <User.ModalForm

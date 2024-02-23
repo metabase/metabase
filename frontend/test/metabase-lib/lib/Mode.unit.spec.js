@@ -1,4 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
+import { getMode } from "metabase/modes/lib/modes";
+import Question from "metabase-lib/Question";
 import {
   createSampleDatabase,
   ORDERS,
@@ -7,8 +9,6 @@ import {
   PEOPLE,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { getMode } from "metabase/modes/lib/modes";
-import Question from "metabase-lib/Question";
 
 describe("Mode", () => {
   const metadata = createMockMetadata({

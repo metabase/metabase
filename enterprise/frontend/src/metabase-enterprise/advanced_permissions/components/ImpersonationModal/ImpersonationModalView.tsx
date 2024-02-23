@@ -1,21 +1,24 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import FormSelect from "metabase/core/components/FormSelect";
-import FormProvider from "metabase/core/components/FormProvider";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import Form from "metabase/core/components/Form";
-import MetabaseSettings from "metabase/lib/settings";
-import * as Errors from "metabase/core/utils/errors";
-import { UserAttribute } from "metabase-types/api";
+
 import Alert from "metabase/core/components/Alert";
-import FormFooter from "metabase/core/components/FormFooter";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink/ExternalLink";
+import Form from "metabase/core/components/Form";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormFooter from "metabase/core/components/FormFooter";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormSelect from "metabase/core/components/FormSelect";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import Link from "metabase/core/components/Link/Link";
+import * as Errors from "metabase/core/utils/errors";
+import MetabaseSettings from "metabase/lib/settings";
 import Database from "metabase-lib/metadata/Database";
+import { UserAttribute } from "metabase-types/api";
+
 import { ImpersonationWarning } from "../ImpersonationWarning";
+
 import {
   ImpersonationDescription,
   ImpersonationModalViewRoot,

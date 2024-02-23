@@ -1,18 +1,16 @@
 import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
-import { CardApi } from "metabase/services";
 import Collections from "metabase/entities/collections";
-
-import type { Dispatch, State } from "metabase-types/store";
-import type { CollectionId } from "metabase-types/api";
-import type { FileUploadState } from "metabase-types/store/upload";
-
 import {
   createAction,
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
+import { CardApi } from "metabase/services";
+import type { CollectionId } from "metabase-types/api";
+import type { Dispatch, State } from "metabase-types/store";
+import type { FileUploadState } from "metabase-types/store/upload";
 
 export const UPLOAD_FILE_TO_COLLECTION = "metabase/collection/UPLOAD_FILE";
 export const UPLOAD_FILE_TO_COLLECTION_START =

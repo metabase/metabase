@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-
 import { connect } from "react-redux";
 import { push, goBack } from "react-router-redux";
-
 import _ from "underscore";
 
 // namespace under _routeless_

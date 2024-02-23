@@ -1,15 +1,13 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
-import { Icon } from "metabase/core/components/Icon";
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
-
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-
+import Tooltip from "metabase/core/components/Tooltip";
 import { darken, color, alpha } from "metabase/lib/colors";
 import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
+import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
 export const SidebarIcon = styled(Icon, {
   shouldForwardProp: shouldForwardNonTransientProp,

@@ -1,11 +1,10 @@
 import styled from "@emotion/styled";
 
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Text from "metabase/components/type/Text";
+import Link from "metabase/core/components/Link";
 import { color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Link from "metabase/core/components/Link";
-import Text from "metabase/components/type/Text";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
 import type { SearchModelType } from "metabase-types/api";
 
 type SearchEntity = any;

@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 
 export const CardIcon = styled(Icon)`
   display: block;

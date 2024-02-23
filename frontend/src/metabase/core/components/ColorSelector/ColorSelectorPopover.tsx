@@ -1,5 +1,7 @@
 import { forwardRef, HTMLAttributes, Ref, useCallback } from "react";
+
 import ColorPill from "metabase/core/components/ColorPill";
+
 import { PopoverRoot } from "./ColorSelectorPopover.styled";
 
 export interface ColorSelectorPopoverProps

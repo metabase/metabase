@@ -1,6 +1,8 @@
-import { t } from "ttag";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+
 import { PLUGIN_MODERATION } from "metabase/plugins";
+
 import { HeaderRoot, HeaderTitle } from "./SavedQuestionHeaderButton.styled";
 
 SavedQuestionHeaderButton.propTypes = {

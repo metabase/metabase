@@ -1,21 +1,19 @@
-import { Fragment, useState } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
-
+import PropTypes from "prop-types";
+import { Fragment, useState } from "react";
 import { jt, t } from "ttag";
-import Link from "metabase/core/components/Link";
 
-import Search from "metabase/entities/search";
-
+import NoResults from "assets/img/no_results.svg";
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import { SearchResult } from "metabase/search/components/SearchResult";
-import Subhead from "metabase/components/type/Subhead";
-
-import { Icon } from "metabase/core/components/Icon";
-import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
+import Subhead from "metabase/components/type/Subhead";
+import { Icon } from "metabase/core/components/Icon";
+import Link from "metabase/core/components/Link";
+import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { SearchResult } from "metabase/search/components/SearchResult";
+
 import {
   SearchBody,
   SearchControls,

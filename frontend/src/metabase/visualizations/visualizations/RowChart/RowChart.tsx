@@ -1,63 +1,67 @@
 import { useEffect, useMemo } from "react";
 import * as React from "react";
 import { t } from "ttag";
-
 import _ from "underscore";
-import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
-import { DatasetData, VisualizationSettings } from "metabase-types/api";
 
+
+import ExplicitSize from "metabase/components/ExplicitSize";
+import { IconProps } from "metabase/core/components/Icon";
+import { measureTextWidth } from "metabase/lib/measure-text";
+import { extractRemappedColumns } from "metabase/visualizations";
 import {
   getChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
-import { measureTextWidth } from "metabase/lib/measure-text";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import {
-  getClickData,
-  getHoverData,
-  getLegendClickData,
-} from "metabase/visualizations/visualizations/RowChart/utils/events";
-
-import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import {
-  RowChart,
-  RowChartProps,
-} from "metabase/visualizations/shared/components/RowChart";
-import {
-  getGroupedDataset,
-  getSeries,
-  trimData,
-} from "metabase/visualizations/shared/utils/data";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
-import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
+import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import {
-  GroupedDatum,
-  RemappingHydratedChartData,
-  SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import { IconProps } from "metabase/core/components/Icon";
 import {
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  RowChart,
+  RowChartProps,
+} from "metabase/visualizations/shared/components/RowChart";
 import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
+import {
+  GroupedDatum,
+  RemappingHydratedChartData,
+  SeriesInfo,
+} from "metabase/visualizations/shared/types/data";
 import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
-import { extractRemappedColumns } from "metabase/visualizations";
+import {
+  getGroupedDataset,
+  getSeries,
+  trimData,
+} from "metabase/visualizations/shared/utils/data";
+import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import {
+  getClickData,
+  getHoverData,
+  getLegendClickData,
+} from "metabase/visualizations/visualizations/RowChart/utils/events";
+import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
-import { getChartWarnings } from "./utils/warnings";
+import { DatasetData, VisualizationSettings } from "metabase-types/api";
+
 import {
   RowVisualizationRoot,
   RowChartContainer,
   RowChartLegendLayout,
   RowLegendCaption,
 } from "./RowChart.styled";
+import {
+  getColumnValueFormatter,
+  getFormatters,
+  getLabelsFormatter,
+} from "./utils/format";
 import { getLegendItems } from "./utils/legend";
 import {
   getAxesVisibility,
@@ -66,11 +70,7 @@ import {
   getXValueRange,
 } from "./utils/settings";
 import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";
-import {
-  getColumnValueFormatter,
-  getFormatters,
-  getLabelsFormatter,
-} from "./utils/format";
+import { getChartWarnings } from "./utils/warnings";
 
 const RowChartRenderer = ExplicitSize({
   wrapped: true,

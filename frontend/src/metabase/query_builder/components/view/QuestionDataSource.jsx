@@ -1,15 +1,13 @@
+import PropTypes from "prop-types";
 import { isValidElement } from "react";
 import { t } from "ttag";
-import PropTypes from "prop-types";
-
-import { color } from "metabase/lib/colors";
-import * as Urls from "metabase/lib/urls";
-import Collections from "metabase/entities/collections";
-import Questions from "metabase/entities/questions";
-
-import Tooltip from "metabase/core/components/Tooltip";
 
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+import Tooltip from "metabase/core/components/Tooltip";
+import Collections from "metabase/entities/collections";
+import Questions from "metabase/entities/questions";
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
