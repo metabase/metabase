@@ -62,7 +62,9 @@ describe("scenarios > collection defaults", () => {
           "Test collection",
         );
         cy.findByLabelText("Description").type("Test collection description");
-        cy.findByTestId("select-button").findByText("Our analytics").click();
+        cy.findByTestId("collection-picker-button")
+          .findByText("Our analytics")
+          .click();
       });
 
       pickEntity({
@@ -70,7 +72,7 @@ describe("scenarios > collection defaults", () => {
         select: true,
       });
 
-      modal().button("Create").click();
+      cy.findByTestId("new-collection-modal").button("Create").click();
 
       cy.findByTestId("collection-name-heading").should(
         "have.text",
@@ -577,7 +579,7 @@ describe("scenarios > collection defaults", () => {
 
       cy.findByTestId("new-collection-modal").then(modal => {
         cy.findByText("Collection it's saved in").should("be.visible");
-        cy.findByTestId("select-button")
+        cy.findByTestId("collection-picker-button")
           .findByText("Third collection")
           .should("be.visible");
       });

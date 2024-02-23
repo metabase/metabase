@@ -158,8 +158,8 @@ describe("scenarios > dashboard", () => {
           .click({ force: true });
         const NEW_COLLECTION = "Bar";
         collectionOnTheGoModal().within(() => {
-          cy.findByText("Create New");
-          cy.findByLabelText(/Name of new folder/)
+          cy.findByText("Create a new collection");
+          cy.findByPlaceholderText(/My new collection/)
             .type(NEW_COLLECTION)
             .blur();
           cy.findByText("Create").click();
