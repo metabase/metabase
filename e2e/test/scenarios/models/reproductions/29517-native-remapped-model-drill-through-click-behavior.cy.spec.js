@@ -34,7 +34,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
       selectModelColumn("CREATED_AT");
       mapModelColumnToDatabase({ table: "Orders", field: "Created At" });
 
-      cy.intercept("PUT", `/api/card/*`).as("updateModel");
+      cy.intercept("PUT", "/api/card/*").as("updateModel");
       cy.button("Save changes").click();
       cy.wait("@updateModel");
 

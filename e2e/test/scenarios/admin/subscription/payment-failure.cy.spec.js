@@ -17,7 +17,7 @@ describe("banner", () => {
     cy.visit("/");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("We couldn't process payment for your account.");
-    cy.visit(`/admin/`);
+    cy.visit("/admin/");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("We couldn't process payment for your account.");
 
@@ -42,7 +42,7 @@ describe("banner", () => {
     cy.visit("/");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Pro features won’t work right now due to lack of payment.");
-    cy.visit(`/admin/`);
+    cy.visit("/admin/");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Pro features won’t work right now due to lack of payment.");
 

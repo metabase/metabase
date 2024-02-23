@@ -23,7 +23,7 @@ describe("URLs", () => {
   });
 
   describe("browse databases", () => {
-    it(`should slugify database name when opening it from /browse/databases"`, () => {
+    it('should slugify database name when opening it from /browse/databases"', () => {
       cy.visit("/browse/databases");
       cy.findByRole("tab", { name: "Databases" }).click();
       cy.findByTextEnsureVisible("Sample Database").click();

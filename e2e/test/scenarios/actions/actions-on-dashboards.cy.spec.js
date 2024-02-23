@@ -571,7 +571,7 @@ const MODEL_NAME = "Test Action Model";
         });
       });
 
-      describe(`Actions Data Types`, () => {
+      describe("Actions Data Types", () => {
         beforeEach(() => {
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           restore(`${dialect}-writable`);
@@ -1046,8 +1046,8 @@ const MODEL_NAME = "Test Action Model";
           });
 
           getActionParametersInputModal().within(() => {
-            cy.findByLabelText("Timestamp").type(`2020-01-01`);
-            cy.findByLabelText("ID").type(`1`);
+            cy.findByLabelText("Timestamp").type("2020-01-01");
+            cy.findByLabelText("ID").type("1");
 
             cy.button(SAMPLE_QUERY_ACTION.name).click();
           });

@@ -45,7 +45,7 @@ export const setTokenFeatures = featuresScope => {
 
     default:
       throw new Error(
-        `You must set the token features scope to either "all" or "none"!`,
+        'You must set the token features scope to either "all" or "none"!',
       );
   }
 

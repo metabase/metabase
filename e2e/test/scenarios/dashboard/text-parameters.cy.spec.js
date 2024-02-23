@@ -44,7 +44,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     saveDashboard();
 
     filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type(`1{enter}`);
+    cy.findByPlaceholderText("Enter a number").type("1{enter}");
     cy.button("Add filter").click();
     getDashboardCard(0).findByText("Variable: 1").should("exist");
     getDashboardCard(1).findByText("Variable: 1").should("exist");
@@ -86,7 +86,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     saveDashboard();
 
     filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type(`1{enter}`);
+    cy.findByPlaceholderText("Enter a number").type("1{enter}");
     cy.button("Add filter").click();
 
     // view mode
@@ -105,7 +105,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    cy.request("PUT", `/api/setting/site-locale`, { value: "fr" });
+    cy.request("PUT", "/api/setting/site-locale", { value: "fr" });
     cy.reload();
 
     editDashboard();
@@ -145,7 +145,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    cy.request("PUT", `/api/setting/site-locale`, { value: "fr" });
+    cy.request("PUT", "/api/setting/site-locale", { value: "fr" });
 
     // Create dashboard with a single date parameter, and a single question
     cy.createQuestionAndDashboard({

@@ -1015,7 +1015,7 @@ describe("scenarios > question > filter", () => {
 
       popover().contains("Custom Expression").click();
       popover().within(() => {
-        enterCustomColumnDetails({ formula: `boolean = true` });
+        enterCustomColumnDetails({ formula: "boolean = true" });
         cy.get("@formula").blur();
 
         cy.button("Done").click();
