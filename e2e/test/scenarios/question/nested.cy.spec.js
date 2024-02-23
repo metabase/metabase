@@ -294,7 +294,7 @@ describe("scenarios > question > nested", () => {
 
   it("should be able to use aggregation functions on saved native question (metabase#15397)", () => {
     cy.createNativeQuestion({
-      name: `15397`,
+      name: "15397",
       native: {
         query:
           "select count(*), orders.product_id from orders group by orders.product_id;",

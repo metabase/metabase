@@ -67,7 +67,7 @@ function printHints() {
     `• Please make sure E2E specs have '${E2E_FILE_EXTENSION}' file extension.`,
   );
   console.log(
-    `• You can place helpers and support files in 'helpers' or 'support' directories.`,
+    "• You can place helpers and support files in 'helpers' or 'support' directories.",
   );
   console.log(
     "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -",

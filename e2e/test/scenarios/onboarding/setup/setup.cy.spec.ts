@@ -210,7 +210,7 @@ describe("scenarios > setup", () => {
   // Values in this test are set through MB_USER_DEFAULTS environment variable!
   // Please see https://github.com/metabase/metabase/pull/18763 for details
   it("should allow pre-filling user details", () => {
-    cy.visit(`/setup#123456`);
+    cy.visit("/setup#123456");
 
     skipWelcomePage();
 
@@ -227,13 +227,13 @@ describe("scenarios > setup", () => {
     });
   });
 
-  it(`should allow you to connect a db during setup`, () => {
+  it("should allow you to connect a db during setup", () => {
     const dbName = "SQLite db";
 
     cy.intercept("GET", "api/collection/root").as("getRootCollection");
     cy.intercept("GET", "api/database").as("getDatabases");
 
-    cy.visit(`/setup#123456`);
+    cy.visit("/setup#123456");
 
     skipWelcomePage();
 
@@ -371,7 +371,7 @@ describeWithSnowplow("scenarios > setup", () => {
   it("should send snowplow events", () => {
     // 1 - new_instance_created
     // 2 - pageview
-    cy.visit(`/setup`);
+    cy.visit("/setup");
 
     // 3 - setup/step_seen "welcome"
     expectGoodSnowplowEvent({
@@ -448,7 +448,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
   it("should ignore snowplow failures and work as normal", () => {
     blockSnowplow();
-    cy.visit(`/setup`);
+    cy.visit("/setup");
     skipWelcomePage();
 
     // 1 event is sent from the BE, which isn't blocked by blockSnoplow()

@@ -16,7 +16,8 @@ describe("filtering based on the remapped column name should result in a correct
 
     cy.createNativeQuestion({
       native: {
-        query: `select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"`,
+        query:
+          'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
       },
     }).then(({ body: { id } }) => {
       // Visit the question to first load metadata

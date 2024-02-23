@@ -291,7 +291,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         }; // missing pulse-id
 
         cy.visit({
-          url: `/unsubscribe`,
+          url: "/unsubscribe",
           qs: params,
         });
 
@@ -308,7 +308,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         };
 
         cy.visit({
-          url: `/unsubscribe`,
+          url: "/unsubscribe",
           qs: params,
         });
 
@@ -443,7 +443,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
     });
 
-    it(`should load question binned by "Month of year" or similar granularity (metabase#16918)`, () => {
+    it('should load question binned by "Month of year" or similar granularity (metabase#16918)', () => {
       const questionDetails = {
         name: "16918",
         query: {

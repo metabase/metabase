@@ -70,7 +70,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
   // Rather than going through every single filter type,
   // make sure the default filter works for just one of the available options
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Time", "Month and Year");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
