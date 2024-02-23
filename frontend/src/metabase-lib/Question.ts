@@ -46,9 +46,10 @@ import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/
 import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { isTransientId } from "metabase-lib/queries/utils/card";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import {
-  findColumnIndexForColumnSetting,
-  findColumnSettingIndexForColumn,
+  findColumnIndexesForColumnSettings,
+  findColumnSettingIndexesForColumns,
 } from "metabase-lib/queries/utils/dataset";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -510,21 +511,12 @@ class Question {
     });
   }
 
-  private _syncStructuredQueryColumnsAndSettings(previousQuestion: Question) {
+  private _syncGraphMetricSettings(previousQuestion: Question) {
     const query = this.query();
     const previousQuery = previousQuestion.query();
     const stageIndex = -1;
     const columns = Lib.returnedColumns(query, stageIndex);
     const previousColumns = Lib.returnedColumns(previousQuery, stageIndex);
-
-    if (
-      !_.isEqual(
-        previousQuestion.setting("table.columns"),
-        this.setting("table.columns"),
-      )
-    ) {
-      return this;
-    }
 
     const addedColumns = columns
       .filter(
@@ -571,79 +563,58 @@ class Question {
       }
     }
 
-    const tableColumns = this.setting("table.columns");
-    if (
-      tableColumns &&
-      (addedColumns.length > 0 || removedColumns.length > 0)
-    ) {
-      return this.updateSettings({
-        "table.columns": [
-          ...tableColumns.filter(
-            column =>
-              !addedColumns.some(
-                ({ columnInfo }) => column.name === columnInfo.name,
-              ) &&
-              !removedColumns.some(
-                ({ columnInfo }) => column.name === columnInfo.name,
-              ),
-          ),
-          ...addedColumns.map(({ column, columnInfo }) => {
-            return {
-              name: columnInfo.name,
-              fieldRef: Lib.legacyRef(query, stageIndex, column),
-              enabled: true,
-            };
-          }),
-        ],
-      });
-    }
-
     return this;
   }
 
-  _syncNativeQuerySettings({ data: { cols = [] } = {} }) {
-    const vizSettings = this.setting("table.columns") || [];
+  _syncTableColumnSettings({ data: { cols = [] } = {} }: Dataset) {
+    const columnSettings = this.setting("table.columns") || [];
     // "table.columns" receive a value only if there are custom settings
     // e.g. some columns are hidden. If it's empty, it means everything is visible
-    const isUsingDefaultSettings = vizSettings.length === 0;
-
+    const isUsingDefaultSettings = columnSettings.length === 0;
     if (isUsingDefaultSettings) {
       return this;
     }
 
-    let addedColumns = cols.filter(col => {
-      const hasVizSettings =
-        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
+    const columnIndexes = findColumnIndexesForColumnSettings(
+      cols,
+      columnSettings,
+    );
+    const columnSettingIndexes = findColumnSettingIndexesForColumns(
+      cols,
+      columnSettings,
+    );
+    const addedColumns = cols.filter((col, colIndex) => {
+      const hasVizSettings = columnSettingIndexes[colIndex] >= 0;
       return !hasVizSettings;
     });
-    const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
-      const isMutatingColumn =
-        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
-      return hasColumn && !isMutatingColumn;
-    });
-    const noColumnsRemoved = validVizSettings.length === vizSettings.length;
+    const existingColumnSettings = columnSettings.filter(
+      (setting, settingIndex) => columnIndexes[settingIndex] >= 0,
+    );
+    const noColumnsRemoved =
+      existingColumnSettings.length === columnSettings.length;
 
     if (noColumnsRemoved && addedColumns.length === 0) {
       return this;
     }
 
-    addedColumns = addedColumns.map(col => ({
+    const addedColumnSettings = addedColumns.map(col => ({
       name: col.name,
+      key: getColumnKey(col),
       fieldRef: col.field_ref,
       enabled: true,
     }));
     return this.updateSettings({
-      "table.columns": [...validVizSettings, ...addedColumns],
+      "table.columns": [...existingColumnSettings, ...addedColumnSettings],
     });
   }
 
   syncColumnsAndSettings(previousQuestion?: Question, queryResults?: Dataset) {
-    const query = this.query();
+    let question = this;
+    const query = question.query();
     const { isNative } = Lib.queryDisplayInfo(query);
 
-    if (isNative && queryResults && !queryResults.error) {
-      return this._syncNativeQuerySettings(queryResults);
+    if (queryResults && !queryResults.error) {
+      question = question._syncTableColumnSettings(queryResults);
     }
 
     if (previousQuestion) {
@@ -652,11 +623,11 @@ class Question {
         Lib.queryDisplayInfo(previousQuery);
 
       if (!isNative && !isPreviousQuestionNative) {
-        return this._syncStructuredQueryColumnsAndSettings(previousQuestion);
+        question = question._syncGraphMetricSettings(previousQuestion);
       }
     }
 
-    return this;
+    return question;
   }
 
   /**

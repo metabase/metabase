@@ -613,7 +613,7 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype._syncNativeQuerySettings", () => {
+  describe("Question.prototype._syncTableColumnSettings", () => {
     let question;
     const cols = [
       {
@@ -665,15 +665,15 @@ describe("Question", () => {
 
     describe("when columns have not been defined", () => {
       it("should do nothing when given no cols", () => {
-        question._syncNativeQuerySettings({});
-        question._syncNativeQuerySettings({ data: { cols: [] } });
-        question._syncNativeQuerySettings({ data: { cols } });
+        question._syncTableColumnSettings({});
+        question._syncTableColumnSettings({ data: { cols: [] } });
+        question._syncTableColumnSettings({ data: { cols } });
 
         expect(question.updateSettings).not.toHaveBeenCalled();
       });
 
       it("should do nothing when given cols", () => {
-        question._syncNativeQuerySettings({ data: { cols } });
+        question._syncTableColumnSettings({ data: { cols } });
 
         expect(question.updateSettings).not.toHaveBeenCalled();
       });
@@ -689,7 +689,7 @@ describe("Question", () => {
       });
 
       it("should handle the addition and removal of columns", () => {
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [
               ...cols.slice(1),
@@ -715,6 +715,7 @@ describe("Question", () => {
             ...vizSettingCols.slice(1),
             {
               name: "foo",
+              key: '["name","foo"]',
               fieldRef: [
                 "field",
                 "foo",
@@ -729,7 +730,7 @@ describe("Question", () => {
       });
 
       it("should handle the mutation of extraneous column props", () => {
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [
               {
@@ -742,7 +743,7 @@ describe("Question", () => {
                     "base-type": "type/Float",
                   },
                 ],
-                name: "foo",
+                name: "num",
                 base_type: "type/Float",
               },
               ...cols.slice(1),
@@ -754,7 +755,7 @@ describe("Question", () => {
       });
 
       it("should handle the mutation of a field_ref on an existing column", () => {
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [
               {
@@ -780,6 +781,7 @@ describe("Question", () => {
             ...vizSettingCols.slice(1),
             {
               name: "foo",
+              key: '["name","foo"]',
               fieldRef: ["field", "foo", { "base-type": "type/Integer" }],
               enabled: true,
             },
