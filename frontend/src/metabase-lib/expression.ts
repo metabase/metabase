@@ -13,6 +13,10 @@ import type {
   Query,
 } from "./types";
 
+type ErrorWithMessage = {
+  message: string;
+};
+
 export function expression(
   query: Query,
   stageIndex: number,
@@ -77,4 +81,14 @@ export function legacyExpressionForExpressionClause(
     stageIndex,
     expressionClause,
   );
+}
+
+export function diagnoseExpression(
+  query: Query,
+  stageIndex: number,
+  expressionMode: "expression" | "aggregation" | "filter",
+  mbql: any,
+  expressionPosition?: number,
+): ErrorWithMessage | null {
+  return ML.diagnose_expression(query, stageIndex, expressionMode, mbql, expressionPosition);
 }

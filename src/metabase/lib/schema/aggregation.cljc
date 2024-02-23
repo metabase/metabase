@@ -100,7 +100,7 @@
    :mbql.clause/cum-sum
    :mbql.clause/sum-where
    :mbql.clause/var
-   any?])
+   ::expression/expression])
 
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])
