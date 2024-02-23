@@ -691,13 +691,13 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   llm: {
     name: t`AI Features`,
-    getHidden: settings => !PLUGIN_IS_EE_BUILD.isEEBuild(),
+    getHidden: () => !PLUGIN_IS_EE_BUILD.isEEBuild(),
     order: 131,
     settings: [
       {
         key: "ee-openai-api-key",
         display_name: t`EE OpenAI API Key`,
-        description: "API key used for Enterprise AI features",
+        description: t`API key used for Enterprise AI features`,
         type: "string",
       },
     ],
