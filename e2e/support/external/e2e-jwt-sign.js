@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/*eslint-disable import/no-commonjs */
 
 const process = require("process");
 const jwt = require("jsonwebtoken");
