@@ -1,22 +1,24 @@
-import type { LocationDescriptor } from "history";
-import { getIn } from "icepick";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useMount } from "react-use";
+import { getIn } from "icepick";
+import type { LocationDescriptor } from "history";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
-import { isActionCard } from "metabase/actions/utils";
-import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import { useMount } from "react-use";
+import type { IconProps } from "metabase/ui";
+
+import { isJWT } from "metabase/lib/utils";
+
+import { mergeSettings } from "metabase/visualizations/lib/settings";
+
 import {
   getDashcardResultsError,
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
-import { isJWT } from "metabase/lib/utils";
-import type { IconProps } from "metabase/ui";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+
+import { isActionCard } from "metabase/actions/utils";
+
+import ErrorBoundary from "metabase/ErrorBoundary";
+
 import type {
   Card,
   CardId,
@@ -31,14 +33,20 @@ import type {
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
-import { DashCardRoot } from "./DashCard.styled";
-import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
-import { DashCardVisualization } from "./DashCardVisualization";
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+
+import type Metadata from "metabase-lib/metadata/Metadata";
+
 import type {
   CardSlownessStatus,
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
+import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
+import { DashCardVisualization } from "./DashCardVisualization";
+import { DashCardRoot } from "./DashCard.styled";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
