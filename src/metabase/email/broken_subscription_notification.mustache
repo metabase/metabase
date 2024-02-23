@@ -1,0 +1,24 @@
+{{> metabase/email/_header }}
+  <div style="text-align: center; margin: 0 auto; max-width: 500px">
+    <div style="text-align: left">
+      <h2 style="font-weight: normal; color: #4C545B; line-height: 34px;">Subscription to {{dashboardName}} has been removed</h2>
+      <p>A subscription created by <a href="mailto:{{subscriptionCreatorEmail}}">{{subscriptionCreatorName}}</a>
+      to the dashboard "{{dashboardName}}", created by <a href="mailto:{{dashboardCreatorEmail}}">{{dashboardCreatorName}}</a>,
+      was removed because one or more dashboard parameters were removed that are used by the subscription.</p>
+
+        <p>These parameters and values were removed and are no longer valid:</p>
+        <ul>
+          {{#badParameters}}
+            <li>Parameter: {{name}} (Value: {{value}})</li>
+          {{/badParameters}}
+        </ul>
+
+        <p>These recipients will no longer receive this subscription:</p>
+        <ul>
+          {{#affectedUsers}}
+            <li><a href="mailto:{{email}}">{{common_name}}</a></li>
+          {{/affectedUsers}}
+        </ul>
+    </div>
+  </div>
+{{> metabase/email/_footer }}

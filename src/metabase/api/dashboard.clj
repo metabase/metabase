@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [compojure.core :refer [DELETE GET POST PUT]]
+   [honey.sql :as sql]
    [medley.core :as m]
    [metabase.actions.execution :as actions.execution]
    [metabase.analytics.snowplow :as snowplow]
@@ -11,6 +12,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.automagic-dashboards.populate :as populate]
+   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -27,6 +29,7 @@
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
+   [metabase.models.pulse :as pulse]
    [metabase.models.query :as query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -598,6 +601,100 @@
                             :num-tabs       (count created-tab-ids)
                             :total-num-tabs total-num-tabs})))
 
+;;;;;;;;;;;; Bad pulse check & repair
+
+(defn- bad-pulse-notification-data
+  "Given a pulse and bad parameters, return relevant notification data:
+  - The name of the pulse
+  - Which selected parameter values are broken
+  - The user info for the creator of the pulse
+  - The users affected by the pulse"
+  [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]} bad-param-ids]
+  (let [bad-parameters           (let [bad-id-set (set bad-param-ids)]
+                                   (->> parameters
+                                        (keep
+                                          (fn [{:keys [id name value]}]
+                                            (when (bad-id-set id)
+                                              {:name name :value value})))
+                                        (sort-by :name)
+                                        vec))
+        creator                  (t2/select-one [:model/User :first_name :last_name :email] creator_id)
+        pulse-channel-ids        (mapv :id (t2/select [:model/PulseChannel :id] :pulse_id [:= bad-pulse-id]))
+        ;; When checks are defensive as in () causes SQL exceptions
+        pulse-channel-recipients (when (seq pulse-channel-ids)
+                                   (t2/select :model/PulseChannelRecipient :pulse_channel_id [:in pulse-channel-ids]))
+        affected-users           (when (seq pulse-channel-recipients)
+                                   (t2/select [:model/User :first_name :last_name :email]
+                                     :id [:in (map :user_id pulse-channel-recipients)]))]
+    {:pulse-id       bad-pulse-id
+     :pulse-name     pulse-name
+     :bad-parameters bad-parameters
+     :pulse-creator  creator
+     :affected-users affected-users}))
+
+(defn- params->pulse-ids
+  "Given a seq of parameter ids, return the pulse ids they belong to"
+  [parameter-ids]
+  (when (seq parameter-ids)
+    (->> (t2/query
+           (sql/format
+             {:with            [[:params {:select [[:id]
+                                                   [[:raw "json_array_elements(parameters::json) ->> 'id'"]
+                                                    :parameter_id]]
+                                          :from   :pulse}]]
+              :select-distinct [:id]
+              :where           [:in :parameter_id parameter-ids]
+              :from            :params}))
+         (map :id)
+         seq)))
+
+(defn- broken-parameter-ids
+  "Identify and return any parameter ids used in a subscription that are no longer extant on the dashboard."
+  [dashboard-id original-dashboard-params]
+  (when (seq original-dashboard-params)
+    (let [{:keys [resolved-params]} (t2/hydrate
+                                      (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
+                                      :resolved-params)
+          dashboard-params (set (keys resolved-params))
+          pulse-data       (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)
+          pulse-params     (into
+                             #{}
+                             (mapcat (comp (partial map :id) :parameters))
+                             pulse-data)]
+      (seq (set/difference pulse-params dashboard-params)))))
+
+(defn- broken-subscription-data
+  "Given a dashboard id and original parameters, return data (if any) on any broken subscriptions. This will be a seq
+  of maps, each containing:
+  - The pulse id that was broken
+  - name and email data for the dashboard creator, pulse creator, and affected recipients
+  - Basic descriptive data on the affected dashboard, pulse, and parameters for use in downstream notifications"
+  [dashboard-id original-dashboard-params]
+  (when-some [broken-link-ids (broken-parameter-ids dashboard-id original-dashboard-params)]
+    (let [{dashboard-name        :name
+           dashboard-description :description
+           dashboard-creator     :creator} (t2/hydrate
+                                             (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id)
+                                             :creator)]
+      (for [broken-pulse (t2/select :model/Pulse :id [:in (params->pulse-ids broken-link-ids)])]
+        (assoc
+          (bad-pulse-notification-data broken-pulse broken-link-ids)
+          :dashboard-name dashboard-name
+          :dashboard-description dashboard-description
+          :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name]))))))
+
+(defn- handle-broken-subscriptions
+  "Given a dashboard id and original parameters, determine if any of the subscriptions are broken (we've removed params
+  that subscriptions require). If so, delete the subscriptions and notify the dashboard and pulse creators."
+  [dashboard-id original-dashboard-params]
+  (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
+    ;; Archive the pulse
+    (pulse/update-pulse! {:id pulse-id :archived true})
+    ;; Let the pulse and subscription creator know about the broken pulse
+    (messages/send-broken-subscription-notification! broken-subscription)))
+
+;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
+
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs] :as dash-updates}]
@@ -605,6 +702,10 @@
     {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
     (let [current-dash               (api/write-check Dashboard id)
+          {original-params :resolved-params} (t2/hydrate
+                                               (t2/select-one :model/Dashboard id)
+                                               [:dashcards :card]
+                                               :resolved-params)
           changes-stats              (atom nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
@@ -623,7 +724,8 @@
                                    :present #{:description :position :width :collection_id :collection_position :cache_ttl}
                                    :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                               :embedding_params :archived :auto_apply_filters}))]
-              (t2/update! Dashboard id updates))
+              (t2/update! Dashboard id updates)
+              (handle-broken-subscriptions id original-params))
             (when update-dashcards-and-tabs?
               (when (not (false? (:archived false)))
                 (api/check-not-archived current-dash))

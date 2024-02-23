@@ -14,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
+   [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
@@ -711,3 +712,28 @@
                                  (merge (common-context)
                                         {:logoHeader  true
                                          :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))
+
+(defn send-broken-subscription-notification!
+  "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
+  [{:keys [dashboard-name pulse-creator dashboard-creator affected-users bad-parameters]}]
+  (email/send-message!
+    :subject (trs "Dashboard subscription removed")
+    :recipients (distinct (map :email [pulse-creator dashboard-creator]))
+    :message-type :html
+    :message (stencil/render-file
+               "metabase/email/broken_subscription_notification.mustache"
+               (merge (common-context)
+                      {:dashboardName            dashboard-name
+                       :badParameters            (map
+                                                   (fn [{:keys [value] :as param}]
+                                                     (cond-> param
+                                                       (coll? value)
+                                                       (update :value #(lib.util/join-strings-with-conjunction
+                                                                         (i18n/tru "or")
+                                                                         %))))
+                                                   bad-parameters)
+                       :dashboardCreatorName     (:common_name dashboard-creator)
+                       :dashboardCreatorEmail    (:email dashboard-creator)
+                       :subscriptionCreatorName  (:common_name pulse-creator)
+                       :subscriptionCreatorEmail (:email pulse-creator)
+                       :affectedUsers            affected-users}))))

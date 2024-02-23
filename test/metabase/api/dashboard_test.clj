@@ -4119,3 +4119,64 @@
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403
                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))))
+
+(deftest handle-broken-subscriptions-due-to-bad-parameters-test
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+    (let [param {:name "Source"
+                 :slug "source"
+                 :id   "_SOURCE_PARAM_ID_"
+                 :type :string/=}]
+      (mt/dataset test-data
+        (mt/with-temp
+          [:model/Card {card-id :id} {:name          "Native card"
+                                      :database_id   (mt/id)
+                                      :dataset_query {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (mt/id :people)
+                                                                 :limit        5
+                                                                 :fields       [[:field (mt/id :people :id)
+                                                                                 {:base-type :type/BigInteger}]
+                                                                                [:field (mt/id :people :name)
+                                                                                 {:base-type :type/Text}]
+                                                                                [:field (mt/id :people :source)
+                                                                                 {:base-type :type/Text}]]}}
+                                      :dataset       true}
+           :model/Dashboard {dash-id :id} {:name       "My Awesome Dashboard"
+                                           :parameters [param]}
+           :model/DashboardCard {dash-card-id :id} {:dashboard_id       dash-id
+                                                    :card_id            card-id
+                                                    :parameter_mappings [{:parameter_id "_SOURCE_PARAM_ID_"
+                                                                          :card_id      card-id
+                                                                          :target       [:dimension
+                                                                                         [:field (mt/id :people :source)
+                                                                                          {:base-type :type/Text}]]
+                                                                          }]}
+           :model/Pulse {pulse-id :id} {:name         "Test Pulse"
+                                        :dashboard_id dash-id
+                                        :creator_id   (mt/user->id :trashbird)
+                                        :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
+           :model/PulseCard _ {:pulse_id          pulse-id
+                               :card_id           card-id
+                               :dashboard_card_id dash-card-id}
+           :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                       :pulse_id     pulse-id
+                                                       :enabled      true}
+           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                           :user_id          (mt/user->id :rasta)}
+           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                           :user_id          (mt/user->id :crowberto)}]
+          (testing "The pulse is active"
+            (is (false? (t2/select-one-fn :archived :model/Pulse pulse-id))))
+          (mt/with-fake-inbox
+            (let [{:keys [parameters]} (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id)
+                                                                                 {:parameters []}))
+                  html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
+              (testing "The dashboard parameters were removed"
+                (is (empty? parameters)))
+              (testing "The broken pulse was archived"
+                (is (true? (t2/select-one-fn :archived :model/Pulse pulse-id))))
+              (testing "A notification email was sent that the subscription was removed"
+                (is (true? (str/includes? html-body "Subscription to My Awesome Dashboard has been removed"))))
+              (testing "The dashboard and pulse creators were emailed about the removed pulse"
+                (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
+                       (set (keys @mt/inbox))))))))))))
