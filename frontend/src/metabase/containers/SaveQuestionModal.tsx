@@ -72,7 +72,7 @@ interface SaveQuestionModalProps {
   initialCollectionId?: CollectionId;
 }
 
-export interface FormValues {
+interface FormValues {
   saveType: string;
   collection_id: CollectionId | null | undefined;
   name: string;
