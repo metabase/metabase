@@ -86,7 +86,7 @@
                 "settings"    {"database-enable-actions"      true
                                "unaggregated-query-row-limit" 2000}
                 "id"          3
-                "details"     "**MetabaseDatabaseDetails**"}
+                "details"     (encode-decode database/protected-db-details)}
                (encode-decode pg-db)))))
     (testing "non-authenticated users shouldn't see settings with authenticated visibility"
       (mw.session/with-current-user nil
@@ -94,7 +94,7 @@
                 "name"        "testpg"
                 "settings"    {"database-enable-actions" true}
                 "id"          3
-                "details"     "**MetabaseDatabaseDetails**"}
+                "details"     (encode-decode database/protected-db-details)}
                (encode-decode pg-db)))))))
 
 (deftest driver-supports-actions-and-database-enable-actions-test
@@ -160,14 +160,14 @@
                     "engine"      "postgres"
                     "settings"    {"database-enable-actions" true}
                     "id"          3
-                    "details"     "**MetabaseDatabaseDetails**"}
+                    "details"     (encode-decode database/protected-db-details)}
                    (encode-decode pg-db))))
           (is (= {"description" nil
                   "name"        "testbq"
                   "id"          2
                   "engine"      "bigquery-cloud-sdk"
                   "settings"    {"database-enable-actions" true}
-                  "details"     "**MetabaseDatabaseDetails**"}
+                  "details"     (encode-decode database/protected-db-details)}
                  (encode-decode bq-db)))))
 
       (testing "details are obfuscated for admin users"
@@ -209,16 +209,16 @@
         (let [redact (fn [m] (encode-decode (mi/instance :model/Database m)))]
           (is (= {"id" 1 "name" "testbg"}
                  (redact {:id 1 :name "testbg"})))
-          (is (= {"id" 1 "name" "testbg" "details" "**MetabaseDatabaseDetails**"}
+          (is (= {"id" 1 "name" "testbg" "details" (encode-decode database/protected-db-details)}
                  (redact {:id 1 :name "testbg" :details {}})))
-          (is (= {"id" 1 "name" "testbg" "settings" "**MetabaseDatabaseSettings**"}
+          (is (= {"id" 1 "name" "testbg" "settings" (encode-decode database/protected-db-settings)}
                  (redact {:id 1 :name "testbg" :settings "not-a-map"})))
           (is (= {"id" 1 "name" "testbg" "settings" {}}
                  (redact {:id 1 :name "testbg" :settings {}})))
           (is (= {"id" 1
                   "name" "testbg"
-                  "details" "**MetabaseDatabaseDetails**"
-                  "settings" "**MetabaseDatabaseSettings**"}
+                  "details" (encode-decode database/protected-db-details)
+                  "settings" (encode-decode database/protected-db-settings)}
                  (redact {:id 1 :name "testbg" :details {} :settings "not-a-map"}))))))))
 
 ;; register a dummy "driver" for the sole purpose of running sensitive-fields-test
