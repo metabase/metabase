@@ -8,7 +8,7 @@ import {
   canonicalCollectionId,
 } from "metabase/collections/utils";
 import {
-  type EntityPickerModalOptions,
+  type CollectionPickerOptions,
   CollectionPickerModal,
 } from "metabase/common/components/EntityPicker";
 import CollectionName from "metabase/containers/CollectionName";
@@ -74,7 +74,7 @@ function FormCollectionPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
-  const options = useMemo<EntityPickerModalOptions>(
+  const options = useMemo<CollectionPickerOptions>(
     () => ({
       showPersonalCollections: filterPersonalCollections !== "exclude",
       showRootCollection: filterPersonalCollections !== "only",

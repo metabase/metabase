@@ -21,12 +21,13 @@ import type {
   TypeWithModel,
   TisFolder,
 } from "../../types";
+import type { EntityPickerModalOptions } from "../EntityPickerModal";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
 import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
 
-export type CollectionPickerOptions = {
+export type CollectionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
   namespace?: "snippets";

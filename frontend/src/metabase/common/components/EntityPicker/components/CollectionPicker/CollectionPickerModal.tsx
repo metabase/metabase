@@ -5,17 +5,20 @@ import type { IconName } from "metabase/ui";
 import { Button, Icon } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
-import type { EntityPickerOptions, CollectionPickerItem } from "../../types";
+import type { CollectionPickerItem } from "../../types";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
 
-import { CollectionPicker } from "./CollectionPicker";
+import {
+  CollectionPicker,
+  type CollectionPickerOptions,
+} from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
 interface CollectionPickerModalProps {
   title: string;
   onChange: (item: CollectionPickerItem) => void;
   onClose: () => void;
-  options: EntityPickerOptions;
+  options: CollectionPickerOptions;
   value: Pick<CollectionPickerItem, "id" | "model">;
 }
 
