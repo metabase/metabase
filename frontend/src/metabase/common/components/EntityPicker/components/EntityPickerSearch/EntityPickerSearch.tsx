@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { VariableSizeItemsVirtualizedList } from "metabase/components/VirtualizedList";
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
+import { VariableSizeItemsVirtualizedList } from "metabase/components/VirtualizedList";
 import Search from "metabase/entities/search";
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 import { useDispatch } from "metabase/lib/redux";
@@ -14,7 +14,7 @@ import type {
   SearchResults as SearchResultsType,
 } from "metabase-types/api";
 
-import type { CollectionPickerItem } from "../../types";
+import type { TypeWithModel } from "../../types";
 
 import { EntityPickerSearchResult } from "./EntityPickerSearch.styled";
 
@@ -67,14 +67,14 @@ export function EntityPickerSearchInput({
   );
 }
 
-export const EntityPickerSearchResults = ({
+export const EntityPickerSearchResults = <TItem extends TypeWithModel>({
   searchResults,
   onItemSelect,
   selectedItem,
 }: {
   searchResults: SearchResultType[] | null;
-  onItemSelect: (item: WrappedResult) => void;
-  selectedItem: CollectionPickerItem | null;
+  onItemSelect: (item: TItem) => void;
+  selectedItem: TItem | null;
 }) => {
   const dispatch = useDispatch();
 
@@ -91,7 +91,9 @@ export const EntityPickerSearchResults = ({
               <EntityPickerSearchResult
                 key={item.model + item.id}
                 result={Search.wrapEntity(item, dispatch)}
-                onClick={onItemSelect}
+                onClick={(item: WrappedResult) => {
+                  onItemSelect(item as unknown as TItem);
+                }}
                 isSelected={
                   selectedItem?.id === item.id &&
                   selectedItem?.model === item.model

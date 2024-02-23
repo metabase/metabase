@@ -1,13 +1,13 @@
 import { Tabs, Icon } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
-import type { EntityTab, CollectionPickerItem } from "../../types";
+import type { EntityTab, TypeWithModel } from "../../types";
 import {
   EntityPickerSearchTab,
   EntityPickerSearchResults,
 } from "../EntityPickerSearch";
 
-export const TabsView = ({
+export const TabsView = <TItem extends TypeWithModel>({
   tabs,
   onItemSelect,
   searchQuery,
@@ -15,10 +15,10 @@ export const TabsView = ({
   selectedItem,
 }: {
   tabs: EntityTab[];
-  onItemSelect: (item: CollectionPickerItem) => void;
+  onItemSelect: (item: TItem) => void;
   searchQuery: string;
   searchResults: SearchResult[] | null;
-  selectedItem: CollectionPickerItem | null;
+  selectedItem: TItem | null;
 }) => {
   const hasSearchTab = !!searchQuery;
   const defaultTab = hasSearchTab ? { model: "search" } : tabs[0];

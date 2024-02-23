@@ -19,6 +19,10 @@ interface CollectionPickerModalProps {
   value: Pick<CollectionPickerItem, "id" | "model">;
 }
 
+const canSelectItem = (item: CollectionPickerItem | null): boolean => {
+  return !!item && item?.can_write !== false;
+};
+
 export const CollectionPickerModal = ({
   title = t`Choose a collection`,
   onChange,
@@ -93,6 +97,7 @@ export const CollectionPickerModal = ({
       <EntityPickerModal
         title={title}
         onItemSelect={handleItemSelect}
+        canSelectItem={canSelectItem(selectedItem)}
         onConfirm={handleConfirm}
         onClose={onClose}
         selectedItem={selectedItem}

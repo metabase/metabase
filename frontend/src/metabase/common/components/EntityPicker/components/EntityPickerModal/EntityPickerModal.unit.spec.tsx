@@ -49,6 +49,7 @@ const setup = ({
     <EntityPickerModal
       title={title}
       onItemSelect={onItemSelect}
+      canSelectItem={true}
       onClose={onClose}
       tabs={tabs}
       selectedItem={selectedItem}

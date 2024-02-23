@@ -9,7 +9,7 @@ import type { SearchResult } from "metabase-types/api";
 import type {
   EntityPickerOptions,
   EntityTab,
-  CollectionPickerItem,
+  TypeWithModel,
 } from "../../types";
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
 
@@ -34,11 +34,12 @@ export const defaultOptions: EntityPickerModalOptions = {
   allowCreateNew: true,
 };
 
-export interface EntityPickerModalProps {
+export interface EntityPickerModalProps<TItem> {
   title: string;
-  selectedItem: CollectionPickerItem | null;
+  selectedItem: TItem | null;
   onConfirm: () => void;
-  onItemSelect: (item: CollectionPickerItem) => void;
+  onItemSelect: (item: TItem) => void;
+  canSelectItem: boolean;
   onClose: () => void;
   tabs: EntityTab[];
   options?: Partial<EntityPickerOptions>;
@@ -47,9 +48,10 @@ export interface EntityPickerModalProps {
   trapFocus?: boolean;
 }
 
-export function EntityPickerModal({
+export function EntityPickerModal<TItem extends TypeWithModel>({
   title = t`Choose an item`,
   onItemSelect,
+  canSelectItem,
   onConfirm,
   selectedItem,
   onClose,
@@ -58,7 +60,7 @@ export function EntityPickerModal({
   actionButtons = [],
   searchResultFilter,
   trapFocus = true,
-}: EntityPickerModalProps) {
+}: EntityPickerModalProps<TItem>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
@@ -121,7 +123,7 @@ export function EntityPickerModal({
               <ButtonBar
                 onConfirm={onConfirm}
                 onCancel={onClose}
-                canConfirm={!!selectedItem && selectedItem?.can_write !== false}
+                canConfirm={canSelectItem}
                 actionButtons={actionButtons}
               />
             )}
