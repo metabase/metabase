@@ -479,6 +479,13 @@ class Question {
       return this;
     }
 
+    const hasNativeColumns =
+      cols.some(column => column.source === "native") ||
+      prevCols.some(column => column.source === "native");
+    if (hasNativeColumns) {
+      return this;
+    }
+
     const metricColumnNameByKey = Object.fromEntries(
       cols
         .filter(column => column.source === "aggregation")
