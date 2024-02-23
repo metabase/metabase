@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { modal, popover, restore } from "e2e/support/helpers";
+import { popover, restore } from "e2e/support/helpers";
 
 import { turnIntoModel } from "../helpers/e2e-models-helpers";
 
@@ -41,7 +41,7 @@ describe("issue 26091", () => {
       cy.findByText("Save").click();
       cy.wait("@saveQuestion");
     });
-    modal().within(() => {
+    cy.get("#QuestionSavedModal").within(() => {
       cy.button("Not now").click();
     });
     turnIntoModel();

@@ -182,7 +182,9 @@ describe("scenarios > dashboard", () => {
       cy.log("Save new question from an ad-hoc query");
       openProductsTable();
       cy.findByTestId("qb-header").findByText("Save").click();
-      modal().button("Save").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+      });
       cy.wait("@saveQuestion");
 
       cy.log("Add this new question to a dashboard created on the fly");
