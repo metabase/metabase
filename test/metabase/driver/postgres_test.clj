@@ -220,7 +220,7 @@
                         "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
                         "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
             (jdbc/execute! conn-spec stmt))
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/db) {:scan :schema})
           (is (= [[42]]
                  (mt/rows (qp/process-query
                            {:database (u/the-id (mt/db))
