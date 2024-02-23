@@ -151,7 +151,7 @@ class ParameterValueWidget extends Component {
     ) {
       return (
         <WidgetStatusIcon
-          name="refresh"
+          name="time_history"
           onClick={() => setParameterValueToDefault(this.props.parameter.id)}
         />
       );
