@@ -6,7 +6,7 @@
     "no-console": 0,
     "@typescript-eslint/no-namespace": "off",
     "cypress/no-async-tests": "error",
-    "quotes": [2, "double", { "avoidEscape": true }]
+    "quotes": ["error", "double", { "avoidEscape": true }]
   },
   "env": {
     "cypress/globals": true,
