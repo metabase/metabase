@@ -74,25 +74,17 @@ function FormCollectionPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
-  // Search API doesn't support collection namespaces yet
-  const hasSearch = type === "collections";
-  const isSnippetCollection = type === "snippet-collections";
-
   const options = useMemo<EntityPickerModalOptions>(
     () => ({
       showPersonalCollections: filterPersonalCollections !== "exclude",
       showRootCollection: filterPersonalCollections !== "only",
-      showSearch: hasSearch,
+      // Search API doesn't support collection namespaces yet
+      showSearch: type === "collections",
       hasConfirmButtons: true,
-      namespace: isSnippetCollection ? "snippets" : undefined,
+      namespace: type === "snippet-collections" ? "snippets" : undefined,
       allowCreateNew: showCreateNewCollectionOption,
     }),
-    [
-      filterPersonalCollections,
-      hasSearch,
-      isSnippetCollection,
-      showCreateNewCollectionOption,
-    ],
+    [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
 
   const handleChange = useCallback(
