@@ -1,4 +1,5 @@
 DELETE FROM permissions WHERE object LIKE '/db/%' AND object NOT LIKE '/db/%/native/';
+DELETE FROM permissions WHERE object LIKE '/block/db/%';
 
 INSERT INTO permissions (object, group_id)
 SELECT concat('/db/', dp.db_id, '/schema/'),
