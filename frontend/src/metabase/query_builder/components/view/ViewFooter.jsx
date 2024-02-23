@@ -106,9 +106,7 @@ const ViewFooter = ({
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" />,
-          isNative && result != null && (
-            <ExecutionTime time={result.running_time} />
-          ),
+          isNative && <ExecutionTime time={result.running_time} />,
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"
