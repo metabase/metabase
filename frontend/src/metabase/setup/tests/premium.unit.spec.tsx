@@ -1,5 +1,7 @@
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel", "expectSectionsToHaveLabelsInOrder"] }] */
 
+import { screen } from "@testing-library/react";
+
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
@@ -29,5 +31,13 @@ describe("setup (EE, hosting feature)", () => {
     expectSectionToHaveLabel("Usage data preferences", "5");
 
     expectSectionsToHaveLabelsInOrder();
+  });
+
+  it("should not render the license activation step", async () => {
+    await setupPremium();
+    skipWelcomeScreen();
+    expect(
+      screen.queryByText("Activate your commercial license"),
+    ).not.toBeInTheDocument();
   });
 });
