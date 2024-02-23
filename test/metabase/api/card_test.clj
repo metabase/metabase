@@ -224,10 +224,10 @@
                                                     :value  1}]}))))))
         (testing "the field filter should not apply if the parameter has a nil value"
           (is (= [[100]]
-                 (mt/rows (request {:parameters [{:id "_VENUE_ID_",
-                                                   :target ["dimension" ["template-tag" "venue_id"]],
-                                                   :type "id",
-                                                   :value nil}]})))))))))
+                 (mt/rows (request {:parameters [{:id     "_VENUE_ID_",
+                                                  :target ["dimension" ["template-tag" "venue_id"]],
+                                                  :type   "id",
+                                                  :value  nil}]})))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
