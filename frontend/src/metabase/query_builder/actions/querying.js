@@ -13,14 +13,14 @@ import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 
 import {
+  getIsResultDirty,
   getIsRunning,
   getOriginalQuestion,
+  getOriginalQuestionWithParameterValues,
   getQueryBuilderMode,
   getQueryResults,
   getQuestion,
   getTimeoutId,
-  getIsResultDirty,
-  getOriginalQuestionWithParameterValues,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
@@ -110,7 +110,7 @@ export const runQuestionQuery = ({
 
     if (shouldUpdateUrl) {
       const isAdHocModel =
-        question.isDataset() &&
+        question.type() === "model" &&
         isAdHocModelQuestion(question, originalQuestion);
 
       dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
@@ -177,14 +177,10 @@ export const queryCompleted = (question, queryResults) => {
     const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      const { isNative } = Lib.queryDisplayInfo(question.query());
-
-      if (isNative) {
-        question = question.syncColumnsAndSettings(
-          originalQuestion,
-          queryResults[0],
-        );
-      }
+      question = question.syncColumnsAndSettings(
+        originalQuestion,
+        queryResults[0],
+      );
 
       question = question.maybeResetDisplay(
         data,

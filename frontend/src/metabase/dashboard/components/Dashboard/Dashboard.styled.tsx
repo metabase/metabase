@@ -82,6 +82,42 @@ export const DashboardHeaderContainer = styled.header<{
     `}
 `;
 
+export const CardsContainer = styled(FullWidthContainer)`
+  margin-top: 8px;
+`;
+
+function getParametersWidgetBgColor(isNightMode: boolean) {
+  return isNightMode ? color("bg-black") : color("bg-light");
+}
+
+export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  isSticky: boolean;
+  hasScroll: boolean;
+  isNightMode: boolean;
+}>`
+  background-color: ${props => getParametersWidgetBgColor(props.isNightMode)};
+  border-bottom: 1px solid
+    ${props => getParametersWidgetBgColor(props.isNightMode)};
+  padding-top: ${space(1)};
+  padding-bottom: ${space(1)};
+  /* z-index should be higher than in dashcards */
+  z-index: 3;
+  top: 0;
+  left: 0;
+
+  transition: background-color 1s linear, border-color 1s linear,
+    color 1s linear;
+
+  /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
+  ${({ isNightMode, isSticky, hasScroll }) =>
+    isSticky &&
+    css`
+      position: sticky;
+      border-bottom: 1px solid
+        ${hasScroll ? color("border") : getParametersWidgetBgColor(isNightMode)};
+    `}
+`;
+
 export const ParametersAndCardsContainer = styled.div<{
   shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
 }>`
@@ -91,38 +127,22 @@ export const ParametersAndCardsContainer = styled.div<{
     shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
   overflow-x: auto;
   padding-bottom: 40px;
-`;
-
-export const FIXED_WIDTH = "1048px";
-
-export const ParametersWidgetContainer = styled(FullWidthContainer)<{
-  isSticky: boolean;
-  hasScroll: boolean;
-}>`
-  background-color: ${color("bg-light")};
-  border-bottom: 1px solid ${color("bg-light")};
-  padding-top: ${space(1)};
-  padding-bottom: ${space(1)};
-  /* z-index should be higher than in dashcards */
-  z-index: 3;
-  top: 0;
-  min-width: ${FIXED_WIDTH};
-
-  /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
-  ${({ isSticky, hasScroll }) =>
-    isSticky &&
-    css`
-      position: sticky;
-      border-bottom: 1px solid
-        ${hasScroll ? color("border") : color("bg-light")};
-    `}
-`;
-
-export const CardsContainer = styled(FullWidthContainer)`
-  margin-top: 8px;
 
   &.${SAVING_DOM_IMAGE_CLASS} {
-    padding-bottom: 20px;
+    ${ParametersWidgetContainer} {
+      background-color: transparent;
+      border-bottom: none;
+
+      margin-top: 1rem;
+
+      legend {
+        top: -12px;
+      }
+    }
+
+    ${CardsContainer} {
+      padding-bottom: 20px;
+    }
 
     ${DashCard.root} {
       box-shadow: none;
@@ -131,6 +151,7 @@ export const CardsContainer = styled(FullWidthContainer)`
   }
 `;
 
+export const FIXED_WIDTH = "1048px";
 export const MaxWidthContainer = styled.div<{
   isFixedWidth: boolean;
 }>`

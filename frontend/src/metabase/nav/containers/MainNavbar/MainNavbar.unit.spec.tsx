@@ -18,15 +18,15 @@ import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockDatabase,
   createMockDashboard,
+  createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
 import type { DashboardState } from "metabase-types/store";
 import {
-  createMockState,
   createMockDashboardState,
   createMockQueryBuilderState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
 import MainNavbar from "./MainNavbar";
@@ -402,7 +402,7 @@ describe("nav > containers > MainNavbar", () => {
     it("should highlight model's collection when on model detail page", async () => {
       const model = createMockCard({
         collection_id: TEST_COLLECTION.id as number,
-        dataset: true,
+        type: "model",
       });
       await setup({
         route: "/model/:slug/detail",

@@ -23,7 +23,7 @@ const BASE_MODEL = {
   description: null,
   collection_id: null,
   can_write: true,
-  dataset: true,
+  type: "model",
   display: "table",
   visualization_settings: {},
   dataset_query: {

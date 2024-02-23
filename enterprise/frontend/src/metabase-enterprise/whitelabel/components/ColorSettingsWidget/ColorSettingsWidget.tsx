@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { originalColors } from "metabase/lib/colors/palette";
 
-import ColorSettings from "../ColorSettings";
+import { ColorSettings } from "../ColorSettings";
 
 import type { ColorSetting } from "./types";
 

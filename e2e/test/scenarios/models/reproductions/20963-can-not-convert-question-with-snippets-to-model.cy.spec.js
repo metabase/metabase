@@ -7,7 +7,7 @@ import {
   openQuestionActions,
 } from "e2e/support/helpers";
 
-const snippetName = `string 'test'`;
+const snippetName = "string 'test'";
 const questionName = "Converting questions with snippets to models";
 
 describe("issue 20963", () => {
@@ -27,13 +27,13 @@ describe("issue 20963", () => {
 
     modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        `'test'`,
+        "'test'",
       );
       cy.findByLabelText("Give your snippet a name").type(snippetName);
       cy.findByText("Save").click();
     });
 
-    cy.get("@editor").type(`{moveToStart}select `);
+    cy.get("@editor").type("{moveToStart}select ");
 
     saveQuestion(questionName, { wrapId: true });
 

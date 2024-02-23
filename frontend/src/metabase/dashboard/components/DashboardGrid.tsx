@@ -43,6 +43,7 @@ import type {
   ParameterId,
   ParameterValueOrArray,
   VisualizationSettings,
+  DashboardCard,
 } from "metabase-types/api";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
@@ -86,7 +87,7 @@ interface DashboardGridProps {
   isXray: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
-  clickBehaviorSidebarDashcard: QuestionDashboardCard | null;
+  clickBehaviorSidebarDashcard: DashboardCard | null;
   width: number;
   mode: Mode;
   metadata: Metadata;
@@ -400,9 +401,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
       replaceCard({ dashcardId: replaceCardModalDashCard.id, nextCardId });
 
-      const hadModelCard = replaceCardModalDashCard.card.dataset;
       addUndo({
-        message: hadModelCard ? t`Model replaced` : t`Question replaced`,
+        message: getUndoReplaceCardMessage(replaceCardModalDashCard.card),
         undo: true,
         action: () =>
           setDashCardAttributes({
@@ -436,7 +436,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     this.setState({ isDragging: false });
   };
 
-  onDashCardRemove(dc: QuestionDashboardCard) {
+  onDashCardRemove = (dc: DashboardCard) => {
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
       cardId: dc.card_id,
@@ -448,7 +448,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
     });
     MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
-  }
+  };
 
   onDashCardAddSeries(dc: BaseDashboardCard) {
     this.setState({ addSeriesModalDashCard: dc });
@@ -484,7 +484,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   renderDashCard(
-    dc: QuestionDashboardCard,
+    dc: DashboardCard,
     {
       isMobile,
       gridItemWidth,
@@ -550,7 +550,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     gridItemWidth,
     totalNumGridCols,
   }: {
-    item: QuestionDashboardCard;
+    item: DashboardCard;
     breakpoint: GridBreakpoint;
     gridItemWidth: number;
     totalNumGridCols: number;
@@ -627,6 +627,18 @@ function isEditingTextOrHeadingCard(display: string, isEditing: boolean) {
 
   return isEditing && isTextOrHeadingCard;
 }
+
+const getUndoReplaceCardMessage = ({ type }: Card) => {
+  if (type === "model") {
+    return t`Model replaced`;
+  }
+
+  if (type === "question") {
+    return t`Question replaced`;
+  }
+
+  throw new Error(`Unknown card.type: ${type}`);
+};
 
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),

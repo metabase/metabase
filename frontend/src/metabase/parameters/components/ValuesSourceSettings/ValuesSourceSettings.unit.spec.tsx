@@ -5,7 +5,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import type { Parameter, ValuesQueryType } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-import ValuesSourceSettings from "./ValuesSourceSettings";
+import { ValuesSourceSettings } from "./ValuesSourceSettings";
 
 interface SetupOpts {
   parameter: Parameter;
@@ -58,7 +58,7 @@ describe("ValuesSourceSettings", () => {
       }),
     });
 
-    userEvent.click(screen.getByRole("radio", { name: "Dropdown list Edit" }));
+    userEvent.click(screen.getByRole("radio", { name: "Dropdown list" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
     userEvent.click(screen.getByRole("radio", { name: "Search box" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
@@ -79,7 +79,7 @@ describe("ValuesSourceSettings", () => {
       }),
     });
 
-    userEvent.click(screen.getByRole("radio", { name: "Dropdown list Edit" }));
+    userEvent.click(screen.getByRole("radio", { name: "Dropdown list" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeEnabled();
     userEvent.click(screen.getByRole("radio", { name: "Search box" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeEnabled();

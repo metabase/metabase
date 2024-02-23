@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import {
   createSampleDatabase,
   PRODUCTS,
@@ -13,16 +12,6 @@ const metadata = createMockMetadata({
 const productsTable = metadata.table(PRODUCTS_ID);
 
 describe("metabase/util/dataset", () => {
-  describe("fieldRefForColumn", () => {
-    it("should return field_ref from the column", () => {
-      expect(fieldRefForColumn({ field_ref: ["field", 42, null] })).toEqual([
-        "field",
-        42,
-        null,
-      ]);
-    });
-  });
-
   describe("syncColumnsAndSettings", () => {
     it("should automatically add new metrics when a new aggregrate column is added", () => {
       const prevQuestion = productsTable

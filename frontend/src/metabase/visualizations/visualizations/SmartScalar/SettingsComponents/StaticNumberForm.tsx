@@ -56,17 +56,17 @@ export function StaticNumberForm({
           onClick={onBack}
         >{t`Custom value`}</PopoverBackButton>
         <Stack w="100%" spacing="md">
+          <NumberInput
+            value={value}
+            label={t`Value`}
+            onChange={handleChangeValue}
+          />
           <TextInput
             autoFocus
             value={label}
             label={t`Label`}
             onChange={handleChangeLabel}
             data-autofocus
-          />
-          <NumberInput
-            value={value}
-            label={t`Value`}
-            onChange={handleChangeValue}
           />
         </Stack>
         <DoneButton type="submit" disabled={!canSubmit}>{t`Done`}</DoneButton>

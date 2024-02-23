@@ -14,7 +14,7 @@ import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryModals from "../QueryModals";
 import QueryVisualization from "../QueryVisualization";
-import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
+import { SavedQuestionIntroModal } from "../SavedQuestionIntroModal";
 import DataReference from "../dataref/DataReference";
 import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
@@ -239,7 +239,7 @@ class View extends Component {
     // This check makes it hide the editor in this particular case
     // More details: https://github.com/metabase/metabase/pull/20161
     const { isEditable } = Lib.queryDisplayInfo(question.query());
-    if (question.isDataset() && !isEditable) {
+    if (question.type() === "model" && !isEditable) {
       return null;
     }
 
@@ -330,7 +330,9 @@ class View extends Component {
       );
     }
 
-    if (question.isDataset() && queryBuilderMode === "dataset") {
+    const isModel = question.type() === "model";
+
+    if (isModel && queryBuilderMode === "dataset") {
       return (
         <>
           <DatasetEditor {...this.props} />
@@ -376,6 +378,7 @@ class View extends Component {
         {isShowingNewbModal && (
           <SavedQuestionIntroModal
             question={question}
+            isShowingNewbModal={isShowingNewbModal}
             onClose={() => closeQbNewbModal()}
           />
         )}

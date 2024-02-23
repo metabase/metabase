@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
@@ -196,37 +195,16 @@ export function canonicalCollectionId(
 }
 
 export function isValidCollectionId(
-  collectionId: string | number | null | undefined,
-): boolean {
+  collectionId: unknown,
+): collectionId is CollectionId {
+  if (
+    typeof collectionId !== "string" &&
+    typeof collectionId !== "number" &&
+    collectionId !== null &&
+    collectionId !== undefined
+  ) {
+    return false;
+  }
   const id = canonicalCollectionId(collectionId);
   return id === null || typeof id === "number";
-}
-
-function isPersonalOrPersonalChild(
-  collection: Collection,
-  collections: Collection[],
-) {
-  if (!collection) {
-    return false;
-  }
-  return (
-    isRootPersonalCollection(collection) ||
-    isPersonalCollectionChild(collection, collections)
-  );
-}
-
-export function canManageCollectionAuthorityLevel(
-  collection: Partial<Collection>,
-  collectionMap: Partial<Record<CollectionId, Collection>>,
-) {
-  if (isRootPersonalCollection(collection)) {
-    return false;
-  }
-  const parentId = coerceCollectionId(collection.parent_id);
-  const parentCollection = collectionMap[parentId];
-  const collections = Object.values(collectionMap).filter(isNotNull);
-  return (
-    parentCollection &&
-    !isPersonalOrPersonalChild(parentCollection, collections)
-  );
 }

@@ -21,10 +21,10 @@ interface ContainerLabelProps {
 
 export const ContainerLabel = styled.div<ContainerLabelProps>`
   display: block;
-  font-weight: 700;
-  padding-bottom: 0.5rem;
-  color: ${color("text-medium")};
+  margin-bottom: 0.5em;
   padding-top: ${props => (props.paddingTop ? "0.5rem" : "0")};
+  color: ${color("text-medium")};
+  font-weight: 700;
 `;
 
 export const ErrorSpan = styled.span`

@@ -98,7 +98,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
     dashboardCards().within(() => {
       cy.findByText("Orders").should("not.exist");
-      cy.findByText(`There's nothing here, yet.`).should("be.visible");
+      cy.findByText("There's nothing here, yet.").should("be.visible");
     });
 
     // Add card to second tab

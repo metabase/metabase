@@ -45,7 +45,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
+import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 

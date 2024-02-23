@@ -155,7 +155,7 @@ describe("scenarios > question > native subquery", () => {
           // For some reason, typing `{{#${questionId2}}}` in one go isn't deterministic,
           // so type it in two parts
           cy.get(".ace_editor:not(.ace_autocomplete)")
-            .type(` {{#`)
+            .type(" {{#")
             .type(`{leftarrow}{leftarrow}${questionId2}`);
 
           // Wait until another explicit autocomplete is triggered
