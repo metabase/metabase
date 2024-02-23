@@ -63,9 +63,9 @@
 (def ^:private transform-json-with-nested-parameters
   {:in  (comp mi/json-in
               (fn [template]
-                (u/update-if-exists template :parameters mi/normalize-parameters-list)))
+                (m/update-existing template :parameters mi/normalize-parameters-list)))
    :out (comp (fn [template]
-                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
+                (m/update-existing template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
               mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/HTTPAction

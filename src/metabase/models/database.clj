@@ -302,6 +302,14 @@
   "The string to replace passwords with when serializing Databases."
   "**MetabasePass**")
 
+(def ^:const protected-db-details
+  "The string to replace details with when serializing Databases."
+  "**MetabaseDatabaseDetails**")
+
+(def ^:const protected-db-settings
+  "The string to replace settings with when serializing Databases."
+  "**MetabaseDatabaseSettings**")
+
 (defn sensitive-fields-for-db
   "Gets all sensitive fields that should be redacted in API responses for a given database. Delegates to
   driver.u/sensitive-fields using the given database's driver (if valid), so refer to that for full details. If a valid
@@ -314,6 +322,33 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
+(defn- redact-db-details [db]
+  (if (not (mi/can-write? db))
+    (u/assoc-existing db :details protected-db-details)
+    (m/update-existing db :details (fn [details]
+                                     (reduce
+                                      #(m/update-existing %1 %2 (constantly protected-password))
+                                      details
+                                      (sensitive-fields-for-db db))))))
+
+(defn- redact-settings [settings]
+  (if-not (map? settings)
+    protected-db-settings
+    (m/filter-keys
+     (fn [setting-name]
+       (try
+         ;; This will throw if we cannot resolve the setting, i.e. there is no corresponding defsetting.
+         (setting/can-read-setting? setting-name (setting/current-user-readable-visibilities))
+         (catch Throwable e
+           ;; There is an known issue with exception is ignored when render API response (#32822)
+           ;; If you see this error, you probably need to define a setting for `setting-name`.
+           ;; But ideally, we should resolve the above issue, and remove this try/catch
+           (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
+           ;; let's be conservative and hide it by defaults, if you want to see it,
+           ;; you need to define it :)
+           false)))
+     settings)))
+
 (methodical/defmethod mi/to-json :model/Database
   "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
   Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
@@ -322,29 +357,7 @@
   Also remove settings that the User doesn't have read perms for."
   [db json-generator]
   (next-method
-   (let [db (if (not (mi/can-write? db))
-              (dissoc db :details)
-              (update db :details (fn [details]
-                                    (reduce
-                                     #(m/update-existing %1 %2 (constantly protected-password))
-                                     details
-                                     (sensitive-fields-for-db db)))))]
-     (update db :settings (fn [settings]
-                            (when (map? settings)
-                              (m/filter-keys
-                               (fn [setting-name]
-                                 (try
-                                  (setting/can-read-setting? setting-name
-                                                             (setting/current-user-readable-visibilities))
-                                  (catch Throwable e
-                                    ;; there is an known issue with exception is ignored when render API response (#32822)
-                                    ;; If you see this error, you probably need to define a setting for `setting-name`.
-                                    ;; But ideally, we should resovle the above issue, and remove this try/catch
-                                    (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
-                                    ;; let's be conservative and hide it by defaults, if you want to see it,
-                                    ;; you need to define it :)
-                                    false)))
-                               settings)))))
+   (-> db redact-db-details (m/update-existing :settings redact-settings))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
