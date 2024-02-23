@@ -41,7 +41,7 @@ import type {
   StoreDashcard,
 } from "metabase-types/store";
 
-import { SIDEBAR_NAME } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardSidebars } from "../DashboardSidebars";
 
@@ -205,7 +205,6 @@ function DashboardInner(props: DashboardProps) {
     isAutoApplyFilters,
     isEditing,
     isFullscreen,
-    isHeaderVisible,
     isNavigatingBackToDashboard,
     isNightMode,
     isSharing,
@@ -484,24 +483,28 @@ function DashboardInner(props: DashboardProps) {
     >
       {() => (
         <DashboardStyled>
-          {isHeaderVisible && (
-            <DashboardHeaderContainer
-              isFullscreen={isFullscreen}
-              isNightMode={shouldRenderAsNightMode}
-            >
-              <DashboardHeader
-                {...props}
-                onEditingChange={handleSetEditing}
-                setDashboardAttribute={handleSetDashboardAttribute}
-                addParameter={addParameter}
-                parametersWidget={parametersWidget}
-                onSharingClick={handleToggleSharing}
-              />
-            </DashboardHeaderContainer>
-          )}
+          <DashboardHeaderContainer
+            isFullscreen={isFullscreen}
+            isNightMode={shouldRenderAsNightMode}
+          >
+            {/**
+             * Do not conditionally render `<DashboardHeader />` as it calls
+             * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
+             * in Redux state which kicks off a fetch for the dashboard cards.
+             */}
+            <DashboardHeader
+              {...props}
+              onEditingChange={handleSetEditing}
+              setDashboardAttribute={handleSetDashboardAttribute}
+              addParameter={addParameter}
+              parametersWidget={parametersWidget}
+              onSharingClick={handleToggleSharing}
+            />
+          </DashboardHeaderContainer>
 
           <DashboardBody isEditingOrSharing={isEditing || isSharing}>
             <ParametersAndCardsContainer
+              id={DASHBOARD_PDF_EXPORT_ROOT_ID}
               data-testid="dashboard-parameters-and-cards"
               shouldMakeDashboardHeaderStickyAfterScrolling={
                 !isFullscreen && (isEditing || isSharing)

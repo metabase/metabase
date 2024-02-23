@@ -73,9 +73,9 @@ export const SaveButton = styled(Link)`
 `;
 
 export const SavedQuestionHeaderButtonContainer = styled.div<{
-  isDataset: boolean;
+  isModel: boolean;
 }>`
-  right: ${props => (props.isDataset ? "0px" : "0.38rem")};
+  right: ${props => (props.isModel ? "0px" : "0.38rem")};
 `;
 
 export const HeaderButton = styled(Button)<{ active: boolean }>`
