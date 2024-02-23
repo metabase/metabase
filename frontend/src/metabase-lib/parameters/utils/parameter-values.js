@@ -14,20 +14,11 @@ export function getValuePopulatedParameters(
   parameterValues,
   collectionPreview,
 ) {
-  // when it's collection preview (pinned question), we cannot use URL to get
-  // parameter values without value populated in other cases `value: null` will
-  // be handled on BE
+  // pinned native question can have default values on parameters, usually we
+  // get them from URL, which is not the case for collection preview. to force
+  // BE to apply default values to those filters, empty array is provided
   if (collectionPreview) {
-    return parameterValues
-      ? parameters.map(parameter => {
-          return parameter.id in parameterValues
-            ? {
-                ...parameter,
-                value: parameterValues[parameter.id],
-              }
-            : parameter;
-        })
-      : parameters;
+    return [];
   }
 
   return parameters.map(parameter => ({
