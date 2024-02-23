@@ -105,7 +105,7 @@
   ;; (see metabase.lib.convert-test/round-trip-test for examples).
   ;; :string should be removed once the legacy questions don't have to be
   ;; supported.
-  #_metric-id [:schema [:or [:ref ::id/metric] :string]])
+  #_metric-id [:schema [:ref ::id/metric]])
 
 (lib.hierarchy/derive :metric ::ref)
 
