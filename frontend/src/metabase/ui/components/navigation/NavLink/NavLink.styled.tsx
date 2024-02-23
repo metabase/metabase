@@ -3,16 +3,36 @@ import { rem } from "@mantine/core";
 
 export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
   NavLink: {
-    styles: theme => {
-      return {
+    styles: {
+      root: {
+        borderRadius: rem(8),
+      },
+      label: {
+        fontSize: rem(14),
+      },
+    },
+    variants: {
+      "mb-light": theme => ({
         root: {
-          borderRadius: rem(8),
-
           "&:hover": {
             backgroundColor: theme.fn.themeColor("brand-lighter"),
           },
 
-          "&[data-active][data-activepanel]": {
+          "&[data-active]": {
+            backgroundColor: theme.fn.themeColor("brand-lighter"),
+            color: theme.fn.themeColor("text-dark"),
+          },
+        },
+        icon: {
+          color: theme.fn.themeColor("text-dark"),
+        },
+      }),
+      "mb-dark": theme => ({
+        root: {
+          "&:hover": {
+            backgroundColor: theme.fn.themeColor("brand-lighter"),
+          },
+          "&[data-active]": {
             "&:hover": {
               backgroundColor: theme.fn.themeColor("brand"),
             },
@@ -28,26 +48,6 @@ export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
               color: "white",
             },
           },
-
-          "&[data-active]": {
-            backgroundColor: theme.fn.themeColor("brand-lighter"),
-            color: theme.fn.themeColor("text-dark"),
-          },
-        },
-
-        label: {
-          fontSize: rem(14),
-        },
-
-        icon: {
-          color: theme.fn.themeColor("text-dark"),
-        },
-      };
-    },
-    variants: {
-      subtle: theme => ({
-        root: {
-          backgroundColor: theme.fn.themeColor("brand-lighter"),
         },
       }),
     },

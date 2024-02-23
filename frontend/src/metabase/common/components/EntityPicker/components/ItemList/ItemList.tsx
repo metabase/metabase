@@ -72,9 +72,8 @@ export const ItemList = <TItem extends TypeWithModel>({
               e.stopPropagation(); // prevent parent onClick
               onClick(item);
             }}
-            variant="light"
+            variant={isCurrentLevel ? "mb-dark" : "mb-light"}
             mb="xs"
-            data-activepanel={isCurrentLevel ? true : null}
           />
         </div>
       ))}
