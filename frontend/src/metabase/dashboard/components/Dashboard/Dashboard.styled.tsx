@@ -82,8 +82,17 @@ export const DashboardHeaderContainer = styled.header<{
     `}
 `;
 
-export const CardsContainer = styled(FullWidthContainer)`
+export const FIXED_WIDTH = "1048px";
+export const CardsContainer = styled(FullWidthContainer)<{
+  isFixedWidth: boolean;
+}>`
   margin-top: 8px;
+
+  ${({ isFixedWidth }) =>
+    isFixedWidth &&
+    css`
+      min-width: calc(${FIXED_WIDTH} + 4em);
+    `}
 `;
 
 function getParametersWidgetBgColor(isNightMode: boolean) {
@@ -94,6 +103,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   isSticky: boolean;
   hasScroll: boolean;
   isNightMode: boolean;
+  isFixedWidth: boolean;
 }>`
   background-color: ${props => getParametersWidgetBgColor(props.isNightMode)};
   border-bottom: 1px solid
@@ -114,6 +124,12 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       position: sticky;
       border-bottom: 1px solid
         ${hasScroll ? color("border") : getParametersWidgetBgColor(isNightMode)};
+    `}
+
+  ${({ isFixedWidth }) =>
+    isFixedWidth &&
+    css`
+      min-width: calc(${FIXED_WIDTH} + 4em);
     `}
 `;
 
@@ -149,7 +165,6 @@ export const ParametersAndCardsContainer = styled.div<{
   }
 `;
 
-export const FIXED_WIDTH = "1048px";
 export const MaxWidthContainer = styled.div<{
   isFixedWidth: boolean;
 }>`

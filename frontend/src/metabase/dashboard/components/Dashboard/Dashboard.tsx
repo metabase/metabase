@@ -231,6 +231,7 @@ function DashboardInner(props: DashboardProps) {
   const [error, setError] = useState<unknown>(null);
   const [hasScroll, setHasScroll] = useState(getMainElement()?.scrollTop > 0);
   const isDashboardSidebarOpen = useSelector(getIsSidebarOpen);
+  const isFixedWidth = dashboard?.width === "fixed";
 
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
@@ -480,11 +481,12 @@ function DashboardInner(props: DashboardProps) {
         <ParametersWidgetContainer
           hasScroll
           isSticky
+          isFixedWidth={isFixedWidth}
           isNightMode={shouldRenderAsNightMode}
           data-testid="edit-dashboard-parameters-widget-container"
         >
           <FixedWidthContainer
-            isFixedWidth={dashboard?.width === "fixed"}
+            isFixedWidth={isFixedWidth}
             data-testid="fixed-width-filters"
           >
             {parametersWidget}
@@ -496,12 +498,13 @@ function DashboardInner(props: DashboardProps) {
     return (
       <ParametersWidgetContainer
         hasScroll={hasScroll}
-        isNightMode={shouldRenderAsNightMode}
         isSticky={isParametersWidgetContainersSticky(visibleParameters.length)}
+        isFixedWidth={isFixedWidth}
+        isNightMode={shouldRenderAsNightMode}
         data-testid="dashboard-parameters-widget-container"
       >
         <ParametersFixedWidthContainer
-          isFixedWidth={dashboard?.width === "fixed"}
+          isFixedWidth={isFixedWidth}
           data-testid="fixed-width-filters"
         >
           {parametersWidget}
@@ -548,7 +551,10 @@ function DashboardInner(props: DashboardProps) {
               }
             >
               {renderParameterList()}
-              <CardsContainer id="Dashboard-Cards-Container">
+              <CardsContainer
+                id="Dashboard-Cards-Container"
+                isFixedWidth={isFixedWidth}
+              >
                 {renderContent()}
               </CardsContainer>
             </ParametersAndCardsContainer>
