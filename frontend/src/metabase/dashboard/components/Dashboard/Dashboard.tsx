@@ -41,7 +41,7 @@ import type {
   StoreDashcard,
 } from "metabase-types/store";
 
-import { SIDEBAR_NAME } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardSidebars } from "../DashboardSidebars";
 
@@ -504,6 +504,7 @@ function DashboardInner(props: DashboardProps) {
 
           <DashboardBody isEditingOrSharing={isEditing || isSharing}>
             <ParametersAndCardsContainer
+              id={DASHBOARD_PDF_EXPORT_ROOT_ID}
               data-testid="dashboard-parameters-and-cards"
               shouldMakeDashboardHeaderStickyAfterScrolling={
                 !isFullscreen && (isEditing || isSharing)
