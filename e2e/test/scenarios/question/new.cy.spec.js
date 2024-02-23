@@ -195,9 +195,9 @@ describe("scenarios > question > new", () => {
 
     cy.url().should("include", "question#");
     // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
-    cy.findByTestId("query-builder").icon("notebook").click();
+    cy.findByTestId("query-builder-root").icon("notebook").click();
     cy.url().should("include", "question/notebook#");
-    cy.findByTestId("query-builder").icon("sql").click();
+    cy.findByTestId("query-builder-root").icon("sql").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Convert this question to SQL").click();
     cy.url().should("include", "question#");
