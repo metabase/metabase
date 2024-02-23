@@ -647,9 +647,15 @@
 (defn- returned-columns*
   "Inner implementation for [[returned-columns]], which wraps this with caching."
   [a-query stage-number]
-  (let [stage (lib.util/query-stage a-query stage-number)]
+  (let [stage          (lib.util/query-stage a-query stage-number)
+        unique-name-fn (lib.util/unique-name-generator)]
     (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
-         (map #(assoc % :selected? true))
+         (map #(-> %
+                   (assoc :selected? true)
+                   ;; Unique names are required by the FE for compatibility.
+                   ;; This applies only for JS; Clojure usage should prefer `:lib/desired-column-alias` to `:name`, and
+                   ;; that's already unique by construction.
+                   (update :name unique-name-fn)))
          to-array)))
 
 (defn ^:export returned-columns
