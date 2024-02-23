@@ -127,16 +127,51 @@
                         (assoc-in [0 :base_type] :type/BigInteger)))))))))))
 
 (deftest add-sandboxes-to-permissions-graph-test
-  (testing "Sandbox definitions in the DB are automatically added to the permissions graph"
-    (mt/with-premium-features #{:sandboxes}
-      (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
-                                                   :group_id (u/the-id (perms-group/all-users))}]
-        (is (= {(u/the-id (perms-group/all-users))
+  (mt/with-premium-features #{:sandboxes}
+    (mt/with-full-data-perms-for-all-users!
+      (testing "Sandbox definitions in the DB are automatically added to the permissions graph"
+        (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
+                                                     :group_id (u/the-id (perms-group/all-users))}]
+          (is (= {(u/the-id (perms-group/all-users))
+                  {(mt/id)
+                   {:data
+                    {:schemas
+                     {"PUBLIC"
+                      {(mt/id :venues)
+                       {:query :segmented
+                        :read :all}}}}}}}
+                 (sandboxes/add-sandboxes-to-permissions-graph {})))))
+
+      (testing "When perms are set at the DB level, incorporating a sandbox breaks them out to table-level"
+        (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
+                                                     :group_id (u/the-id (perms-group/all-users))}]
+          (is (partial=
+               {(u/the-id (perms-group/all-users))
                 {(mt/id)
                  {:data
                   {:schemas
                    {"PUBLIC"
-                    {(mt/id :venues)
-                     {:query :segmented
-                      :read :all}}}}}}}
-               (sandboxes/add-sandboxes-to-permissions-graph {})))))))
+                    {(mt/id :venues)   {:query :segmented
+                                        :read :all}
+                     (mt/id :products) :all}}}}}}
+               (sandboxes/add-sandboxes-to-permissions-graph
+                {(u/the-id (perms-group/all-users))
+                 {(mt/id)
+                  {:data {:schemas :all}}}})))))
+
+      (testing "When perms are set at the schema level, incorporating a sandbox breaks them out to table-level"
+        (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
+                                                     :group_id (u/the-id (perms-group/all-users))}]
+          (is (partial=
+               {(u/the-id (perms-group/all-users))
+                {(mt/id)
+                 {:data
+                  {:schemas
+                   {"PUBLIC"
+                    {(mt/id :venues)   {:query :segmented
+                                        :read :all}
+                     (mt/id :products) :all}}}}}}
+               (sandboxes/add-sandboxes-to-permissions-graph
+                {(u/the-id (perms-group/all-users))
+                 {(mt/id)
+                  {:data {:schemas {"PUBLIC" :all}}}}}))))))))
