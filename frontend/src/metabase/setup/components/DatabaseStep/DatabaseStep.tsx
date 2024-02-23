@@ -30,8 +30,12 @@ import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./DatabaseStep.styled";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
-  const { isStepActive, isStepCompleted, selectThisStep } =
-    useStep("db_connection");
+  const {
+    isStepActive,
+    isStepCompleted,
+    selectThisStep,
+    dispatchAndGoNextStep,
+  } = useStep("db_connection");
   const user = useSelector(getUser);
   const database = useSelector(getDatabase);
   const engine = useSelector(getDatabaseEngine);
@@ -47,14 +51,14 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
 
   const handleDatabaseSubmit = async (database: DatabaseData) => {
     try {
-      await dispatch(submitDatabase(database)).unwrap();
+      await dispatchAndGoNextStep(submitDatabase(database));
     } catch (error) {
       throw getSubmitError(error);
     }
   };
 
   const handleInviteSubmit = (invite: InviteInfo) => {
-    dispatch(submitUserInvite(invite));
+    dispatchAndGoNextStep(submitUserInvite(invite));
   };
 
   const handleStepSelect = () => {

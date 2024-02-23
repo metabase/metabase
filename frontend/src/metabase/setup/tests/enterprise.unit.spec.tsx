@@ -11,6 +11,7 @@ import {
   clickNextStep,
   expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  findSection,
   getSection,
   selectUsageReason,
   setup,
@@ -99,9 +100,11 @@ describe("setup (EE, no token)", () => {
         ).not.toHaveProperty("data-loading", true);
       });
 
-      expect(getSection("Usage data preferences")).toHaveAttribute(
-        "aria-current",
-        "step",
+      await waitFor(async () =>
+        expect(await findSection("Usage data preferences")).toHaveAttribute(
+          "aria-current",
+          "step",
+        ),
       );
     });
 
@@ -109,6 +112,8 @@ describe("setup (EE, no token)", () => {
       await setupForLicenseStep();
 
       clickNextStep();
+
+      await findSection("Usage data preferences");
 
       expect(getSection("Usage data preferences")).toHaveAttribute(
         "aria-current",
@@ -134,7 +139,7 @@ describe("setup (EE, no token)", () => {
         ).not.toHaveProperty("data-loading", true);
       });
 
-      screen.getByRole("button", { name: "Finish" }).click();
+      (await screen.findByRole("button", { name: "Finish" })).click();
 
       const setupCall = fetchMock.lastCall(`path:/api/setup`);
       expect(await setupCall?.request?.json()).toMatchObject({

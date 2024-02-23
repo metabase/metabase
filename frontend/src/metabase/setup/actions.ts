@@ -29,7 +29,6 @@ import {
 } from "./selectors";
 import type { SetupStep } from "./types";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
-
 interface ThunkConfig {
   state: State;
 }
@@ -54,7 +53,6 @@ export const loadUserDefaults = createAsyncThunk(
     }
   },
 );
-
 export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
 export const loadLocaleDefaults = createAsyncThunk<
   Locale | undefined,
@@ -68,7 +66,6 @@ export const loadLocaleDefaults = createAsyncThunk<
   }
   return locale;
 });
-
 export const LOAD_DEFAULTS = "metabase/setup/LOAD_DEFAULTS";
 export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
   LOAD_DEFAULTS,
@@ -77,10 +74,8 @@ export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
     dispatch(loadLocaleDefaults());
   },
 );
-
 export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
 export const selectStep = createAction<SetupStep>(SELECT_STEP);
-
 export const UPDATE_LOCALE = "metabase/setup/UPDATE_LOCALE";
 export const updateLocale = createAsyncThunk(
   UPDATE_LOCALE,
@@ -88,30 +83,25 @@ export const updateLocale = createAsyncThunk(
     await loadLocalization(locale.code);
   },
 );
-
 export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
 export const submitLanguage = createAction(SUBMIT_LANGUAGE);
 
 export const submitUser = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_INFO",
-  (_: UserInfo, { dispatch }) => {
-    dispatch(goToNextStep());
-  },
+  (_: UserInfo) => undefined,
 );
 
 export const submitUsageReason = createAsyncThunk(
   "metabase/setup/SUBMIT_USAGE_REASON",
-  (usageReason: UsageReason, { dispatch }) => {
+  (usageReason: UsageReason) => {
     trackUsageReasonSelected(usageReason);
-    dispatch(goToNextStep());
   },
 );
 
 export const submitLicenseToken = createAsyncThunk(
   "metabase/setup/SUBMIT_LICENSE_TOKEN",
-  (_token: string | null, { dispatch }) => {
+  (_token: string | null) => {
     // TODO: add analytics
-    dispatch(goToNextStep());
   },
 );
 
@@ -124,14 +114,12 @@ export const updateDatabaseEngine = createAsyncThunk(
     }
   },
 );
-
 const validateDatabase = async (token: string, database: DatabaseData) => {
   await SetupApi.validate_db({
     token,
     details: database,
   });
 };
-
 export const SUBMIT_DATABASE = "metabase/setup/SUBMIT_DATABASE";
 export const submitDatabase = createAsyncThunk<
   DatabaseData,
@@ -139,25 +127,22 @@ export const submitDatabase = createAsyncThunk<
   ThunkConfig
 >(
   SUBMIT_DATABASE,
-  async (database: DatabaseData, { getState, dispatch, rejectWithValue }) => {
+  async (database: DatabaseData, { getState, rejectWithValue }) => {
     const token = getSetupToken(getState());
     const sslDetails = { ...database.details, ssl: true };
     const sslDatabase = { ...database, details: sslDetails };
     const nonSslDetails = { ...database.details, ssl: false };
     const nonSslDatabase = { ...database, database: nonSslDetails };
-
     if (!token) {
       return database;
     }
 
     try {
       await validateDatabase(token, sslDatabase);
-      dispatch(goToNextStep());
       return sslDatabase;
     } catch (error1) {
       try {
         await validateDatabase(token, nonSslDatabase);
-        dispatch(goToNextStep());
         return nonSslDatabase;
       } catch (error2) {
         return rejectWithValue(error2);
@@ -165,21 +150,17 @@ export const submitDatabase = createAsyncThunk<
     }
   },
 );
-
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
-  (_: InviteInfo, { dispatch }) => {
-    dispatch(goToNextStep());
-  },
+  (_: InviteInfo) => undefined,
 );
 
 export const SKIP_DATABASE = "metabase/setup/SKIP_DATABASE";
 export const skipDatabase = createAsyncThunk(
   SKIP_DATABASE,
-  (engine: string | undefined, { dispatch }) => {
+  (engine?: string) => {
     trackAddDataLaterClicked(engine);
-    dispatch(goToNextStep());
   },
 );
 
@@ -192,7 +173,6 @@ export const updateTracking = createAsyncThunk(
     trackTrackingChanged(isTrackingAllowed);
   },
 );
-
 export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
 export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
   SUBMIT_SETUP,
@@ -205,7 +185,6 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     const isTrackingAllowed = getIsTrackingAllowed(getState());
     const usageReason = getUsageReason(getState());
     const licenseToken = getState().setup.licenseToken;
-
     try {
       await SetupApi.create({
         token,
@@ -219,14 +198,12 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
         },
         license_token: licenseToken,
       });
-
       if (usageReason === "embedding" || usageReason === "both") {
         setShowEmbedHomepageFlag();
       } else {
         // make sure that state is clean in case of more than one setup on the same browser
         removeShowEmbedHomepageFlag();
       }
-
       MetabaseSettings.set("setup-token", null);
     } catch (error) {
       return rejectWithValue(error);

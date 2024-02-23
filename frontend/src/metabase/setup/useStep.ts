@@ -1,6 +1,8 @@
+import type { AsyncThunkAction } from "@reduxjs/toolkit";
+
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import { selectStep } from "./actions";
+import { goToNextStep, selectStep } from "./actions";
 import {
   getIsSetupCompleted,
   getIsStepActive,
@@ -20,5 +22,18 @@ export const useStep = (stepName: SetupStep) => {
     dispatch(selectStep(stepName));
   };
 
-  return { isStepActive, isStepCompleted, selectThisStep, isSetupCompleted };
+  const dispatchAndGoNextStep = async (
+    submitThunk: AsyncThunkAction<any, any, any>,
+  ) => {
+    await dispatch(submitThunk).unwrap();
+    dispatch(goToNextStep());
+  };
+
+  return {
+    isStepActive,
+    isStepCompleted,
+    selectThisStep,
+    isSetupCompleted,
+    dispatchAndGoNextStep,
+  };
 };

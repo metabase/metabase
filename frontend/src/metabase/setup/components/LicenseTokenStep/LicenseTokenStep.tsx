@@ -15,8 +15,12 @@ import type { NumberedStepProps } from "../types";
 import { LicenseTokenForm } from "./LicenseTokenForm";
 
 export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
-  const { isStepActive, isStepCompleted, selectThisStep } =
-    useStep("license_token");
+  const {
+    isStepActive,
+    isStepCompleted,
+    selectThisStep,
+    dispatchAndGoNextStep,
+  } = useStep("license_token");
 
   const storeToken = useSelector(state => state.setup.licenseToken);
 
@@ -33,11 +37,11 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
         message: t`Your license is activated`,
       }),
     );
-    dispatch(submitLicenseToken(token));
+    dispatchAndGoNextStep(submitLicenseToken(token));
   };
 
   const handleNext = () => {
-    dispatch(submitLicenseToken(null));
+    dispatchAndGoNextStep(submitLicenseToken(null));
   };
 
   if (!isStepActive) {

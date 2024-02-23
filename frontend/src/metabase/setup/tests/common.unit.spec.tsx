@@ -8,6 +8,7 @@ import {
   clickNextStep,
   expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  findSection,
   getSection,
   selectUsageReason,
   setup,
@@ -40,10 +41,12 @@ describe("setup (OSS)", () => {
     await submitUserInfoStep();
     expectSectionsToHaveLabelsInOrder({ from: 2 });
 
-    clickNextStep(); // Usage question
+    await await clickNextStep(); // Usage question
+
     expectSectionsToHaveLabelsInOrder({ from: 3 });
 
-    userEvent.click(screen.getByText("I'll add my data later"));
+    userEvent.click(await screen.findByText("I'll add my data later"));
+
     expectSectionsToHaveLabelsInOrder({ from: 4 });
   });
 
@@ -59,9 +62,9 @@ describe("setup (OSS)", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
         selectUsageReason("self-service-analytics");
-        clickNextStep();
+        await clickNextStep();
 
-        expect(screen.getByText("Add your data")).toBeInTheDocument();
+        expect(await screen.findByText("Add your data")).toBeInTheDocument();
 
         expect(getSection("Add your data")).toHaveAttribute(
           "aria-current",
@@ -75,9 +78,9 @@ describe("setup (OSS)", () => {
       it("should not set the flag for the embedding homepage", async () => {
         await setupForUsageQuestion();
         selectUsageReason("self-service-analytics");
-        clickNextStep();
+        await clickNextStep();
 
-        screen.getByText("I'll add my data later").click();
+        (await screen.findByText("I'll add my data later")).click();
 
         screen.getByRole("button", { name: "Finish" }).click();
 
@@ -91,10 +94,11 @@ describe("setup (OSS)", () => {
       it("should hide the 'Add your data' step", async () => {
         await setupForUsageQuestion();
         selectUsageReason("embedding");
-        clickNextStep();
+        await clickNextStep();
 
         expect(screen.queryByText("Add your data")).not.toBeInTheDocument();
 
+        await findSection("Usage data preferences");
         expect(getSection("Usage data preferences")).toHaveAttribute(
           "aria-current",
           "step",
@@ -106,9 +110,9 @@ describe("setup (OSS)", () => {
       it("should set the flag for the embed homepage in the local storage", async () => {
         await setupForUsageQuestion();
         selectUsageReason("embedding");
-        clickNextStep();
+        await clickNextStep();
 
-        screen.getByRole("button", { name: "Finish" }).click();
+        (await screen.findByRole("button", { name: "Finish" })).click();
 
         await screen.findByRole("link", { name: "Take me to Metabase" });
 
@@ -120,9 +124,9 @@ describe("setup (OSS)", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
         selectUsageReason("both");
-        clickNextStep();
+        await clickNextStep();
 
-        expect(screen.getByText("Add your data")).toBeInTheDocument();
+        expect(await screen.findByText("Add your data")).toBeInTheDocument();
 
         expect(getSection("Add your data")).toHaveAttribute(
           "aria-current",
@@ -136,10 +140,12 @@ describe("setup (OSS)", () => {
       it("should set the flag for the embed homepage in the local storage", async () => {
         await setupForUsageQuestion();
         selectUsageReason("both");
-        clickNextStep();
+        await clickNextStep();
 
-        screen.getByText("I'll add my data later").click();
+        await screen.findByText("I'll add my data later");
+        (await screen.findByText("I'll add my data later")).click();
 
+        await screen.findByRole("button", { name: "Finish" });
         screen.getByRole("button", { name: "Finish" }).click();
 
         await screen.findByRole("link", { name: "Take me to Metabase" });
@@ -152,9 +158,10 @@ describe("setup (OSS)", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
         selectUsageReason("not-sure");
-        clickNextStep();
+        await clickNextStep();
 
-        expect(screen.getByText("Add your data")).toBeInTheDocument();
+        await screen.findByText("Add your data");
+        expect(await screen.findByText("Add your data")).toBeInTheDocument();
 
         expect(getSection("Add your data")).toHaveAttribute(
           "aria-current",
@@ -168,10 +175,11 @@ describe("setup (OSS)", () => {
       it("should not set the flag for the embedding homepage", async () => {
         await setupForUsageQuestion();
         selectUsageReason("self-service-analytics");
-        clickNextStep();
+        await clickNextStep();
 
-        screen.getByText("I'll add my data later").click();
+        (await screen.findByText("I'll add my data later")).click();
 
+        await screen.findByRole("button", { name: "Finish" });
         screen.getByRole("button", { name: "Finish" }).click();
 
         await screen.findByRole("link", { name: "Take me to Metabase" });

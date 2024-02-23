@@ -56,8 +56,14 @@ export async function setup({
 export const getSection = (name: string) =>
   screen.getByRole("listitem", { name });
 
-export const clickNextStep = () =>
+export const findSection = (name: string) =>
+  screen.findByRole("listitem", { name });
+
+export const clickNextStep = async () => {
   userEvent.click(screen.getByRole("button", { name: "Next" }));
+  // TODO: FIX if we decide to go this way
+  await new Promise(resolve => setTimeout(resolve, 1));
+};
 
 export const skipWelcomeScreen = () =>
   userEvent.click(screen.getByText("Let's get started"));
@@ -97,7 +103,7 @@ export const selectUsageReason = (usageReason: UsageReason) => {
     "not-sure": "Not sure yet",
   }[usageReason];
 
-  userEvent.click(screen.getByLabelText(label));
+  await userEvent.click(screen.getByLabelText(label));
 };
 
 export const expectSectionToHaveLabel = (

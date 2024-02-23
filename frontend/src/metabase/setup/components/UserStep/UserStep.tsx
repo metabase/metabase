@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import type { UserInfo } from "metabase-types/store";
 
 import { submitUser } from "../../actions";
@@ -15,19 +15,22 @@ import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./UserStep.styled";
 
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
-  const { isStepActive, isStepCompleted, selectThisStep, isSetupCompleted } =
-    useStep("user_info");
+  const {
+    isStepActive,
+    isStepCompleted,
+    selectThisStep,
+    isSetupCompleted,
+    dispatchAndGoNextStep,
+  } = useStep("user_info");
   const user = useSelector(getUser);
   const isHosted = useSelector(getIsHosted);
-
-  const dispatch = useDispatch();
 
   const handleStepSelect = () => {
     selectThisStep();
   };
 
   const handleSubmit = (user: UserInfo) => {
-    dispatch(submitUser(user));
+    dispatchAndGoNextStep(submitUser(user));
   };
 
   if (!isStepActive) {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { Divider, Radio, Stack, Text } from "metabase/ui";
 import type { UsageReason } from "metabase-types/api";
 
@@ -21,21 +21,24 @@ const COMPLETED_STEP_TITLE: Record<UsageReason, string> = {
 };
 
 export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
-  const { isStepActive, isStepCompleted, selectThisStep } =
-    useStep("usage_question");
+  const {
+    isStepActive,
+    isStepCompleted,
+    selectThisStep,
+    dispatchAndGoNextStep,
+  } = useStep("usage_question");
   const [usageReason, setUsageReason] = useState<UsageReason>(
     "self-service-analytics",
   );
 
   const isSetupCompleted = useSelector(getIsSetupCompleted);
-  const dispatch = useDispatch();
 
   const handleStepSelect = () => {
     selectThisStep();
   };
 
   const handleSubmit = () => {
-    dispatch(submitUsageReason(usageReason));
+    dispatchAndGoNextStep(submitUsageReason(usageReason));
   };
 
   const handleChange = (value: UsageReason) => {
