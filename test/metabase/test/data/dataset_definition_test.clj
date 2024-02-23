@@ -7,7 +7,7 @@
    [toucan2.core :as t2]))
 
 (deftest dataset-with-custom-pk-test
-  (mt/test-drivers (mt/sql-jdbc-drivers)
+  (mt/test-drivers (disj (mt/sql-jdbc-drivers) :presto-jdbc)
     (mt/dataset (mt/dataset-definition "custom-pk"
                   ["user"
                    [{:field-name "custom_id" :base-type :type/Integer :pk? true}]

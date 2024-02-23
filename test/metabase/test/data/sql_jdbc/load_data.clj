@@ -147,18 +147,20 @@
 (defn load-data-maybe-add-ids!
   "Implementation of `load-data!`. Insert all rows at once;
   Add IDs if tabledef does not contains PK."
-  [_driver _dbdef tabledef]
-  (if-not (some :pk? (:field-definitions tabledef))
-    (make-load-data-fn load-data-add-ids)
-    (make-load-data-fn load-data-chunked)))
+  [driver dbdef tabledef]
+  (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
+                    (make-load-data-fn load-data-add-ids)
+                    (make-load-data-fn load-data-chunked))]
+    (load-data! driver dbdef tabledef)))
 
 (defn load-data-maybe-add-ids-chunked!
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time;
   Add IDs if tabledef does not contains PK."
-  [_driver _dbdef tabledef]
-  (if-not (some :pk? (:field-definitions tabledef))
-    (make-load-data-fn load-data-chunked)
-    (make-load-data-fn load-data-add-ids load-data-chunked)))
+  [driver dbdef tabledef]
+  (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
+                    (make-load-data-fn load-data-add-ids load-data-chunked)
+                    (make-load-data-fn load-data-chunked))]
+    (load-data! driver dbdef tabledef)))
 
 ;; Default impl
 
