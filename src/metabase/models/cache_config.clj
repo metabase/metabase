@@ -13,5 +13,5 @@
 
 (t2/deftransforms :model/CacheConfig
   {:strategy mi/transform-keyword
-   :config mi/transform-json
-   :payload mi/transform-json})
+   :config   mi/transform-json
+   :state    mi/transform-json})

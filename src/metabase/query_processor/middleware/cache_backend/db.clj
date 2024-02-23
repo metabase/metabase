@@ -63,9 +63,9 @@
   "Make a prepared statement for :ttl caching strategy"
   ^PreparedStatement [strategy query-hash ^Connection conn]
   (when (and (= :ttl (:type strategy))
-             (:execution-time strategy)) ;; no cache when it was never executed before
+             (:avg-execution-ms strategy)) ;; no cache when it was never executed before
     (let [max-age-seconds (math/round (/ (* (:multiplier strategy)
-                                            (:execution-time strategy))
+                                            (:avg-execution-ms strategy))
                                          1000.0))]
       (prepare-statement conn query-hash (seconds-ago max-age-seconds)))))
 

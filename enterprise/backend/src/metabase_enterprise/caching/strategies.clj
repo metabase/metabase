@@ -31,21 +31,19 @@
                  [:unit [:enum "hours" "minutes" "seconds" "days"]]]]
      [:schedule [:map
                  [:type keyword?]
-                 [:updated_at some?]
+                 [:last-expired-at [:maybe some?]]
                  [:schedule u.cron/CronScheduleString]]]
      [:query    [:map
                  [:type keyword?]
-                 [:updated_at some?]
-                 [:payload [:maybe any?]]
+                 [:last-expired-at [:maybe some?]]
                  [:field_id int?]
                  [:aggregation [:enum "max" "count"]]
-                 [:schedule string?]]]]]))
+                 [:schedule u.cron/CronScheduleString]]]]]))
 
-(defn granular-ttl
-  "Returns the granular cache ttl (in hours) for a card. On EE, this first checking whether there is a stored value
+(defn granular-duration-hours
+  "Returns the granular cache duration (in hours) for a card. On EE, this first checking whether there is a stored value
    for the card, dashboard, or database (in that order of decreasing preference). Returns nil on OSS."
   [card dashboard-id]
-  ; stored TTLs are in hours; convert to seconds
   (or (:cache_ttl card)
       (:cache_ttl (t2/select-one [:model/Dashboard :cache_ttl] :id dashboard-id))
       (:cache_ttl (t2/select-one [:model/Database :cache_ttl] :id (:database_id card)))))
@@ -60,7 +58,7 @@
                                            [3 "collection" (:collection_id card)]
                                            [4 "database"   (:database_id card)]
                                            [5 "root"       0]]
-                       :when model-id]
+                       :when              model-id]
                    {:from   [:cache_config]
                     :select [:id
                              [[:inline i] :ordering]]
@@ -73,11 +71,10 @@
                   :order-by :ordering}
           config (t2/select-one :model/CacheConfig :id q)]
       (if config
-        (merge {:type       (:strategy config)
-                :updated_at (:updated_at config)
-                :payload    (:payload config)}
+        (merge {:type            (:strategy config)
+                :last-expired-at (:last_expired_at config)}
                (:config config))
-        (when-let [ttl (granular-ttl card dashboard-id)]
+        (when-let [ttl (granular-duration-hours card dashboard-id)]
           {:type     :duration
            :duration ttl
            :unit     "hours"})))))
@@ -98,16 +95,15 @@
         timestamp (t/minus (t/offset-date-time) duration)]
     (backend.db/prepare-statement conn query-hash timestamp)))
 
-;; NOTE: something changes `:updated_at` to `:updated-at`
-(defmethod fetch-cache-stmt-ee* :schedule [{:keys [updated-at] :as strategy} query-hash conn]
-  (if-not updated-at
+(defmethod fetch-cache-stmt-ee* :schedule [{:keys [last-expired-at] :as strategy} query-hash conn]
+  (if-not last-expired-at
     (log/debugf "Caching strategy %s was never run yet" (pr-str strategy))
-    (backend.db/prepare-statement conn query-hash updated-at)))
+    (backend.db/prepare-statement conn query-hash last-expired-at)))
 
-(defmethod fetch-cache-stmt-ee* :query [{:keys [updated-at] :as strategy} query-hash conn]
-  (if-not updated-at
+(defmethod fetch-cache-stmt-ee* :query [{:keys [last-expired-at] :as strategy} query-hash conn]
+  (if-not last-expired-at
     (log/debugf "Caching strategy %s was never run yet" (pr-str strategy))
-    (backend.db/prepare-statement conn query-hash updated-at)))
+    (backend.db/prepare-statement conn query-hash last-expired-at)))
 
 (defmethod fetch-cache-stmt-ee* :nocache [_ _ _]
   nil)

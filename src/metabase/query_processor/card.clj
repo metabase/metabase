@@ -49,7 +49,7 @@
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)
     :ttl (let [et (query/average-execution-time-ms (qp.util/query-hash query))]
-           (assoc strategy :execution-time (or et 0)))
+           (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
 (defn query-for-card
