@@ -7,7 +7,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
-  modal,
   openNativeEditor,
   visitQuestionAdhoc,
   summarize,
@@ -46,7 +45,7 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
     });
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
     });
   });
@@ -92,7 +91,7 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").type("Products on Category");
       cy.findByText("Save").click();
 
@@ -117,7 +116,7 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").type("empty question");
       cy.findByText("Save").click();
     });
@@ -220,7 +219,7 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").type("SQL Products");
       cy.findByText("Save").click();
 

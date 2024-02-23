@@ -284,7 +284,11 @@ export const SaveQuestionModal = ({
                         type="button"
                         onClick={onClose}
                       >{t`Cancel`}</Button>
-                      <FormSubmitButton title={t`Save`} primary />
+                      <FormSubmitButton
+                        title={t`Save`}
+                        data-testid="save-question-button"
+                        primary
+                      />
                     </FormFooter>
                   </Form>
                 </Modal.Body>

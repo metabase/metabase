@@ -133,8 +133,8 @@ describe("issue 17514", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      cy.findByTestId("save-question-modal").then(modal => {
-        cy.button("Save").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
       });
 
       cy.findByTestId("save-question-modal").should("not.exist");
