@@ -10,7 +10,6 @@ import { Group, Loader, Icon } from "metabase/ui";
 
 import { InfoText } from "../InfoText";
 
-
 import {
   DescriptionDivider,
   DescriptionSection,

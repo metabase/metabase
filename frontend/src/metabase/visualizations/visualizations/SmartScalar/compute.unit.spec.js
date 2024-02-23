@@ -13,7 +13,6 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-
 import { COMPARISON_TYPES } from "./constants";
 import { formatChange } from "./utils";
 

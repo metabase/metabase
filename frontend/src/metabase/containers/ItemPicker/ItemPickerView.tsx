@@ -23,7 +23,6 @@ import type {
   SearchQuery,
 } from "./types";
 
-
 interface SearchEntityListLoaderProps<TId> {
   list: PickerItem<TId>[];
 }

@@ -10,7 +10,6 @@ import type {
   TemplateTagType,
 } from "metabase-types/api";
 
-
 type FieldTypeMap = Record<string, ParameterType>;
 type TagTypeMap = Record<string, TemplateTagType>;
 

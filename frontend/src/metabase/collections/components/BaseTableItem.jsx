@@ -2,7 +2,6 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 
-
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";
 import EntityItem from "metabase/components/EntityItem";

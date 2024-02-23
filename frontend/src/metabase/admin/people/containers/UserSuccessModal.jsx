@@ -5,7 +5,6 @@ import { push } from "react-router-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import Button from "metabase/core/components/Button";

@@ -4,8 +4,6 @@ import type { TextProps } from "@visx/text";
 import { Fragment } from "react";
 import _ from "underscore";
 
-
-
 import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
 
 import type {
@@ -16,7 +14,6 @@ import type {
   XScale,
 } from "../XYChart/types";
 import { getValueStep, getY, setY } from "../XYChart/utils";
-
 
 type XYAccessor<
   T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,

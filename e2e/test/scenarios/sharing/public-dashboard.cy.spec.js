@@ -13,7 +13,6 @@ import {
   assertDashboardFullWidth,
 } from "e2e/support/helpers";
 
-
 const { PRODUCTS } = SAMPLE_DATABASE;
 
 const questionDetails = {

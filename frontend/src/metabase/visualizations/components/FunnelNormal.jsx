@@ -2,7 +2,6 @@
 import cx from "classnames";
 import { Component } from "react";
 
-
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
@@ -17,7 +16,6 @@ import {
 } from "metabase/visualizations/components/FunnelNormal.styled";
 import { findSeriesByKey } from "metabase/visualizations/lib/series";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-
 
 export default class FunnelNormal extends Component {
   render() {

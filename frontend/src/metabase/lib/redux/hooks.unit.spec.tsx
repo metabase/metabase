@@ -1,4 +1,3 @@
-
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";

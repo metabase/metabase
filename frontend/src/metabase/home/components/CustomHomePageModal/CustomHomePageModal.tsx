@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { t } from "ttag";
 
-
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { updateSettings } from "metabase/admin/settings/settings";
 import { isPersonalCollectionOrChild } from "metabase/collections/utils";

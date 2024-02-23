@@ -5,7 +5,6 @@ import { t } from "ttag";
 import type { MappingsType } from "metabase/admin/types";
 import Button from "metabase/core/components/Button";
 
-
 type AddMappingRowProps = {
   mappings: MappingsType;
   placeholder: string;

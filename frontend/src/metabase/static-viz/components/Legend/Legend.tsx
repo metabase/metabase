@@ -5,7 +5,6 @@ import { Text } from "metabase/static-viz/components/Text";
 import { LEGEND_CIRCLE_MARGIN_RIGHT, LEGEND_CIRCLE_SIZE } from "./constants";
 import type { PositionedLegendItem } from "./types";
 
-
 type LegendProps = {
   top?: number;
   left?: number;

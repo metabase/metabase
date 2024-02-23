@@ -7,7 +7,6 @@ import {
 } from "metabase/visualizations/lib/settings/visualization";
 import registerVisualizations from "metabase/visualizations/register";
 
-
 registerVisualizations();
 
 describe("visualization_settings", () => {

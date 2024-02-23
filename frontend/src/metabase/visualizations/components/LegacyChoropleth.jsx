@@ -3,7 +3,6 @@ import cx from "classnames";
 import d3 from "d3";
 import { Component } from "react";
 
-
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 const LegacyChoropleth = ({

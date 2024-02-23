@@ -11,7 +11,6 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-
 describe("search > recently viewed", () => {
   beforeEach(() => {
     restore();

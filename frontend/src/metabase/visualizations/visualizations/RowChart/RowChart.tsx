@@ -3,7 +3,6 @@ import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";

@@ -8,7 +8,6 @@ import {
 } from "metabase/dashboard/components/ClickMappings";
 import { Icon } from "metabase/ui";
 
-
 import { PopoverTrigger } from "./ValuesYouCanReference.styled";
 
 function prefixIfNeeded(values, prefix, otherLists) {

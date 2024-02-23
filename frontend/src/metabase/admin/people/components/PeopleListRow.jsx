@@ -3,7 +3,6 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-
 import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import UserAvatar from "metabase/components/UserAvatar";

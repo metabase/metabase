@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-
 import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFieldWidget";
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
 import type { ActionFormFieldProps } from "metabase/actions/types";

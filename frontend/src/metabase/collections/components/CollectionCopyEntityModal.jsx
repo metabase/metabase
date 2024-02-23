@@ -4,7 +4,6 @@ import { useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-
 import Link from "metabase/core/components/Link";
 import Collections from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";

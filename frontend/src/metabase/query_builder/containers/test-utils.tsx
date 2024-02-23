@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
 
-
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,

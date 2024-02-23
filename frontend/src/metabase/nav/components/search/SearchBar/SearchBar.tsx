@@ -6,7 +6,6 @@ import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-
 import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
 import { useToggle } from "metabase/hooks/use-toggle";

@@ -5,7 +5,6 @@ import CheckBox from "metabase/core/components/CheckBox";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-
 type OptionButtonProps = {
   primaryColor?: string;
   selected?: boolean;

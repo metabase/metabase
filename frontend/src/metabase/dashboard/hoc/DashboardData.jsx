@@ -16,8 +16,6 @@ import {
 } from "metabase/dashboard/selectors";
 import { setErrorPage } from "metabase/redux/app";
 
-
-
 const mapStateToProps = (state, props) => {
   return {
     dashboard: getDashboardComplete(state, props),

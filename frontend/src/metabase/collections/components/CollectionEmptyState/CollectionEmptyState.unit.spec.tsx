@@ -11,7 +11,6 @@ import {
   createMockDatabase,
 } from "metabase-types/api/mocks";
 
-
 console.warn = jest.fn();
 console.error = jest.fn();
 

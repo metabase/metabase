@@ -1,7 +1,6 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isEmpty } from "metabase/lib/validate";
 import type { Series } from "metabase-types/api";

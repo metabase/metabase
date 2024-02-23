@@ -15,7 +15,6 @@ import {
   getLastWeekDateFilter,
 } from "metabase-lib/queries/utils/date-filters";
 
-
 type Option = {
   displayName: string;
   init: (filter: Filter) => any;

@@ -47,7 +47,6 @@ import type { Dispatch, State } from "metabase-types/store";
 
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
-
 import DataSourceSelectors from "./DataSourceSelectors";
 import {
   DragHandleContainer,

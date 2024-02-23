@@ -6,7 +6,6 @@ import { color, darken, alpha } from "metabase/lib/colors";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
-
 export type SegmentedControlVariant =
   | "fill-text"
   | "fill-background"

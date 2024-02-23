@@ -1,8 +1,6 @@
 import type { FormikHelpers } from "formik";
 import { useCallback, useState } from "react";
 
-
-
 import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
 import ActionParametersInputForm, {
   ActionParametersInputModal,

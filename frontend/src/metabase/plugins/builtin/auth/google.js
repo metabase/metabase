@@ -1,7 +1,5 @@
 import { updateIn } from "icepick";
 
-
-
 import GoogleAuthCard from "metabase/admin/settings/auth/containers/GoogleAuthCard";
 import GoogleSettingsForm from "metabase/admin/settings/auth/containers/GoogleAuthForm";
 import FormikForm from "metabase/containers/FormikForm";

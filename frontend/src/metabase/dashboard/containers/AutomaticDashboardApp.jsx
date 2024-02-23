@@ -6,7 +6,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import ActionButton from "metabase/components/ActionButton";
 import Card from "metabase/components/Card";
 import Button from "metabase/core/components/Button";

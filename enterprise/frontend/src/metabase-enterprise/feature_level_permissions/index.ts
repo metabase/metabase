@@ -5,7 +5,6 @@ import {
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-
 import { getFeatureLevelDataPermissions } from "./permission-management";
 import {
   canDownloadResults,

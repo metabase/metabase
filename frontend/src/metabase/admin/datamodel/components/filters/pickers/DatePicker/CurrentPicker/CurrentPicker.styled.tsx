@@ -4,7 +4,6 @@ import Button from "metabase/core/components/Button";
 import { alpha, color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-
 export const CurrentContainer = styled.div<{ first?: boolean }>`
   display: flex;
   flex-wrap: no-wrap;

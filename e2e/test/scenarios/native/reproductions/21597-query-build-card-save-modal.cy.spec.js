@@ -8,7 +8,6 @@ import {
   addPostgresDatabase,
 } from "e2e/support/helpers";
 
-
 const databaseName = "Sample Database";
 const databaseCopyName = `${databaseName} copy`;
 const secondDatabaseId = SAMPLE_DB_ID + 1;

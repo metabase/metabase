@@ -6,7 +6,6 @@ import Button from "metabase/core/components/Button";
 import { color, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-
 export const ModelCollapseSection = styled(CollapseSection)`
   margin-bottom: ${space(1)};
 `;

@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-
 export const HEADER_ICON_SIZE = 16;
 
 export const StyledAnchor = styled.a`

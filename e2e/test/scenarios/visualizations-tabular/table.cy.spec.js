@@ -17,7 +17,6 @@ import {
   leftSidebar,
 } from "e2e/support/helpers";
 
-
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
     restore();

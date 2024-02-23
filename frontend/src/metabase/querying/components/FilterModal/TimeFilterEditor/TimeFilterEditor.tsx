@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { TimeValue } from "metabase/querying/hooks/use-time-filter";
 import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";

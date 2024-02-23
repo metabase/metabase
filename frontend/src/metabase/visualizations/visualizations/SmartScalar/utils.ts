@@ -2,7 +2,6 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import { formatNumber } from "metabase/lib/formatting/numbers";
 import { measureText } from "metabase/lib/measure-text";
 import { uuid } from "metabase/lib/utils";

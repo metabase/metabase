@@ -1,4 +1,3 @@
-
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type {
   ClickBehavior,

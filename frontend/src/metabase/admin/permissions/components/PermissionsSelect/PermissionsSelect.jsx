@@ -23,7 +23,6 @@ import {
   optionShape,
 } from "./PermissionsSelectOption";
 
-
 const propTypes = {
   options: PropTypes.arrayOf(PropTypes.shape(optionShape)).isRequired,
   actions: PropTypes.object,

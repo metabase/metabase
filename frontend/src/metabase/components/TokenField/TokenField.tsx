@@ -18,7 +18,6 @@ import {
 } from "metabase/lib/keyboard";
 import { Icon } from "metabase/ui";
 
-
 import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
 import {

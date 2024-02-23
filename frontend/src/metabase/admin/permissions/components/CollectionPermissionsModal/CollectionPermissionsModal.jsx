@@ -4,8 +4,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-
-
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";

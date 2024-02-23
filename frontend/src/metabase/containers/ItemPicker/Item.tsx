@@ -7,7 +7,6 @@ import { Icon } from "metabase/ui";
 import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 import type { PickerItem } from "./types";
 
-
 interface Props<TId> {
   item: PickerItem<TId>;
   name: string;

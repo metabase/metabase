@@ -2,7 +2,6 @@
 import AutoLoadRemapped from "metabase/hoc/Remapped";
 import { formatValue } from "metabase/lib/formatting";
 
-
 const defaultRenderNormal = ({ value, column }) => (
   <span className="text-bold">{value}</span>
 );

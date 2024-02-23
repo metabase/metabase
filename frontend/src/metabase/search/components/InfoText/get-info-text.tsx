@@ -9,7 +9,6 @@ import type { WrappedResult } from "metabase/search/types";
 import { Box } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
-
 const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
 
 export type InfoTextData = {

@@ -2,7 +2,6 @@ import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import Tooltip from "metabase/core/components/Tooltip";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";

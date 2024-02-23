@@ -27,7 +27,6 @@ import {
   colorGetter,
 } from "./utils";
 
-
 interface GaugeProps {
   value: number;
   valueFormatter: (value: number) => string;

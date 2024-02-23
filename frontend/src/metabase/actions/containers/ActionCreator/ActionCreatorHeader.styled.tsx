@@ -6,7 +6,6 @@ import SelectButton from "metabase/core/components/SelectButton";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-
 export const Container = styled.div`
   display: flex;
   flex: 0 0 auto;

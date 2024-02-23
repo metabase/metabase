@@ -5,7 +5,6 @@ import { SimpleDateFilterPicker } from "metabase/querying/components/FilterPicke
 import { Button, Popover, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-
 export interface TimeseriesFilterPickerProps {
   query: Lib.Query;
   stageIndex: number;

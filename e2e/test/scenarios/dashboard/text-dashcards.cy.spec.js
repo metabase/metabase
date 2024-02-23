@@ -15,7 +15,6 @@ import {
   expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
-
 describe("scenarios > dashboard > text and headings", () => {
   beforeEach(() => {
     resetSnowplow();

@@ -8,7 +8,6 @@ import Button from "metabase/core/components/Button";
 import { cancelable } from "metabase/lib/promise";
 import { Icon } from "metabase/ui";
 
-
 import { SmallSpinner } from "./ActionButton.styled";
 
 export default class ActionButton extends Component {

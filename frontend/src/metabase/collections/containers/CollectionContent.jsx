@@ -5,8 +5,6 @@ import { connect } from "react-redux";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-
-
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
