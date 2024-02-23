@@ -303,12 +303,12 @@
   "**MetabasePass**")
 
 (def ^:const protected-db-details
-  "The string to replace details with when serializing Databases."
-  "**MetabaseDatabaseDetails**")
+  "The map to replace details with when serializing Databases."
+  {:metabase/redacted "db/details"})
 
 (def ^:const protected-db-settings
-  "The string to replace settings with when serializing Databases."
-  "**MetabaseDatabaseSettings**")
+  "The map to replace settings with when serializing Databases."
+  {:metabase/redacted "db/settings"})
 
 (defn sensitive-fields-for-db
   "Gets all sensitive fields that should be redacted in API responses for a given database. Delegates to
@@ -332,7 +332,7 @@
                                       (sensitive-fields-for-db db))))))
 
 (defn- redact-settings [settings]
-  (if-not (map? settings)
+  (if-not (or (nil? settings) (map? settings))
     protected-db-settings
     (m/filter-keys
      (fn [setting-name]

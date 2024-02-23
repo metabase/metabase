@@ -134,9 +134,10 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :schedules))
-               (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
-                   (dissoc :schedules :can_upload)))))
+                  (dissoc :schedules)
+                  (assoc :details database/protected-db-details))
+              (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
+                  (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
         (is (= (assoc (db-details) :can-manage true)
                (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id)))
@@ -564,6 +565,8 @@
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
+                   :details       database/protected-db-details
+                   :settings      nil
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
                                     (t2/select-one [Table :created_at :updated_at] :id (mt/id :categories))
@@ -778,8 +781,7 @@
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> #{:features :native_permissions :can_upload}
-                                (into (keys (t2/select-one Database :id (mt/id))))
-                                (disj :details))]
+                                (into (keys (t2/select-one Database :id (mt/id)))))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
