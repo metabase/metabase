@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import _ from "underscore";
+import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
@@ -12,7 +12,7 @@ import StructuredQuery, {
 import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/queries/NativeQuery";
-import type AtomicQuery from "metabase-lib/queries/AtomicQuery";
+import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
 import type BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
@@ -23,18 +23,19 @@ import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
-  CardDisplayType,
   CardType,
   CollectionId,
   DatabaseId,
-  Dataset,
-  DatasetData,
   DatasetQuery,
-  Parameter as ParameterObject,
-  ParameterId,
-  ParameterValues,
+  DatasetData,
+  DependentMetadataItem,
   TableId,
+  Parameter as ParameterObject,
+  ParameterValues,
+  ParameterId,
   VisualizationSettings,
+  CardDisplayType,
+  Dataset,
 } from "metabase-types/api";
 
 // TODO: remove these dependencies
@@ -45,6 +46,7 @@ import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/
 import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { isTransientId } from "metabase-lib/queries/utils/card";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
@@ -56,11 +58,10 @@ import {
 } from "metabase-lib/Alert";
 
 import type { Query } from "./types";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
-  cardType?: CardType;
+  dataset?: boolean;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -223,6 +224,19 @@ class Question {
   }
 
   /**
+   * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
+   */
+  atomicQueries(): AtomicQuery[] {
+    const query = this.legacyQuery({ useStructuredQuery: true });
+
+    if (query instanceof AtomicQuery) {
+      return [query];
+    }
+
+    return [];
+  }
+
+  /**
    * The visualization type of the question
    */
   display(): string {
@@ -241,12 +255,30 @@ class Question {
     return this.setCard(assoc(this.card(), "cache_ttl", cache));
   }
 
-  type(): CardType {
-    return this._card?.type ?? "question";
+  /**
+   * returns whether this question is a model
+   * @deprecated Use Question.prototype.type instead
+   */
+  isDataset(): boolean {
+    return this._card && this._card.dataset;
+  }
+
+  type(): CardType | undefined {
+    return this._card && this._card.type;
+  }
+
+  /**
+   * @deprecated Use Question.prototype.setType instead
+   */
+  private _setDataset(dataset: boolean) {
+    return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
   setType(type: CardType) {
-    return this.setCard(assoc(this.card(), "type", type));
+    const dataset = type === "model";
+    // _setDataset is still called for backwards compatibility
+    // as we're migrating "dataset" -> "type" incrementally
+    return this.setCard(assoc(this.card(), "type", type))._setDataset(dataset);
   }
 
   isPersisted() {
@@ -322,6 +354,10 @@ class Question {
     return this.setDisplay(display).updateSettings(settings);
   }
 
+  setDefaultQuery() {
+    return this.legacyQuery({ useStructuredQuery: true }).question();
+  }
+
   settings(): VisualizationSettings {
     return (this._card && this._card.visualization_settings) || {};
   }
@@ -343,6 +379,10 @@ class Question {
     return this.card().creationType;
   }
 
+  isEmpty(): boolean {
+    return this.legacyQuery({ useStructuredQuery: true }).isEmpty();
+  }
+
   /**
    * How many filters or other widgets are this question's values used for?
    */
@@ -355,7 +395,10 @@ class Question {
    */
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative ? this.legacyQuery().canRun() : Lib.canRun(this.query());
+
+    return isNative
+      ? this.legacyQuery({ useStructuredQuery: true }).canRun()
+      : Lib.canRun(this.query());
   }
 
   canWrite(): boolean {
@@ -455,9 +498,7 @@ class Question {
   }
 
   composeDataset(): Question {
-    const type = this.type();
-
-    if (type === "question" || !this.isSaved()) {
+    if (!this.isDataset() || !this.isSaved()) {
       return this;
     }
 
@@ -673,23 +714,17 @@ class Question {
 
   databaseId(): DatabaseId | null {
     const query = this.query();
-    return Lib.databaseID(query);
+    const databaseId = Lib.databaseID(query);
+    return databaseId;
   }
 
-  legacyQueryTable(): Table | null {
-    const query = this.query();
-    const { isNative } = Lib.queryDisplayInfo(query);
-    if (isNative) {
-      return this.legacyQuery().table();
-    } else {
-      const tableId = Lib.sourceTableOrCardId(query);
-      const metadata = this.metadata();
-      return metadata.table(tableId);
-    }
+  table(): Table | null {
+    const query = this.legacyQuery({ useStructuredQuery: true });
+    return query && typeof query.table === "function" ? query.table() : null;
   }
 
-  legacyQueryTableId(): TableId | null {
-    const table = this.legacyQueryTable();
+  tableId(): TableId | null {
+    const table = this.table();
     return table ? table.id : null;
   }
 
@@ -709,15 +744,13 @@ class Question {
     return this.card().result_metadata ?? [];
   }
 
-  dependentMetadata(): Lib.DependentItem[] {
+  dependentMetadata(): DependentMetadataItem[] {
     const dependencies = [];
 
     // we frequently treat dataset/model questions like they are already nested
     // so we need to fetch the virtual card table representation of the Question
     // so that we can properly access the table's fields in various scenarios
-    const type = this.type();
-    const isModel = type === "model";
-    if (isModel && this.isSaved()) {
+    if (this.isDataset() && this.isSaved()) {
       dependencies.push({
         type: "table",
         id: getQuestionVirtualTableId(this.id()),
@@ -836,7 +869,7 @@ class Question {
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
+    const query = clean ? Lib.dropStageIfEmpty(this.query()) : this.query();
 
     const cardCopy = {
       name: this._card.name,
@@ -845,7 +878,7 @@ class Question {
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
-      type: this._card.type,
+      dataset: this._card.dataset,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
@@ -974,7 +1007,7 @@ class Question {
     name,
     display = "table",
     visualization_settings = {},
-    cardType,
+    dataset,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -984,8 +1017,8 @@ class Question {
       collection_id: collectionId,
       display,
       visualization_settings,
+      dataset,
       dataset_query,
-      type: cardType,
     };
 
     if (type === "native") {
