@@ -1,6 +1,6 @@
 import { useState } from "react";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
 import TokenField, { parseNumberValue } from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";

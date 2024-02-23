@@ -1,6 +1,5 @@
-import { restore, visitQuestionAdhoc } from "e2e/support/helpers";
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { restore, visitQuestionAdhoc } from "e2e/support/helpers";
 
 describe("visual tests > visualizations > pie", () => {
   beforeEach(() => {

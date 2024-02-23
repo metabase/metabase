@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { ModelIndex, CardId } from "metabase-types/api";
 import { createMockModelIndex } from "metabase-types/api/mocks";
 

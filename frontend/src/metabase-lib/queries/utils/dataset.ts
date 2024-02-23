@@ -1,11 +1,12 @@
 import _ from "underscore";
+
+import Dimension from "metabase-lib/Dimension";
 import type {
   DatasetColumn,
   DatasetData,
   FieldReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import Dimension from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;

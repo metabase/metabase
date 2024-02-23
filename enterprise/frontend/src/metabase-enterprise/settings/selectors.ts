@@ -1,5 +1,7 @@
 import { getSetting, getSettings } from "metabase/selectors/settings";
+
 import { LOADING_MESSAGE_BY_SETTING } from "../whitelabel/lib/loading-message";
+
 import type { EnterpriseSettings, EnterpriseState } from "./types";
 
 const DEFAULT_LOGO_URL = "app/assets/img/logo.svg";

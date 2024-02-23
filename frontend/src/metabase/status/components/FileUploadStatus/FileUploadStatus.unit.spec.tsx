@@ -1,20 +1,8 @@
-import fetchMock from "fetch-mock";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
-import {
-  createMockUpload,
-  createMockState,
-  createMockSettingsState,
-} from "metabase-types/store/mocks";
 
-import { renderWithProviders } from "__support__/ui";
-import {
-  createMockCollection,
-  createMockCollectionItem,
-  createMockDatabase,
-} from "metabase-types/api/mocks";
-import CollectionContent from "metabase/collections/containers/CollectionContent";
 import {
   setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
@@ -23,6 +11,19 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { renderWithProviders } from "__support__/ui";
+import CollectionContent from "metabase/collections/containers/CollectionContent";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
+import {
+  createMockUpload,
+  createMockState,
+  createMockSettingsState,
+} from "metabase-types/store/mocks";
+
 import { FileUploadStatus } from "./FileUploadStatus";
 
 const firstCollectionId = 1;

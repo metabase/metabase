@@ -1,7 +1,9 @@
-import { isValidElement } from "react";
 import type { ReactNode } from "react";
+import { isValidElement } from "react";
 import { t } from "ttag";
+
 import { Box, Button } from "metabase/ui";
+
 import { FilterFooterRoot } from "./FilterPickerFooter.styled";
 
 interface FilterPickerFooterProps {

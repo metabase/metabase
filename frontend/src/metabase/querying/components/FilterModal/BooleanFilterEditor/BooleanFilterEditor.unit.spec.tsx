@@ -1,4 +1,9 @@
 import userEvent from "@testing-library/user-event";
+
+import { createMockMetadata } from "__support__/metadata";
+import { renderWithProviders, screen } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createOrdersIdField,
@@ -6,10 +11,7 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders, screen } from "__support__/ui";
-import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
 import { BooleanFilterEditor } from "./BooleanFilterEditor";
 
 const BOOLEAN_FIELD = createMockField({

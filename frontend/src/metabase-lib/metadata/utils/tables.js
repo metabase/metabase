@@ -1,4 +1,4 @@
-import getGAMetadata from "promise-loader?global!metabase-lib/metadata/utils/ga-metadata"; // eslint-disable-line import/default
+import getGAMetadata from "promise-loader?global!metabase-lib/metadata/utils/ga-metadata";
 
 export async function injectTableMetadata(table) {
   // HACK: inject GA metadata that we don't have intergrated on the backend yet

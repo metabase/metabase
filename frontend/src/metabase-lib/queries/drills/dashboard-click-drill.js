@@ -1,17 +1,18 @@
-import _ from "underscore";
 import { getIn } from "icepick";
 import querystring from "querystring";
-import * as Lib from "metabase-lib";
-import * as Urls from "metabase/lib/urls";
+import _ from "underscore";
+
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
+import * as Urls from "metabase/lib/urls";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
 import {
   formatSourceForTarget,
   getDataFromClicked,
   getTargetForQueryParams,
 } from "metabase-lib/parameters/utils/click-behavior";
-import Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
 import { isDate } from "metabase-lib/types/utils/isa";
+import * as ML_Urls from "metabase-lib/urls";
 
 export function getDashboardDrillType(clicked) {
   const clickBehavior = getClickBehavior(clicked);

@@ -1,4 +1,5 @@
 import cx from "classnames";
+
 import { SettingInputBlurChange } from "./SettingInput.styled";
 
 const getValue = (value: string, type: string) => {

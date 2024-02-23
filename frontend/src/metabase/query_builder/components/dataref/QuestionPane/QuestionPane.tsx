@@ -9,13 +9,15 @@ import {
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
+import * as ML_Urls from "metabase-lib/urls";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
-import type Table from "metabase-lib/metadata/Table";
-import type Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
+
 import FieldList from "../FieldList";
 import { PaneContent } from "../Pane.styled";
+
 import {
   QuestionPaneDetail,
   QuestionPaneDetailLink,

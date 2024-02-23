@@ -1,4 +1,5 @@
 const { exec } = require("child_process");
+
 const arg = require("arg");
 const chalk = require("chalk");
 const cypress = require("cypress");

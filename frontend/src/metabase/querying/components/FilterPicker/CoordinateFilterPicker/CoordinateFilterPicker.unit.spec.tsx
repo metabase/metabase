@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithCoordinateFilter,
@@ -9,6 +11,7 @@ import {
   findLongitudeColumn,
   storeInitialState,
 } from "../test-utils";
+
 import { CoordinateFilterPicker } from "./CoordinateFilterPicker";
 
 const NUMERIC_TEST_CASES: Array<[string, number]> = [

@@ -1,17 +1,20 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import { getTimelineIcons } from "metabase/lib/timelines";
+
 import Button from "metabase/core/components/Button";
-import { Form, FormProvider } from "metabase/forms";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
-import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormTextArea from "metabase/core/components/FormTextArea";
+import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { getTimelineIcons } from "metabase/lib/timelines";
 import type { TimelineData } from "metabase-types/api";
+
 import FormArchiveButton from "../FormArchiveButton";
+
 import { TimelineFormFooter } from "./TimelineForm.styled";
 
 const TIMELINE_SCHEMA = Yup.object({

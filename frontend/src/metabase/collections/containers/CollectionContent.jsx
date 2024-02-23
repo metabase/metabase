@@ -1,39 +1,34 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState, useCallback } from "react";
-import _ from "underscore";
-import { connect } from "react-redux";
 import { useDropzone } from "react-dropzone";
+import { connect } from "react-redux";
 import { usePrevious } from "react-use";
-
-import { useToggle } from "metabase/hooks/use-toggle";
-import Bookmark from "metabase/entities/bookmarks";
-import Collection from "metabase/entities/collections";
-import Search from "metabase/entities/search";
-
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { getIsBookmarked } from "metabase/collections/selectors";
-import { getSetting } from "metabase/selectors/settings";
-import { getIsNavbarOpen } from "metabase/selectors/app";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
-import Header from "metabase/collections/containers/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
+import Header from "metabase/collections/containers/CollectionHeader";
+import { getIsBookmarked } from "metabase/collections/selectors";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-import { uploadFile } from "metabase/redux/uploads";
-
-import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
-
-import { usePagination } from "metabase/hooks/use-pagination";
-import { useListSelect } from "metabase/hooks/use-list-select";
+import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
+import Bookmark from "metabase/entities/bookmarks";
+import Collection from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
+import Search from "metabase/entities/search";
+import { useListSelect } from "metabase/hooks/use-list-select";
+import { usePagination } from "metabase/hooks/use-pagination";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { uploadFile } from "metabase/redux/uploads";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getSetting } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
-import UploadOverlay from "../components/UploadOverlay";
 import { ModelUploadModal } from "../components/ModelUploadModal";
-import { getComposedDragProps } from "./utils";
+import UploadOverlay from "../components/UploadOverlay";
 
 import {
   CollectionEmptyContent,
@@ -41,6 +36,7 @@ import {
   CollectionRoot,
   CollectionTable,
 } from "./CollectionContent.styled";
+import { getComposedDragProps } from "./utils";
 
 const PAGE_SIZE = 25;
 

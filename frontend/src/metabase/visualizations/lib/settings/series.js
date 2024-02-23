@@ -1,10 +1,12 @@
+import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
-import { getIn } from "icepick";
 
-import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
+
 import { getNameForCard } from "../series";
+
 import { nestedSettings } from "./nested";
 
 export function keyForSingleSeries(single) {

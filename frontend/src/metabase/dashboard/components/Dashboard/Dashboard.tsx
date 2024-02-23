@@ -1,18 +1,21 @@
+import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePrevious, useUnmount } from "react-use";
 import type { Route } from "react-router";
+import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
-import type { Location } from "history";
-
-import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
-import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
-
+import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import type Database from "metabase-lib/metadata/Database";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   Dashboard as IDashboard,
   DashboardId,
@@ -38,20 +41,10 @@ import type {
   StoreDashcard,
 } from "metabase-types/store";
 
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import type Database from "metabase-lib/metadata/Database";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
-
 import { SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardSidebars } from "../DashboardSidebars";
 
-import {
-  DashboardEmptyState,
-  DashboardEmptyStateWithoutAddPrompt,
-} from "./DashboardEmptyState/DashboardEmptyState";
 import {
   CardsContainer,
   DashboardStyled,
@@ -63,6 +56,10 @@ import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
 } from "./Dashboard.styled";
+import {
+  DashboardEmptyState,
+  DashboardEmptyStateWithoutAddPrompt,
+} from "./DashboardEmptyState/DashboardEmptyState";
 
 type SuccessfulFetchDashboardResult = { payload: { dashboard: IDashboard } };
 type FailedFetchDashboardResult = { error: unknown; payload: unknown };

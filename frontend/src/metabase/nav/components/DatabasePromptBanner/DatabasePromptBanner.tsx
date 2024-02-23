@@ -1,12 +1,11 @@
-import { t } from "ttag";
 import type { Location } from "history";
-
-import { getSetting } from "metabase/selectors/settings";
-import { useSelector } from "metabase/lib/redux";
+import { t } from "ttag";
 
 import Link from "metabase/core/components/Link/Link";
+import { useSelector } from "metabase/lib/redux";
 import { trackDatabasePromptBannerClicked } from "metabase/nav/analytics";
 import { useShouldShowDatabasePromptBanner } from "metabase/nav/hooks";
+import { getSetting } from "metabase/selectors/settings";
 
 import {
   ConnectDatabaseButton,

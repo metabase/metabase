@@ -1,13 +1,14 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import AdminHeader from "metabase/components/AdminHeader";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 
 import { fetchJobInfo } from "../jobInfo";
+
 import {
   JobInfoHeader,
   JobInfoRoot,

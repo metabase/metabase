@@ -4,7 +4,6 @@ import _ from "underscore";
 import Collections from "metabase/entities/collections";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

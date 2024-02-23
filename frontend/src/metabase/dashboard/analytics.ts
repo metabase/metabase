@@ -1,5 +1,6 @@
 import { trackSchemaEvent } from "metabase/lib/analytics";
 import type { DashboardId, DashboardWidth } from "metabase-types/api";
+
 import type { SectionId } from "./sections";
 
 const DASHBOARD_SCHEMA_VERSION = "1-1-3";

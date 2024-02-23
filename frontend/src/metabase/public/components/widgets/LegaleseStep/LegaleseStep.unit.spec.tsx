@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -9,6 +10,7 @@ import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
+
 import { LegaleseStep } from "./LegaleseStep";
 
 const setup = () => {

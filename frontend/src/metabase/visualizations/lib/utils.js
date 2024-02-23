@@ -1,7 +1,7 @@
-import _ from "underscore";
+import crossfilter from "crossfilter";
 import d3 from "d3";
 import { t } from "ttag";
-import crossfilter from "crossfilter";
+import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import { isDimension, isMetric, isDate } from "metabase-lib/types/utils/isa";

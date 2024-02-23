@@ -1,14 +1,16 @@
+import { useField, useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import { useField, useFormikContext } from "formik";
 import { t } from "ttag";
-import FormField from "metabase/core/components/FormField";
+
 import SchedulePicker from "metabase/components/SchedulePicker";
+import FormField from "metabase/core/components/FormField";
 import type {
   DatabaseData,
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
+
 import {
   ScheduleOptionList,
   ScheduleOptionBody,

@@ -1,10 +1,12 @@
 import type { FocusEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+
+import { useFieldValuesQuery } from "metabase/common/hooks";
 import { checkNotNull } from "metabase/lib/types";
 import { Center, Loader } from "metabase/ui";
-import { useFieldValuesQuery } from "metabase/common/hooks";
+import * as Lib from "metabase-lib";
+
 import { ListValuePicker } from "./ListValuePicker";
 import { SearchValuePicker } from "./SearchValuePicker";
 import { StaticValuePicker } from "./StaticValuePicker";

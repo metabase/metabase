@@ -1,6 +1,7 @@
 import type { ChangeEvent, FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+
 import {
   Box,
   Flex,
@@ -13,7 +14,9 @@ import type {
   DatasetColumn,
   SmartScalarComparisonAnotherColumn,
 } from "metabase-types/api";
+
 import { COMPARISON_TYPES } from "../constants";
+
 import { DoneButton } from "./SmartScalarSettingsWidgets.styled";
 
 interface AnotherColumnFormProps {

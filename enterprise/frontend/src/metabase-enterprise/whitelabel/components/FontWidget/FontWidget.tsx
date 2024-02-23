@@ -1,9 +1,11 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+
 import MetabaseSettings from "metabase/lib/settings";
-import type { FontSetting, FontSettingKeys, FontSettingValues } from "./types";
+
 import { FontSelect } from "./FontWidget.styled";
+import type { FontSetting, FontSettingKeys, FontSettingValues } from "./types";
 
 export interface FontWidgetProps {
   setting: FontSetting;

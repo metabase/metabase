@@ -1,14 +1,15 @@
-import type { Parameter } from "metabase-types/api";
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
 } from "metabase-lib/operators/utils";
-import { NUMBER, STRING, PRIMARY_KEY } from "metabase-lib/types/constants";
+import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/parameters/constants";
 import {
   getParameterType,
   getParameterSubType,
 } from "metabase-lib/parameters/utils/parameter-type";
-import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/parameters/constants";
+import { NUMBER, STRING, PRIMARY_KEY } from "metabase-lib/types/constants";
+import type { Parameter } from "metabase-types/api";
+
 import { getIsMultiSelect } from "../../../metabase/parameters/utils/dashboards";
 
 type OperatorType = "date" | "number" | "string";

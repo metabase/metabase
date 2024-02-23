@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
+
 import {
   Icon,
   Button,
@@ -17,6 +18,8 @@ import {
   getUnitOptions,
   setInterval,
 } from "../utils";
+
+import { PickerGrid } from "./DateOffsetIntervalPicker.styled";
 import {
   getDirectionText,
   getOffsetInterval,
@@ -26,7 +29,6 @@ import {
   setOffsetUnit,
   setUnit,
 } from "./utils";
-import { PickerGrid } from "./DateOffsetIntervalPicker.styled";
 
 interface DateOffsetIntervalPickerProps {
   value: DateOffsetIntervalValue;

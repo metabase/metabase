@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { moveElement } from "metabase/lib/arrays";
 import type { FieldSettingsMap, InputSettingType } from "metabase-types/api";
 

@@ -1,8 +1,8 @@
 import PropTypes from "prop-types";
 import { t, jt, ngettext, msgid } from "ttag";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 function getConfirmItems(pulse) {
   return pulse.channels.map((c, index) =>

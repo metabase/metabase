@@ -1,7 +1,13 @@
 import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
+
 import { createMockMetadata } from "__support__/metadata";
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import * as ML_Urls from "metabase-lib/urls";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -28,11 +34,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
-import Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

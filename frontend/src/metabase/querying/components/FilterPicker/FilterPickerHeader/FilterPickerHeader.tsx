@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+
 import { PopoverBackButton } from "metabase/ui";
+
 import { FilterHeaderRoot } from "./FilterPickerHeader.styled";
 
 interface FilterPickerHeaderProps {

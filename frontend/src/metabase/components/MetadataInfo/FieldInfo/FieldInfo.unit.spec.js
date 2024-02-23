@@ -1,6 +1,6 @@
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   createSampleDatabase,
@@ -8,6 +8,7 @@ import {
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
+
 import { FieldInfo } from "./FieldInfo";
 
 const state = createMockState({
