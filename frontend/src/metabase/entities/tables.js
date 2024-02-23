@@ -10,8 +10,8 @@ import { PUT } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
-  createThunkAction,
   compose,
+  createThunkAction,
   withAction,
   withCachedDataAndRequestState,
   withNormalize,

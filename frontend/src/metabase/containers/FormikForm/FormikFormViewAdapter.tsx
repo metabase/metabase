@@ -1,10 +1,8 @@
-import { FormikProps } from "formik";
-import { useEffect, useState } from "react";
+import { FormikProps } from "formik"; // eslint-disable-line import/named
 import * as React from "react";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
-
-// eslint-disable-next-line import/named
 
 import { CustomFormProps } from "metabase/components/form/FormikCustomForm";
 import { BaseFieldValues, FormField } from "metabase-types/forms";

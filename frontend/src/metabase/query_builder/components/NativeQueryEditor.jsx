@@ -1,19 +1,19 @@
 /*global ace*/
-/* eslint-disable react/prop-types */
-import { t } from "ttag";
-import cx from "classnames";
-import { createRef, Component } from "react";
+/* eslint-disable import/order, react/prop-types */
 import "ace/ace";
 import "ace/ext-language_tools";
 import "ace/ext-searchbox";
-import "ace/mode-sql";
 import "ace/mode-json";
-import "ace/snippets/text";
-import "ace/snippets/sql";
+import "ace/mode-sql";
 import "ace/snippets/json";
+import "ace/snippets/sql";
+import "ace/snippets/text";
+import cx from "classnames";
+import { Component, createRef } from "react";
 import { connect } from "react-redux";
 import { ResizableBox } from "react-resizable";
 import slugg from "slugg";
+import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -30,15 +30,14 @@ import SnippetFormModal from "metabase/query_builder/components/template_tags/Sn
 import { getSetting } from "metabase/selectors/settings";
 import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
 
-import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import {
   ACE_ELEMENT_ID,
-  SCROLL_MARGIN,
   MIN_HEIGHT_LINES,
+  SCROLL_MARGIN,
 } from "./NativeQueryEditor/constants";
 import {
   calcInitialEditorHeight,
@@ -46,6 +45,7 @@ import {
   getMaxAutoSizeLines,
 } from "./NativeQueryEditor/utils";
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
+import { ResponsiveParametersList } from "./ResponsiveParametersList";
 
 import "./NativeQueryEditor.css";
 import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
