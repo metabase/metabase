@@ -15,21 +15,6 @@ import {
 import { hasHour } from "metabase/lib/formatting/datetime-utils";
 
 import { currency } from "cljs/metabase.shared.util.currency";
-import MetabaseSettings from "metabase/lib/settings";
-import {
-  isCoordinate,
-  isCurrency,
-  isDate,
-  isDateWithoutTime,
-  isNumber,
-  isPercentage,
-} from "metabase-lib/types/utils/isa";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import {
-  findColumnIndexesForColumnSettings,
-  getColumnSettingKey,
-} from "metabase-lib/queries/utils/dataset";
-import { nestedSettings } from "./nested";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
@@ -58,6 +43,22 @@ export function columnSettings({
     ...def,
   });
 }
+
+import MetabaseSettings from "metabase/lib/settings";
+import {
+  isDate,
+  isNumber,
+  isCoordinate,
+  isCurrency,
+  isDateWithoutTime,
+  isPercentage,
+} from "metabase-lib/types/utils/isa";
+import {
+  getColumnSettingKey,
+  findColumnIndexesForColumnSettings,
+} from "metabase-lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};
