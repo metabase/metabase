@@ -4,7 +4,6 @@ import Select from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import { color, alpha } from "metabase/lib/colors";
 
-
 import { FilterPopover } from "../../FilterPopover";
 
 type SelectFilterButtonProps = {

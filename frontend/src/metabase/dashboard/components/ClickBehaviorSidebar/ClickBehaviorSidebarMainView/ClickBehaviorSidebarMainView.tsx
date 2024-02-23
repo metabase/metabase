@@ -5,7 +5,6 @@ import type {
   ClickBehavior,
 } from "metabase-types/api";
 
-
 import {
   SidebarContentBordered,
   SelectedClickBehaviorItemIcon,

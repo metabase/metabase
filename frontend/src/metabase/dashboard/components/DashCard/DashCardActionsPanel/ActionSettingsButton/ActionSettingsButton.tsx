@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { setEditingDashcardId } from "metabase/dashboard/actions";
 import type { ActionDashboardCard, Dashboard } from "metabase-types/api";
 
-
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
 
 const mapDispatchToProps = {

@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-
 import EventSandbox from "metabase/components/EventSandbox";
 import FieldSet from "metabase/components/FieldSet";
 import { Icon } from "metabase/core/components/Icon";

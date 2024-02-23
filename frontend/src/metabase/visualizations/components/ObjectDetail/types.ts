@@ -3,7 +3,6 @@ import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 import type Table from "metabase-lib/metadata/Table";
 import type { Card, DatasetData, DashboardCard } from "metabase-types/api";
 
-
 export type ObjectId = number | string;
 
 export type OnVisualizationClickType =

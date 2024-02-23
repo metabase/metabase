@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 import _ from "underscore";
 
-
 import Schemas from "metabase/entities/schemas";
 import { color } from "metabase/lib/colors";
 import { createEntity } from "metabase/lib/entities";

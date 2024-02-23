@@ -11,7 +11,6 @@ import {
   breakpointMinLarge,
 } from "metabase/styled-components/theme/media-queries";
 
-
 const LAST_EDITED_BY_INDEX = 3;
 const LAST_EDITED_AT_INDEX = 4;
 

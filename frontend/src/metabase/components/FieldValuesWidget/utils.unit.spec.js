@@ -7,7 +7,6 @@ import {
 } from "./testMocks";
 import { isSearchable, getValuesMode, searchField } from "./utils";
 
-
 describe("Components > FieldValuesWidget > utils", () => {
   describe("isSearchable", () => {
     const listField = metadata.field(PRODUCTS.CATEGORY);

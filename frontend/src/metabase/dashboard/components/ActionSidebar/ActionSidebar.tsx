@@ -2,7 +2,6 @@ import { useRef, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-
 import ActionViz from "metabase/actions/components/ActionViz";
 import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
 import { isActionDashCard } from "metabase/actions/utils";

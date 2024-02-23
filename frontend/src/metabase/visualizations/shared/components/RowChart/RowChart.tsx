@@ -1,7 +1,6 @@
 import type { NumberValue } from "d3-scale";
 import { useMemo } from "react";
 
-
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";

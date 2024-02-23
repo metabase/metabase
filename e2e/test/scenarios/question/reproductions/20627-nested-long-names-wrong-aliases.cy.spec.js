@@ -7,7 +7,6 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-
 const { ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const foreignKeyColumnName = "Surprisingly long and awesome Product ID";

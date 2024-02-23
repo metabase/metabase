@@ -3,7 +3,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 
-
 // NOTE: currently relies on .QueryError CSS selectors residing in query_builder.css
 
 const ErrorMessage = ({ title, type, message, action, className }) => {

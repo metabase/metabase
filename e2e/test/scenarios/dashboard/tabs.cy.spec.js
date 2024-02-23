@@ -40,7 +40,6 @@ import {
   popover,
 } from "e2e/support/helpers";
 
-
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
     restore();

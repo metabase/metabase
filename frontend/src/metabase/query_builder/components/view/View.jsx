@@ -46,7 +46,6 @@ import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
-
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
   aggregationPopoverTarget: null,

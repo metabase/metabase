@@ -13,7 +13,6 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const COLLECTION_NAME = "Official Collection Test";

@@ -1,7 +1,6 @@
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { restore, setupSMTP, popover } from "e2e/support/helpers";
 
-
 describe("scenarios > pulse", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();

@@ -4,7 +4,6 @@ import { DashboardCopyModalShallowCheckboxLabel } from "metabase/dashboard/compo
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 
-
 function createNameField() {
   return {
     name: "name",

@@ -34,7 +34,6 @@ import { DashboardCard } from "./DashboardGrid.styled";
 import { GridLayout } from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
 
-
 const mapDispatchToProps = { addUndo };
 
 class DashboardGrid extends Component {

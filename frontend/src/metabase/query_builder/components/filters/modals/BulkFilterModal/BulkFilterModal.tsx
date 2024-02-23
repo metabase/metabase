@@ -2,8 +2,6 @@ import type { KeyboardEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-
-
 import Button from "metabase/core/components/Button";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
@@ -21,7 +19,6 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Filter from "metabase-lib/queries/structured/Filter";
 
 import BulkFilterList from "../BulkFilterList";
-
 
 import { FieldSearch } from "./BulkFilterFieldSearch";
 import {

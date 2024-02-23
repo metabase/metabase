@@ -24,7 +24,6 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > joined questions", () => {

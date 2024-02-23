@@ -21,7 +21,6 @@ import {
 import MetabaseSettings from "metabase/lib/settings";
 import { Stack } from "metabase/ui";
 
-
 import {
   SAMLFormCaption,
   SAMLFormFooter,

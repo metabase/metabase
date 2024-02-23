@@ -9,7 +9,6 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import ErrorBoundary from "metabase/ErrorBoundary";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import Breadcrumbs from "metabase/components/Breadcrumbs";

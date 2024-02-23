@@ -15,8 +15,6 @@ import { SimpleCategoryFilterPicker } from "./SimpleCategoryFilterPicker";
 import { MAX_INLINE_CATEGORIES } from "./constants";
 import { isValidOption } from "./utils";
 
-
-
 const mapStateToProps = (state: any, props: any) => {
   const fieldId = props.dimension?.field?.()?.id;
 

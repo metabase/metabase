@@ -4,7 +4,6 @@ import { createMockColumn } from "metabase-types/api/mocks";
 import type { OptionsType } from "./types";
 import { formatValue } from "./value";
 
-
 const setup = (value: any, overrides: Partial<OptionsType> = {}) => {
   const column = createMockColumn({
     base_type: "type/Float",

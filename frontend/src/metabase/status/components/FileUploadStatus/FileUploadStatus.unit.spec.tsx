@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-
 import { renderWithProviders } from "__support__/ui";
 import CollectionHeader from "metabase/collections/containers/CollectionHeader";
 import { createMockCollection } from "metabase-types/api/mocks";

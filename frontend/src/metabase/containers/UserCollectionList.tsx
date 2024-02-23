@@ -1,4 +1,3 @@
-
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";

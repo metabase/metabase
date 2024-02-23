@@ -2,7 +2,6 @@ import type { MouseEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-
 import { isActionDashCard } from "metabase/actions/utils";
 import { Icon } from "metabase/core/components/Icon";
 import { isLinkDashCard } from "metabase/dashboard/utils";

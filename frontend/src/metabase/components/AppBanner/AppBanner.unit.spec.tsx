@@ -1,6 +1,5 @@
 import { Route } from "react-router";
 
-
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";

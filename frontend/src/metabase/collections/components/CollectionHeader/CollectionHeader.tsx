@@ -3,7 +3,6 @@ import { withRouter } from "react-router";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-
 import { CollectionMenu } from "../CollectionMenu";
 
 import CollectionBookmark from "./CollectionBookmark";

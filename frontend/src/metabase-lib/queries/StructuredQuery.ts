@@ -48,7 +48,6 @@ import type {
   StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
 
-
 import type Question from "../Question";
 import type Database from "../metadata/Database";
 import Field from "../metadata/Field";

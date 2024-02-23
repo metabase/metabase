@@ -1,4 +1,3 @@
-
 import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import {
   restrictToVerticalAxis,
@@ -11,7 +10,6 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-
 
 import CollapseSection from "metabase/components/CollapseSection";
 import { Icon } from "metabase/core/components/Icon";

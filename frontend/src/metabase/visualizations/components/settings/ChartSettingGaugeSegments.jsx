@@ -10,7 +10,6 @@ import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
 
-
 const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
   const onChangeProperty = (index, property, value) =>
     onChange([

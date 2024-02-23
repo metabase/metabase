@@ -4,7 +4,6 @@ import styled from "@emotion/styled";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
-
 export const FieldTypeIcon = styled(Icon)`
   color: ${props =>
     props.name === "ellipsis" ? color("text-white") : color("brand")};

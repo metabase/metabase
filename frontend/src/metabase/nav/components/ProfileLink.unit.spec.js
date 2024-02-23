@@ -9,7 +9,6 @@ import {
   createMockAdminAppState,
 } from "metabase-types/store/mocks";
 
-
 const REGULAR_ITEMS = [
   "Account settings",
   "Help",

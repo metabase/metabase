@@ -4,7 +4,6 @@ import Button from "metabase/core/components/Button";
 import { color, alpha, darken } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-
 export const OptionContainer = styled.div`
   font-weight: bold;
   display: flex;

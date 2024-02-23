@@ -1,6 +1,5 @@
 import { t, jt } from "ttag";
 
-
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
 import ExternalLink from "metabase/core/components/ExternalLink";

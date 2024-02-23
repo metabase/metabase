@@ -8,7 +8,6 @@ import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/components/QuestionEmbedWidget";
 
-
 import QuestionAlertWidget from "./QuestionAlertWidget";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
 import QuestionLastUpdated from "./QuestionLastUpdated";

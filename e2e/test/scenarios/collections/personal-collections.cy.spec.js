@@ -1,4 +1,3 @@
-
 import { USERS } from "e2e/support/cypress_data";
 import {
   NO_DATA_PERSONAL_COLLECTION_ID,

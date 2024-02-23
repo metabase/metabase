@@ -9,7 +9,6 @@ const glob = require("glob");
 const minimatch = require("minimatch");
 const path = require("path");
 
-
 const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}";
 
 // after webpack.config.js

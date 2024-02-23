@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-
 import { Icon } from "metabase/core/components/Icon";
 import Collections from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";

@@ -19,7 +19,6 @@ import {
 } from "metabase-lib/parameters/utils/parameter-type";
 import type { Dashboard, Parameter, FieldValue } from "metabase-types/api";
 
-
 import type { ValuesMode } from "./types";
 
 export async function searchFieldValues(

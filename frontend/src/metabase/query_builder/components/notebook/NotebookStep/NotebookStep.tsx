@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-
 import ExpandingContent from "metabase/components/ExpandingContent";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon } from "metabase/core/components/Icon";

@@ -1,4 +1,3 @@
-
 import {
   SAMPLE_DB_ID,
   USER_GROUPS,

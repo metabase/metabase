@@ -3,7 +3,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-
 import Groups from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
@@ -17,7 +16,6 @@ import type {
   TableId,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
 
 import type {
   DataRouteParams,

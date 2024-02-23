@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";

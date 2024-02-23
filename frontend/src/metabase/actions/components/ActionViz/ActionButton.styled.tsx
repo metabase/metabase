@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
-
 export const StyledButton = styled(Button)<{
   isFullHeight?: boolean;
   focus?: boolean;

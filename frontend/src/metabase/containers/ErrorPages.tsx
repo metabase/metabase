@@ -8,7 +8,6 @@ import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
-
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
 export const GenericError = ({

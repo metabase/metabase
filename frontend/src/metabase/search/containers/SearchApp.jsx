@@ -4,7 +4,6 @@ import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import PaginationControls from "metabase/components/PaginationControls";

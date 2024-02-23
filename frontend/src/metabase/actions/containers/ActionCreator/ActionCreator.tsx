@@ -4,7 +4,6 @@ import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import type {

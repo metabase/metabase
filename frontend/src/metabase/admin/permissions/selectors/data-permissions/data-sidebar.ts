@@ -2,7 +2,6 @@ import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 import { isNotNull } from "metabase/lib/types";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";

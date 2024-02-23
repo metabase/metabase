@@ -10,7 +10,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Select, { Option } from "metabase/core/components/Select";
 import { UtilApi } from "metabase/services";
 
-
 import { LogsContainer } from "./Logs.styled";
 
 const MAX_LOGS = 50000;

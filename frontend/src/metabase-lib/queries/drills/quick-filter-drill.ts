@@ -25,7 +25,6 @@ import type {
   FieldReference,
 } from "metabase-types/api";
 
-
 const INVALID_TYPES = [TYPE.Structured];
 const isConcreteField = (
   fieldRef: FieldReference,

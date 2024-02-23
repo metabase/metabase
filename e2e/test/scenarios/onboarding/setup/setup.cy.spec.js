@@ -8,7 +8,6 @@ import {
   restore,
 } from "e2e/support/helpers";
 
-
 const { admin } = USERS;
 
 // we're testing for one known (en) and one unknown (xx) locale

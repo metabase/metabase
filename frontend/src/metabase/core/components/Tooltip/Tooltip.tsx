@@ -8,7 +8,6 @@ import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isReactDOMTypeElement } from "metabase-types/guards";
 
-
 const TippyComponent = Tippy.default;
 
 Tooltip.propTypes = {

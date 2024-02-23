@@ -9,7 +9,6 @@ import {
   toggleDashboardInfoSidebar,
 } from "e2e/support/helpers";
 
-
 describeEE("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     restore();

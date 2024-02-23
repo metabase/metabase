@@ -1,4 +1,3 @@
-
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
 import { createRef, Component } from "react";
@@ -46,7 +45,6 @@ import type {
 import type { Dispatch, State } from "metabase-types/store";
 
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
-
 
 import DataSourceSelectors from "./DataSourceSelectors";
 import {

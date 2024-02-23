@@ -32,7 +32,6 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-
 type PermissionsPageTab = "data" | "collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;

@@ -11,7 +11,6 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-
 const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
 
 const FIXTURE_PATH = "../../e2e/support/assets";

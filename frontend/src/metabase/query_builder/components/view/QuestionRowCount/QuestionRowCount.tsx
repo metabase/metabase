@@ -20,7 +20,6 @@ import type { Limit } from "metabase-lib/types";
 import type { Dataset } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-
 import { RowCountButton, RowCountStaticLabel } from "./QuestionRowCount.styled";
 
 const POPOVER_ID = "limit-popover";

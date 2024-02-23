@@ -10,7 +10,6 @@ import {
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
 
-
 registerVisualizations();
 
 const DEFAULT_SETTINGS = {

@@ -36,7 +36,6 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import type { ValuesMode, LoadingStateType } from "./types";
 import {

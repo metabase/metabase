@@ -27,7 +27,6 @@ import {
   getUserIsAdmin,
 } from "metabase/selectors/user";
 
-
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {

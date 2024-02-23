@@ -25,7 +25,6 @@ import {
 } from "./SearchResult.styled";
 import { ItemIcon } from "./components";
 
-
 export function SearchResult({
   result,
   compact = false,

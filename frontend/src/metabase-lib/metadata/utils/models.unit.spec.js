@@ -24,7 +24,6 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
-
 function getTemplateTag(tag = {}) {
   return {
     id: "_",

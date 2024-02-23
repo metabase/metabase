@@ -7,7 +7,6 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {

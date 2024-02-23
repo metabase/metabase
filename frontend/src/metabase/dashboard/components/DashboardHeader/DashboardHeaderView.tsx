@@ -11,7 +11,6 @@ import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import type { Collection, Dashboard } from "metabase-types/api";
 
-
 import {
   EditWarning,
   HeaderRow,

@@ -6,7 +6,6 @@ import { MetabaseApi } from "metabase/services";
 import { FieldDimension } from "metabase-lib/Dimension";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
-
 import {
   getCard,
   getFirstQueryResult,

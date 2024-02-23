@@ -1,4 +1,3 @@
-
 import type Question from "metabase-lib/Question";
 import type Field from "metabase-lib/metadata/Field";
 import type Metadata from "metabase-lib/metadata/Metadata";

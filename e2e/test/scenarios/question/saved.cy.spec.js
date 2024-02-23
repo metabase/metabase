@@ -15,7 +15,6 @@ import {
   appBar,
 } from "e2e/support/helpers";
 
-
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
     restore();

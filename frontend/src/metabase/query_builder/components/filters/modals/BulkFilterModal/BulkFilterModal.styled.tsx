@@ -8,7 +8,6 @@ import TabPanel from "metabase/core/components/TabPanel";
 import { color } from "metabase/lib/colors";
 import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
 
-
 interface ModalRootProps {
   hasSideNav?: boolean;
 }

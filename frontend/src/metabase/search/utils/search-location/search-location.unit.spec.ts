@@ -6,7 +6,6 @@ import {
   isSearchPageLocation,
 } from "metabase/search/utils";
 
-
 describe("isSearchPageLocation", () => {
   it("should return true for a search page location", () => {
     const location = { pathname: "/search" };

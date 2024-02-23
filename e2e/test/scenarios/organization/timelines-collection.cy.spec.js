@@ -10,7 +10,6 @@ import {
   popover,
 } from "e2e/support/helpers";
 
-
 const { admin } = USERS;
 
 describe("scenarios > organization > timelines > collection", () => {

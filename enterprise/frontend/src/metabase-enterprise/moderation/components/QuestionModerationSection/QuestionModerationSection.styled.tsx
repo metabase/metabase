@@ -7,7 +7,6 @@ import {
   getStatusIcon,
 } from "metabase-enterprise/moderation/service";
 
-
 const { color: verifiedIconColor } = getStatusIcon(MODERATION_STATUS.verified);
 
 export const VerifyButton = styled(Button)`

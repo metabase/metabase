@@ -12,7 +12,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-
 import {
   InputContainer,
   HeadingContent,

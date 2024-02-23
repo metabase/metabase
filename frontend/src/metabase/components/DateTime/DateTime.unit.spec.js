@@ -8,7 +8,6 @@ import {
 } from "metabase/lib/formatting/datetime-utils";
 import MetabaseSettings from "metabase/lib/settings";
 
-
 describe("DateTime", () => {
   const TEST_DATE = "2021-06-08T14:40:10";
 

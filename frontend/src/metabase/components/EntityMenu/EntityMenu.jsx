@@ -3,7 +3,6 @@ import cx from "classnames";
 import { createRef, Component } from "react";
 import { Motion, spring } from "react-motion";
 
-
 import Card from "metabase/components/Card";
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
