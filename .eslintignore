@@ -1,1 +1,3 @@
 frontend/src/cljs
+e2e/support/cypress_sample_database.js
+e2e/support/cypress_sample_instance_data.js
