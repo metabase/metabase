@@ -87,7 +87,6 @@ export const DashboardHeaderContainer = styled.header<{
 `;
 
 export const CardsContainer = styled(FullWidthContainer)`
-  box-sizing: border-box;
   margin-top: 8px;
 `;
 

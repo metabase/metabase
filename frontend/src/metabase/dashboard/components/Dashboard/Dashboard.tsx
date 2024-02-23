@@ -544,7 +544,7 @@ function DashboardInner(props: DashboardProps) {
               id={DASHBOARD_PDF_EXPORT_ROOT_ID}
               data-testid="dashboard-parameters-and-cards"
               shouldMakeDashboardHeaderStickyAfterScrolling={
-                !isFullscreen && (isEditing || isSharing)
+                !isFullscreen && (isEditing || isDashboardSidebarOpen)
               }
             >
               {renderParameterList()}
