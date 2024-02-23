@@ -1,13 +1,6 @@
-<<<<<<< HEAD:frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/DatasetColumnSelector.unit.spec.tsx
-import { assocIn } from "icepick";
-import userEvent from "@testing-library/user-event";
-=======
 import userEvent from "@testing-library/user-event";
 
 import { screen, renderWithProviders } from "__support__/ui";
-import type * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
->>>>>>> ac3734876c (Fix table viz settings when query is out of sync with the setting (#38912)):frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/TableColumnPanel/TableColumnPanel.unit.spec.tsx
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -17,13 +10,8 @@ import {
   createMockTableColumnOrderSetting,
 } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
-<<<<<<< HEAD:frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/DatasetColumnSelector.unit.spec.tsx
-import { screen, renderWithProviders } from "__support__/ui";
-import { DatasetColumnSelector } from "./DatasetColumnSelector";
-=======
 
 import { TableColumnPanel } from "./TableColumnPanel";
->>>>>>> ac3734876c (Fix table viz settings when query is out of sync with the setting (#38912)):frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/TableColumnPanel/TableColumnPanel.unit.spec.tsx
 
 const COLUMNS = [
   createMockColumn({
@@ -55,37 +43,37 @@ const COLUMNS = [
 const COLUMN_SETTINGS = [
   createMockTableColumnOrderSetting({
     name: "TOTAL",
+    key: `["ref",["field",${ORDERS.TOTAL},null]]`,
     fieldRef: ["field", ORDERS.TOTAL, null],
     enabled: true,
   }),
   createMockTableColumnOrderSetting({
     name: "ID",
+    key: `["ref",["field",${ORDERS.ID},null]]`,
     fieldRef: ["field", ORDERS.ID, null],
     enabled: true,
   }),
   createMockTableColumnOrderSetting({
     name: "TAX",
+    key: `["ref",["field",${ORDERS.TAX},null]]`,
     fieldRef: ["field", ORDERS.TAX, null],
     enabled: false,
   }),
   createMockTableColumnOrderSetting({
     name: "SUBTOTAL",
+    key: `["ref",["field",${ORDERS.SUBTOTAL},null]]`,
     fieldRef: ["field", ORDERS.SUBTOTAL, null],
     enabled: false,
   }),
 ];
 
 interface SetupOpts {
-  query?: Lib.Query;
-  stageIndex?: number;
   columns?: DatasetColumn[];
   columnSettings?: TableColumnOrderSetting[];
   getColumnName?: (column: DatasetColumn) => string;
 }
 
 function setup({
-  query = createQuery(),
-  stageIndex = -1,
   columns = COLUMNS,
   columnSettings = COLUMN_SETTINGS,
   getColumnName = column => column.display_name,
@@ -95,8 +83,6 @@ function setup({
 
   renderWithProviders(
     <TableColumnPanel
-      query={query}
-      stageIndex={stageIndex}
       columns={columns}
       columnSettings={columnSettings}
       getColumnName={getColumnName}
