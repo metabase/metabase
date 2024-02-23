@@ -331,6 +331,8 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import time_history_component from "./time_history.svg?component";
+import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
@@ -1018,6 +1020,10 @@ export const Icons = {
   table2: {
     component: table2_component,
     source: table2_source,
+  },
+  time_history: {
+    component: time_history_component,
+    source: time_history_source,
   },
   trash: {
     component: trash_component,
