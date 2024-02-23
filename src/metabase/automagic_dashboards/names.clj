@@ -29,7 +29,7 @@
   (cond
     (mbql.u/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
     (magic.util/adhoc-metric? metric)     (-> op qp.util/normalize-token op->name)
-    (magic.util/saved-metric? metric)     (->> args first (t2/select-one :model/Metric :id) :name)
+    (magic.util/saved-metric? metric)     (->> args first (t2/select-one :model/LegacyMetric :id) :name)
     :else                                 (second args)))
 
 (defn- join-enumeration

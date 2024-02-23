@@ -78,7 +78,7 @@
     @fields))
 
 (defn semantic-groups
-  "From a :model/Metric, construct a mapping of semantic types of linked fields to
+  "From a :model/LegacyMetric, construct a mapping of semantic types of linked fields to
    sets of fields that can satisfy that type. A linked field is one that is in the
    source table for the metric contribute to the metric itself, is not a PK, and
    has a semantic_type (we assume nil semantic_type fields are boring)."
@@ -473,7 +473,7 @@
      :metrics    (concat (set-score 50 metrics) (set-score 95 linked-metrics)
                          (let [entity (-> context :root :entity)]
                            ;; metric x-rays talk about "this" in the template
-                           (when (mi/instance-of? :model/Metric entity)
+                           (when (mi/instance-of? :model/LegacyMetric entity)
                              [{:metric-name       "this"
                                :metric-title      (:name entity)
                                :metric-definition {:aggregation [(->reference :mbql entity)]}

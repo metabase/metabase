@@ -8,14 +8,14 @@
 (def MetricImportantField
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
   We'll keep this till we replace all these symbols in our codebase."
-  :model/MetricImportantField)
+  :model/LegacyMetricImportantField)
 
-(methodical/defmethod t2/table-name :model/MetricImportantField [_model] :metric_important_field)
+(methodical/defmethod t2/table-name :model/LegacyMetricImportantField [_model] :metric_important_field)
 
-(doto :model/MetricImportantField
+(doto :model/LegacyMetricImportantField
   (derive :metabase/model)
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
 
-(t2/deftransforms :model/MetricImportantField
+(t2/deftransforms :model/LegacyMetricImportantField
  {:definition mi/transform-json})

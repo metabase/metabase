@@ -169,7 +169,7 @@
             :ip_address         "0:0:0:0:0:0:0:1"
             :timestamp          (t/zoned-date-time)})
 
-   :model/Metric
+   :model/LegacyMetric
    (fn [_] (default-timestamped
              {:creator_id  (rasta-id)
               :definition  {}

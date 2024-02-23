@@ -47,6 +47,7 @@
   [instance-or-model]
   (let [model (or (t2/model instance-or-model) instance-or-model)
         raw-model-name (cond
+                         (= model :model/LegacyMetric) "Metric"
                          (keyword? model) (name model)
                          (class? model) (.getSimpleName ^java.lang.Class model))]
     (model-name->audit-logged-name raw-model-name raw-model-name)))

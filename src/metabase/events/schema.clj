@@ -54,7 +54,7 @@
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id  pos-int?]
-                       [:object   [:fn #(t2/instance-of? :model/Metric %)]]])
+                       [:object   [:fn #(t2/instance-of? :model/LegacyMetric %)]]])
       with-message   (mc/schema [:merge default-schema
                                  [:map {:closed true}
                                   [:revision-message {:optional true} :string]]])]
