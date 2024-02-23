@@ -3,8 +3,7 @@ import * as React from "react";
 import reactAnsiStyle from "react-ansi-style";
 
 import _ from "underscore";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 import type { Log } from "metabase-types/api";
 

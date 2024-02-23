@@ -1,5 +1,4 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment";
+import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";

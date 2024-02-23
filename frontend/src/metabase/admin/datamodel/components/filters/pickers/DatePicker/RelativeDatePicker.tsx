@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 import { assoc } from "icepick";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { DurationInputArg2 } from "moment-timezone";
+import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { isValidTimeInterval } from "metabase/lib/time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import {

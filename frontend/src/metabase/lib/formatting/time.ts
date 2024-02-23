@@ -1,6 +1,5 @@
 import { msgid, ngettext } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { parseTime, parseTimestamp } from "metabase/lib/time";
 
 import type { DatetimeUnit } from "metabase-types/api/query";
