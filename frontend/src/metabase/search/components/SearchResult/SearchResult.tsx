@@ -30,12 +30,14 @@ export function SearchResult({
   showDescription = true,
   isSelected = false,
   onClick,
+  className,
 }: {
   result: WrappedResult;
   compact?: boolean;
   showDescription?: boolean;
   onClick?: (result: WrappedResult) => void;
   isSelected?: boolean;
+  className?: string;
 }) {
   const { name, model, description, moderated_status }: WrappedResult = result;
 
@@ -82,6 +84,7 @@ export function SearchResult({
 
   return (
     <SearchResultContainer
+      className={className}
       data-testid="search-result-item"
       component="button"
       onClick={handleClick}

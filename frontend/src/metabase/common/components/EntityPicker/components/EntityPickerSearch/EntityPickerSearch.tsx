@@ -4,15 +4,16 @@ import Search from "metabase/entities/search";
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
-import { SearchResult } from "metabase/search/components/SearchResult";
 import type { WrappedResult } from "metabase/search/types";
-import { Stack, Tabs, TextInput, Icon } from "metabase/ui";
+import { Stack, Tabs, TextInput, Icon, Box } from "metabase/ui";
 import type {
   SearchResult as SearchResultType,
   SearchResults as SearchResultsType,
 } from "metabase-types/api";
 
 import type { CollectionPickerItem } from "../../types";
+
+import { EntityPickerSearchResult } from "./EntityPickerSearch.styled";
 
 const defaultSearchFilter = (results: SearchResultType[]) => results;
 
@@ -79,25 +80,26 @@ export const EntityPickerSearchResults = ({
   }
 
   return (
-    <Stack
+    <Box
       p="lg"
       style={{
         height: "100%",
         overflowY: "auto",
-        maxWidth: "640px",
       }}
     >
-      {searchResults?.map(item => (
-        <SearchResult
-          key={item.model + item.id}
-          result={Search.wrapEntity(item, dispatch)}
-          onClick={onItemSelect}
-          isSelected={
-            selectedItem?.id === item.id && selectedItem?.model === item.model
-          }
-        />
-      ))}
-    </Stack>
+      <Stack maw="640px">
+        {searchResults?.map(item => (
+          <EntityPickerSearchResult
+            key={item.model + item.id}
+            result={Search.wrapEntity(item, dispatch)}
+            onClick={onItemSelect}
+            isSelected={
+              selectedItem?.id === item.id && selectedItem?.model === item.model
+            }
+          />
+        ))}
+      </Stack>
+    </Box>
   );
 };
 
