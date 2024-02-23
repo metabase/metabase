@@ -715,6 +715,7 @@ describe("Question", () => {
             ...vizSettingCols.slice(1),
             {
               name: "foo",
+              key: '["name","foo"]',
               fieldRef: [
                 "field",
                 "foo",
@@ -742,7 +743,7 @@ describe("Question", () => {
                     "base-type": "type/Float",
                   },
                 ],
-                name: "foo",
+                name: "num",
                 base_type: "type/Float",
               },
               ...cols.slice(1),
@@ -780,6 +781,7 @@ describe("Question", () => {
             ...vizSettingCols.slice(1),
             {
               name: "foo",
+              key: '["name","foo"]',
               fieldRef: ["field", "foo", { "base-type": "type/Integer" }],
               enabled: true,
             },
