@@ -122,7 +122,9 @@ export const SaveQuestionModal = ({
           ? initialCollectionId
           : question.collectionId(),
       saveType:
-        originalQuestion && originalQuestion.canWrite()
+        originalQuestion &&
+        originalQuestion.type() === "question" &&
+        originalQuestion.canWrite()
           ? "overwrite"
           : "create",
     }),
