@@ -236,6 +236,7 @@
   ([username]
    (create-user! username session-password))
   ([username password]
+   (execute! "DROP USER \"%s\" CASCADE" username)
    (execute! "CREATE USER \"%s\" IDENTIFIED BY \"%s\" DEFAULT TABLESPACE USERS QUOTA UNLIMITED ON USERS"
              username
              password)))
