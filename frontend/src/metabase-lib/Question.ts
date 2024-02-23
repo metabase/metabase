@@ -471,8 +471,8 @@ class Question {
   }
 
   private _syncGraphMetricSettings(
-    queryResults: Dataset,
-    prevQueryResults: Dataset,
+    { data: { cols = [] } = {} }: Dataset,
+    { data: { cols: prevCols = [] } = {} }: Dataset,
   ) {
     const graphMetrics = this.setting("graph.metrics");
     if (!graphMetrics) {
@@ -480,12 +480,12 @@ class Question {
     }
 
     const metricColumnNameByKey = Object.fromEntries(
-      queryResults.data.cols
+      cols
         .filter(column => column.source === "aggregation")
         .map(column => [getColumnKey(column), column.name]),
     );
     const prevMetricColumnNameByKey = Object.fromEntries(
-      prevQueryResults.data.cols
+      prevCols
         .filter(column => column.source === "aggregation")
         .map(column => [getColumnKey(column), column.name]),
     );
