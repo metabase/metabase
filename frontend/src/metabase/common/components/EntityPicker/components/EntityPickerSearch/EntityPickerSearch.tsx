@@ -1,12 +1,14 @@
 import { t } from "ttag";
 
 import { VariableSizeItemsVirtualizedList } from "metabase/components/VirtualizedList";
+import NoResults from "assets/img/no_results.svg";
+import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
-import { Stack, Tabs, TextInput, Icon, Box } from "metabase/ui";
+import { Stack, Tabs, TextInput, Icon, Box, Flex } from "metabase/ui";
 import type {
   SearchResult as SearchResultType,
   SearchResults as SearchResultsType,
@@ -82,21 +84,35 @@ export const EntityPickerSearchResults = ({
 
   return (
     <Box p="lg" h="100%">
-      <Stack h="100%">
-        <VariableSizeItemsVirtualizedList>
-          {searchResults?.map(item => (
-            <EntityPickerSearchResult
-              key={item.model + item.id}
-              result={Search.wrapEntity(item, dispatch)}
-              onClick={onItemSelect}
-              isSelected={
-                selectedItem?.id === item.id &&
-                selectedItem?.model === item.model
-              }
-            />
-          ))}
-        </VariableSizeItemsVirtualizedList>
-      </Stack>
+      {searchResults.length > 0 ? (
+        <Stack h="100%">
+          <VariableSizeItemsVirtualizedList>
+            {searchResults?.map(item => (
+              <EntityPickerSearchResult
+                key={item.model + item.id}
+                result={Search.wrapEntity(item, dispatch)}
+                onClick={onItemSelect}
+                isSelected={
+                  selectedItem?.id === item.id &&
+                  selectedItem?.model === item.model
+                }
+              />
+            ))}
+          </VariableSizeItemsVirtualizedList>
+        </Stack>
+      ) : (
+        <Flex direction="column" justify="center" h="100%">
+          <EmptyState
+            title={t`Didn't find anything`}
+            message={t`There weren't any results for your search.`}
+            illustrationElement={
+              <Box mb={"-2.5rem"}>
+                <img src={NoResults} />
+              </Box>
+            }
+          />
+        </Flex>
+      )}
     </Box>
   );
 };

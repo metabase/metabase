@@ -1,11 +1,9 @@
 import type React from "react";
-import { t } from "ttag";
 
-import { CollectionEmptyIcon } from "metabase/collections/components/CollectionEmptyState/CollectionEmptyState";
+import NoResults from "assets/img/no_results.svg";
+import EmptyState from "metabase/components/EmptyState";
 import { VariableSizeItemsVirtualizedList } from "metabase/components/VirtualizedList";
-import { color } from "metabase/lib/colors";
-import { pluralize } from "metabase/lib/formatting";
-import { Box, Text, NavLink, Loader, Center, Icon, Flex } from "metabase/ui";
+import { Box, NavLink, Loader, Center, Icon, Flex } from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
 import { getIcon, isSelectedItem } from "../../utils";
@@ -17,7 +15,6 @@ interface ItemListProps<TItem extends TypeWithModel> {
   isLoading?: boolean;
   onClick: (val: TItem) => void;
   selectedItem: TItem | null;
-  itemName: string;
   isFolder: (item: TItem) => boolean;
   isCurrentLevel: boolean;
 }
@@ -27,7 +24,6 @@ export const ItemList = <TItem extends TypeWithModel>({
   isLoading = false,
   onClick,
   selectedItem,
-  itemName,
   isFolder,
   isCurrentLevel,
 }: ItemListProps<TItem>) => {
@@ -48,10 +44,13 @@ export const ItemList = <TItem extends TypeWithModel>({
   if (!items.length) {
     return (
       <Flex justify="center" align="center" direction="column" h="100%">
-        <CollectionEmptyIcon height={47} />
-        <Text align="center" p="lg" fw={700} color={color("text-light")}>
-          {t`No ${pluralize(itemName)} here`}
-        </Text>
+        <EmptyState
+          illustrationElement={
+            <Box>
+              <img src={NoResults} />
+            </Box>
+          }
+        />
       </Flex>
     );
   }
