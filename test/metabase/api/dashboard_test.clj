@@ -4141,9 +4141,8 @@
                                                                                 [:field (mt/id :people :source)
                                                                                  {:base-type :type/Text}]]}}
                                       :dataset       true}
-           :model/Dashboard {dash-id :id
-                             :as     dashboard} {:name       "My Awesome Dashboard"
-                                                 :parameters [param]}
+           :model/Dashboard {dash-id :id} {:name       "My Awesome Dashboard"
+                                           :parameters [param]}
            :model/DashboardCard {dash-card-id :id} {:dashboard_id       dash-id
                                                     :card_id            card-id
                                                     :parameter_mappings [{:parameter_id "_SOURCE_PARAM_ID_"
@@ -4172,7 +4171,7 @@
             (mt/with-expected-messages 2
               (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
                                                                :rasta :put 200 (str "dashboard/" dash-id)
-                                                               (assoc dashboard :parameters [])))
+                                                               {:parameters []}))
                     inbox     @mt/inbox
                     html-body (get-in inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (testing "The dashboard parameters were removed"
