@@ -239,7 +239,8 @@
         inline-comment (inline-column-comment-sql driver field-comment)]
     (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
 
-(defn- fielddefs->pk-field-name
+(defn fielddefs->pk-field-name
+  "Find the pk field name in fieldefs"
   [fieldefs]
   (->> fieldefs (filter :pk?) first :field-name))
 
