@@ -90,5 +90,11 @@ export function diagnoseExpression(
   mbql: any,
   expressionPosition?: number,
 ): ErrorWithMessage | null {
-  return ML.diagnose_expression(query, stageIndex, expressionMode, mbql, expressionPosition);
+  return ML.diagnose_expression(
+    query,
+    stageIndex,
+    expressionMode,
+    mbql,
+    expressionPosition,
+  );
 }
