@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { useCollectionQuery } from "metabase/common/hooks";
 import FormFooter from "metabase/core/components/FormFooter";
 import Collections from "metabase/entities/collections";
 import {
@@ -11,7 +10,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useDispatch } from "metabase/lib/redux";
-import { Modal, Button, Loader } from "metabase/ui";
+import { Modal, Button } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 interface NewCollectionDialogProps {
@@ -37,45 +36,46 @@ export const NewCollectionDialog = ({
     onClose();
   };
 
-  const { data, isLoading } = useCollectionQuery({ id: parentCollectionId });
-
   return (
     <Modal
-      title="Create New"
+      title="Create a new collection"
       opened={isOpen}
       onClose={onClose}
       data-testid="create-collection-on-the-go"
       trapFocus={true}
+      withCloseButton={false}
+      styles={{
+        content: {
+          padding: "1rem",
+        },
+      }}
     >
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <FormProvider
-          initialValues={{ name: "" }}
-          onSubmit={onCreateNewCollection}
-        >
-          {({ dirty }: { dirty: boolean }) => (
-            <Form>
-              <FormTextInput
-                name="name"
-                label={t`Name of new folder inside "${data?.name}"`}
-                placeholder={t`My new collection`}
-                mb="1rem"
-                data-autofocus
+      <FormProvider
+        initialValues={{ name: "" }}
+        onSubmit={onCreateNewCollection}
+      >
+        {({ dirty }: { dirty: boolean }) => (
+          <Form>
+            <FormTextInput
+              name="name"
+              label={t`Give it a name`}
+              placeholder={t`My new collection`}
+              mb="1rem"
+              labelProps={{ my: "0.5rem" }}
+              data-autofocus
+            />
+            <FormFooter>
+              <FormErrorMessage inline />
+              <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton
+                label={t`Create`}
+                disabled={!dirty}
+                variant="filled"
               />
-              <FormFooter>
-                <FormErrorMessage inline />
-                <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton
-                  label={t`Create`}
-                  disabled={!dirty}
-                  variant="filled"
-                />
-              </FormFooter>
-            </Form>
-          )}
-        </FormProvider>
-      )}
+            </FormFooter>
+          </Form>
+        )}
+      </FormProvider>
     </Modal>
   );
 };

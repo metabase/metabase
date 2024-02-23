@@ -9,7 +9,13 @@ const gradualScroll = (container: HTMLDivElement | null) => {
     return;
   }
   const intervalId = setInterval(() => {
-    if (container.scrollLeft + container.clientWidth < container.scrollWidth) {
+    // This is actually a fairly fussy check. It's possible for the scrollWidth to be higher
+    // than what the scrollLeft + clientWidth can ever be, causing you to constantly scroll
+    // right.
+    if (
+      container.scrollLeft + container.clientWidth <=
+      container.scrollWidth * 0.99
+    ) {
       container.scrollLeft += 25;
     } else {
       clearInterval(intervalId);

@@ -29,6 +29,7 @@ interface RootItemListProps<CollectionPickerItem extends TypeWithModel> {
   itemName: string;
   options: EntityPickerOptions;
   isFolder: TisFolder<CollectionPickerItem, CollectionPickerItem>;
+  isCurrentLevel: boolean;
 }
 /**
  * This is a special item list that exists "above" our analytics and might include:
@@ -42,6 +43,7 @@ export const RootItemList = ({
   itemName,
   options,
   isFolder,
+  isCurrentLevel,
 }: RootItemListProps<CollectionPickerItem>) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
@@ -114,6 +116,7 @@ export const RootItemList = ({
       selectedItem={selectedItem}
       itemName={itemName}
       isFolder={isFolder}
+      isCurrentLevel={isCurrentLevel}
     />
   );
 };

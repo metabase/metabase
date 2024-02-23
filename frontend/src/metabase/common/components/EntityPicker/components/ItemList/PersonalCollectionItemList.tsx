@@ -15,6 +15,7 @@ interface PersonalCollectionsItemListProps<
   selectedItem: TItem | TFolder | null;
   itemName: string;
   isFolder: TisFolder<TItem, TFolder>;
+  isCurrentLevel: boolean;
 }
 
 export const PersonalCollectionsItemList = <
@@ -25,6 +26,7 @@ export const PersonalCollectionsItemList = <
   selectedItem,
   itemName,
   isFolder,
+  isCurrentLevel,
 }: PersonalCollectionsItemListProps<TItem, TFolder>) => {
   const { data: collections, isLoading } = useCollectionListQuery({
     query: { "personal-only": true },
@@ -44,6 +46,7 @@ export const PersonalCollectionsItemList = <
       selectedItem={selectedItem}
       itemName={itemName}
       isFolder={isFolder}
+      isCurrentLevel={isCurrentLevel}
     />
   );
 };

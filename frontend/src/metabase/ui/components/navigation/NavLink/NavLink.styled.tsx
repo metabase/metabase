@@ -10,12 +10,9 @@ export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
 
           "&:hover": {
             backgroundColor: theme.fn.themeColor("brand-lighter"),
-            // ".emotion-NavLink-label, .emotion-NavLink-icon": {
-            //   color: "white",
-            // },
           },
 
-          "&[data-active]": {
+          "&[data-active][data-activepanel]": {
             "&:hover": {
               backgroundColor: theme.fn.themeColor("brand"),
             },
@@ -31,6 +28,11 @@ export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
               color: "white",
             },
           },
+
+          "&[data-active]": {
+            backgroundColor: theme.fn.themeColor("brand-lighter"),
+            color: theme.fn.themeColor("text-dark"),
+          },
         },
 
         label: {
@@ -41,6 +43,13 @@ export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
           color: theme.fn.themeColor("text-dark"),
         },
       };
+    },
+    variants: {
+      subtle: theme => ({
+        root: {
+          backgroundColor: theme.fn.themeColor("brand-lighter"),
+        },
+      }),
     },
   },
 });

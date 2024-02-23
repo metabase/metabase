@@ -13,6 +13,7 @@ export interface EntityItemListProps<
   selectedItem: TItem | TFolder | null;
   itemName: string;
   isFolder: TisFolder<TItem, TFolder>;
+  isCurrentLevel: boolean;
 }
 
 export const EntityItemList = <
@@ -24,6 +25,7 @@ export const EntityItemList = <
   selectedItem,
   itemName,
   isFolder,
+  isCurrentLevel,
 }: EntityItemListProps<TItem, TFolder>) => {
   const { data, isLoading } = useSearchListQuery<TItem | TFolder>({ query });
 
@@ -35,6 +37,7 @@ export const EntityItemList = <
       selectedItem={selectedItem}
       itemName={itemName}
       isFolder={isFolder}
+      isCurrentLevel={isCurrentLevel}
     />
   );
 };

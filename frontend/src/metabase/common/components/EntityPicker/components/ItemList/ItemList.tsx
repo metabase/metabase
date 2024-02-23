@@ -22,6 +22,7 @@ interface ItemListProps<
   selectedItem: TItem | TFolder | null;
   itemName: string;
   isFolder: (item: TItem | TFolder) => boolean;
+  isCurrentLevel: boolean;
 }
 
 export const ItemList = <
@@ -34,6 +35,7 @@ export const ItemList = <
   selectedItem,
   itemName,
   isFolder,
+  isCurrentLevel,
 }: ItemListProps<TItem, TFolder>) => {
   if (isLoading) {
     return (
@@ -78,6 +80,7 @@ export const ItemList = <
             }}
             variant="light"
             mb="xs"
+            data-activepanel={isCurrentLevel ? true : null}
           />
         </div>
       ))}

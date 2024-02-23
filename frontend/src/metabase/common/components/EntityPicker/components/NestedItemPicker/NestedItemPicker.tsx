@@ -72,6 +72,7 @@ export function NestedItemPicker<
                   options={options}
                   onClick={(item: TItem | TFolder) => handleClick(item)}
                   itemName={itemName}
+                  isCurrentLevel={index === path.length - 2}
                   // @ts-expect-error - don't worry it's fine
                   isFolder={isFolder}
                 />
@@ -91,6 +92,7 @@ function ListComponent({
   options,
   query,
   isFolder,
+  isCurrentLevel,
 }: EntityItemListProps<CollectionPickerItem, CollectionPickerItem> & {
   options: EntityPickerOptions;
 }) {
@@ -102,6 +104,7 @@ function ListComponent({
         onClick={onClick}
         itemName={itemName}
         isFolder={isFolder}
+        isCurrentLevel={isCurrentLevel}
       />
     );
   }
@@ -113,6 +116,7 @@ function ListComponent({
         selectedItem={selectedItem}
         itemName={itemName}
         isFolder={isFolder}
+        isCurrentLevel={isCurrentLevel}
       />
     );
   }
@@ -124,6 +128,7 @@ function ListComponent({
       selectedItem={selectedItem}
       itemName={itemName}
       isFolder={isFolder}
+      isCurrentLevel={isCurrentLevel}
     />
   );
 }

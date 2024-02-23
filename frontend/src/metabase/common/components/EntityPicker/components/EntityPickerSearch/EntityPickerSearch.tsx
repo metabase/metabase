@@ -84,6 +84,7 @@ export const EntityPickerSearchResults = ({
       style={{
         height: "100%",
         overflowY: "auto",
+        maxWidth: "640px",
       }}
     >
       {searchResults?.map(item => (
