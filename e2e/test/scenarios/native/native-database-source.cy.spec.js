@@ -10,13 +10,16 @@ describe(
     });
 
     it("smoketest: persisting last used database should work, and it should be user-specific setting", () => {
+      const adminPersistedDatabase = "QA Postgres12";
+      const userPersistedDatabase = "Sample Database";
+
       startNativeQuestion();
       assertNoDatabaseSelected();
 
-      selectDatabase("QA Postgres12");
+      selectDatabase(adminPersistedDatabase);
 
       startNativeQuestion();
-      assertSelectedDatabase("QA Postgres12");
+      assertSelectedDatabase(adminPersistedDatabase);
 
       cy.signOut();
       cy.signInAsNormalUser();
@@ -24,16 +27,16 @@ describe(
       startNativeQuestion();
       assertNoDatabaseSelected();
 
-      selectDatabase("Sample Database");
+      selectDatabase(userPersistedDatabase);
 
       startNativeQuestion();
-      assertSelectedDatabase("Sample Database");
+      assertSelectedDatabase(userPersistedDatabase);
 
       cy.signOut();
       cy.signInAsAdmin();
 
       startNativeQuestion();
-      assertSelectedDatabase("Sample Database");
+      assertSelectedDatabase(adminPersistedDatabase);
     });
 
     it("deleting previously persisted database should result in the new database selection prompt", () => {
