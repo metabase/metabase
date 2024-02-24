@@ -118,12 +118,12 @@
       ;; version by telling Liquibase that's the migrations file.
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
         (is (thrown-with-msg?
-             Exception #"Downgrade detected. Please run `migrate down` from version 45."
+             Exception #"You must run `java -jar metabase.jar migrate down` from version 45."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
 
       ;; check that the error correctly reports the version to run `downgrade` from
       (update-to-changelog-id "v46.00-001" conn)
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
         (is (thrown-with-msg?
-             Exception #"Downgrade detected. Please run `migrate down` from version 46."
+             Exception #"You must run `java -jar metabase.jar migrate down` from version 46."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))
