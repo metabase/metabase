@@ -4,10 +4,11 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import { VariableSizeItemsVirtualizedList } from "metabase/components/VirtualizedList";
-import { Box, NavLink, Loader, Center, Icon, Flex } from "metabase/ui";
+import { Box, NavLink, Center, Icon, Flex } from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
 import { getIcon, isSelectedItem } from "../../utils";
+import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
 import { PickerColumn } from "./ItemList.styled";
 
@@ -29,11 +30,11 @@ export const ItemList = <TItem extends TypeWithModel>({
   isFolder,
   isCurrentLevel,
 }: ItemListProps<TItem>) => {
-  if (isLoading) {
+  if (isLoading && !items) {
     return (
       <Box miw={310} h="100%" aria-label={t`loading`}>
         <Center p="lg" h="100%">
-          <Loader />
+          <DelayedLoadingSpinner delay={100} />
         </Center>
       </Box>
     );
