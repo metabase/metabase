@@ -1027,9 +1027,11 @@
    dashcard-id  ms/PositiveInt
    parameters   ms/JSONString}
   (api/read-check :model/Dashboard dashboard-id)
-  (actions.execution/fetch-values
-   (api/check-404 (action/dashcard->action dashcard-id))
-   (json/parse-string parameters)))
+  (-> (t2/select-one :model/DashboardCard :id dashcard-id)
+      api/check-not-archived
+      action/dashcard->action
+      api/check-404
+      (actions.execution/fetch-values (json/parse-string parameters))))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
