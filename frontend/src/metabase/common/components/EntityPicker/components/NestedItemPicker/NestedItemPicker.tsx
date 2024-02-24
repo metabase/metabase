@@ -1,4 +1,5 @@
 import type React from "react";
+import { useRef } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
@@ -37,11 +38,13 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
   isFolder,
   listResolver: ListResolver,
 }: NestedItemPickerProps<TItem>) {
+  const scrollBoxRef = useRef<{ scrollRight: () => void }>(null);
   const handleFolderSelect = (folder: TItem) => {
     onFolderSelect({ folder });
   };
 
   const handleClick = (item: TItem) => {
+    scrollBoxRef.current?.scrollRight?.();
     if (isFolder(item)) {
       handleFolderSelect(item);
     } else {
@@ -50,7 +53,7 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
   };
 
   return (
-    <AutoScrollBox data-testid="nested-item-picker">
+    <AutoScrollBox data-testid="nested-item-picker" ref={scrollBoxRef}>
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
           const { query, selectedItem } = level;
