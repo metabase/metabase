@@ -3,13 +3,13 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { Tabs } from "metabase/ui";
 
-export const CachingTabsList = styled(Tabs.List)`
+export const TabsList = styled(Tabs.List)`
   padding: 0 2.5rem;
   background-color: ${color("white")};
   border-bottom-width: 1px;
 `;
 
-export const CachingTab = styled(Tabs.Tab)`
+export const Tab = styled(Tabs.Tab)`
   top: 1px;
   margin-bottom: 1px;
   border-bottom-width: 3px !important;
@@ -22,7 +22,7 @@ export const CachingTab = styled(Tabs.Tab)`
   }
 `;
 
-export const CachingTabsPanel = styled(Tabs.Panel)`
+export const TabsPanel = styled(Tabs.Panel)`
   display: flex;
   flex-flow: column nowrap;
   flex: 1;
@@ -30,10 +30,12 @@ export const CachingTabsPanel = styled(Tabs.Panel)`
   padding: 1rem 2.5rem;
 `;
 
-export const CachingTabContent = styled.div`
+export const TabWrapper = styled.div`
   // TODO: Maybe this isn't needed
   flex: 1;
 `;
-export const DataCachingSettingsMessage = styled.div`
+
+export const DataCachingSettingsMessage = styled.aside`
   max-width: 32rem;
+  margin-bottom: 1rem;
 `;
