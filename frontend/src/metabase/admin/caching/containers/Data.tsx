@@ -9,7 +9,10 @@ import {
   GeneralRuleButton,
   SpecialRule,
   SpecialRuleValue,
+  TabWrapper,
+  ClearOverridesButton,
 } from "./Data.styled";
+import {Space} from "@mantine/core";
 
 export const Data = ({
   databases,
@@ -19,7 +22,7 @@ export const Data = ({
   cacheConfigs: CacheConfig[];
 }) => {
   return (
-    <div role="region" aria-label="Data caching settings">
+    <TabWrapper role="region" aria-label="Data caching settings">
       <Explanation>
         Cache the results of queries to have them display instantly. Here you
         can choose when cached results should be invalidated. You can set up one
@@ -42,11 +45,12 @@ export const Data = ({
               <SpecialRuleValue>Scheduled: weekly</SpecialRuleValue>
             </SpecialRule>
           ))}
+          <ClearOverridesButton>Clear all overrides</ClearOverridesButton>
         </RuleEditorPanel>
         <RuleEditorPanel role="group">
           {/* Cache controls here */}
         </RuleEditorPanel>
       </RuleEditor>
-    </div>
+    </TabWrapper>
   );
 };

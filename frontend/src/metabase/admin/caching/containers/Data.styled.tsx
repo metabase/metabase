@@ -10,9 +10,22 @@ export const ThreePanels = styled.div`
 `;
 
 export const RuleEditorPanel = styled.div`
-  background-color: ${color('bg-medium')};
-  border-radius: 1rem;
-  margin-right: 1rem;
+  display: flex;
+  flex-flow: column nowrap;
+  padding: 1.5rem;
+  background-color: ${color('white')};
+  border: 2px solid ${color('border')};
+  &:first-child {
+    border-top-left-radius: 1rem;
+    border-bottom-left-radius: 1rem;
+  }
+  &:first-child, &:nth-child(2) {
+    border-right: none;
+  }
+  &:last-child {
+    border-top-right-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+  }
 `;
 
 export const Explanation = styled.aside`
@@ -20,28 +33,29 @@ export const Explanation = styled.aside`
   margin-bottom: 1rem;
 `;
 
-export const CacheAdminButton = styled.button`
+export const Button = styled.button`
   cursor: pointer;
   display: flex;
   flex-flow: row nowrap;
   align-items: center;
   border-radius: 1rem;
+  padding: 1rem;
 `
 
-export const RuleButton = styled(CacheAdminButton)`
-  padding: 1rem;
+export const RuleButton = styled(Button)`
   background-color: ${color('bg-medium')};
   min-width: 20rem;
 `;
 
 export const GeneralRuleButton = styled(RuleButton)`
+  border: 1px solid ${color('bg-medium')};
 `;
 
-export const RuleValue = styled(CacheAdminButton)`
+export const RuleValue = styled(Button)`
   margin-left: auto;
   background: ${color('brand')};
   color: ${color('white')};
-  padding: 1rem;
+  padding: .75rem 1rem;
 `;
 
 export const GeneralRuleValue = styled(RuleValue)`
@@ -53,6 +67,8 @@ export const SpecialRule = styled.div`
   align-items: center;
   padding: 1rem;
   min-width: 20rem;
+  border-radius: 1rem;
+  border: 1px solid ${color('border')};
   `
 
 export const SpecialRuleValue = styled(RuleValue)`
@@ -64,8 +80,21 @@ export const DatabaseRuleIcon = styled(Icon)`
 `;
 
 export const RuleEditor = styled.div`
-  display: flex;
-  flex-flow: row nowrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  width: 100%;
+  margin-bottom: 2rem;
 `
 
+export const TabWrapper = styled.div`
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: 100%;
+`
 
+export const ClearOverridesButton = styled.button`
+  color: ${color('red')};
+  margin-top: auto;
+  align-self: flex-end;
+  cursor: pointer;
+`

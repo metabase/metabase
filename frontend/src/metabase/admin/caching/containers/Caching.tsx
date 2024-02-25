@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Tabs } from "metabase/ui";
 
-import { Tab, TabWrapper, TabsList, TabsPanel } from "./Caching.styled";
-import { Data } from "./Data";
+import type Database from "metabase-lib/metadata/Database";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import type Database from "metabase-lib/metadata/Database";
+import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./Caching.styled";
+import { Data } from "./Data";
 
 enum TabId {
   DataCachingSettings = "dataCachingSettings",
@@ -16,8 +16,7 @@ enum TabId {
   CachingStats = "cachingStats",
 }
 const isValidTabId = (tab: unknown): tab is TabId =>
-  typeof tab === "string" &&
-  Object.values(TabId).includes(tab as TabId);
+  typeof tab === "string" && Object.values(TabId).includes(tab as TabId);
 
 export type CacheStrategy =
   | "nocache"
@@ -52,14 +51,30 @@ export type CacheConfig = {
 };
 
 export const Caching = () => {
-  const [tabId, setTabId] = useState<TabId>(
-    TabId.DataCachingSettings,
-  );
+  const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
+  const [tabsHeight, setTabsHeight] = useState<number>(300);
 
   const { data: databases = [], error, isLoading } = useDatabaseListQuery();
 
+  const tabsRef = useRef<HTMLDivElement>(null);
+
   // TODO: Fetch cacheConfigs from the API
   const [cacheConfigs, setCacheConfigs] = useState<CacheConfig[]>([]);
+
+  useLayoutEffect(() => {
+    const handleResize = () => {
+      const tabs = tabsRef.current;
+      if (!tabs) return;
+      const tabsElementTop = tabs.getBoundingClientRect().top;
+      const bottomMargin = 24;
+      const newHeight =
+        window.innerHeight - tabsElementTop - tabs.clientTop - bottomMargin;
+      setTabsHeight(newHeight);
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, [tabsRef.current]);
 
   if (error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
@@ -68,6 +83,9 @@ export const Caching = () => {
   // TODO: The horizontal row of tabs does not look so good in narrow viewports
   return (
     <Tabs
+      ref={tabsRef}
+      bg="bg-light"
+      h={tabsHeight}
       value={tabId}
       onTabChange={value => {
         if (isValidTabId(value)) {
@@ -80,16 +98,10 @@ export const Caching = () => {
       }}
     >
       <TabsList>
-        <Tab
-          key={"DataCachingSettings"}
-          value={TabId.DataCachingSettings}
-        >
+        <Tab key={"DataCachingSettings"} value={TabId.DataCachingSettings}>
           {t`Data caching settings`}
         </Tab>
-        <Tab
-          key={"ModelPersistence"}
-          value={TabId.ModelPersistence}
-        >
+        <Tab key={"ModelPersistence"} value={TabId.ModelPersistence}>
           {t`Model persistence`}
         </Tab>
         <Tab
@@ -103,13 +115,13 @@ export const Caching = () => {
         </Tab>
       </TabsList>
       <TabsPanel key={tabId} value={tabId}>
-        <TabWrapper>
+        <TabContentWrapper>
           <TabContent
             tabId={tabId}
             databases={databases}
             cacheConfigs={cacheConfigs}
           />
-        </TabWrapper>
+        </TabContentWrapper>
       </TabsPanel>
     </Tabs>
   );
@@ -134,6 +146,8 @@ const TabContent = ({
     case TabId.CachingStats:
       return <>caching stats</>;
     default:
+      // Ensure we've handled all cases
       const _exhaustiveCheck: never = tabId;
   }
+  return null;
 };

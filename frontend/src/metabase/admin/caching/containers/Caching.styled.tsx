@@ -5,7 +5,7 @@ import { Tabs } from "metabase/ui";
 
 export const TabsList = styled(Tabs.List)`
   padding: 0 2.5rem;
-  background-color: ${color("white")};
+  background-color: ${color("bg-light")};
   border-bottom-width: 1px;
 `;
 
@@ -28,11 +28,14 @@ export const TabsPanel = styled(Tabs.Panel)`
   flex: 1;
   height: 100%;
   padding: 1rem 2.5rem;
+  justify-content: stretch;
 `;
 
-export const TabWrapper = styled.div`
-  // TODO: Maybe this isn't needed
+// TODO: Maybe this isn't needed
+export const TabContentWrapper = styled.div`
   flex: 1;
+  background-color: ${color("bg-light")};
+  display: flex;
 `;
 
 export const DataCachingSettingsMessage = styled.aside`
