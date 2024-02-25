@@ -53,7 +53,6 @@ export type CacheConfig = {
 export const Caching = () => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
   const [tabsHeight, setTabsHeight] = useState<number>(300);
-
   const { data: databases = [], error, isLoading } = useDatabaseListQuery();
 
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -66,15 +65,17 @@ export const Caching = () => {
       const tabs = tabsRef.current;
       if (!tabs) return;
       const tabsElementTop = tabs.getBoundingClientRect().top;
-      const bottomMargin = 24;
       const newHeight =
-        window.innerHeight - tabsElementTop - tabs.clientTop - bottomMargin;
+        window.innerHeight - tabsElementTop - tabs.clientTop;
       setTabsHeight(newHeight);
     };
     window.addEventListener("resize", handleResize);
     handleResize();
-    return () => window.removeEventListener("resize", handleResize);
-  }, [tabsRef.current]);
+    setTimeout(handleResize, 50);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [tabsRef.current, isLoading]);
 
   if (error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
@@ -83,6 +84,7 @@ export const Caching = () => {
   // TODO: The horizontal row of tabs does not look so good in narrow viewports
   return (
     <Tabs
+      style={{display: "flex", flexDirection: "column"}}
       ref={tabsRef}
       bg="bg-light"
       h={tabsHeight}

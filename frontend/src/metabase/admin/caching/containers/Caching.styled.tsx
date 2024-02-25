@@ -26,8 +26,9 @@ export const TabsPanel = styled(Tabs.Panel)`
   display: flex;
   flex-flow: column nowrap;
   flex: 1;
-  height: 100%;
+  height: calc(100% - 41px);
   padding: 1rem 2.5rem;
+  overflow:hidden;
   justify-content: stretch;
 `;
 
@@ -36,6 +37,7 @@ export const TabContentWrapper = styled.div`
   flex: 1;
   background-color: ${color("bg-light")};
   display: flex;
+  height: 100%;
 `;
 
 export const DataCachingSettingsMessage = styled.aside`

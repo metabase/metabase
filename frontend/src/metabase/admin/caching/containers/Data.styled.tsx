@@ -2,14 +2,8 @@ import styled from "@emotion/styled";
 import {color} from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-export const ThreePanels = styled.div`
-  border: 1px solid #000;
-  padding: 1rem;
-  display: flex;
-  flex-flow: row nowrap;
-`;
-
 export const RuleEditorPanel = styled.div`
+  overflow-y: scroll;
   display: flex;
   flex-flow: column nowrap;
   padding: 1.5rem;
@@ -45,6 +39,7 @@ export const Button = styled.button`
 export const RuleButton = styled(Button)`
   background-color: ${color('bg-medium')};
   min-width: 20rem;
+  font-weight: bold;
 `;
 
 export const GeneralRuleButton = styled(RuleButton)`
@@ -56,6 +51,7 @@ export const RuleValue = styled(Button)`
   background: ${color('brand')};
   color: ${color('white')};
   padding: .75rem 1rem;
+  font-weight: bold;
 `;
 
 export const GeneralRuleValue = styled(RuleValue)`
@@ -63,7 +59,9 @@ export const GeneralRuleValue = styled(RuleValue)`
 
 export const SpecialRule = styled.div`
   display: flex;
+  font-weight: bold;
   flex-flow: row nowrap;
+  margin-bottom: 1rem;
   align-items: center;
   padding: 1rem;
   min-width: 20rem;
@@ -83,7 +81,8 @@ export const RuleEditor = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   width: 100%;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
 `
 
 export const TabWrapper = styled.div`
