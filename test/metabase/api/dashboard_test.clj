@@ -4180,7 +4180,7 @@
                                         (filterv (comp #{"Dashboard subscription removed"} :subject) messages)))
                     email-received? (fn [recipient-email]
                                       (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
-                                                     (str/includes? "Subscription to My Awesome Dashboard has been removed"))))]
+                                                     (str/includes? "Subscription to My Awesome Dashboard deleted"))))]
                 (testing "The dashboard parameters were removed"
                   (is (empty? parameters)))
                 (testing "The broken pulse was archived"
