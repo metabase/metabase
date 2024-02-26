@@ -1140,10 +1140,10 @@
   [a-drill-thru pivot-type]
   (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 
-(defn ^:export extract-column-types
+(defn ^:export column-extract-actions
   ""
   [a-drill-thru]
-  (to-array (lib.core/extract-column-types a-drill-thru)))
+  (to-array (lib.core/column-extract-actions a-drill-thru)))
 
 (defn ^:export with-different-table
   "Changes an existing query to use a different source table or card.

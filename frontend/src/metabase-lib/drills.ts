@@ -9,7 +9,7 @@ import type {
   DrillThru,
   Query,
   PivotType,
-  ExtractColumnType,
+  ColumnExtractAction,
 } from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!
@@ -57,6 +57,8 @@ export function pivotColumnsForType(
   return ML.pivot_columns_for_type(drillThru, pivotType);
 }
 
-export function extractColumnTypes(drillThru: DrillThru): ExtractColumnType[] {
-  return ML.extract_column_types(drillThru);
+export function columnExtractActions(
+  drillThru: DrillThru,
+): ColumnExtractAction[] {
+  return ML.column_extract_actions(drillThru);
 }
