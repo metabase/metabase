@@ -164,7 +164,9 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
-  <div className="p2 text-bold text-grey">{database.name}</div>
+  <div className="p2 text-bold text-grey" data-testid="selected-database">
+    {database.name}
+  </div>
 );
 
 SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;

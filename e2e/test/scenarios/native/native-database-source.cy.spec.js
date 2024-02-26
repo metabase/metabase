@@ -1,10 +1,19 @@
-import { restore, popover, addPostgresDatabase } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  addPostgresDatabase,
+  POPOVER_ELEMENT,
+} from "e2e/support/helpers";
 
 describe(
   "scenarios > question > native > database source",
   { tags: "@external" },
   () => {
     beforeEach(() => {
+      cy.intercept("PUT", "/api/setting/last-used-database-id").as(
+        "persistDatabase",
+      );
+
       restore("postgres-12");
       cy.signInAsAdmin();
     });
@@ -78,6 +87,48 @@ describe(
         "have.text",
         "Sample Database",
       );
+    });
+    describe("permissions", () => {
+      it("users with 'No self-service' data permissions should be able to choose only the databases they can query against", () => {
+        cy.signIn("nodata");
+
+        startNativeQuestion();
+        cy.wait("@persistDatabase");
+        cy.findByTestId("selected-database")
+          .should("have.text", "QA Postgres12")
+          .click();
+
+        cy.get(POPOVER_ELEMENT).should("not.exist");
+
+        cy.signOut();
+        cy.signInAsAdmin();
+        const additionalPG = "New Database";
+
+        addPostgresDatabase(additionalPG);
+
+        cy.signIn("nodata");
+        startNativeQuestion();
+
+        cy.findByTestId("selected-database")
+          .should("have.text", "QA Postgres12")
+          .click();
+
+        popover()
+          .should("contain", "QA Postgres12")
+          .and("contain", "New Database");
+      });
+    });
+
+    it.skip("users with no native write permissions should be able to choose only the databases they can query against (metabase#39053)", () => {
+      cy.signIn("nosql");
+
+      startNativeQuestion();
+      cy.wait("@persistDatabase");
+      cy.findByTestId("selected-database")
+        .should("have.text", "QA Postgres12")
+        .click();
+
+      cy.get(POPOVER_ELEMENT).should("not.exist");
     });
   },
 );
