@@ -922,7 +922,7 @@
           updated-query (update-in query [:native :query] str/replace #"\d+$" "1000")]
       ;; sanity check
       (is (not= query updated-query))
-      ;; tthe actual test
+      ;; the actual test
       (mt/with-model-cleanup [:model/Card]
         (let [card (mt/user-http-request :rasta :post 200 "card"
                                          (card-with-name-and-query "card-name"
