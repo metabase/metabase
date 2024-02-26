@@ -22,6 +22,7 @@ export const DRILLS: Record<Lib.DrillThruType, Drill<any>> = {
   "drill-thru/automatic-insights": automaticInsightsDrill,
   "drill-thru/column-filter": columnFilterDrill,
   "drill-thru/distribution": distributionDrill,
+  "drill-thru/extract-column": () => [],
   "drill-thru/fk-details": fkDetailsDrill,
   "drill-thru/fk-filter": fkFilterDrill,
   "drill-thru/pivot": pivotDrill,
