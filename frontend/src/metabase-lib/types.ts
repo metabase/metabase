@@ -422,6 +422,7 @@ export type DrillThruType =
   | "drill-thru/automatic-insights"
   | "drill-thru/column-filter"
   | "drill-thru/distribution"
+  | "drill-thru/extract-column"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
   | "drill-thru/pivot"

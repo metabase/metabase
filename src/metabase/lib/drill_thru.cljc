@@ -4,6 +4,7 @@
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
+   [metabase.lib.drill-thru.extract-column :as lib.drill-thru.extract-column]
    [metabase.lib.drill-thru.fk-details :as lib.drill-thru.fk-details]
    [metabase.lib.drill-thru.fk-filter :as lib.drill-thru.fk-filter]
    [metabase.lib.drill-thru.object-details :as lib.drill-thru.object-details]
@@ -49,6 +50,7 @@
   [{:f #'lib.drill-thru.automatic-insights/automatic-insights-drill,             :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.extract-column/extract-column-drill,                     :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.fk-filter/fk-filter-drill,                               :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.object-details/object-detail-drill,                      :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.pivot/pivot-drill,                                       :return-drills-for-dimensions? false}
