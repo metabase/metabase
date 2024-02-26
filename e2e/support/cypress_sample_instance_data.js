@@ -15,6 +15,10 @@ export const ORDERS_QUESTION_ID = _.findWhere(SAMPLE_INSTANCE_DATA.questions, {
   name: "Orders",
 }).id;
 
+export const ORDERS_MODEL_ID = _.findWhere(SAMPLE_INSTANCE_DATA.questions, {
+  name: "Orders Model",
+}).id;
+
 export const ORDERS_COUNT_QUESTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.questions,
   { name: "Orders, Count" },

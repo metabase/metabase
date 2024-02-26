@@ -1,9 +1,23 @@
-import { restore, setTokenFeatures } from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  restore,
+  setTokenFeatures,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  resetSnowplow,
+  expectNoBadSnowplowEvents,
+  enableTracking,
+} from "e2e/support/helpers";
 
-describe("scenarios > browse data", () => {
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
+
+describeWithSnowplow("scenarios > browse data", () => {
   beforeEach(() => {
+    resetSnowplow();
     restore();
     cy.signInAsAdmin();
+    enableTracking();
   });
 
   it("can browse to a model", () => {
@@ -12,9 +26,14 @@ describe("scenarios > browse data", () => {
     cy.location("pathname").should("eq", "/browse/models");
     cy.findByTestId("browse-app").findByText("Browse data");
     cy.findByRole("heading", { name: "Orders Model" }).click();
-    cy.findByRole("button", { name: "Filter" });
+    cy.url().should("include", `/model/${ORDERS_MODEL_ID}-`);
+    expectNoBadSnowplowEvents();
+    expectGoodSnowplowEvent({
+      event: "browse_data_model_clicked",
+      model_id: ORDERS_MODEL_ID,
+    });
   });
-  it("can browse to a database", () => {
+  it("can browse to a table", () => {
     cy.visit("/");
     cy.findByRole("listitem", { name: "Browse data" }).click();
     cy.findByRole("tab", { name: "Databases" }).click();
@@ -22,6 +41,11 @@ describe("scenarios > browse data", () => {
     cy.findByRole("heading", { name: "Products" }).click();
     cy.findByRole("button", { name: "Summarize" });
     cy.findByRole("link", { name: /Sample Database/ }).click();
+    expectNoBadSnowplowEvents();
+    expectGoodSnowplowEvent({
+      event: "browse_data_table_clicked",
+      table_id: PRODUCTS_ID,
+    });
   });
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
