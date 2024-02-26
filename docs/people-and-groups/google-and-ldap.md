@@ -47,9 +47,11 @@ Once set up, existing Metabase users signed in to a Google account that matches 
 
 Note that Metabase accounts _created_ with Google Sign-In will not have passwords; they must use Google to sign in to Metabase.
 
+### Multiple domains for Google Sign-in
+
 {% include plans-blockquote.html feature="Multiple domains for Google Sign-in" %}
 
-If you're on a [pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, you can specify multiple domains, separated by a comma. For example, `mycompany.com,example.com.br,otherdomain.co.uk`.
+If you're on a [pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, you can specify multiple domains in the **Domain** field, separated by a comma. For example, `mycompany.com,example.com.br,otherdomain.co.uk`.
 
 ## Required LDAP attributes
 
