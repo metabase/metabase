@@ -32,7 +32,12 @@ export function getValuePopulatedParameters({
   parameters,
   values = {},
   defaultRequired = false,
+  collectionPreview,
 }) {
+  if (collectionPreview) {
+    return [];
+  }
+
   return parameters.map(parameter => ({
     ...parameter,
     value: getParameterValue({
