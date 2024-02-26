@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
   popover,
@@ -88,6 +89,22 @@ describe(
         "Sample Database",
       );
     });
+
+    it("should not update the setting when the same database is selected again", () => {
+      cy.request("PUT", "/api/setting/last-used-database-id", {
+        value: SAMPLE_DB_ID,
+      });
+
+      startNativeQuestion();
+      cy.findByTestId("selected-database")
+        .should("have.text", "Sample Database")
+        .click();
+
+      cy.log("Pick the same database again");
+      selectDatabase("Sample Database");
+      cy.get("@persistDatabase").should("be.null");
+    });
+
     describe("permissions", () => {
       it("users with 'No self-service' data permissions should be able to choose only the databases they can query against", () => {
         cy.signIn("nodata");
