@@ -541,10 +541,6 @@
 (def ^:private NativePermissionsGraph
   [:enum {:error/message "Valid native perms option for a database"} :write :none])
 
-(def ExecutePermissions
-  "Schema for execution permission values."
-  [:enum {:error/message "Valid execute perms option type"} :all :none])
-
 ;; The "Strict" versions of the various graphs below are intended for schema checking when *updating* the permissions
 ;; graph. In other words, we shouldn't be stopped from returning the graph if it violates the "strict" rules, but we
 ;; *should* refuse to update the graph unless it matches the strict schema.
@@ -594,16 +590,6 @@
 (def DetailsPermissions
   "Schema for a database details permissions, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
   [:enum {:error/message "Valid details perms graph for a database"} :yes :no])
-
-(def ^:private ExecutionGroupPermissionsGraph
-  [:or
-   ExecutePermissions
-   [:map-of ms/PositiveInt ExecutePermissions]])
-
-(def ^:private ExecutionPermissionsGraph
-  [:map
-   [:revision :int]
-   [:groups   [:map-of ms/PositiveInt ExecutionGroupPermissionsGraph]]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH FETCH                                                   |
@@ -699,23 +685,6 @@
                                                       paths))))]
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v2-paths)}))
-
-(defn execution-perms-graph
-  "Fetch a graph representing the current *execution* permissions status for
-  every Group and all permissioned databases."
-  []
-  (let [group-id->paths (permissions-by-group-ids [:or
-                                                   [:= :object (h2x/literal "/")]
-                                                   [:like :object (h2x/literal "/execute/%")]])
-        group-id->graph (m/map-vals
-                         (fn [paths]
-                           (let [permissions-graph (perms-parse/->graph paths)]
-                             (if (#{:all {:execute :all}} permissions-graph)
-                               :all
-                               (:execute permissions-graph))))
-                         group-id->paths)]
-    {:revision (perms-revision/latest-id)
-     :groups   group-id->graph}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH UPDATE                                                  |
@@ -1178,24 +1147,6 @@
       :details
       (update-feature-level-permission! group-id db-id new-perms :details))))
 
-(defn update-global-execution-permission!
-  "Set the global execution permission (\"/execute/\") for the group
-  with ID `group-id` to `new-perms`."
-  [group-id new-perms]
-  (when-not (or (= group-id (:id (perms-group/all-users)))
-                (premium-features/has-feature? :advanced-permissions))
-    (throw (ee-permissions-exception :execute)))
-  (delete-related-permissions! group-id "/execute/")
-  (when (= new-perms :all)
-    (grant-permissions! group-id "/execute/")))
-
-(mu/defn ^:private update-execution-permissions!
-  [group-id :- ms/PositiveInt new-group-perms :- ExecutionGroupPermissionsGraph]
-  (if (map? new-group-perms)
-    (doseq [[db-id new-db-perms] new-group-perms]
-      (update-feature-level-permission! group-id db-id new-db-perms :execute))
-    (update-global-execution-permission! group-id new-group-perms)))
-
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
   make sure people don't submit a new graph based on something out of date, which would otherwise stomp over changes
@@ -1260,27 +1211,3 @@
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
    (update-data-perms-graph! (assoc-in (data-perms-graph) (cons :groups ks) new-value))))
-
-(mu/defn update-execution-perms-graph!
-  "Update the *execution* permissions graph, making any changes necessary to make it match `new-graph`.
-   This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
-   needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
-   fail and return a 409 (Conflict) exception. If nothing needs to be done, this function returns `nil`; otherwise it
-   returns the newly created `PermissionsRevision` entry.
-
-  Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
-  ([new-graph :- ExecutionPermissionsGraph]
-   (let [old-graph (execution-perms-graph)
-         [old new] (data/diff (:groups old-graph) (:groups new-graph))
-         old       (or old {})]
-     (when (or (seq old) (seq new))
-       (log-permissions-changes old new)
-       (check-revision-numbers old-graph new-graph)
-       (t2/with-transaction [_conn]
-         (doseq [[group-id changes] new]
-           (update-execution-permissions! group-id changes))
-         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)))))
-
-  ;; The following arity is provided soley for convenience for tests/REPL usage
-  ([ks :- [:any] new-value]
-   (update-execution-perms-graph! (assoc-in (execution-perms-graph) (cons :groups ks) new-value))))

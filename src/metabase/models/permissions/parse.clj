@@ -16,12 +16,11 @@
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | execute | db | block | download | data-model | details | collection | data-v2 | query-v2)
+  "permission = ( all | db | block | download | data-model | details | collection | data-v2 | query-v2)
   all         = <'/'>
-  data-v2     = <'/data/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
-  query-v2    = <'/query/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
-  db          = <'/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
-  execute     = <'/execute/'> ( <'db/'> #'\\d+' <'/'> )?
+  data-v2     = <'/data/db/'> #'\\d+' <'/'> ( native | schemas )?
+  query-v2    = <'/query/db/'> #'\\d+' <'/'> ( native | schemas )?
+  db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
   native      = <'native/'>
   schemas     = <'schema/'> schema?
   schema      = schema-name <'/'> table?
@@ -131,8 +130,6 @@
   (match tree
     (_ :guard insta/failure?)      (log/error (trs "Error parsing permissions tree {0}" (pr-str tree)))
     [:permission t]                (path2 t)
-    [:execute]                     [:execute :all]
-    [:execute db-id]               [:execute (Long/parseUnsignedLong db-id) :all]
     [:schema-name schema-name]     (unescape-path-component schema-name)
     ;; data model perms
     [:data-model db-node]          (path2 db-node)

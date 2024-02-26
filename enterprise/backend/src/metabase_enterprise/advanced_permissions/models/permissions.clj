@@ -199,12 +199,3 @@
 
     :no
     (revoke-permissions! :details :yes group-id db-id)))
-
-(mu/defn update-db-execute-permissions!
-  "Update the DB details permissions for a database."
-  [group-id :- ms/PositiveInt db-id :- ms/PositiveInt new-perms :- perms/ExecutePermissions]
-  (when-not (premium-features/enable-advanced-permissions?)
-    (throw (perms/ee-permissions-exception :execute)))
-  (revoke-permissions! :execute :all group-id db-id)
-  (when (= new-perms :all)
-    (grant-permissions! :execute :all group-id db-id)))

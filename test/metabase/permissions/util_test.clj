@@ -5,9 +5,7 @@
    [metabase.permissions.util :as perms.u]))
 
 (def ^:private valid-paths
-  [;; execution permissions
-   "/execute/"
-   ;; full admin (everything) root permissions
+  [;; full admin (everything) root permissions
    "/"])
 
 (deftest ^:parallel valid-path-test
@@ -197,7 +195,6 @@
                           (perms.u/classify-path path))
     "/"                                                         :admin
     "/collection/7/"                                            :collection
-    "/execute/"                                                 :execute
     "/application/monitoring/"                                  :non-scoped
     "/query/db/0/native/"                                       :query-v2))
 

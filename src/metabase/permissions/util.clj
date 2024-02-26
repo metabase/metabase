@@ -71,10 +71,6 @@
   /details/db/:id/ -> permissions to edit the connection details and settings for the DB"
   [:and "details/" #"db/\d+/"])
 
-(def ^:private execute-permissions-rx
-  ".../execute/ -> permissions to run query actions in the DB"
-  [:and "execute/" [:or "" #"db/\d+/"]])
-
 (def ^:private collection-permissions-rx
   [:and "collection/"
    [:or ;; /collection/:id/ -> readwrite perms for a specific Collection
@@ -125,7 +121,6 @@
    [(u.regex/rx "^/" download-permissions-rx "$")        :download]
    [(u.regex/rx "^/" data-model-permissions-rx "$")      :data-model]
    [(u.regex/rx "^/" db-conn-details-permissions-rx "$") :db-conn-details]
-   [(u.regex/rx "^/" execute-permissions-rx "$")         :execute]
    [(u.regex/rx "^/" collection-permissions-rx "$")      :collection]
    [(u.regex/rx "^/" non-scoped-permissions-rx "$")      :non-scoped]
    [(u.regex/rx "^/" block-permissions-rx "$")           :block]
@@ -139,7 +134,6 @@
   (u.regex/rx
    "^/" [:or
          v2-query-permissions-rx
-         execute-permissions-rx
          collection-permissions-rx
          non-scoped-permissions-rx
          admin-permissions-rx]

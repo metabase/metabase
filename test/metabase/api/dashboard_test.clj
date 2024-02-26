@@ -25,8 +25,6 @@
             Database
             Field
             FieldValues
-            PermissionsGroup
-            PermissionsGroupMembership
             Pulse
             Revision
             Table
@@ -3957,50 +3955,6 @@
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
-
-(deftest dashcard-action-execution-granular-auth-test
-  (when config/ee-available?
-    (mt/with-temp-copy-of-db
-      (mt/with-actions-test-data-and-actions-enabled
-        (mt/with-actions [{:keys [action-id model-id]} {}]
-          (testing "Executing dashcard with action"
-            (mt/with-temp [Dashboard {dashboard-id :id} {}
-                           DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :action_id action-id
-                                                            :card_id model-id}]
-              (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
-                                         dashboard-id
-                                         dashcard-id)]
-                (testing "with :advanced-permissions feature flag"
-                  (mt/with-premium-features #{:advanced-permissions}
-                    (testing "for non-magic group"
-                      (mt/with-temp [PermissionsGroup {group-id :id} {}
-                                     PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
-                                                                   :group_id group-id}]
-                        (comment ;; We do not currently support /execute/ permission
-                          (is (partial= {:message "You don't have permissions to do that."}
-                                        (mt/user-http-request :rasta :post 403 execute-path
-                                                              {:parameters {"id" 1}}))
-                              "Execution permission should be required"))
-                        (mt/user-http-request
-                         :crowberto :put 200 "permissions/execution/graph"
-                         (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
-                        (is (= :all
-                               (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-                            "Should be able to set execution permission")
-                        (is (= {:rows-affected 1}
-                               (mt/user-http-request :rasta :post 200 execute-path
-                                                     {:parameters {"id" 1}}))
-                            "Execution and data permissions should be enough")
-
-                        (data-perms.graph/update-data-perms-graph!* [group-id (mt/id) :data]
-                                                                    {:schemas :block})
-                        (data-perms.graph/update-data-perms-graph!* [(:id (perms-group/all-users)) (mt/id) :data]
-                                                                    {:schemas :block})
-                        (is (partial= {:message "You don't have permissions to do that."}
-                                      (mt/user-http-request :rasta :post 403 execute-path
-                                                            {:parameters {"id" 1}}))
-                            "Data permissions should be required")))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                GET /api/dashboard/:id/params/:param-key/values                                 |

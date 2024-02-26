@@ -6,7 +6,6 @@
    [metabase.models :refer [Permissions PermissionsGroup]]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :as database]
-   [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -171,28 +170,3 @@
                clojure.lang.ExceptionInfo
                #"The details permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-details-permissions! group-id (mt/id) :yes))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          DB execute permissions                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- execute-perms-by-group-id [group-id]
-  (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-
-(deftest update-db-execute-permissions-test
-  (mt/with-model-cleanup [Permissions]
-    (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
-      (mt/with-premium-features #{:advanced-permissions}
-        (testing "Execute perms for a DB can be set and revoked"
-          (ee-perms/update-db-execute-permissions! group-id (mt/id) :all)
-          (is (= :all (execute-perms-by-group-id group-id)))
-
-          (ee-perms/update-db-execute-permissions! group-id (mt/id) :none)
-          (is (nil? (execute-perms-by-group-id group-id)))))
-
-      (mt/with-premium-features #{}
-        (testing "Execute permissions cannot be modified without the :advanced-permissions feature flag"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"The execute permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
-               (ee-perms/update-db-execute-permissions! group-id (mt/id) :all))))))))
