@@ -1,14 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { checkNotNull } from "metabase/core/utils/types";
-import { Card, ParameterValues } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockDatabase,
-  createMockField,
-  createMockParameterValues,
-} from "metabase-types/api/mocks";
+
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardsEndpoints,
@@ -20,8 +11,19 @@ import {
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UiParameter } from "metabase-lib/parameters/types";
+import { checkNotNull } from "metabase/core/utils/types";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
+import { UiParameter } from "metabase-lib/parameters/types";
+import { Card, ParameterValues } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockDatabase,
+  createMockField,
+  createMockParameterValues,
+} from "metabase-types/api/mocks";
+
 import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {

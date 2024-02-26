@@ -1,4 +1,5 @@
 import { State } from "metabase-types/store";
+
 import { ApplicationPermissions } from "./permissions";
 import { UserWithApplicationPermissions } from "./user";
 

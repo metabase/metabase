@@ -1,6 +1,7 @@
 import { useRef } from "react";
-import Questions from "metabase/entities/questions";
+
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
+import Questions from "metabase/entities/questions";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,

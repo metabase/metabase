@@ -7,10 +7,10 @@ import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import CopyButton from "metabase/components/CopyButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
-
-import { UtilApi } from "metabase/services";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
+import { UtilApi } from "metabase/services";
+
 import {
   HelpBody,
   HelpLinks,

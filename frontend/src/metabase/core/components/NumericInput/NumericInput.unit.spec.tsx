@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useCallback, useState } from "react";
+
 import NumericInput, { NumericInputProps } from "./NumericInput";
 
 const NumericInputTest = ({ onChange, ...props }: NumericInputProps) => {

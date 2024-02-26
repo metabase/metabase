@@ -9,8 +9,9 @@ import {
   NormalizedTable,
   NormalizedTimeline,
 } from "metabase-types/api";
-import { createMockDatabase } from "./database";
+
 import { createMockCollection } from "./collection";
+import { createMockDatabase } from "./database";
 import { createMockField, createMockFieldDimension } from "./field";
 import { createMockMetric } from "./metric";
 import { createMockSegment } from "./segment";

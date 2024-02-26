@@ -1,11 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import {
   createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
   createMockUser,
 } from "metabase-types/api/mocks";
+
 import EventCard, { EventCardProps } from "./EventCard";
 
 describe("EventCard", () => {

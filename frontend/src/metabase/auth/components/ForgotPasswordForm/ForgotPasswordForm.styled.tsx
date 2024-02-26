@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import Link from "metabase/core/components/Link/Link";
+import { color } from "metabase/lib/colors";
 
 export const PasswordFormTitle = styled.div`
   color: ${color("text-dark")};

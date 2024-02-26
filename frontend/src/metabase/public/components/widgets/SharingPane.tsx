@@ -1,15 +1,15 @@
+import cx from "classnames";
 import { ReactNode, useState } from "react";
 import { t, jt } from "ttag";
-import cx from "classnames";
+
+import Confirm from "metabase/components/Confirm";
+import CopyWidget from "metabase/components/CopyWidget";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
-import CopyWidget from "metabase/components/CopyWidget";
-import Confirm from "metabase/components/Confirm";
-
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   Description,
   EmbedWidgetHeader,

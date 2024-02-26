@@ -1,7 +1,6 @@
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTable from "../containers/AuditTable";
-
 import * as DownloadsCards from "../lib/cards/downloads";
 
 const AuditDownloads = props => (

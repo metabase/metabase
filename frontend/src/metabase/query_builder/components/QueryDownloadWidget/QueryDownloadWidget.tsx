@@ -1,17 +1,20 @@
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Tooltip from "metabase/core/components/Tooltip";
+
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import Tooltip from "metabase/core/components/Tooltip";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   downloadQueryResults,
   DownloadQueryResultsOpts,
 } from "metabase/query_builder/actions";
-import { Dataset, VisualizationSettings } from "metabase-types/api";
 import Question from "metabase-lib/Question";
+import { Dataset, VisualizationSettings } from "metabase-types/api";
+
 import QueryDownloadPopover from "../QueryDownloadPopover";
+
 import { DownloadIcon } from "./QueryDownloadWidget.styled";
 
 interface OwnProps {

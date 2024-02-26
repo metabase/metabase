@@ -1,6 +1,7 @@
 import { DashboardApi } from "metabase/services";
 
 import { SIDEBAR_NAME } from "../constants";
+
 import {
   setSidebar,
   SET_SIDEBAR,

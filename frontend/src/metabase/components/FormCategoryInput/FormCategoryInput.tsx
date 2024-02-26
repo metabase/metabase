@@ -1,9 +1,9 @@
+import { useField } from "formik";
 import { forwardRef, ReactNode, Ref, useCallback } from "react";
 import * as React from "react";
-import { useField } from "formik";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import FormField from "metabase/core/components/FormField";
 
+import FormField from "metabase/core/components/FormField";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import type Field from "metabase-lib/metadata/Field";
 
 import CategoryFieldPicker from "./CategoryFieldPicker";

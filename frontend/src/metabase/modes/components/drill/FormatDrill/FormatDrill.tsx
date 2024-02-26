@@ -1,10 +1,11 @@
 import { t } from "ttag";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+
+import type { ClickActionPopoverProps, Drill } from "metabase/modes/types";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { updateSettings } from "metabase/visualizations/lib/settings";
-import type { VisualizationSettings } from "metabase-types/api";
-import type { ClickActionPopoverProps, Drill } from "metabase/modes/types";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { PopoverRoot } from "./FormatDrill.styled";
 

@@ -1,22 +1,19 @@
 /* eslint "react/prop-types": "warn" */
+import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { useFormik } from "formik";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import * as metadataActions from "metabase/redux/metadata";
+import S from "metabase/reference/Reference.css";
+import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
-import Detail from "metabase/reference/components/Detail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
-
-import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
-import { getQuestionUrl } from "../utils";
 
 import {
   getTable,
@@ -29,6 +26,7 @@ import {
   getIsFormulaExpanded,
   getForeignKeys,
 } from "../selectors";
+import { getQuestionUrl } from "../utils";
 
 const interestingQuestions = table => {
   return [

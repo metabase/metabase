@@ -5,6 +5,7 @@ import { formatDateTimeWithUnit, formatNumber } from "metabase/lib/formatting";
 import Field from "metabase-lib/metadata/Field";
 
 import { Table } from "../MetadataInfo.styled";
+
 import CategoryFingerprint from "./CategoryFingerprint";
 
 const propTypes = {

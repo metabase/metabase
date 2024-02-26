@@ -1,27 +1,24 @@
+import { Formik, FormikErrors, FormikHelpers } from "formik"; // eslint-disable-line import/named
+import { assocIn, getIn, merge } from "icepick";
 import { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { assocIn, getIn, merge } from "icepick";
 
-// eslint-disable-next-line import/named
-import { Formik, FormikErrors, FormikHelpers } from "formik";
-
+import { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
+import {
+  GenericErrorResponse,
+  getResponseErrorMessage,
+} from "metabase/core/utils/errors";
 import {
   BaseFieldValues,
+  FieldValues,
   FormFieldDefinition,
   FormObject,
-  FieldValues,
   PopulatedFormObject,
 } from "metabase-types/forms";
 
-import { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
+import { cleanObject, isNestedFieldName, makeFormObject } from "../formUtils";
 
-import {
-  getResponseErrorMessage,
-  GenericErrorResponse,
-} from "metabase/core/utils/errors";
-
-import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
 
@@ -245,10 +242,10 @@ function Form<Values extends BaseFieldValues>({
 
 export {
   CustomFormField as FormField,
-  CustomFormSubmit as FormSubmit,
-  CustomFormMessage as FormMessage,
   CustomFormFooter as FormFooter,
+  CustomFormMessage as FormMessage,
   CustomFormSection as FormSection,
+  CustomFormSubmit as FormSubmit,
 } from "metabase/components/form/FormikCustomForm";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

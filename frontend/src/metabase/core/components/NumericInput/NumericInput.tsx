@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import Input from "metabase/core/components/Input";
 
 export type NumericInputAttributes = Omit<

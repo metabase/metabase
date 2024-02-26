@@ -1,8 +1,9 @@
 import { IndexRedirect, Redirect } from "react-router";
+
+import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage/ModelDetailPage";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
-import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
 
 export const getRoutes = () => (
   <Route path="/model/:slug/detail">

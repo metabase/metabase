@@ -1,8 +1,8 @@
-import { t } from "ttag";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
-import { getUiControls } from "metabase/query_builder/selectors";
 import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
+import { getUiControls } from "metabase/query_builder/selectors";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
   ErrorType,

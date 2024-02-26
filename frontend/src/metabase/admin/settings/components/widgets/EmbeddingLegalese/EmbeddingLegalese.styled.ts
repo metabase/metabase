@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import CollapseSection from "metabase/components/CollapseSection";
 import { HeaderContainer } from "metabase/components/CollapseSection/CollapseSection.styled";
 import { color } from "metabase/lib/colors";

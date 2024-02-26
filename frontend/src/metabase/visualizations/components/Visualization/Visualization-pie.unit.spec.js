@@ -1,7 +1,6 @@
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-
-import Visualization from "metabase/visualizations/components/Visualization";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import Visualization from "metabase/visualizations/components/Visualization";
 
 const series = rows => {
   const cols = [

@@ -1,16 +1,18 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+
 import { updateSetting } from "metabase/admin/settings/settings";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
-import { Anchor, Flex, Paper, Stack, Text } from "metabase/ui";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
+import { Anchor, Flex, Paper, Stack, Text } from "metabase/ui";
+
+import { DismissIconButtonWrapper } from "./WhatsNewNotification.styled";
 import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";
-import { DismissIconButtonWrapper } from "./WhatsNewNotification.styled";
 
 export function WhatsNewNotification() {
   const dispatch = useDispatch();

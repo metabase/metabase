@@ -1,11 +1,11 @@
 import _ from "underscore";
+
 import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-
 import Question from "metabase-lib/Question";
+import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
-import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";

@@ -1,8 +1,10 @@
-import { CSSProperties, forwardRef, Ref, useCallback, useMemo } from "react";
 import moment, { Moment } from "moment-timezone";
+import { CSSProperties, forwardRef, Ref, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import TimeInput from "metabase/core/components/TimeInput";
+
 import Calendar from "metabase/components/Calendar";
+import TimeInput from "metabase/core/components/TimeInput";
+
 import {
   SelectorFooter,
   SelectorSubmitButton,

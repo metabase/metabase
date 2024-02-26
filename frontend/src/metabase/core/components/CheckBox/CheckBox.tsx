@@ -9,14 +9,9 @@ import {
   Ref,
   useRef,
 } from "react";
+
 import Tooltip from "metabase/core/components/Tooltip";
-import {
-  DEFAULT_CHECKED_COLOR,
-  DEFAULT_ICON_PADDING,
-  DEFAULT_SIZE,
-  DEFAULT_UNCHECKED_COLOR,
-} from "./constants";
-import { isEllipsisActive } from "./utils";
+
 import {
   CheckBoxContainer,
   CheckBoxIcon,
@@ -25,6 +20,13 @@ import {
   CheckBoxLabel,
   CheckBoxRoot,
 } from "./CheckBox.styled";
+import {
+  DEFAULT_CHECKED_COLOR,
+  DEFAULT_ICON_PADDING,
+  DEFAULT_SIZE,
+  DEFAULT_UNCHECKED_COLOR,
+} from "./constants";
+import { isEllipsisActive } from "./utils";
 
 export interface CheckBoxProps
   extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {

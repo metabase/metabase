@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 
 import Popover from "metabase/components/Popover";
 
-import Clearable from "./Clearable";
 import BreakoutPopover from "./BreakoutPopover";
 import { BreakoutLabel } from "./BreakoutWidget.styled";
+import Clearable from "./Clearable";
 
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 

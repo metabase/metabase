@@ -1,7 +1,13 @@
 import _ from "underscore";
+
+import { isNotNull } from "metabase/core/utils/types";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
-
+import {
+  hasDefaultParameterValue,
+  hasParameterValue,
+  normalizeParameterValue,
+} from "metabase-lib/parameters/utils/parameter-values";
 import {
   Channel,
   ChannelSpec,
@@ -9,12 +15,6 @@ import {
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/types";
-import {
-  hasDefaultParameterValue,
-  hasParameterValue,
-  normalizeParameterValue,
-} from "metabase-lib/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,

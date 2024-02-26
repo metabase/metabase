@@ -1,20 +1,19 @@
 /* eslint-disable react/prop-types */
 import { connect } from "react-redux";
 
-import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
-
-import Card from "metabase/components/Card";
-import { Icon } from "metabase/core/components/Icon";
-import { Grid } from "metabase/components/Grid";
-import Link from "metabase/core/components/Link";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
-
-import User from "metabase/entities/users";
+import Card from "metabase/components/Card";
+import { Grid } from "metabase/components/Grid";
+import { Icon } from "metabase/core/components/Icon";
+import Link from "metabase/core/components/Link";
 import Collection, {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
+import User from "metabase/entities/users";
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+
 import {
   CardContent,
   ListGridItem,

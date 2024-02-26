@@ -1,10 +1,12 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import {
   createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+
 import TimelineDetailsModal, {
   TimelineDetailsModalProps,
 } from "./TimelineDetailsModal";

@@ -1,12 +1,6 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { Card, CollectionItem, Database, User } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollectionItem,
-  createMockDatabase,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { Route } from "react-router";
+
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -17,6 +11,14 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { Card, CollectionItem, Database, User } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollectionItem,
+  createMockDatabase,
+  createMockUser,
+} from "metabase-types/api/mocks";
+
 import MetabotWidget from "./MetabotWidget";
 
 const TEST_DATABASE = createMockDatabase({

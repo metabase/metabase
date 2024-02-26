@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { isNotNull } from "metabase/core/utils/types";
 import { Collection, CollectionId } from "metabase-types/api";
 

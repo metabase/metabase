@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import {
@@ -9,9 +10,11 @@ import {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+
 import { canUseLinkedFilters } from "../../utils/linked-filters";
-import ParameterSettings from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
+import ParameterSettings from "../ParameterSettings";
+
 import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {

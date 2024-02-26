@@ -1,14 +1,13 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
-import PropTypes from "prop-types";
-
-import { t } from "ttag";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
+
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Icon } from "metabase/core/components/Icon";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import { color, alpha } from "metabase/lib/colors";
 
 export default class PulseCardPreview extends Component {

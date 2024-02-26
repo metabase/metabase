@@ -1,5 +1,6 @@
 import Cookies from "js-cookie";
 import { replace } from "react-router-redux";
+
 import { logout, refreshSession } from "metabase/auth/actions";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 

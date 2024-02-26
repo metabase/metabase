@@ -1,4 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
+
 import { FullAppEmbeddingLinkWidget } from "./FullAppEmbeddingLinkWidget";
 
 const setup = () => {

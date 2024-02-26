@@ -1,4 +1,5 @@
 import { CollectionId, DashboardId } from "metabase-types/api";
+
 import ItemPicker from "./ItemPicker";
 
 export interface DashboardPickerProps {

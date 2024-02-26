@@ -1,7 +1,9 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import { SelectChangeEvent } from "metabase/core/components/Select";
+
 import FormSelect from "metabase/core/components/FormSelect";
+import { SelectChangeEvent } from "metabase/core/components/Select";
+
 import { EngineOption } from "../../types";
 
 export interface DatabaseEngineSelectProps {

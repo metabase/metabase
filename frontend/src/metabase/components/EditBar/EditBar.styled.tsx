@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { Icon } from "metabase/core/components/Icon";
-
 import { alpha, color } from "metabase/lib/colors";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 

@@ -1,5 +1,3 @@
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
   PERMISSION_ERROR,
   setupDatabasesEndpoints,
@@ -10,6 +8,9 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+
 import { useSchemaListQuery } from "./use-schema-list-query";
 
 const TEST_TABLE = createMockTable();

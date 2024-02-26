@@ -1,8 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
+import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const DashboardHeaderActionDivider = styled.div`

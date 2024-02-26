@@ -1,5 +1,5 @@
-import { restore, filterWidget, popover } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, filterWidget, popover } from "e2e/support/helpers";
 
 import { runQuery } from "../helpers/e2e-sql-filter-helpers";
 

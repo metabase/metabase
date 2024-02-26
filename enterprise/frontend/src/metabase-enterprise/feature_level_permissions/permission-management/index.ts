@@ -1,5 +1,6 @@
-import { Group, GroupsPermissions } from "metabase-types/api";
 import { EntityId, PermissionSubject } from "metabase/admin/permissions/types";
+import { Group, GroupsPermissions } from "metabase-types/api";
+
 import { buildDataModelPermission } from "./data-model-permission";
 import { buildDetailsPermission } from "./details-permission";
 import { buildDownloadPermission } from "./download-permission";

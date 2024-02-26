@@ -1,8 +1,10 @@
 import { render, waitForElementToBeRemoved } from "@testing-library/react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import { screen } from "__support__/ui";
 import type Database from "metabase-lib/metadata/Database";
+
 import DeleteDatabaseModal, {
   DeleteDatabaseModalProps,
 } from "./DeleteDatabaseModal";

@@ -1,22 +1,23 @@
+import type { NumberValue } from "d3-scale";
 import { useMemo } from "react";
 
-import type { NumberValue } from "d3-scale";
-
-import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
-import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
-import RowChartView, { RowChartViewProps } from "../RowChartView/RowChartView";
-import { ChartGoal } from "../../types/settings";
+import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+
 import { ContinuousScaleType, Range } from "../../types/scale";
+import { ChartGoal } from "../../types/settings";
+import RowChartView, { RowChartViewProps } from "../RowChartView/RowChartView";
+
+import { RowChartTheme, Series, StackOffset } from "./types";
+import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
 import {
   getMaxYValuesCount,
   getChartMargin,
   getRowChartGoal,
 } from "./utils/layout";
-import { getXTicks } from "./utils/ticks";
-import { RowChartTheme, Series, StackOffset } from "./types";
-import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
 import { addSideSpacingForTicksAndLabels, getChartScales } from "./utils/scale";
+import { getXTicks } from "./utils/ticks";
 
 const MIN_BAR_HEIGHT = 24;
 

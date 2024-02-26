@@ -1,13 +1,14 @@
 /* eslint-disable react/display-name */
 import { t } from "ttag";
+
 import type {
   ClickActionBase,
   ClickActionPopoverProps,
   ClickActionProps,
   PopoverClickAction,
 } from "metabase/modes/types";
-import { Card } from "metabase-types/api";
 import { ChartClickActionsView } from "metabase/visualizations/components/ChartClickActions";
+import DimensionOptions from "metabase-lib/DimensionOptions";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   pivotByCategoryDrill,
@@ -15,8 +16,9 @@ import {
   pivotByTimeDrill,
   PivotDrillResult,
 } from "metabase-lib/queries/drills/pivot-drill";
-import DimensionOptions from "metabase-lib/DimensionOptions";
 import { ClickObjectDimension } from "metabase-lib/queries/drills/types";
+import { Card } from "metabase-types/api";
+
 import { StyledBreakoutPopover } from "../common/BreakoutPopover.styled";
 
 type PivotDrillTypesConfig = {

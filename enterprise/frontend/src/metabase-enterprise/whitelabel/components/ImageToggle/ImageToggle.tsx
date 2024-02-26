@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+
 import Toggle from "metabase/core/components/Toggle";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
+
 import {
   ImageContainer,
   ToggleContainer,

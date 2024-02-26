@@ -1,13 +1,15 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { getDefaultTab } from "metabase/dashboard/actions";
 import {
   createMockDashboard,
   createMockDashboardOrderedCard,
 } from "metabase-types/api/mocks";
-import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
-import { getDefaultTab } from "metabase/dashboard/actions";
+
 import DashboardHeader from "./DashboardHeader";
 
 console.warn = jest.fn();

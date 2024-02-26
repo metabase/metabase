@@ -2,11 +2,9 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-
 import _ from "underscore";
-import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { setErrorPage } from "metabase/redux/app";
 
+import * as dashboardActions from "metabase/dashboard/actions";
 import {
   getDashboardComplete,
   getCardData,
@@ -15,8 +13,8 @@ import {
   getParameterValues,
   getIsNavigatingBackToDashboard,
 } from "metabase/dashboard/selectors";
-
-import * as dashboardActions from "metabase/dashboard/actions";
+import { setErrorPage } from "metabase/redux/app";
+import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => {
   return {

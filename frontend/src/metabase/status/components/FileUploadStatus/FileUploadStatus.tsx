@@ -1,12 +1,12 @@
 import _ from "underscore";
 
+import { useCollectionQuery } from "metabase/common/hooks";
 import { useSelector, useDispatch } from "metabase/lib/redux";
+import { isUploadAborted, isUploadInProgress } from "metabase/lib/uploads";
 import { getAllUploads, clearAllUploads } from "metabase/redux/uploads";
 import type { CollectionId } from "metabase-types/api";
 import type { FileUpload } from "metabase-types/store/upload";
-import { isUploadAborted, isUploadInProgress } from "metabase/lib/uploads";
 
-import { useCollectionQuery } from "metabase/common/hooks";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import FileUploadStatusLarge from "../FileUploadStatusLarge";
 

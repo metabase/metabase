@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import {
   PLUGIN_ADMIN_NAV_ITEMS,
   PLUGIN_ADMIN_ROUTES,
@@ -6,6 +7,7 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+
 import getAuditRoutes, { getUserMenuRotes } from "./routes";
 
 if (hasPremiumFeature("audit_app")) {

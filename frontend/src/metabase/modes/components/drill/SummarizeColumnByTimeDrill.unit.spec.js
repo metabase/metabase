@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import SummarizeColumnByTimeDrill from "metabase/modes/components/drill/SummarizeColumnByTimeDrill";
 import {
   createOrdersTable,
   createOrdersTotalField,
@@ -6,7 +7,6 @@ import {
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import SummarizeColumnByTimeDrill from "metabase/modes/components/drill/SummarizeColumnByTimeDrill";
 
 describe("SummarizeColumnByTimeDrill", () => {
   const metadata = createMockMetadata({

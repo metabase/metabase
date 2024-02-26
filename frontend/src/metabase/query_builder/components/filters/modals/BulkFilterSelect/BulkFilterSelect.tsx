@@ -3,13 +3,12 @@ import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
-import { isBoolean, isDate } from "metabase-lib/types/utils/isa";
+import Dimension from "metabase-lib/Dimension";
 import StructuredQuery, {
   SegmentOption,
 } from "metabase-lib/queries/StructuredQuery";
-
 import Filter from "metabase-lib/queries/structured/Filter";
-import Dimension from "metabase-lib/Dimension";
+import { isBoolean, isDate } from "metabase-lib/types/utils/isa";
 
 import {
   SelectFilterButton,

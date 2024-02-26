@@ -2,10 +2,9 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import CollectionItem from "metabase/components/CollectionItem";
-import { Grid } from "metabase/components/Grid";
-
-import { getUser } from "metabase/selectors/user";
 import { CollectionGridItem } from "metabase/components/CollectionList/CollectionList.styled";
+import { Grid } from "metabase/components/Grid";
+import { getUser } from "metabase/selectors/user";
 
 const propTypes = {
   collections: PropTypes.arrayOf(PropTypes.object).isRequired,

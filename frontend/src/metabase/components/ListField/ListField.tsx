@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import * as React from "react";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
+import EmptyState from "metabase/components/EmptyState";
+import Checkbox from "metabase/core/components/CheckBox";
+import Input, { InputProps } from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import Checkbox from "metabase/core/components/CheckBox";
-import EmptyState from "metabase/components/EmptyState";
 
-import Input, { InputProps } from "metabase/core/components/Input";
 import {
   OptionContainer,
   LabelWrapper,

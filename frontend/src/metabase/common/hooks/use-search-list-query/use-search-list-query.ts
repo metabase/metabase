@@ -1,5 +1,6 @@
 import Search from "metabase/entities/search";
 import { CollectionItem, SearchListQuery } from "metabase-types/api";
+
 import {
   useEntityListQuery,
   UseEntityListQueryProps,

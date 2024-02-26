@@ -5,7 +5,6 @@ import CheckBox from "metabase/core/components/CheckBox";
 import Filter from "metabase-lib/queries/structured/Filter";
 
 import { CheckboxContainer } from "./BooleanPicker.styled";
-
 import { OPTIONS } from "./constants";
 import { getValue } from "./utils";
 

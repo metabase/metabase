@@ -1,7 +1,8 @@
-import { ClickAction, isRegularClickAction } from "metabase/modes/types";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import { ClickAction, isRegularClickAction } from "metabase/modes/types";
+
 import {
   ClickActionButtonIcon,
   FormattingControl,

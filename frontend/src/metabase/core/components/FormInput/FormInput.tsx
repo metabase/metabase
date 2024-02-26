@@ -1,8 +1,9 @@
-import { ChangeEvent, forwardRef, ReactNode, Ref, useCallback } from "react";
 import { useField } from "formik";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import Input, { InputProps } from "metabase/core/components/Input";
+import { ChangeEvent, forwardRef, ReactNode, Ref, useCallback } from "react";
+
 import FormField from "metabase/core/components/FormField";
+import Input, { InputProps } from "metabase/core/components/Input";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 export interface FormInputProps
   extends Omit<

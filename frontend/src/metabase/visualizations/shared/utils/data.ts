@@ -1,16 +1,11 @@
 import { t } from "ttag";
-import {
-  RowValue,
-  RowValues,
-  SeriesOrderSetting,
-  DatasetData,
-} from "metabase-types/api";
 
+import { formatNullable } from "metabase/lib/formatting/nullable";
 import {
   ChartColumns,
   ColumnDescriptor,
 } from "metabase/visualizations/lib/graph/columns";
-import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
+import { Series } from "metabase/visualizations/shared/components/RowChart/types";
 import {
   GroupedDataset,
   GroupedDatum,
@@ -19,8 +14,14 @@ import {
   SeriesInfo,
   TwoDimensionalChartData,
 } from "metabase/visualizations/shared/types/data";
-import { Series } from "metabase/visualizations/shared/components/RowChart/types";
-import { formatNullable } from "metabase/lib/formatting/nullable";
+import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
+import {
+  RowValue,
+  RowValues,
+  SeriesOrderSetting,
+  DatasetData,
+} from "metabase-types/api";
+
 import { getChartMetrics } from "./series";
 
 const getMetricValue = (value: RowValue): MetricValue => {

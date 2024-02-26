@@ -1,38 +1,30 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { ListField } from "metabase/components/ListField";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import SingleSelectListField from "metabase/components/SingleSelectListField";
 import TokenField, {
   parseNumberValue,
   parseStringValue,
 } from "metabase/components/TokenField";
-import { ListField } from "metabase/components/ListField";
-import SingleSelectListField from "metabase/components/SingleSelectListField";
 import ValueComponent from "metabase/components/Value";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
+import Fields from "metabase/entities/fields";
 import AutoExpanding from "metabase/hoc/AutoExpanding";
-
-import { MetabaseApi } from "metabase/services";
-import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
-import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
+import { defer } from "metabase/lib/promise";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
   fetchParameterValues,
 } from "metabase/parameters/actions";
-
-import Fields from "metabase/entities/fields";
-import {
-  isIdParameter,
-  isNumberParameter,
-  isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
+import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
+import { MetabaseApi } from "metabase/services";
 import {
   canListFieldValues,
   canListParameterValues,
@@ -40,6 +32,11 @@ import {
   canSearchParameterValues,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
+import {
+  isIdParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/parameters/utils/parameter-type";
 
 const MAX_SEARCH_RESULTS = 100;
 

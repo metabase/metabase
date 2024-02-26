@@ -1,23 +1,22 @@
+import userEvent from "@testing-library/user-event";
 import { IndexRoute, Route } from "react-router";
 
-import userEvent from "@testing-library/user-event";
+import { setupEnterpriseTest } from "__support__/enterprise";
+import { callMockEvent } from "__support__/events";
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
   waitFor,
 } from "__support__/ui";
-import { setupEnterpriseTest } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import {
   createMockDatabase,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
 
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
-import { callMockEvent } from "__support__/events";
 import DatabaseEditApp from "./DatabaseEditApp";
 
 const ENGINES_MOCK = {

@@ -1,12 +1,11 @@
+import { StringColumn, NumberColumn } from "__support__/visualizations";
+import { getVisualizationTransformed } from "metabase/visualizations";
 import {
   dimensionIsTimeseries,
   computeTimeseriesDataInverval,
   getTimezone,
   computeTimeseriesTicksInterval,
 } from "metabase/visualizations/lib/timeseries";
-import { getVisualizationTransformed } from "metabase/visualizations";
-
-import { StringColumn, NumberColumn } from "__support__/visualizations";
 import { TYPE } from "metabase-lib/types/constants";
 
 describe("visualization.lib.timeseries", () => {

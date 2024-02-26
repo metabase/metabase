@@ -1,4 +1,4 @@
-import registerCypressGrep from "@cypress/grep";
+import registerCypressGrep from "@cypress/grep"; // eslint-disable-line import/order
 registerCypressGrep();
 
 import addContext from "mochawesome/addContext";

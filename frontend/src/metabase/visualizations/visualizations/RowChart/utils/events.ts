@@ -1,17 +1,20 @@
-import _ from "underscore";
 import { getIn } from "icepick";
-import {
-  DatasetColumn,
-  RowValue,
-  VisualizationSettings,
-} from "metabase-types/api";
+import _ from "underscore";
+
 import { isNotNull } from "metabase/core/utils/types";
 import { formatNullable } from "metabase/lib/formatting/nullable";
+import {
+  DataPoint,
+  StackedTooltipModel,
+  TooltipRowModel,
+} from "metabase/visualizations/components/ChartTooltip/types";
 import {
   ChartColumns,
   ColumnDescriptor,
   getColumnDescriptors,
 } from "metabase/visualizations/lib/graph/columns";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
 import {
   BarData,
   Series,
@@ -22,14 +25,12 @@ import {
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import { sumMetric } from "metabase/visualizations/shared/utils/data";
-import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
-import {
-  DataPoint,
-  StackedTooltipModel,
-  TooltipRowModel,
-} from "metabase/visualizations/components/ChartTooltip/types";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { isMetric } from "metabase-lib/types/utils/isa";
+import {
+  DatasetColumn,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 const getMetricColumnData = (
   columns: DatasetColumn[],

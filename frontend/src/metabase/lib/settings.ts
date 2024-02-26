@@ -1,11 +1,10 @@
-import _ from "underscore";
-import { t, ngettext, msgid } from "ttag";
 import moment from "moment-timezone";
+import { t, ngettext, msgid } from "ttag";
+import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
-
 import { PasswordComplexity, SettingKey, Settings } from "metabase-types/api";
 
 const n2w = (n: number) => MetabaseUtils.numberToWord(n);

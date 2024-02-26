@@ -2,21 +2,22 @@ import { ComponentPropsWithoutRef, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
-import Link from "metabase/core/components/Link";
-import ModalContent from "metabase/components/ModalContent";
-import DashboardPicker from "metabase/containers/DashboardPicker";
-import * as Urls from "metabase/lib/urls";
-import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
+import { coerceCollectionId } from "metabase/collections/utils";
 import {
   useCollectionQuery,
   useMostRecentlyViewedDashboard,
 } from "metabase/common/hooks";
-import { coerceCollectionId } from "metabase/collections/utils";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import type { State } from "metabase-types/store";
-import type { Card, Dashboard } from "metabase-types/api";
+import ModalContent from "metabase/components/ModalContent";
+import DashboardPicker from "metabase/containers/DashboardPicker";
+import { Icon } from "metabase/core/components/Icon";
+import Link from "metabase/core/components/Link";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
+import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
+import * as Urls from "metabase/lib/urls";
+import type { Card, Dashboard } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 
 function mapStateToProps(state: State) {

@@ -1,20 +1,19 @@
-import { push, LOCATION_CHANGE } from "react-router-redux";
-import { createSelector } from "@reduxjs/toolkit";
 import type { Selector } from "@reduxjs/toolkit";
+import { createSelector } from "@reduxjs/toolkit";
+import { push, LOCATION_CHANGE } from "react-router-redux";
 
-import {
-  combineReducers,
-  createAction,
-  handleActions,
-} from "metabase/lib/redux";
 import {
   isSmallScreen,
   openInBlankWindow,
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
-
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import {
+  combineReducers,
+  createAction,
+  handleActions,
+} from "metabase/lib/redux";
 import { getIsAppBarVisible } from "metabase/selectors/app";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import type { State, Dispatch } from "metabase-types/store";
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";

@@ -1,5 +1,6 @@
-import { px, rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
+import { px, rem } from "@mantine/core";
+
 import { SelectItem } from "./SelectItem";
 
 export const getSelectOverrides = (): MantineThemeOverride["components"] => ({

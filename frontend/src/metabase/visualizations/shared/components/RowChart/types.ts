@@ -1,4 +1,5 @@
 import { StringLike } from "@visx/scale";
+
 import { AxisStyle, ChartFont, GoalStyle } from "../../types/style";
 
 export type XValue = number | null;

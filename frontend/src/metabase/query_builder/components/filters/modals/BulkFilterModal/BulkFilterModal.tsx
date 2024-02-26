@@ -1,14 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
-
-import { pluralize } from "metabase/lib/formatting";
-
 import Button from "metabase/core/components/Button";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
-import { Icon, IconName } from "metabase/core/components/Icon";
+import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
+import { pluralize } from "metabase/lib/formatting";
 import Question from "metabase-lib/Question";
 import StructuredQuery, {
   FilterSection,
@@ -16,7 +14,10 @@ import StructuredQuery, {
   SegmentOption,
 } from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
+
 import BulkFilterList from "../BulkFilterList";
+
+import { FieldSearch } from "./BulkFilterFieldSearch";
 import {
   ModalBody,
   ModalCloseButton,
@@ -29,9 +30,6 @@ import {
   ModalTabPanel,
   ModalTitle,
 } from "./BulkFilterModal.styled";
-
-import { FieldSearch } from "./BulkFilterFieldSearch";
-
 import { fixBetweens, getSearchHits } from "./utils";
 
 export interface BulkFilterModalProps {

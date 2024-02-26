@@ -7,14 +7,16 @@ import {
   useState,
 } from "react";
 import _ from "underscore";
+
 import ColorPill from "metabase/core/components/ColorPill";
-import ColorRangeToggle from "./ColorRangeToggle";
+
 import {
   PopoverColorList,
   PopoverColorRangeList,
   PopoverDivider,
   PopoverRoot,
 } from "./ColorRangePopover.styled";
+import ColorRangeToggle from "./ColorRangeToggle";
 
 export interface ColorRangeContentProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {

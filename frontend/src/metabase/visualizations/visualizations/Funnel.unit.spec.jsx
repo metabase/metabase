@@ -1,5 +1,4 @@
 import { render, screen } from "__support__/ui";
-
 import {
   createMockCard,
   createMockColumn,
@@ -8,6 +7,7 @@ import {
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+
 import Funnel from "./Funnel";
 
 const cardTitle = "cardTitle";

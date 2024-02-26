@@ -1,17 +1,20 @@
 import { ChangeEvent, useCallback } from "react";
 import { t } from "ttag";
+
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
+import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import {
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
+
 import {
   SettingLabel,
   SettingRemoveButton,

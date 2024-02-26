@@ -1,4 +1,5 @@
 import { Engine } from "metabase-types/api";
+
 import { ELEVATED_ENGINES, ENGINE_LOGO } from "../constants";
 import { EngineOption } from "../types";
 

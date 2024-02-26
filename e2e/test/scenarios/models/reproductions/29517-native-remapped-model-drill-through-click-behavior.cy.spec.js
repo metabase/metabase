@@ -1,10 +1,10 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
   popover,
   visitQuestion,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const questionDetails = {
   name: "29517",

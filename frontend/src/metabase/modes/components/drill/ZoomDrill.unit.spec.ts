@@ -1,4 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
+import type { ClickObject } from "metabase/modes/types";
+import type Question from "metabase-lib/Question";
+import {
+  DatasetColumn,
+  DatetimeUnit,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
 import {
   createSampleDatabase,
   ORDERS,
@@ -6,14 +14,7 @@ import {
   PEOPLE,
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
-import {
-  DatasetColumn,
-  DatetimeUnit,
-  StructuredDatasetQuery,
-} from "metabase-types/api";
-import type { ClickObject } from "metabase/modes/types";
-import { checkNotNull } from "metabase/core/utils/types";
-import type Question from "metabase-lib/Question";
+
 import ZoomDrill from "./ZoomDrill";
 
 const metadata = createMockMetadata({

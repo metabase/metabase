@@ -1,5 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/core/utils/types";
+import StructuredQuery, {
+  isDimensionOption,
+  DimensionOption,
+  SegmentOption,
+} from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,
@@ -7,12 +13,6 @@ import {
   ORDERS_ID,
   PEOPLE,
 } from "metabase-types/api/mocks/presets";
-import StructuredQuery, {
-  isDimensionOption,
-  DimensionOption,
-  SegmentOption,
-} from "metabase-lib/queries/StructuredQuery";
-import Filter from "metabase-lib/queries/structured/Filter";
 
 import {
   fixBetweens,

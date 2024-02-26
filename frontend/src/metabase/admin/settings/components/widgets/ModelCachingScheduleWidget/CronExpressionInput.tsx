@@ -1,11 +1,10 @@
+import cx from "classnames";
 import { useCallback, useState } from "react";
 import * as React from "react";
-import cx from "classnames";
 import { t, jt } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { validateCronExpression } from "metabase/lib/cron";
 
 import {

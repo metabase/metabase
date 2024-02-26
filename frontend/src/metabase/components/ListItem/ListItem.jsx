@@ -2,9 +2,11 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo } from "react";
+
 import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.css";
 import { Icon } from "metabase/core/components/Icon";
+
 import { ListItemLink, ListItemName, Root } from "./ListItem.styled";
 
 const ListItem = ({

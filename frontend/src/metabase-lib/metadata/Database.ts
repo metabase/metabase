@@ -1,14 +1,17 @@
 import _ from "underscore";
+
+import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
 import {
   NativeQuery,
   NormalizedDatabase,
   StructuredQuery,
 } from "metabase-types/api";
-import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
+
 import Question from "../Question";
-import Table from "./Table";
-import Schema from "./Schema";
+
 import Metadata from "./Metadata";
+import Schema from "./Schema";
+import Table from "./Table";
 
 interface Database extends Omit<NormalizedDatabase, "tables" | "schemas"> {
   tables?: Table[];

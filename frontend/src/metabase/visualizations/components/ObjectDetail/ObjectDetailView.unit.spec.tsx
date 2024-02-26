@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import { createMockCard } from "metabase-types/api/mocks";
 import { checkNotNull } from "metabase/core/utils/types";
 import Question from "metabase-lib/Question";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import { ObjectDetailView } from "./ObjectDetailView";
 import type { ObjectDetailProps } from "./types";

@@ -6,12 +6,13 @@ import {
   getNativePermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
+import type Database from "metabase-lib/metadata/Database";
 import type {
   Group,
   GroupsPermissions,
   ConcreteTableId,
 } from "metabase-types/api";
-import type Database from "metabase-lib/metadata/Database";
+
 import type { EntityId } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>

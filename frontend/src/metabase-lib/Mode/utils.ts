@@ -1,6 +1,3 @@
-import Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 import {
   MODE_TYPE_ACTION,
   MODE_TYPE_NATIVE,
@@ -11,6 +8,10 @@ import {
   MODE_TYPE_PIVOT,
   MODE_TYPE_DEFAULT,
 } from "metabase-lib/Mode/constants";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import { ModeType } from "./types";
 
 export function getModeType(question: Question): ModeType | null {

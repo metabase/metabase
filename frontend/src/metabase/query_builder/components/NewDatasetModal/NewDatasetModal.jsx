@@ -1,12 +1,11 @@
-import { t } from "ttag";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
-import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
-
+import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import ModalContent from "metabase/components/ModalContent";
+import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
 
 import {
   FeatureOverviewContainer,

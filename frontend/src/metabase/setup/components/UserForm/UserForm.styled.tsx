@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { breakpointMinSmall } from "metabase/styled-components/theme";
+
 import Form from "metabase/core/components/Form";
+import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const UserFormRoot = styled(Form)`
   margin-top: 1rem;

@@ -1,15 +1,13 @@
 import { screen, fireEvent } from "@testing-library/react";
 
-import { renderWithProviders } from "__support__/ui";
 import { mockSettings } from "__support__/settings";
-
+import { renderWithProviders } from "__support__/ui";
+import ProfileLink from "metabase/nav/components/ProfileLink";
 import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockAdminState,
   createMockAdminAppState,
 } from "metabase-types/store/mocks";
-
-import ProfileLink from "metabase/nav/components/ProfileLink";
 
 const REGULAR_ITEMS = [
   "Account settings",

@@ -1,14 +1,14 @@
-import { renderWithProviders, screen } from "__support__/ui";
-import Visualization from "metabase/visualizations/components/Visualization";
-import {
-  createMockColumn,
-  createMockSingleSeries,
-} from "metabase-types/api/mocks";
-import type { FieldVisibilityType } from "metabase-types/api";
 import {
   setupActionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import type { FieldVisibilityType } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 function setup({

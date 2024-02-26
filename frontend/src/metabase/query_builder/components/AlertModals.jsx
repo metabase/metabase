@@ -5,50 +5,41 @@ import { connect } from "react-redux";
 import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
-// components
-import Button from "metabase/core/components/Button";
-import SchedulePicker from "metabase/containers/SchedulePicker";
-import ModalContent from "metabase/components/ModalContent";
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Radio from "metabase/core/components/Radio";
-import { Icon } from "metabase/core/components/Icon";
-import ChannelSetupModal from "metabase/components/ChannelSetupModal";
-import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-
-import User from "metabase/entities/users";
-
-// actions
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
-import { apiUpdateQuestion, updateUrl } from "metabase/query_builder/actions";
+import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import ChannelSetupModal from "metabase/components/ChannelSetupModal";
+import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import ModalContent from "metabase/components/ModalContent";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import SchedulePicker from "metabase/containers/SchedulePicker";
+import Button from "metabase/core/components/Button";
+import { Icon } from "metabase/core/components/Icon";
+import Radio from "metabase/core/components/Radio";
+import User from "metabase/entities/users";
+import { alertIsValid } from "metabase/lib/alert";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseCookies from "metabase/lib/cookies";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
-
-// selectors
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import {
-  getQuestion,
-  getVisualizationSettings,
-} from "metabase/query_builder/selectors";
+import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 import {
   getPulseFormInput,
   hasConfiguredAnyChannelSelector,
   hasConfiguredEmailChannelSelector,
   hasLoadedChannelInfoSelector,
 } from "metabase/pulse/selectors";
-
-// lib
-import MetabaseCookies from "metabase/lib/cookies";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
-// types
-import { alertIsValid } from "metabase/lib/alert";
+import { apiUpdateQuestion, updateUrl } from "metabase/query_builder/actions";
+import {
+  getQuestion,
+  getVisualizationSettings,
+} from "metabase/query_builder/selectors";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
   getDefaultAlert,
 } from "metabase-lib/Alert";
+
 import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
 
 const getScheduleFromChannel = channel =>

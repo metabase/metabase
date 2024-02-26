@@ -1,7 +1,8 @@
 import { useState } from "react";
 
+import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
 import { getFormTitle } from "metabase/actions/utils";
-
+import Modal from "metabase/components/Modal";
 import type {
   ActionDashboardCard,
   OnSubmitActionForm,
@@ -12,15 +13,13 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
-import Modal from "metabase/components/Modal";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "../../containers/ActionParametersInputForm";
-import ActionButtonView from "./ActionButtonView";
-import { shouldShowConfirmation } from "./utils";
 
+import ActionButtonView from "./ActionButtonView";
 import { FormWrapper, FormTitle } from "./ActionForm.styled";
+import { shouldShowConfirmation } from "./utils";
 
 interface ActionFormProps {
   action: WritebackAction;

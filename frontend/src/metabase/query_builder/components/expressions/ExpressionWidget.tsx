@@ -1,13 +1,14 @@
 import { ReactNode, useRef, useState } from "react";
 import { t } from "ttag";
-import { isNotNull } from "metabase/core/utils/types";
+
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
 import Tooltip from "metabase/core/components/Tooltip";
+import { isNotNull } from "metabase/core/utils/types";
 import MetabaseSettings from "metabase/lib/settings";
-import type { Expression } from "metabase-types/api";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Expression } from "metabase-types/api";
 
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {

@@ -1,11 +1,11 @@
 import * as A from "./aggregation";
 import * as B from "./breakout";
-import * as F from "./filter";
-import * as J from "./join";
-import * as O from "./order-by";
 import * as E from "./expression";
 import * as FIELD from "./field";
 import * as FIELD_REF from "./field-ref";
+import * as F from "./filter";
+import * as J from "./join";
+import * as O from "./order-by";
 
 // AGGREGATION
 

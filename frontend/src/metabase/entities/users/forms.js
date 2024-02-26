@@ -1,7 +1,8 @@
 import { t } from "ttag";
-import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
-import validate from "metabase/lib/validate";
+
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
+import validate from "metabase/lib/validate";
+import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 
 export default {
   admin: {

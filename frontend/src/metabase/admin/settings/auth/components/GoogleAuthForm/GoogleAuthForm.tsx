@@ -1,15 +1,18 @@
 import { useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
-import MetabaseSettings from "metabase/lib/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import FormProvider from "metabase/core/components/FormProvider";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormInput from "metabase/core/components/FormInput";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import MetabaseSettings from "metabase/lib/settings";
 import { SettingDefinition, Settings } from "metabase-types/api";
+
 import { GOOGLE_SCHEMA } from "../../constants";
+
 import {
   GoogleForm,
   GoogleFormCaption,

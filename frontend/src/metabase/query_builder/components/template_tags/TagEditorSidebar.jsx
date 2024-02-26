@@ -1,16 +1,16 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
-
-import { t } from "ttag";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import TagEditorParam from "./TagEditorParam";
+
 import TagEditorHelp from "./TagEditorHelp";
+import TagEditorParam from "./TagEditorParam";
 
 export default class TagEditorSidebar extends Component {
   state = {

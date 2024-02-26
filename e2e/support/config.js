@@ -1,9 +1,15 @@
 import * as dbTasks from "./db_tasks";
-const replay = require("@replayio/cypress");
-const { verifyDownloadTasks } = require("cy-verify-downloads");
+
+const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
+const replay = require("@replayio/cypress");
+const { verifyDownloadTasks } = require("cy-verify-downloads");
+
+const {
+  removeDirectory,
+} = require("./commands/downloads/deleteDownloadsFolder");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 
@@ -16,14 +22,6 @@ const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
-
-// This function is called when a project is opened or re-opened (e.g. due to
-// the project's config changing)
-
-const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
-const {
-  removeDirectory,
-} = require("./commands/downloads/deleteDownloadsFolder");
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file

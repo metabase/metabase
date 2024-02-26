@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
-import { TabButton as BaseTabButton } from "metabase/core/components/TabButton";
 import BaseButton from "metabase/core/components/Button";
+import { TabButton as BaseTabButton } from "metabase/core/components/TabButton";
 
 export const Container = styled.div`
   display: flex;

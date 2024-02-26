@@ -1,6 +1,7 @@
+import moment from "moment-timezone";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import moment from "moment-timezone";
+
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import {
   Collection,
@@ -8,6 +9,7 @@ import {
   TimelineEventData,
   TimelineEventSource,
 } from "metabase-types/api";
+
 import EventForm from "../../containers/EventForm";
 import ModalBody from "../ModalBody";
 import ModalHeader from "../ModalHeader";

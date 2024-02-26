@@ -1,20 +1,22 @@
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { Dataset } from "metabase-types/api";
 import { MetabotQueryStatus, State } from "metabase-types/store";
+
 import {
   getIsVisualized,
   getQueryError,
   getQueryResults,
   getQueryStatus,
 } from "../../selectors";
+import MetabotDisplayToggle from "../MetabotDisplayToggle";
+import MetabotFeedback from "../MetabotFeedback";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import MetabotVisualization from "../MetabotVisualization";
-import MetabotFeedback from "../MetabotFeedback";
-import MetabotDisplayToggle from "../MetabotDisplayToggle";
+
 import {
   ErrorStateMessage,
   ErrorStateRoot,

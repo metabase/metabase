@@ -2,22 +2,24 @@ import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
-import Databases from "metabase/entities/databases";
-import Tables from "metabase/entities/tables";
-import Schemas from "metabase/entities/schemas";
+
 import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { TableId } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import Databases from "metabase/entities/databases";
+import Schemas from "metabase/entities/schemas";
+import Tables from "metabase/entities/tables";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
 import Table from "metabase-lib/metadata/Table";
+import { TableId } from "metabase-types/api";
+import { State } from "metabase-types/store";
+
 import { discardTableFieldValues, rescanTableFieldValues } from "../../actions";
+import MetadataBackButton from "../MetadataBackButton";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
-import MetadataBackButton from "../MetadataBackButton";
 
 interface RouteParams {
   databaseId: string;

@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { EntityName } from "metabase/entities/containers/EntityName";
+
 import AuditContent from "../components/AuditContent";
 import AuditTable from "../containers/AuditTable";
-
 import * as TableDetailCards from "../lib/cards/table_detail";
 
 const AuditTableDetail = ({ params, ...props }) => {

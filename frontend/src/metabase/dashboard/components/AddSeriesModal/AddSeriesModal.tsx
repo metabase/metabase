@@ -2,6 +2,9 @@ import { getIn } from "icepick";
 import { Component } from "react";
 import { t } from "ttag";
 
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { color } from "metabase/lib/colors";
+import Visualization from "metabase/visualizations/components/Visualization";
 import {
   Card,
   CardId,
@@ -9,9 +12,6 @@ import {
   DashboardOrderedCard,
   Dataset,
 } from "metabase-types/api";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { color } from "metabase/lib/colors";
-import Visualization from "metabase/visualizations/components/Visualization";
 
 import { QuestionList } from "./QuestionList";
 

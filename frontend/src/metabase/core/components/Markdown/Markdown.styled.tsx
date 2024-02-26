@@ -1,7 +1,9 @@
+import styled from "@emotion/styled";
 import { FC, ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
-import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
+
 import type { MarkdownProps } from "./Markdown";
 
 export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`

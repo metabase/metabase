@@ -1,11 +1,10 @@
 import styled from "@emotion/styled";
 
 import FormField from "metabase/core/components/FormField";
-import Radio from "metabase/core/components/Radio";
 import { Icon } from "metabase/core/components/Icon";
-
-import { space } from "metabase/styled-components/theme";
+import Radio from "metabase/core/components/Radio";
 import { color, darken } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 
 const DRAG_HANDLE_SIZE = 12;
 

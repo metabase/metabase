@@ -1,5 +1,6 @@
 import { ScheduleSettings } from "./settings";
 import { Table } from "./table";
+
 import { ISO8601Time } from ".";
 
 export type DatabaseId = number;

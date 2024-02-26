@@ -1,11 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   visualize,
   startNewQuestion,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS } =
   SAMPLE_DATABASE;

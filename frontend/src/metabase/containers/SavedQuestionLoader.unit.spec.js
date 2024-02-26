@@ -1,19 +1,19 @@
 import { screen } from "@testing-library/react";
 
-import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
-import { renderWithProviders } from "__support__/ui";
 import {
   setupCardEndpoints,
   setupSchemaEndpoints,
   setupUnauthorizedSchemaEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
+import { renderWithProviders } from "__support__/ui";
+import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
+import Question from "metabase-lib/Question";
 import {
   createMockCard,
   createMockColumn,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import Question from "metabase-lib/Question";
 
 const databaseMock = createMockDatabase({ id: 1 });
 

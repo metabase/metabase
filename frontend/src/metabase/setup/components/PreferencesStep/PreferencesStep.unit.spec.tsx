@@ -1,11 +1,14 @@
 import userEvent from "@testing-library/user-event";
+
+import { setupErrorSetupEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { setupErrorSetupEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { PREFERENCES_STEP, USER_STEP } from "../../constants";
+
 import { PreferencesStep } from "./PreferencesStep";
 
 interface SetupOpts {

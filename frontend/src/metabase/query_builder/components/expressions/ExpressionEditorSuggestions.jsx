@@ -1,11 +1,11 @@
-import { Component, Fragment } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component, Fragment } from "react";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
-
+import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
+
 import {
   ExpressionListItem,
   ExpressionList,

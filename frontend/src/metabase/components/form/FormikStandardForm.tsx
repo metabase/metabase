@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { BaseFieldValues } from "metabase-types/forms";
 
-import { BaseFormProps } from "./FormikCustomForm/types";
-import { CustomFormFooterProps } from "./FormikCustomForm/CustomFormFooter";
 import CustomForm from "./FormikCustomForm";
+import { CustomFormFooterProps } from "./FormikCustomForm/CustomFormFooter";
+import { BaseFormProps } from "./FormikCustomForm/types";
 
 interface Props<Values extends BaseFieldValues>
   extends BaseFormProps<Values>,

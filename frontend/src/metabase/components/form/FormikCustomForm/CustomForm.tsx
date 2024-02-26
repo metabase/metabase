@@ -1,5 +1,5 @@
-import * as React from "react";
 import { Form } from "formik";
+import * as React from "react";
 
 import {
   BaseFieldValues,
@@ -7,14 +7,12 @@ import {
   PopulatedFormObject,
 } from "metabase-types/forms";
 
-import { BaseFormProps, OptionalFormViewProps } from "./types";
-
 import CustomFormField, { CustomFormFieldProps } from "./CustomFormField";
 import CustomFormFooter, { CustomFormFooterProps } from "./CustomFormFooter";
 import CustomFormMessage, { CustomFormMessageProps } from "./CustomFormMessage";
 import CustomFormSubmit from "./CustomFormSubmit";
-
 import { FormContext } from "./context";
+import { BaseFormProps, OptionalFormViewProps } from "./types";
 
 interface FormRenderProps<Values extends BaseFieldValues>
   extends BaseFormProps<Values> {

@@ -1,7 +1,7 @@
-import { Component } from "react";
-import moment from "moment-timezone";
-import _ from "underscore";
 import cx from "classnames";
+import moment from "moment-timezone";
+import { Component } from "react";
+import _ from "underscore";
 
 import YearPicker from "metabase/components/YearPicker";
 

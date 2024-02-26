@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+
 import type { Clause, ColumnMetadata, Query } from "./types";
 
 export function fields(query: Query, stageIndex: number): Clause[] {

@@ -1,12 +1,9 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import * as tippy from "tippy.js";
+
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
-import { performAction } from "metabase/visualizations/lib/action";
-import { OnChangeCardAndRun } from "metabase/visualizations/types";
-import { Dispatch } from "metabase-types/store";
-import { Series } from "metabase-types/api";
 import {
   RegularClickAction,
   ClickObject,
@@ -14,10 +11,14 @@ import {
   isPopoverClickAction,
   isRegularClickAction,
 } from "metabase/modes/types";
+import { performAction } from "metabase/visualizations/lib/action";
+import { OnChangeCardAndRun } from "metabase/visualizations/types";
+import { Series } from "metabase-types/api";
+import { Dispatch } from "metabase-types/store";
 
+import { FlexTippyPopover } from "./ChartClickActions.styled";
 import { ChartClickActionsView } from "./ChartClickActionsView";
 import { getGALabelForAction } from "./utils";
-import { FlexTippyPopover } from "./ChartClickActions.styled";
 
 interface ChartClickActionsProps {
   clicked: ClickObject;

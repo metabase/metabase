@@ -2,15 +2,15 @@ import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { getEngineNativeType } from "metabase/lib/engine";
 import Button from "metabase/core/components/Button";
+import { getEngineNativeType } from "metabase/lib/engine";
 import {
   getNativeQueryFn,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import Question from "metabase-lib/Question";
 import { NativeQueryForm } from "metabase-types/api";
 import { QueryBuilderUIControls, State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
 
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
 

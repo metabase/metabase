@@ -1,5 +1,6 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
+
 import {
   setupMostRecentlyViewedDashboard,
   setupCollectionsEndpoints,
@@ -12,14 +13,15 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import { Collection, Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { Collection, Dashboard } from "metabase-types/api";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const CARD = createMockCard({ id: 1, name: "Model Uno", dataset: true });

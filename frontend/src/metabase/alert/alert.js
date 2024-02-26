@@ -1,11 +1,12 @@
-import _ from "underscore";
-import { handleActions } from "redux-actions";
 import { combineReducers } from "@reduxjs/toolkit";
+import { handleActions } from "redux-actions";
 import { t } from "ttag";
+import _ from "underscore";
+
+import { Icon } from "metabase/core/components/Icon";
+import { RestfulRequest } from "metabase/lib/request";
 import { addUndo } from "metabase/redux/undo";
 import { AlertApi } from "metabase/services";
-import { RestfulRequest } from "metabase/lib/request";
-import { Icon } from "metabase/core/components/Icon";
 
 export const FETCH_ALL_ALERTS = "metabase/alerts/FETCH_ALL_ALERTS";
 const fetchAllAlertsRequest = new RestfulRequest({

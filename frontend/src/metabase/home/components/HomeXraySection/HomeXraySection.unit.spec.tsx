@@ -1,9 +1,3 @@
-import { Database, DatabaseCandidate } from "metabase-types/api";
-import {
-  createMockDatabase,
-  createMockDatabaseCandidate,
-  createMockTableCandidate,
-} from "metabase-types/api/mocks";
 import {
   setupDatabaseCandidatesEndpoint,
   setupDatabasesEndpoints,
@@ -13,6 +7,13 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { Database, DatabaseCandidate } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockDatabaseCandidate,
+  createMockTableCandidate,
+} from "metabase-types/api/mocks";
+
 import { HomeXraySection } from "./HomeXraySection";
 
 interface SetupOpts {

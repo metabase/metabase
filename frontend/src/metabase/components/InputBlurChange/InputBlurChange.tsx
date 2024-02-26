@@ -1,6 +1,7 @@
 import { useState, useLayoutEffect, useCallback } from "react";
 import * as React from "react";
 import _ from "underscore";
+
 import Input, { InputProps } from "metabase/core/components/Input";
 
 /**

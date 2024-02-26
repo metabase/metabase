@@ -8,7 +8,7 @@ import {
   useMemo,
 } from "react";
 import _ from "underscore";
-import { RadioColorScheme, RadioVariant } from "./types";
+
 import {
   RadioButton,
   RadioContainerBubble,
@@ -21,6 +21,7 @@ import {
   RadioGroupBubble,
   RadioGroupNormal,
 } from "./Radio.styled";
+import { RadioColorScheme, RadioVariant } from "./types";
 
 const VARIANTS = {
   normal: {

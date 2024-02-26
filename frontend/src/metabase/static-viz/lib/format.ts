@@ -1,26 +1,24 @@
+import { NumberLike, StringLike } from "@visx/scale";
 import moment from "moment";
 import { Moment } from "moment-timezone";
-import { NumberLike, StringLike } from "@visx/scale";
-import {
-  DatasetColumn,
-  RowValue,
-  VisualizationSettings,
-} from "metabase-types/api";
-import { formatTime } from "metabase/lib/formatting/time";
+
 import {
   formatDateTimeWithUnit,
   formatRange,
 } from "metabase/lib/formatting/date";
-import { formatNumber } from "metabase/lib/formatting/numbers";
 import { formatCoordinate } from "metabase/lib/formatting/geography";
+import { formatNumber } from "metabase/lib/formatting/numbers";
+import { formatTime } from "metabase/lib/formatting/time";
+import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
 import {
   ChartTicksFormatters,
   ValueFormatter,
 } from "metabase/visualizations/shared/types/format";
-import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
-import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
 import {
   isCoordinate,
   isDate,
@@ -28,8 +26,11 @@ import {
   isTime,
   isBoolean,
 } from "metabase-lib/types/utils/isa";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import {
+  DatasetColumn,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 const getRemappedValue = (
   value: unknown,

@@ -1,5 +1,7 @@
 import { t } from "ttag";
+
 import { Icon, IconName } from "metabase/core/components/Icon";
+
 import {
   HeaderRoot,
   HeaderIcon,

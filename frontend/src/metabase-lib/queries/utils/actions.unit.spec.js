@@ -1,10 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
+import { drillFilter } from "metabase-lib/queries/utils/actions";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import { drillFilter } from "metabase-lib/queries/utils/actions";
 
 describe("actions", () => {
   const metadata = createMockMetadata({

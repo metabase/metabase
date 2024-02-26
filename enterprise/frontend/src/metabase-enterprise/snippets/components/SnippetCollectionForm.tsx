@@ -1,27 +1,22 @@
 import { useCallback, useMemo } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
-import { connect } from "react-redux";
-
-import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormFooter from "metabase/core/components/FormFooter";
-import FormProvider from "metabase/core/components/FormProvider";
-import FormInput from "metabase/core/components/FormInput";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-
-import * as Errors from "metabase/core/utils/errors";
-
-import { color } from "metabase/lib/colors";
-
-import SnippetCollections from "metabase/entities/snippet-collections";
-import { DEFAULT_COLLECTION_COLOR_ALIAS } from "metabase/entities/collections";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-
+import Button from "metabase/core/components/Button";
+import Form from "metabase/core/components/Form";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormFooter from "metabase/core/components/FormFooter";
+import FormInput from "metabase/core/components/FormInput";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormTextArea from "metabase/core/components/FormTextArea";
+import * as Errors from "metabase/core/utils/errors";
+import { DEFAULT_COLLECTION_COLOR_ALIAS } from "metabase/entities/collections";
+import SnippetCollections from "metabase/entities/snippet-collections";
+import { color } from "metabase/lib/colors";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

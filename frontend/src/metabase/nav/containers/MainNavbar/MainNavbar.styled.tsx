@@ -1,15 +1,15 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import { Icon } from "metabase/core/components/Icon";
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-
 import { color, lighten } from "metabase/lib/colors";
+import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
   space,
 } from "metabase/styled-components/theme";
+
 import { SidebarLink } from "./SidebarItems";
 
 const openSidebarCSS = css`

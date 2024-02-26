@@ -1,3 +1,5 @@
+import { USERS } from "e2e/support/cypress_data";
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
   restore,
@@ -12,8 +14,6 @@ import {
   enableTracking,
   main,
 } from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
-import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 

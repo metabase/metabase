@@ -1,32 +1,28 @@
 import { useRef, useMemo } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
+import ActionViz from "metabase/actions/components/ActionViz";
+import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
+import { isActionDashCard } from "metabase/actions/utils";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Button from "metabase/core/components/Button";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Form from "metabase/core/components/Form";
+import {
+  FieldLabel,
+  FieldLabelContainer,
+} from "metabase/core/components/FormField/FormField.styled";
+import FormInput from "metabase/core/components/FormInput";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormSelect from "metabase/core/components/FormSelect";
+import { closeSidebar } from "metabase/dashboard/actions";
+import Sidebar from "metabase/dashboard/components/Sidebar";
 import type {
   Dashboard,
   ActionDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
-import FormInput from "metabase/core/components/FormInput";
-import FormSelect from "metabase/core/components/FormSelect";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import {
-  FieldLabel,
-  FieldLabelContainer,
-} from "metabase/core/components/FormField/FormField.styled";
-
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Sidebar from "metabase/dashboard/components/Sidebar";
-
-import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
-import ActionViz from "metabase/actions/components/ActionViz";
-
-import { closeSidebar } from "metabase/dashboard/actions";
-import { isActionDashCard } from "metabase/actions/utils";
 
 import {
   Heading,

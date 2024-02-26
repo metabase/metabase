@@ -4,19 +4,19 @@ import { t } from "ttag";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getDatabasesList } from "metabase/query_builder/selectors";
-
-import type { TableId } from "metabase-types/api";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Dimension from "metabase-lib/Dimension";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { isLocalField } from "metabase-lib/queries/utils/field-ref";
+import type { TableId } from "metabase-types/api";
 
-import type { NotebookStepUiComponentProps } from "../types";
-import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import {
   FieldsPickerIcon,
   FieldPickerContentContainer,
   FIELDS_PICKER_STYLES,
 } from "../FieldsPickerIcon";
+import { NotebookCell, NotebookCellItem } from "../NotebookCell";
+import type { NotebookStepUiComponentProps } from "../types";
+
 import FieldsPicker from "./FieldsPicker";
 
 function DataStep({

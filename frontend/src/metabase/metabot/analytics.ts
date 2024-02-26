@@ -1,6 +1,6 @@
+import { trackSchemaEvent } from "metabase/lib/analytics";
 import { MetabotFeedbackType } from "metabase-types/api";
 import { MetabotEntityType } from "metabase-types/store";
-import { trackSchemaEvent } from "metabase/lib/analytics";
 
 export type MetabotQueryRunResult = "success" | "failure" | "bad-sql";
 

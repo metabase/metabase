@@ -1,4 +1,3 @@
-import Question from "metabase-lib/Question";
 import Mode, { getModeType } from "metabase-lib/Mode";
 import {
   MODE_TYPE_ACTION,
@@ -9,15 +8,17 @@ import {
   MODE_TYPE_GEO,
   MODE_TYPE_PIVOT,
 } from "metabase-lib/Mode/constants";
+import Question from "metabase-lib/Question";
 import type { QueryMode } from "metabase-lib/queries/drills/types";
+
 import ActionMode from "../components/modes/ActionMode";
-import SegmentMode from "../components/modes/SegmentMode";
-import MetricMode from "../components/modes/MetricMode";
-import TimeseriesMode from "../components/modes/TimeseriesMode";
-import GeoMode from "../components/modes/GeoMode";
-import PivotMode from "../components/modes/PivotMode";
-import NativeMode from "../components/modes/NativeMode";
 import DefaultMode from "../components/modes/DefaultMode";
+import GeoMode from "../components/modes/GeoMode";
+import MetricMode from "../components/modes/MetricMode";
+import NativeMode from "../components/modes/NativeMode";
+import PivotMode from "../components/modes/PivotMode";
+import SegmentMode from "../components/modes/SegmentMode";
+import TimeseriesMode from "../components/modes/TimeseriesMode";
 
 export function getMode(question: Question): Mode | null {
   const queryMode = getQueryMode(question);

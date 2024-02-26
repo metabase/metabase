@@ -1,11 +1,13 @@
+import Field from "metabase-lib/metadata/Field";
 import {
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import Field from "metabase-lib/metadata/Field";
+
 import { ParameterWithTemplateTagTarget } from "../types";
+
 import { getFields } from "./parameter-fields";
 import { getParameterSubType, getParameterType } from "./parameter-type";
 

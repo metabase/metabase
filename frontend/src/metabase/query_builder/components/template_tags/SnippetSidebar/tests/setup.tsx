@@ -1,17 +1,17 @@
 /* istanbul ignore file */
 
-import { mockSettings } from "__support__/settings";
-import {
-  renderWithProviders,
-  waitForElementToBeRemoved,
-  screen,
-} from "__support__/ui";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import {
+  renderWithProviders,
+  waitForElementToBeRemoved,
+  screen,
+} from "__support__/ui";
 import { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockCollection,

@@ -1,6 +1,5 @@
-import { createThunkAction } from "metabase/lib/redux";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { createThunkAction } from "metabase/lib/redux";
 import { MetabaseApi } from "metabase/services";
 
 export const RESCAN_FIELD_VALUES = "metabase/admin/fields/RESCAN_FIELD_VALUES";

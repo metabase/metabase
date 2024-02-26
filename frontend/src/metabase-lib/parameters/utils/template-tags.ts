@@ -1,5 +1,8 @@
 import _ from "underscore";
 
+import type { ParameterWithTarget } from "metabase-lib/parameters/types";
+import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
+import { getTemplateTagFromTarget } from "metabase-lib/parameters/utils/targets";
 import {
   Card,
   Parameter,
@@ -7,9 +10,6 @@ import {
   ParameterTarget,
   TemplateTag,
 } from "metabase-types/api";
-import type { ParameterWithTarget } from "metabase-lib/parameters/types";
-import { getTemplateTagFromTarget } from "metabase-lib/parameters/utils/targets";
-import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
 function getTemplateTagType(tag: TemplateTag) {
   const { type } = tag;

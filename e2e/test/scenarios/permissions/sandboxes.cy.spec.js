@@ -1,3 +1,5 @@
+import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
   modal,
@@ -18,10 +20,6 @@ import {
   sendEmailAndAssert,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
-import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const {
   ORDERS,

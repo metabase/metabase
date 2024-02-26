@@ -1,17 +1,17 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
+  fieldRefForColumn,
+  syncTableColumnsToQuery,
+  findColumnForColumnSetting,
+} from "metabase-lib/queries/utils/dataset";
+import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
+import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
-import {
-  fieldRefForColumn,
-  syncTableColumnsToQuery,
-  findColumnForColumnSetting,
-} from "metabase-lib/queries/utils/dataset";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

@@ -1,8 +1,9 @@
 import moment, { Moment } from "moment-timezone";
 
 import { parseTimestamp } from "metabase/lib/time";
-import type { DatetimeUnit } from "metabase-types/api/query";
 import { isDateWithoutTime } from "metabase-lib/types/utils/isa";
+import type { DatetimeUnit } from "metabase-types/api/query";
+
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -10,7 +11,6 @@ import {
   hasDay,
   hasHour,
 } from "./datetime-utils";
-
 import type { OptionsType } from "./types";
 
 const RANGE_SEPARATOR = ` – `;

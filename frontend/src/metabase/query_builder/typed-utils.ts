@@ -1,4 +1,5 @@
 import { LocationDescriptorObject } from "history";
+
 import { QueryBuilderMode, DatasetEditorTab } from "metabase-types/store";
 
 type LocationQBModeResult = {

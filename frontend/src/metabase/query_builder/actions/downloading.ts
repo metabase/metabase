@@ -1,16 +1,17 @@
 import { t } from "ttag";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
+
 import api from "metabase/lib/api";
-import { getCardKey } from "metabase/visualizations/lib/utils";
+import * as Urls from "metabase/lib/urls";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
+import { getCardKey } from "metabase/visualizations/lib/utils";
+import Question from "metabase-lib/Question";
 import {
   DashboardId,
   DashCardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
 
 export interface DownloadQueryResultsOpts {
   type: string;

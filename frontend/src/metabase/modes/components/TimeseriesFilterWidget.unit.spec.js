@@ -1,13 +1,14 @@
 import { render, screen } from "@testing-library/react";
+
 import { createMockMetadata } from "__support__/metadata";
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
+import Question from "metabase-lib/Question";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Question from "metabase-lib/Question";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

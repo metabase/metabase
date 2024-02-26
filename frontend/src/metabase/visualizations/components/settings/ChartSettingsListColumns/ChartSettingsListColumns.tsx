@@ -3,14 +3,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
-
+import Question from "metabase-lib/Question";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   ConcreteFieldReference,
   DatasetColumn,
   FieldId,
 } from "metabase-types/api";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import Question from "metabase-lib/Question";
 
 import {
   ColumnItemContainer,

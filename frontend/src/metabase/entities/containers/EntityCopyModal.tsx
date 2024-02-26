@@ -1,8 +1,8 @@
 import { dissoc } from "icepick";
 import { t } from "ttag";
 
-import EntityForm from "metabase/entities/containers/EntityForm";
 import ModalContent from "metabase/components/ModalContent";
+import EntityForm from "metabase/entities/containers/EntityForm";
 
 interface EntityCopyModalProps {
   entityType: string;

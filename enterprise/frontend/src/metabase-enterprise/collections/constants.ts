@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import type { CollectionAuthorityLevel } from "metabase-types/api";
+
 import type { IconName } from "metabase/core/components/Icon";
+import type { CollectionAuthorityLevel } from "metabase-types/api";
 
 type AuthorityLevelConfig = {
   type: CollectionAuthorityLevel;

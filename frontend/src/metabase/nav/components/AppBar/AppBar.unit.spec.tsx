@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
+
 import { createMockUser } from "metabase-types/api/mocks";
+
 import AppBar, { AppBarProps } from "./AppBar";
 
 const NewItemButtonMock = () => <div data-testid="new-button" />;

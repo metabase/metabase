@@ -1,13 +1,13 @@
+import cx from "classnames";
+import PropTypes from "prop-types";
 import { Component } from "react";
 import * as React from "react";
-import PropTypes from "prop-types";
 import { findDOMNode } from "react-dom";
 import _ from "underscore";
-import cx from "classnames";
 
-import { Icon } from "metabase/core/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
+import { Icon } from "metabase/core/components/Icon";
+import { isObscured } from "metabase/lib/dom";
 import {
   KEYCODE_ESCAPE,
   KEYCODE_ENTER,
@@ -17,7 +17,7 @@ import {
   KEYCODE_BACKSPACE,
   KEY_COMMA,
 } from "metabase/lib/keyboard";
-import { isObscured } from "metabase/lib/dom";
+
 import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
 import {

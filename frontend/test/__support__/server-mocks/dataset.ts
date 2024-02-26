@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import { ParameterValues } from "metabase-types/api";
 import { createMockDataset, MockDatasetOpts } from "metabase-types/api/mocks";
 

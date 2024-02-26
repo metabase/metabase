@@ -1,8 +1,9 @@
-import { msgid, ngettext } from "ttag";
 import { Moment } from "moment-timezone";
-import { parseTime, parseTimestamp } from "metabase/lib/time";
+import { msgid, ngettext } from "ttag";
 
+import { parseTime, parseTimestamp } from "metabase/lib/time";
 import type { DatetimeUnit } from "metabase-types/api/query";
+
 import {
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,

@@ -1,8 +1,10 @@
-import _ from "underscore";
 import { updateIn } from "icepick";
 import { t } from "ttag";
+import _ from "underscore";
+
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+
 import { SettingsCloudStoreLink } from "../../components/SettingsCloudStoreLink";
 
 if (MetabaseSettings.isHosted()) {

@@ -3,27 +3,27 @@ import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import ModalContent from "metabase/components/ModalContent";
-import FormProvider from "metabase/core/components/FormProvider/FormProvider";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
+import { canonicalCollectionId } from "metabase/collections/utils";
+import ModalContent from "metabase/components/ModalContent";
 import {
   CreateCollectionOnTheGo,
   OnClickNewCollection,
 } from "metabase/containers/CreateCollectionOnTheGo";
-import Form from "metabase/core/components/Form";
-import FormInput from "metabase/core/components/FormInput";
-import FormFooter from "metabase/core/components/FormFooter";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Button from "metabase/core/components/Button";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import Form from "metabase/core/components/Form";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormFooter from "metabase/core/components/FormFooter";
+import FormInput from "metabase/core/components/FormInput";
+import FormProvider from "metabase/core/components/FormProvider/FormProvider";
 import FormRadio from "metabase/core/components/FormRadio";
-import { canonicalCollectionId } from "metabase/collections/utils";
-import { CollectionId } from "metabase-types/api";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormTextArea from "metabase/core/components/FormTextArea";
 import * as Errors from "metabase/core/utils/errors";
-import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import Question from "metabase-lib/Question";
+import { CollectionId } from "metabase-types/api";
 
 import "./SaveQuestionModal.css";
 

@@ -1,6 +1,8 @@
 import { connect } from "react-redux";
-import { State } from "metabase-types/store";
+
 import { getSetting } from "metabase/selectors/settings";
+import { State } from "metabase-types/store";
+
 import EventForm, {
   EventFormOwnProps,
   EventFormStateProps,

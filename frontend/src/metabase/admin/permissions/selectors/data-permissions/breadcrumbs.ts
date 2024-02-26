@@ -1,9 +1,10 @@
-import { Group } from "metabase-types/api";
 import { isNotFalsy } from "metabase/core/utils/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
+import { Group } from "metabase-types/api";
 
+import { DataRouteParams, GroupRouteParams } from "../../types";
 import {
   getSchemaEntityId,
   getDatabaseEntityId,
@@ -13,7 +14,6 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "../../utils/urls";
-import { DataRouteParams, GroupRouteParams } from "../../types";
 
 export type EditorBreadcrumb = {
   id?: number | string;

@@ -1,8 +1,10 @@
 import { forwardRef, HTMLAttributes, Ref, useCallback } from "react";
 import { ColorState } from "react-color";
+
 import ColorInput from "metabase/core/components/ColorInput";
-import ColorPickerControls from "./ColorPickerControls";
+
 import { ContentContainer } from "./ColorPicker.styled";
+import ColorPickerControls from "./ColorPickerControls";
 
 export type ColorPickerContentAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,

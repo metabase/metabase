@@ -1,13 +1,13 @@
-import { memo } from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
 import cx from "classnames";
-
+import PropTypes from "prop-types";
+import { memo } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
-import L from "metabase/components/List/List.css";
 
-import { Icon } from "metabase/core/components/Icon";
+import L from "metabase/components/List/List.css";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Icon } from "metabase/core/components/Icon";
+
 import S from "./ReferenceHeader.css";
 
 const ReferenceHeader = ({

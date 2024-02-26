@@ -4,6 +4,7 @@ import { t } from "ttag";
 import Dimension from "metabase-lib/Dimension";
 
 import { Description, EmptyDescription } from "../MetadataInfo.styled";
+
 import {
   InfoContainer,
   DimensionSemanticTypeLabel,

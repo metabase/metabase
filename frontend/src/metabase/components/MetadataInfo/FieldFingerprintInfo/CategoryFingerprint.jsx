@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Fields from "metabase/entities/fields";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import { formatNumber } from "metabase/lib/formatting";
 import Field from "metabase-lib/metadata/Field";
 

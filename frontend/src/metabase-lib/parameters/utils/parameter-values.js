@@ -1,10 +1,11 @@
 import _ from "underscore";
-import { getParameterType } from "./parameter-type";
+
 import {
   getQueryType,
   getSourceConfig,
   getSourceType,
 } from "./parameter-source";
+import { getParameterType } from "./parameter-type";
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
   return parameterValues

@@ -1,12 +1,11 @@
 import { t } from "ttag";
-import Checkbox from "metabase/core/components/CheckBox";
 
+import Checkbox from "metabase/core/components/CheckBox";
 import type Filter from "metabase-lib/queries/structured/Filter";
 
 import { PickerContainer, PickerGrid } from "./InlineCategoryPicker.styled";
-
-import { isValidOption } from "./utils";
 import { LONG_OPTION_LENGTH } from "./constants";
+import { isValidOption } from "./utils";
 
 type Option = [
   string | number,

@@ -1,7 +1,9 @@
-import { t } from "ttag";
 import styled from "@emotion/styled";
-import { space } from "metabase/styled-components/theme";
+import { t } from "ttag";
+
 import Radio from "metabase/core/components/Radio";
+import { space } from "metabase/styled-components/theme";
+
 import CacheTTLField from "../CacheTTLField";
 
 export function CacheTTLInput(props) {

@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import _ from "underscore";
 import { connect } from "react-redux";
-
 import { t } from "ttag";
-import Radio from "metabase/core/components/Radio/";
+import _ from "underscore";
+
 import CheckBox from "metabase/core/components/CheckBox";
+import Radio from "metabase/core/components/Radio/";
 import Select from "metabase/core/components/Select";
 import Toggle from "metabase/core/components/Toggle";
 import { useUniqueId } from "metabase/hooks/use-unique-id";

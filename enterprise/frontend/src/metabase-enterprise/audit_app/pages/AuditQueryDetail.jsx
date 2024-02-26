@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import QueryViewer from "metabase/query_builder/containers/QueryViewer";
 import { serializeCardForUrl } from "metabase/lib/card";
+import QueryViewer from "metabase/query_builder/containers/QueryViewer";
 
-import * as QueryDetailCards from "../lib/cards/query_detail";
+import AuditContent from "../components/AuditContent";
 import OpenInMetabase from "../components/OpenInMetabase";
 import AuditCustomView from "../containers/AuditCustomView";
-import AuditContent from "../components/AuditContent";
+import * as QueryDetailCards from "../lib/cards/query_detail";
 
 const AuditQueryDetail = ({ params: { queryHash } }) => (
   <AuditCustomView card={QueryDetailCards.details(queryHash)}>

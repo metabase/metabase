@@ -1,9 +1,11 @@
 import * as React from "react";
+
 import {
   Section,
   SectionTitle,
   SectionWithTitle,
 } from "metabase/visualizations/components/ChartClickActions/ChartClickActionsSection.styled";
+
 import { ContentDirectionType } from "./utils";
 
 interface Props {

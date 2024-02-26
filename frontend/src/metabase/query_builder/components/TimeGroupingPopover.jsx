@@ -1,8 +1,8 @@
-import { Component } from "react";
-import PropTypes from "prop-types";
-
-import { t } from "ttag";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
+
 import { DimensionListItem } from "./TimeGroupingPopover.styled";
 
 const timeGroupingPopoverPropTypes = {

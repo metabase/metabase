@@ -1,10 +1,12 @@
-import { t } from "ttag";
 import { Location } from "history";
-import { Box } from "metabase/ui";
+import { t } from "ttag";
+
 import { useSelector } from "metabase/lib/redux";
 import { AuthProvider } from "metabase/plugins/types";
-import { AuthLayout } from "../AuthLayout";
+import { Box } from "metabase/ui";
+
 import { getAuthProviders } from "../../selectors";
+import { AuthLayout } from "../AuthLayout";
 
 interface LoginQueryString {
   redirect?: string;

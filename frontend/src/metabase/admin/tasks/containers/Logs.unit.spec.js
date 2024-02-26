@@ -1,7 +1,7 @@
-import fetchMock from "fetch-mock";
 import { render, screen } from "@testing-library/react";
-import Logs from "metabase/admin/tasks/containers/Logs";
+import fetchMock from "fetch-mock";
 
+import Logs from "metabase/admin/tasks/containers/Logs";
 import { UtilApi } from "metabase/services";
 
 describe("Logs", () => {

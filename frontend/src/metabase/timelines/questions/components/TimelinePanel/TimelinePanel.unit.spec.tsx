@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
+
 import TimelinePanel, { TimelinePanelProps } from "./TimelinePanel";
 
 describe("TimelinePanel", () => {

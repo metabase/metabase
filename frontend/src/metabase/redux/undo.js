@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { createThunkAction } from "metabase/lib/redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { createThunkAction } from "metabase/lib/redux";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";

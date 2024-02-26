@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import { IndexLink } from "react-router";
 import { t } from "ttag";
 
-import { IndexLink } from "react-router";
-import cx from "classnames";
 import Link from "metabase/core/components/Link";
 
 const AuditSidebarSection = ({ title, children }) => (

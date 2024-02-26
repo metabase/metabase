@@ -1,5 +1,5 @@
-import type { DatabaseId } from "./database";
 import type { DashboardId, DashCardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";

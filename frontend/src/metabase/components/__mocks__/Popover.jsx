@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 /**

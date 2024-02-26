@@ -1,13 +1,11 @@
-import _ from "underscore";
-import moment from "moment-timezone";
 import { assoc } from "icepick";
+import moment from "moment-timezone";
 import { t, ngettext, msgid } from "ttag";
+import _ from "underscore";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
-
 import * as Lib from "metabase-lib";
-
 import { FieldDimension } from "metabase-lib/Dimension";
 
 export const DATETIME_UNITS = [

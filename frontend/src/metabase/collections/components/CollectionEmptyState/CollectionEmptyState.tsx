@@ -1,8 +1,10 @@
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
-import NewItemMenu from "metabase/containers/NewItemMenu";
+
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+import NewItemMenu from "metabase/containers/NewItemMenu";
+import Button from "metabase/core/components/Button";
 import { Collection } from "metabase-types/api";
+
 import {
   EmptyStateDescription,
   EmptyStateIconBackground,

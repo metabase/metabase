@@ -1,9 +1,9 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   createAction,
   restore,
   setActionsEnabledForDB,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const MODEL_ID = 1;
 

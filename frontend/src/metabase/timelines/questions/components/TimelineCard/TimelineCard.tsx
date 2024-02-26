@@ -9,10 +9,13 @@ import {
 } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import { getTimelineName } from "metabase/lib/timelines";
+
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { getTimelineName } from "metabase/lib/timelines";
+import { Timeline, TimelineEvent } from "metabase-types/api";
+
 import EventCard from "../EventCard";
+
 import {
   CardHeader,
   CardContent,

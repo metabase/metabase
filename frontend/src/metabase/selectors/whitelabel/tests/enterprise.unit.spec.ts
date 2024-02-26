@@ -1,4 +1,5 @@
 import { getIsWhiteLabeling, getWhiteLabeledLoadingMessage } from "..";
+
 import { SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts = {}) {

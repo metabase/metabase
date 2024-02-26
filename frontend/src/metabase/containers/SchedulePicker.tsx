@@ -1,9 +1,10 @@
 import { connect } from "react-redux";
-import { getSetting } from "metabase/selectors/settings";
-import type { State } from "metabase-types/store";
+
 import SchedulePicker, {
   SchedulePickerProps,
 } from "metabase/components/SchedulePicker";
+import { getSetting } from "metabase/selectors/settings";
+import type { State } from "metabase-types/store";
 
 type StateProps = {
   timezone?: string;

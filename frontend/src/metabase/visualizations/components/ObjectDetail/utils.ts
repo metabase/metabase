@@ -1,21 +1,19 @@
 import { t } from "ttag";
 
 import { singularize, formatValue } from "metabase/lib/formatting";
-
+import Question from "metabase-lib/Question";
+import Table from "metabase-lib/metadata/Table";
+import {
+  getIsPKFromTablePredicate,
+  isEntityName,
+  isPK,
+} from "metabase-lib/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
   TableId,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import {
-  getIsPKFromTablePredicate,
-  isEntityName,
-  isPK,
-} from "metabase-lib/types/utils/isa";
-import Question from "metabase-lib/Question";
-import Table from "metabase-lib/metadata/Table";
 
 import { ObjectId } from "./types";
 

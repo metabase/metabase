@@ -1,11 +1,12 @@
-import { t } from "ttag";
 import moment from "moment-timezone";
-import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
-import type Database from "metabase-lib/metadata/Database";
+import { t } from "ttag";
+
 import {
   formatIdentifier,
   formatStringLiteral,
 } from "metabase-lib/expressions";
+import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
+import type Database from "metabase-lib/metadata/Database";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,

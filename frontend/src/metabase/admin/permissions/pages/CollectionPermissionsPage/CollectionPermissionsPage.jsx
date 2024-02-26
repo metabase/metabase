@@ -1,13 +1,13 @@
-import { useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
-import { push } from "react-router-redux";
+import { useEffect, useCallback } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Groups from "metabase/entities/groups";
-import Collections from "metabase/entities/collections";
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
+import Collections from "metabase/entities/collections";
+import Groups from "metabase/entities/groups";
 
 import {
   PermissionsEditor,
@@ -15,6 +15,7 @@ import {
   permissionEditorPropTypes,
 } from "../../components/PermissionsEditor";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout";
+import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
   initializeCollectionPermissions,
   updateCollectionPermission,
@@ -28,7 +29,6 @@ import {
   getIsDirty,
   collectionsQuery,
 } from "../../selectors/collection-permissions";
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,

@@ -2,17 +2,17 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCardsEndpoints,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import {
-  setupCardsEndpoints,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
-
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { GroupTableAccessPolicy } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import {
@@ -21,7 +21,7 @@ import {
   PEOPLE_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+
 import EditSandboxingModal from "./EditSandboxingModal";
 
 const attributes = ["foo", "bar"];

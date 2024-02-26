@@ -1,8 +1,10 @@
-import { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
+import { useState } from "react";
+
+import CheckBox from "../CheckBox";
 import Form from "../Form";
 import FormProvider from "../FormProvider";
-import CheckBox from "../CheckBox";
+
 import FormInput from "./FormInput";
 
 const TitleActions = () => {

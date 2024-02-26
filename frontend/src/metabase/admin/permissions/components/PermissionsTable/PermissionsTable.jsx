@@ -1,12 +1,13 @@
-import { useState, useRef } from "react";
 import PropTypes from "prop-types";
+import { useState, useRef } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
-import Modal from "metabase/components/Modal";
 import ConfirmContent from "metabase/components/ConfirmContent";
+import Modal from "metabase/components/Modal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { PermissionsSelect } from "../PermissionsSelect";
+
 import {
   PermissionsTableRoot,
   PermissionsTableRow,

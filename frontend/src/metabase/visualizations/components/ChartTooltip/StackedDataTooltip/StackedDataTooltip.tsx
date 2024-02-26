@@ -1,7 +1,10 @@
 import { useMemo } from "react";
+
 import { color } from "metabase/lib/colors";
+
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
 import type { StackedTooltipModel } from "../types";
+
 import {
   DataPointHeader,
   DataPointTableHeader,

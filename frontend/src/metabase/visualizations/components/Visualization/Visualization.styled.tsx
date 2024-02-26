@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
 

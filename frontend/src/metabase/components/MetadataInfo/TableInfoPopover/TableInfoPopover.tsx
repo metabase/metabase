@@ -1,7 +1,7 @@
+import PropTypes from "prop-types";
 import { ReactElement } from "react";
 import { hideAll } from "tippy.js";
 
-import PropTypes from "prop-types";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";

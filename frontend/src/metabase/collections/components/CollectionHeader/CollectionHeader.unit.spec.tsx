@@ -1,6 +1,8 @@
 import userEvent, { specialChars } from "@testing-library/user-event";
+
 import { getIcon, render, screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
+
 import CollectionHeader, { CollectionHeaderProps } from "./CollectionHeader";
 
 const setup = (options = {}) => {

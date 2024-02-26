@@ -2,38 +2,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { useMount, useUnmount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useMount, useUnmount, usePrevious } from "react-use";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { getSetting } from "metabase/selectors/settings";
-
+import favicon from "metabase/hoc/Favicon";
+import title from "metabase/hoc/Title";
+import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/hooks/use-web-notification";
+import { useSelector } from "metabase/lib/redux";
 import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import {
   getUser,
   getUserIsAdmin,
   canManageSubscriptions,
 } from "metabase/selectors/user";
-
-import { useForceUpdate } from "metabase/hooks/use-force-update";
-
-import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
-import { useWebNotification } from "metabase/hooks/use-web-notification";
-
-import title from "metabase/hoc/Title";
-import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import favicon from "metabase/hoc/Favicon";
-
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 
+import * as actions from "../actions";
 import View from "../components/view/View";
-
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDatabasesList,
@@ -89,8 +85,6 @@ import {
   isResultsMetadataDirty,
   getShouldShowUnsavedChangesWarning,
 } from "../selectors";
-import * as actions from "../actions";
-import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 
 const timelineProps = {
   query: { include: "events" },

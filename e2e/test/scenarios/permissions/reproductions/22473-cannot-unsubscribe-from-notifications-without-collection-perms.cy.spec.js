@@ -1,7 +1,7 @@
+import { USERS } from "e2e/support/cypress_data";
 import { restore, setupSMTP, sidebar } from "e2e/support/helpers";
 import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
-import { USERS } from "e2e/support/cypress_data";
 const { nocollection } = USERS;
 
 describe("issue 22473", () => {

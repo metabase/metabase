@@ -1,12 +1,13 @@
 import type { RegularClickAction } from "metabase/modes/types";
+
+import { ChartClickActionControl } from "./ChartClickActionControl";
 import { Container, Divider } from "./ChartClickActions.styled";
+import { ChartClickActionsSection } from "./ChartClickActionsSection";
 import {
   getGroupedAndSortedActions,
   getSectionContentDirection,
   getSectionTitle,
 } from "./utils";
-import { ChartClickActionsSection } from "./ChartClickActionsSection";
-import { ChartClickActionControl } from "./ChartClickActionControl";
 
 interface Props {
   clickActions: RegularClickAction[];

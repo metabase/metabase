@@ -1,10 +1,11 @@
+import { screen } from "__support__/ui";
 import {
   createMockCard,
   createMockModerationReview,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+
 import { setup, SetupOpts } from "./setup";
 
 const setupContentVerification = (opts: SetupOpts) => {

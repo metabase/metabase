@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -5,7 +6,6 @@ import {
   visitQuestion,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { JS_CODE, IFRAME_CODE } from "./shared/embedding-snippets";
 

@@ -2,11 +2,12 @@ import { useMemo } from "react";
 import { ngettext, msgid } from "ttag";
 import _ from "underscore";
 
-import { SearchResult } from "metabase-types/api";
 import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import type { State } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
+import { SearchResult } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import {
   NodeListItemLink,
   NodeListItemName,

@@ -4,12 +4,11 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Segments from "metabase/entities/segments";
 import SegmentItem from "metabase/admin/datamodel/components/SegmentItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
-
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import Segments from "metabase/entities/segments";
 
 class SegmentListAppInner extends Component {
   render() {

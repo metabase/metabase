@@ -1,8 +1,8 @@
-import { Icon } from "metabase/core/components/Icon";
-
 import AccordionList from "metabase/core/components/AccordionList";
-import { SchemaId } from "metabase-types/api";
+import { Icon } from "metabase/core/components/Icon";
 import Schema from "metabase-lib/metadata/Schema";
+import { SchemaId } from "metabase-types/api";
+
 import { DataSelectorSchemaPickerContainer as Container } from "./DataSelectorSchemaPicker.styled";
 
 type DataSelectorSchemaPickerProps = {

@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
-
-import { t } from "ttag";
 import moment from "moment-timezone";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
+
 import UserAvatar from "metabase/components/UserAvatar";
 
 import RevisionDiff from "./RevisionDiff";

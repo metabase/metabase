@@ -1,10 +1,12 @@
 import { useCallback, ReactNode } from "react";
+
 import { IconProps } from "metabase/core/components/Icon";
 import {
   Series,
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+
 import { ChartCaptionRoot } from "./ChartCaption.styled";
 
 interface ChartCaptionProps {

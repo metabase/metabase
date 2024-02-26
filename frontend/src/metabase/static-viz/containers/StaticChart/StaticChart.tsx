@@ -1,18 +1,18 @@
-import { createColorGetter } from "metabase/static-viz/lib/colors";
-import RowChart from "metabase/static-viz/components/RowChart";
-import { ROW_CHART_TYPE } from "metabase/static-viz/components/RowChart/constants";
-import Gauge from "metabase/static-viz/components/Gauge";
-import { GAUGE_CHART_TYPE } from "metabase/static-viz/components/Gauge/constants";
 import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";
 import { CATEGORICAL_DONUT_CHART_TYPE } from "metabase/static-viz/components/CategoricalDonutChart/constants";
-import WaterfallChart from "metabase/static-viz/components/WaterfallChart";
-import { WATERFALL_CHART_TYPE } from "metabase/static-viz/components/WaterfallChart/constants";
-import ProgressBar from "metabase/static-viz/components/ProgressBar";
-import { PROGRESS_BAR_TYPE } from "metabase/static-viz/components/ProgressBar/constants";
-import LineAreaBarChart from "metabase/static-viz/components/LineAreaBarChart";
-import { LINE_AREA_BAR_CHART_TYPE } from "metabase/static-viz/components/LineAreaBarChart/constants";
 import Funnel from "metabase/static-viz/components/FunnelChart";
 import { FUNNEL_CHART_TYPE } from "metabase/static-viz/components/FunnelChart/constants";
+import Gauge from "metabase/static-viz/components/Gauge";
+import { GAUGE_CHART_TYPE } from "metabase/static-viz/components/Gauge/constants";
+import LineAreaBarChart from "metabase/static-viz/components/LineAreaBarChart";
+import { LINE_AREA_BAR_CHART_TYPE } from "metabase/static-viz/components/LineAreaBarChart/constants";
+import ProgressBar from "metabase/static-viz/components/ProgressBar";
+import { PROGRESS_BAR_TYPE } from "metabase/static-viz/components/ProgressBar/constants";
+import RowChart from "metabase/static-viz/components/RowChart";
+import { ROW_CHART_TYPE } from "metabase/static-viz/components/RowChart/constants";
+import WaterfallChart from "metabase/static-viz/components/WaterfallChart";
+import { WATERFALL_CHART_TYPE } from "metabase/static-viz/components/WaterfallChart/constants";
+import { createColorGetter } from "metabase/static-viz/lib/colors";
 
 import type { StaticChartProps } from "./types";
 

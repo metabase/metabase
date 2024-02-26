@@ -1,3 +1,5 @@
+import cx from "classnames";
+import type { Location } from "history";
 import {
   useState,
   useLayoutEffect,
@@ -8,16 +10,14 @@ import {
 } from "react";
 import * as React from "react";
 import { t } from "ttag";
-import cx from "classnames";
-import type { Location } from "history";
-
-import { getScrollY } from "metabase/lib/dom";
-import { Dashboard } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
-import { useDispatch } from "metabase/lib/redux";
 import { updateDashboard } from "metabase/dashboard/actions";
+import { getScrollY } from "metabase/lib/dom";
+import { useDispatch } from "metabase/lib/redux";
+import { Dashboard } from "metabase-types/api";
+
 import {
   EditWarning,
   HeaderRow,

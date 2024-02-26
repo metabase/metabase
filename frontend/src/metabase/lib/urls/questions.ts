@@ -2,10 +2,9 @@ import slugg from "slugg";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
-
-import { CardId, Card as SavedCard } from "metabase-types/api";
 import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
+import { CardId, Card as SavedCard } from "metabase-types/api";
 
 import { appendSlug, extractQueryParams } from "./utils";
 

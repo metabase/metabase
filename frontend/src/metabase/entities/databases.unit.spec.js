@@ -1,7 +1,6 @@
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
-
 import Databases from "metabase/entities/databases";
 
 describe("database entity", () => {

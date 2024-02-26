@@ -1,6 +1,7 @@
 import LogoIcon from "metabase/components/LogoIcon";
-import AppBarToggle from "./AppBarToggle";
+
 import { LogoLink, LogoRoot, ToggleContainer } from "./AppBarLogo.styled";
+import AppBarToggle from "./AppBarToggle";
 
 export interface AppBarLogoProps {
   isSmallAppBar?: boolean;

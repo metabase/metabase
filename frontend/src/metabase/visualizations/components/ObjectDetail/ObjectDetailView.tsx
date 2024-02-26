@@ -3,13 +3,13 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { ConcreteTableId, DatasetData } from "metabase-types/api";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { NotFound } from "metabase/containers/ErrorPages";
 import { MetabaseApi } from "metabase/services";
-import { isPK } from "metabase-lib/types/utils/isa";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import { isPK } from "metabase-lib/types/utils/isa";
+import type { ConcreteTableId, DatasetData } from "metabase-types/api";
 
 import { ObjectDetailBody } from "./ObjectDetailBody";
 import { ObjectDetailHeader } from "./ObjectDetailHeader";

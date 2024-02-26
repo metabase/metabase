@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
-
 import MetabaseSettings from "metabase/lib/settings";
 
 import {

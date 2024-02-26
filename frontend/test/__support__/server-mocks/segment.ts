@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import { Segment } from "metabase-types/api";
 
 export function setupSegmentEndpoint(segment: Segment) {

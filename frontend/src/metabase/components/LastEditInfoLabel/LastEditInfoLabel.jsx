@@ -1,13 +1,13 @@
+import moment from "moment-timezone";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import moment from "moment-timezone";
 
-import { getUser } from "metabase/selectors/user";
-import { getFullName } from "metabase/lib/user";
 import { TextButton } from "metabase/components/Button.styled";
-import Tooltip from "metabase/core/components/Tooltip";
 import DateTime from "metabase/components/DateTime";
+import Tooltip from "metabase/core/components/Tooltip";
+import { getFullName } from "metabase/lib/user";
+import { getUser } from "metabase/selectors/user";
 
 function mapStateToProps(state) {
   return {

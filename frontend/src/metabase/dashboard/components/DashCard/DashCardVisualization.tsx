@@ -1,20 +1,20 @@
-import { useCallback, useMemo } from "react";
 import cx from "classnames";
-import { t } from "ttag";
-import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
+import { useCallback, useMemo } from "react";
+import { connect } from "react-redux";
+import { t } from "ttag";
 
 import { IconName, IconProps } from "metabase/core/components/Icon";
-
-import Visualization from "metabase/visualizations/components/Visualization";
 import WithVizSettingsData from "metabase/dashboard/hoc/WithVizSettingsData";
-import { getVisualizationRaw } from "metabase/visualizations";
-
 import {
   getVirtualCardType,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-
+import { getVisualizationRaw } from "metabase/visualizations";
+import Visualization from "metabase/visualizations/components/Visualization";
+import type Mode from "metabase-lib/Mode";
+import Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import type {
   Dashboard,
   DashboardOrderedCard,
@@ -28,21 +28,17 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import Question from "metabase-lib/Question";
-import type Mode from "metabase-lib/Mode";
-import type Metadata from "metabase-lib/metadata/Metadata";
-
-import type {
-  CardSlownessStatus,
-  DashCardOnChangeCardAndRunHandler,
-} from "./types";
 import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
-import DashCardMenu from "./DashCardMenu";
-import DashCardParameterMapper from "./DashCardParameterMapper";
 import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
+import DashCardMenu from "./DashCardMenu";
+import DashCardParameterMapper from "./DashCardParameterMapper";
+import type {
+  CardSlownessStatus,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import { shouldShowParameterMapper } from "./utils";
 
 interface DashCardVisualizationProps {

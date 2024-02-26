@@ -1,14 +1,15 @@
+import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
-import DefaultMode from "metabase/modes/components/modes/DefaultMode";
 import { checkNotNull } from "metabase/core/utils/types";
+import DefaultMode from "metabase/modes/components/modes/DefaultMode";
 import type { RegularClickAction } from "metabase/modes/types";
+import Mode from "metabase-lib/Mode";
+import { QueryMode } from "metabase-lib/queries/drills/types";
 import {
   createSampleDatabase,
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
-import Mode from "metabase-lib/Mode";
-import { QueryMode } from "metabase-lib/queries/drills/types";
+
 import { ChartClickActionsView } from "./ChartClickActionsView";
 
 describe("ChartClickActionsView", () => {

@@ -1,6 +1,6 @@
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
 
 import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/parameters/constants";

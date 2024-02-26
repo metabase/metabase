@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
+
+import Select from "metabase/core/components/Select";
+import SelectButton from "metabase/core/components/SelectButton";
 import { color, alpha } from "metabase/lib/colors";
 
-import SelectButton from "metabase/core/components/SelectButton";
-import Select from "metabase/core/components/Select";
 import { FilterPopover } from "../../FilterPopover";
 
 type SelectFilterButtonProps = {

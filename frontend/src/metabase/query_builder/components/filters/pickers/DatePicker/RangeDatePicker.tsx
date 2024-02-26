@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
 import moment, { Moment } from "moment-timezone";
+import { useCallback, useState } from "react";
+
 import Calendar from "metabase/components/Calendar";
 import Filter from "metabase-lib/queries/structured/Filter";
 import {
@@ -7,9 +8,10 @@ import {
   getDateRangeFilterValue,
   setDateRangeFilterValue,
 } from "metabase-lib/queries/utils/date-filters";
+
+import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
-import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 
 export interface BetweenPickerProps {
   className?: string;

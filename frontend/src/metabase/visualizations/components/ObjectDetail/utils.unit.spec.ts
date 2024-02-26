@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-
+import Question from "metabase-lib/Question";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -10,7 +10,6 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import Question from "metabase-lib/Question";
 
 import {
   getObjectName,

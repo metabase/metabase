@@ -1,20 +1,17 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
-
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import QuestionPicker from "metabase/containers/QuestionPicker";
-
+import { Icon } from "metabase/core/components/Icon";
 import ClickMappings, {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
-
+import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
+import Question from "metabase-lib/Question";
 import type {
   Dashboard,
   DashboardId,
@@ -23,10 +20,10 @@ import type {
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
 
-import { SidebarItem } from "../SidebarItem";
 import { Heading } from "../ClickBehaviorSidebar.styled";
+import { SidebarItem } from "../SidebarItem";
+
 import {
   LinkTargetEntityPickerContent,
   SelectedEntityPickerIcon,

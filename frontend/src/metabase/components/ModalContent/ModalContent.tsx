@@ -1,6 +1,7 @@
-import { Component, ReactNode } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component, ReactNode } from "react";
+
 import {
   ModalContentActionIcon,
   ActionsWrapper,

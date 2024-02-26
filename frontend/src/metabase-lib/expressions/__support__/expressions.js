@@ -1,3 +1,5 @@
+import { createMockMetadata } from "__support__/metadata";
+import { TYPE } from "metabase-lib/types/constants";
 import {
   createMockDatabase,
   createMockField,
@@ -5,8 +7,6 @@ import {
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
-import { TYPE } from "metabase-lib/types/constants";
 
 const DB_ID = 1;
 const TABLE_ID = 1;

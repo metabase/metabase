@@ -1,7 +1,7 @@
 // code for filling in the missing values in a set of "datas"
 
-import { t } from "ttag";
 import d3 from "d3";
+import { t } from "ttag";
 
 import {
   isTimeseries,

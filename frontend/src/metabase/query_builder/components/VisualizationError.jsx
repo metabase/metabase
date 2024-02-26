@@ -1,16 +1,18 @@
 /* eslint "react/prop-types": "warn" */
 
-import { Component } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
-import { getIn } from "icepick";
 import cx from "classnames";
+import { getIn } from "icepick";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
-import { getEngineNativeType } from "metabase/lib/engine";
-import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
+import ErrorMessage from "metabase/components/ErrorMessage";
+import { getEngineNativeType } from "metabase/lib/engine";
+import MetabaseSettings from "metabase/lib/settings";
+
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
+
 import {
   QueryError,
   QueryErrorHeader,

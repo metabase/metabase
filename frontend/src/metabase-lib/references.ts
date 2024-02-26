@@ -1,4 +1,6 @@
 import _ from "underscore";
+
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   AggregateFieldReference,
   DimensionReference,
@@ -9,7 +11,6 @@ import {
   ReferenceOptions,
   TemplateTagReference,
 } from "metabase-types/api";
-import { normalize } from "metabase-lib/queries/utils/normalize";
 
 export const isFieldReference = (mbql: any): mbql is FieldReference => {
   return Array.isArray(mbql) && mbql.length === 3 && mbql[0] === "field";

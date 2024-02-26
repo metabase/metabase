@@ -1,11 +1,14 @@
 import { useEffect } from "react";
 import { connect } from "react-redux";
-import { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
+
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
+import { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
+
 import { init, InitPayload, reset } from "../../actions";
 import MetabotHeader from "../MetabotHeader";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
+
 import { MetabotRoot } from "./Metabot.styled";
 
 interface OwnProps {

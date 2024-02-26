@@ -1,4 +1,5 @@
 import { ComponentProps } from "react";
+
 import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
 
 export type Position = [x: number, y: number];

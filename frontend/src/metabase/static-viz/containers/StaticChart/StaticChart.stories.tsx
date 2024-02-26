@@ -1,5 +1,6 @@
-import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
+import type { ComponentStory } from "@storybook/react";
+
 import StaticChart from "./StaticChart";
 import { STATIC_CHART_DEFAULT_OPTIONS, STATIC_CHART_TYPES } from "./constants";
 import { StaticChartProps } from "./types";

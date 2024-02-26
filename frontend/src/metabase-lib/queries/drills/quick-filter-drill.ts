@@ -1,10 +1,11 @@
-import type {
-  ConcreteFieldReference,
-  DatasetColumn,
-  FieldFilter,
-  RowValue,
-} from "metabase-types/api";
-import { FieldLiteral, FieldReference } from "metabase-types/api";
+import Dimension from "metabase-lib/Dimension";
+import type Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { ClickObject } from "metabase-lib/queries/drills/types";
+import Filter from "metabase-lib/queries/structured/Filter";
+import { isLocalField } from "metabase-lib/queries/utils";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
+import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
   isBoolean,
@@ -15,14 +16,13 @@ import {
   isTypeFK,
   isTypePK,
 } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
-import type Question from "metabase-lib/Question";
-import { isLocalField } from "metabase-lib/queries/utils";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type { ClickObject } from "metabase-lib/queries/drills/types";
-import Filter from "metabase-lib/queries/structured/Filter";
-import Dimension from "metabase-lib/Dimension";
+import type {
+  ConcreteFieldReference,
+  DatasetColumn,
+  FieldFilter,
+  RowValue,
+} from "metabase-types/api";
+import { FieldLiteral, FieldReference } from "metabase-types/api";
 
 const INVALID_TYPES = [TYPE.Structured];
 const isConcreteField = (

@@ -1,8 +1,10 @@
 import { t } from "ttag";
+
 import Modal from "metabase/components/Modal";
 import ModalContent, {
   ModalContentActionIcon,
 } from "metabase/components/ModalContent";
+
 import ActionParametersInputForm, {
   ActionParametersInputFormProps,
 } from "./ActionParametersInputForm";

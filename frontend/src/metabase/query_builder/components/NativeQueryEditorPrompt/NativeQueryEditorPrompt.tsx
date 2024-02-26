@@ -5,16 +5,18 @@ import {
   useRef,
   useState,
 } from "react";
-import { t } from "ttag";
 import { useAsyncFn } from "react-use";
-import { Icon } from "metabase/core/components/Icon";
-import Button from "metabase/core/components/Button";
+import { t } from "ttag";
+
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { DatabaseId } from "metabase-types/api";
-import { MetabotApi } from "metabase/services";
+import Button from "metabase/core/components/Button";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { Deferred, defer } from "metabase/lib/promise";
+import { MetabotApi } from "metabase/services";
+import { DatabaseId } from "metabase-types/api";
+
 import {
   ButtonsContainer,
   ErrorRoot,

@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
+
 import { mockSettings } from "__support__/settings";
+
 import HelpModal from "./HelpModal";
 
 describe("HelpModal", () => {

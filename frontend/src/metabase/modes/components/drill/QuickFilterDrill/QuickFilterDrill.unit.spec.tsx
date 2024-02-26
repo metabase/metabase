@@ -1,5 +1,20 @@
 import userEvent from "@testing-library/user-event";
+
 import { createMockMetadata } from "__support__/metadata";
+import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/core/utils/types";
+import {
+  isQuestionChangeClickAction,
+  PopoverClickAction,
+  QuestionChangeClickAction,
+} from "metabase/modes/types";
+import Question from "metabase-lib/Question";
+import type {
+  DatasetColumn,
+  DimensionReference,
+  RowValue,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -11,20 +26,7 @@ import {
   REVIEWS,
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
-import type {
-  DatasetColumn,
-  DimensionReference,
-  RowValue,
-  StructuredDatasetQuery,
-} from "metabase-types/api";
-import {
-  isQuestionChangeClickAction,
-  PopoverClickAction,
-  QuestionChangeClickAction,
-} from "metabase/modes/types";
-import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/core/utils/types";
-import Question from "metabase-lib/Question";
+
 import { QuickFilterDrill } from "./QuickFilterDrill";
 
 const metadata = createMockMetadata({

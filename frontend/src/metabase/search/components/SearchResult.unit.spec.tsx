@@ -1,20 +1,21 @@
-import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
 import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupTableEndpoints,
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
+import { getIcon, renderWithProviders, queryIcon } from "__support__/ui";
+import { InitialSyncStatus } from "metabase-types/api";
 import {
   createMockSearchResult,
   createMockTable,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import { getIcon, renderWithProviders, queryIcon } from "__support__/ui";
 
-import { InitialSyncStatus } from "metabase-types/api";
-import type { WrappedResult } from "./types";
 import { SearchResult } from "./SearchResult";
+import type { WrappedResult } from "./types";
 
 const createWrappedSearchResult = (
   options: Partial<WrappedResult>,

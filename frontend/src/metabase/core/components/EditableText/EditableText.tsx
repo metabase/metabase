@@ -10,10 +10,10 @@ import {
   useRef,
   MouseEvent,
 } from "react";
-
 import { usePrevious } from "react-use";
 
 import Markdown from "metabase/core/components/Markdown";
+
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
 export type EditableTextAttributes = Omit<

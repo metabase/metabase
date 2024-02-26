@@ -1,9 +1,9 @@
 /* eslint "react/prop-types": "warn" */
-import { Children, Component } from "react";
-import PropTypes from "prop-types";
-
-import { t } from "ttag";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Children, Component } from "react";
+import { t } from "ttag";
+
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export default class LoadingAndErrorWrapper extends Component {

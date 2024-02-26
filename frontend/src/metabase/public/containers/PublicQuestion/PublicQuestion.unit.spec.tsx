@@ -1,15 +1,15 @@
 import { Route } from "react-router";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
 import {
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
 } from "__support__/server-mocks";
-import { createMockState } from "metabase-types/store/mocks";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import {
   createMockPublicCard,
   createMockEmbedDataset,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { PublicQuestion } from "./PublicQuestion";
 

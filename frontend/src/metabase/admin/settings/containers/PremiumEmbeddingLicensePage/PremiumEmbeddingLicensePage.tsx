@@ -1,16 +1,19 @@
-import { useEffect } from "react";
-import { jt, t } from "ttag";
-import { connect } from "react-redux";
 import moment from "moment-timezone";
+import { useEffect } from "react";
+import { connect } from "react-redux";
+import { jt, t } from "ttag";
+
 import AdminLayout from "metabase/components/AdminLayout";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { SettingDefinition } from "metabase-types/api";
 import { State } from "metabase-types/store";
+
 import { LicenseInput } from "../../components/LicenseInput";
-import { initializeSettings } from "../../settings";
-import { getSettings } from "../../selectors";
 import { TokenStatus, useLicense } from "../../hooks/use-license";
+import { getSettings } from "../../selectors";
+import { initializeSettings } from "../../settings";
+
 import {
   LicenseInputTitle,
   Loader,

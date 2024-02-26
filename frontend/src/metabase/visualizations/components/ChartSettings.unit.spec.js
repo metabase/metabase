@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, fireEvent, screen } from "__support__/ui";
+import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import {
   createMockCard,
   createMockDashboardOrderedCard,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
 const DEFAULT_PROPS = {
   series: [

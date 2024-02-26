@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import { useMemo } from "react";
+
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { ColorName } from "metabase/lib/colors/types";
 import * as Lib from "metabase-lib";
+
 import {
   TriggerButton,
   TriggerIcon,

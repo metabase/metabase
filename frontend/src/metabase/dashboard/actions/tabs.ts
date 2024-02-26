@@ -1,8 +1,9 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
-import type { Draft } from "@reduxjs/toolkit";
-import { t } from "ttag";
 import { arrayMove } from "@dnd-kit/sortable";
+import type { Draft } from "@reduxjs/toolkit";
+import { createAction, createReducer } from "@reduxjs/toolkit";
+import { t } from "ttag";
 
+import { INITIALIZE } from "metabase/dashboard/actions/core";
 import {
   DashCardId,
   DashboardId,
@@ -11,7 +12,6 @@ import {
   DashboardTabId,
 } from "metabase-types/api";
 import { DashboardState, TabDeletionId } from "metabase-types/store";
-import { INITIALIZE } from "metabase/dashboard/actions/core";
 
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 

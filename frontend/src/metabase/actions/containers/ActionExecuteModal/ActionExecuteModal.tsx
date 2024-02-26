@@ -1,8 +1,9 @@
 import { useCallback } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
-import Actions from "metabase/entities/actions";
+
 import ModalContent from "metabase/components/ModalContent";
+import Actions from "metabase/entities/actions";
 import {
   ActionFormSubmitResult,
   ParametersForActionExecution,
@@ -10,6 +11,7 @@ import {
   WritebackActionId,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
+
 import { executeAction, ExecuteActionOpts } from "../../actions";
 import ActionParametersInputForm from "../ActionParametersInputForm";
 

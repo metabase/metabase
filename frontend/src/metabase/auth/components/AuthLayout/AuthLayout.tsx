@@ -1,7 +1,10 @@
 import { ReactNode } from "react";
-import { useSelector } from "metabase/lib/redux";
+
 import LogoIcon from "metabase/components/LogoIcon";
+import { useSelector } from "metabase/lib/redux";
+
 import { getHasIllustration } from "../../selectors";
+
 import {
   LayoutBody,
   LayoutCard,

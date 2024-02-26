@@ -1,5 +1,6 @@
-import { ReactNode, useCallback } from "react";
 import { useFormikContext } from "formik";
+import { ReactNode, useCallback } from "react";
+
 import FormToggle from "metabase/core/components/FormToggle";
 import { DatabaseData } from "metabase-types/api";
 

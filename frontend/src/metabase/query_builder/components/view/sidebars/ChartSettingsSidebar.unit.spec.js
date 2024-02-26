@@ -1,10 +1,11 @@
 import { render, fireEvent, screen } from "@testing-library/react";
+
 import { createMockMetadata } from "__support__/metadata";
+import ChartSettingsSidebar from "metabase/query_builder/components/view/sidebars/ChartSettingsSidebar";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import ChartSettingsSidebar from "metabase/query_builder/components/view/sidebars/ChartSettingsSidebar";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

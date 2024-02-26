@@ -1,11 +1,11 @@
+import moment, { Moment } from "moment-timezone";
+import Mustache from "mustache";
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
-import Mustache from "mustache";
-import moment, { Moment } from "moment-timezone";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
+import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
@@ -20,15 +20,15 @@ import {
   isTime,
   isURL,
 } from "metabase-lib/types/utils/isa";
-import { formatEmail } from "./email";
-import { formatTime } from "./time";
-import { formatUrl } from "./url";
+
 import { formatDateTimeWithUnit, formatRange } from "./date";
-import { formatNumber } from "./numbers";
+import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
-
+import { formatNumber } from "./numbers";
+import { formatTime } from "./time";
 import { OptionsType } from "./types";
+import { formatUrl } from "./url";
 
 const MARKDOWN_RENDERERS = {
   a: ({ href, children }: any) => (

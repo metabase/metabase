@@ -1,14 +1,12 @@
+import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import type { LocationDescriptor } from "history";
+import { t } from "ttag";
 
-import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import ModalContent from "metabase/components/ModalContent";
-
+import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import * as Urls from "metabase/lib/urls";
-
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

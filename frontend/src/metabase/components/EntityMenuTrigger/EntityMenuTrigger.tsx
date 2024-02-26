@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
+
 import {
   EntityMenuIconButton,
   EntityMenuIconButtonProps,

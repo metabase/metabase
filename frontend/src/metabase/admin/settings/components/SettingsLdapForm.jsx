@@ -1,8 +1,10 @@
-import { useCallback } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { useCallback } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
+
 import { updateLdapSettings } from "metabase/admin/settings/settings";
+
 import SettingsBatchForm from "./SettingsBatchForm";
 import { FormButton } from "./SettingsLdapForm.styled";
 

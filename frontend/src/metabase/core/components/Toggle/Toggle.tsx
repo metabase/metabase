@@ -5,6 +5,7 @@ import {
   useCallback,
   Ref,
 } from "react";
+
 import { ToggleRoot } from "./Toggle.styled";
 
 export interface ToggleProps

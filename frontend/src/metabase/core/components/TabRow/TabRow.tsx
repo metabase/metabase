@@ -1,18 +1,20 @@
-import { useState, useRef, useEffect } from "react";
-import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import type { UniqueIdentifier, DragEndEvent } from "@dnd-kit/core";
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import {
   restrictToHorizontalAxis,
   restrictToParentElement,
 } from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useState, useRef, useEffect } from "react";
 
-import { Icon } from "metabase/core/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import { Icon } from "metabase/core/components/Icon";
+
 import { TabListProps } from "../TabList/TabList";
+
 import { ScrollButton, TabList } from "./TabRow.styled";
 
 interface TabRowProps<T> extends TabListProps<T> {

@@ -1,12 +1,14 @@
 import { render, screen } from "@testing-library/react";
+
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import Dimension from "metabase-lib/Dimension";
 import {
   createSampleDatabase,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import Dimension from "metabase-lib/Dimension";
+
 import { CategoryFingerprint } from "./CategoryFingerprint";
 
 const state = createMockState({

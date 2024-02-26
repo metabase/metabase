@@ -1,24 +1,23 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { t } from "ttag";
-
 import _ from "underscore";
-
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { TYPE } from "metabase-lib/types/constants";
-import { TITLE_ICON_SIZE } from "./constants";
+
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
+import { TITLE_ICON_SIZE } from "./constants";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options

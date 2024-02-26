@@ -4,7 +4,6 @@ import CustomForm, {
   CustomFormProps,
 } from "metabase/components/form/FormikCustomForm";
 import StandardForm from "metabase/components/form/FormikStandardForm";
-
 import { BaseFieldValues } from "metabase-types/forms";
 
 function FormView<Values extends BaseFieldValues>(

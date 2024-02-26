@@ -1,8 +1,9 @@
-import { forwardRef, ReactNode, Ref } from "react";
 import { useField } from "formik";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { forwardRef, ReactNode, Ref } from "react";
+
 import CheckBox, { CheckBoxProps } from "metabase/core/components/CheckBox";
 import FormField from "metabase/core/components/FormField";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 export interface FormCheckBoxProps
   extends Omit<CheckBoxProps, "checked" | "onChange" | "onBlur"> {

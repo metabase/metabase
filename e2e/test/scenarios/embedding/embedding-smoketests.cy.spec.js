@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestion,
@@ -7,7 +8,6 @@ import {
   setTokenFeatures,
   visitIframe,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const licenseUrl = "https://metabase.com/license/embedding";

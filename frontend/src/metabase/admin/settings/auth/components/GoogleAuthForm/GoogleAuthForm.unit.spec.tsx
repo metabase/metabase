@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
+
 import GoogleAuthForm, { GoogleAuthFormProps } from "./GoogleAuthForm";
 
 describe("GoogleAuthForm", () => {

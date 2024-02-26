@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
+
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
+
 import TimelineListModal, { TimelineListModalProps } from "./TimelineListModal";
 
 describe("TimelineListModal", () => {

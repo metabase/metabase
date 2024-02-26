@@ -1,9 +1,12 @@
 import { createAction } from "redux-actions";
+
+import { defer, Deferred } from "metabase/lib/promise";
+import { closeNavbar } from "metabase/redux/app";
 import {
   MetabotApi,
   runQuestionQuery as apiRunQuestionQuery,
 } from "metabase/services";
-import { closeNavbar } from "metabase/redux/app";
+import Question from "metabase-lib/Question";
 import { MetabotFeedbackType } from "metabase-types/api";
 import {
   Dispatch,
@@ -12,8 +15,12 @@ import {
   MetabotEntityType,
   State,
 } from "metabase-types/store";
-import { defer, Deferred } from "metabase/lib/promise";
-import Question from "metabase-lib/Question";
+
+import {
+  MetabotQueryRunResult,
+  trackMetabotFeedbackReceived,
+  trackMetabotQueryRun,
+} from "./analytics";
 import {
   getCancelQueryDeferred,
   getEntityId,
@@ -26,11 +33,6 @@ import {
   getQueryResultsError,
   getQuestion,
 } from "./selectors";
-import {
-  MetabotQueryRunResult,
-  trackMetabotFeedbackReceived,
-  trackMetabotQueryRun,
-} from "./analytics";
 
 const trackQueryRun = (
   state: State,

@@ -1,12 +1,13 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/no-string-refs */
+import cx from "classnames";
 import { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
-import cx from "classnames";
-import Tooltip from "metabase/core/components/Tooltip";
-import styles from "./Legend.css";
 
+import Tooltip from "metabase/core/components/Tooltip";
+
+import styles from "./Legend.css";
 import LegendItem from "./LegendItem";
 
 export default class LegendVertical extends Component {

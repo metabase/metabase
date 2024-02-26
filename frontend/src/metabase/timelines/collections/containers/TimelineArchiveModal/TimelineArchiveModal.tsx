@@ -1,13 +1,15 @@
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
-import Timelines from "metabase/entities/timelines";
+
 import TimelineEvents from "metabase/entities/timeline-events";
+import Timelines from "metabase/entities/timelines";
+import * as Urls from "metabase/lib/urls";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import TimelineDetailsModal from "../../components/TimelineDetailsModal";
+
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import { ModalParams } from "../../types";
 
 interface TimelineArchiveModalProps {

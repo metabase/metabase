@@ -1,18 +1,17 @@
+import { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Location } from "history";
+import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import { Grid } from "metabase/components/Grid";
-import NewModelOption from "metabase/models/components/NewModelOption";
-
+import Databases from "metabase/entities/databases";
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import Databases from "metabase/entities/databases";
+import NewModelOption from "metabase/models/components/NewModelOption";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-
-import { useSelector } from "metabase/lib/redux";
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import Database from "metabase-lib/metadata/Database";
+
 import {
   OptionsGridItem,
   OptionsRoot,

@@ -68,27 +68,25 @@
  *   )(BookContainer);
  */
 
-import createCachedSelector from "re-reselect";
-
-// NOTE: need to use inflection directly here due to circular dependency
-import inflection from "inflection";
-
 import { createSelector } from "@reduxjs/toolkit";
-import { normalize, denormalize, schema } from "normalizr";
 import { getIn, merge } from "icepick";
+import inflection from "inflection"; // NOTE: need to use inflection directly here due to circular dependency
+import { denormalize, normalize, schema } from "normalizr";
+import createCachedSelector from "re-reselect";
 import _ from "underscore";
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
-import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
-import { addUndo } from "metabase/redux/undo";
+
+import { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import {
   combineReducers,
-  handleEntities,
   compose,
+  handleEntities,
   withAction,
   withAnalytics,
-  withRequestState,
   withCachedDataAndRequestState,
+  withRequestState,
 } from "metabase/lib/redux";
+import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
+import { addUndo } from "metabase/redux/undo";
 
 export function createEntity(def) {
   const entity = { ...def };

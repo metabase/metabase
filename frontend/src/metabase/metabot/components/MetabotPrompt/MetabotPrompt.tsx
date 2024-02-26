@@ -1,5 +1,7 @@
 import { ChangeEvent, KeyboardEvent, useCallback } from "react";
+
 import { User } from "metabase-types/api";
+
 import {
   PromptInput,
   PromptRunButton,

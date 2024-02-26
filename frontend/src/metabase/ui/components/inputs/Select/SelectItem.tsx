@@ -1,8 +1,9 @@
-import { forwardRef } from "react";
 import { Group, Text } from "@mantine/core";
 import type { ComponentPropsWithoutRef } from "react";
-import { Icon } from "metabase/core/components/Icon";
+import { forwardRef } from "react";
+
 import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 interface SelectItemProps extends ComponentPropsWithoutRef<"div"> {
   label: string;

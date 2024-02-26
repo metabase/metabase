@@ -1,6 +1,6 @@
-import type { SettingKey, SettingValue, Settings } from "metabase-types/api";
-import type { SettingElement } from "metabase/admin/settings/types";
 import SettingsSetting from "metabase/admin/settings/components/SettingsSetting";
+import type { SettingElement } from "metabase/admin/settings/types";
+import type { SettingKey, SettingValue, Settings } from "metabase-types/api";
 
 export function SettingsSection({
   settingElements,

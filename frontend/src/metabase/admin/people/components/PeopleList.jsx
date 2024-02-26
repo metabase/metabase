@@ -1,18 +1,17 @@
-import { Fragment, useEffect } from "react";
 import PropTypes from "prop-types";
+import { Fragment, useEffect } from "react";
 import { connect } from "react-redux";
+import { usePrevious } from "react-use";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
-import { usePrevious } from "react-use";
-import { Icon } from "metabase/core/components/Icon";
 import PaginationControls from "metabase/components/PaginationControls";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-
-import User from "metabase/entities/users";
+import { Icon } from "metabase/core/components/Icon";
 import Group from "metabase/entities/groups";
+import User from "metabase/entities/users";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
 import { USER_STATUS } from "../constants";
 import {
@@ -22,6 +21,7 @@ import {
   updateMembership,
 } from "../people";
 import { getMembershipsByUser } from "../selectors";
+
 import PeopleListRow from "./PeopleListRow";
 
 const mapStateToProps = state => ({

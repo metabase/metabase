@@ -4,6 +4,7 @@ import {
   getDefaultParametersById,
   getParameters,
 } from "metabase/dashboard/selectors";
+
 import _AddEditEmailSidebar from "./AddEditEmailSidebar";
 import _AddEditSlackSidebar from "./AddEditSlackSidebar";
 

@@ -1,7 +1,20 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
+import { callMockEvent } from "__support__/events";
+import {
+  setupActionsEndpoints,
+  setupBookmarksEndpoints,
+  setupCardsEndpoints,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
+  setupDashboardEndpoints,
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+  setupTableEndpoints,
+} from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import {
   screen,
   renderWithProviders,
@@ -19,19 +32,6 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
-import {
-  setupActionsEndpoints,
-  setupBookmarksEndpoints,
-  setupCardsEndpoints,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-  setupDashboardEndpoints,
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { callMockEvent } from "__support__/events";
 
 const TEST_COLLECTION = createMockCollection();
 

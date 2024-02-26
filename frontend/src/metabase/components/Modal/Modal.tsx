@@ -1,9 +1,9 @@
+import type { FullPageModalProps } from "metabase/components/Modal/FullPageModal";
 import { RoutelessFullPageModal } from "metabase/components/Modal/RoutelessFullPageModal";
 import {
   WindowModal,
   WindowModalProps,
 } from "metabase/components/Modal/WindowModal";
-import type { FullPageModalProps } from "metabase/components/Modal/FullPageModal";
 
 const Modal = ({
   full = false,

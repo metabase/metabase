@@ -1,22 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
+import CollapseSection from "metabase/components/CollapseSection";
 import {
   SortableContainer,
   SortableElement,
 } from "metabase/components/sortable";
-import CollapseSection from "metabase/components/CollapseSection";
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-
-import { Bookmark } from "metabase-types/api";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { Bookmark } from "metabase-types/api";
 
-import { SelectedItem } from "../../types";
 import { SidebarHeading } from "../../MainNavbar.styled";
+import { SelectedItem } from "../../types";
 
 import { SidebarBookmarkItem } from "./BookmarkList.styled";
 

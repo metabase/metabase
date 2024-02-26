@@ -1,34 +1,28 @@
+import type { Location } from "history";
+import { updateIn } from "icepick";
 import { ComponentType, useState } from "react";
 import { connect } from "react-redux";
-
+import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { updateIn } from "icepick";
 
-import { useMount } from "react-use";
-import type { Location } from "history";
-import title from "metabase/hoc/Title";
-
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
-import { getUserIsAdmin } from "metabase/selectors/user";
-
-import { getSetting } from "metabase/selectors/settings";
-
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import ErrorBoundary from "metabase/ErrorBoundary";
+import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { GenericError } from "metabase/containers/ErrorPages";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import title from "metabase/hoc/Title";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { getSetting } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import Database from "metabase-lib/metadata/Database";
 import {
   Database as DatabaseType,
   DatabaseData,
   DatabaseId,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import Database from "metabase-lib/metadata/Database";
-
-import { getEditingDatabase, getInitializeError } from "../selectors";
 
 import {
   reset,
@@ -42,6 +36,8 @@ import {
   deleteDatabase,
   selectEngine,
 } from "../database";
+import { getEditingDatabase, getInitializeError } from "../selectors";
+
 import {
   DatabaseEditContent,
   DatabaseEditForm,

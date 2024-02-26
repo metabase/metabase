@@ -1,7 +1,9 @@
 import { MouseEvent, ReactNode } from "react";
 import * as React from "react";
-import Tooltip from "metabase/core/components/Tooltip";
+
 import { IconName } from "metabase/core/components/Icon";
+import Tooltip from "metabase/core/components/Tooltip";
+
 import {
   MenuExternalLink,
   MenuItemContent,

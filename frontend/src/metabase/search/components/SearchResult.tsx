@@ -1,14 +1,11 @@
+import Text from "metabase/components/type/Text";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Icon } from "metabase/core/components/Icon";
-import Text from "metabase/components/type/Text";
-
 import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
-
 import type { SearchScore, SearchModelType } from "metabase-types/api";
 
-import type { WrappedResult } from "./types";
-
+import { InfoText } from "./InfoText";
 import {
   IconWrapper,
   ResultButton,
@@ -21,7 +18,7 @@ import {
   ResultSpinner,
   ResultLinkContent,
 } from "./SearchResult.styled";
-import { InfoText } from "./InfoText";
+import type { WrappedResult } from "./types";
 
 const DEFAULT_ICON_SIZE = 20;
 

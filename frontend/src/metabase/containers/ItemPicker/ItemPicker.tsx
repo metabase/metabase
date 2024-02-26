@@ -1,21 +1,19 @@
 import { useCallback, useMemo, useState } from "react";
 import * as React from "react";
-import _ from "underscore";
 import { connect } from "react-redux";
+import _ from "underscore";
 
+import { isRootCollection } from "metabase/collections/utils";
 import { IconProps } from "metabase/core/components/Icon";
-
-import { getCrumbs } from "metabase/lib/collections";
-
 import Collections from "metabase/entities/collections";
-
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
-import { isRootCollection } from "metabase/collections/utils";
-
+import { getCrumbs } from "metabase/lib/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { ScrollAwareLoadingAndErrorWrapper } from "./ItemPicker.styled";
+import ItemPickerView from "./ItemPickerView";
 import type {
   CollectionPickerItem,
   PickerItem,
@@ -23,9 +21,6 @@ import type {
   PickerValue,
   SearchQuery,
 } from "./types";
-
-import ItemPickerView from "./ItemPickerView";
-import { ScrollAwareLoadingAndErrorWrapper } from "./ItemPicker.styled";
 
 interface OwnProps<TId> {
   value?: PickerValue<TId>;

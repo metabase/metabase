@@ -1,7 +1,5 @@
 import { Icon, IconProps } from "metabase/core/components/Icon";
-
 import { color } from "metabase/lib/colors";
-
 import type { Collection } from "metabase-types/api";
 
 import { AUTHORITY_LEVELS } from "../constants";

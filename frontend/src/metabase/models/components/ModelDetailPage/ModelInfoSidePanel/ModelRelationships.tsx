@@ -3,10 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Icon } from "metabase/core/components/Icon";
-
 import type Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
 import type Table from "metabase-lib/metadata/Table";
+import * as ML_Urls from "metabase-lib/urls";
 
 import { ModelInfoTitle, ModelInfoSection } from "./ModelInfoSidePanel.styled";
 import { List, ListItemLink, ListItemName } from "./ModelRelationships.styled";

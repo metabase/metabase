@@ -1,34 +1,31 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { createRef, Component } from "react";
 import { t, jt, ngettext, msgid } from "ttag";
 
-import cx from "classnames";
 import ActionButton from "metabase/components/ActionButton";
-
-import Button from "metabase/core/components/Button";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
-import { Icon } from "metabase/core/components/Icon";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
-
+import Button from "metabase/core/components/Button";
+import { Icon } from "metabase/core/components/Icon";
+import Collections from "metabase/entities/collections";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import MetabaseSettings from "metabase/lib/settings";
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
+import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 
-import Collections from "metabase/entities/collections";
-import WhatsAPulse from "./WhatsAPulse";
-import PulseEditSkip from "./PulseEditSkip";
-import PulseEditChannels from "./PulseEditChannels";
+import { PulseHeader, PulseHeaderContent } from "./PulseEdit.styled";
 import PulseEditCards from "./PulseEditCards";
+import PulseEditChannels from "./PulseEditChannels";
 import PulseEditCollection from "./PulseEditCollection";
 import PulseEditName from "./PulseEditName";
-
-import { PulseHeader, PulseHeaderContent } from "./PulseEdit.styled";
+import PulseEditSkip from "./PulseEditSkip";
+import WhatsAPulse from "./WhatsAPulse";
 
 class PulseEdit extends Component {
   static propTypes = {

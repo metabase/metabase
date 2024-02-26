@@ -1,6 +1,8 @@
 import { jt, t } from "ttag";
 import _ from "underscore";
+
 import { Engine } from "metabase-types/api";
+
 import { Warning, WarningLink } from "./DatabaseEngineWarning.styled";
 
 export interface DatabaseEngineWarningProps {

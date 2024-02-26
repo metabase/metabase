@@ -2,7 +2,15 @@
 // @ts-nocheck
 import { t } from "ttag";
 import _ from "underscore";
+
 import { pluralize } from "metabase/lib/formatting";
+import Dimension, { FieldDimension } from "metabase-lib/Dimension";
+import DimensionOptions from "metabase-lib/DimensionOptions";
+import {
+  getDatetimeUnit,
+  isDateTimeField,
+  isFieldLiteral,
+} from "metabase-lib/queries/utils/field-ref";
 import type {
   ConcreteFieldReference,
   Join as JoinObject,
@@ -14,14 +22,9 @@ import type {
   TableId,
   StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
-import {
-  getDatetimeUnit,
-  isDateTimeField,
-  isFieldLiteral,
-} from "metabase-lib/queries/utils/field-ref";
-import DimensionOptions from "metabase-lib/DimensionOptions";
-import Dimension, { FieldDimension } from "metabase-lib/Dimension";
+
 import StructuredQuery from "../StructuredQuery";
+
 import { MBQLObjectClause } from "./MBQLClause";
 
 const JOIN_OPERATORS = ["=", ">", "<", ">=", "<=", "!="];

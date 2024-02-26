@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import _ from "underscore";
+
 import MembershipSelect from "metabase/admin/people/components/MembershipSelect";
-
 import Group from "metabase/entities/groups";
-
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
 const FormGroupsWidget = ({ field: { value, onChange }, groups }) => {

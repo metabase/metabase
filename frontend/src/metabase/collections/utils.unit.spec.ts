@@ -3,7 +3,6 @@ import {
   canonicalCollectionId,
   isRootCollection,
 } from "metabase/collections/utils";
-
 import { createMockCollection } from "metabase-types/api/mocks";
 
 describe("Collections > utils", () => {

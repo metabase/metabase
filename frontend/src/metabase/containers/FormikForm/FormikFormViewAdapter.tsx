@@ -1,16 +1,14 @@
-import { useEffect, useState } from "react";
+import { FormikProps } from "formik"; // eslint-disable-line import/named
 import * as React from "react";
-import _ from "underscore";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
-
-// eslint-disable-next-line import/named
-import { FormikProps } from "formik";
+import _ from "underscore";
 
 import { CustomFormProps } from "metabase/components/form/FormikCustomForm";
-
 import { BaseFieldValues, FormField } from "metabase-types/forms";
 
 import { getMaybeNestedValue } from "../formUtils";
+
 import FormView from "./FormView";
 
 type FormProps<Values extends BaseFieldValues> = Omit<

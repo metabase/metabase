@@ -4,6 +4,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
+
 import { createMockEntitiesState, EntitiesStateOpts } from "./store";
 
 export function createMockMetadata(

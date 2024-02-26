@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
-import moment, { Moment } from "moment-timezone";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import moment, { Moment } from "moment-timezone";
+import { useCallback, useState } from "react";
+
 import TimeInput, { TimeInputProps } from "./TimeInput";
 
 const TestTimeInput = ({ onChange, ...props }: TimeInputProps) => {

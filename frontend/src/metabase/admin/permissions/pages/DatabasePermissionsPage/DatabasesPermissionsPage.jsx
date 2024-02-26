@@ -1,25 +1,24 @@
-import { Fragment, useCallback } from "react";
-import PropTypes from "prop-types";
 import { bindActionCreators } from "@reduxjs/toolkit";
+import PropTypes from "prop-types";
+import { Fragment, useCallback } from "react";
+import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { connect } from "react-redux";
 
+import {
+  PermissionsEditor,
+  PermissionsEditorEmptyState,
+  permissionEditorPropTypes,
+} from "../../components/PermissionsEditor";
+import { PermissionsSidebar } from "../../components/PermissionsSidebar";
+import { updateDataPermission } from "../../permissions";
 import {
   getGroupsDataPermissionEditor,
   getDataFocusSidebar,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
-import { updateDataPermission } from "../../permissions";
-
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
-import {
-  PermissionsEditor,
-  PermissionsEditorEmptyState,
-  permissionEditorPropTypes,
-} from "../../components/PermissionsEditor";
 import {
   DATABASES_BASE_PATH,
   getDatabaseFocusPermissionsUrl,

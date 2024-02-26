@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -7,7 +8,6 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { setQuarterAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

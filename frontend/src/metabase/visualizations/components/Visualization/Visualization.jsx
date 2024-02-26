@@ -1,24 +1,25 @@
 /* eslint-disable react/prop-types */
+import { assoc } from "icepick";
 import { PureComponent } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { assoc } from "icepick";
 import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import ExplicitSize from "metabase/components/ExplicitSize";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
-
+import { getMode } from "metabase/modes/lib/modes";
+import { isRegularClickAction } from "metabase/modes/types";
+import { getFont } from "metabase/styled-components/selectors";
 import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
-import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedChartClickActions } from "metabase/visualizations/components/ChartClickActions";
-
+import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
   MinRowsError,
@@ -26,14 +27,8 @@ import {
 } from "metabase/visualizations/lib/errors";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries, getCardKey } from "metabase/visualizations/lib/utils";
-
-import { getMode } from "metabase/modes/lib/modes";
-import { getFont } from "metabase/styled-components/selectors";
-
-import ErrorBoundary from "metabase/ErrorBoundary";
-import { isRegularClickAction } from "metabase/modes/types";
-import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
+import Question from "metabase-lib/Question";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 

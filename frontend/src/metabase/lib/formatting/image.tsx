@@ -1,5 +1,5 @@
-import { getUrlProtocol } from "./url";
 import { OptionsType } from "./types";
+import { getUrlProtocol } from "./url";
 
 export function formatImage(
   value: string,

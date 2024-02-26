@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
 import {
   withUserAttributes,
   isMappableColumn,

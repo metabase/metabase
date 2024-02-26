@@ -2,18 +2,9 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import type {
-  Filter as FilterObject,
-  FieldFilter,
-  FieldReference,
-} from "metabase-types/api";
+
 import { isExpression } from "metabase-lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
-import {
-  generateTimeFilterValuesDescriptions,
-  getRelativeDatetimeField,
-  isStartingFrom,
-} from "metabase-lib/queries/utils/query-time";
 import {
   isStandard,
   isSegment,
@@ -23,9 +14,21 @@ import {
   getFilterOptions,
   setFilterOptions,
 } from "metabase-lib/queries/utils/filter";
-import type { FilterOperator } from "../../deprecated-types";
+import {
+  generateTimeFilterValuesDescriptions,
+  getRelativeDatetimeField,
+  isStartingFrom,
+} from "metabase-lib/queries/utils/query-time";
+import type {
+  Filter as FilterObject,
+  FieldFilter,
+  FieldReference,
+} from "metabase-types/api";
+
 import Dimension from "../../Dimension";
+import type { FilterOperator } from "../../deprecated-types";
 import StructuredQuery from "../StructuredQuery";
+
 import MBQLClause from "./MBQLClause";
 
 interface FilterDisplayNameOpts {

@@ -1,16 +1,15 @@
-import {
-  restore,
-  navigationSidebar,
-  popover,
-  getFullName,
-} from "e2e/support/helpers";
 import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   ORDERS_QUESTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-
+import {
+  restore,
+  navigationSidebar,
+  popover,
+  getFullName,
+} from "e2e/support/helpers";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 
 const { admin, normal } = USERS;

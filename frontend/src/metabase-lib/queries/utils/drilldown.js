@@ -1,18 +1,18 @@
 import _ from "underscore";
 
+import { FieldDimension } from "metabase-lib/Dimension";
+import {
+  isExpressionField,
+  isSameField,
+} from "metabase-lib/queries/utils/field-ref";
+import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
   isLatitude,
   isLongitude,
   isDate,
 } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
 
-import {
-  isExpressionField,
-  isSameField,
-} from "metabase-lib/queries/utils/field-ref";
-import { FieldDimension } from "metabase-lib/Dimension";
 // Drill-down progressions are defined as a series of steps, where each step has one or more dimension <-> breakout
 // transforms.
 //

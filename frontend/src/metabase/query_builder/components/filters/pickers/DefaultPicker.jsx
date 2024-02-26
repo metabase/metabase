@@ -1,22 +1,17 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable  react/jsx-key */
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-
 import { getCurrencySymbol } from "metabase/lib/formatting";
-
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
 } from "metabase-lib/operators/utils";
-import { isCurrency } from "metabase-lib/types/utils/isa";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import TextPicker from "./TextPicker";
-import SelectPicker from "./SelectPicker";
-import NumberPicker from "./NumberPicker";
+import { isCurrency } from "metabase-lib/types/utils/isa";
 
 import {
   BetweenLayoutContainer,
@@ -24,6 +19,9 @@ import {
   BetweenLayoutFieldContainer,
   DefaultPickerContainer,
 } from "./DefaultPicker.styled";
+import NumberPicker from "./NumberPicker";
+import SelectPicker from "./SelectPicker";
+import TextPicker from "./TextPicker";
 
 const defaultPickerPropTypes = {
   filter: PropTypes.array,

@@ -1,9 +1,9 @@
 import { FocusEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
+
 import Input from "metabase/core/components/Input";
 import { FontFile } from "metabase-types/api";
-import { FontFileOption, FontFilesSetting } from "./types";
-import { FONT_OPTIONS, getFontFiles, getFontUrls } from "./utils";
+
 import {
   TableBody,
   TableBodyCell,
@@ -14,6 +14,8 @@ import {
   TableHeaderRow,
   TableRoot,
 } from "./FontFilesWidget.styled";
+import { FontFileOption, FontFilesSetting } from "./types";
+import { FONT_OPTIONS, getFontFiles, getFontUrls } from "./utils";
 
 export interface FontFilesWidgetProps {
   setting: FontFilesSetting;

@@ -1,8 +1,7 @@
-import { t } from "ttag";
 import moment, { DurationInputArg2, MomentInput } from "moment-timezone";
+import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 addAbbreviatedLocale();

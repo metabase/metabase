@@ -1,4 +1,5 @@
 import { getIsWhiteLabeling, getWhiteLabeledLoadingMessage } from "..";
+
 import { setup } from "./setup";
 
 describe("getWhiteLabeledLoadingMessage (OSS)", () => {

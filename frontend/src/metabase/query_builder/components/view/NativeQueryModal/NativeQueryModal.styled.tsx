@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 
 export const ModalRoot = styled.div`
   display: flex;

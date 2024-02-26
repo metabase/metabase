@@ -1,4 +1,6 @@
 import { t } from "ttag";
+
+import { isNotNull } from "metabase/core/utils/types";
 import { combineReducers, handleActions } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
 import {
@@ -8,7 +10,7 @@ import {
 } from "metabase/plugins";
 import { REFRESH_CURRENT_USER } from "metabase/redux/user";
 import { AdminPath, AdminPathKey } from "metabase-types/store";
-import { isNotNull } from "metabase/core/utils/types";
+
 import { DISABLE_ADMIN_PATH, DISABLE_NOTICE } from "./actions";
 
 const getAdminPaths: () => AdminPath[] = () => {

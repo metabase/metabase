@@ -1,13 +1,13 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
-import fetchMock from "fetch-mock";
-import userEvent from "@testing-library/user-event";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
 
+import { createMockEntitiesState } from "__support__/store";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
 import { getMetadata } from "metabase/selectors/metadata";
-
+import Question from "metabase-lib/Question";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -16,7 +16,6 @@ import {
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import Question from "metabase-lib/Question";
 
 import { ViewTitleHeader } from "./ViewHeader";
 

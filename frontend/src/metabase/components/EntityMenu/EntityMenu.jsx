@@ -1,14 +1,13 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { createRef, Component } from "react";
 import { Motion, spring } from "react-motion";
-import cx from "classnames";
-
-import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import Card from "metabase/components/Card";
-import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import EntityMenuItem from "metabase/components/EntityMenuItem";
+import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import Popover from "metabase/components/Popover";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import { Container } from "./EntityMenu.styled";
 

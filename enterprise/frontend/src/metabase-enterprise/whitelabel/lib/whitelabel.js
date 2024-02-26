@@ -1,7 +1,8 @@
 import Color from "color";
 import _ from "underscore";
-import MetabaseSettings from "metabase/lib/settings";
+
 import { colors, originalColors, lighten } from "metabase/lib/colors/palette";
+import MetabaseSettings from "metabase/lib/settings";
 
 const COLOR_REGEX =
   /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/;

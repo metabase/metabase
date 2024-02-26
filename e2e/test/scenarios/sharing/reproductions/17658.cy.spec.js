@@ -1,11 +1,10 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   restore,
   setupSMTP,
   visitDashboard,
   getFullName,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 

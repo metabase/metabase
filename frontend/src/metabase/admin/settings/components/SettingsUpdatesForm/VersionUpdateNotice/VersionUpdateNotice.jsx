@@ -1,14 +1,14 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { getIsPaidPlan } from "metabase/selectors/settings";
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
-import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
-
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { Icon } from "metabase/core/components/Icon";
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { getIsPaidPlan } from "metabase/selectors/settings";
+
 import {
   HostingCTAContent,
   HostingCTAIconContainer,

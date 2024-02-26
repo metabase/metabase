@@ -1,6 +1,8 @@
 import { t } from "ttag";
-import { isMac } from "metabase/lib/browser";
+
 import Tooltip from "metabase/core/components/Tooltip";
+import { isMac } from "metabase/lib/browser";
+
 import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
 
 export interface AppBarToggleProps {

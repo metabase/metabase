@@ -3,13 +3,13 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Icon } from "metabase/core/components/Icon";
 import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import { color as c } from "metabase/lib/colors";
-import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+
 import { ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
 const ArchivedItem = ({

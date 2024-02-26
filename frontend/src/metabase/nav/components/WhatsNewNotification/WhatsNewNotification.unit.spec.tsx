@@ -1,4 +1,11 @@
 import fetchMock from "fetch-mock";
+
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import * as domUtils from "metabase/lib/dom";
 import type { VersionInfoRecord } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -11,12 +18,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import * as domUtils from "metabase/lib/dom";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+
 import { WhatsNewNotification } from "./WhatsNewNotification";
 
 const LAST_ACK_SETTINGS_URL = `path:/api/setting/last-acknowledged-version`;

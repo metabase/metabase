@@ -1,7 +1,7 @@
-import * as ML_Urls from "metabase-lib/urls";
-import { isExpressionField } from "metabase-lib/queries/utils";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { ClickActionProps } from "metabase-lib/queries/drills/types";
+import { isExpressionField } from "metabase-lib/queries/utils";
+import * as ML_Urls from "metabase-lib/urls";
 
 export function automaticInsightsDrill({
   question,

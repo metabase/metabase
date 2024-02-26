@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Popover from "metabase/components/Popover";
+
 import {
   Anchor,
   Container,

@@ -1,3 +1,4 @@
+import { useField, useFormikContext } from "formik";
 import {
   useCallback,
   useEffect,
@@ -6,26 +7,20 @@ import {
   HTMLAttributes,
 } from "react";
 import { t } from "ttag";
-import { useField, useFormikContext } from "formik";
 
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-
-import FormField from "metabase/core/components/FormField";
-import SelectButton from "metabase/core/components/SelectButton";
+import { isValidCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
 import CollectionName from "metabase/containers/CollectionName";
-import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
 import type {
   OnClickNewCollection,
   Values,
 } from "metabase/containers/CreateCollectionOnTheGo";
-
+import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
+import FormField from "metabase/core/components/FormField";
+import SelectButton from "metabase/core/components/SelectButton";
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
-
-import { isValidCollectionId } from "metabase/collections/utils";
-
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import type { CollectionId } from "metabase-types/api";
 
 import {

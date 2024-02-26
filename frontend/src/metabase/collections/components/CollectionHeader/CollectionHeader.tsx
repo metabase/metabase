@@ -1,13 +1,14 @@
 import { withRouter } from "react-router";
+
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
-import CollectionCaption from "./CollectionCaption";
+
 import CollectionBookmark from "./CollectionBookmark";
+import CollectionCaption from "./CollectionCaption";
+import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import CollectionTimeline from "./CollectionTimeline";
 import { CollectionUpload } from "./CollectionUpload";
-
-import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 
 export interface CollectionHeaderProps {
   collection: Collection;

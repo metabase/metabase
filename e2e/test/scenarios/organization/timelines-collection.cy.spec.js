@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   describeWithSnowplow,
   enableTracking,
@@ -8,8 +9,6 @@ import {
   getFullName,
   popover,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 

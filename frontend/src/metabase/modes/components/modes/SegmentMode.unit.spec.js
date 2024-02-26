@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
-import { getQueryMode } from "metabase/modes/lib/modes";
 import SegmentMode from "metabase/modes/components/modes/SegmentMode";
+import { getQueryMode } from "metabase/modes/lib/modes";
 import {
   createSampleDatabase,
   ORDERS,

@@ -1,4 +1,5 @@
 import { AdminPathKey } from "metabase-types/store";
+
 import { UserWithApplicationPermissions } from "./types/user";
 
 const canAccessMonitoringItems = (user?: UserWithApplicationPermissions) =>

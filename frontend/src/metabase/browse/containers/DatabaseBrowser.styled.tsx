@@ -1,9 +1,10 @@
 import styled from "@emotion/styled";
+
+import { GridItem } from "metabase/components/Grid";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import { GridItem } from "metabase/components/Grid";
 
 export const DatabaseGridItem = styled(GridItem)`
   width: 100%;
