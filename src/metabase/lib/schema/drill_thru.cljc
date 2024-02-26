@@ -166,13 +166,13 @@
   [:merge
    ::drill-thru.common.with-column
    [:map
-    [:type        [:= :drill-thru/extract-column]
-     :extractions [:sequential [:ref ::drill-thru.extraction]]]]])
+    [:type    [:= :drill-thru/extract-column]
+     :actions [:sequential [:ref ::drill-thru.extract-column-action]]]]])
 
-(mr/def ::drill-thru.extraction
+(mr/def ::drill-thru.extract-column-action
   [:map
-    [:type [:= :drill-thru/extract-column-type]]
-    [:unit [:= ::unit.date.truncate]]])
+    [:type [:= :drill-thru/extract-column-action]]
+    [:unit [:ref ::unit.date.truncate]]])
 
 ;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...
 ;;; see [[metabase.lib.drill-thru.underlying-records/underlying-records-drill]]... this should be part of the schema
