@@ -1,59 +1,59 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require
-    [cheshire.core :as json]
-    [clojure.set :as set]
-    [clojure.string :as str]
-    [clojure.test :refer :all]
-    [clojure.walk :as walk]
-    [medley.core :as m]
-    [metabase.analytics.snowplow-test :as snowplow-test]
-    [metabase.api.card-test :as api.card-test]
-    [metabase.api.common :as api]
-    [metabase.api.dashboard :as api.dashboard]
-    [metabase.api.pivots :as api.pivots]
-    [metabase.config :as config]
-    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
-    [metabase.http-client :as client]
-    [metabase.models
-     :refer [Action
-             Card
-             Collection
-             Dashboard
-             DashboardCard
-             DashboardCardSeries
-             Database
-             Field
-             FieldValues
-             PermissionsGroup
-             PermissionsGroupMembership
-             Pulse
-             Revision
-             Table
-             User]]
-    [metabase.models.collection :as collection]
-    [metabase.models.dashboard :as dashboard]
-    [metabase.models.dashboard-card :as dashboard-card]
-    [metabase.models.dashboard-test :as dashboard-test]
-    [metabase.models.field-values :as field-values]
-    [metabase.models.interface :as mi]
-    [metabase.models.params.chain-filter :as chain-filter]
-    [metabase.models.params.chain-filter-test :as chain-filter-test]
-    [metabase.models.permissions :as perms]
-    [metabase.models.permissions-group :as perms-group]
-    [metabase.models.pulse :as pulse]
-    [metabase.models.revision :as revision]
-    [metabase.query-processor :as qp]
-    [metabase.query-processor.middleware.permissions :as qp.perms]
-    [metabase.query-processor.streaming.test-util :as streaming.test-util]
-    [metabase.server.middleware.util :as mw.util]
-    [metabase.test :as mt]
-    [metabase.test.fixtures :as fixtures]
-    [metabase.util :as u]
-    [ring.util.codec :as codec]
-    [toucan2.core :as t2]
-    [toucan2.protocols :as t2.protocols]
-    [toucan2.tools.with-temp :as t2.with-temp]))
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.api.card-test :as api.card-test]
+   [metabase.api.common :as api]
+   [metabase.api.dashboard :as api.dashboard]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.config :as config]
+   [metabase.dashboard-subscription-test :as dashboard-subscription-test]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Action
+            Card
+            Collection
+            Dashboard
+            DashboardCard
+            DashboardCardSeries
+            Database
+            Field
+            FieldValues
+            PermissionsGroup
+            PermissionsGroupMembership
+            Pulse
+            Revision
+            Table
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard :as dashboard]
+   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.models.dashboard-test :as dashboard-test]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse :as pulse]
+   [metabase.models.revision :as revision]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.streaming.test-util :as streaming.test-util]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
+   [toucan2.core :as t2]
+   [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
