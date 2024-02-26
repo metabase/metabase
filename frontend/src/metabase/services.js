@@ -94,7 +94,9 @@ export async function runQuestionQuery(
   } = {},
 ) {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
-  const parameters = normalizeParameters(question.parameters());
+  const parameters = normalizeParameters(
+    question.parameters({ collectionPreview }),
+  );
   const card = question.card();
 
   if (canUseCardApiEndpoint) {

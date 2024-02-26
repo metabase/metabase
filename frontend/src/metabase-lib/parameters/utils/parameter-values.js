@@ -32,7 +32,15 @@ export function getValuePopulatedParameters({
   parameters,
   values = {},
   defaultRequired = false,
+  collectionPreview = false,
 }) {
+  // pinned native question can have default values on parameters, usually we
+  // get them from URL, which is not the case for collection preview. to force
+  // BE to apply default values to those filters, empty array is provided
+  if (collectionPreview) {
+    return [];
+  }
+
   return parameters.map(parameter => ({
     ...parameter,
     value: getParameterValue({
