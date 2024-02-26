@@ -5847,6 +5847,26 @@ databaseChangeLog:
               DROP VIEW IF EXISTS v_content;
 
   - changeSet:
+      id: v50.2024-02-26T22:15:54
+      author: noahmoss
+      comment: New `view-data` permission
+      changes:
+        - sqlFile:
+            path: permissions/view_data.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
+      id: v50.2024-02-26T22:15:55
+      author: noahmoss
+      comment: New `create_queries` permission
+      changes:
+        - sqlFile:
+            path: permissions/create_queries.sql
+            relativeToChangelogFile: true
+      rollback:
+
+  - changeSet:
       id: v50.2024-02-29T15:06:43
       author: tsmacdonald
       comment: Add the query_field join table
