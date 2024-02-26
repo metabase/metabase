@@ -10,6 +10,7 @@ export const ListRoot = styled.ol`
 `;
 
 export const ContentContainer = styled(FullWidthContainer)`
+  container-type: inline-size;
   padding-bottom: 2rem;
 `;
 

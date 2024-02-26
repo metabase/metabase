@@ -130,6 +130,7 @@ export const ParametersAndCardsContainer = styled.div<{
   shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
 }>`
   flex: auto;
+  container-type: inline-size;
   min-width: 0;
   overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
     shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
@@ -167,24 +168,28 @@ export const MaxWidthContainer = styled.div<{
 }>`
   width: 100%;
 
-  ${({ isFixedWidth }) =>
-    isFixedWidth &&
-    css`
-      margin: 0 auto;
-      max-width: ${FIXED_WIDTH};
-    `}
+  @container (min-width: 45em) {
+    ${({ isFixedWidth }) =>
+      isFixedWidth &&
+      css`
+        margin: 0 auto;
+        max-width: ${FIXED_WIDTH};
+      `}
+  }
 `;
 export const FixedWidthContainer = styled.div<{
   isFixedWidth: boolean;
 }>`
   width: 100%;
 
-  ${({ isFixedWidth }) =>
-    isFixedWidth &&
-    css`
-      margin: 0 auto;
-      width: ${FIXED_WIDTH};
-    `}
+  @container (min-width: 45em) {
+    ${({ isFixedWidth }) =>
+      isFixedWidth &&
+      css`
+        margin: 0 auto;
+        width: ${FIXED_WIDTH};
+      `}
+  }
 `;
 
 export const ParametersFixedWidthContainer = styled(FixedWidthContainer)`

@@ -42,6 +42,7 @@ export const ContentContainer = styled.div`
   flex-direction: column;
   flex: 1 0 auto;
   position: relative;
+  container-type: inline-size;
 `;
 
 export const Header = styled.header`
