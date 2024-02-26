@@ -14,7 +14,7 @@ import { CreateCollectionForm } from "../components/CreateCollectionForm";
 
 interface CreateCollectionModalOwnProps
   extends Omit<CreateCollectionFormOwnProps, "onCancel"> {
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 interface CreateCollectionModalDispatchProps {
@@ -38,7 +38,7 @@ function CreateCollectionModal({
       if (typeof onCreate === "function") {
         onCreate(collection);
       } else {
-        onClose?.();
+        onClose();
         onChangeLocation(Urls.collection(collection));
       }
     },
@@ -48,7 +48,7 @@ function CreateCollectionModal({
   return (
     <Modal.Root
       opened
-      onClose={onClose ?? (() => undefined)}
+      onClose={onClose}
       size="lg"
       data-testid="new-collection-modal"
     >
