@@ -4172,14 +4172,22 @@
               (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
                                                                :rasta :put 200 (str "dashboard/" dash-id)
                                                                {:parameters []}))
-                    inbox     @mt/inbox
-                    html-body (get-in inbox ["rasta@metabase.com" 0 :body 0 :content])]
+                    ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
+                    ;; as "We've Noticed a New Metabase Login, Rasta".
+                    inbox           (update-vals
+                                      @mt/inbox
+                                      (fn [messages]
+                                        (filterv (comp #{"Dashboard subscription removed"} :subject) messages)))
+                    email-received? (fn [recipient-email]
+                                      (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
+                                                     (str/includes? "Subscription to My Awesome Dashboard has been removed"))))]
                 (testing "The dashboard parameters were removed"
                   (is (empty? parameters)))
                 (testing "The broken pulse was archived"
                   (is (true? (t2/select-one-fn :archived :model/Pulse pulse-id))))
-                (testing "A notification email was sent that the subscription was removed"
-                  (is (true? (some-> html-body (str/includes? "Subscription to My Awesome Dashboard has been removed")))))
                 (testing "The dashboard and pulse creators were emailed about the removed pulse"
                   (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
-                         (set (keys inbox)))))))))))))
+                         (set (keys inbox)))))
+                (testing "Notification emails were sent to the dashboard and pulse creators"
+                  (is (email-received? "rasta@metabase.com"))
+                  (is (email-received? "trashbird@metabase.com")))))))))))
