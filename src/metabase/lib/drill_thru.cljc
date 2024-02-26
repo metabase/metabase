@@ -1,8 +1,8 @@
 (ns metabase.lib.drill-thru
   (:require
    [metabase.lib.drill-thru.automatic-insights :as lib.drill-thru.automatic-insights]
-   [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
+   [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
    [metabase.lib.drill-thru.fk-details :as lib.drill-thru.fk-details]
