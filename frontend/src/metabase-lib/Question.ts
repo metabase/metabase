@@ -770,11 +770,13 @@ class Question {
     return question;
   }
 
-  parameters(): ParameterObject[] {
+  parameters({ collectionPreview } = {}): ParameterObject[] {
     return getCardUiParameters(
       this.card(),
       this.metadata(),
       this._parameterValues,
+      undefined,
+      collectionPreview,
     );
   }
 
