@@ -6,6 +6,8 @@ import {
   POPOVER_ELEMENT,
 } from "e2e/support/helpers";
 
+const PG_DB_ID = 2;
+
 describe(
   "scenarios > question > native > database source",
   { tags: "@external" },
@@ -105,6 +107,27 @@ describe(
       cy.get("@persistDatabase").should("be.null");
     });
 
+    it("selecting a database in native editor for model actions should not persist the database", () => {
+      [SAMPLE_DB_ID, PG_DB_ID].forEach(enableModelActionsForDatabase);
+
+      startNewAction();
+      assertNoDatabaseSelected();
+
+      selectDatabase("Sample Database");
+      cy.get("@persistDatabase").should("be.null");
+
+      startNativeModel();
+      assertNoDatabaseSelected();
+      cy.log(
+        "Persisting a database for a native model should not affect actions",
+      );
+      selectDatabase("QA Postgres12");
+      cy.wait("@persistDatabase");
+
+      startNewAction();
+      assertNoDatabaseSelected();
+    });
+
     describe("permissions", () => {
       it("users with 'No self-service' data permissions should be able to choose only the databases they can query against", () => {
         cy.signIn("nodata");
@@ -192,6 +215,12 @@ function startNativeModel() {
   cy.findByRole("heading", { name: "Use a native query" }).click();
 }
 
+function startNewAction() {
+  cy.visit("/");
+  cy.findByTestId("app-bar").findByText("New").click();
+  popover().findByTextEnsureVisible("Action").click();
+}
+
 function assertNoDatabaseSelected() {
   cy.findByTestId("selected-database").should("not.exist");
   cy.findByTestId("native-query-top-bar").should(
@@ -212,4 +241,10 @@ function assertSelectedDatabase(name) {
   );
 
   return cy.findByTestId("selected-database").should("have.text", name);
+}
+
+function enableModelActionsForDatabase(id) {
+  cy.request("PUT", `/api/database/${id}`, {
+    settings: { "database-enable-actions": true },
+  });
 }
