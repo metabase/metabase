@@ -166,7 +166,7 @@
   [:merge
    ::drill-thru.common.with-column
    [:map
-    [:type    [:= :drill-thru/column-extract]
+    [:type         [:= :drill-thru/column-extract]
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]]]])
 
