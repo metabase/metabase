@@ -1,5 +1,9 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
+
+import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Dataset } from "metabase-types/api";
@@ -15,9 +19,7 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+
 import { DashCardMenuConnected } from "./DashCardMenu";
 
 const TEST_CARD = createMockCard({

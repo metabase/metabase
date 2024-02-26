@@ -1,9 +1,10 @@
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/lib/colors/types";
-import type { UserId } from "./user";
+import type { IconName } from "metabase/ui";
+
 import type { CardDisplayType } from "./card";
 import type { DatabaseId } from "./database";
 import type { TableId } from "./table";
+import type { UserId } from "./user";
 
 export type RegularCollectionId = number;
 
@@ -14,6 +15,14 @@ export type CollectionContentModel = "card" | "dataset";
 export type CollectionAuthorityLevel = "official" | null;
 
 export type CollectionType = "instance-analytics" | null;
+
+export type LastEditInfo = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  id: UserId;
+  timestamp: string;
+};
 
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;
@@ -86,6 +95,7 @@ export interface CollectionItem {
   moderated_status?: string;
   type?: string;
   can_write?: boolean;
+  "last-edit-info"?: LastEditInfo;
   getIcon: () => { name: IconName };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;

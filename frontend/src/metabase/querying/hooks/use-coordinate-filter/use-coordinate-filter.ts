@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
+
 import * as Lib from "metabase-lib";
+
+import type { NumberValue } from "./types";
 import {
   canPickColumns,
   getAvailableColumns,
@@ -10,7 +13,6 @@ import {
   getOptionByOperator,
   isValidFilter,
 } from "./utils";
-import type { NumberValue } from "./types";
 
 interface UseCoordinateFilterProps {
   query: Lib.Query;

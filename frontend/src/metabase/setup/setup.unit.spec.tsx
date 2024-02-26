@@ -3,13 +3,15 @@
 import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
+import { renderWithProviders, screen } from "__support__/ui";
 import type { UsageReason } from "metabase-types/api";
 import {
   createMockSettingsState,
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { Setup } from "./components/Setup";
 import type { SetupStep } from "./types";
 

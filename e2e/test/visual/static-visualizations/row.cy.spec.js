@@ -1,3 +1,5 @@
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   setupSMTP,
@@ -5,9 +7,6 @@ import {
   sendSubscriptionsEmail,
   visitDashboard,
 } from "e2e/support/helpers";
-
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -20,8 +19,8 @@ describe("static visualizations", { tags: "@external" }, () => {
     setupSMTP();
   });
 
-  it(`row chart`, () => {
-    const dashboardName = `Row charts dashboard`;
+  it("row chart", () => {
+    const dashboardName = "Row charts dashboard";
     cy.createDashboardWithQuestions({
       dashboardName,
       questions: [createSingleSeriesRowChart()],
@@ -39,7 +38,7 @@ describe("static visualizations", { tags: "@external" }, () => {
 
 function createSingleSeriesRowChart() {
   return {
-    name: `Single series row chart`,
+    name: "Single series row chart",
     query: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],

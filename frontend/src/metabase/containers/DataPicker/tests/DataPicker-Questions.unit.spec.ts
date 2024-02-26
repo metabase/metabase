@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
-
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
 import {
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,

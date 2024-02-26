@@ -158,7 +158,7 @@ jobs:
         if: matrix.name == 'flaky' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="@flaky",grepOmitFiltered=true \
+          --env grepTags="@flaky --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser 'replay-chromium'
 

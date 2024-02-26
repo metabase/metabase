@@ -1,13 +1,14 @@
 /* istanbul ignore file */
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
 import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+
 import { CollectionMenu } from "../CollectionMenu";
 
 export interface SetupOpts {

@@ -1,5 +1,7 @@
 import { MetabaseApi } from "metabase/services";
+import type { SelectItem } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
+
 import { SEARCH_LIMIT } from "./constants";
 
 export function getSearchValues(
@@ -29,4 +31,17 @@ export function shouldSearch(
   const hasMoreValues = fieldValues.length === SEARCH_LIMIT;
 
   return !isExtensionOfLastSearch || hasMoreValues;
+}
+
+export function getOptimisticOptions(
+  options: SelectItem[],
+  searchValue: string,
+  canAddValue: (query: string) => boolean,
+) {
+  const isValid = canAddValue(searchValue);
+  const isExisting = options.some(({ label }) => label === searchValue);
+
+  return isValid && !isExisting
+    ? [{ value: searchValue, label: searchValue }, ...options]
+    : options;
 }

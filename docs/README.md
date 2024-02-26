@@ -5,6 +5,8 @@ redirect_from:
   - /docs/latest/users-guide
   - /docs/latest/administration-guide
   - /docs/latest/operations-guide
+  - /docs/latest/faq
+  - /faq
 ---
 
 # Metabase documentation

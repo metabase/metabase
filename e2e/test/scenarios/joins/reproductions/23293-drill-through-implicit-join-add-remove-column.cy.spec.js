@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -5,7 +6,6 @@ import {
   visitDashboard,
   queryBuilderHeader,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -26,7 +26,9 @@ describe("issue 23293", () => {
     cy.wait("@dataset");
 
     queryBuilderHeader().button("Save").click();
-    cy.get(".Modal").button("Save").click();
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save").click();
+    });
 
     cy.wait("@saveQuestion").then(({ response }) => {
       cy.get(".Modal").button("Not now").click();

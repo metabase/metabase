@@ -1,4 +1,5 @@
 import { createMockCollection } from "metabase-types/api/mocks";
+
 import { getCollectionType, isRegularCollection } from "./utils";
 
 describe("Collections plugin utils", () => {

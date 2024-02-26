@@ -1,3 +1,9 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   modal,
@@ -22,14 +28,6 @@ import {
   saveDashboard,
   getNotebookStep,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 import {
@@ -327,8 +325,8 @@ describe("scenarios > models", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      modal().within(() => {
-        cy.button("Save").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
       });
 
       cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
@@ -482,7 +480,10 @@ describe("scenarios > models", () => {
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    modal().findByText("Save").click();
+
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save").click();
+    });
 
     turnIntoModel();
     openQuestionActions();

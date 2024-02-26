@@ -1,8 +1,11 @@
 import { t } from "ttag";
-import { Box, Popover, Icon, Tooltip, Stack, Switch } from "metabase/ui";
-import { setDashboardWidth } from "metabase/dashboard/actions";
+
+import { setDashboardAttributes } from "metabase/dashboard/actions";
+import { trackDashboardWidthChange } from "metabase/dashboard/analytics";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import { useDispatch } from "metabase/lib/redux";
+import { getDashboardId } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { Box, Icon, Popover, Stack, Switch, Tooltip } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
@@ -13,10 +16,17 @@ interface ExtraEditButtonsMenuProps {
 
 export function ExtraEditButtonsMenu({ dashboard }: ExtraEditButtonsMenuProps) {
   const dispatch = useDispatch();
+  const id = useSelector(getDashboardId);
 
   const handleToggleWidth = (event: React.ChangeEvent<HTMLInputElement>) => {
     const nextWidth = event.currentTarget.checked ? "full" : "fixed";
-    dispatch(setDashboardWidth(nextWidth));
+
+    if (id) {
+      dispatch(
+        setDashboardAttributes({ id, attributes: { width: nextWidth } }),
+      );
+      trackDashboardWidthChange(id, nextWidth);
+    }
   };
 
   return (

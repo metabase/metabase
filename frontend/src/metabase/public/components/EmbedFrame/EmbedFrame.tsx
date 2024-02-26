@@ -1,27 +1,31 @@
+import cx from "classnames";
+import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-
-import { withRouter } from "react-router";
 import { connect } from "react-redux";
-import cx from "classnames";
-import _ from "underscore";
-import type { Location } from "history";
-
+import { withRouter } from "react-router";
 import { useMount } from "react-use";
-import TitleAndDescription from "metabase/components/TitleAndDescription";
+import _ from "underscore";
 
-import { getSetting } from "metabase/selectors/settings";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
 import {
-  isWithinIframe,
+  FixedWidthContainer,
+  ParametersFixedWidthContainer,
+} from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import { parseHashOptions } from "metabase/lib/browser";
+import {
   initializeIframeResizer,
   isSmallScreen,
+  isWithinIframe,
 } from "metabase/lib/dom";
-import { parseHashOptions } from "metabase/lib/browser";
-
-import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
-
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { setOptions } from "metabase/redux/embed";
+import { getSetting } from "metabase/selectors/settings";
+import type Question from "metabase-lib/Question";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   Dashboard,
   Parameter,
@@ -30,30 +34,21 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { useDispatch } from "metabase/lib/redux";
-import { setOptions } from "metabase/redux/embed";
-import {
-  FixedWidthContainer,
-  ParametersFixedWidthContainer,
-} from "metabase/dashboard/components/Dashboard/Dashboard.styled";
-import type Question from "metabase-lib/Question";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
-
-import LogoBadge from "./LogoBadge";
+import "./EmbedFrame.css";
 import type { FooterVariant } from "./EmbedFrame.styled";
 import {
-  Root,
-  ContentContainer,
-  Header,
-  Body,
-  ParametersWidgetContainer,
-  Footer,
   ActionButtonsContainer,
-  TitleAndDescriptionContainer,
-  Separator,
+  Body,
+  ContentContainer,
   DashboardTabsContainer,
+  Footer,
+  Header,
+  ParametersWidgetContainer,
+  Root,
+  Separator,
+  TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
-import "./EmbedFrame.css";
+import LogoBadge from "./LogoBadge";
 
 type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 
@@ -165,7 +160,7 @@ function EmbedFrame({
 
   const hasParameters = Array.isArray(parameters) && parameters.length > 0;
   const visibleParameters = hasParameters
-    ? getVisibleParameters(parameters, hiddenParameterSlugs)
+    ? getVisibleParameters(parameters, hideParameters)
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 

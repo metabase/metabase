@@ -1,7 +1,9 @@
 import type { PolygonProps } from "@visx/shape/lib/shapes/Polygon";
+
 import { isNotNull } from "metabase/lib/types";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
 import { truncateText } from "metabase/static-viz/lib/text";
+
 import type { FunnelDatum, FunnelSettings, FunnelStep } from "../types";
 
 export const calculateFunnelSteps = (

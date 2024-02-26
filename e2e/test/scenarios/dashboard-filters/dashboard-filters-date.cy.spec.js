@@ -1,4 +1,8 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   clearFilterWidget,
@@ -14,12 +18,9 @@ import {
   resetFilterWidgetToDefault,
   sidebar,
 } from "e2e/support/helpers";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
+
 import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
 
 describe("scenarios > dashboard > filters > date", () => {
@@ -69,7 +70,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
   // Rather than going through every single filter type,
   // make sure the default filter works for just one of the available options
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Time", "Month and Year");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();

@@ -1,11 +1,12 @@
 import { msgid, ngettext, t } from "ttag";
-import Settings from "metabase/lib/settings";
-import * as Urls from "metabase/lib/urls";
+
 import {
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
+import Settings from "metabase/lib/settings";
 import { formatFrame } from "metabase/lib/time";
+import * as Urls from "metabase/lib/urls";
 
 export const formatTitle = (item, type) => {
   switch (type) {

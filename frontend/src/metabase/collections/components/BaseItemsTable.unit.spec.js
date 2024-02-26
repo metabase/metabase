@@ -1,15 +1,13 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import { renderWithProviders, screen, getIcon } from "__support__/ui";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { Route } from "react-router";
 
+import { renderWithProviders, screen, getIcon } from "__support__/ui";
+import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/datetime-utils";
-
-import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 
 const timestamp = "2021-06-03T19:46:52.128";
 

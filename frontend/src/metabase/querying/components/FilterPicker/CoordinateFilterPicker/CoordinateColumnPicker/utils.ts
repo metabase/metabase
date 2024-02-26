@@ -1,5 +1,7 @@
 import { t } from "ttag";
+
 import * as Lib from "metabase-lib";
+
 import type { ColumnOption } from "./types";
 
 export function getColumnOptions(

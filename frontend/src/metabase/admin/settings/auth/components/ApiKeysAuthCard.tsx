@@ -1,5 +1,7 @@
 import { t } from "ttag";
+
 import { useCountApiKeyQuery } from "metabase/redux/api";
+
 import { AuthCardBody } from "./AuthCard/AuthCard";
 
 export const ApiKeysAuthCard = () => {

@@ -1,3 +1,4 @@
+import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   describeEE,
   restore,
@@ -7,8 +8,6 @@ import {
   setTokenFeatures,
   popover,
 } from "e2e/support/helpers";
-
-import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describeEE("scenarios > premium > content verification", () => {
   beforeEach(() => {
@@ -171,7 +170,7 @@ describeEE("scenarios > premium > content verification", () => {
 
         questionInfoButton().click();
         cy.findByTestId("sidebar-right")
-          .findAllByText(`A moderator verified this`)
+          .findAllByText("A moderator verified this")
           .should("have.length", 2);
 
         cy.findByPlaceholderText("Search…").type("orders{enter}");

@@ -1,9 +1,10 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import Link from "metabase/core/components/Link";
-import { Icon } from "metabase/ui";
 import Markdown from "metabase/core/components/Markdown";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`
   color: ${color("text-light")};

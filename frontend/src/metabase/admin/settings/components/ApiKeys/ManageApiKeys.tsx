@@ -1,22 +1,20 @@
-import { jt, t } from "ttag";
 import { useState, useMemo } from "react";
-
-import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
-const { fontFamilyMonospace } = getThemeOverrides();
+import { jt, t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
-import type { ApiKey } from "metabase-types/api";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
-
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { useListApiKeyQuery } from "metabase/redux/api";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
+import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
+import type { ApiKey } from "metabase-types/api";
+
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
-import { EditApiKeyModal } from "./EditApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
+import { EditApiKeyModal } from "./EditApiKeyModal";
 import { formatMaskedKey } from "./utils";
+
+const { fontFamilyMonospace } = getThemeOverrides();
 
 type Modal = null | "create" | "edit" | "delete";
 

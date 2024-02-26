@@ -1,4 +1,8 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   editDashboard,
@@ -7,11 +11,6 @@ import {
   updateDashboardCards,
   undoToast,
 } from "e2e/support/helpers";
-
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const filter1 = {
   name: "Card 1 Filter",

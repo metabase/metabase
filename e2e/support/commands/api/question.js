@@ -114,7 +114,7 @@ function question(
 
       if (loadMetadata || visitQuestion) {
         if (type === "model") {
-          cy.intercept("POST", `/api/dataset`).as("dataset");
+          cy.intercept("POST", "/api/dataset").as("dataset");
           cy.visit(`/model/${body.id}`);
           cy.wait("@dataset"); // Wait for `result_metadata` to load
         } else {
@@ -131,7 +131,7 @@ function question(
 
 function throwIfNotPresent(param) {
   if (!param) {
-    throw new Error(`Wrong key! Expected "query" or "native".`);
+    throw new Error('Wrong key! Expected "query" or "native".');
   }
 }
 

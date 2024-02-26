@@ -1,3 +1,4 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   enterCustomColumnDetails,
   isScrollableHorizontally,
@@ -15,8 +16,6 @@ import {
   getTable,
   leftSidebar,
 } from "e2e/support/helpers";
-
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -311,7 +310,7 @@ describe("scenarios > visualizations > table", () => {
 describe("scenarios > visualizations > table > conditional formatting", () => {
   beforeEach(() => {
     resetTestTable({ type: "postgres", table: "many_data_types" });
-    restore(`postgres-writable`);
+    restore("postgres-writable");
     cy.signInAsAdmin();
     resyncDatabase({
       dbId: WRITABLE_DB_ID,

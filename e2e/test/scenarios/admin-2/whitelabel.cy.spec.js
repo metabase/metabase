@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   appBar,
   describeEE,
@@ -5,13 +6,13 @@ import {
   popover,
   restore,
   setTokenFeatures,
+  undoToast,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-function checkFavicon() {
+function checkFavicon(url) {
   cy.request("/api/setting/application-favicon-url")
     .its("body")
-    .should("include", "https://cdn.ecosia.org/assets/images/ico/favicon.ico");
+    .should("include", url);
 }
 
 function checkLogo() {
@@ -37,8 +38,7 @@ describeEE("formatting > whitelabel", () => {
       // Helps scroll the page up in order to see "Saved" notification
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Application Name").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved");
+      undoToast().findByText("Changes saved").should("be.visible");
       cy.findByDisplayValue(COMPANY_NAME);
       cy.log("Company name has been updated!");
     });
@@ -89,24 +89,45 @@ describeEE("formatting > whitelabel", () => {
   });
 
   describe("favicon", () => {
-    beforeEach(() => {
-      cy.visit("/admin/settings/whitelabel");
-
-      cy.log("Add favicon");
-      cy.findByLabelText("Favicon").type(
-        "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
-      );
-      cy.get("ul").eq(1).click("right");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved");
-      checkFavicon();
-    });
-    it("should show up in user's HTML", () => {
+    it("should work for people that set favicon URL before we change the input to file input", () => {
+      const faviconUrl = "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
+      cy.request("PUT", "/api/setting/application-favicon-url", {
+        value: faviconUrl,
+      });
+      checkFavicon(faviconUrl);
       cy.signInAsNormalUser();
       cy.visit("/");
       cy.get('head link[rel="icon"]')
         .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')
         .should("have.length", 1);
+    });
+
+    it("should show up in user's HTML", () => {
+      cy.visit("/admin/settings/whitelabel");
+      cy.log("Add favicon");
+
+      cy.findByLabelText("Favicon").selectFile(
+        {
+          contents: "e2e/support/assets/favicon.ico",
+          mimeType: "image/jpeg",
+        },
+        { force: true },
+      );
+      undoToast().findByText("Changes saved").should("be.visible");
+      cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
+        base64Url => {
+          const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
+          cy.wrap(faviconUrl).as("faviconUrl");
+          checkFavicon(faviconUrl);
+        },
+      );
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.get("@faviconUrl").then(faviconUrl => {
+        cy.get('head link[rel="icon"]')
+          .get(`[href="${faviconUrl}"]`)
+          .should("have.length", 1);
+      });
     });
   });
 
@@ -135,9 +156,12 @@ describeEE("formatting > whitelabel", () => {
       cy.visit("/");
       cy.findByAltText("Metabot");
 
-      cy.visit("/admin/settings/whitelabel");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Display welcome message on the homepage").click();
+      cy.visit("/admin/settings/whitelabel/conceal-metabase");
+      cy.findByRole("main")
+        .findByText("Show links and references to Metabase")
+        .click();
+
+      undoToast().findByText("Changes saved").should("be.visible");
 
       cy.visit("/");
       cy.findByAltText("Metabot").should("not.exist");
@@ -171,7 +195,7 @@ describeEE("formatting > whitelabel", () => {
       cy.log("Hide Help link");
 
       cy.signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
+      cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
       cy.findByLabelText("Link to Metabase help").should("be.checked");
 
@@ -187,7 +211,7 @@ describeEE("formatting > whitelabel", () => {
       cy.log("Set custom Help link");
 
       cy.signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
+      cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
       cy.findByTestId("help-link-setting")
         .findByText("Go to a custom destination...")
@@ -219,7 +243,7 @@ describeEE("formatting > whitelabel", () => {
       cy.log("Set default Help link");
 
       cy.signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
+      cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
       cy.findByTestId("help-link-setting")
         .findByText("Link to Metabase help")
@@ -257,7 +281,7 @@ describeEE("formatting > whitelabel", () => {
 
     it("it should validate the url", () => {
       cy.signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
+      cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
       cy.findByTestId("help-link-setting")
         .findByText("Go to a custom destination...")
@@ -275,7 +299,7 @@ describeEE("formatting > whitelabel", () => {
 
       main().findByText("Please make sure this is a valid URL").should("exist");
 
-      getHelpLinkCustomDestinationInput().type("examp");
+      getHelpLinkCustomDestinationInput().type("example");
 
       main()
         .findByText("Please make sure this is a valid URL")
@@ -283,16 +307,26 @@ describeEE("formatting > whitelabel", () => {
     });
   });
 
-  describe("Landing Page", () => {
+  describe("Landing Page (now moved to general tab metabase#38699)", () => {
     beforeEach(() => {
       cy.intercept("PUT", "/api/setting/landing-page").as("putLandingPage");
       cy.intercept("GET", "/api/setting").as("getSettings");
       cy.signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
+      cy.visit("/admin/settings/general");
+    });
+
+    it("should not render the widget when users does not have a valid license", () => {
+      setTokenFeatures("none");
+      cy.reload();
+      cy.findByLabelText("Landing page custom destination").should("not.exist");
     });
 
     it("should allow users to provide internal urls", () => {
-      cy.findByTestId("landing-page").click().clear().type("/test-1").blur();
+      cy.findByLabelText("Landing page custom destination")
+        .click()
+        .clear()
+        .type("/test-1")
+        .blur();
       cy.wait(["@putLandingPage", "@getSettings"]);
 
       cy.findByTestId("landing-page-error").should("not.exist");
@@ -301,11 +335,15 @@ describeEE("formatting > whitelabel", () => {
     });
 
     it("should not allow users to provide external urls", () => {
-      cy.findByTestId("landing-page").click().clear().type("/test-2").blur();
+      cy.findByLabelText("Landing page custom destination")
+        .click()
+        .clear()
+        .type("/test-2")
+        .blur();
       cy.wait(["@putLandingPage", "@getSettings"]);
 
       // set to valid value then test invalid value is not persisted
-      cy.findByTestId("landing-page")
+      cy.findByLabelText("Landing page custom destination")
         .click()
         .clear()
         .type("https://google.com")
@@ -322,7 +360,7 @@ describeEE("formatting > whitelabel", () => {
 
 function changeLoadingMessage(message) {
   cy.visit("/admin/settings/whitelabel");
-  cy.findByTestId("loading-message-select-button").click();
+  cy.findByLabelText("Loading message").click();
   cy.findByText(message).click();
 }
 

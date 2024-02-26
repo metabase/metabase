@@ -13,6 +13,7 @@ import {
 } from "e2e/support/helpers";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import {
   DASHBOARD_SQL_NUMBER_FILTERS,
   questionDetails,
@@ -38,7 +39,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
 

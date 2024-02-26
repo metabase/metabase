@@ -100,7 +100,7 @@ function stubPageRows(page) {
     ended_at: "2023-03-04T01:45:26.518597-08:00",
     duration: durations[page],
     task_details: null,
-    name: `Item $page}`,
+    name: "Item $page}",
     model: "card",
   };
 

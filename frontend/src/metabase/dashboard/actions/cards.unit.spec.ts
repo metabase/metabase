@@ -7,9 +7,9 @@ import {
   setupCardQueryEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-
 import { checkNotNull } from "metabase/lib/types";
-
+import mainReducers from "metabase/reducers-main";
+import { CardApi } from "metabase/services";
 import type {
   CardId,
   DashCardId,
@@ -40,12 +40,10 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { CardApi } from "metabase/services";
-import mainReducers from "metabase/reducers-main";
-
 import type { SectionLayout } from "../sections";
 import { layoutOptions } from "../sections";
 import { getDashCardById, getDashcards } from "../selectors";
+
 import { addSectionToDashboard, replaceCard } from "./cards-typed";
 
 const DATE_PARAMETER = createMockParameter({
@@ -164,7 +162,6 @@ function setup({
     dashcards: _.indexBy(dashcards, "id"),
   });
 
-  // @ts-expect-error we need better redux test tooling
   const store = getStore(
     mainReducers,
     createMockState({ dashboard: dashboardState }),

@@ -1,9 +1,3 @@
-import {
-  restore,
-  navigationSidebar,
-  popover,
-  getFullName,
-} from "e2e/support/helpers";
 import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   ORDERS_QUESTION_ID,
@@ -12,7 +6,12 @@ import {
   FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-
+import {
+  restore,
+  navigationSidebar,
+  popover,
+  getFullName,
+} from "e2e/support/helpers";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 
 const { admin, normal } = USERS;
@@ -24,7 +23,7 @@ describe("URLs", () => {
   });
 
   describe("browse databases", () => {
-    it(`should slugify database name when opening it from /browse/databases"`, () => {
+    it('should slugify database name when opening it from /browse/databases"', () => {
       cy.visit("/browse/databases");
       cy.findByRole("tab", { name: "Databases" }).click();
       cy.findByTextEnsureVisible("Sample Database").click();

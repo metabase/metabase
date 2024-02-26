@@ -1,18 +1,17 @@
-import _ from "underscore";
 import { assocIn } from "icepick";
+import _ from "underscore";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
-
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type { Series } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
   QueryBuilderMode,
 } from "metabase-types/store";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import {
   getFirstQueryResult,
@@ -21,9 +20,8 @@ import {
   getQuestion,
   getRawSeries,
 } from "../../selectors";
-
-import { updateUrl } from "../navigation";
 import { setIsShowingTemplateTagsEditor } from "../native";
+import { updateUrl } from "../navigation";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
 
@@ -129,24 +127,14 @@ export const updateQuestion = (
 
       // When the dataset query changes, we should change the question type,
       // to start building a new ad-hoc question based on a dataset
-      if (newQuestion.isDataset()) {
+      if (newQuestion.type() === "model") {
         newQuestion = newQuestion.setType("question");
         dispatch(onCloseQuestionInfo());
       }
     }
 
-    // This scenario happens because the DatasetQueryEditor converts the dataset/model question into a normal question
-    // so that its query is shown properly in the notebook editor. Various child components of the notebook editor have access to
-    // this `updateQuestion` action, so they end up triggering the action with the altered question.
-    if (queryBuilderMode === "dataset" && !newQuestion.isDataset()) {
-      newQuestion = newQuestion.setType("model");
-    }
-
     const queryResult = getFirstQueryResult(getState());
-    newQuestion = newQuestion.syncColumnsAndSettings(
-      currentQuestion,
-      queryResult,
-    );
+    newQuestion = newQuestion.syncColumnsAndSettings(queryResult);
 
     if (!newQuestion.canAutoRun()) {
       run = false;

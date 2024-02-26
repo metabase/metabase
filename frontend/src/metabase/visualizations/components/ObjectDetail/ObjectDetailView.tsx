@@ -3,12 +3,6 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type {
-  ConcreteTableId,
-  DatasetColumn,
-  DatasetData,
-  WritebackActionId,
-} from "metabase-types/api";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import {
   useActionListQuery,
@@ -21,9 +15,15 @@ import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
 import * as Lib from "metabase-lib";
-import { isPK } from "metabase-lib/types/utils/isa";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import { isPK } from "metabase-lib/types/utils/isa";
+import type {
+  ConcreteTableId,
+  DatasetColumn,
+  DatasetData,
+  WritebackActionId,
+} from "metabase-types/api";
 
 import { DeleteObjectModal } from "./DeleteObjectModal";
 import { ObjectDetailBody } from "./ObjectDetailBody";
@@ -247,7 +247,7 @@ export function ObjectDetailView({
   const areImplicitActionsEnabled =
     question &&
     question.canWrite() &&
-    question.isDataset() &&
+    question.type() === "model" &&
     question.supportsImplicitActions();
 
   const { data: actions = [] } = useActionListQuery({

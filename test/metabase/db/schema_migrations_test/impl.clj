@@ -189,14 +189,12 @@
                                                 accept?)
                                     (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
           change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
-      (liquibase/run-in-scope-locked
-       liquibase
-       (fn []
-         ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
-         ;; and initializing checksums so that they match the ones generated in production.
-         (.listUnrunChangeSets liquibase nil (LabelExpression.))
-         (.generateDeploymentId change-log-service)
-         (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters}))))))
+      (liquibase/with-scope-locked liquibase
+       ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
+       ;; and initializing checksums so that they match the ones generated in production.
+       (.listUnrunChangeSets liquibase nil (LabelExpression.))
+       (.generateDeploymentId change-log-service)
+       (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters})))))
 
 (defn- test-migrations-for-driver [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))

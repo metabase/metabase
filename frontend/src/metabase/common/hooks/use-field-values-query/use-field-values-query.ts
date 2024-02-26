@@ -1,10 +1,10 @@
-import Fields from "metabase/entities/fields";
 import type {
   EntityQueryOptions,
   UseEntityQueryProps,
   UseEntityQueryResult,
 } from "metabase/common/hooks/use-entity-query";
 import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
+import Fields from "metabase/entities/fields";
 import type { FieldId, FieldValuesResult } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

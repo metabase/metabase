@@ -1,7 +1,9 @@
 import { t } from "ttag";
-import type { Collection, Timeline } from "metabase-types/api";
+
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import type { Collection, Timeline } from "metabase-types/api";
+
 import {
   EmptyStateButton,
   EmptyStateIcon,

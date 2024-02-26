@@ -1,9 +1,10 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   createMockDatabase,
   createMockSchema,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
+
 import { getGroupsDataEditorBreadcrumbs } from "./breadcrumbs";
 
 describe("admin > permissions > data > breadcrumbs", () => {

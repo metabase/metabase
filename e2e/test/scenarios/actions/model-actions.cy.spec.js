@@ -1,4 +1,10 @@
 import { assocIn } from "icepick";
+
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import {
   createImplicitActions,
   setActionsEnabledForDB,
@@ -13,15 +19,8 @@ import {
   queryWritableDB,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
-import {
-  SAMPLE_DB_ID,
-  USER_GROUPS,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
-
-import { createMockActionParameter } from "metabase-types/api/mocks";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
+import { createMockActionParameter } from "metabase-types/api/mocks";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 
@@ -660,7 +659,7 @@ describe(
       });
 
       cy.findByTestId("toast-undo")
-        .findByText(`Successfully saved`)
+        .findByText("Successfully saved")
         .should("be.visible");
 
       // show toast

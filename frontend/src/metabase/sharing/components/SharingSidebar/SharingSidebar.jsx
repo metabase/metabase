@@ -1,37 +1,33 @@
 /* eslint "react/prop-types": "error" */
 
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
+import { connect } from "react-redux";
 import _ from "underscore";
 
-import { connect } from "react-redux";
-import { NewPulseSidebar } from "metabase/sharing/components/NewPulseSidebar";
-import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
-import {
-  AddEditSlackSidebar,
-  AddEditEmailSidebar,
-} from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
-
 import {
   cleanPulse,
   createChannel,
   NEW_PULSE_TEMPLATE,
 } from "metabase/lib/pulse";
-
-import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
-
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-
 import {
   updateEditingPulse,
   saveEditingPulse,
   fetchPulseFormInput,
   testPulse,
 } from "metabase/pulse/actions";
+import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
+import {
+  AddEditSlackSidebar,
+  AddEditEmailSidebar,
+} from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
+import { NewPulseSidebar } from "metabase/sharing/components/NewPulseSidebar";
+import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
 
 export const CHANNEL_ICONS = {
   email: "mail",

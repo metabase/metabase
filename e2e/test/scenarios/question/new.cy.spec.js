@@ -1,3 +1,10 @@
+import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   openOrdersTable,
   popover,
@@ -8,19 +15,10 @@ import {
   saveQuestion,
   getPersonalCollectionName,
   visitCollection,
-  modal,
   setTokenFeatures,
   describeOSS,
   queryBuilderHeader,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_QUESTION_ID,
-  SECOND_COLLECTION_ID,
-  THIRD_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -278,7 +276,7 @@ describe("scenarios > question > new", () => {
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
     });
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
     });
   });
@@ -293,17 +291,26 @@ describe("scenarios > question > new", () => {
       cy.findByText("Orders").click();
     });
     cy.findByTestId("qb-header").findByText("Save").click();
-    modal().findByTestId("select-button").click();
+
+    cy.findByTestId("save-question-modal").then(modal => {
+      cy.findByTestId("select-button").click();
+    });
+
     popover().findByText("New collection").click();
 
     const NEW_COLLECTION = "Foo";
-    modal().within(() => {
-      cy.findByLabelText("Name").type(NEW_COLLECTION);
+    cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByPlaceholderText("My new fantastic collection").type(
+        NEW_COLLECTION,
+      );
       cy.findByText("Create").click();
-      cy.findByText("Save new question");
-      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
-      cy.findByText("Save").click();
     });
+
+    cy.findByTestId("save-question-modal").then(modal => {
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.button("Save").click();
+    });
+
     cy.get("header").findByText(NEW_COLLECTION);
   });
 
@@ -334,13 +341,22 @@ describe("scenarios > question > new", () => {
       });
 
       queryBuilderHeader().button("Save").click();
-      modal().findByTestId("select-button").click();
-      popover().findByText("My personal collection").click();
-      modal().within(() => {
-        cy.button("Save").click();
-        cy.wait("@createQuestion");
-        cy.button("Yes please!").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByTestId("select-button").click();
+      });
 
+      popover().findByText("My personal collection").click();
+
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+        cy.wait("@createQuestion");
+      });
+
+      cy.get("#QuestionSavedModal").within(() => {
+        cy.findByText("Yes please!").click();
+      });
+
+      cy.get("#AddToDashSelectDashModal").within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
         cy.findByText(myPersonalCollection).should("be.visible");
         cy.findByText(collectionInRoot.name).should("not.exist");
@@ -357,11 +373,17 @@ describe("scenarios > question > new", () => {
 
       queryBuilderHeader().button("Save").click();
       cy.log("default selected collection is the root collection");
-      modal().within(() => {
-        cy.button("Save").click();
-        cy.wait("@createQuestion");
-        cy.button("Yes please!").click();
 
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+        cy.wait("@createQuestion");
+      });
+
+      cy.get("#QuestionSavedModal").within(() => {
+        cy.findByText("Yes please!").click();
+      });
+
+      cy.get("#AddToDashSelectDashModal").within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
         cy.findByText(myPersonalCollection).should("be.visible");
         cy.findByText(collectionInRoot.name).should("be.visible");

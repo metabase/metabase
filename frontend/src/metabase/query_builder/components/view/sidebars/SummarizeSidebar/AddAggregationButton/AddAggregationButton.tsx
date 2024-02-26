@@ -1,8 +1,11 @@
 import { t } from "ttag";
-import Tooltip from "metabase/core/components/Tooltip";
+
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import Tooltip from "metabase/core/components/Tooltip";
 import * as Lib from "metabase-lib";
+
 import { AggregationPicker } from "../SummarizeSidebar.styled";
+
 import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 
 const STAGE_INDEX = -1;

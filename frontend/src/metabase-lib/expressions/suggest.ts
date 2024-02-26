@@ -2,10 +2,13 @@ import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import {
+  formatIdentifier,
+  getDisplayNameWithSeparator,
+} from "metabase-lib/expressions";
+import {
   enclosingFunction,
   partialMatch,
 } from "metabase-lib/expressions/completer";
-import type Metadata from "metabase-lib/metadata/Metadata";
 import {
   AGGREGATION_FUNCTIONS,
   EDITOR_FK_SYMBOLS,
@@ -13,15 +16,12 @@ import {
   getMBQLName,
   MBQL_CLAUSES,
 } from "metabase-lib/expressions/config";
-import {
-  formatIdentifier,
-  getDisplayNameWithSeparator,
-} from "metabase-lib/expressions";
+import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
 import type {
   HelpText,
   MBQLClauseFunctionConfig,
 } from "metabase-lib/expressions/types";
-import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 export type Suggestion = {
   type: string;

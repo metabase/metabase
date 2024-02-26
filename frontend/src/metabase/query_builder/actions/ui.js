@@ -4,8 +4,8 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import { UserApi } from "metabase/services";
 
-import { cancelQuery } from "./querying";
 import { updateUrl } from "./navigation";
+import { cancelQuery } from "./querying";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);

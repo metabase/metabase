@@ -1,4 +1,7 @@
 import { onlyOn } from "@cypress/skip-test";
+
+import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -13,9 +16,6 @@ import {
   openDashboardMenu,
   toggleDashboardInfoSidebar,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -191,8 +191,10 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 });
                 popover().findByText("New collection").click();
                 const NEW_COLLECTION = "Foo Collection";
-                modal().within(() => {
-                  cy.findByLabelText("Name").type(NEW_COLLECTION);
+                cy.findByTestId("new-collection-modal").then(modal => {
+                  cy.findByPlaceholderText("My new fantastic collection").type(
+                    NEW_COLLECTION,
+                  );
                   cy.button("Create").click();
                   cy.button("Duplicate").click();
                   assertOnRequest("copyDashboard");

@@ -1,6 +1,9 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { IconName } from "metabase/ui";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import type {
   QuestionDashboardCard,
   ArbitraryCustomDestinationClickBehavior,
@@ -8,15 +11,13 @@ import type {
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
 } from "metabase-types/api";
-import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { IconName } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { SidebarContent } from "../ClickBehaviorSidebar.styled";
-import { CustomLinkText } from "./CustomLinkText";
-import { LinkedEntityPicker } from "./LinkedEntityPicker/LinkedEntityPicker";
 
+import { SidebarContent } from "../ClickBehaviorSidebar.styled";
+
+import { CustomLinkText } from "./CustomLinkText";
 import { CustomURLPicker } from "./CustomURLPicker";
 import { LinkOption } from "./LinkOption";
+import { LinkedEntityPicker } from "./LinkedEntityPicker/LinkedEntityPicker";
 import { ValuesYouCanReference } from "./ValuesYouCanReference";
 
 type LinkTypeOption = {

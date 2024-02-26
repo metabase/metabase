@@ -1,6 +1,5 @@
 import d3 from "d3";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 // moment-timezone based d3 scale
 const timeseriesScale = (

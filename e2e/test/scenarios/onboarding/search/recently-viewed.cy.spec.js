@@ -1,4 +1,8 @@
 import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   visitQuestion,
   visitDashboard,
@@ -6,11 +10,6 @@ import {
   describeEE,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describe("search > recently viewed", () => {
   beforeEach(() => {
@@ -30,7 +29,7 @@ describe("search > recently viewed", () => {
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry
 
-    cy.intercept(`/api/activity/recent_views`).as("recent");
+    cy.intercept("/api/activity/recent_views").as("recent");
     cy.visit("/");
     cy.wait("@recent");
 

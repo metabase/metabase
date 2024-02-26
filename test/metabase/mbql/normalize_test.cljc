@@ -558,37 +558,43 @@
 ;; this is also covered
 (t/deftest ^:parallel normalize-expressions-test
   (normalize-tests
-   "Expression names should get normalized to strings."
-   {{:query {"expressions" {:abc ["+" 1 2]}
-             :fields       [["expression" :abc]]}}
-    {:query {:expressions {"abc" [:+ 1 2]}
-             :fields      [[:expression "abc"]]}}}
+    "Expression names should get normalized to strings."
+    {{:query {"expressions" {:abc ["+" 1 2]}
+              :fields       [["expression" :abc]]}}
+     {:query {:expressions {"abc" [:+ 1 2]}
+              :fields      [[:expression "abc"]]}}}
 
-   "are expression names exempt from lisp-casing/lower-casing?"
-   {{"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}
-    {:query {:expressions {"sales_tax" [:- [:field-id 10] [:field-id 20]]}}}}
+    "are expression names exempt from lisp-casing/lower-casing?"
+    {{"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}
+     {:query {:expressions {"sales_tax" [:- [:field-id 10] [:field-id 20]]}}}}
 
-   "expressions should handle datetime arithemtics"
-   {{:query {:expressions {:prev_month ["+" ["field-id" 13] ["interval" -1 "month"]]}}}
-    {:query {:expressions {"prev_month" [:+ [:field-id 13] [:interval -1 :month]]}}}
+    "expressions should handle datetime arithemtics"
+    {{:query {:expressions {:prev_month ["+" ["field-id" 13] ["interval" -1 "month"]]}}}
+     {:query {:expressions {"prev_month" [:+ [:field-id 13] [:interval -1 :month]]}}}
 
-    {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
-    {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}
+     {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
+     {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}
 
-    {:query {:expressions {:datetime-diff ["datetime-diff" ["field" 1 nil] ["field" 2 nil] "month"]}}}
-    {:query {:expressions {"datetime-diff" [:datetime-diff [:field 1 nil] [:field 2 nil] :month]}}}
+     {:query {:expressions {:datetime-diff ["datetime-diff" ["field" 1 nil] ["field" 2 nil] "month"]}}}
+     {:query {:expressions {"datetime-diff" [:datetime-diff [:field 1 nil] [:field 2 nil] :month]}}}
 
-    {:query {:expressions {:datetime-add ["datetime-add" ["field" 1 nil] 1 "month"]}}}
-    {:query {:expressions {"datetime-add" [:datetime-add [:field 1 nil] 1 :month]}}}
+     {:query {:expressions {:datetime-add ["datetime-add" ["field" 1 nil] 1 "month"]}}}
+     {:query {:expressions {"datetime-add" [:datetime-add [:field 1 nil] 1 :month]}}}
 
-    {:query {:expressions {:datetime-subtract ["datetime-subtract" ["field" 1 nil] 1 "month"]}}}
-    {:query {:expressions {"datetime-subtract" [:datetime-subtract [:field 1 nil] 1 :month]}}}}
+     {:query {:expressions {:datetime-subtract ["datetime-subtract" ["field" 1 nil] 1 "month"]}}}
+     {:query {:expressions {"datetime-subtract" [:datetime-subtract [:field 1 nil] 1 :month]}}}}
 
-   "expressions handle namespaced keywords correctly"
-   {{:query {"expressions" {:abc/def ["+" 1 2]}
-             :fields       [["expression" :abc/def]]}}
-    {:query {:expressions {"abc/def" [:+ 1 2]}
-             :fields      [[:expression "abc/def"]]}}}))
+    "expressions handle namespaced keywords correctly"
+    {{:query {"expressions" {:abc/def ["+" 1 2]}
+              :fields       [["expression" :abc/def]]}}
+     {:query {:expressions {"abc/def" [:+ 1 2]}
+              :fields      [[:expression "abc/def"]]}}}
+
+    "expression refs can have opts (#33528)"
+    {{:query {:expressions {"abc" [+ 1 2]}
+              :fields      [[:expression "abc" {"base-type" "type/Number"}]]}}
+     {:query {:expressions {"abc" [+ 1 2]}
+              :fields      [[:expression "abc" {:base-type :type/Number}]]}}}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1378,7 +1384,7 @@
 
 (t/deftest ^:parallel normalize-fragment-filter-test
   (t/is (= [:!=
-            [:expression "expr"]
+            [:expression "expr" {:base-type :type/Date}]
             [:field 66302 {:base-type :type/DateTime}]]
            (mbql.normalize/normalize-fragment
                [:query :filter]

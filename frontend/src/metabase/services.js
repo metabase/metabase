@@ -1,12 +1,12 @@
 import _ from "underscore";
+
 import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-
 import Question from "metabase-lib/Question";
+import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/queries/utils/card";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
-import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -59,6 +59,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
+
   if (
     question.display() !== "pivot" ||
     isNative(card) ||
@@ -95,7 +96,9 @@ export async function runQuestionQuery(
   } = {},
 ) {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
-  const parameters = normalizeParameters(question.parameters());
+  const parameters = normalizeParameters(
+    question.parameters({ collectionPreview }),
+  );
   const card = question.card();
 
   if (canUseCardApiEndpoint) {
@@ -529,14 +532,17 @@ export const TaskApi = {
 export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
+
 export function setPublicDashboardEndpoints() {
   setDashboardEndpoints("/api/public");
 }
+
 export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
     setCardEndpoints("/api/embed/card/:token", { token });
   }
 }
+
 export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
     setDashboardEndpoints("/api/embed");

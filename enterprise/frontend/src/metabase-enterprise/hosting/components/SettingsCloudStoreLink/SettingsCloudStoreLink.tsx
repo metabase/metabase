@@ -1,5 +1,7 @@
 import { t } from "ttag";
+
 import { getStoreUrl } from "metabase/selectors/settings";
+
 import { Description, Link, LinkIcon } from "./SettingsCloudStoreLink.styled";
 
 export const SettingsCloudStoreLink = () => {

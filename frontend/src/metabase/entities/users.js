@@ -1,15 +1,12 @@
 import { assocIn } from "icepick";
 
-import { UserSchema } from "metabase/schema";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
-
-import { createEntity } from "metabase/lib/entities";
-
-import { UserApi, SessionApi } from "metabase/services";
-import { generatePassword } from "metabase/lib/security";
-
 import { GET } from "metabase/lib/api";
+import { createEntity } from "metabase/lib/entities";
+import { generatePassword } from "metabase/lib/security";
+import MetabaseSettings from "metabase/lib/settings";
+import { UserSchema } from "metabase/schema";
+import { UserApi, SessionApi } from "metabase/services";
 
 export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
 export const REACTIVATE = "metabase/entities/users/REACTIVATE";

@@ -1,5 +1,5 @@
-import { modal, popover, restore, visitQuestion } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { popover, restore, visitQuestion } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const EXPRESSION_NAME = "TEST_EXPRESSION";
@@ -70,7 +70,7 @@ function saveModifiedQuestion() {
   cy.findByTestId("qb-header-action-panel").within(() => {
     cy.findByText("Save").click();
   });
-  modal().within(() => {
+  cy.findByTestId("save-question-modal").within(() => {
     cy.findByText(/Replace original question/i).should("exist");
     cy.findByText("Save").click();
   });

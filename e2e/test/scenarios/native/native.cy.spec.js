@@ -1,6 +1,12 @@
 import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
-  modal,
   openNativeEditor,
   visitQuestionAdhoc,
   summarize,
@@ -10,14 +16,6 @@ import {
   visitCollection,
   popover,
 } from "e2e/support/helpers";
-
-import {
-  SAMPLE_DB_ID,
-  USER_GROUPS,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -47,7 +45,7 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
     });
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
     });
   });
@@ -93,7 +91,7 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").type("Products on Category");
       cy.findByText("Save").click();
 
@@ -118,7 +116,7 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").type("empty question");
       cy.findByText("Save").click();
     });
@@ -127,13 +125,14 @@ describe("scenarios > question > native", () => {
     cy.location("pathname").should("match", /\/question\/\d+/);
   });
 
-  it(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332, metabase#37100)`, () => {
+  it("shouldn't remove rows containing NULL when using 'Is not' or 'Does not contain' filter (metabase#13332, metabase#37100)", () => {
     const FILTERS = ["Is not", "Does not contain"];
 
     const questionDetails = {
       name: "13332",
       native: {
-        query: `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
+        query:
+          'SELECT null AS "V", 1 as "N" UNION ALL SELECT \'This has a value\' AS "V", 2 as "N"',
         "template-tags": {},
       },
     };
@@ -221,7 +220,7 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").type("SQL Products");
       cy.findByText("Save").click();
 

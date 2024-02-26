@@ -1,5 +1,6 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
+
 import {
   PublicLinkCopyButton,
   RemoveLinkAnchor,
@@ -13,6 +14,7 @@ import {
   TextInput,
   Tooltip,
 } from "metabase/ui";
+
 import type { ExportFormatType } from "./types";
 
 export const PublicLinkCopyPanel = ({
