@@ -7,6 +7,8 @@ import {
 } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;
+const mongoName = "QA Mongo";
+const additionalPG = "New Database";
 
 describe(
   "scenarios > question > native > database source",
@@ -52,8 +54,6 @@ describe(
     });
 
     it("deleting previously persisted database should result in the new database selection prompt", () => {
-      const additionalPG = "New Database";
-
       addPostgresDatabase(additionalPG);
 
       startNativeQuestion();
@@ -142,7 +142,6 @@ describe(
 
         cy.signOut();
         cy.signInAsAdmin();
-        const additionalPG = "New Database";
 
         addPostgresDatabase(additionalPG);
 
@@ -179,13 +178,11 @@ describe("mongo as the default database", { tags: "@mongo" }, () => {
     cy.signInAsAdmin();
   });
 
-  const MONGO_DB_NAME = "QA Mongo";
-
   it("should persist Mongo database, but not its selected table", () => {
     startNativeQuestion();
     assertNoDatabaseSelected();
 
-    selectDatabase(MONGO_DB_NAME);
+    selectDatabase(mongoName);
     cy.findByTestId("native-query-top-bar")
       .findByText("Select a table")
       .click();
@@ -197,7 +194,7 @@ describe("mongo as the default database", { tags: "@mongo" }, () => {
 
     startNativeQuestion();
 
-    assertSelectedDatabase(MONGO_DB_NAME);
+    assertSelectedDatabase(mongoName);
     cy.findByTestId("native-query-top-bar").should("contain", "Select a table");
   });
 });
