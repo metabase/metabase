@@ -166,12 +166,12 @@
   [:merge
    ::drill-thru.common.with-column
    [:map
-    [:type    [:= :drill-thru/extract-column]
-     :actions [:sequential [:ref ::drill-thru.extract-column-action]]]]])
+    [:type        [:= :drill-thru/extract-column]
+     :extractions [:sequential [:ref ::drill-thru.extract-column-type]]]]])
 
-(mr/def ::drill-thru.extract-column-action
+(mr/def ::drill-thru.extract-column-type
   [:map
-    [:type [:= :drill-thru/extract-column-action]]
+    [:type [:= :drill-thru/extract-column-type]]
     [:unit [:ref ::unit.date.truncate]]])
 
 ;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...

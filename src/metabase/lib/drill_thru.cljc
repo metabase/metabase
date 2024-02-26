@@ -50,7 +50,6 @@
   [{:f #'lib.drill-thru.automatic-insights/automatic-insights-drill,             :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? true}
-   {:f #'lib.drill-thru.extract-column/extract-column-drill,                     :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.fk-filter/fk-filter-drill,                               :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.object-details/object-detail-drill,                      :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.pivot/pivot-drill,                                       :return-drills-for-dimensions? false}
@@ -58,6 +57,7 @@
    {:f #'lib.drill-thru.sort/sort-drill,                                         :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.summarize-column/summarize-column-drill,                 :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill, :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.extract-column/extract-column-drill,                     :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.underlying-records/underlying-records-drill,             :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill,             :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.zoom-in-geographic/zoom-in-geographic-drill,             :return-drills-for-dimensions? true}

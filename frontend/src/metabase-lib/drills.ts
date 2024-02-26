@@ -57,8 +57,8 @@ export function pivotColumnsForType(
   return ML.pivot_columns_for_type(drillThru, pivotType);
 }
 
-export function extractColumnActions(
+export function extractColumnTypes(
   drillThru: DrillThru,
 ): ExtractColumnAction[] {
-  return ML.extract_column_actions(drillThru);
+  return ML.extract_column_types(drillThru);
 }

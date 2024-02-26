@@ -14,6 +14,7 @@
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
+   [metabase.lib.drill-thru.extract-column :as lib.drill-thru.extract-column]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
@@ -120,6 +121,8 @@
  [lib.drill-thru.pivot
   pivot-columns-for-type
   pivot-types]
+ [lib.drill-thru.extract-column
+  extract-column-types]
  [lib.equality
   find-column-for-legacy-ref
   find-matching-column]
