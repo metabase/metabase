@@ -91,12 +91,6 @@ export const CardsContainer = styled(FullWidthContainer)<{
   isFixedWidth: boolean;
 }>`
   margin-top: 8px;
-
-  ${({ isFixedWidth }) =>
-    isFixedWidth &&
-    css`
-      min-width: calc(${FIXED_WIDTH} + 4em);
-    `}
 `;
 
 function getParametersWidgetBgColor(isNightMode: boolean) {
@@ -129,12 +123,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       position: sticky;
       border-bottom: 1px solid
         ${hasScroll ? color("border") : getParametersWidgetBgColor(isNightMode)};
-    `}
-
-  ${({ isFixedWidth }) =>
-    isFixedWidth &&
-    css`
-      min-width: calc(${FIXED_WIDTH} + 4em);
     `}
 `;
 
