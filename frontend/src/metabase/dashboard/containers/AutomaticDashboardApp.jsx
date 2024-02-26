@@ -30,6 +30,7 @@ import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
 import { DashboardTabs } from "../components/DashboardTabs";
 
 import {
+  ContentContainer,
   ItemContent,
   ItemDescription,
   ItemLink,
@@ -157,7 +158,7 @@ class AutomaticDashboardAppInner extends Component {
             </div>
           )}
 
-          <div className="wrapper pb4">
+          <ContentContainer>
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
                 <FixedWidthContainer
@@ -176,7 +177,7 @@ class AutomaticDashboardAppInner extends Component {
               </div>
             )}
             <Dashboard isXray {...this.props} />
-          </div>
+          </ContentContainer>
           {more && (
             <div className="flex justify-end px4 pb4">
               <Link

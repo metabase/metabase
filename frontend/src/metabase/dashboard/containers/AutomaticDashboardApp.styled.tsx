@@ -2,10 +2,15 @@ import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Icon } from "metabase/ui";
 
 export const ListRoot = styled.ol`
   margin: 0.5rem 0;
+`;
+
+export const ContentContainer = styled(FullWidthContainer)`
+  padding-bottom: 2rem;
 `;
 
 export const ItemLink = styled(Link)`
