@@ -10,7 +10,8 @@ import { createMockModelIndex } from "metabase-types/api/mocks";
 
 import { useModelIndexesListQuery } from "./use-model-indexes-list-query";
 
-const TEST_ITEM = createMockModelIndex();
+const model_id = 1;
+const TEST_ITEM = createMockModelIndex({ model_id });
 
 const TestComponent = () => {
   const {
@@ -18,7 +19,7 @@ const TestComponent = () => {
     metadata,
     isLoading,
     error,
-  } = useModelIndexesListQuery({ query: { model_id: 1 } });
+  } = useModelIndexesListQuery({ query: { model_id } });
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -38,7 +39,7 @@ const TestComponent = () => {
 };
 
 const setup = () => {
-  setupModelIndexEndpoints(1, [TEST_ITEM]);
+  setupModelIndexEndpoints(model_id, [TEST_ITEM]);
   renderWithProviders(<TestComponent />);
 };
 
