@@ -7,7 +7,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    restore("mongo-4");
+    restore("mongo-5");
     cy.signInAsNormalUser();
 
     cy.visit("/");

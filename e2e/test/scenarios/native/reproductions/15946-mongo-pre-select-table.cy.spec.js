@@ -4,7 +4,7 @@ const MONGO_DB_NAME = "QA Mongo4";
 
 describe("issue 15946", { tags: "@mongo" }, () => {
   before(() => {
-    restore("mongo-4");
+    restore("mongo-5");
     cy.signInAsAdmin();
 
     startNewQuestion();

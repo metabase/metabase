@@ -4,7 +4,7 @@ import { openTable, restore, visualize } from "e2e/support/helpers";
 const supportedDatabases = [
   {
     database: "Mongo",
-    snapshotName: "mongo-4",
+    snapshotName: "mongo-5",
     dbName: "QA Mongo4",
   },
   {

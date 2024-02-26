@@ -15,7 +15,7 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
   it("creates snapshots for supported qa databases", () => {
     if (Cypress.env("QA_DB_MONGO") === true) {
       addMongoDatabase();
-      snapshot("mongo-4");
+      snapshot("mongo-5");
       deleteDatabase("mongoID");
 
       restoreAndAuthenticate();
