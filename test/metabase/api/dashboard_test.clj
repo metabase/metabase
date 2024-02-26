@@ -4138,42 +4138,68 @@
            :model/Dashboard {dash-id :id} {:name "My Awesome Dashboard"}
            :model/DashboardCard {dash-card-id :id} {:dashboard_id dash-id
                                                     :card_id      card-id}
-           :model/Pulse {pulse-id :id
-                         :as      pulse} {:name         "Test Pulse"
-                                          :dashboard_id dash-id
-                                          :creator_id   (mt/user->id :trashbird)
-                                          :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
-           :model/PulseCard _ {:pulse_id          pulse-id
+           ;; Broken pulse
+           :model/Pulse {bad-pulse-id :id
+                         :as          bad-pulse} {:name         "Bad Pulse"
+                                                  :dashboard_id dash-id
+                                                  :creator_id   (mt/user->id :trashbird)
+                                                  :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
+           :model/PulseCard _ {:pulse_id          bad-pulse-id
                                :card_id           card-id
                                :dashboard_card_id dash-card-id}
            :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                       :pulse_id     pulse-id
+                                                       :pulse_id     bad-pulse-id
                                                        :enabled      true}
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                            :user_id          (mt/user->id :rasta)}
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                           :user_id          (mt/user->id :crowberto)}
+           ;; Non broken pulse
+           :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
+                                             :dashboard_id dash-id
+                                             :creator_id   (mt/user->id :trashbird)}
+           :model/PulseCard _ {:pulse_id          good-pulse-id
+                               :card_id           card-id
+                               :dashboard_card_id dash-card-id}
+           :model/PulseChannel {good-pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     good-pulse-id
+                                                            :enabled      true}
+           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
+                                           :user_id          (mt/user->id :rasta)}
+           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
                                            :user_id          (mt/user->id :crowberto)}]
           (testing "We can identify the broken parameter ids"
-            (is (= [param-id]
-                   (#'api.dashboard/broken-parameter-ids dash-id {param-id param}))))
+            (is (=? [{:archived     false
+                      :name         "Bad Pulse"
+                      :creator_id   (mt/user->id :trashbird)
+                      :id           bad-pulse-id
+                      :parameters
+                      [{:name "Source" :slug "source" :id "_SOURCE_PARAM_ID_" :type "string/=" :value ["Twitter" "Facebook"]}]
+                      :dashboard_id dash-id}]
+                    (#'api.dashboard/broken-pulses dash-id {param-id param}))))
           (testing "We can gather all needed data regarding broken params"
-            (is (=? [{:pulse-creator     {:email "trashbird@metabase.com"}
-                      :dashboard-creator {:email "rasta@metabase.com"}
-                      :pulse-id          pulse-id
-                      :pulse-name        "Test Pulse"
-                      :dashboard-id      dash-id
-                      :bad-parameters    [{:name "Source" :value ["Twitter" "Facebook"]}]
-                      :dashboard-name    "My Awesome Dashboard"
-                      :affected-users    [{:email "crowberto@metabase.com"}
-                                          {:email "rasta@metabase.com"}]}]
-                    (mapv
-                      #(update % :affected-users (partial sort-by :email))
-                      (#'api.dashboard/broken-subscription-data dash-id {param-id param})))))
+            (let [bad-pulses    (mapv
+                                  #(update % :affected-users (partial sort-by :email))
+                                  (#'api.dashboard/broken-subscription-data dash-id {param-id param}))
+                  bad-pulse-ids (set (map :pulse-id bad-pulses))]
+              (testing "We only detect the bad pulse and not the good one"
+                (is (true? (contains? bad-pulse-ids bad-pulse-id)))
+                (is (false? (contains? bad-pulse-ids good-pulse-id))))
+              (is (=? [{:pulse-creator     {:email "trashbird@metabase.com"}
+                        :dashboard-creator {:email "rasta@metabase.com"}
+                        :pulse-id          bad-pulse-id
+                        :pulse-name        "Bad Pulse"
+                        :dashboard-id      dash-id
+                        :bad-parameters    [{:name "Source" :value ["Twitter" "Facebook"]}]
+                        :dashboard-name    "My Awesome Dashboard"
+                        :affected-users    [{:email "crowberto@metabase.com"}
+                                            {:email "rasta@metabase.com"}]}]
+                      bad-pulses))))
           (testing "Pulse can be archived"
             (testing "Pulse starts as unarchived"
-              (is (false? (:archived pulse))))
+              (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
-              (is (true? (:archived (pulse/update-pulse! {:id pulse-id :archived true})))))))))))
+              (is (true? (:archived (pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
@@ -4207,22 +4233,38 @@
                                                                                          [:field (mt/id :people :source)
                                                                                           {:base-type :type/Text}]]
                                                                           }]}
-           :model/Pulse {pulse-id :id} {:name         "Test Pulse"
-                                        :dashboard_id dash-id
-                                        :creator_id   (mt/user->id :trashbird)
-                                        :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
-           :model/PulseCard _ {:pulse_id          pulse-id
+           ;; Broken pulse
+           :model/Pulse {bad-pulse-id :id} {:name         "Bad Pulse"
+                                            :dashboard_id dash-id
+                                            :creator_id   (mt/user->id :trashbird)
+                                            :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
+           :model/PulseCard _ {:pulse_id          bad-pulse-id
                                :card_id           card-id
                                :dashboard_card_id dash-card-id}
            :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                       :pulse_id     pulse-id
+                                                       :pulse_id     bad-pulse-id
                                                        :enabled      true}
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                            :user_id          (mt/user->id :rasta)}
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                           :user_id          (mt/user->id :crowberto)}
+           ;; Non broken pulse
+           :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
+                                             :dashboard_id dash-id
+                                             :creator_id   (mt/user->id :trashbird)}
+           :model/PulseCard _ {:pulse_id          good-pulse-id
+                               :card_id           card-id
+                               :dashboard_card_id dash-card-id}
+           :model/PulseChannel {good-pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     good-pulse-id
+                                                            :enabled      true}
+           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
+                                           :user_id          (mt/user->id :rasta)}
+           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
                                            :user_id          (mt/user->id :crowberto)}]
-          (testing "The pulse is active"
-            (is (false? (t2/select-one-fn :archived :model/Pulse pulse-id))))
+          (testing "The pulses are active"
+            (is (false? (t2/select-one-fn :archived :model/Pulse bad-pulse-id)))
+            (is (false? (t2/select-one-fn :archived :model/Pulse good-pulse-id))))
           (mt/with-fake-inbox
             (mt/with-expected-messages 2
               (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
@@ -4241,7 +4283,9 @@
                 (testing "The dashboard parameters were removed"
                   (is (empty? parameters)))
                 (testing "The broken pulse was archived"
-                  (is (true? (t2/select-one-fn :archived :model/Pulse pulse-id))))
+                  (is (true? (t2/select-one-fn :archived :model/Pulse bad-pulse-id))))
+                (testing "The unbroken pulse is still active"
+                  (is (false? (t2/select-one-fn :archived :model/Pulse good-pulse-id))))
                 (testing "The dashboard and pulse creators were emailed about the removed pulse"
                   (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
                          (set (keys inbox)))))

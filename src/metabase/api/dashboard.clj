@@ -608,15 +608,8 @@
   - Which selected parameter values are broken
   - The user info for the creator of the pulse
   - The users affected by the pulse"
-  [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]} bad-param-ids]
-  (let [bad-parameters           (->> parameters
-                                      (keep
-                                        (fn [{:keys [id name value]}]
-                                          (when (bad-param-ids id)
-                                            {:name name :value value})))
-                                      (sort-by :name)
-                                      vec)
-        creator                  (t2/select-one [:model/User :first_name :last_name :email] creator_id)
+  [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
+  (let [creator                  (t2/select-one [:model/User :first_name :last_name :email] creator_id)
         pulse-channel-ids        (mapv :id (t2/select [:model/PulseChannel :id] :pulse_id [:= bad-pulse-id]))
         ;; When checks are defensive as in () causes SQL exceptions
         pulse-channel-recipients (when (seq pulse-channel-ids)
@@ -626,24 +619,26 @@
                                      :id [:in (map :user_id pulse-channel-recipients)]))]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
-     :bad-parameters bad-parameters
+     :bad-parameters parameters
      :pulse-creator  creator
      :affected-users affected-users}))
 
-(defn- broken-parameter-ids
-  "Identify and return any parameter ids used in a subscription that are no longer extant on the dashboard."
+(defn- broken-pulses
+  "Identify and return any pulses used in a subscription that contain parameters that are no longer on the dashboard."
   [dashboard-id original-dashboard-params]
   (when (seq original-dashboard-params)
     (let [{:keys [resolved-params]} (t2/hydrate
                                       (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
                                       :resolved-params)
           dashboard-params (set (keys resolved-params))
-          pulse-data       (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)
-          pulse-params     (into
-                             #{}
-                             (mapcat (comp (partial map :id) :parameters))
-                             pulse-data)]
-      (seq (set/difference pulse-params dashboard-params)))))
+          dashboard-pulses (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)]
+      (->> dashboard-pulses
+           (keep (fn [{:keys [parameters] :as pulse}]
+                   (let [bad-params (filterv
+                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
+                                      parameters)]
+                     (when (seq bad-params)
+                       (assoc pulse :parameters bad-params)))))))))
 
 (defn- broken-subscription-data
   "Given a dashboard id and original parameters, return data (if any) on any broken subscriptions. This will be a seq
@@ -652,19 +647,15 @@
   - name and email data for the dashboard creator, pulse creator, and affected recipients
   - Basic descriptive data on the affected dashboard, pulse, and parameters for use in downstream notifications"
   [dashboard-id original-dashboard-params]
-  (when-some [broken-link-ids (set (broken-parameter-ids dashboard-id original-dashboard-params))]
+  (when-some [broken-pulses (broken-pulses dashboard-id original-dashboard-params)]
     (let [{dashboard-name        :name
            dashboard-description :description
            dashboard-creator     :creator} (t2/hydrate
                                              (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id)
-                                             :creator)
-          broken-pulses (filter
-                          (fn [{:keys [parameters]}]
-                            (some (comp broken-link-ids :id) parameters))
-                          (t2/select :model/Pulse :dashboard_id dashboard-id))]
+                                             :creator)]
       (for [broken-pulse broken-pulses]
         (assoc
-          (bad-pulse-notification-data broken-pulse broken-link-ids)
+          (bad-pulse-notification-data broken-pulse)
           :dashboard-id dashboard-id
           :dashboard-name dashboard-name
           :dashboard-description dashboard-description
