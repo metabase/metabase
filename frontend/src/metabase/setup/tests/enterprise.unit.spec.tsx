@@ -84,10 +84,11 @@ describe("setup (EE, no token)", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not save the token if it's invalid", async () => {
+    it("should not send the token if it's invalid", async () => {
       await setupForLicenseStep();
 
       setupForTokenCheckEndpoint({ valid: false });
+
       userEvent.paste(
         screen.getByRole("textbox", { name: "Token" }),
         sampleToken,
