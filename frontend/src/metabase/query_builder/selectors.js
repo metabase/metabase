@@ -635,12 +635,12 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
 
     if (isNative) {
       const isNewQuestion = !originalQuestion;
+      const rawQuery = Lib.rawNativeQuery(question.query());
 
       if (isNewQuestion) {
-        return !question.legacyQuery().isEmpty();
+        return rawQuery.length > 0;
       }
 
-      const rawQuery = Lib.rawNativeQuery(question.query());
       const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());
       const hasQueryChanged = rawQuery !== rawOriginalQuery;
       return hasQueryChanged;
