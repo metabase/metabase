@@ -41,7 +41,7 @@
                      [:metadata/table    lib.metadata/TableMetadata]
                      [:metadata/column   lib.metadata/ColumnMetadata]
                      [:metadata/card     ::lib.schema.metadata/card]
-                     [:metadata/metric   lib.metadata/MetricMetadata]
+                     [:metadata/metric   lib.metadata/LegacyMetricMetadata]
                      [:metadata/segment  lib.metadata/SegmentMetadata]]]
   (let [metadata (-> metadata
                      (update-keys u/->kebab-case-en)
