@@ -29,5 +29,3 @@ export type IndexedEntity = {
 export type ModelIndexesListQuery = {
   model_id: CardId | null;
 };
-
-export type ModelIndexesListResult = ModelIndex[];
