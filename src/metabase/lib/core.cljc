@@ -122,7 +122,7 @@
   pivot-columns-for-type
   pivot-types]
  [lib.drill-thru.column-extract
-  column-extract-actions]
+  column-extract-types]
  [lib.equality
   find-column-for-legacy-ref
   find-matching-column]
