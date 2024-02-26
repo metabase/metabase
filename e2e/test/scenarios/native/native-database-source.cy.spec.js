@@ -82,10 +82,41 @@ describe(
   },
 );
 
+describe("mongo as the default database", { tags: "@mongo" }, () => {
+  beforeEach(() => {
+    restore("mongo-5");
+    cy.signInAsAdmin();
+  });
+
+  const MONGO_DB_NAME = "QA Mongo";
+
+  it("should persist Mongo database, but not its selected table", () => {
+    startNativeQuestion();
+    assertNoDatabaseSelected();
+
+    selectDatabase(MONGO_DB_NAME);
+    cy.findByTestId("native-query-top-bar")
+      .findByText("Select a table")
+      .click();
+    popover().findByText("Reviews").click();
+    cy.findByTestId("native-query-top-bar").should(
+      "not.contain",
+      "Select a table",
+    );
+
+    startNativeQuestion();
+
+    assertSelectedDatabase(MONGO_DB_NAME);
+    cy.findByTestId("native-query-top-bar").should("contain", "Select a table");
+  });
+});
+
 function startNativeQuestion() {
   cy.visit("/");
   cy.findByTestId("app-bar").findByText("New").click();
-  popover().findByTextEnsureVisible("SQL query").click();
+  popover()
+    .findByTextEnsureVisible(/(SQL|Native) query/)
+    .click();
 }
 
 function startNativeModel() {
