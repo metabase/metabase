@@ -167,7 +167,8 @@
    ::drill-thru.common.with-column
    [:map
     [:type    [:= :drill-thru/column-extract]
-     :actions [:sequential [:ref ::drill-thru.column-extract-type]]]]])
+    [:query        [:ref ::lib.schema/query]]
+    [:stage-number number?]]]])
 
 (mr/def ::drill-thru.column-extract-type
   [:map
