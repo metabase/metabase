@@ -195,24 +195,23 @@
       [:model/Card card {:dataset_query
                          {:database (mt/id)
                           :type     :native
-                          :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
+                          :native   {:query         "SELECT id FROM venues where {{venue_id}}"
                                      :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
                                                                  :display-name "Venue ID",
                                                                  :id           "_VENUE_ID_",
                                                                  :name         "venue_id",
                                                                  :required     false,
-                                                                 :default      1
+                                                                 :default      [1]
                                                                  :type         :dimension,
                                                                  :widget-type  :id}}}}}]
       (let [request (fn [body]
                       (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)) body))]
         (testing "the default can be overridden"
-          (is (= [[1]]
-                 (mt/rows (request {:parameters [{:id    "_VENUE_ID_"
-                                                  :name  "venue_id"
-                                                  :slug  "venue_id"
-                                                  :type  "number"
-                                                  :value 2}]})))))
+          (is (= [[2]]
+                 (mt/rows (request {:parameters [{:id     "_VENUE_ID_",
+                                                  :target ["dimension" ["template-tag" "venue_id"]],
+                                                  :type   "id",
+                                                  :value  2}]})))))
         (testing "the default should apply if no param value is provided"
           (is (= [[1]]
                  (mt/rows (request {:parameters []}))))
@@ -223,11 +222,10 @@
                                                     :type   "id",
                                                     :value  1}]}))))))
         (testing "the field filter should not apply if the parameter has a nil value"
-          (is (= [[100]]
-                 (mt/rows (request {:parameters [{:id     "_VENUE_ID_",
-                                                  :target ["dimension" ["template-tag" "venue_id"]],
-                                                  :type   "id",
-                                                  :value  nil}]})))))))))
+          (is (= 100 (count (mt/rows (request {:parameters [{:id     "_VENUE_ID_",
+                                                             :target ["dimension" ["template-tag" "venue_id"]],
+                                                             :type   "id",
+                                                             :value  nil}]}))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
