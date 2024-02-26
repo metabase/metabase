@@ -1,4 +1,5 @@
 import type React from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -30,6 +31,17 @@ export const ItemList = <TItem extends TypeWithModel>({
   isFolder,
   isCurrentLevel,
 }: ItemListProps<TItem>) => {
+  const activeItemIndex = useMemo(() => {
+    if (!items) {
+      return -1;
+    }
+
+    return items.findIndex(
+      item =>
+        item.id === selectedItem?.id && item.model === selectedItem?.model,
+    );
+  }, [items, selectedItem]);
+
   if (isLoading && !items) {
     return (
       <Box miw={310} h="100%" aria-label={t`loading`}>
@@ -59,7 +71,10 @@ export const ItemList = <TItem extends TypeWithModel>({
   }
 
   return (
-    <VariableSizeItemsVirtualizedList Wrapper={PickerColumn}>
+    <VariableSizeItemsVirtualizedList
+      Wrapper={PickerColumn}
+      scrollTo={activeItemIndex}
+    >
       {items.map((item: TItem) => (
         <div key={`${item.model ?? "collection"}-${item.id}`}>
           <NavLink

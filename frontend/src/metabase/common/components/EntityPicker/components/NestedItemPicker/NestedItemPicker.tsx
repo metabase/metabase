@@ -1,8 +1,8 @@
 import type React from "react";
-import { useRef } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
+import type { SearchListQuery } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -29,6 +29,9 @@ export interface NestedItemPickerProps<TItem extends TypeWithModel> {
   >;
 }
 
+const generateKey = (query?: SearchListQuery) =>
+  JSON.stringify(query ?? "root").slice(0, 255);
+
 export function NestedItemPicker<TItem extends TypeWithModel>({
   onFolderSelect,
   onItemSelect,
@@ -38,13 +41,11 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
   isFolder,
   listResolver: ListResolver,
 }: NestedItemPickerProps<TItem>) {
-  const scrollBoxRef = useRef<{ scrollRight: () => void }>(null);
   const handleFolderSelect = (folder: TItem) => {
     onFolderSelect({ folder });
   };
 
   const handleClick = (item: TItem) => {
-    scrollBoxRef.current?.scrollRight?.();
     if (isFolder(item)) {
       handleFolderSelect(item);
     } else {
@@ -53,14 +54,17 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
   };
 
   return (
-    <AutoScrollBox data-testid="nested-item-picker" ref={scrollBoxRef}>
+    <AutoScrollBox
+      data-testid="nested-item-picker"
+      contentHash={generateKey(path[path.length - 1].query)}
+    >
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
           const { query, selectedItem } = level;
 
           return (
             <ListBox
-              key={JSON.stringify(query ?? "root").slice(0, 255)}
+              key={generateKey(query)}
               data-testid={`item-picker-level-${index}`}
             >
               <ErrorBoundary>
