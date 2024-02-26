@@ -32,7 +32,7 @@ export function getValuePopulatedParameters({
   parameters,
   values = {},
   defaultRequired = false,
-  collectionPreview,
+  collectionPreview = false,
 }) {
   if (collectionPreview) {
     return [];
