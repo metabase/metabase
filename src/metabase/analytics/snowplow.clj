@@ -32,7 +32,7 @@
   {::account              "1-0-1"
    ::invite               "1-0-1"
    ::csvupload            "1-0-0"
-   ::dashboard            "1-1-3"
+   ::dashboard            "1-1-4"
    ::database             "1-0-1"
    ::instance             "1-1-2"
    ::metabot              "1-0-1"
