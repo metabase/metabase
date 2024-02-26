@@ -4,7 +4,6 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [compojure.core :refer [DELETE GET POST PUT]]
-   [honey.sql :as sql]
    [medley.core :as m]
    [metabase.actions.execution :as actions.execution]
    [metabase.analytics.snowplow :as snowplow]
@@ -610,14 +609,13 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]} bad-param-ids]
-  (let [bad-parameters           (let [bad-id-set (set bad-param-ids)]
-                                   (->> parameters
-                                        (keep
-                                          (fn [{:keys [id name value]}]
-                                            (when (bad-id-set id)
-                                              {:name name :value value})))
-                                        (sort-by :name)
-                                        vec))
+  (let [bad-parameters           (->> parameters
+                                      (keep
+                                        (fn [{:keys [id name value]}]
+                                          (when (bad-param-ids id)
+                                            {:name name :value value})))
+                                      (sort-by :name)
+                                      vec)
         creator                  (t2/select-one [:model/User :first_name :last_name :email] creator_id)
         pulse-channel-ids        (mapv :id (t2/select [:model/PulseChannel :id] :pulse_id [:= bad-pulse-id]))
         ;; When checks are defensive as in () causes SQL exceptions
@@ -631,22 +629,6 @@
      :bad-parameters bad-parameters
      :pulse-creator  creator
      :affected-users affected-users}))
-
-(defn- params->pulse-ids
-  "Given a seq of parameter ids, return the pulse ids they belong to"
-  [parameter-ids]
-  (when (seq parameter-ids)
-    (->> (t2/query
-           (sql/format
-             {:with            [[:params {:select [[:id]
-                                                   [[:raw "json_array_elements(parameters::json) ->> 'id'"]
-                                                    :parameter_id]]
-                                          :from   :pulse}]]
-              :select-distinct [:id]
-              :where           [:in :parameter_id parameter-ids]
-              :from            :params}))
-         (map :id)
-         seq)))
 
 (defn- broken-parameter-ids
   "Identify and return any parameter ids used in a subscription that are no longer extant on the dashboard."
@@ -670,13 +652,17 @@
   - name and email data for the dashboard creator, pulse creator, and affected recipients
   - Basic descriptive data on the affected dashboard, pulse, and parameters for use in downstream notifications"
   [dashboard-id original-dashboard-params]
-  (when-some [broken-link-ids (broken-parameter-ids dashboard-id original-dashboard-params)]
+  (when-some [broken-link-ids (set (broken-parameter-ids dashboard-id original-dashboard-params))]
     (let [{dashboard-name        :name
            dashboard-description :description
            dashboard-creator     :creator} (t2/hydrate
                                              (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id)
-                                             :creator)]
-      (for [broken-pulse (t2/select :model/Pulse :id [:in (params->pulse-ids broken-link-ids)])]
+                                             :creator)
+          broken-pulses (filter
+                          (fn [{:keys [parameters]}]
+                            (some (comp broken-link-ids :id) parameters))
+                          (t2/select :model/Pulse :dashboard_id dashboard-id))]
+      (for [broken-pulse broken-pulses]
         (assoc
           (bad-pulse-notification-data broken-pulse broken-link-ids)
           :dashboard-id dashboard-id
