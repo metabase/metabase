@@ -254,9 +254,9 @@
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(mr/def ::metric
+(mr/def ::legacy-metric
   [:map
-   {:error/message "Valid Metric metadata"}
+   {:error/message "Valid legacy (v1) Metric metadata"}
    [:lib/type   [:= :metadata/metric]]
    [:id         ::lib.schema.id/metric]
    [:name       ::lib.schema.common/non-blank-string]
