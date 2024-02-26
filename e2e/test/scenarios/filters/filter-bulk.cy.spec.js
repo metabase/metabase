@@ -156,7 +156,7 @@ describe("scenarios > filters > bulk filtering", () => {
     filter();
 
     modal().within(() => {
-      cy.findByText("Product").click();
+      cy.findByText("Product").click({ force: true });
       filterField("Category").findByText("Gadget").click();
     });
 
