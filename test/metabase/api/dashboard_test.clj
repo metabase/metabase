@@ -4123,10 +4123,10 @@
 
 (deftest broken-subscription-data-logic-test
   (testing "Ensure underlying logic of fixing broken pulses works (#30100)"
-    (let [param {:name "Source"
-                 :slug "source"
-                 :id   "_SOURCE_PARAM_ID_"
-                 :type :string/=}]
+    (let [{param-id :id :as param} {:name "Source"
+                                    :slug "source"
+                                    :id   "_SOURCE_PARAM_ID_"
+                                    :type :string/=}]
       (mt/dataset test-data
         (mt/with-temp
           [:model/Card {card-id :id} {:name          "Native card"
@@ -4154,19 +4154,21 @@
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                            :user_id          (mt/user->id :crowberto)}]
           (testing "We can identify the broken parameter ids"
-            (is (= [(:id param)]
-                   (#'api.dashboard/broken-parameter-ids dash-id {(:id param) param}))))
+            (is (= [param-id]
+                   (#'api.dashboard/broken-parameter-ids dash-id {param-id param}))))
           (testing "We can gather all needed data regarding broken params"
             (is (=? [{:pulse-creator     {:email "trashbird@metabase.com"}
                       :dashboard-creator {:email "rasta@metabase.com"}
                       :pulse-id          pulse-id
-                      :pulse-name        "Test Pulse",
+                      :pulse-name        "Test Pulse"
                       :dashboard-id      dash-id
-                      :bad-parameters    [{:name "Source", :value ["Twitter" "Facebook"]}]
+                      :bad-parameters    [{:name "Source" :value ["Twitter" "Facebook"]}]
                       :dashboard-name    "My Awesome Dashboard"
                       :affected-users    [{:email "crowberto@metabase.com"}
                                           {:email "rasta@metabase.com"}]}]
-                    (#'api.dashboard/broken-subscription-data dash-id {(:id param) param}))))
+                    (mapv
+                      #(update % :affected-users (partial sort-by :email))
+                      (#'api.dashboard/broken-subscription-data dash-id {param-id param})))))
           (testing "Pulse can be archived"
             (testing "Pulse starts as unarchived"
               (is (false? (:archived pulse))))
@@ -4194,8 +4196,9 @@
                                                                                 [:field (mt/id :people :source)
                                                                                  {:base-type :type/Text}]]}}
                                       :dataset       true}
-           :model/Dashboard {dash-id :id} {:name       "My Awesome Dashboard"
-                                           :parameters [param]}
+           :model/Dashboard {dash-id        :id
+                             dashboard-name :name} {:name       "My Awesome Dashboard"
+                                                    :parameters [param]}
            :model/DashboardCard {dash-card-id :id} {:dashboard_id       dash-id
                                                     :card_id            card-id
                                                     :parameter_mappings [{:parameter_id "_SOURCE_PARAM_ID_"
@@ -4225,15 +4228,16 @@
               (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
                                                                :rasta :put 200 (str "dashboard/" dash-id)
                                                                {:parameters []}))
+                    title           (format "Subscription to %s removed" dashboard-name)
                     ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
                     ;; as "We've Noticed a New Metabase Login, Rasta".
                     inbox           (update-vals
                                       @mt/inbox
                                       (fn [messages]
-                                        (filterv (comp #{"Dashboard subscription removed"} :subject) messages)))
+                                        (filterv (comp #{title} :subject) messages)))
                     email-received? (fn [recipient-email]
                                       (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
-                                                     (str/includes? "Subscription to My Awesome Dashboard deleted"))))]
+                                                     (str/includes? title))))]
                 (testing "The dashboard parameters were removed"
                   (is (empty? parameters)))
                 (testing "The broken pulse was archived"

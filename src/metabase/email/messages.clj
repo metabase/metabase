@@ -718,7 +718,7 @@
   [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters]}]
   (let [{:keys [siteUrl] :as context} (common-context)]
     (email/send-message!
-      :subject (trs "Dashboard subscription removed")
+      :subject (trs "Subscription to {0} removed" dashboard-name)
       :recipients (distinct (map :email [pulse-creator dashboard-creator]))
       :message-type :html
       :message (stencil/render-file
