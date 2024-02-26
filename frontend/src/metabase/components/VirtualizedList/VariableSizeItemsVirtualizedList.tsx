@@ -32,9 +32,11 @@ export function VariableSizeItemsVirtualizedList({
   useMount(() => {
     if (scrollTo && scrollTo < children.length) {
       // we need to wait for dynamic measurements to be taken before scrolling
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         virtualizer.scrollToIndex(scrollTo, { align: "center" });
       }, 1);
+
+      return () => timeout && clearTimeout(timeout);
     }
   });
 
