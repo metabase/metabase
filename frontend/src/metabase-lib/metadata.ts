@@ -24,8 +24,8 @@ import type {
   DependentItem,
   DrillThru,
   DrillThruDisplayInfo,
-  ExtractColumnType,
-  ExtractColumnTypeDisplayInfo,
+  ColumnExtractAction,
+  ColumnExtractActionDisplayInfo,
   FilterOperator,
   FilterOperatorDisplayInfo,
   JoinConditionOperator,
@@ -137,8 +137,8 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  extractColumnType: ExtractColumnType,
-): ExtractColumnTypeDisplayInfo;
+  ColumnExtractType: ColumnExtractAction,
+): ColumnExtractActionDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

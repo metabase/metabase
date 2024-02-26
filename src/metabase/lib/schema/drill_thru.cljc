@@ -162,16 +162,16 @@
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]]])
 
-(mr/def ::drill-thru.extract-column
+(mr/def ::drill-thru.column-extract
   [:merge
    ::drill-thru.common.with-column
    [:map
-    [:type        [:= :drill-thru/extract-column]
-     :extractions [:sequential [:ref ::drill-thru.extract-column-type]]]]])
+    [:type    [:= :drill-thru/column-extract]
+     :actions [:sequential [:ref ::drill-thru.column-extract-action]]]]])
 
-(mr/def ::drill-thru.extract-column-type
+(mr/def ::drill-thru.column-extract-action
   [:map
-    [:type [:= :drill-thru/extract-column-type]]
+    [:type [:= :drill-thru/column-extract-action]]
     [:unit [:ref ::unit.date.truncate]]])
 
 ;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...
