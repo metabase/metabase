@@ -1,8 +1,9 @@
 (ns metabase.lib.drill-thru.extract-column
   ""
   (:require
-    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+    [metabase.lib.expression :as lib.expression]
     [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
     [metabase.lib.schema :as lib.schema]
     [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
     [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -42,5 +43,9 @@
   {:display-name (lib.temporal-bucket/describe-temporal-unit unit)})
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/extract-column
-  [query stage-number drill-thru & [extraction]]
-  query)
+  [query stage-number {:keys [column]} & [extraction]]
+  (lib.expression/expression
+    query
+    stage-number
+    "Year"
+   (lib.expression/get-year column)))
