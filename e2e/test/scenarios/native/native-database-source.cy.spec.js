@@ -40,7 +40,7 @@ describe(
     });
 
     it("deleting previously persisted database should result in the new database selection prompt", () => {
-      const additionalPG = "New Dataabse";
+      const additionalPG = "New Database";
 
       addPostgresDatabase(additionalPG);
 
