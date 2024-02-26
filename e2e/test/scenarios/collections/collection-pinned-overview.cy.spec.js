@@ -55,6 +55,25 @@ const SQL_QUESTION_DETAILS = {
   },
 };
 
+const SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE = {
+  name: "SQL with parameters",
+  display: "scalar",
+  native: {
+    "template-tags": {
+      filter: {
+        type: "dimension",
+        name: "filter",
+        id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
+        "display-name": "date",
+        default: "1999-02-26~2024-02-26",
+        dimension: ["field", 18 /* PEOPLE.BIRTH_DATE */, null],
+        "widget-type": "date/range",
+      },
+    },
+    query: "select count(*) from people where {{filter}}",
+  },
+};
+
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
     restore();
@@ -222,6 +241,22 @@ describe("scenarios > collection pinned items overview", () => {
     getPinnedSection().within(() => {
       cy.findByText(SQL_QUESTION_DETAILS.name).should("be.visible");
       cy.findByText("A question").should("be.visible");
+    });
+  });
+
+  it("should apply default value of variable for pinned native questions (metabase#37831)", () => {
+    cy.createNativeQuestion(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE).then(
+      ({ body: { id } }) => {
+        cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+      },
+    );
+
+    openRootCollection();
+    getPinnedSection().within(() => {
+      cy.findByText(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE.name).should(
+        "be.visible",
+      );
+      cy.findByTestId("scalar-value").should("have.text", "68");
     });
   });
 
