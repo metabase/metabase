@@ -630,15 +630,15 @@
     (let [{:keys [resolved-params]} (t2/hydrate
                                       (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
                                       :resolved-params)
-          dashboard-params (set (keys resolved-params))
-          dashboard-pulses (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)]
-      (->> dashboard-pulses
+          dashboard-params (set (keys resolved-params))]
+      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                       (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
                                       parameters)]
                      (when (seq bad-params)
-                       (assoc pulse :parameters bad-params)))))))))
+                       (assoc pulse :parameters bad-params)))))
+           seq))))
 
 (defn- broken-subscription-data
   "Given a dashboard id and original parameters, return data (if any) on any broken subscriptions. This will be a seq
