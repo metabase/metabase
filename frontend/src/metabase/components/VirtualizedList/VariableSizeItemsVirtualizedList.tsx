@@ -30,8 +30,11 @@ export function VariableSizeItemsVirtualizedList({
   const items = virtualizer.getVirtualItems();
 
   useMount(() => {
-    if (scrollTo) {
-      virtualizer.scrollToIndex(scrollTo, { align: "center" });
+    if (scrollTo && scrollTo < children.length) {
+      // we need to wait for dynamic measurements to be taken before scrolling
+      setTimeout(() => {
+        virtualizer.scrollToIndex(scrollTo, { align: "center" });
+      }, 1);
     }
   });
 
