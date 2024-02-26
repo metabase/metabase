@@ -5,10 +5,10 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { updateSetting } from "metabase/admin/settings/settings";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
+import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
 import * as Lib from "metabase-lib";
@@ -404,14 +404,7 @@ class View extends Component {
 }
 
 const mapDispatchToProps = dispatch => ({
-  onSetDatabaseId: id => {
-    dispatch(
-      updateSetting({
-        key: "last-used-database-id",
-        value: id,
-      }),
-    );
-  },
+  onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
 });
 
 export default _.compose(
