@@ -439,6 +439,9 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type ExtractColumnDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/extract-column">;
+
 export type QuickFilterDrillThruOperator =
   | "="
   | "≠"
@@ -503,6 +506,7 @@ export type ZoomTimeseriesDrillThruInfo =
   };
 
 export type DrillThruDisplayInfo =
+  | ExtractColumnDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
