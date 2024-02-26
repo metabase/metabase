@@ -30,6 +30,7 @@
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
   to SnowcatCloud, at the same time that the data sent to the collector is updated."
   {::account              "1-0-1"
+   ::browse_data          "1-0-0"
    ::invite               "1-0-1"
    ::csvupload            "1-0-0"
    ::dashboard            "1-1-3"
@@ -49,6 +50,8 @@
   "The schema to use for each analytics event."
   {::new-instance-created           ::account
    ::new-user-created               ::account
+   ::browse_data_model_clicked      ::browse_data
+   ::browse_data_table_clicked      ::browse_data
    ::invite-sent                    ::invite
    ::index-model-entities-enabled   ::model
    ::dashboard-created              ::dashboard
