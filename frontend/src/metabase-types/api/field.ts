@@ -129,3 +129,8 @@ export interface FieldValuesResult {
 export interface FieldFormattingSettings {
   currency?: string;
 }
+
+export type FieldWithMaybeIndex = Field & {
+  should_index?: boolean;
+  field_ref?: FieldReference;
+};

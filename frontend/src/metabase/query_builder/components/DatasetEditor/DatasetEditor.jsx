@@ -11,7 +11,6 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
-import { modelIndexes } from "metabase/entities";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
@@ -27,6 +26,7 @@ import {
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
+import { useListModelIndexesQuery } from "metabase/redux/api/model-indexes";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import {
@@ -202,8 +202,9 @@ function DatasetEditor(props) {
     onSave,
     handleResize,
     onOpenModal,
-    modelIndexes = [],
   } = props;
+
+  const { data: modelIndexes = [] } = useListModelIndexesQuery(dataset?.id());
 
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
@@ -531,10 +532,4 @@ function DatasetEditor(props) {
 
 DatasetEditor.propTypes = propTypes;
 
-export default _.compose(
-  modelIndexes.loadList({
-    query: (_state, props) => ({ model_id: props?.question?.id() }),
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(DatasetEditor);
+export default connect(mapStateToProps, mapDispatchToProps)(DatasetEditor);

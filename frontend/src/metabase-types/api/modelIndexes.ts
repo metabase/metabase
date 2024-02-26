@@ -25,3 +25,9 @@ export type IndexedEntity = {
   name: string;
   pk_ref: FieldReference;
 };
+
+export interface CreateModelIndexInput {
+  model_id: number;
+  value_ref: FieldReference | undefined;
+  pk_ref: FieldReference;
+}
