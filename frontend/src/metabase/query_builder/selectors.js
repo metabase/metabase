@@ -613,7 +613,6 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     getIsDirty,
     isResultsMetadataDirty,
     getQuestion,
-    getIsSavedQuestionChanged,
     getOriginalQuestion,
     getUiControls,
   ],
@@ -622,7 +621,6 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     isDirty,
     isMetadataDirty,
     question,
-    isSavedQuestionChanged,
     originalQuestion,
     uiControls,
   ) => {
@@ -642,7 +640,10 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
         return !question.legacyQuery().isEmpty();
       }
 
-      return isSavedQuestionChanged;
+      const rawQuery = Lib.rawNativeQuery(question.query());
+      const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());
+      const hasQueryChanged = rawQuery !== rawOriginalQuery;
+      return hasQueryChanged;
     }
 
     const isOriginalQuestionNative =
