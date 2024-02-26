@@ -51,6 +51,7 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   headerIcon: IconProps;
+  errorIcon: IconName;
   actionButtons: ReactNode;
   fontFamily: string;
   isPlaceholder?: boolean;

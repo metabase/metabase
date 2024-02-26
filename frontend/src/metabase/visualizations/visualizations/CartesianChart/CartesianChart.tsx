@@ -10,10 +10,11 @@ import LegendCaption from "metabase/visualizations/components/legend/LegendCapti
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
+import { VizErrorBoundary } from "metabase/visualizations/components/VizErrorBoundary";
 import { useModelsAndOption } from "./use-models-and-option";
 import { useChartDebug } from "./use-chart-debug";
 
-export function CartesianChart(props: VisualizationProps) {
+function _CartesianChart(props: VisualizationProps) {
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
@@ -98,5 +99,17 @@ export function CartesianChart(props: VisualizationProps) {
         />
       </CartesianChartLegendLayout>
     </CartesianChartRoot>
+  );
+}
+
+export function CartesianChart(props: VisualizationProps) {
+  return (
+    <VizErrorBoundary
+      errorIcon={props.errorIcon}
+      isDashboard={props.isDashboard}
+      small={props.width < 330}
+    >
+      <_CartesianChart {...props} />
+    </VizErrorBoundary>
   );
 }
