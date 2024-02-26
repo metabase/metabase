@@ -200,7 +200,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
           site_locale: locale?.code,
           allow_tracking: isTrackingAllowed.toString(),
         },
-        license_token: licenseToken,
+        license_token: licenseToken ?? undefined,
       });
 
       if (usageReason === "embedding" || usageReason === "both") {

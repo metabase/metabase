@@ -84,6 +84,35 @@ describe("setup (EE, no token)", () => {
       ).toBeInTheDocument();
     });
 
+    it("should not save the token if it's invalid", async () => {
+      await setupForLicenseStep();
+
+      setupForTokenCheckEndpoint({ valid: false });
+      userEvent.paste(
+        screen.getByRole("textbox", { name: "Token" }),
+        sampleToken,
+      );
+
+      screen.getByRole("button", { name: "Activate" }).click();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Activate" }),
+        ).not.toHaveProperty("data-loading", true);
+      });
+
+      clickNextStep();
+
+      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
+
+      screen.getByRole("button", { name: "Finish" }).click();
+
+      const setupCall = fetchMock.lastCall(`path:/api/setup`);
+      expect(await setupCall?.request?.json()).not.toHaveProperty(
+        "license_token",
+      );
+    });
+
     it("should go to the next step when activating a valid token", async () => {
       await setupForLicenseStep();
 
