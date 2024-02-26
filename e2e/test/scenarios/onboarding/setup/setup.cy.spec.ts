@@ -456,7 +456,7 @@ describeWithSnowplow("scenarios > setup", () => {
       goodEvents++; // 10/11 - setup/step_seen "data_usage"
       expectGoodSnowplowEvent({
         event: "step_seen",
-        step_number: 5 + (isEE ? 1 : 0),
+        step_number: isEE ? 6 : 5,
         step: "data_usage",
       });
 
@@ -466,7 +466,7 @@ describeWithSnowplow("scenarios > setup", () => {
       goodEvents++; // 12/13- setup/step_seen "completed"
       expectGoodSnowplowEvent({
         event: "step_seen",
-        step_number: 6 + (isEE ? 1 : 0),
+        step_number: isEE ? 7 : 6,
         step: "completed",
       });
 
