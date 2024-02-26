@@ -20,24 +20,24 @@
   (when (lib.types.isa/temporal? column)
     (let [adjusted (lib.drill-thru.column-filter/filter-drill-adjusted-query query stage-number column column-ref)]
       (merge {:lib/type    :metabase.lib.drill-thru/drill-thru
-              :type    :drill-thru/column-extract
-              :actions (mapv
-                         (fn [unit]
-                           {:lib/type :drill-thru/column-extract-action
-                           :unit      unit})
-                          lib.schema.temporal-bucketing/ordered-date-truncation-units)}
+              :type        :drill-thru/column-extract
+              :extractions (mapv
+                             (fn [unit]
+                               {:lib/type :drill-thru/column-extract-type
+                                :unit      unit})
+                             lib.schema.temporal-bucketing/ordered-date-truncation-units)}
              adjusted))))
 
-(mu/defn column-extract-actions :- [:sequential ::lib.schema.drill-thru/drill-thru.column-extract-action]
+(mu/defn column-extract-types :- [:sequential ::lib.schema.drill-thru/drill-thru.column-extract-type]
   [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
                    [:map [:type [:= :drill-thru/column-extract]]]]]
-  (:actions drill-thru))
+  (:extractions drill-thru))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-extract
   [_query _stage-number _drill]
   {:type :drill-thru/column-extract})
 
-(defmethod lib.metadata.calculation/display-info-method :drill-thru/column-extract-action
+(defmethod lib.metadata.calculation/display-info-method :drill-thru/column-extract-type
   [query stage-number {:keys [unit]}]
   {:display-name (lib.temporal-bucket/describe-temporal-unit unit)})
 
