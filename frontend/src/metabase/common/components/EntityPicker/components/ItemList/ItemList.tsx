@@ -46,17 +46,13 @@ export const ItemList = <TItem extends TypeWithModel>({
     return (
       <Box miw={310} h="100%" aria-label={t`loading`}>
         <Center p="lg" h="100%">
-          <DelayedLoadingSpinner delay={100} />
+          <DelayedLoadingSpinner delay={200} />
         </Center>
       </Box>
     );
   }
 
-  if (!items) {
-    return null;
-  }
-
-  if (!items.length) {
+  if (Array.isArray(items) && !items.length) {
     return (
       <Flex justify="center" align="center" direction="column" h="100%">
         <EmptyState

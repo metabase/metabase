@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useMount } from "react-use";
 
 import { Loader, Flex, Text } from "metabase/ui";
 
@@ -19,12 +20,12 @@ export const DelayedLoadingSpinner = ({
 }) => {
   const [show, setShow] = useState(false);
 
-  useEffect(() => {
+  useMount(() => {
     const timeout = setTimeout(() => {
       setShow(true);
     }, delay);
     return () => clearTimeout(timeout);
-  }, [delay]);
+  });
 
   if (!show) {
     return null;

@@ -51,14 +51,14 @@ export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
 
 const getSortedTopLevelPersonalCollections = (
   personalCollections?: Collection[],
-): CollectionPickerItem[] =>
+): CollectionPickerItem[] | null =>
   personalCollections
     ?.filter(isRootPersonalCollection)
     .map((collection: Collection) => ({
       ...collection,
       model: "collection" as SearchModelType,
     }))
-    .sort((a, b) => a?.name.localeCompare(b.name)) ?? [];
+    .sort((a, b) => a?.name.localeCompare(b.name)) ?? null;
 
 const isRootPersonalCollection = (collection: Collection) =>
   collection.is_personal && collection.location === "/";
