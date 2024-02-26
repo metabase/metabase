@@ -1,58 +1,59 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require
-   [cheshire.core :as json]
-   [clojure.set :as set]
-   [clojure.string :as str]
-   [clojure.test :refer :all]
-   [clojure.walk :as walk]
-   [medley.core :as m]
-   [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.api.card-test :as api.card-test]
-   [metabase.api.common :as api]
-   [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.pivots :as api.pivots]
-   [metabase.config :as config]
-   [metabase.dashboard-subscription-test :as dashboard-subscription-test]
-   [metabase.http-client :as client]
-   [metabase.models
-    :refer [Action
-            Card
-            Collection
-            Dashboard
-            DashboardCard
-            DashboardCardSeries
-            Database
-            Field
-            FieldValues
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            Revision
-            Table
-            User]]
-   [metabase.models.collection :as collection]
-   [metabase.models.dashboard :as dashboard]
-   [metabase.models.dashboard-card :as dashboard-card]
-   [metabase.models.dashboard-test :as dashboard-test]
-   [metabase.models.field-values :as field-values]
-   [metabase.models.interface :as mi]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.chain-filter-test :as chain-filter-test]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.revision :as revision]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.streaming.test-util :as streaming.test-util]
-   [metabase.server.middleware.util :as mw.util]
-   [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2]
-   [toucan2.protocols :as t2.protocols]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+    [cheshire.core :as json]
+    [clojure.set :as set]
+    [clojure.string :as str]
+    [clojure.test :refer :all]
+    [clojure.walk :as walk]
+    [medley.core :as m]
+    [metabase.analytics.snowplow-test :as snowplow-test]
+    [metabase.api.card-test :as api.card-test]
+    [metabase.api.common :as api]
+    [metabase.api.dashboard :as api.dashboard]
+    [metabase.api.pivots :as api.pivots]
+    [metabase.config :as config]
+    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
+    [metabase.http-client :as client]
+    [metabase.models
+     :refer [Action
+             Card
+             Collection
+             Dashboard
+             DashboardCard
+             DashboardCardSeries
+             Database
+             Field
+             FieldValues
+             PermissionsGroup
+             PermissionsGroupMembership
+             Pulse
+             Revision
+             Table
+             User]]
+    [metabase.models.collection :as collection]
+    [metabase.models.dashboard :as dashboard]
+    [metabase.models.dashboard-card :as dashboard-card]
+    [metabase.models.dashboard-test :as dashboard-test]
+    [metabase.models.field-values :as field-values]
+    [metabase.models.interface :as mi]
+    [metabase.models.params.chain-filter :as chain-filter]
+    [metabase.models.params.chain-filter-test :as chain-filter-test]
+    [metabase.models.permissions :as perms]
+    [metabase.models.permissions-group :as perms-group]
+    [metabase.models.pulse :as pulse]
+    [metabase.models.revision :as revision]
+    [metabase.query-processor :as qp]
+    [metabase.query-processor.middleware.permissions :as qp.perms]
+    [metabase.query-processor.streaming.test-util :as streaming.test-util]
+    [metabase.server.middleware.util :as mw.util]
+    [metabase.test :as mt]
+    [metabase.test.fixtures :as fixtures]
+    [metabase.util :as u]
+    [ring.util.codec :as codec]
+    [toucan2.core :as t2]
+    [toucan2.protocols :as t2.protocols]
+    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -4119,6 +4120,58 @@
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403
                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))))
+
+(deftest broken-subscription-data-logic-test
+  (testing "Ensure underlying logic of fixing broken pulses works (#30100)"
+    (let [param {:name "Source"
+                 :slug "source"
+                 :id   "_SOURCE_PARAM_ID_"
+                 :type :string/=}]
+      (mt/dataset test-data
+        (mt/with-temp
+          [:model/Card {card-id :id} {:name          "Native card"
+                                      :database_id   (mt/id)
+                                      :dataset_query {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (mt/id :people)}}
+                                      :dataset       true}
+           :model/Dashboard {dash-id :id} {:name "My Awesome Dashboard"}
+           :model/DashboardCard {dash-card-id :id} {:dashboard_id dash-id
+                                                    :card_id      card-id}
+           :model/Pulse {pulse-id :id
+                         :as      pulse} {:name         "Test Pulse"
+                                          :dashboard_id dash-id
+                                          :creator_id   (mt/user->id :trashbird)
+                                          :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
+           :model/PulseCard _ {:pulse_id          pulse-id
+                               :card_id           card-id
+                               :dashboard_card_id dash-card-id}
+           :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                       :pulse_id     pulse-id
+                                                       :enabled      true}
+           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                           :user_id          (mt/user->id :rasta)}
+           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                           :user_id          (mt/user->id :crowberto)}]
+          (testing "We can identify the broken parameter ids"
+            (is (= [(:id param)]
+                   (#'api.dashboard/broken-parameter-ids dash-id {(:id param) param}))))
+          (testing "We can gather all needed data regarding broken params"
+            (is (=? [{:pulse-creator     {:email "trashbird@metabase.com"}
+                      :dashboard-creator {:email "rasta@metabase.com"}
+                      :pulse-id          pulse-id
+                      :pulse-name        "Test Pulse",
+                      :dashboard-id      dash-id
+                      :bad-parameters    [{:name "Source", :value ["Twitter" "Facebook"]}]
+                      :dashboard-name    "My Awesome Dashboard"
+                      :affected-users    [{:email "crowberto@metabase.com"}
+                                          {:email "rasta@metabase.com"}]}]
+                    (#'api.dashboard/broken-subscription-data dash-id {(:id param) param}))))
+          (testing "Pulse can be archived"
+            (testing "Pulse starts as unarchived"
+              (is (false? (:archived pulse))))
+            (testing "Pulse is now archived"
+              (is (true? (:archived (pulse/update-pulse! {:id pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
