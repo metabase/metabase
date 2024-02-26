@@ -1,17 +1,12 @@
-import { dissocIn } from "icepick";
 import _ from "underscore";
 
+import { modelIndexesApi } from "metabase/redux/api/model-indexes";
 import type Question from "metabase-lib/Question";
-import type { FieldReference, Field } from "metabase-types/api";
+import type { FieldWithMaybeIndex } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 import type { Dispatch } from "metabase-types/store";
 
-import { ModelIndexes } from "./model-indexes";
-
-export type FieldWithMaybeIndex = Field & {
-  should_index?: boolean;
-  field_ref?: FieldReference;
-};
+import { getPkRef } from "./utils";
 
 export const updateModelIndexes =
   (model: Question) => async (dispatch: Dispatch, getState: any) => {
@@ -25,10 +20,10 @@ export const updateModelIndexes =
       return;
     }
 
+    const listResultSelector =
+      modelIndexesApi.endpoints.listModelIndexes.select(model.id());
     const existingIndexes: ModelIndex[] =
-      ModelIndexes.selectors.getList(getState(), {
-        entityQuery: { model_id: model.id() },
-      }) ?? [];
+      listResultSelector(getState()).data ?? [];
 
     const newFieldsToIndex = getFieldsToIndex(
       fieldsWithIndexFlags,
@@ -40,16 +35,18 @@ export const updateModelIndexes =
     );
 
     if (newFieldsToIndex.length) {
-      const pkRef = ModelIndexes.utils.getPkRef(fields);
+      const pkRef = getPkRef(fields);
 
       if (pkRef) {
         await Promise.all(
           newFieldsToIndex.map(field =>
-            ModelIndexes.api.create({
-              model_id: model.id(),
-              value_ref: field.field_ref,
-              pk_ref: pkRef,
-            }),
+            dispatch(
+              modelIndexesApi.endpoints.createModelIndex.initiate({
+                model_id: model.id(),
+                value_ref: field.field_ref,
+                pk_ref: pkRef,
+              }),
+            ),
           ),
         );
       }
@@ -58,12 +55,12 @@ export const updateModelIndexes =
     if (indexIdsToRemove.length) {
       await Promise.all(
         indexIdsToRemove.map(indexId =>
-          ModelIndexes.api.delete({ id: indexId }),
+          dispatch(
+            modelIndexesApi.endpoints.deleteModelIndex.initiate(indexId),
+          ),
         ),
       );
     }
-
-    dispatch(ModelIndexes.actions.invalidateLists());
   };
 
 function getFieldsToIndex(
@@ -107,28 +104,4 @@ function getIndexIdsToRemove(
   );
 
   return indexIdsToRemove;
-}
-
-export function cleanIndexFlags(fields: Field[] = []) {
-  const indexesToClean = fields.reduce(
-    (
-      indexesToClean: number[],
-      field: FieldWithMaybeIndex,
-      thisIndex: number,
-    ) => {
-      if (field.should_index !== undefined) {
-        indexesToClean.push(thisIndex);
-      }
-      return indexesToClean;
-    },
-    [],
-  );
-
-  const newResultMetadata = [...fields];
-  for (const index of indexesToClean) {
-    newResultMetadata[index] = dissocIn(newResultMetadata[index], [
-      "should_index",
-    ]);
-  }
-  return newResultMetadata;
 }

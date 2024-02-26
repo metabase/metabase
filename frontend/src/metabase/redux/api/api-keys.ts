@@ -14,7 +14,7 @@ import type {
 
 import { Api } from "./api";
 
-const extendedApi = Api.injectEndpoints({
+const apiKeysApi = Api.injectEndpoints({
   endpoints: builder => ({
     listApiKey: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,
@@ -57,4 +57,4 @@ export const {
   useRegenerateApiKeyMutation,
   useUpdateApiKeyMutation,
   useDeleteApiKeyMutation,
-} = extendedApi;
+} = apiKeysApi;
