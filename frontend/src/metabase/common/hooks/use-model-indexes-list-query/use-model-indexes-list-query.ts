@@ -4,14 +4,11 @@ import type {
 } from "metabase/common/hooks/use-entity-list-query";
 import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
 import { ModelIndexes } from "metabase/entities/model-indexes";
-import type {
-  ModelIndexesListQuery,
-  ModelIndexesListResult,
-} from "metabase-types/api";
+import type { ModelIndexesListQuery, ModelIndex } from "metabase-types/api";
 
 export const useModelIndexesListQuery = (
   props: UseEntityListQueryProps<ModelIndexesListQuery> = {},
-): UseEntityListQueryResult<ModelIndexesListResult> => {
+): UseEntityListQueryResult<ModelIndex> => {
   return useEntityListQuery(props, {
     fetchList: ModelIndexes.actions.fetchList,
     getList: ModelIndexes.selectors.getList,
