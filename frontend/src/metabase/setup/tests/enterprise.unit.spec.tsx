@@ -228,6 +228,34 @@ describe("setup (EE, no token)", () => {
         license_token: sampleToken,
       });
     });
+
+    it("should handle a response with error_code `unable_to_validate`", async () => {
+      await setupForLicenseStep();
+
+      setupForTokenCheckEndpoint({
+        valid: false,
+        error_code: "unable_to_validate",
+      });
+
+      userEvent.paste(
+        screen.getByRole("textbox", { name: "Token" }),
+        sampleToken,
+      );
+
+      screen.getByRole("button", { name: "Activate" }).click();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Activate" }),
+        ).not.toHaveProperty("data-loading", true);
+      });
+
+      expect(
+        screen.getByText(
+          "We couldn’t connect to our servers to activate the license. Please try again. You can also set this up at a later time in settings.",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 });
 

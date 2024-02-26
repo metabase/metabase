@@ -17,7 +17,7 @@ export const LicenseTokenForm = ({
 }: LicenseTokenFormProps) => {
   const [token, setToken] = useState(initialValue);
   const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error"
+    "idle" | "loading" | "success" | "invalid_token" | "unable_to_validate"
   >("idle");
 
   const isInputCorrectLength = token.length === 64;
@@ -29,11 +29,13 @@ export const LicenseTokenForm = ({
       if (response.valid) {
         setStatus("success");
         onValidSubmit(token);
+      } else if (response.error_code === "unable_to_validate") {
+        setStatus("unable_to_validate");
       } else {
-        setStatus("error");
+        setStatus("invalid_token");
       }
     } catch (e) {
-      setStatus("error");
+      setStatus("unable_to_validate");
     }
   };
 
@@ -50,10 +52,16 @@ export const LicenseTokenForm = ({
               oldState !== "loading" ? "idle" : "loading",
             );
           }}
-          error={status === "error"}
+          error={status === "invalid_token"}
         />
-        {status === "error" && (
+        {status === "invalid_token" && (
           <Text color="error">{t`This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working`}</Text>
+        )}
+        {status === "unable_to_validate" && (
+          <>
+            <Text color="error">{t`We couldn’t connect to our servers to activate the license. Please try again.`}</Text>
+            <Text color="error">{t`You can also set this up at a later time in settings.`}</Text>
+          </>
         )}
       </Box>
       <Flex gap="lg">

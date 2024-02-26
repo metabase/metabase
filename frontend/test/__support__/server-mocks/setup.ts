@@ -10,6 +10,9 @@ export function setupAdminCheckListEndpoint(items: SetupCheckListItem[]) {
   fetchMock.get("path:/api/setup/admin_checklist", items);
 }
 
-export function setupForTokenCheckEndpoint(response: { valid: boolean }) {
+export function setupForTokenCheckEndpoint(response: {
+  valid: boolean;
+  error_code?: string;
+}) {
   fetchMock.get("path:/api/setup/token-check", response);
 }
