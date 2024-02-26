@@ -1,5 +1,6 @@
-import Fields from "metabase/entities/fields";
+/* eslint-disable import/order */
 import Tables from "metabase/entities/tables";
+import Fields from "metabase/entities/fields";
 
 import { fetchField, loadMetadataForDependentItems } from "./metadata";
 
