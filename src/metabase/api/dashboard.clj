@@ -679,6 +679,7 @@
       (for [broken-pulse (t2/select :model/Pulse :id [:in (params->pulse-ids broken-link-ids)])]
         (assoc
           (bad-pulse-notification-data broken-pulse broken-link-ids)
+          :dashboard-id dashboard-id
           :dashboard-name dashboard-name
           :dashboard-description dashboard-description
           :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name]))))))
