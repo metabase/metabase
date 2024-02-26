@@ -4,6 +4,7 @@ import type * as Lib from "metabase-lib";
 import { automaticInsightsDrill } from "./automatic-insights-drill";
 import { columnFilterDrill } from "./column-filter-drill";
 import { distributionDrill } from "./distribution-drill";
+import { extractColumnDrill } from "./extract-column-drill";
 import { fkDetailsDrill } from "./fk-details-drill";
 import { fkFilterDrill } from "./fk-filter-drill";
 import { pivotDrill } from "./pivot-drill";
@@ -22,7 +23,7 @@ export const DRILLS: Record<Lib.DrillThruType, Drill<any>> = {
   "drill-thru/automatic-insights": automaticInsightsDrill,
   "drill-thru/column-filter": columnFilterDrill,
   "drill-thru/distribution": distributionDrill,
-  "drill-thru/extract-column": () => [],
+  "drill-thru/extract-column": extractColumnDrill,
   "drill-thru/fk-details": fkDetailsDrill,
   "drill-thru/fk-filter": fkFilterDrill,
   "drill-thru/pivot": pivotDrill,

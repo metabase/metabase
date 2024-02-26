@@ -24,7 +24,7 @@
               :extractions (mapv
                             (fn [unit]
                               {:lib/type :drill-thru/extract-column-type
-                               :unit       unit})
+                               :unit      unit})
                             lib.schema.temporal-bucketing/ordered-date-truncation-units)}
              adjusted))))
 
