@@ -284,6 +284,28 @@
               (is (= expected-lucky-tree
                      (collection-tree-view ids response))))))))))
 
+(deftest collection-tree-here-and-below-test
+  (testing "Tree should properly indicate contents"
+    (with-collection-hierarchy [a b]
+      (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
+        (t2.with-temp/with-temp [Card _ {:name "Personal Card"
+                                         :collection_preview false
+                                         :collection_id (:id personal-collection)}
+                                 Card _ {:name "Personal Model"
+                                         :type :model
+                                         :collection_preview false
+                                         :collection_id (:id personal-collection)}
+                                 Card _ {:name "A Card"
+                                         :collection_preview false
+                                         :collection_id (:id a)}
+                                 Card _ {:name "B Model"
+                                         :type :model
+                                         :collection_preview false
+                                         :collection_id (:id b)}]
+          (is (=? [{:here ["card"] :below ["dataset"] :children [{:here ["dataset"]}]}
+                   {:here ["card" "dataset"]}]
+                  (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
+
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
     (with-collection-hierarchy [a b c d e f g]

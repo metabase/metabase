@@ -200,7 +200,7 @@
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                                          (update acc (if (= card-type :model) :dataset :card) conj collection-id))
+                                          (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                                         {:dataset #{}
                                          :card    #{}}
                                         (mdb.query/reducible-query {:select-distinct [:collection_id :type]
