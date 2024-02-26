@@ -459,7 +459,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
     "shows format query button only for sql queries",
     { tags: "@mongo" },
     () => {
-      const MONGO_DB_NAME = "QA Mongo4";
+      const MONGO_DB_NAME = "QA Mongo";
 
       cy.intercept("POST", "/api/card").as("createQuestion");
       cy.intercept("POST", "/api/dataset").as("dataset");

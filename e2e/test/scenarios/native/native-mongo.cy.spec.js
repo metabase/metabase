@@ -1,6 +1,6 @@
 import { restore } from "e2e/support/helpers";
 
-const MONGO_DB_NAME = "QA Mongo4";
+const MONGO_DB_NAME = "QA Mongo";
 
 describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   before(() => {

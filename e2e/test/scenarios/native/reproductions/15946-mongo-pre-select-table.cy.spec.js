@@ -1,6 +1,6 @@
 import { popover, restore, startNewQuestion } from "e2e/support/helpers";
 
-const MONGO_DB_NAME = "QA Mongo4";
+const MONGO_DB_NAME = "QA Mongo";
 
 describe("issue 15946", { tags: "@mongo" }, () => {
   before(() => {

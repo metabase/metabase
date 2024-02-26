@@ -5,7 +5,7 @@ const supportedDatabases = [
   {
     database: "Mongo",
     snapshotName: "mongo-5",
-    dbName: "QA Mongo4",
+    dbName: "QA Mongo",
   },
   {
     database: "MySQL",
