@@ -15,8 +15,8 @@
    stage-number :- :int
    {:keys [column]} :- ::lib.schema.drill-thru/context]
   (when (lib.types.isa/temporal? column)
-    { :lib/type :metabase.lib.drill-thru/drill-thru
-      :type     :drill-thru/extract-column }))
+    {:lib/type :metabase.lib.drill-thru/drill-thru
+     :type     :drill-thru/extract-column}))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/extract-column
   [_query _stage-number _drill]
