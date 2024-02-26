@@ -525,6 +525,15 @@ export type FilterDrillDetails = {
 
 export type PivotType = "category" | "location" | "time";
 
+declare const ExtractColumnAction: unique symbol;
+export type ExtractColumnAction = unknown & {
+  _opaque: typeof ExtractColumnAction;
+};
+
+export type ExtractColumnActionDisplayInfo = {
+  displayName: string;
+};
+
 export interface ClickObjectDimension {
   value: RowValue;
   column: DatasetColumn;
