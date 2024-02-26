@@ -54,6 +54,7 @@ describe("useModelIndexesListQuery", () => {
     await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_ITEM.state)).toBeInTheDocument();
   });
+
   it("should not have any metadata in the response", async () => {
     setup();
     await waitForLoaderToBeRemoved();
