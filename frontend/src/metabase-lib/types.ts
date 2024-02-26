@@ -440,7 +440,7 @@ export type DrillThruType =
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
 export type ExtractColumnDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/extract-column">;
+  BaseDrillThruInfo<"drill-thru/column-extract">;
 
 export type QuickFilterDrillThruOperator =
   | "="
