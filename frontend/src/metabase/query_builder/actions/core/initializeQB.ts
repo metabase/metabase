@@ -1,39 +1,36 @@
-import querystring from "querystring";
 import type { LocationDescriptorObject } from "history";
+import querystring from "querystring";
 
+import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Questions from "metabase/entities/questions";
+import Snippets from "metabase/entities/snippets";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-
+import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
-
-import Snippets from "metabase/entities/snippets";
-import Questions from "metabase/entities/questions";
-import { loadMetadataForCard } from "metabase/questions/actions";
-import { fetchAlertsForQuestion } from "metabase/alert/alert";
-import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
-
+import Question from "metabase-lib/Question";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import type { Card } from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
-import { isSavedCard } from "metabase-types/guards";
-import { isNotNull } from "metabase/lib/types";
-import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
-import { normalize } from "metabase-lib/queries/utils/normalize";
-import Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
 
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
-
 import { cancelQuery, runQuestionQuery } from "../querying";
+
 import { resetQB } from "./core";
 import {
   propagateDashboardParameters,

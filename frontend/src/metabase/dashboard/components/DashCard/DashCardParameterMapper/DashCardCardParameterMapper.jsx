@@ -1,22 +1,14 @@
-import { useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
+import { useState, useMemo, useCallback } from "react";
 import { connect } from "react-redux";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
-import {
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-  MOBILE_DEFAULT_CARD_HEIGHT,
-} from "metabase/visualizations/shared/utils/sizes";
-
+import { isActionDashCard } from "metabase/actions/utils";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
-
-import MetabaseSettings from "metabase/lib/settings";
-import { getMetadata } from "metabase/selectors/metadata";
-
-import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import {
   getNativeDashCardEmptyMappingText,
   isNativeDashCard,
@@ -24,20 +16,24 @@ import {
   getVirtualCardType,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
-
-import { isActionDashCard } from "metabase/actions/utils";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import MetabaseSettings from "metabase/lib/settings";
+import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
+import { getMetadata } from "metabase/selectors/metadata";
+import {
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
+  MOBILE_DEFAULT_CARD_HEIGHT,
+} from "metabase/visualizations/shared/utils/sizes";
 import Question from "metabase-lib/Question";
-import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
-
+import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import { normalize } from "metabase-lib/queries/utils/normalize";
+
+import { setParameterMapping } from "../../../actions";
 import {
   getEditingParameter,
   getParameterTarget,
   getParameterMappingOptions,
 } from "../../../selectors";
-import { setParameterMapping } from "../../../actions";
 
 import {
   Container,

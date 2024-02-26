@@ -1,6 +1,8 @@
-import fetchMock from "fetch-mock";
 import { render, screen } from "@testing-library/react";
+import fetchMock from "fetch-mock";
+
 import { UtilApi } from "metabase/services";
+
 import { Logs } from "./Logs";
 
 describe("Logs", () => {

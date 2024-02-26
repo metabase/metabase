@@ -1,5 +1,5 @@
-import type { Collection, CollectionId } from "metabase-types/api";
 import type { IconName } from "metabase/core/components/Icon";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 // see entities/collections/getExpandedCollectionsById.js
 export type ExpandedCollection = Collection & {

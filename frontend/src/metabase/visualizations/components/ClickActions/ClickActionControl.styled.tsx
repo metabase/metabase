@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { alpha, color } from "metabase/lib/colors";
+
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
+import { alpha, color } from "metabase/lib/colors";
 
 export const IconWrapper = styled.span`
   display: flex;

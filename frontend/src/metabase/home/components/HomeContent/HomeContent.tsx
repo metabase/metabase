@@ -1,19 +1,20 @@
-import { useSelector } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { getUser } from "metabase/selectors/user";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   useDatabaseListQuery,
   usePopularItemListQuery,
   useRecentItemListQuery,
 } from "metabase/common/hooks";
-import type { PopularItem, RecentItem, User } from "metabase-types/api";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import { getUser } from "metabase/selectors/user";
 import type Database from "metabase-lib/metadata/Database";
+import type { PopularItem, RecentItem, User } from "metabase-types/api";
+
+import { getIsXrayEnabled } from "../../selectors";
+import { isWithinWeeks } from "../../utils";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
-import { getIsXrayEnabled } from "../../selectors";
-import { isWithinWeeks } from "../../utils";
 
 export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);

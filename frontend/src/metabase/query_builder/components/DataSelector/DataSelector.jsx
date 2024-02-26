@@ -1,46 +1,45 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import PropTypes from "prop-types";
 import { createRef, createElement, Component } from "react";
 import { connect } from "react-redux";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import { Icon } from "metabase/core/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
-
+import { Icon } from "metabase/core/components/Icon";
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
-import Tables from "metabase/entities/tables";
 import Search from "metabase/entities/search";
-
-import { getMetadata } from "metabase/selectors/metadata";
+import Tables from "metabase/entities/tables";
 import { getHasDataAccess } from "metabase/selectors/data";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { getSchemaName } from "metabase-lib/metadata/utils/schema";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
+import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+
+import {
+  EmptyStateContainer,
+  TableSearchContainer,
+} from "./DataSelector.styled";
+import DataBucketPicker from "./DataSelectorDataBucketPicker";
+import DatabasePicker from "./DataSelectorDatabasePicker";
+import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
+import FieldPicker from "./DataSelectorFieldPicker";
+import SchemaPicker from "./DataSelectorSchemaPicker";
+import TablePicker from "./DataSelectorTablePicker";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
-import DataBucketPicker from "./DataSelectorDataBucketPicker";
-import DatabasePicker from "./DataSelectorDatabasePicker";
-import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
-import SchemaPicker from "./DataSelectorSchemaPicker";
-import FieldPicker from "./DataSelectorFieldPicker";
-import TablePicker from "./DataSelectorTablePicker";
-import {
-  EmptyStateContainer,
-  TableSearchContainer,
-} from "./DataSelector.styled";
 
 import "./DataSelector.css";
 

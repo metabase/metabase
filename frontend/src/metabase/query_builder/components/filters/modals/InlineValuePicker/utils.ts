@@ -1,6 +1,6 @@
-import { isString } from "metabase-lib/types/utils/isa";
 import type Field from "metabase-lib/metadata/Field";
 import type Filter from "metabase-lib/queries/structured/Filter";
+import { isString } from "metabase-lib/types/utils/isa";
 
 const fieldWidth = {
   small: "11rem",

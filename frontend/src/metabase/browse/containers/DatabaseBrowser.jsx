@@ -1,18 +1,15 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import Database from "metabase/entities/databases";
-
-import { color } from "metabase/lib/colors";
-import * as Urls from "metabase/lib/urls";
-
+import BrowseHeader from "metabase/browse/components/BrowseHeader";
+import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import { Grid } from "metabase/components/Grid";
 import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
+import Database from "metabase/entities/databases";
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 
-import BrowseHeader from "metabase/browse/components/BrowseHeader";
-
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import { DatabaseCard, DatabaseGridItem } from "./DatabaseBrowser.styled";
 
 function DatabaseBrowser({ databases }) {

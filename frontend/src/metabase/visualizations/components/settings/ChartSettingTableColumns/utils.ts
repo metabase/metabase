@@ -1,14 +1,16 @@
 import { t } from "ttag";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { IconName } from "metabase/core/components/Icon";
+import * as Lib from "metabase-lib";
+import { getIconForField } from "metabase-lib/metadata/utils/fields";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+
 import type {
   ColumnGroupItem,
   ColumnMetadataItem,

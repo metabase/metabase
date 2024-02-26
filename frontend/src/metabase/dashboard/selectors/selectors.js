@@ -1,22 +1,19 @@
-import _ from "underscore";
-
 import { createSelector } from "@reduxjs/toolkit";
-import { getMetadata } from "metabase/selectors/metadata";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-
-import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import _ from "underscore";
 
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-
+import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "../utils";
+
 import {
   getDashboardId,
   getDashCardById,

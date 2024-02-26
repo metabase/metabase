@@ -1,7 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-
+import Question from "metabase-lib/Question";
+import {
+  DEFAULT_QUERY,
+  SAMPLE_DATABASE,
+  SAMPLE_METADATA,
+} from "metabase-lib/test-helpers";
+import type {
+  FieldReference,
+  TableColumnOrderSetting,
+} from "metabase-types/api";
 import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -9,18 +18,6 @@ import {
   PRODUCTS,
   createOrdersTableDatasetColumns,
 } from "metabase-types/api/mocks/presets";
-
-import type {
-  FieldReference,
-  TableColumnOrderSetting,
-} from "metabase-types/api";
-
-import {
-  DEFAULT_QUERY,
-  SAMPLE_DATABASE,
-  SAMPLE_METADATA,
-} from "metabase-lib/test-helpers";
-import Question from "metabase-lib/Question";
 
 import { ChartSettingAddRemoveColumns } from "./ChartSettingAddRemoveColumns";
 

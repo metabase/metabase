@@ -1,14 +1,14 @@
-import { createRef, Component } from "react";
 import PropTypes from "prop-types";
-
+import { createRef, Component } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { Icon } from "metabase/core/components/Icon";
 import { capitalize } from "metabase/lib/formatting";
-import ObjectRetireModal from "./ObjectRetireModal";
 
 import { TriggerIconContainer, ActionLink } from "./ObjectActionSelect.styled";
+import ObjectRetireModal from "./ObjectRetireModal";
 
 export default class ObjectActionsSelect extends Component {
   constructor(props) {

@@ -1,28 +1,25 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
+import type { CollectionEndpoints } from "__support__/server-mocks";
+import {
+  setupCollectionsEndpoints,
+  setupCollectionByIdEndpoint,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   getBrokenUpTextMatcher,
   renderWithProviders,
   screen,
   waitFor,
 } from "__support__/ui";
-import { setupEnterpriseTest } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import type { CollectionEndpoints } from "__support__/server-mocks";
-import {
-  setupCollectionsEndpoints,
-  setupCollectionByIdEndpoint,
-} from "__support__/server-mocks";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
-
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { openCollection } from "metabase/containers/ItemPicker/test-utils";
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { CollectionId } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 import {
@@ -31,8 +28,10 @@ import {
   ORDERS_ID,
   ORDERS,
 } from "metabase-types/api/mocks/presets";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Question from "metabase-lib/Question";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

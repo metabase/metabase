@@ -1,57 +1,39 @@
-import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import type * as React from "react";
-import { t } from "ttag";
-import _ from "underscore";
-import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
-import type { OnScrollParams } from "react-virtualized";
+import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
-
 import { usePrevious, useMount } from "react-use";
-import { getScrollBarSize } from "metabase/lib/dom";
-import { getSetting } from "metabase/selectors/settings";
+import type { OnScrollParams } from "react-virtualized";
+import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
+import { t } from "ttag";
+import _ from "underscore";
 
 import { sumArray } from "metabase/lib/arrays";
-
 import {
   COLUMN_SHOW_TOTALS,
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/lib/data_grid";
-
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
+import { getScrollBarSize } from "metabase/lib/dom";
+import { getSetting } from "metabase/selectors/settings";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { PivotTableClicked, HeaderWidthType } from "./types";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-import { RowToggleIcon } from "./RowToggleIcon";
-
+import {
+  PivotTableRoot,
+  PivotTableTopLeftCellsContainer,
+} from "./PivotTable.styled";
 import {
   Cell,
   TopHeaderCell,
   LeftHeaderCell,
   BodyCell,
 } from "./PivotTableCell";
-
-import {
-  PivotTableRoot,
-  PivotTableTopLeftCellsContainer,
-} from "./PivotTable.styled";
-
-import {
-  getLeftHeaderWidths,
-  databaseSupportsPivotTables,
-  isSensible,
-  checkRenderable,
-  leftHeaderCellSizeAndPositionGetter,
-  topHeaderCellSizeAndPositionGetter,
-  getCellWidthsForSection,
-} from "./utils";
-
+import { RowToggleIcon } from "./RowToggleIcon";
 import {
   DEFAULT_CELL_WIDTH,
   CELL_HEIGHT,
@@ -63,6 +45,16 @@ import {
   _columnSettings as columnSettings,
   getTitleForColumn,
 } from "./settings";
+import type { PivotTableClicked, HeaderWidthType } from "./types";
+import {
+  getLeftHeaderWidths,
+  databaseSupportsPivotTables,
+  isSensible,
+  checkRenderable,
+  leftHeaderCellSizeAndPositionGetter,
+  topHeaderCellSizeAndPositionGetter,
+  getCellWidthsForSection,
+} from "./utils";
 
 const mapStateToProps = (state: State) => ({
   fontFamily: getSetting(state, "application-font"),

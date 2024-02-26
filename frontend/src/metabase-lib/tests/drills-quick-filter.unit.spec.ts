@@ -1,12 +1,7 @@
-import {
-  ORDERS,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-} from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
 import type { DrillThruType } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { drillThru } from "metabase-lib";
-import type { ComparisonFilter } from "metabase-types/api";
+import { getAvailableDrillByType } from "metabase-lib/test-helpers";
 import type {
   ApplyDrillTestCase,
   DrillDisplayInfoTestCase,
@@ -17,7 +12,12 @@ import {
   getDrillsQueryParameters,
   ORDERS_ROW_VALUES,
 } from "metabase-lib/tests/drills-common";
-import { getAvailableDrillByType } from "metabase-lib/test-helpers";
+import type { ComparisonFilter } from "metabase-types/api";
+import {
+  ORDERS,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 
 const DRILL_TYPE: DrillThruType = "drill-thru/quick-filter";
 

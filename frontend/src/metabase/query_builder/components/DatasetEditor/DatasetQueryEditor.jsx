@@ -1,8 +1,10 @@
-import { memo, useMemo, useState } from "react";
-import PropTypes from "prop-types";
 import styled from "@emotion/styled";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import PropTypes from "prop-types";
+import { memo, useMemo, useState } from "react";
+
 import { isReducedMotionPreferred } from "metabase/lib/dom";
+import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+
 import ResizableNotebook from "./ResizableNotebook";
 
 const QueryEditorContainer = styled.div`

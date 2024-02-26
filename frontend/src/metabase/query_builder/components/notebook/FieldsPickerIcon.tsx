@@ -1,10 +1,11 @@
 import styled from "@emotion/styled";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
+
 import { NotebookCell } from "./NotebookCell";
 
 const FieldPickerContentContainer = styled(IconButtonWrapper)`

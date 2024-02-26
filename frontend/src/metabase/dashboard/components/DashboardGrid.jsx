@@ -1,22 +1,17 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
-
-import _ from "underscore";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
+
 import ExplicitSize from "metabase/components/ExplicitSize";
-
 import Modal from "metabase/components/Modal";
-
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
-import { getVisualizationRaw } from "metabase/visualizations";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { getVisibleCardIds } from "metabase/dashboard/utils";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import { getVisibleCardIds } from "metabase/dashboard/utils";
-
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
@@ -25,20 +20,19 @@ import {
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
-import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
+import { getVisualizationRaw } from "metabase/visualizations";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
 
-import { DashboardCard } from "./DashboardGrid.styled";
-
-import { GridLayout } from "./grid/GridLayout";
-import { generateMobileLayout } from "./grid/utils";
-
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
+import { DashboardCard } from "./DashboardGrid.styled";
+import { GridLayout } from "./grid/GridLayout";
+import { generateMobileLayout } from "./grid/utils";
 
 const mapDispatchToProps = { addUndo };
 

@@ -1,6 +1,8 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import { render, screen } from "__support__/ui";
+
 import { TimeInput } from "./TimeInput";
 
 interface SetupOpts {

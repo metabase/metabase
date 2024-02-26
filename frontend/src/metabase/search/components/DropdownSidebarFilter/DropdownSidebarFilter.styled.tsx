@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
-import { Group } from "metabase/ui";
 
-import FieldSet from "metabase/components/FieldSet";
 import EventSandbox from "metabase/components/EventSandbox";
+import FieldSet from "metabase/components/FieldSet";
 import { Icon } from "metabase/core/components/Icon";
+import { Group } from "metabase/ui";
 
 export const DropdownFieldSet = styled(FieldSet)<{
   fieldHasValueOrFocus?: boolean;

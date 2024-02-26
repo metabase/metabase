@@ -1,7 +1,8 @@
 import userEvent, { specialChars } from "@testing-library/user-event";
-import { getIcon, screen } from "__support__/ui";
 
+import { getIcon, screen } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
+
 import { setup } from "./setup";
 
 describe("CollectionHeader", () => {

@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
+
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import type { TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
@@ -24,6 +25,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase-types/store/mocks";
+
 import { TagEditorParam } from "./TagEditorParam";
 
 interface SetupOpts {

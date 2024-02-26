@@ -1,9 +1,9 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 

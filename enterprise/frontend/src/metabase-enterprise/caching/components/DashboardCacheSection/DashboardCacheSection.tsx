@@ -1,4 +1,5 @@
 import type { Dashboard } from "metabase-types/api";
+
 import CacheSection from "../CacheSection";
 
 interface DashboardCacheSectionProps {

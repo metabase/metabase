@@ -1,16 +1,17 @@
 import type React from "react";
-import type { Dispatch, GetState } from "metabase-types/store";
+
+import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { ClickActionProps } from "metabase-lib/queries/drills/types";
 import type {
   Series,
   VisualizationSettings,
   Card,
   DatasetQuery,
 } from "metabase-types/api";
-import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
-import type * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type { ClickActionProps } from "metabase-lib/queries/drills/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 export type {
   ClickActionProps,

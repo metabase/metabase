@@ -1,17 +1,15 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "__support__/ui";
+
 import { createMockMetadata } from "__support__/metadata";
-
-import { checkNotNull } from "metabase/lib/types";
-
-import { createMockField } from "metabase-types/api/mocks";
-import { createAdHocCard } from "metabase-types/api/mocks/presets";
-
 import { setupFieldValuesGeneralEndpoint } from "__support__/server-mocks";
-import Filter from "metabase-lib/queries/structured/Filter";
+import { renderWithProviders } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
+import { createMockField } from "metabase-types/api/mocks";
+import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
 import { InlineValuePicker } from "./InlineValuePicker";
 

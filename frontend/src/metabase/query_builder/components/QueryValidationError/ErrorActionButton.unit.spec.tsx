@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "__support__/ui";
 
+import { render, screen } from "__support__/ui";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/ValidationError";

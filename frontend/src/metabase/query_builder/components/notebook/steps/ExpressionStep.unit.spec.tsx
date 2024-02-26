@@ -1,18 +1,19 @@
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/lib/types";
-import { render, screen, within } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
 
+import { createMockEntitiesState } from "__support__/store";
+import { render, screen, within } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import type { Expression } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
 import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
-import type { NotebookStepUiComponentProps } from "../types";
 import { createMockNotebookStep } from "../test-utils";
+import type { NotebookStepUiComponentProps } from "../types";
+
 import ExpressionStep from "./ExpressionStep";
 
 describe("Notebook Editor > Expression Step", () => {

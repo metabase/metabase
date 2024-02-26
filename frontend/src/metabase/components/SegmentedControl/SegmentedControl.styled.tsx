@@ -1,10 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import _ from "underscore";
 
 import type { IconProps } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
-
 import { color, darken, alpha } from "metabase/lib/colors";
 
 export type SegmentedControlVariant =

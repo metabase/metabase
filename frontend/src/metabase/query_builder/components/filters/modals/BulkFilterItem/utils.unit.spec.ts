@@ -2,6 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import type { Field } from "metabase-types/api";
 import { createMockField as _createMockField } from "metabase-types/api/mocks";
+
 import { getFieldPickerType } from "./utils";
 
 function setup(field: Field) {

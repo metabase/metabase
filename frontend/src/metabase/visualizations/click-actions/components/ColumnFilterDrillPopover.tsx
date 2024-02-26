@@ -1,9 +1,9 @@
 /* eslint-disable react/display-name */
-import type { ClickActionPopoverProps } from "metabase/visualizations/types";
 import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
-import type { Card } from "metabase-types/api";
+import type { ClickActionPopoverProps } from "metabase/visualizations/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Filter from "metabase-lib/queries/structured/Filter";
+import type { Card } from "metabase-types/api";
 
 export const getColumnFilterDrillPopover =
   ({

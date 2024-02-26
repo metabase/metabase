@@ -1,5 +1,4 @@
 import * as ML from "cljs/metabase.lib.js";
-
 import type { DatabaseId } from "metabase-types/api";
 
 import type { MetadataProvider, Query } from "./types";

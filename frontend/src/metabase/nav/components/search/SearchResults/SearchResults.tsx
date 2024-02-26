@@ -1,31 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
-import { SearchContextTypes } from "metabase/search/constants";
-import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
-import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
+import { t } from "ttag";
+
+import { useSearchListQuery } from "metabase/common/hooks";
 import EmptyState from "metabase/components/EmptyState";
-import type { SearchFilters } from "metabase/search/types";
+import Search from "metabase/entities/search";
+import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,
 } from "metabase/lib/constants";
-import { useSearchListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import Search from "metabase/entities/search";
-import { Loader, Text, Stack } from "metabase/ui";
-import type {
-  SearchResults as SearchResultsType,
-  CollectionItem,
-  SearchModelType,
-} from "metabase-types/api";
 import {
   EmptyStateContainer,
   ResultsContainer,
   ResultsFooter,
   SearchResultsList,
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
+import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
+import { SearchContextTypes } from "metabase/search/constants";
+import type { SearchFilters } from "metabase/search/types";
+import { Loader, Text, Stack } from "metabase/ui";
+import type {
+  SearchResults as SearchResultsType,
+  CollectionItem,
+  SearchModelType,
+} from "metabase-types/api";
 
 export type SearchResultsFooter =
   | (({

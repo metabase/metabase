@@ -1,3 +1,5 @@
+import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   setupSMTP,
@@ -19,8 +21,6 @@ import {
   clickSend,
   viewEmailPage,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { USERS } from "e2e/support/cypress_data";
 
 const { admin, normal } = USERS;
 

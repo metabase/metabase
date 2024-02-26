@@ -6,9 +6,9 @@ import type {
 } from "metabase-types/api";
 
 import type { ActionDashboardCard } from "./actions";
-import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
+import type { SearchModelType } from "./search";
 
 // x-ray dashboard have string ids
 export type DashboardId = number | string;

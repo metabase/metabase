@@ -1,17 +1,20 @@
 import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
+
 import Radio from "metabase/core/components/Radio";
+import { TextInput } from "metabase/ui";
+import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import type {
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { TextInput } from "metabase/ui";
-import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import ValuesSourceSettings from "../ValuesSourceSettings";
+
 import {
   SettingLabel,
   SettingRemoveButton,

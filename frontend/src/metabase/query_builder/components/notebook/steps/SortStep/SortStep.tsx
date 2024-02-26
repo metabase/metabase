@@ -1,10 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
+
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { Icon } from "metabase/core/components/Icon";
 import * as Lib from "metabase-lib";
+
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
+
 import { SortDirectionButton } from "./SortStep.styled";
 
 function SortStep({

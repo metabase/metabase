@@ -1,9 +1,7 @@
 import { t } from "ttag";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
-
 import type {
   Dashboard,
   DashboardCard,

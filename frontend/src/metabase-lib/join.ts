@@ -1,5 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 
+import { expressionParts } from "./expression";
+import { displayInfo, isColumnMetadata } from "./metadata";
 import type {
   Bucket,
   CardMetadata,
@@ -13,8 +15,6 @@ import type {
   Query,
   TableMetadata,
 } from "./types";
-import { expressionParts } from "./expression";
-import { displayInfo, isColumnMetadata } from "./metadata";
 
 /**
  * Something you can join against -- either a raw Table, or a Card, which can be either a plain Saved Question or a

@@ -1,16 +1,17 @@
-import * as Urls from "metabase/lib/urls";
 import { utf8_to_b64url } from "metabase/lib/encoding";
+import * as Urls from "metabase/lib/urls";
+import type { ParameterWithTarget } from "metabase-lib/parameters/types";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Filter from "metabase-lib/queries/structured/Filter";
+import { isTransientId } from "metabase-lib/queries/utils/card";
 import type {
   Filter as RawFilter,
   ParameterId,
   ParameterValue,
 } from "metabase-types/api";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type Filter from "metabase-lib/queries/structured/Filter";
-import { isTransientId } from "metabase-lib/queries/utils/card";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
-import type { ParameterWithTarget } from "metabase-lib/parameters/types";
+
 import type Question from "./Question";
 import type NativeQuery from "./queries/NativeQuery";
 

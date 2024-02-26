@@ -1,7 +1,7 @@
-import type { ConcreteFieldReference } from "metabase-types/api";
-import type Breakout from "metabase-lib/queries/structured/Breakout";
 import type DimensionOptions from "metabase-lib/DimensionOptions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Breakout from "metabase-lib/queries/structured/Breakout";
+import type { ConcreteFieldReference } from "metabase-types/api";
 
 import { BreakoutFieldList } from "./BreakoutPopover.styled";
 

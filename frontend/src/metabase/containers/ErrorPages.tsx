@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import { color } from "metabase/lib/colors";
-
-import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
-import { Icon } from "metabase/core/components/Icon";
-import EmptyState from "metabase/components/EmptyState";
-import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 
 import NoResults from "assets/img/no_results.svg";
+import EmptyState from "metabase/components/EmptyState";
+import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
+import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
+
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
 export const GenericError = ({

@@ -1,20 +1,29 @@
-import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
 import {
   getIcon,
   queryIcon,
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import {
-  ORDERS,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-} from "metabase-types/api/mocks/presets";
-import { ClickActionsPopover } from "metabase/visualizations/components/ClickActions/ClickActionsPopover";
-import type { RegularClickAction } from "metabase/visualizations/types";
-import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { checkNotNull } from "metabase/lib/types";
+import { POPOVER_TEST_ID } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction/ColumnFormattingAction";
+import { getMode } from "metabase/visualizations/click-actions/lib/modes";
+import { ClickActionsPopover } from "metabase/visualizations/components/ClickActions/ClickActionsPopover";
+import registerVisualizations from "metabase/visualizations/register";
+import type { RegularClickAction } from "metabase/visualizations/types";
+import type Dimension from "metabase-lib/Dimension";
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { ClickObject } from "metabase-lib/queries/drills/types";
+import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
+import {
+  ORDERS_COLUMNS,
+  ORDERS_COLUMNS_LIST,
+  ORDERS_DATASET_QUERY,
+  ORDERS_ROW_VALUES,
+} from "metabase-lib/tests/drills-common";
 import type {
   DatasetColumn,
   DatasetQuery,
@@ -22,20 +31,12 @@ import type {
   RowValue,
   Series,
 } from "metabase-types/api";
-import registerVisualizations from "metabase/visualizations/register";
-import { POPOVER_TEST_ID } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction/ColumnFormattingAction";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
-import type { ClickObject } from "metabase-lib/queries/drills/types";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type Dimension from "metabase-lib/Dimension";
 import {
-  ORDERS_COLUMNS,
-  ORDERS_COLUMNS_LIST,
-  ORDERS_DATASET_QUERY,
-  ORDERS_ROW_VALUES,
-} from "metabase-lib/tests/drills-common";
+  ORDERS,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
 

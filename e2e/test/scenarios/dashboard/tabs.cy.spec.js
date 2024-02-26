@@ -1,4 +1,12 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   saveDashboard,
   openQuestionsSidebar,
@@ -31,15 +39,6 @@ import {
   filterWidget,
   popover,
 } from "e2e/support/helpers";
-
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-  NORMAL_PERSONAL_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {

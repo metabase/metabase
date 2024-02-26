@@ -1,31 +1,26 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
+import EntityMenu from "metabase/components/EntityMenu";
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
-import EntityMenu from "metabase/components/EntityMenu";
-
-import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
-
-import { MODAL_TYPES } from "metabase/query_builder/constants";
-
-import { softReloadCard } from "metabase/query_builder/actions";
-import { getUserIsAdmin } from "metabase/selectors/user";
-
 import { color } from "metabase/lib/colors";
-
-import BookmarkToggle from "metabase/core/components/BookmarkToggle";
-import { getSetting } from "metabase/selectors/settings";
-import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+import { softReloadCard } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { getSetting } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import type Question from "metabase-lib/Question";
-
 import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
 } from "metabase-lib/metadata/utils/models";
+
 import {
   QuestionActionsDivider,
   StrengthIndicator,

@@ -1,14 +1,12 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
-
 import { t } from "ttag";
 
-import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
-
-import * as Urls from "metabase/lib/urls";
-import MetabaseSettings from "metabase/lib/settings";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
+import * as Urls from "metabase/lib/urls";
+import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
@@ -18,6 +16,7 @@ import {
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../../actions";
+
 import { TriggerIcon } from "./QuestionEmbedWidget.styled";
 
 const QuestionEmbedWidgetPropTypes = {

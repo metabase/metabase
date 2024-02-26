@@ -1,21 +1,19 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { createMockMetadata } from "__support__/metadata";
+import { setupFieldValuesGeneralEndpoint } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-
 import { checkNotNull } from "metabase/lib/types";
-
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
 import type { Field, FieldValue } from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
-import { setupFieldValuesGeneralEndpoint } from "__support__/server-mocks";
-import Question from "metabase-lib/Question";
-import Filter from "metabase-lib/queries/structured/Filter";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
-import { MAX_INLINE_CATEGORIES } from "./constants";
 import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
+import { MAX_INLINE_CATEGORIES } from "./constants";
 
 // we want to make sure we always get enough unique field values
 // even if we change MAX_INLINE_CATEGORIES

@@ -1,4 +1,3 @@
-import { dashboardReducers as reducer } from "./reducers";
 import {
   INITIALIZE,
   SET_EDITING_DASHBOARD,
@@ -10,6 +9,7 @@ import {
   FETCH_CARD_DATA,
   FETCH_CARD_DATA_PENDING,
 } from "./actions";
+import { dashboardReducers as reducer } from "./reducers";
 
 describe("dashboard reducers", () => {
   let initState;

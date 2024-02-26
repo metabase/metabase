@@ -30,28 +30,25 @@ import "metabase/plugins/builtin";
 // If EE isn't enabled, it loads an empty file.
 import "ee-plugins"; // eslint-disable-line import/no-duplicates
 
+import { createHistory } from "history";
+import { DragDropContextProvider } from "react-dnd";
+import HTML5Backend from "react-dnd-html5-backend";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
-
-// router
 import { Router, useRouterHistory } from "react-router";
-import { createHistory } from "history";
 import { syncHistoryWithStore } from "react-router-redux";
 
-// drag and drop
-import HTML5Backend from "react-dnd-html5-backend";
-import { DragDropContextProvider } from "react-dnd";
-import { ThemeProvider } from "metabase/ui";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { initializeEmbedding } from "metabase/lib/embed";
-import api from "metabase/lib/api";
-import MetabaseSettings from "metabase/lib/settings";
 import { createTracker } from "metabase/lib/analytics";
-import registerVisualizations from "metabase/visualizations/register";
+import api from "metabase/lib/api";
+import { initializeEmbedding } from "metabase/lib/embed";
+import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
-
-import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
+import { ThemeProvider } from "metabase/ui";
+import registerVisualizations from "metabase/visualizations/register";
+
 import { getStore } from "./store";
 
 // remove trailing slash

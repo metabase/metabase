@@ -5,6 +5,9 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,
@@ -12,9 +15,7 @@ import {
   ORDERS,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import Question from "metabase-lib/Question";
-import Filter from "metabase-lib/queries/structured/Filter";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import { FilterPopover } from "./FilterPopover";
 
 const metadata = createMockMetadata({

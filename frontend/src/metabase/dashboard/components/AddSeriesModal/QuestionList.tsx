@@ -1,12 +1,11 @@
 import { memo, useState, useEffect, useCallback, useMemo } from "react";
+import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
-import { useAsyncFn } from "react-use";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
-
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { CardApi } from "metabase/services";
 import type {
   Card,
@@ -14,6 +13,7 @@ import type {
   DashboardCard,
   GetCompatibleCardsPayload,
 } from "metabase-types/api";
+
 import {
   LoadMoreButton,
   LoadMoreRow,

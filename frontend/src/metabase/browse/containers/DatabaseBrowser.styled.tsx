@@ -1,11 +1,12 @@
 import styled from "@emotion/styled";
+
+import Card from "metabase/components/Card";
+import { GridItem } from "metabase/components/Grid";
 import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import Card from "metabase/components/Card";
-import { GridItem } from "metabase/components/Grid";
 
 export const DatabaseCard = styled(Card)`
   padding: 1.5rem;

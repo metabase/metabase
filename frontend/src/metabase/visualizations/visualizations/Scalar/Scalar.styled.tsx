@@ -1,8 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export interface ScalarContainerProps {

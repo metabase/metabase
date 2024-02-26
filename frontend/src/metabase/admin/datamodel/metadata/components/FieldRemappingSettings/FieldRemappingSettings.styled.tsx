@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { alpha, color } from "metabase/lib/colors";
-import SelectButton from "metabase/core/components/SelectButton";
-import FieldList from "metabase/query_builder/components/FieldList";
+
 import InputBlurChange from "metabase/components/InputBlurChange";
+import SelectButton from "metabase/core/components/SelectButton";
+import { alpha, color } from "metabase/lib/colors";
+import FieldList from "metabase/query_builder/components/FieldList";
 
 export const FieldMappingRoot = styled.div`
   padding: 1rem 4rem;

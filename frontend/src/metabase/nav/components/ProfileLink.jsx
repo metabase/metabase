@@ -1,25 +1,23 @@
-import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { useEffect, useState } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { capitalize } from "metabase/lib/formatting";
-import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
-import { UtilApi } from "metabase/services";
-import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
-
-import * as Urls from "metabase/lib/urls";
-import Modal from "metabase/components/Modal";
-
-import LogoIcon from "metabase/components/LogoIcon";
-import EntityMenu from "metabase/components/EntityMenu";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import EntityMenu from "metabase/components/EntityMenu";
+import LogoIcon from "metabase/components/LogoIcon";
+import Modal from "metabase/components/Modal";
+import { color } from "metabase/lib/colors";
+import { capitalize } from "metabase/lib/formatting";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
 import {
   getApplicationName,
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
+import { UtilApi } from "metabase/services";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not

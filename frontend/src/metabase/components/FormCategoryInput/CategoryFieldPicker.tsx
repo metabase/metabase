@@ -1,7 +1,6 @@
 import CategoryFieldInput from "./CategoryFieldInput";
-import type { CategoryWidgetProps } from "./types";
-
 import CategoryRadioPicker from "./CategoryRadioPicker";
+import type { CategoryWidgetProps } from "./types";
 
 const MAX_DISTINCT_OPTIONS_FOR_RADIO_INPUT = 7;
 

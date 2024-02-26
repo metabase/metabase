@@ -1,11 +1,13 @@
 import { useCallback } from "react";
+
+import type { EditWidgetConfig } from "metabase/visualizations/components/settings/ChartSettingTableColumns/types";
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import type * as Lib from "metabase-lib";
-import type { EditWidgetConfig } from "metabase/visualizations/components/settings/ChartSettingTableColumns/types";
-import type Question from "metabase-lib/Question";
+
 import { DatasetColumnSelector } from "./DatasetColumnSelector";
 import { QueryColumnSelector } from "./QueryColumnSelector";
 

@@ -1,19 +1,18 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
-import DatePicker from "metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker";
+
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/core/components/SelectButton";
 import Button from "metabase/core/components/Button";
-
-import * as Card from "metabase-lib/queries/utils/card";
-import { generateTimeFilterValuesDescriptions } from "metabase-lib/queries/utils/query-time";
-import * as Query from "metabase-lib/queries/utils/query";
-import * as Filter from "metabase-lib/queries/utils/filter";
-
+import SelectButton from "metabase/core/components/SelectButton";
+import DatePicker from "metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker";
 import { FieldDimension } from "metabase-lib/Dimension";
+import * as Card from "metabase-lib/queries/utils/card";
+import * as Filter from "metabase-lib/queries/utils/filter";
+import * as Query from "metabase-lib/queries/utils/query";
+import { generateTimeFilterValuesDescriptions } from "metabase-lib/queries/utils/query-time";
 
 export class TimeseriesFilterWidget extends Component {
   state = {

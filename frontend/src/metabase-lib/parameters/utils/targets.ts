@@ -1,11 +1,11 @@
+import Dimension from "metabase-lib/Dimension";
+import Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import type { Card, ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
-import Dimension from "metabase-lib/Dimension";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 export function isVariableTarget(target: ParameterTarget) {
   return target?.[0] === "variable";

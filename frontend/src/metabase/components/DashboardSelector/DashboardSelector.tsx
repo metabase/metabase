@@ -1,9 +1,11 @@
 import { t } from "ttag";
+
+import { useDashboardQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import DashboardPicker from "metabase/containers/DashboardPicker";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useDashboardQuery } from "metabase/common/hooks";
 import type { Collection, DashboardId } from "metabase-types/api";
+
 import {
   DashboardPickerContainer,
   DashboardPickerButton,

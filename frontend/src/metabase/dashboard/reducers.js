@@ -1,12 +1,12 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
+import produce from "immer";
 import reduceReducers from "reduce-reducers";
 import _ from "underscore";
 
-import produce from "immer";
-import { handleActions, combineReducers } from "metabase/lib/redux";
+import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import Actions from "metabase/entities/actions";
+import { handleActions, combineReducers } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
 import {
@@ -46,11 +46,11 @@ import {
   FETCH_CARD_DATA_PENDING,
   fetchDashboard,
 } from "./actions";
+import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
   calculateDashCardRowAfterUndo,
   syncParametersAndEmbeddingParams,
 } from "./utils";
-import { INITIAL_DASHBOARD_STATE } from "./constants";
 
 const dashboardId = handleActions(
   {

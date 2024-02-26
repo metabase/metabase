@@ -1,7 +1,5 @@
-import { createAction } from "metabase/lib/redux";
-
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
+import { createAction } from "metabase/lib/redux";
 import { DashboardApi } from "metabase/services";
 
 import { setSidebar, closeSidebar } from "./ui";

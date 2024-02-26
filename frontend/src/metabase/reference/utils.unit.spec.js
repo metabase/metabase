@@ -1,6 +1,5 @@
-import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
-
 import { separateTablesBySchema } from "metabase/reference/databases/TableList";
+import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
 import { TYPE } from "metabase-lib/types/constants";
 
 describe("Reference utils.js", () => {

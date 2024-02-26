@@ -1,56 +1,50 @@
+import PropTypes from "prop-types";
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
-
-import { getIsNavbarOpen } from "metabase/selectors/app";
-
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import ActionButton from "metabase/components/ActionButton";
+import EntityMenu from "metabase/components/EntityMenu";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
+import Link from "metabase/core/components/Link/Link";
 import Tooltip from "metabase/core/components/Tooltip";
-import EntityMenu from "metabase/components/EntityMenu";
-
-import Bookmark from "metabase/entities/bookmarks";
-
-import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-
-import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
-import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
-import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
-
-import { getPulseFormInput } from "metabase/pulse/selectors";
-import { fetchPulseFormInput } from "metabase/pulse/actions";
-import {
-  getIsBookmarked,
-  getIsShowDashboardInfoSidebar,
-} from "metabase/dashboard/selectors";
 import {
   addActionToDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
-
+import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
+import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
+import { DashboardBookmark } from "metabase/dashboard/components/DashboardBookmark";
+import { ParametersPopover } from "metabase/dashboard/components/ParametersPopover";
+import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
+import {
+  getIsBookmarked,
+  getIsShowDashboardInfoSidebar,
+} from "metabase/dashboard/selectors";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
-import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
-import { getSetting } from "metabase/selectors/settings";
-import { dismissAllUndo } from "metabase/redux/undo";
-
-import Link from "metabase/core/components/Link/Link";
+import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections/collections";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { fetchPulseFormInput } from "metabase/pulse/actions";
+import { getPulseFormInput } from "metabase/pulse/selectors";
+import { dismissAllUndo } from "metabase/redux/undo";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getSetting } from "metabase/selectors/settings";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+
 import { SIDEBAR_NAME } from "../../constants";
-import { DashboardHeaderComponent } from "./DashboardHeaderView";
+
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
 } from "./DashboardHeader.styled";
+import { DashboardHeaderComponent } from "./DashboardHeaderView";
 
 const mapStateToProps = (state, props) => {
   return {

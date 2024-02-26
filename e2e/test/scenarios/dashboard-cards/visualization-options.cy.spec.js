@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
   restore,
@@ -8,7 +9,6 @@ import {
   saveDashboard,
   getDashboardCardMenu,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > dashboard cards > visualization options", () => {
   beforeEach(() => {

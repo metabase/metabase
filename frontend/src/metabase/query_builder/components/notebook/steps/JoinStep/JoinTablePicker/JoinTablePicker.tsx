@@ -1,23 +1,22 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { DATA_BUCKET } from "metabase/containers/DataPicker";
-
+import { Icon } from "metabase/core/components/Icon";
+import Tooltip from "metabase/core/components/Tooltip";
 import Tables from "metabase/entities/tables";
-import { getMetadata } from "metabase/selectors/metadata";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-
-import type { TableId } from "metabase-types/api";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Table from "metabase-lib/metadata/Table";
+import type { TableId } from "metabase-types/api";
 
-import { NotebookCellItem } from "../../../NotebookCell";
 import { FIELDS_PICKER_STYLES } from "../../../FieldsPickerIcon";
+import { NotebookCellItem } from "../../../NotebookCell";
+
 import { PickerButton, ColumnPickerButton } from "./JoinTablePicker.styled";
 
 interface JoinTablePickerProps {

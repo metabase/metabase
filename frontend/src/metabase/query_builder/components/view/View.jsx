@@ -1,16 +1,15 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { Motion, spring } from "react-motion";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Popover from "metabase/components/Popover";
+import Toaster from "metabase/components/Toaster";
 import QueryValidationError from "metabase/query_builder/components/QueryValidationError";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Toaster from "metabase/components/Toaster";
-
 import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -19,25 +18,16 @@ import AggregationPopover from "../AggregationPopover";
 import BreakoutPopover from "../BreakoutPopover";
 import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
-import QueryVisualization from "../QueryVisualization";
-import DataReference from "../dataref/DataReference";
-import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
-import { SnippetSidebar } from "../template_tags/SnippetSidebar";
-import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
 import QueryModals from "../QueryModals";
-
-import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
-import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
-import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
-import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
-import TimelineSidebar from "./sidebars/TimelineSidebar";
+import QueryVisualization from "../QueryVisualization";
+import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
+import DataReference from "../dataref/DataReference";
+import { SnippetSidebar } from "../template_tags/SnippetSidebar";
+import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 
 import NewQuestionHeader from "./NewQuestionHeader";
-import ViewFooter from "./ViewFooter";
-import ViewSidebar from "./ViewSidebar";
 import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
-
 import {
   BorderedViewTitleHeader,
   NativeQueryEditorContainer,
@@ -48,6 +38,13 @@ import {
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
+import ViewFooter from "./ViewFooter";
+import ViewSidebar from "./ViewSidebar";
+import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
+import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
+import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
+import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
+import TimelineSidebar from "./sidebars/TimelineSidebar";
 
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,

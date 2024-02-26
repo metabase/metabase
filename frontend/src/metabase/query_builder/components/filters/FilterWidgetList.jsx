@@ -2,6 +2,7 @@
 import { Component } from "react";
 import { findDOMNode } from "react-dom";
 import { t } from "ttag";
+
 import FilterWidget from "./FilterWidget";
 
 export default class FilterWidgetList extends Component {

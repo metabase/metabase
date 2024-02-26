@@ -1,10 +1,14 @@
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
+import GroupSummary from "metabase/admin/people/components/GroupSummary";
+import type {
+  GroupIds,
+  UserGroupType,
+  UserGroupsType,
+} from "metabase/admin/types";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { Icon } from "metabase/core/components/Icon";
 import Select from "metabase/core/components/Select";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
 import {
   isDefaultGroup,
   isAdminGroup,
@@ -12,12 +16,7 @@ import {
   getGroupColor,
   getGroupNameLocalized,
 } from "metabase/lib/groups";
-import type {
-  GroupIds,
-  UserGroupType,
-  UserGroupsType,
-} from "metabase/admin/types";
-import GroupSummary from "metabase/admin/people/components/GroupSummary";
+import { isNotNull } from "metabase/lib/types";
 
 type GroupSelectProps = {
   groups: UserGroupsType;

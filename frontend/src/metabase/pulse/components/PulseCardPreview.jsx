@@ -1,13 +1,13 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
-
+import { Component } from "react";
 import { t } from "ttag";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Tooltip from "metabase/core/components/Tooltip";
 
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
+
 import { AttachmentIcon, RemoveIcon } from "./PulseCardPreview.styled";
 
 export default class PulseCardPreview extends Component {

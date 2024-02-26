@@ -1,30 +1,27 @@
-import { useCallback, useEffect, useState } from "react";
-import { t } from "ttag";
-import { connect } from "react-redux";
-
 import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import {
   restrictToVerticalAxis,
   restrictToParentElement,
 } from "@dnd-kit/modifiers";
-
-import { Sortable } from "metabase/core/components/Sortable";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useCallback, useEffect, useState } from "react";
+import { connect } from "react-redux";
+import { t } from "ttag";
 
 import CollapseSection from "metabase/components/CollapseSection";
 import { Icon } from "metabase/core/components/Icon";
+import { Sortable } from "metabase/core/components/Sortable";
 import Tooltip from "metabase/core/components/Tooltip";
-
-import type { Bookmark } from "metabase-types/api";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import type { Bookmark } from "metabase-types/api";
 
-import type { SelectedItem } from "../../types";
 import { SidebarHeading } from "../../MainNavbar.styled";
+import type { SelectedItem } from "../../types";
 
 import { SidebarBookmarkItem } from "./BookmarkList.styled";
 

@@ -1,17 +1,16 @@
-import { Route } from "react-router";
 import fetchMock from "fetch-mock";
-import * as dom from "metabase/lib/dom";
+import { Route } from "react-router";
 
+import {
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
-
+import * as dom from "metabase/lib/dom";
 import type { User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import {

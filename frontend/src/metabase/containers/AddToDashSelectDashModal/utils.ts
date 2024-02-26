@@ -1,9 +1,9 @@
-import type { CollectionId, Dashboard } from "metabase-types/api";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   coerceCollectionId,
   isPublicCollection,
 } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import type { CollectionId, Dashboard } from "metabase-types/api";
 
 interface GetInitialOpenCollectionIdProps {
   isQuestionInPersonalCollection: boolean;

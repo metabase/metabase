@@ -1,7 +1,10 @@
 import { screen } from "@testing-library/react";
+
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -19,8 +22,6 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import Filter from "metabase-lib/queries/structured/Filter";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { BulkFilterItem } from "./BulkFilterItem";
 

@@ -1,4 +1,5 @@
 import type { CyHttpMessages } from "cypress/types/net-stubbing";
+
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 

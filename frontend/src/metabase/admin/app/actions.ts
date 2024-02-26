@@ -1,6 +1,6 @@
-import Settings from "metabase/lib/settings";
-import { createAction, createThunkAction } from "metabase/lib/redux";
 import { updateSetting } from "metabase/admin/settings/settings";
+import { createAction, createThunkAction } from "metabase/lib/redux";
+import Settings from "metabase/lib/settings";
 
 export const DISABLE_NOTICE = "metabase/admin/app/DISABLE_NOTICE";
 export const disableNotice = createThunkAction(

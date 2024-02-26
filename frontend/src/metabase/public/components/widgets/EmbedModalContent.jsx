@@ -1,26 +1,24 @@
 /* eslint-disable react/prop-types */
+import { titleize } from "inflection";
 import { Component } from "react";
 import { connect } from "react-redux";
-import { titleize } from "inflection";
 import { t } from "ttag";
-
 import _ from "underscore";
-import { Icon } from "metabase/core/components/Icon";
 
+import { Icon } from "metabase/core/components/Icon";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { color } from "metabase/lib/colors";
 import {
   getSignedPreviewUrl,
   getUnsignedPreviewUrl,
   getSignedToken,
 } from "metabase/public/lib/embed";
-import { color } from "metabase/lib/colors";
-
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
-import SharingPane from "./SharingPane";
 import { EmbedTitleLabel } from "./EmbedModalContent.styled";
+import SharingPane from "./SharingPane";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),

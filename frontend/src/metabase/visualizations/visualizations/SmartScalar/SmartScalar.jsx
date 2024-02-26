@@ -3,38 +3,30 @@ import { useRef } from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Tooltip from "metabase/core/components/Tooltip";
+import { color } from "metabase/lib/colors";
 import {
   formatDateTimeRangeWithUnit,
   formatValue,
 } from "metabase/lib/formatting";
-import { color } from "metabase/lib/colors";
-
-import Tooltip from "metabase/core/components/Tooltip";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { NoBreakoutError } from "metabase/visualizations/lib/errors";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
-import * as Lib from "metabase-lib";
+import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
+import { NoBreakoutError } from "metabase/visualizations/lib/errors";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
-import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
-
+import * as Lib from "metabase-lib";
 import { isDate, isNumeric } from "metabase-lib/types/utils/isa";
 
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 
-import {
-  DASHCARD_HEADER_HEIGHT,
-  ICON_SIZE,
-  TOOLTIP_ICON_SIZE,
-} from "./constants";
 import {
   PreviousValue,
   PreviousValueContainer,
@@ -48,6 +40,11 @@ import {
   VariationValue,
   ScalarPeriodContent,
 } from "./SmartScalar.styled";
+import {
+  DASHCARD_HEADER_HEIGHT,
+  ICON_SIZE,
+  TOOLTIP_ICON_SIZE,
+} from "./constants";
 import {
   formatChange,
   formatChangeAutoPrecision,

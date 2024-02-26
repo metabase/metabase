@@ -1,5 +1,22 @@
 import _ from "underscore";
 
+import {
+  formatDateTimeForParameter,
+  formatDateToRangeForParameter,
+} from "metabase/lib/formatting/date";
+import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
+import { parseTimestamp } from "metabase/lib/time";
+import { TemplateTagDimension } from "metabase-lib/Dimension";
+import type Question from "metabase-lib/Question";
+import {
+  dimensionFilterForParameter,
+  variableFilterForParameter,
+} from "metabase-lib/parameters/utils/filters";
+import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
+import type { Dimension as DimensionType } from "metabase-lib/types";
+import { TYPE } from "metabase-lib/types/constants";
+import { isa, isDate } from "metabase-lib/types/utils/isa";
+import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import type {
   ClickBehavior,
   ClickBehaviorDimensionTarget,
@@ -15,23 +32,6 @@ import type {
   UserAttribute,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
-import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
-import { parseTimestamp } from "metabase/lib/time";
-import {
-  formatDateTimeForParameter,
-  formatDateToRangeForParameter,
-} from "metabase/lib/formatting/date";
-import {
-  dimensionFilterForParameter,
-  variableFilterForParameter,
-} from "metabase-lib/parameters/utils/filters";
-import type { Dimension as DimensionType } from "metabase-lib/types";
-import { isa, isDate } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import { TemplateTagDimension } from "metabase-lib/Dimension";
-import type Question from "metabase-lib/Question";
-import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
 
 interface Target {
   id: Parameter["id"];

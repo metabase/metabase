@@ -1,25 +1,22 @@
+import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 
-import { color as c } from "metabase/lib/colors";
-import { useToggle } from "metabase/hooks/use-toggle";
-
-import { Icon } from "metabase/core/components/Icon";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ExpandingContent from "metabase/components/ExpandingContent";
-
-import type { Query } from "metabase-lib/types";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { Icon } from "metabase/core/components/Icon";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { color as c } from "metabase/lib/colors";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Query } from "metabase-lib/types";
 
+import NotebookStepPreview from "../NotebookStepPreview";
 import type {
   NotebookStep as INotebookStep,
   NotebookStepAction,
 } from "../types";
-import NotebookStepPreview from "../NotebookStepPreview";
 
-import { STEP_UI } from "./steps";
 import ActionButton from "./ActionButton";
 import {
   StepActionsContainer,
@@ -30,6 +27,7 @@ import {
   StepRoot,
   PreviewButton,
 } from "./NotebookStep.styled";
+import { STEP_UI } from "./steps";
 
 function hasLargeButton(action: NotebookStepAction) {
   return !STEP_UI[action.type].compact;

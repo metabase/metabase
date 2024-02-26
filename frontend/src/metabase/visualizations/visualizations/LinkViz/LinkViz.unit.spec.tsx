@@ -1,21 +1,20 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupSearchEndpoints,
+  setupRecentViewsEndpoints,
+  setupCollectionByIdEndpoint,
+  setupUserRecipientsEndpoint,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   fireEvent,
   getIcon,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  setupSearchEndpoints,
-  setupRecentViewsEndpoints,
-  setupCollectionByIdEndpoint,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
-
 import type { DashboardCard, LinkCardSettings } from "metabase-types/api";
 import {
   createMockDashboardCardWithVirtualCard,

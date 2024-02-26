@@ -1,7 +1,9 @@
 import { t } from "ttag";
+
 import { Icon } from "metabase/core/components/Icon";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type Question from "metabase-lib/Question";
+
 import { Well, ToggleIcon } from "./QuestionDisplayToggle.styled";
 
 interface QuestionDisplayToggleProps {

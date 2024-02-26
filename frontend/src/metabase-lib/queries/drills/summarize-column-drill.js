@@ -1,11 +1,12 @@
 import _ from "underscore";
+
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase-lib/operators/utils";
-import { isa } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
+import { TYPE } from "metabase-lib/types/constants";
+import { isa } from "metabase-lib/types/utils/isa";
 
 const AGGREGATIONS = ["sum", "avg", "distinct"];
 const INVALID_TYPES = [TYPE.Structured];

@@ -1,16 +1,15 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-
+import EditableText from "metabase/core/components/EditableText";
 import { color } from "metabase/lib/colors";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
-import EditableText from "metabase/core/components/EditableText";
-import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;

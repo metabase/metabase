@@ -1,4 +1,7 @@
 import { t } from "ttag";
+
+import MetabaseSettings from "metabase/lib/settings";
+import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionBase,
   ClickActionPopoverProps,
@@ -6,8 +9,6 @@ import type {
   PopoverClickAction,
   UrlClickAction,
 } from "metabase/visualizations/types";
-import MetabaseSettings from "metabase/lib/settings";
-import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import {
   automaticDashboardDrillUrl,
   automaticInsightsDrill,

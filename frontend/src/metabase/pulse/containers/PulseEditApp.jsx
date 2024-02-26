@@ -1,23 +1,14 @@
 /* eslint "react/prop-types": "warn" */
 import { Component } from "react";
 import { connect } from "react-redux";
-import _ from "underscore";
-
 import { push, goBack } from "react-router-redux";
-import title from "metabase/hoc/Title";
+import _ from "underscore";
 
 import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
-import { UserApi } from "metabase/services";
-
+import title from "metabase/hoc/Title";
 import { getUser } from "metabase/selectors/user";
-import {
-  getPulseId,
-  getEditingPulse,
-  getPulseCardPreviews,
-  getPulseFormInput,
-} from "../selectors";
-import PulseEdit from "../components/PulseEdit";
+import { UserApi } from "metabase/services";
 
 import {
   setEditingPulse,
@@ -27,6 +18,13 @@ import {
   fetchPulseCardPreview,
   testPulse,
 } from "../actions";
+import PulseEdit from "../components/PulseEdit";
+import {
+  getPulseId,
+  getEditingPulse,
+  getPulseCardPreviews,
+  getPulseFormInput,
+} from "../selectors";
 
 const mapStateToProps = (state, props) => ({
   pulseId: getPulseId(state, props),

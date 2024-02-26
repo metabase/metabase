@@ -1,21 +1,12 @@
-import { useCallback, useState } from "react";
 import type * as React from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import type { IconProps } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
-
 import Search from "metabase/entities/search";
-
 import type { Collection } from "metabase-types/api";
-
-import type {
-  CollectionPickerItem,
-  PickerItem,
-  PickerModel,
-  SearchQuery,
-} from "./types";
 
 import Item from "./Item";
 import {
@@ -25,6 +16,12 @@ import {
   SearchInput,
   SearchToggle,
 } from "./ItemPicker.styled";
+import type {
+  CollectionPickerItem,
+  PickerItem,
+  PickerModel,
+  SearchQuery,
+} from "./types";
 
 interface SearchEntityListLoaderProps<TId> {
   list: PickerItem<TId>[];

@@ -1,25 +1,24 @@
 /* eslint "react/prop-types": "error" */
 
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
+import _ from "underscore";
 
-import { Icon } from "metabase/core/components/Icon";
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { getParameters } from "metabase/dashboard/selectors";
 import {
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
-import { formatFrame } from "metabase/lib/time";
 import { getActivePulseParameters } from "metabase/lib/pulse";
+import { formatFrame } from "metabase/lib/time";
 
-import { getParameters } from "metabase/dashboard/selectors";
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
 
 const mapStateToProps = (state, props) => {

@@ -1,24 +1,24 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import { getQuestionAlerts } from "metabase/query_builder/selectors";
-import { getUser } from "metabase/selectors/user";
 import { deleteAlert, unsubscribeFromAlert } from "metabase/alert/alert";
+import Modal from "metabase/components/Modal";
+import { Icon } from "metabase/core/components/Icon";
 import {
   AM_PM_OPTIONS,
   getDayOfWeekOptions,
   HOUR_OPTIONS,
 } from "metabase/lib/date-time";
-import { Icon } from "metabase/core/components/Icon";
-import Modal from "metabase/components/Modal";
 import {
   CreateAlertModalContent,
   UpdateAlertModalContent,
 } from "metabase/query_builder/components/AlertModals";
+import { getQuestionAlerts } from "metabase/query_builder/selectors";
+import { getUser } from "metabase/selectors/user";
 
 class AlertListPopoverContent extends Component {
   state = {

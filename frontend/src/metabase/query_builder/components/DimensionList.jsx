@@ -1,17 +1,17 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/core/components/Tooltip";
 import { Box } from "metabase/ui";
 import { FieldDimension } from "metabase-lib/Dimension";
 
-import { DimensionPicker } from "./DimensionPicker";
 import { FieldListGroupingTrigger } from "./DimensionList.styled";
+import { DimensionPicker } from "./DimensionPicker";
 
 const SUBMENU_TETHER_OPTIONS = {
   attachment: "top left",

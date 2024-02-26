@@ -1,13 +1,15 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-
 import { t, jt } from "ttag";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
+
 import {
   getPublicEmbedOptions,
   getSignedEmbedOptions,
   getSignTokenOptions,
 } from "../../lib/code";
+
 import CodeSample from "./CodeSample";
 
 import "ace/mode-clojure";

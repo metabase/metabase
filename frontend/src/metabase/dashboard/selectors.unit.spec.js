@@ -1,4 +1,5 @@
 import { chain } from "icepick";
+
 import {
   getParameters,
   getSidebar,
@@ -9,8 +10,9 @@ import {
   getClickBehaviorSidebarDashcard,
   getDashboardComplete,
 } from "metabase/dashboard/selectors";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 import Field from "metabase-lib/metadata/Field";
+import { createMockSettingsState } from "metabase-types/store/mocks";
+
 import { SIDEBAR_NAME } from "./constants";
 
 const STATE = {

@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { createRef, Component } from "react";
 import { t } from "ttag";
-
 import _ from "underscore";
-import cx from "classnames";
 
 export default class PulseEditName extends Component {
   constructor(props) {

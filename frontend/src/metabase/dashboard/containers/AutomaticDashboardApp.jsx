@@ -1,40 +1,37 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import { t } from "ttag";
-import { connect } from "react-redux";
 import cx from "classnames";
+import { dissoc } from "icepick";
+import { Component } from "react";
+import { connect } from "react-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { dissoc } from "icepick";
-import title from "metabase/hoc/Title";
-import withToast from "metabase/hoc/Toast";
-import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
-
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
+import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
-import Filter from "metabase/query_builder/components/Filter";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-
-import { getMetadata } from "metabase/selectors/metadata";
+import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
 import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
-
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
-import * as Urls from "metabase/lib/urls";
+import title from "metabase/hoc/Title";
+import withToast from "metabase/hoc/Toast";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import Filter from "metabase/query_builder/components/Filter";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
-import * as Q from "metabase-lib/queries/utils/query";
 import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
 import { isSegment } from "metabase-lib/queries/utils/filter";
+import * as Q from "metabase-lib/queries/utils/query";
 
 import { DashboardTabs } from "../components/DashboardTabs";
+
 import {
   ItemContent,
   ItemDescription,

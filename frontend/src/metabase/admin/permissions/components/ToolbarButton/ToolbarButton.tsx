@@ -1,5 +1,6 @@
-import { Text } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
+import { Text } from "metabase/ui";
+
 import { ToolbarButtonIcon, ToolbarButtonRoot } from "./ToolbarButton.styled";
 
 interface ToolbarButtonProps {

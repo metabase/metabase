@@ -1,20 +1,20 @@
-import { useMemo, useState, useCallback } from "react";
-import _ from "underscore";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { useMemo, useState, useCallback } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
+import _ from "underscore";
 
-import { Icon } from "metabase/core/components/Icon";
-import { Tree } from "metabase/components/tree";
-import Collection, {
-  PERSONAL_COLLECTIONS,
-  buildCollectionTree,
-} from "metabase/entities/collections";
 import {
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
+import { Tree } from "metabase/components/tree";
+import { Icon } from "metabase/core/components/Icon";
+import Collection, {
+  PERSONAL_COLLECTIONS,
+  buildCollectionTree,
+} from "metabase/entities/collections";
 
 import SavedQuestionList from "./SavedQuestionList";
 import {

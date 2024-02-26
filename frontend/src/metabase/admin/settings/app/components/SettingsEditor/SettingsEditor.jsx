@@ -1,21 +1,20 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { bindActionCreators } from "@reduxjs/toolkit";
+import cx from "classnames";
+import PropTypes from "prop-types";
+import { createRef, Component } from "react";
 import { connect } from "react-redux";
+import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
+import AdminLayout from "metabase/components/AdminLayout";
+import { NotFound } from "metabase/containers/ErrorPages";
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import AdminLayout from "metabase/components/AdminLayout";
-import { NotFound } from "metabase/containers/ErrorPages";
-
-import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
-import ErrorBoundary from "metabase/ErrorBoundary";
 
 import {
   getSettings,
@@ -31,8 +30,9 @@ import {
   updateSetting,
   reloadSettings,
 } from "../../../settings";
-import { SettingsSection } from "./SettingsSection";
+
 import { NewVersionIndicator } from "./SettingsEditor.styled";
+import { SettingsSection } from "./SettingsSection";
 
 const mapStateToProps = (state, props) => {
   return {

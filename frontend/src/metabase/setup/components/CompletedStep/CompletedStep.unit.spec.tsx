@@ -1,9 +1,11 @@
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { COMPLETED_STEP, USER_STEP } from "../../constants";
+
 import { CompletedStep } from "./CompletedStep";
 
 interface SetupOpts {

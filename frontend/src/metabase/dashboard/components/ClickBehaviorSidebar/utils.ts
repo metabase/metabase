@@ -1,12 +1,12 @@
 import { getIn } from "icepick";
 
+import type { IconName } from "metabase/core/components/Icon";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
   ClickBehaviorType,
   DashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 type ClickBehaviorOption = {
   value: ClickBehaviorType;

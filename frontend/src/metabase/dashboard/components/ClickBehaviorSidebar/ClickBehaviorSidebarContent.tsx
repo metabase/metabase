@@ -1,6 +1,8 @@
-import { useMemo } from "react";
 import { getIn } from "icepick";
+import { useMemo } from "react";
 
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import type {
   Dashboard,
   DashboardCard,
@@ -11,13 +13,11 @@ import type {
   DatasetColumn,
 } from "metabase-types/api";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { getClickBehaviorForColumn } from "./utils";
+import { SidebarContent } from "./ClickBehaviorSidebar.styled";
 import { ClickBehaviorSidebarMainView } from "./ClickBehaviorSidebarMainView/ClickBehaviorSidebarMainView";
 import { TableClickBehaviorView } from "./TableClickBehaviorView/TableClickBehaviorView";
 import { TypeSelector } from "./TypeSelector/TypeSelector";
-import { SidebarContent } from "./ClickBehaviorSidebar.styled";
+import { getClickBehaviorForColumn } from "./utils";
 
 interface Props {
   dashboard: Dashboard;

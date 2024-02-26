@@ -4,7 +4,6 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { getIcon, render, screen } from "__support__/ui";
-
 import {
   createMockActionParameter,
   createMockFieldSettings,

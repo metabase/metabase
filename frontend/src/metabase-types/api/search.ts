@@ -1,4 +1,5 @@
 import type { UserId } from "metabase-types/api/user";
+
 import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId, InitialSyncStatus } from "./database";

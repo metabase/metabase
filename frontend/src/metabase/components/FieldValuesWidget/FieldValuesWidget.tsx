@@ -1,49 +1,43 @@
 import type { StyleHTMLAttributes } from "react";
 import { useState, useRef } from "react";
-import { useMount, useUnmount } from "react-use";
-
 import { connect } from "react-redux";
+import { useMount, useUnmount } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
-import ErrorBoundary from "metabase/ErrorBoundary";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { ListField } from "metabase/components/ListField";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import SingleSelectListField from "metabase/components/SingleSelectListField";
 import TokenField, {
   parseNumberValue,
   parseStringValue,
 } from "metabase/components/TokenField";
-import { ListField } from "metabase/components/ListField";
-import ValueComponent from "metabase/components/Value";
-import SingleSelectListField from "metabase/components/SingleSelectListField";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import AutoExpanding from "metabase/hoc/AutoExpanding";
-
-import { addRemappings } from "metabase/redux/metadata";
-import { defer } from "metabase/lib/promise";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
+import ValueComponent from "metabase/components/Value";
+import Fields from "metabase/entities/fields";
+import AutoExpanding from "metabase/hoc/AutoExpanding";
+import { defer } from "metabase/lib/promise";
+import { useDispatch } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
   fetchParameterValues,
 } from "metabase/parameters/actions";
-
-import Fields from "metabase/entities/fields";
-import type { State } from "metabase-types/store";
-
+import { addRemappings } from "metabase/redux/metadata";
+import type Question from "metabase-lib/Question";
+import type Field from "metabase-lib/metadata/Field";
 import type {
   Dashboard,
   Parameter,
   FieldValue,
   RowValue,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-import { useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import type Field from "metabase-lib/metadata/Field";
-import type Question from "metabase-lib/Question";
-
+import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import type { ValuesMode, LoadingStateType } from "./types";
-
 import {
   canUseParameterEndpoints,
   isNumeric,
@@ -60,7 +54,6 @@ import {
   canUseCardEndpoints,
   getTokenFieldPlaceholder,
 } from "./utils";
-import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 
 const MAX_SEARCH_RESULTS = 100;
 

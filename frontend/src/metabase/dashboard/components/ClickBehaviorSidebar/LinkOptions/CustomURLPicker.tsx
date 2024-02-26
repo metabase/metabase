@@ -4,26 +4,25 @@ import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
   DashboardCard,
 } from "metabase-types/api";
-import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import { SidebarItem } from "../SidebarItem";
-import { CustomLinkText } from "./CustomLinkText";
 
-import { ValuesYouCanReference } from "./ValuesYouCanReference";
+import { CustomLinkText } from "./CustomLinkText";
 import {
   FormDescription,
   DoneButton,
   PickerIcon,
   PickerItemName,
 } from "./CustomURLPicker.styled";
+import { ValuesYouCanReference } from "./ValuesYouCanReference";
 
 interface Props {
   dashcard: DashboardCard;

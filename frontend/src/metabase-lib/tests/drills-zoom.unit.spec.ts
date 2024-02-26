@@ -1,10 +1,10 @@
 import type { DrillThruType } from "metabase-lib";
+import { getAvailableDrillByType } from "metabase-lib/test-helpers";
 import type { DrillDisplayInfoTestCase } from "metabase-lib/tests/drills-common";
 import {
   getDrillsQueryParameters,
   ORDERS_ROW_VALUES,
 } from "metabase-lib/tests/drills-common";
-import { getAvailableDrillByType } from "metabase-lib/test-helpers";
 
 const DRILL_TYPE: DrillThruType = "drill-thru/zoom";
 

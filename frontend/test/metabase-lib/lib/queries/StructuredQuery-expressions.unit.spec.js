@@ -1,5 +1,5 @@
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 const TEST_EXPRESSION = ["+", 1, 1];
 const TEST_EXPRESSION_2 = ["+", 2, 2];

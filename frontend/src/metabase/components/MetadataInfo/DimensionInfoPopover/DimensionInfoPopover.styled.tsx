@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
 import type Dimension from "metabase-lib/Dimension";
 

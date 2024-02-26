@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 

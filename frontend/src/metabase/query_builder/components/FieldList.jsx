@@ -3,6 +3,7 @@ import { Component } from "react";
 
 import Dimension from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+
 import DimensionList from "./DimensionList";
 
 // DEPRECATED: use DimensionList directly

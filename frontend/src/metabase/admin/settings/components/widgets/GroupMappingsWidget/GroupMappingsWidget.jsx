@@ -1,16 +1,16 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
-import { isDefaultGroup } from "metabase/lib/groups";
-
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import { FormSwitch } from "metabase/forms";
+import { isDefaultGroup } from "metabase/lib/groups";
 
 import SettingToggle from "../SettingToggle";
+
 import AddMappingRow from "./AddMappingRow";
 import {
   GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,

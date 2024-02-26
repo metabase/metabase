@@ -1,9 +1,11 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
-import cx from "classnames";
+
 import { Icon } from "metabase/core/components/Icon";
 import Snippets from "metabase/entities/snippets";
+
 import { SnippetButton, SnippetContent } from "./SnippetRow.styled";
 
 class SnippetRowInner extends Component {

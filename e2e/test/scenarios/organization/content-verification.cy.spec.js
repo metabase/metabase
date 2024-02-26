@@ -1,3 +1,4 @@
+import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   describeEE,
   restore,
@@ -7,8 +8,6 @@ import {
   setTokenFeatures,
   popover,
 } from "e2e/support/helpers";
-
-import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describeEE("scenarios > premium > content verification", () => {
   beforeEach(() => {

@@ -1,13 +1,13 @@
 import { t } from "ttag";
+
+import { collection as collectionUrl } from "metabase/lib/urls";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_COLLECTIONS,
 } from "metabase/plugins";
 import type { WrappedResult } from "metabase/search/types";
-import type { Collection } from "metabase-types/api";
-import { collection as collectionUrl } from "metabase/lib/urls";
-
 import { Box } from "metabase/ui";
+import type { Collection } from "metabase-types/api";
 
 const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
 

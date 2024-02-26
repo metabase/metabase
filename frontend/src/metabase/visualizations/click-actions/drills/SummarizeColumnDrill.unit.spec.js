@@ -4,6 +4,7 @@ import {
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
+
 import SummarizeColumnDrill from "./SummarizeColumnDrill";
 
 const metadata = createMockMetadata({

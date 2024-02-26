@@ -2,21 +2,14 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
+
 import { isa } from "cljs/metabase.types";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
-import type {
-  FieldReference as AbstractField,
-  ConcreteFieldReference,
-  LocalFieldReference,
-  ExpressionReference,
-  DatetimeUnit,
-  VariableTarget,
-} from "metabase-types/api";
 import * as Lib from "metabase-lib";
+import ValidationError, {
+  VALIDATION_ERROR_TYPES,
+} from "metabase-lib/ValidationError";
 import { infer, MONOTYPE } from "metabase-lib/expressions/typeinferencer";
-import { TYPE } from "metabase-lib/types/constants";
-import { DATETIME_UNITS } from "metabase-lib/queries/utils/query-time";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import Field from "metabase-lib/metadata/Field";
 import type {
   AggregationOperator,
@@ -24,13 +17,12 @@ import type {
   Metadata,
   Query,
 } from "metabase-lib/metadata/Metadata";
-import ValidationError, {
-  VALIDATION_ERROR_TYPES,
-} from "metabase-lib/ValidationError";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Aggregation from "metabase-lib/queries/structured/Aggregation";
 import Filter from "metabase-lib/queries/structured/Filter";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import { normalize } from "metabase-lib/queries/utils/normalize";
+import { DATETIME_UNITS } from "metabase-lib/queries/utils/query-time";
 import {
   isFieldReference,
   isExpressionReference,
@@ -40,7 +32,16 @@ import {
   getBaseDimensionReference,
   BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
 } from "metabase-lib/references";
-import { normalize } from "metabase-lib/queries/utils/normalize";
+import { TYPE } from "metabase-lib/types/constants";
+import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import type {
+  FieldReference as AbstractField,
+  ConcreteFieldReference,
+  LocalFieldReference,
+  ExpressionReference,
+  DatetimeUnit,
+  VariableTarget,
+} from "metabase-types/api";
 
 /**
  * A dimension option returned by the query_metadata API

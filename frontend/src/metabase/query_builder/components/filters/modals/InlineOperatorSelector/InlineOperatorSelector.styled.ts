@@ -1,9 +1,8 @@
 import styled from "@emotion/styled";
-import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
-
-import { color, lighten } from "metabase/lib/colors";
 
 import { Icon } from "metabase/core/components/Icon";
+import { color, lighten } from "metabase/lib/colors";
+import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const InlineOperatorContainer = styled.div`
   font-weight: bold;

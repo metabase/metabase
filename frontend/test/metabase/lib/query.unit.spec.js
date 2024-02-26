@@ -1,6 +1,6 @@
 import { copy } from "metabase/lib/utils";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 
 describe("Legacy Q_DEPRECATED library", () => {
   describe("createQuery", () => {

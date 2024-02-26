@@ -1,23 +1,22 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
-import { isDimensionTarget } from "metabase-types/guards";
+import Dimension, { FieldDimension } from "metabase-lib/Dimension";
+import {
+  deriveFieldOperatorFromParameter,
+  getParameterOperatorName,
+} from "metabase-lib/parameters/utils/operators";
+import {
+  getParameterSubType,
+  isDateParameter,
+} from "metabase-lib/parameters/utils/parameter-type";
 import {
   setStartingFrom,
   EXCLUDE_OPTIONS,
   EXCLUDE_UNITS,
 } from "metabase-lib/queries/utils/query-time";
-import Dimension, { FieldDimension } from "metabase-lib/Dimension";
-import {
-  getParameterSubType,
-  isDateParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
 import { isTemplateTagReference } from "metabase-lib/references";
-import {
-  deriveFieldOperatorFromParameter,
-  getParameterOperatorName,
-} from "metabase-lib/parameters/utils/operators";
+import { isDimensionTarget } from "metabase-types/guards";
 
 const withTemporalUnit = (fieldRef, unit) => {
   const dimension =

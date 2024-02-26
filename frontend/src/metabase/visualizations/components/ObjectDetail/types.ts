@@ -1,8 +1,7 @@
-import type { Card, DatasetData, DashboardCard } from "metabase-types/api";
-
-import type Table from "metabase-lib/metadata/Table";
-import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 import type Question from "metabase-lib/Question";
+import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import type Table from "metabase-lib/metadata/Table";
+import type { Card, DatasetData, DashboardCard } from "metabase-types/api";
 
 export type ObjectId = number | string;
 

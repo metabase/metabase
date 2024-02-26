@@ -1,35 +1,32 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
-
-import _ from "underscore";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
+import _ from "underscore";
 
 import "./LineAreaBarChart.css";
 
-import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
-
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-
+import { isEmpty } from "metabase/lib/validate";
+import { getOrderedSeries } from "metabase/visualizations/lib/series";
 import {
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
-import { getOrderedSeries } from "metabase/visualizations/lib/series";
-import { getAccentColors } from "metabase/lib/colors/groups";
-import { isEmpty } from "metabase/lib/validate";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
+import CardRenderer from "./CardRenderer";
 import {
   LineAreaBarChartRoot,
   ChartLegendCaption,
 } from "./LineAreaBarChart.styled";
 import LegendLayout from "./legend/LegendLayout";
-import CardRenderer from "./CardRenderer";
 
 export default class LineAreaBarChart extends Component {
   static noHeader = true;

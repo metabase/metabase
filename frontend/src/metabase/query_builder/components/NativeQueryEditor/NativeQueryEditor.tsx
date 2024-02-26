@@ -1,12 +1,11 @@
-import { createRef, Component } from "react";
-import { t } from "ttag";
-import type { ResizableBox, ResizableBoxProps } from "react-resizable";
-import { connect } from "react-redux";
-import _ from "underscore";
-import slugg from "slugg";
-
-import * as ace from "ace-builds/src-noconflict/ace";
 import type { Ace } from "ace-builds";
+import * as ace from "ace-builds/src-noconflict/ace";
+import { createRef, Component } from "react";
+import { connect } from "react-redux";
+import type { ResizableBox, ResizableBoxProps } from "react-resizable";
+import slugg from "slugg";
+import { t } from "ttag";
+import _ from "underscore";
 
 import "ace/ace";
 import "ace/ext-language_tools";
@@ -17,25 +16,23 @@ import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/json";
 
-import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
-
-import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
-import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
-
 import Databases from "metabase/entities/databases";
-import Snippets from "metabase/entities/snippets";
-import SnippetCollections from "metabase/entities/snippet-collections";
 import Questions from "metabase/entities/questions";
-
-import { getSetting } from "metabase/selectors/settings";
-
-import { checkNotNull } from "metabase/lib/types";
+import SnippetCollections from "metabase/entities/snippet-collections";
+import Snippets from "metabase/entities/snippets";
+import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
-import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
-
+import { checkNotNull } from "metabase/lib/types";
+import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
+import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
+import { getSetting } from "metabase/selectors/settings";
+import { Flex } from "metabase/ui";
+import type Question from "metabase-lib/Question";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
 import type {
   Card,
   CardId,
@@ -47,27 +44,9 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
-
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
-import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
-import {
-  calcInitialEditorHeight,
-  getEditorLineHeight,
-  getMaxAutoSizeLines,
-} from "./utils";
-
-import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
-import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
-import { VisibilityToggler } from "./VisibilityToggler";
-import { RightClickPopover } from "./RightClickPopover";
 import DataSourceSelectors from "./DataSourceSelectors";
-
-import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
-
 import {
   DragHandleContainer,
   DragHandle,
@@ -75,6 +54,17 @@ import {
   NativeQueryEditorRoot,
   StyledResizableBox,
 } from "./NativeQueryEditor.styled";
+import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
+import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
+import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
+import { RightClickPopover } from "./RightClickPopover";
+import { VisibilityToggler } from "./VisibilityToggler";
+import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
+import {
+  calcInitialEditorHeight,
+  getEditorLineHeight,
+  getMaxAutoSizeLines,
+} from "./utils";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%

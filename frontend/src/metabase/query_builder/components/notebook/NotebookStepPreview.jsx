@@ -1,20 +1,17 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import { t } from "ttag";
-
 import cx from "classnames";
+import { Component } from "react";
+import { Motion, spring } from "react-motion";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { Motion, spring } from "react-motion";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
-
-import { Icon } from "metabase/core/components/Icon";
-import Button from "metabase/core/components/Button";
-
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
+import Button from "metabase/core/components/Button";
+import { Icon } from "metabase/core/components/Icon";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 import Visualization from "metabase/visualizations/components/Visualization";
-
 import Question from "metabase-lib/Question";
+
 import {
   PreviewButtonContainer,
   PreviewHeader,

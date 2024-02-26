@@ -1,11 +1,12 @@
 import styled from "@emotion/styled";
-import type { BoxProps } from "metabase/ui";
-import { Box } from "metabase/ui";
+
 import Card from "metabase/components/Card";
 import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import { alpha, color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import type { BoxProps } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 const LIST_H_MARGINS = space(2);
 

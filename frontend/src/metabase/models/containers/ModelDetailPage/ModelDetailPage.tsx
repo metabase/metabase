@@ -1,33 +1,27 @@
-import { useEffect, useCallback, useMemo, useState } from "react";
+import type { Location, LocationDescriptor } from "history";
 import type * as React from "react";
-import _ from "underscore";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
-import type { Location, LocationDescriptor } from "history";
+import _ from "underscore";
 
 import { NotFound } from "metabase/containers/ErrorPages";
-
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-
 import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import title from "metabase/hoc/Title";
-import { getSetting } from "metabase/selectors/settings";
-
-import { loadMetadataForCard } from "metabase/questions/actions";
-
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
-
-import type { Card, Collection, WritebackAction } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
+import { getSetting } from "metabase/selectors/settings";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
+import type { Card, Collection, WritebackAction } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 type OwnProps = {
   location: Location;

@@ -1,12 +1,12 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestion,
   popover,
   visitIframe,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   regularQuestion,
   questionWithAggregation,

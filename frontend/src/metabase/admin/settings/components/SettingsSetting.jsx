@@ -1,18 +1,13 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { jt } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
-import SettingHeader from "./SettingHeader";
-import { SettingInput } from "./widgets/SettingInput";
-import SettingNumber from "./widgets/SettingNumber";
-import SettingPassword from "./widgets/SettingPassword";
-import SettingRadio from "./widgets/SettingRadio";
-import SettingToggle from "./widgets/SettingToggle";
-import SettingSelect from "./widgets/SettingSelect";
-import SettingText from "./widgets/SettingText";
+import MetabaseSettings from "metabase/lib/settings";
+
 import { settingToFormFieldId } from "./../../settings/utils";
+import SettingHeader from "./SettingHeader";
 import {
   SettingContent,
   SettingEnvVarMessage,
@@ -20,6 +15,13 @@ import {
   SettingRoot,
   SettingWarningMessage,
 } from "./SettingsSetting.styled";
+import { SettingInput } from "./widgets/SettingInput";
+import SettingNumber from "./widgets/SettingNumber";
+import SettingPassword from "./widgets/SettingPassword";
+import SettingRadio from "./widgets/SettingRadio";
+import SettingSelect from "./widgets/SettingSelect";
+import SettingText from "./widgets/SettingText";
+import SettingToggle from "./widgets/SettingToggle";
 
 const SETTING_WIDGET_MAP = {
   string: SettingInput,

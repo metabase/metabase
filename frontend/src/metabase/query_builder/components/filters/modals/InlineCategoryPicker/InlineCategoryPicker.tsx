@@ -5,17 +5,15 @@ import { t } from "ttag";
 import Fields from "metabase/entities/fields";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Warnings from "metabase/query_builder/components/Warnings";
-import type Filter from "metabase-lib/queries/structured/Filter";
 import type Dimension from "metabase-lib/Dimension";
+import type Filter from "metabase-lib/queries/structured/Filter";
 
 import { InlineValuePicker } from "../InlineValuePicker";
 
+import { Loading } from "./InlineCategoryPicker.styled";
+import { SimpleCategoryFilterPicker } from "./SimpleCategoryFilterPicker";
 import { MAX_INLINE_CATEGORIES } from "./constants";
 import { isValidOption } from "./utils";
-
-import { SimpleCategoryFilterPicker } from "./SimpleCategoryFilterPicker";
-
-import { Loading } from "./InlineCategoryPicker.styled";
 
 const mapStateToProps = (state: any, props: any) => {
   const fieldId = props.dimension?.field?.()?.id;

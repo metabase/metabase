@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ModerationReviewApi } from "metabase/services";
+
 import { MODERATION_STATUS_ICONS } from "./constants";
 
 export { MODERATION_STATUS } from "./constants";

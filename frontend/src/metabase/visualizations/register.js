@@ -1,30 +1,29 @@
+import ActionViz from "metabase/actions/components/ActionViz";
 import {
   registerVisualization,
   setDefaultVisualization,
 } from "metabase/visualizations";
 
-import ActionViz from "metabase/actions/components/ActionViz";
-
-import { Scalar } from "./visualizations/Scalar";
-import { SmartScalar } from "./visualizations/SmartScalar";
-import Progress from "./visualizations/Progress";
-import Table from "./visualizations/Table";
-import { Text } from "./visualizations/Text";
-import { LinkViz } from "./visualizations/LinkViz";
-import LineChart from "./visualizations/LineChart";
-import BarChart from "./visualizations/BarChart";
-import WaterfallChart from "./visualizations/WaterfallChart";
-import RowChart from "./visualizations/RowChart";
-import PieChart from "./visualizations/PieChart";
 import AreaChart from "./visualizations/AreaChart";
+import BarChart from "./visualizations/BarChart";
 import ComboChart from "./visualizations/ComboChart";
-import MapViz from "./visualizations/Map";
-import ScatterPlot from "./visualizations/ScatterPlot";
 import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
-import ObjectDetail from "./visualizations/ObjectDetail";
-import PivotTable from "./visualizations/PivotTable";
 import { Heading } from "./visualizations/Heading";
+import LineChart from "./visualizations/LineChart";
+import { LinkViz } from "./visualizations/LinkViz";
+import MapViz from "./visualizations/Map";
+import ObjectDetail from "./visualizations/ObjectDetail";
+import PieChart from "./visualizations/PieChart";
+import PivotTable from "./visualizations/PivotTable";
+import Progress from "./visualizations/Progress";
+import RowChart from "./visualizations/RowChart";
+import { Scalar } from "./visualizations/Scalar";
+import ScatterPlot from "./visualizations/ScatterPlot";
+import { SmartScalar } from "./visualizations/SmartScalar";
+import Table from "./visualizations/Table";
+import { Text } from "./visualizations/Text";
+import WaterfallChart from "./visualizations/WaterfallChart";
 
 export default function () {
   registerVisualization(Scalar);

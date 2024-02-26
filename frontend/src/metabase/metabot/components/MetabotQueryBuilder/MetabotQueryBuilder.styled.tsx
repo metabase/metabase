@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+
 import EmptyState from "metabase/components/EmptyState";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 import { VisualizationRunningState } from "metabase/query_builder/components/QueryVisualization";
 
 export const QueryBuilderRoot = styled.div`

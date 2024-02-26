@@ -1,14 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import Filter from "metabase-lib/queries/structured/Filter";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { InlineDatePicker } from "./InlineDatePicker";
 

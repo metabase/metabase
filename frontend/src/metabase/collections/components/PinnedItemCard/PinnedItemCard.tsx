@@ -2,14 +2,13 @@ import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
-
 import ActionMenu from "metabase/collections/components/ActionMenu";
-import ModelDetailLink from "metabase/models/components/ModelDetailLink";
-
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import type { IconName } from "metabase/core/components/Icon";
+import Tooltip from "metabase/core/components/Tooltip";
+import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type Database from "metabase-lib/metadata/Database";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+
 import {
   ActionsContainer,
   Body,

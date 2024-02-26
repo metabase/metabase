@@ -1,12 +1,14 @@
 import type * as React from "react";
 import { t } from "ttag";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+
 import type {
   ClickActionButtonType,
   Drill,
 } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 import { isBoolean, isDate, isNumeric } from "metabase-lib/types/utils/isa";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
+
 import { TextIcon } from "../QuickFilterDrill/QuickFilterDrill.styled";
 
 type FilterOperator = "=" | "≠" | "<" | ">";

@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { connect } from "react-redux";
-import EventSandbox from "metabase/components/EventSandbox";
-import { getSetting } from "metabase/selectors/settings";
+
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   canArchiveItem,
@@ -11,10 +10,13 @@ import {
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
+import EventSandbox from "metabase/components/EventSandbox";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import { getSetting } from "metabase/selectors/settings";
+import type Database from "metabase-lib/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import type Database from "metabase-lib/metadata/Database";
+
 import { EntityItemMenu } from "./ActionMenu.styled";
 
 interface OwnProps {

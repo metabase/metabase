@@ -1,10 +1,12 @@
-import type { SortableElementProps } from "react-sortable-hoc";
 import type React from "react";
+import type { SortableElementProps } from "react-sortable-hoc";
+
 import {
   SortableContainer,
   SortableElement,
 } from "metabase/components/sortable";
 import type { IconProps } from "metabase/core/components/Icon";
+
 import { ColumnItem } from "../ColumnItem";
 
 interface SortableItem {

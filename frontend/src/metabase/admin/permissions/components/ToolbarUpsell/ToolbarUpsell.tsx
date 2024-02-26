@@ -8,6 +8,7 @@ import { getUpgradeUrl } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
 import { ToolbarButton } from "../ToolbarButton";
+
 import { UpsellContent } from "./ToolbarUpsell.styled";
 
 interface StateProps {

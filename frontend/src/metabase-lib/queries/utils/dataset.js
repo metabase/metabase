@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import Dimension, { FieldDimension } from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = data =>

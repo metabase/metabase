@@ -1,10 +1,11 @@
 import _ from "underscore";
-import { getParameterType } from "./parameter-type";
+
 import {
   getQueryType,
   getSourceConfig,
   getSourceType,
 } from "./parameter-source";
+import { getParameterType } from "./parameter-type";
 
 export const PULSE_PARAM_EMPTY = null;
 export const PULSE_PARAM_USE_DEFAULT = undefined;

@@ -1,20 +1,20 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 
-import * as Urls from "metabase/lib/urls";
-import EntityMenu from "metabase/components/EntityMenu";
-import Swapper from "metabase/core/components/Swapper";
-import CheckBox from "metabase/core/components/CheckBox";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { Icon } from "metabase/core/components/Icon";
 import {
   isPreviewShown,
   isFullyParameterized,
   isItemModel,
   isItemPinned,
 } from "metabase/collections/utils";
+import EntityMenu from "metabase/components/EntityMenu";
+import CheckBox from "metabase/core/components/CheckBox";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Icon } from "metabase/core/components/Icon";
+import Swapper from "metabase/core/components/Swapper";
+import * as Urls from "metabase/lib/urls";
 
 import {
   EntityIconWrapper,

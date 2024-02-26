@@ -1,18 +1,6 @@
 import * as Lib from "metabase-lib";
-import {
-  createOrdersCreatedAtDatasetColumn,
-  ORDERS,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-} from "metabase-types/api/mocks/presets";
-import { createMockColumn } from "metabase-types/api/mocks";
-import type {
-  DatasetColumn,
-  RowValue,
-  StructuredDatasetQuery,
-} from "metabase-types/api";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { AvailableDrillsTestCase } from "metabase-lib/tests/drills-common";
 import {
   AGGREGATED_ORDERS_ROW_VALUES,
@@ -20,12 +8,25 @@ import {
   ORDERS_QUESTION,
   ORDERS_ROW_VALUES,
 } from "metabase-lib/tests/drills-common";
+import type {
+  DatasetColumn,
+  RowValue,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
+import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createOrdersCreatedAtDatasetColumn,
+  ORDERS,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+
+import { availableDrillThrus } from "./drills";
 import {
   columnFinder,
   getAvailableDrills,
   SAMPLE_METADATA,
 } from "./test-helpers";
-import { availableDrillThrus } from "./drills";
 
 const STAGE_INDEX = -1;
 

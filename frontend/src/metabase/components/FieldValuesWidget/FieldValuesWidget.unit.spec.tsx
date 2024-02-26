@@ -1,17 +1,17 @@
 import userEvent from "@testing-library/user-event";
+
+import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 import {
   getBrokenUpTextMatcher,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
-import Fields from "metabase/entities/fields";
-
-import { checkNotNull } from "metabase/lib/types";
 import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
-
+import Fields from "metabase/entities/fields";
+import { checkNotNull } from "metabase/lib/types";
+import type Field from "metabase-lib/metadata/Field";
 import {
   ORDERS,
   PRODUCTS,
@@ -19,7 +19,6 @@ import {
   PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
 } from "metabase-types/api/mocks/presets";
-import type Field from "metabase-lib/metadata/Field";
 
 import {
   state,

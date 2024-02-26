@@ -1,19 +1,18 @@
+import type Question from "metabase-lib/Question";
+import type Field from "metabase-lib/metadata/Field";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type {
+  ClickObject,
+  DrillProps,
+} from "metabase-lib/queries/drills/types";
+import { isSameField } from "metabase-lib/queries/utils";
+import { isFK, isPK } from "metabase-lib/types/utils/isa";
 import type {
   Field as ApiField,
   DatasetColumn,
   RowValue,
 } from "metabase-types/api";
-
-import { isFK, isPK } from "metabase-lib/types/utils/isa";
-import type Question from "metabase-lib/Question";
-import type {
-  ClickObject,
-  DrillProps,
-} from "metabase-lib/queries/drills/types";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type Field from "metabase-lib/metadata/Field";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import { isSameField } from "metabase-lib/queries/utils";
 
 export type ObjectDetailDrillType = "pk" | "fk" | "zoom" | "dashboard";
 

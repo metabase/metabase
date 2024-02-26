@@ -1,21 +1,23 @@
 /* eslint-disable react/prop-types */
-import { isEmpty } from "underscore";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { isEmpty } from "underscore";
+
+import Popover from "metabase/components/Popover";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
+import { useSelector } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import type {
   FilterTypeKeys,
   SearchFilterComponentProps,
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/search/types";
-import { Text, Box, Center, Button, Stack } from "metabase/ui";
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
-import Popover from "metabase/components/Popover";
-import { useSelector } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
-import { isNotNull } from "metabase/lib/types";
+import { Text, Box, Center, Button, Stack } from "metabase/ui";
+
 import {
   GroupOverflowHidden,
   DropdownFieldSet,

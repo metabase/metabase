@@ -1,11 +1,9 @@
-/* eslint-disable import/no-duplicates */
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type {
   DimensionOption,
-  SegmentOption,
   FilterSection,
+  SegmentOption,
 } from "metabase-lib/queries/StructuredQuery";
-/* eslint-enable import/no-duplicates */
 import { isDimensionOption } from "metabase-lib/queries/StructuredQuery";
 import type Filter from "metabase-lib/queries/structured/Filter";
 

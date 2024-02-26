@@ -2,11 +2,12 @@
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import type { NotebookStep } from "./types";
 
 export const metadata = createMockMetadata({

@@ -3,17 +3,16 @@ import { useCallback, useMemo } from "react";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
-
+import type { UiParameter } from "metabase-lib/parameters/types";
 import type {
   DashboardCard,
   ClickBehavior,
   ClickBehaviorType,
 } from "metabase-types/api";
-import type { UiParameter } from "metabase-lib/parameters/types";
 
-import { clickBehaviorOptions } from "../utils";
-import { useClickBehaviorOptionName } from "../hooks";
 import { SidebarItem } from "../SidebarItem";
+import { useClickBehaviorOptionName } from "../hooks";
+import { clickBehaviorOptions } from "../utils";
 
 import { BehaviorOptionIcon } from "./TypeSelector.styled";
 

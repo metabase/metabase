@@ -1,16 +1,16 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+
 import { createMockMetadata } from "__support__/metadata";
-import {
-  createSampleDatabase,
-  PRODUCTS,
-} from "metabase-types/api/mocks/presets";
 import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
   fieldFilterParameterToMBQLFilter,
 } from "metabase-lib/parameters/utils/mbql";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+} from "metabase-types/api/mocks/presets";
 
 describe("parameters/utils/mbql", () => {
   const metadata = createMockMetadata({

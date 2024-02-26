@@ -1,7 +1,7 @@
+import KJUR from "jsrsasign";
 import querystring from "querystring";
 
 // using jsrsasign because jsonwebtoken doesn't work on the web :-/
-import KJUR from "jsrsasign";
 
 export function getSignedToken(
   resourceType,

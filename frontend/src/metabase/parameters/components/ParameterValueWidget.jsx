@@ -1,39 +1,38 @@
-import { createRef, Component } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { createRef, Component } from "react";
+import { t } from "ttag";
 
+import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
+import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
+import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
+import DateRangeWidget from "metabase/components/DateRangeWidget";
+import DateRelativeWidget from "metabase/components/DateRelativeWidget";
+import DateSingleWidget from "metabase/components/DateSingleWidget";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { TextWidget } from "metabase/components/TextWidget";
+import { Icon } from "metabase/core/components/Icon";
+import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
+import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
+import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
+import StringInputWidget from "metabase/parameters/components/widgets/StringInputWidget";
 import {
   getParameterIconName,
   getParameterWidgetTitle,
 } from "metabase/parameters/utils/ui";
-
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { Icon } from "metabase/core/components/Icon";
-import DateSingleWidget from "metabase/components/DateSingleWidget";
-import DateRangeWidget from "metabase/components/DateRangeWidget";
-import DateRelativeWidget from "metabase/components/DateRelativeWidget";
-import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
-import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
-import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
-import { TextWidget } from "metabase/components/TextWidget";
-import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
-import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
-import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
-import StringInputWidget from "metabase/parameters/components/widgets/StringInputWidget";
 import {
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase-lib/parameters/utils/operators";
+import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
-import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 
-import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterValueWidget.css";
+import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 
 const DATE_WIDGETS = {
   "date/single": DateSingleWidget,

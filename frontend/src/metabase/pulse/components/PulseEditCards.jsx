@@ -1,13 +1,11 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
 
 import QuestionSelect from "metabase/containers/QuestionSelect";
-
-// import Query from "metabase-lib/queries/utils";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import { color } from "metabase/lib/colors";
+
 import PulseCardPreview from "./PulseCardPreview";
 import { AttachmentType, CardNotice } from "./PulseEditCards.styled";
 

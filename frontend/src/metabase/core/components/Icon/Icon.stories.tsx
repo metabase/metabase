@@ -1,5 +1,6 @@
-import type { StoryObj } from "@storybook/react";
 import styled from "@emotion/styled";
+import type { StoryObj } from "@storybook/react";
+
 import { Icon } from "./Icon";
 import { iconNames } from "./icons";
 

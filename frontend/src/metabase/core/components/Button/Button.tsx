@@ -1,10 +1,12 @@
+import styled from "@emotion/styled";
 import cx from "classnames";
 import type { ButtonHTMLAttributes, ReactNode, Ref, ElementType } from "react";
 import { forwardRef } from "react";
-import styled from "@emotion/styled";
 import _ from "underscore";
+
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
+
 import {
   ButtonContent,
   ButtonRoot,

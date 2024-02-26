@@ -1,21 +1,20 @@
 /* eslint-disable react/prop-types */
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-
-import { color } from "metabase/lib/colors";
-import { getFullName } from "metabase/lib/user";
-import * as Urls from "metabase/lib/urls";
-import { useSelector } from "metabase/lib/redux";
 import EntityMenu from "metabase/components/EntityMenu";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import UserAvatar from "metabase/components/UserAvatar";
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-import UserAvatar from "metabase/components/UserAvatar";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
+
 import MembershipSelect from "./MembershipSelect";
 import { RefreshLink } from "./PeopleListRow.styled";
 

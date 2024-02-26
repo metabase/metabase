@@ -3,6 +3,7 @@ import _ from "underscore";
 import type Table from "metabase-lib/metadata/Table";
 
 import type NativeQuery from "../NativeQuery";
+
 import { getDatasetTable } from "./nested-card-query-table";
 
 export function getNativeQueryTable(nativeQuery: NativeQuery): Table | null {

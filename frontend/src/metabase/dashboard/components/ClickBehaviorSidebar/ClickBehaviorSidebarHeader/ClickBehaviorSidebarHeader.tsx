@@ -2,11 +2,11 @@ import type * as React from "react";
 import { t, jt } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
-
+import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { DashboardCard, DatasetColumn } from "metabase-types/api";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
+
 import {
   ColumnClickBehaviorHeader,
   ChevronIconContainer,

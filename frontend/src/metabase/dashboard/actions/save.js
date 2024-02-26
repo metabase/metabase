@@ -1,10 +1,8 @@
 import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
-import { createThunkAction } from "metabase/lib/redux";
-
 import Dashboards from "metabase/entities/dashboards";
-
+import { createThunkAction } from "metabase/lib/redux";
 import { CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 

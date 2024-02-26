@@ -2,6 +2,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { DEFAULT_ICON_SIZE } from "metabase/search/components/SearchResult/components";
+
 import type { IconComponentProps } from "./ItemIcon";
 
 export function CollectionIcon({ item }: { item: IconComponentProps["item"] }) {

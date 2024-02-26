@@ -1,39 +1,34 @@
-import { useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
+import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import _ from "underscore";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import title from "metabase/hoc/Title";
-import favicon from "metabase/hoc/Favicon";
-import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
-
+import Dashboards from "metabase/entities/dashboards";
+import favicon from "metabase/hoc/Favicon";
+import title from "metabase/hoc/Title";
+import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
-
+import { parseHashOptions } from "metabase/lib/browser";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
 
-import { parseHashOptions } from "metabase/lib/browser";
-import * as Urls from "metabase/lib/urls";
-
-import Dashboards from "metabase/entities/dashboards";
-
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import * as dashboardActions from "../../actions";
+import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
   getCardData,
   getClickBehaviorSidebarDashcard,
@@ -61,7 +56,6 @@ import {
   getSelectedTabId,
   getIsNavigatingBackToDashboard,
 } from "../../selectors";
-import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {

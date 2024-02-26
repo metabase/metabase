@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   changeBinningForDimension,
@@ -5,8 +6,6 @@ import {
   summarize,
   visitQuestion,
 } from "e2e/support/helpers";
-
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 /**
  * The list of issues this spec covers:

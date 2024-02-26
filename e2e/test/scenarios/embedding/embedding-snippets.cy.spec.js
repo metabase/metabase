@@ -1,14 +1,14 @@
 import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   visitDashboard,
   visitQuestion,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 import { JS_CODE, IFRAME_CODE } from "./shared/embedding-snippets";
 

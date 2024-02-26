@@ -1,5 +1,5 @@
-import { t } from "ttag";
 import type { MantineThemeOverride } from "@mantine/core";
+import { t } from "ttag";
 
 export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {

@@ -1,11 +1,12 @@
 import cx from "classnames";
 import { t, jt } from "ttag";
-import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Icon } from "metabase/core/components/Icon";
+
 import Text from "metabase/components/type/Text";
+import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { ChannelCard } from "metabase/sharing/components/NewPulseSidebar.styled";
 
 interface NewPulseSidebarProps {

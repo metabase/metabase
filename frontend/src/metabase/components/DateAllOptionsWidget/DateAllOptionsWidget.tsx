@@ -1,15 +1,13 @@
+import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
-import cx from "classnames";
-
-import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
-import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
 
 import {
   WidgetRoot,
   UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
-
+import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
+import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 // Use a placeholder value as field references are not used in dashboard filters

@@ -1,9 +1,11 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import { getEngineNativeType } from "metabase/lib/engine";
+
 import Tooltip from "metabase/core/components/Tooltip";
+import { getEngineNativeType } from "metabase/lib/engine";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import type Question from "metabase-lib/Question";
+
 import { SqlButton, SqlIcon } from "./ConvertQueryButton.styled";
 
 const BUTTON_TOOLTIP = {

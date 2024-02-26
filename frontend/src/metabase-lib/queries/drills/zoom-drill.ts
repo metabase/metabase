@@ -1,13 +1,14 @@
 import { t } from "ttag";
+
 import * as Lib from "metabase-lib";
-import type { LocalFieldReference } from "metabase-types/api";
+import { FieldDimension } from "metabase-lib/Dimension";
+import type Question from "metabase-lib/Question";
 import type {
   ClickObject,
   ClickObjectDimension,
 } from "metabase-lib/queries/drills/types";
 import { drillDownForDimensions } from "metabase-lib/queries/utils/drilldown";
-import type Question from "metabase-lib/Question";
-import { FieldDimension } from "metabase-lib/Dimension";
+import type { LocalFieldReference } from "metabase-types/api";
 
 export const getNextZoomDrilldown = (
   question: Question,

@@ -1,28 +1,26 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
-import {
-  createSampleDatabase,
-  SAMPLE_DB_ID,
-  ORDERS,
-  ORDERS_ID,
-  PEOPLE,
-} from "metabase-types/api/mocks/presets";
-/* eslint-disable import/no-duplicates */
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type {
   DimensionOption,
   SegmentOption,
 } from "metabase-lib/queries/StructuredQuery";
-/* eslint-enable import/no-duplicates */
 import { isDimensionOption } from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import {
   fixBetweens,
+  getSearchHits,
+  handleEmptyBetween,
   hasBackwardsArguments,
   swapFilterArguments,
-  handleEmptyBetween,
-  getSearchHits,
 } from "./utils";
 
 const metadata = createMockMetadata({

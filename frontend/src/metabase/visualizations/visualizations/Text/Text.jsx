@@ -1,14 +1,13 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import rehypeExternalLinks from "rehype-external-links";
-import cx from "classnames";
+import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isEmpty } from "metabase/lib/validate";
-
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 
 import {

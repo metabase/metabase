@@ -1,5 +1,5 @@
-import { main, restore, setupSMTP } from "e2e/support/helpers";
 import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
+import { main, restore, setupSMTP } from "e2e/support/helpers";
 
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
@@ -109,7 +109,9 @@ describe("scenarios > admin > settings > email settings", () => {
     });
     cy.visit("/admin/settings/email/smtp");
     main().findByText("Send test email").click();
-    cy.findAllByText("Couldn't connect to host, port: localhost, 1234; timeout -1");
+    cy.findAllByText(
+      "Couldn't connect to host, port: localhost, 1234; timeout -1",
+    );
   });
 
   it(

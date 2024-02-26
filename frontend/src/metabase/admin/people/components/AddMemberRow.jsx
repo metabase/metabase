@@ -1,15 +1,16 @@
-import { useMemo, useRef, useState } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
-import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/core/components/Icon";
 import Typeahead from "metabase/hoc/Typeahead";
-import { AddRow } from "./AddRow";
+import { color } from "metabase/lib/colors";
+
 import { AddMemberAutocompleteSuggestionRoot } from "./AddMemberRow.styled";
+import { AddRow } from "./AddRow";
 
 AddMemberRow.propTypes = {
   users: PropTypes.array.isRequired,

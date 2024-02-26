@@ -1,28 +1,30 @@
 import { useEffect } from "react";
-import { t } from "ttag";
 import { replace } from "react-router-redux";
-import { isSmallScreen } from "metabase/lib/dom";
-import { openNavbar } from "metabase/redux/app";
+import { t } from "ttag";
+
 import { updateSetting } from "metabase/admin/settings/settings";
-import { addUndo } from "metabase/redux/undo";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   useDashboardQuery,
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { isSmallScreen } from "metabase/lib/dom";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import type { CollectionItem, DashboardId } from "metabase-types/api";
+import { openNavbar } from "metabase/redux/app";
+import { addUndo } from "metabase/redux/undo";
 import { getSettingsLoading } from "metabase/selectors/settings";
 import type Database from "metabase-lib/metadata/Database";
+import type { CollectionItem, DashboardId } from "metabase-types/api";
+
 import {
   getCustomHomePageDashboardId,
   getHasDismissedCustomHomePageToast,
   getIsMetabotEnabled,
 } from "../../selectors";
-import { HomeLayout } from "../HomeLayout";
 import { HomeContent } from "../HomeContent";
+import { HomeLayout } from "../HomeLayout";
 
 const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 

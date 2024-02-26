@@ -1,11 +1,11 @@
-import { t } from "ttag";
-
 import type { MouseEvent } from "react";
 import { useState } from "react";
+import { t } from "ttag";
+
+import { isActionDashCard } from "metabase/actions/utils";
 import { Icon } from "metabase/core/components/Icon";
-
+import { isLinkDashCard } from "metabase/dashboard/utils";
 import { getVisualizationRaw } from "metabase/visualizations";
-
 import type {
   Dashboard,
   DashboardCard,
@@ -13,19 +13,16 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { isActionDashCard } from "metabase/actions/utils";
-import { isLinkDashCard } from "metabase/dashboard/utils";
-
-import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
-import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
-import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
-import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
-import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
+import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
+import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
+import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
 import {
   DashCardActionButtonsContainer,
   DashCardActionsPanelContainer,
 } from "./DashCardActionsPanel.styled";
+import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
+import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
 
 interface Props {
   series: Series;

@@ -1,4 +1,7 @@
 import { onlyOn } from "@cypress/skip-test";
+
+import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -11,9 +14,6 @@ import {
   openDashboardMenu,
   toggleDashboardInfoSidebar,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

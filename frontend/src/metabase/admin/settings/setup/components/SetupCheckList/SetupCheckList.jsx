@@ -2,15 +2,16 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { SetupApi } from "metabase/services";
-import { color } from "metabase/lib/colors";
-import MetabaseSettings from "metabase/lib/settings";
-import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
-import { getIsPaidPlan } from "metabase/selectors/settings";
 
-import { Icon } from "metabase/core/components/Icon";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
+import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
+import MetabaseSettings from "metabase/lib/settings";
+import { getIsPaidPlan } from "metabase/selectors/settings";
+import { SetupApi } from "metabase/services";
+
 import {
   SetupListRoot,
   TaskRegularLink,

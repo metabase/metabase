@@ -1,21 +1,27 @@
 /* eslint-disable react/prop-types */
-import { createRef, forwardRef, Component } from "react";
-import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
-import { t } from "ttag";
-import { connect } from "react-redux";
-import _ from "underscore";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { createRef, forwardRef, Component } from "react";
+import ReactDOM from "react-dom";
+import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
+import { t } from "ttag";
+import _ from "underscore";
 
 import "./TableInteractive.css";
 
-import { Icon } from "metabase/core/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import Button from "metabase/core/components/Button";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-
+import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
+import { zoomInRow } from "metabase/query_builder/actions";
+import { getQueryBuilderMode } from "metabase/query_builder/selectors";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -23,21 +29,14 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import { getScrollBarSize } from "metabase/lib/dom";
-import { zoomInRow } from "metabase/query_builder/actions";
-import { getQueryBuilderMode } from "metabase/query_builder/selectors";
-
-import ExplicitSize from "metabase/components/ExplicitSize";
-
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import Dimension from "metabase-lib/Dimension";
-import { memoizeClass } from "metabase-lib/utils";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
+import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
+import { memoizeClass } from "metabase-lib/utils";
+
 import MiniBar from "../MiniBar";
+
 import {
   TableDraggable,
   ExpandButton,

@@ -1,21 +1,19 @@
 /* eslint-disable react/prop-types */
-import { t } from "ttag";
 import cx from "classnames";
+import { t } from "ttag";
 
 import ButtonBar from "metabase/components/ButtonBar";
-
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/components/QuestionEmbedWidget";
-import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
-import QuestionTimelineWidget from "./QuestionTimelineWidget";
-
-import QuestionRowCount from "./QuestionRowCount";
-import QuestionLastUpdated from "./QuestionLastUpdated";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
+import QuestionLastUpdated from "./QuestionLastUpdated";
+import QuestionRowCount from "./QuestionRowCount";
+import QuestionTimelineWidget from "./QuestionTimelineWidget";
+import ViewButton from "./ViewButton";
 import { ViewFooterRoot, FooterButtonGroup } from "./ViewFooter.styled";
 
 const ViewFooter = ({

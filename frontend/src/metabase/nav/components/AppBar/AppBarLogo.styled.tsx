@@ -1,8 +1,10 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import Link from "metabase/core/components/Link";
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+
 import { AppBarLeftContainer } from "./AppBarLarge.styled";
 
 export const LogoRoot = styled.div`

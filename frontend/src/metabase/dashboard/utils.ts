@@ -1,12 +1,19 @@
-import _ from "underscore";
 import { t } from "ttag";
-import { isUUID, isJWT } from "metabase/lib/utils";
+import _ from "underscore";
+
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { isUUID, isJWT } from "metabase/lib/utils";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import Question from "metabase-lib/Question";
+import {
+  isDateParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/parameters/utils/parameter-type";
 import type {
   Card,
   CardId,
@@ -22,12 +29,6 @@ import type {
   EmbedDataset,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import {
-  isDateParameter,
-  isNumberParameter,
-  isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params) {

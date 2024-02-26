@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+
 import TableBrowser from "./TableBrowser";
 
 const DatabaseLink = () => <div />;

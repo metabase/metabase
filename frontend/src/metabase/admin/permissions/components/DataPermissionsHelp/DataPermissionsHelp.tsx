@@ -1,14 +1,13 @@
 import { t, jt } from "ttag";
 
-import { Accordion, Box, Flex, Stack, Text, Title } from "metabase/ui";
-import MetabaseSettings from "metabase/lib/settings";
-
-import { Icon } from "metabase/core/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
-import { getSetting } from "metabase/selectors/settings";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { Icon } from "metabase/core/components/Icon";
 import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
+import { getSetting } from "metabase/selectors/settings";
+import { Accordion, Box, Flex, Stack, Text, Title } from "metabase/ui";
 
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(

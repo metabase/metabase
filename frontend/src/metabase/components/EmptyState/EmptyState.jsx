@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
+import Text from "metabase/components/type/Text";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
-import Text from "metabase/components/type/Text";
+
 import {
   EmptyStateActions,
   EmptyStateFooter,

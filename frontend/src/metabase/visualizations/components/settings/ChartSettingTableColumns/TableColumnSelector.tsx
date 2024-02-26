@@ -1,6 +1,9 @@
 import { useCallback } from "react";
+
 import { getEditWidgetConfig } from "metabase/visualizations/components/settings/ChartSettingTableColumns/utils";
+
 import { ChartSettingOrderedItems } from "../ChartSettingOrderedItems";
+
 import { TableColumnSelectorRoot } from "./TableColumnSelector.styled";
 import type {
   ColumnSettingItem,

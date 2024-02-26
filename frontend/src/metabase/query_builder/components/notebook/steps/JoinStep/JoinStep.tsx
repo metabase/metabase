@@ -1,22 +1,16 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-
+import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCellAdd, NotebookCellItem } from "../../NotebookCell";
+import type { NotebookStepUiComponentProps } from "../../types";
 
-import { useJoin } from "./use-join";
-import { useJoinCondition } from "./use-join-condition";
-import { JoinConditionColumnPicker } from "./JoinConditionColumnPicker";
 import type { JoinConditionColumnPickerRef } from "./JoinConditionColumnPicker";
+import { JoinConditionColumnPicker } from "./JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "./JoinConditionOperatorPicker";
-import { JoinStrategyPicker } from "./JoinStrategyPicker";
-import { JoinTablePicker } from "./JoinTablePicker";
-
 import {
   ConditionNotebookCell,
   ConditionUnionLabel,
@@ -24,6 +18,10 @@ import {
   TablesNotebookCell,
   RemoveConditionButton,
 } from "./JoinStep.styled";
+import { JoinStrategyPicker } from "./JoinStrategyPicker";
+import { JoinTablePicker } from "./JoinTablePicker";
+import { useJoin } from "./use-join";
+import { useJoinCondition } from "./use-join-condition";
 
 export function JoinStep({
   topLevelQuery: query,

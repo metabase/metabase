@@ -1,11 +1,11 @@
-import {
-  ORDERS,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-} from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
 import type { DrillThruType } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { drillThru } from "metabase-lib";
+import Question from "metabase-lib/Question";
+import {
+  getAvailableDrillByType,
+  SAMPLE_METADATA,
+} from "metabase-lib/test-helpers";
 import type {
   ApplyDrillTestCase,
   ApplyDrillTestCaseWithCustomColumn,
@@ -20,11 +20,11 @@ import {
   ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
   ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
 } from "metabase-lib/tests/drills-common";
-import Question from "metabase-lib/Question";
 import {
-  getAvailableDrillByType,
-  SAMPLE_METADATA,
-} from "metabase-lib/test-helpers";
+  ORDERS,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 
 const DRILL_TYPE: DrillThruType = "drill-thru/sort";
 

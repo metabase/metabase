@@ -1,21 +1,24 @@
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import * as MetabaseCore from "metabase/lib/core";
-import Fields from "metabase/entities/fields";
+
 import ActionButton from "metabase/components/ActionButton";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import type { FieldId, FieldValuesType } from "metabase-types/api";
 import type { SelectChangeEvent } from "metabase/core/components/Select/Select";
 import Select from "metabase/core/components/Select/Select";
+import Fields from "metabase/entities/fields";
+import * as MetabaseCore from "metabase/lib/core";
 import type Field from "metabase-lib/metadata/Field";
 import type Table from "metabase-lib/metadata/Table";
+import type { FieldId, FieldValuesType } from "metabase-types/api";
+
 import { discardFieldValues, rescanFieldValues } from "../../actions";
 import FieldRemappingSettings from "../FieldRemappingSettings";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
+
 import { FieldNameInput } from "./FieldGeneralSettings.styled";
 
 interface OwnProps {

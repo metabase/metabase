@@ -1,4 +1,5 @@
 import { createAction } from "redux-actions";
+
 import { CardApi } from "metabase/services";
 
 export const CREATE_PUBLIC_LINK = "metabase/card/CREATE_PUBLIC_LINK";

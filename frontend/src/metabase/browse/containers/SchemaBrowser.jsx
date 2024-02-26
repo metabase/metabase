@@ -1,19 +1,17 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import Schema from "metabase/entities/schemas";
-import Database from "metabase/entities/databases";
-
+import BrowseHeader from "metabase/browse/components/BrowseHeader";
+import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
+import TableBrowser from "metabase/browse/containers/TableBrowser";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid } from "metabase/components/Grid";
-
-import TableBrowser from "metabase/browse/containers/TableBrowser";
-import * as Urls from "metabase/lib/urls";
+import Database from "metabase/entities/databases";
+import Schema from "metabase/entities/schemas";
 import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 
-import BrowseHeader from "metabase/browse/components/BrowseHeader";
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import { SchemaGridItem, SchemaLink } from "./SchemaBrowser.styled";
 
 function SchemaBrowser(props) {

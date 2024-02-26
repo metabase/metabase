@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
 
-import { Icon } from "metabase/core/components/Icon";
 import SelectList from "metabase/components/SelectList";
-
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 

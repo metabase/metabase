@@ -1,10 +1,13 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
-import { getAccentColors } from "metabase/lib/colors/groups";
+import PropTypes from "prop-types";
+import { Component } from "react";
+
 import { Icon } from "metabase/core/components/Icon";
+import { getAccentColors } from "metabase/lib/colors/groups";
+
 import ExplicitSize from "../../components/ExplicitSize";
+
 import styles from "./Legend.css";
 import { AddSeriesIcon, LegendHeaderItem } from "./LegendHeader.styled";
 

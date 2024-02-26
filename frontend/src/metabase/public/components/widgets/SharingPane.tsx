@@ -1,18 +1,18 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { t, jt } from "ttag";
-import cx from "classnames";
+
+import Confirm from "metabase/components/Confirm";
+import CopyWidget from "metabase/components/CopyWidget";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
-import CopyWidget from "metabase/components/CopyWidget";
-import Confirm from "metabase/components/Confirm";
-
-import { getPublicEmbedHTML } from "metabase/public/lib/code";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
+import { getPublicEmbedHTML } from "metabase/public/lib/code";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+
 import {
   Description,
   EmbedWidgetHeader,

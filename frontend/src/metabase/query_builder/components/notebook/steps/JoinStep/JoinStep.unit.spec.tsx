@@ -1,12 +1,16 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { useState } from "react";
+
 import { createMockMetadata } from "__support__/metadata";
-import { createMockEntitiesState } from "__support__/store";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import {
   createMockCollectionItem,
   createMockDatabase,
@@ -17,10 +21,9 @@ import {
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import { createMockNotebookStep } from "../../test-utils";
+
 import { JoinStep } from "./JoinStep";
 
 const SAMPLE_DATABASE = createSampleDatabase();

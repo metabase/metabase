@@ -1,8 +1,10 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ValuesSourceType } from "metabase-types/api/parameters";
-import type { UiParameter } from "metabase-lib/parameters/types";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import type { ValuesSourceType } from "metabase-types/api/parameters";
+
 import ParameterLinkedFilters from "./ParameterLinkedFilters";
 
 interface SetupOpts {

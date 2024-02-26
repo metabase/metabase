@@ -1,5 +1,6 @@
-/* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
+/* eslint-disable import/order, react/prop-types */
+import { Component, createRef } from "react";
+import _ from "underscore";
 
 import "leaflet/dist/leaflet.css";
 import "./LeafletMap.css";
@@ -7,11 +8,9 @@ import "./LeafletMap.css";
 import L from "leaflet";
 import "leaflet-draw";
 
-import _ from "underscore";
-
 import MetabaseSettings from "metabase/lib/settings";
-import { updateLatLonFilter } from "metabase-lib/queries/utils/actions";
 import Question from "metabase-lib/Question";
+import { updateLatLonFilter } from "metabase-lib/queries/utils/actions";
 
 export default class LeafletMap extends Component {
   constructor(props) {

@@ -1,19 +1,8 @@
-import { t, jt } from "ttag";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { connect } from "react-redux";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import { t, jt } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import MetabaseSettings from "metabase/lib/settings";
-
-import { getUpgradeUrl } from "metabase/selectors/settings";
-
-import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
-
-import type { TokenStatus } from "metabase/admin/settings/hooks/use-license";
-import { useLicense } from "metabase/admin/settings/hooks/use-license";
+import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import {
   ExplorePaidPlansContainer,
   LoaderContainer,
@@ -21,11 +10,17 @@ import {
   SectionHeader,
   SettingsLicenseContainer,
 } from "metabase/admin/settings/components/SettingsLicense";
-import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
+import type { TokenStatus } from "metabase/admin/settings/hooks/use-license";
+import { useLicense } from "metabase/admin/settings/hooks/use-license";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import MetabaseSettings from "metabase/lib/settings";
+import { getUpgradeUrl } from "metabase/selectors/settings";
+import { Text, Anchor } from "metabase/ui";
+import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 import type { SettingDefinition } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import { Text, Anchor } from "metabase/ui";
 
 const HOSTING_FEATURE_KEY = "hosting";
 const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";

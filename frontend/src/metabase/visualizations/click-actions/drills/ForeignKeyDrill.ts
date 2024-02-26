@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { pluralize, singularize } from "metabase/lib/formatting/strings";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import {

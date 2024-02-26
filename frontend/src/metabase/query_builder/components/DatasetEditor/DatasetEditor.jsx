@@ -1,48 +1,38 @@
-import { useEffect, useCallback, useMemo, useState } from "react";
+import { merge } from "icepick";
 import PropTypes from "prop-types";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { merge } from "icepick";
-import { usePrevious } from "react-use";
 
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
-
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
-import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
-
+import Button from "metabase/core/components/Button";
 import { modelIndexes } from "metabase/entities";
-
+import { useToggle } from "metabase/hooks/use-toggle";
+import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
+import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
+import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
+import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getMetadata } from "metabase/selectors/metadata";
-
-import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { useToggle } from "metabase/hooks/use-toggle";
-
-import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import {
   checkCanBeModel,
   getSortedModelFields,
 } from "metabase-lib/metadata/utils/models";
-import { EDITOR_TAB_INDEXES } from "./constants";
-import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
-import DatasetQueryEditor from "./DatasetQueryEditor";
-import EditorTabs from "./EditorTabs";
-import { TabHintToast } from "./TabHintToast";
+import { isSameField } from "metabase-lib/queries/utils/field-ref";
 
 import {
   Root,
@@ -54,6 +44,11 @@ import {
   TableContainer,
   TabHintToastContainer,
 } from "./DatasetEditor.styled";
+import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
+import DatasetQueryEditor from "./DatasetQueryEditor";
+import EditorTabs from "./EditorTabs";
+import { TabHintToast } from "./TabHintToast";
+import { EDITOR_TAB_INDEXES } from "./constants";
 
 const propTypes = {
   question: PropTypes.object.isRequired,

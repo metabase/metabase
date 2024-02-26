@@ -1,4 +1,5 @@
 import { jt, t } from "ttag";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 

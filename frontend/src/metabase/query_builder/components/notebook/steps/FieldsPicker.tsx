@@ -2,9 +2,8 @@ import type * as React from "react";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import CheckBox from "metabase/core/components/CheckBox";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox";
-
+import CheckBox from "metabase/core/components/CheckBox";
 import type Dimension from "metabase-lib/Dimension";
 
 interface FieldsPickerProps {

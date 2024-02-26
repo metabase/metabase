@@ -1,9 +1,10 @@
+/* eslint-disable import/order */
 /*eslint no-use-before-define: "error"*/
 
-import d3 from "d3";
 import { createSelector } from "@reduxjs/toolkit";
-import _ from "underscore";
+import d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
+import _ from "underscore";
 
 // Needed due to wrong dependency resolution order
 import { Mode } from "metabase/visualizations/click-actions/Mode";

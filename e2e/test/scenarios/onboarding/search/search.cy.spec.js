@@ -1,3 +1,12 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ADMIN_USER_ID,
+  NORMAL_USER_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   createAction,
   describeEE,
@@ -15,15 +24,6 @@ import {
   assertIsEllipsified,
   main,
 } from "e2e/support/helpers";
-import {
-  ADMIN_USER_ID,
-  NORMAL_USER_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
 const typeFilters = [

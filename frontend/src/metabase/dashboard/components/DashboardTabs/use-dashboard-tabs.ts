@@ -1,9 +1,8 @@
-import { useMount } from "react-use";
-import { t } from "ttag";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import type { Location } from "history";
+import { useMount } from "react-use";
+import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   createNewTab,
   renameTab,
@@ -13,9 +12,10 @@ import {
   undoDeleteTab,
   moveTab as moveTabAction,
 } from "metabase/dashboard/actions";
-import type { SelectedTabId } from "metabase-types/store";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
+import type { SelectedTabId } from "metabase-types/store";
 
 import { parseSlug, useSyncURLSlug } from "./use-sync-url-slug";
 

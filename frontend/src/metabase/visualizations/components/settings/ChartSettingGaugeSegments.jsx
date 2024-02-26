@@ -1,16 +1,14 @@
 /* eslint-disable react/prop-types */
 import { Fragment } from "react";
-
 import { t } from "ttag";
 import _ from "underscore";
 
+import NumericInput from "metabase/components/NumericInput";
+import Button from "metabase/core/components/Button";
+import ColorSelector from "metabase/core/components/ColorSelector";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
-
-import ColorSelector from "metabase/core/components/ColorSelector";
-import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/core/components/Icon";
-import NumericInput from "metabase/components/NumericInput";
 
 const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
   const onChangeProperty = (index, property, value) =>

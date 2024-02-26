@@ -1,5 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
+
 import { DEFAULT } from "metabase/static-viz/components/FunnelChart/stories-data";
+
 import FunnelChart from "./FunnelChart";
 
 export default {

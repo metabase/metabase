@@ -1,8 +1,12 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import { createMockMetadata } from "__support__/metadata";
 import { render, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
   ORDERS,
@@ -14,9 +18,7 @@ import {
   createAdHocCard,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import { SummarizeSidebar } from "./SummarizeSidebar";
 
 type SetupOpts = {

@@ -3,14 +3,16 @@ import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import * as Urls from "metabase/lib/urls";
-import Databases from "metabase/entities/databases";
+
 import { Icon } from "metabase/core/components/Icon";
+import Databases from "metabase/entities/databases";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
+import type Database from "metabase-lib/metadata/Database";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
-import type Database from "metabase-lib/metadata/Database";
+
 import { TableSettingsLink } from "./MetadataHeader.styled";
 
 interface OwnProps {

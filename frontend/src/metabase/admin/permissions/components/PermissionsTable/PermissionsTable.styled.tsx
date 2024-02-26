@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 
-import { color, alpha } from "metabase/lib/colors";
-import Link from "metabase/core/components/Link";
-import { Icon } from "metabase/core/components/Icon";
 import Label from "metabase/components/type/Label";
+import { Icon } from "metabase/core/components/Icon";
+import Link from "metabase/core/components/Link";
+import { color, alpha } from "metabase/lib/colors";
 
 const tableBorder = `1px solid ${alpha(color("border"), 0.5)}`;
 

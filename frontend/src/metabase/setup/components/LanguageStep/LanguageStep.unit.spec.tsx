@@ -1,4 +1,6 @@
 import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
 import type { Locale } from "metabase-types/store";
 import {
   createMockLocale,
@@ -6,8 +8,9 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { LANGUAGE_STEP, USER_STEP } from "../../constants";
+
 import { LanguageStep } from "./LanguageStep";
 
 interface SetupOpts {

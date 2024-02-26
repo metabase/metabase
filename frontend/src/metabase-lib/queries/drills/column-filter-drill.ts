@@ -1,9 +1,9 @@
-import { isa } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
 import type Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { ClickObject } from "metabase-lib/queries/drills/types";
 import type Filter from "metabase-lib/queries/structured/Filter";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { TYPE } from "metabase-lib/types/constants";
+import { isa } from "metabase-lib/types/utils/isa";
 
 const INVALID_TYPES = [TYPE.Structured];
 

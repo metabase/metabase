@@ -1,10 +1,11 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
-import { color } from "metabase/lib/colors";
+
 import { Icon } from "metabase/core/components/Icon";
 import type { LinkProps } from "metabase/core/components/Link";
 import Link from "metabase/core/components/Link";
+import { color } from "metabase/lib/colors";
 
 interface RawMaybeLinkProps {
   to?: string;

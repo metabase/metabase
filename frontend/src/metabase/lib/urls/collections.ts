@@ -1,7 +1,7 @@
 import slugg from "slugg";
 
-import type { Collection as BaseCollection } from "metabase-types/api";
 import { isRootPersonalCollection } from "metabase/collections/utils";
+import type { Collection as BaseCollection } from "metabase-types/api";
 
 import { appendSlug, extractEntityId } from "./utils";
 

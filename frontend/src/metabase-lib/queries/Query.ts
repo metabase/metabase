@@ -1,12 +1,13 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import type { DependentMetadataItem, DatasetQuery } from "metabase-types/api";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Question from "metabase-lib/Question";
+
 import Dimension from "metabase-lib/Dimension";
-import type Variable from "metabase-lib/variables/Variable";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+import type Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type Variable from "metabase-lib/variables/Variable";
+import type { DependentMetadataItem, DatasetQuery } from "metabase-types/api";
 
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)

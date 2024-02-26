@@ -1,4 +1,5 @@
 import type { Group, GroupsPermissions } from "metabase-types/api";
+
 import {
   buildDownloadPermission,
   DOWNLOAD_PERMISSION_OPTIONS,

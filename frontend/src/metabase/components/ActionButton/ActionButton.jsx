@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
-
-import { t } from "ttag";
 import cx from "classnames";
-import { Icon } from "metabase/core/components/Icon";
-import Button from "metabase/core/components/Button";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
+import { Icon } from "metabase/core/components/Icon";
 import { cancelable } from "metabase/lib/promise";
+
 import { SmallSpinner } from "./ActionButton.styled";
 
 export default class ActionButton extends Component {

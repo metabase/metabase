@@ -1,10 +1,10 @@
+import type Dimension from "metabase-lib/Dimension";
+import type Question from "metabase-lib/Question";
 import type {
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
-import type Dimension from "metabase-lib/Dimension";
 
 export type ClickActionProps = {
   question: Question;

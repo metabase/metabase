@@ -1,4 +1,8 @@
 import _ from "underscore";
+
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   modal,
@@ -8,9 +12,6 @@ import {
   getFullName,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { normal, admin, nocollection } = USERS;
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;

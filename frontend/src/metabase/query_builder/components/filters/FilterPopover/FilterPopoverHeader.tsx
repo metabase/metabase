@@ -1,8 +1,9 @@
 import cx from "classnames";
 
 import type Filter from "metabase-lib/queries/structured/Filter";
-import OperatorSelector from "../OperatorSelector";
+
 import SidebarHeader from "../../SidebarHeader";
+import OperatorSelector from "../OperatorSelector";
 
 type Props = {
   className?: string;
