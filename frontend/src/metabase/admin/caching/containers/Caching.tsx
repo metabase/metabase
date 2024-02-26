@@ -60,6 +60,8 @@ export const Caching = () => {
   // TODO: Fetch cacheConfigs from the API
   const [cacheConfigs, setCacheConfigs] = useState<CacheConfig[]>([]);
 
+  // TODO: extract out as a hook?
+  // TODO: explain with a comment?
   useLayoutEffect(() => {
     const handleResize = () => {
       const tabs = tabsRef.current;
@@ -80,6 +82,8 @@ export const Caching = () => {
   if (error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
+  // TODO: instead of tabid, maybe just use a state variable whose type is Element? ah but value prop of Tabs has to be a string
+  // "show don't tell"
 
   // TODO: The horizontal row of tabs does not look so good in narrow viewports
   return (
@@ -129,6 +133,7 @@ export const Caching = () => {
   );
 };
 
+// TODO: Can probably be removed somehow
 const TabContent = ({
   tabId,
   databases,

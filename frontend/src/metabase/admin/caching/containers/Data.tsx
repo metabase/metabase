@@ -12,6 +12,8 @@ import {
   SpecialRuleValue,
   TabWrapper,
   ClearOverridesButton,
+  ConfigPanel,
+  ConfigPanelSection,
 } from "./Data.styled";
 import { jt, t } from "ttag";
 
@@ -58,7 +60,8 @@ export const Data = ({
           ))}
           <ClearOverridesButton>{t`Clear all overrides`}</ClearOverridesButton>
         </RuleEditorPanel>
-        <RuleEditorPanel role="group">
+        <ConfigPanel role="group">
+          <ConfigPanelSection>
           {/* Make the radio button group name specific to the object whose strategy is being modified? */}
           <Radio.Group
             name="caching-strategy"
@@ -77,6 +80,8 @@ export const Data = ({
             />
             <Radio mt=".75rem" value="nocache" label={t`Don't cache`} />
           </Radio.Group>
+          </ConfigPanelSection>
+          <ConfigPanelSection>
           <p>
             {jt`We’ll periodically run ${(
               <code>select max()</code>
@@ -84,11 +89,14 @@ export const Data = ({
           </p>
           <Select data={columns} />
           {/* TODO: I'm not sure this translates well */}
+          </ConfigPanelSection>
+          <ConfigPanelSection>
           <p>
             {t`Check for new results every...`}
           </p>
           <Select data={durations} />
-        </RuleEditorPanel>
+          </ConfigPanelSection>
+        </ConfigPanel>
       </RuleEditor>
     </TabWrapper>
   );

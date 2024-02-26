@@ -7,14 +7,15 @@ export const TabsList = styled(Tabs.List)`
   padding: 0 2.5rem;
   background-color: ${color("bg-light")};
   border-bottom-width: 1px;
+  margin-top: 1.5rem;
 `;
 
 export const Tab = styled(Tabs.Tab)`
   top: 1px;
   margin-bottom: 1px;
   border-bottom-width: 3px !important;
-  padding: 10px 0px;
-  margin-right: 10px;
+  padding: .625rem 0px;
+  margin-right: 1.25rem;
   &:hover {
     color: ${color("brand")};
     background-color: inherit;
@@ -38,9 +39,4 @@ export const TabContentWrapper = styled.div`
   background-color: ${color("bg-light")};
   display: flex;
   height: 100%;
-`;
-
-export const DataCachingSettingsMessage = styled.aside`
-  max-width: 32rem;
-  margin-bottom: 1rem;
 `;
