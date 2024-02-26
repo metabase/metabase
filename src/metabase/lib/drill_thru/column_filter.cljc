@@ -60,15 +60,18 @@
   (let [next-stage    (->> (lib.util/canonical-stage-index query stage-number)
                            (lib.util/next-stage-number query))
         base          (cond
-                        ;; Not an aggregation: just the input query and stage.
-                        (not= (:lib/source column) :source/aggregations)
+                        ;; Not an aggregation or breakout: just the input query and stage.
+                        (and
+                         (not= (:lib/source column) :source/aggregations)
+                         (not= (:lib/source column) :source/breakouts))
                         {:query        query
                          :stage-number stage-number}
 
-                        ;; Aggregation column: if there's a later stage, use it.
+                        ;; Aggregation or breakout column: if there's a later stage, use it.
                         next-stage {:query        query
                                     :stage-number next-stage}
-                        ;; Aggregation column with no later stage; append a stage.
+
+                        ;; Aggregation or breakout column with no later stage; append a stage.
                         :else      {:query        (lib.stage/append-stage query)
                                     :stage-number -1})
         columns       (lib.filter/filterable-columns (:query base) (:stage-number base))
