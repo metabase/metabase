@@ -20,7 +20,7 @@
     (lib.metadata/metric query metric-id)))
 
 (mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
-  [{:keys [definition], :as _metric-metadata} :- lib.metadata/MetricMetadata]
+  [{:keys [definition], :as _metric-metadata} :- lib.metadata/LegacyMetricMetadata]
   (when definition
     (if (:mbql/type definition)
       definition
@@ -91,7 +91,7 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
-(mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/MetricMetadata]]
+(mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/LegacyMetricMetadata]]
   "Get a list of Metrics that you may consider using as aggregations for a query. Only Metrics that have the same
   `table-id` as the `source-table` for this query will be suggested."
   ([query]
