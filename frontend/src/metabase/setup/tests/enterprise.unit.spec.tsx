@@ -6,6 +6,8 @@ import fetchMock from "fetch-mock";
 
 import { setupForTokenCheckEndpoint } from "__support__/server-mocks";
 
+import { trackLicenseTokenStepSubmitted } from "../analytics";
+
 import type { SetupOpts } from "./setup";
 import {
   clickNextStep,
@@ -18,6 +20,11 @@ import {
   skipWelcomeScreen,
   submitUserInfoStep,
 } from "./setup";
+
+jest.mock("../analytics", () => ({
+  ...jest.requireActual("../analytics"),
+  trackLicenseTokenStepSubmitted: jest.fn(),
+}));
 
 const setupEnterprise = (opts?: SetupOpts) => {
   return setup({
@@ -44,7 +51,7 @@ describe("setup (EE, no token)", () => {
 
   describe("License activation step", () => {
     async function setupForLicenseStep() {
-      await setup();
+      await setupEnterprise();
       skipWelcomeScreen();
       skipLanguageStep();
       await submitUserInfoStep();
@@ -95,6 +102,8 @@ describe("setup (EE, no token)", () => {
         ).not.toHaveProperty("data-loading", true);
       });
 
+      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(true);
+
       expect(getSection("Usage data preferences")).toHaveAttribute(
         "aria-current",
         "step",
@@ -105,6 +114,8 @@ describe("setup (EE, no token)", () => {
       await setupForLicenseStep();
 
       clickNextStep();
+
+      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
 
       expect(getSection("Usage data preferences")).toHaveAttribute(
         "aria-current",
