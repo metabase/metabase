@@ -525,12 +525,12 @@ export type FilterDrillDetails = {
 
 export type PivotType = "category" | "location" | "time";
 
-declare const ExtractColumnAction: unique symbol;
-export type ExtractColumnAction = unknown & {
-  _opaque: typeof ExtractColumnAction;
+declare const ExtractColumnType: unique symbol;
+export type ExtractColumnType = unknown & {
+  _opaque: typeof ExtractColumnType;
 };
 
-export type ExtractColumnActionDisplayInfo = {
+export type ExtractColumnTypeDisplayInfo = {
   displayName: string;
 };
 
