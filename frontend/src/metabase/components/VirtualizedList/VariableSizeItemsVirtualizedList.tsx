@@ -1,4 +1,4 @@
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 import { useRef } from "react";
 import { useMount } from "react-use";
 
@@ -57,7 +57,7 @@ export function VariableSizeItemsVirtualizedList({
             transform: `translateY(${items[0]?.start ?? 0}px)`,
           }}
         >
-          {items.map(virtualRow => (
+          {items.map((virtualRow: VirtualItem) => (
             <div
               key={virtualRow.key}
               data-index={virtualRow.index}
