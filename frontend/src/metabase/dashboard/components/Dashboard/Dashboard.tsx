@@ -542,7 +542,7 @@ function DashboardInner(props: DashboardProps) {
             />
           </DashboardHeaderContainer>
 
-          <DashboardBody>
+          <DashboardBody isDashboardSidebarOpen={isDashboardSidebarOpen}>
             <ParametersAndCardsContainer
               id={DASHBOARD_PDF_EXPORT_ROOT_ID}
               data-testid="dashboard-parameters-and-cards"

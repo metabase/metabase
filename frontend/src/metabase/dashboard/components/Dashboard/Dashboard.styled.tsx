@@ -48,14 +48,18 @@ export const DashboardStyled = styled.div`
   width: 100%;
 `;
 
-export const DashboardBody = styled.div`
+export const DashboardBody = styled.div<{ isDashboardSidebarOpen: boolean }>`
   position: relative;
   display: flex;
   flex: 1 0 auto;
   min-width: 0;
   min-height: 0;
 
-  flex-basis: 0;
+  ${({ isDashboardSidebarOpen }) =>
+    isDashboardSidebarOpen &&
+    css`
+      flex-basis: 0;
+    `}
 `;
 
 export const DashboardHeaderContainer = styled.header<{
@@ -113,6 +117,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   /* z-index should be higher than in dashcards */
   z-index: 3;
   top: 0;
+  left: 0;
 
   transition: background-color 1s linear, border-color 1s linear,
     color 1s linear;
@@ -138,8 +143,12 @@ export const ParametersAndCardsContainer = styled.div<{
 }>`
   flex: auto;
   min-width: 0;
-  overflow-y: scroll;
-  overflow-x: auto;
+  overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
+    shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
+  overflow-x: hidden;
+  @supports (overflow-x: clip) {
+    overflow-x: clip;
+  }
   padding-bottom: 40px;
 
   &.${SAVING_DOM_IMAGE_CLASS} {
