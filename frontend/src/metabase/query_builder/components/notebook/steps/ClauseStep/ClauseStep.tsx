@@ -1,4 +1,11 @@
-import type { PopoverBaseProps } from "metabase/ui";
+import type { DndContextProps } from "@dnd-kit/core";
+import { PointerSensor, useSensor, DndContext } from "@dnd-kit/core";
+import { restrictToParentElement } from "@dnd-kit/modifiers";
+import { rectSwappingStrategy, SortableContext } from "@dnd-kit/sortable";
+import type { ReactNode } from "react";
+import { useCallback } from "react";
+
+import { Sortable } from "metabase/core/components/Sortable";
 import { Icon } from "metabase/ui";
 
 import {
@@ -8,11 +15,6 @@ import {
 } from "../../NotebookCell";
 
 import { ClausePopover } from "./ClausePopover";
-
-const POPOVER_PROPS: PopoverBaseProps = {
-  position: "bottom-start",
-  offset: { mainAxis: 4 },
-};
 
 type RenderItemOpts<T> = {
   item: T;
@@ -36,6 +38,7 @@ export interface ClauseStepProps<T> {
   renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
   canRemove?: (item: T) => boolean;
   onRemove?: ((item: T, index: number) => void) | null;
+  onSortEnd?: (oldIndex: number, newIndex: number) => void;
   "data-testid"?: string;
 }
 
@@ -49,8 +52,37 @@ export const ClauseStep = <T,>({
   renderPopover,
   canRemove,
   onRemove = null,
+  onSortEnd,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 0 },
+  });
+
+  const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
+    input => {
+      const oldIndex = getItemIndexFromId(input.active.id);
+      const newIndex = getItemIndexFromId(input.over?.id);
+      onSortEnd?.(oldIndex, newIndex);
+    },
+    [onSortEnd],
+  );
+
+  const renderSortContext = (children: ReactNode) => (
+    <DndContext
+      sensors={[pointerSensor]}
+      modifiers={[restrictToParentElement]}
+      onDragEnd={handleSortEnd}
+    >
+      <SortableContext
+        items={items.map((_, index) => getItemIdFromIndex(index))}
+        strategy={rectSwappingStrategy}
+      >
+        {children}
+      </SortableContext>
+    </DndContext>
+  );
+
   const renderNewItem = ({ onOpen }: { onOpen?: () => void }) => (
     <NotebookCellAdd
       initialAddText={items.length === 0 && initialAddText}
@@ -77,17 +109,18 @@ export const ClauseStep = <T,>({
 
   return (
     <NotebookCell color={color} data-testid={props["data-testid"]}>
-      {items.map((item, index) => (
-        <ClausePopover
-          {...POPOVER_PROPS}
-          key={index}
-          renderItem={onOpen => renderItem({ item, index, onOpen })}
-          renderPopover={onClose => renderPopover({ item, index, onClose })}
-        />
-      ))}
+      {renderSortContext(
+        items.map((item, index) => (
+          <Sortable id={getItemIdFromIndex(index)} key={index}>
+            <ClausePopover
+              renderItem={onOpen => renderItem({ item, index, onOpen })}
+              renderPopover={onClose => renderPopover({ item, index, onClose })}
+            />
+          </Sortable>
+        )),
+      )}
       {!readOnly && (
         <ClausePopover
-          {...POPOVER_PROPS}
           isInitiallyOpen={isLastOpened}
           renderItem={onOpen => renderNewItem({ onOpen })}
           renderPopover={onClose => renderPopover({ onClose })}
@@ -96,3 +129,11 @@ export const ClauseStep = <T,>({
     </NotebookCell>
   );
 };
+
+function getItemIdFromIndex(index: number) {
+  return String(index);
+}
+
+function getItemIndexFromId(id?: string | number) {
+  return Number(id);
+}
