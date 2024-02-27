@@ -40,7 +40,7 @@ export const ResourceEmbedButton = forwardRef(function ResourceEmbedButton(
       <Flex>
         <DashboardHeaderButton
           data-disabled={disabled}
-          data-testid="dashboard-embed-button"
+          data-testid="resource-embed-button"
           icon="share"
           disabled={disabled}
           onClick={onHeaderButtonClick}

@@ -45,7 +45,7 @@ import {
             visitResource(resource, id);
           });
 
-          cy.findByTestId("dashboard-embed-button").click();
+          cy.findByTestId("resource-embed-button").click();
           cy.findByTestId("embed-header-menu").within(() => {
             cy.findByTestId("embed-menu-embed-modal-item").should(
               "be.disabled",
@@ -265,7 +265,7 @@ describe("#39152 sharing an unsaved question", () => {
     });
     visualize();
 
-    cy.findByTestId("dashboard-embed-button").click();
+    cy.findByTestId("resource-embed-button").click();
 
     modal().within(() => {
       cy.findByText("First, save your question").should("be.visible");
@@ -743,8 +743,8 @@ function toSecond(milliseconds) {
 }
 
 function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
-  cy.findByTestId("dashboard-embed-button").should("be.disabled");
-  cy.findByTestId("dashboard-embed-button").realHover();
+  cy.findByTestId("resource-embed-button").should("be.disabled");
+  cy.findByTestId("resource-embed-button").realHover();
   cy.findByRole("tooltip").findByText(tooltipLabel).should("be.visible");
 }
 
