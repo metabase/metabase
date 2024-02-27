@@ -10,7 +10,7 @@ import {
 } from "./Sidebar.styled";
 
 interface SidebarProps {
-  closeIsDisabled?: boolean;
+  isCloseDisabled?: boolean;
   children: ReactNode;
   onClose?: () => void;
   onCancel?: () => void;
@@ -20,7 +20,7 @@ interface SidebarProps {
 
 export const SIDEBAR_WIDTH = 384;
 export function Sidebar({
-  closeIsDisabled,
+  isCloseDisabled,
   children,
   onClose,
   onCancel,
@@ -54,7 +54,7 @@ export function Sidebar({
           )}
           {onClose && (
             <Button
-              disabled={closeIsDisabled}
+              disabled={isCloseDisabled}
               onClick={onClose}
               variant="filled"
               aria-label={t`Done`}

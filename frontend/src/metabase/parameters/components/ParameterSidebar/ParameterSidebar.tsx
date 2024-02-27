@@ -143,7 +143,7 @@ export const ParameterSidebar = ({
   return (
     <Sidebar
       onClose={onClose}
-      closeIsDisabled={missingRequiredDefault}
+      isCloseDisabled={missingRequiredDefault}
       onRemove={handleRemove}
     >
       <SidebarHeader>

@@ -42,7 +42,7 @@ function _AddEditEmailSidebar({
 
   return (
     <Sidebar
-      closeIsDisabled={!isValid}
+      isCloseDisabled={!isValid}
       onClose={handleSave}
       onCancel={onCancel}
     >
