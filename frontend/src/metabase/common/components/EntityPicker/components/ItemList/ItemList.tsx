@@ -66,6 +66,10 @@ export const ItemList = <TItem extends TypeWithModel>({
     );
   }
 
+  if (!items) {
+    return null;
+  }
+
   return (
     <VariableSizeItemsVirtualizedList
       Wrapper={PickerColumn}
