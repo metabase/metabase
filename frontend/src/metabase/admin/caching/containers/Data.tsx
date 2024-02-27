@@ -18,10 +18,11 @@ import {
   GeneralStrategy,
   SpecialConfigStyled,
   SpecialStrategy,
-  StrategyEditor,
-  StrategyEditorPanel,
+  Editor,
+  EditorPanel,
   TabWrapper,
 } from "./Data.styled";
+import { color } from "metabase/lib/colors";
 
 export const Data = ({
   databases,
@@ -56,20 +57,26 @@ export const Data = ({
       <Explanation>
         {t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated. You can set up one rule for all your databases, or apply more specific settings to each database.`}
       </Explanation>
-      <StrategyEditor role="form">
-        <StrategyEditorPanel role="group">
+      <Editor role="form">
+        <EditorPanel
+          role="group"
+          style={{ backgroundColor: color("bg-light") }}
+        >
           <GeneralConfig
             variant={isGeneralConfigBeingEdited ? "filled" : "outline"}
+            radius="sm"
             animate={false}
             onClick={() => setIdOfDatabaseBeingConfigured(0)}
             isBeingEdited={idOfDatabaseBeingConfigured === 0}
           >
             <DatabaseStrategyIcon name="database" />
             {t`Databases`}
-            <GeneralStrategy>{generalStrategyLabel}</GeneralStrategy>
+            <GeneralStrategy isBeingEdited={isGeneralConfigBeingEdited}>
+              {generalStrategyLabel}
+            </GeneralStrategy>
           </GeneralConfig>
-        </StrategyEditorPanel>
-        <StrategyEditorPanel role="group">
+        </EditorPanel>
+        <EditorPanel role="group">
           {databases.map(database => (
             <SpecialConfig
               database={database}
@@ -85,9 +92,9 @@ export const Data = ({
               clearAllDatabaseOverrides();
             }}
           >{t`Clear all overrides`}</ClearOverridesButton>
-        </StrategyEditorPanel>
-        {idOfDatabaseBeingConfigured !== null && (
-          <ConfigPanel role="group">
+        </EditorPanel>
+        <ConfigPanel role="group">
+          {idOfDatabaseBeingConfigured !== null && (
             <ConfigPanelSection>
               {/* Make the radio button group name specific to the object whose strategy is being modified? */}
               <Radio.Group
@@ -128,7 +135,8 @@ export const Data = ({
                 <Radio mt=".75rem" value="nocache" label={t`Don't cache`} />
               </Radio.Group>
             </ConfigPanelSection>
-            {/*
+          )}
+          {/*
           <StrategyConfig />
               Add later
           <ConfigPanelSection>
@@ -145,9 +153,8 @@ export const Data = ({
             <Select data={durations} />
           </ConfigPanelSection>
             */}
-          </ConfigPanel>
-        )}
-      </StrategyEditor>
+        </ConfigPanel>
+      </Editor>
     </TabWrapper>
   );
 };
@@ -180,21 +187,22 @@ export const SpecialConfig = ({
   const isConfigBeingEdited = idOfDatabaseBeingConfigured === database.id;
   const clearOverride = () => {
     setDatabaseConfiguration(database.id, null);
-    setIdOfDatabaseBeingConfigured(null);
   };
   return (
     <SpecialConfigStyled
-      variant={isConfigBeingEdited ? "filled" : "outline"}
+      variant={isConfigBeingEdited ? "filled" : "default"}
       isBeingEdited={isConfigBeingEdited}
       key={database.id}
       onClick={() => {
         setIdOfDatabaseBeingConfigured(database.id);
       }}
       animate={false}
+      radius="sm"
     >
       <DatabaseStrategyIcon name="database" />
       {database.name}
       <SpecialStrategy
+        radius="sm"
         // TODO: use variant={specificStrategy ? "filled" : "outline"} if possible
         doesOverrideGeneralConfig={doesOverrideGeneralConfig}
         isBeingEdited={isConfigBeingEdited}

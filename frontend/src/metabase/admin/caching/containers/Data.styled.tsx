@@ -11,7 +11,7 @@ type ConfigProps = ButtonProps & {
   isBeingEdited?: boolean;
 };
 
-export const StrategyEditorPanel = styled.div`
+export const EditorPanel = styled.div`
   overflow-y: scroll;
   display: flex;
   flex-flow: column nowrap;
@@ -32,7 +32,7 @@ export const StrategyEditorPanel = styled.div`
   }
 `;
 
-export const ConfigPanel = styled(StrategyEditorPanel)``;
+export const ConfigPanel = styled(EditorPanel)``;
 
 export const Explanation = styled.aside`
   max-width: 32rem;
@@ -44,7 +44,6 @@ export const CacheAdminButton = styled(Button)<ButtonProps>`
   display: flex;
   flex-flow: row nowrap;
   align-items: center;
-  border-radius: 1rem;
   padding: 1rem;
   & div {
     flex: 1;
@@ -66,7 +65,7 @@ export const Config = styled(CacheAdminButton)`
 export const GeneralConfig = styled(Config)<ConfigProps>`
   border: 1px solid ${color("bg-medium")};
   background-color: ${({ isBeingEdited }) =>
-    isBeingEdited ? color("brand") : color("white")};
+    isBeingEdited ? color("brand") : color("bg-medium")};
   color: ${({ isBeingEdited }) =>
     isBeingEdited ? color("white") : color("text-dark")};
 `;
@@ -81,9 +80,9 @@ export const Strategy = styled(CacheAdminButton)`
 
 export const GeneralStrategy = styled(Strategy)<ConfigProps>`
   background-color: ${({ isBeingEdited }) =>
-    isBeingEdited ? color("brand") : color("white")};
+    isBeingEdited ? color("white") : color("brand")};
   color: ${({ isBeingEdited }) =>
-    isBeingEdited ? color("white") : color("text-dark")};
+    isBeingEdited ? color("brand") : color("white")};
 `;
 
 export const SpecialConfigStyled = styled(CacheAdminButton)<ConfigProps>`
@@ -95,7 +94,6 @@ export const SpecialConfigStyled = styled(CacheAdminButton)<ConfigProps>`
   align-items: center;
   padding: 2rem 1rem;
   min-width: 20rem;
-  border-radius: 1rem;
   border: 1px solid ${color("border")};
 `;
 
@@ -114,7 +112,7 @@ export const DatabaseStrategyIcon = styled(Icon)`
   margin-right: 0.5rem;
 `;
 
-export const StrategyEditor = styled.div`
+export const Editor = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   width: 100%;
