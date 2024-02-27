@@ -6,13 +6,13 @@ import Button from "metabase/core/components/Button";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { Locale } from "metabase-types/store";
 
-import { useStep } from "../..//useStep";
 import { selectStep, updateLocale } from "../../actions";
 import {
   getAvailableLocales,
   getIsSetupCompleted,
   getLocale,
 } from "../../selectors";
+import { useStep } from "../../useStep";
 import { getLocales } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
