@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -100,7 +101,7 @@ const DataSelectorFieldPicker = ({
   );
 };
 
-function renderItemWrapper(content: React.ReactNode) {
+function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
 
