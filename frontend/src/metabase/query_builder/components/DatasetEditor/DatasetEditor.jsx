@@ -11,6 +11,7 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
+import { ModelIndexes } from "metabase/entities/model-indexes";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
@@ -26,7 +27,6 @@ import {
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
-import { useListModelIndexesQuery } from "metabase/redux/api/model-indexes";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import {
@@ -204,7 +204,7 @@ function DatasetEditor(props) {
     onOpenModal,
   } = props;
 
-  const { data: modelIndexes = [] } = useListModelIndexesQuery(dataset?.id());
+  const { data: modelIndexes = [] } = ModelIndexes.useListQuery(dataset?.id());
 
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);

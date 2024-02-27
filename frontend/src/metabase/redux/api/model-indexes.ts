@@ -28,9 +28,3 @@ export const modelIndexesApi = Api.injectEndpoints({
     }),
   }),
 });
-
-export const {
-  useListModelIndexesQuery,
-  useCreateModelIndexMutation,
-  useDeleteModelIndexMutation,
-} = modelIndexesApi;
