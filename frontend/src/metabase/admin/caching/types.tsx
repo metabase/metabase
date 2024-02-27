@@ -25,7 +25,7 @@ export type CacheConfig = {
   modelType: CacheableModelType; // "model type" rather than "model" makes more sense in my head so I'm using that for now
   model_id: number;
   strategy: CacheStrategy;
-  config: {
+  config?: {
     type?: string;
     updated_at?: string;
     multiplier?: number;

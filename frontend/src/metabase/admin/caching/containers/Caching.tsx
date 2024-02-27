@@ -1,9 +1,8 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Tabs } from "metabase/ui";
 
-import type Database from "metabase-lib/metadata/Database";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { CacheConfig } from "../types";
@@ -52,19 +51,29 @@ export const Caching = () => {
   }
   // TODO: instead of tabid, maybe just use a state variable whose type is Element? ah but value prop of Tabs has to be a string
   // "show don't tell"
+  const databaseConfigurations = useMemo(() => {
+    const map = new Map<number, CacheConfig>();
+    cacheConfigs.forEach(config => {
+      if (config.modelType === "database") {
+        map.set(config.model_id, config);
+      }
+    });
+    if (map.size === 0) {
+      map.set(0, { modelType: "root", model_id: 0, strategy: "nocache" });
+    }
+    return map;
+  }, [cacheConfigs]);
 
-  const tabs = {
-    dataCachingSettings: (
-      <Data
-        databases={databases}
-        cacheConfigs={cacheConfigs}
-        setCacheConfigs={setCacheConfigs}
-      />
-    ),
-    modelPersistence: <>model persistence</>,
-    dashboardAndQuestionCaching: <>dashboard and question caching</>,
-    cachingStats: <>caching stats</>,
-  };
+  const setDatabaseConfiguration = useCallback(
+    (databaseId: number, config: CacheConfig) => {
+      const otherConfigs = cacheConfigs.filter(
+        config =>
+          config.modelType === "database" && config.model_id !== databaseId,
+      );
+      setCacheConfigs([...otherConfigs, config]);
+    },
+    [cacheConfigs],
+  );
 
   // TODO: The horizontal row of tabs does not look so good in narrow viewports
   return (
@@ -88,21 +97,18 @@ export const Caching = () => {
         <Tab key={"DataCachingSettings"} value={TabId.DataCachingSettings}>
           {t`Data caching settings`}
         </Tab>
-        <Tab key={"ModelPersistence"} value={TabId.ModelPersistence}>
-          {t`Model persistence`}
-        </Tab>
-        <Tab
-          key={"DashboardAndQuestionCaching"}
-          value={TabId.DashboardAndQuestionCaching}
-        >
-          {t`Dashboard and question caching`}
-        </Tab>
-        <Tab key={"CachingStats"} value={TabId.CachingStats}>
-          {t`Caching stats`}
-        </Tab>
       </TabsList>
       <TabsPanel key={tabId} value={tabId}>
-        <TabContentWrapper>{tabs[tabId]}</TabContentWrapper>
+        <TabContentWrapper>
+      <Data
+        databases={databases}
+        databaseConfigurations={databaseConfigurations}
+        setDatabaseConfiguration={setDatabaseConfiguration}
+        clearOverrides={() => {
+          // TODO: implement
+        }}
+      />
+        </TabContentWrapper>
       </TabsPanel>
     </Tabs>
   );

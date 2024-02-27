@@ -1,7 +1,11 @@
 import type Database from "metabase-lib/metadata/Database";
-import { Radio, SelectItem, Text } from "metabase/ui";
-import { Dispatch, SetStateAction, useState } from "react";
+import { Radio, Text } from "metabase/ui";
+import { useState } from "react";
 import { t } from "ttag";
+import {
+  isValidCacheStrategy,
+  type CacheConfig
+} from "../types";
 import {
   ClearOverridesButton,
   ConfigPanel,
@@ -14,52 +18,31 @@ import {
   RuleEditorPanel,
   SpecialRule,
   SpecialRuleValue,
-  TabWrapper,
+  TabWrapper
 } from "./Data.styled";
-import {
-  isValidCacheStrategy,
-  type CacheConfig,
-  type CacheableModelType,
-} from "../types";
 
 export const Data = ({
   databases,
-    databaseConfigurations,
+  databaseConfigurations,
   setDatabaseConfiguration,
+  clearOverrides,
 }: {
   databases: Database[];
-  databaseConfigurations: CacheConfig[];
+  databaseConfigurations: Map<number, CacheConfig>;
   setDatabaseConfiguration: (databaseId: number, config: CacheConfig) => void;
+  clearOverrides: () => void;
 }) => {
-  const [idOfDatabaseBeingConfigured, setIdOfDatabaseBeingConfigured] = useState<number | null>(null);
+  // Note that an id of zero is a special case that means that we're setting the general rule for all databases
+  const [idOfDatabaseBeingConfigured, setIdOfDatabaseBeingConfigured] =
+    useState<number | null>(null);
+  const currentConfig =
+    idOfDatabaseBeingConfigured !== null
+      ? databaseConfigurations.get(idOfDatabaseBeingConfigured)
+      : null;
 
   databases = [...databases, ...databases];
   databases = [...databases, ...databases, ...databases];
   databases = [...databases, ...databases, ...databases];
-
-  const getConfigIndex = (aTarget: {
-    modelType: CacheableModelType;
-    modelId: number;
-  }) => {
-    return cacheConfigs.findIndex(
-      config =>
-        config.modelType === aTarget.modelType &&
-        config.model_id === aTarget.modelId,
-    );
-  };
-  const getConfig = (aTarget: {
-    modelType: CacheableModelType;
-    modelId: number;
-  }) => {
-    const index = getConfigIndex(aTarget);
-    return index !== -1 ? cacheConfigs[index] : null;
-  };
-
-
-  const rootConfig: { modelType: CacheableModelType; modelId: number } = {
-    modelType: "root",
-    modelId: 0,
-  };
 
   return (
     <TabWrapper role="region" aria-label="Data caching settings">
@@ -71,75 +54,80 @@ export const Data = ({
           <GeneralRuleButton>
             <DatabaseRuleIcon name="database" />
             {t`Databases`}
-            <GeneralRuleValue onClick={() => setTarget(rootConfig)}>
-              Scheduled: weekly
+            <GeneralRuleValue onClick={() => setIdOfDatabaseBeingConfigured(0)}>
+              {databaseConfigurations.get(0)?.strategy}
             </GeneralRuleValue>
           </GeneralRuleButton>
         </RuleEditorPanel>
         <RuleEditorPanel role="group">
-          {databases.map(database => {
+          {databases.map(({ id, name }) => {
             return (
-            <SpecialRule key={database.id}>
-              <DatabaseRuleIcon name="database" />
-              {database.name}
-              <SpecialRuleValue
-                onClick={() =>
-                  setTarget(databaseIdentifier)
+              <SpecialRule key={id}>
+                <DatabaseRuleIcon name="database" />
+                {name}
+                <SpecialRuleValue
+                  onClick={() => setIdOfDatabaseBeingConfigured(id)}
+                >
+                  {
+                    (
+                      databaseConfigurations.get(id) ??
+                      databaseConfigurations.get(0)
+                    )?.strategy
+                  }
+                </SpecialRuleValue>
+              </SpecialRule>
+            );
+          })}
+          <ClearOverridesButton
+            onClick={() => {
+              clearOverrides();
+            }}
+          >{t`Clear all overrides`}</ClearOverridesButton>
+        </RuleEditorPanel>
+        {idOfDatabaseBeingConfigured !== null && (
+          <ConfigPanel role="group">
+            <ConfigPanelSection>
+              {/* Make the radio button group name specific to the object whose strategy is being modified? */}
+              <Radio.Group
+                value={currentConfig?.strategy}
+                name={`caching-strategy-for-database-${idOfDatabaseBeingConfigured}`}
+                onChange={strategy => {
+                  if (!isValidCacheStrategy(strategy)) {
+                    console.error("invalid strategy", strategy);
+                    return;
+                  }
+                  setDatabaseConfiguration(idOfDatabaseBeingConfigured, {
+                    ...(currentConfig as CacheConfig),
+                    strategy: strategy,
+                  });
+                }}
+                label={
+                  <Text lh="1rem">{t`When should cached query results be invalidated?`}</Text>
                 }
               >
-                {getConfig(databaseIdentifier)?.strategy}
-              </SpecialRuleValue>
-            </SpecialRule>
-          ))}
-          <ClearOverridesButton>{t`Clear all overrides`}</ClearOverridesButton>
-        </RuleEditorPanel>
-        <ConfigPanel role="group">
-          <ConfigPanelSection>
-            {/* Make the radio button group name specific to the object whose strategy is being modified? */}
-            <Radio.Group
-              name="caching-strategy"
-              onChange={value => {
-                const configIndex = cacheConfigs.findIndex(
-                  config =>
-                    config.modelType === target.modelType &&
-                    config.model_id === target.modelId,
-                );
-                if (!isValidCacheStrategy(value)) {
-                  console.error("invalid strategy", value);
-                  return false;
-                }
-                if (configIndex === -1) {
-                  console.error("config not found for", target);
-                  return false;
-                }
-                setCacheConfigs(configs => {
-                  configs[configIndex].strategy = value;
-                  return configs;
-                });
-              }}
-              label={
-                <Text lh="1rem">{t`When should cached query results be invalidated?`}</Text>
-              }
-            >
-              {/* TODO: Check that 'query' goes with 'when the data updates'. The values correspond to the values in caching.api.clj */}
-              {/*
+                {/* TODO: Check that 'query' goes with 'when the data updates'. The values correspond to the values in caching.api.clj */}
+                {/*
                 Add later:
             <Radio mt=".75rem" value="query" label={t`When the data updates`} />
             <Radio mt=".75rem" value="schedule" label={t`On a schedule`} />
               */}
-              <Radio mt=".75rem" value="ttl" label={t`When the TTL expires`} />
-              {/*
+                <Radio
+                  mt=".75rem"
+                  value="ttl"
+                  label={t`When the TTL expires`}
+                />
+                {/*
             <Radio
               mt=".75rem"
               value="duration"
               label={t`On a regular duration`}
             />
             */}
-              <Radio mt=".75rem" value="nocache" label={t`Don't cache`} />
-            </Radio.Group>
-          </ConfigPanelSection>
+                <Radio mt=".75rem" value="nocache" label={t`Don't cache`} />
+              </Radio.Group>
+            </ConfigPanelSection>
+            {/*
           <StrategyConfig />
-          {/*
               Add later
           <ConfigPanelSection>
             <p>
@@ -155,7 +143,8 @@ export const Data = ({
             <Select data={durations} />
           </ConfigPanelSection>
             */}
-        </ConfigPanel>
+          </ConfigPanel>
+        )}
       </RuleEditor>
     </TabWrapper>
   );
