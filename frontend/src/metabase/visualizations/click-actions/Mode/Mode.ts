@@ -1,4 +1,4 @@
-import { queryDrill } from "metabase/querying";
+import { queryDrill } from "metabase/querying/utils/drills/query-drill";
 import type Question from "metabase-lib/Question";
 
 import type {
