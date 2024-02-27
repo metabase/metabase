@@ -312,26 +312,21 @@ function getPreviewQuery(
   steps: NotebookStep[],
   activeStepIndex: number,
 ): Lib.Query {
-  const previewQuery = _.range(
+  const queryWithoutNextStages = _.range(
     Lib.stageCount(query) - 1,
     stageIndex,
     -1,
   ).reduce(Lib.dropStage, query);
 
-  // revert query for this step
-  const queryAfterRevertingSteps = _.range(
-    steps.length - 1,
-    activeStepIndex,
-    -1,
-  ).reduce((query: Lib.Query, stepIndex: number) => {
-    const step = steps[stepIndex];
+  const queryWithoutNextSteps = steps
+    .slice(activeStepIndex + 1, steps.length)
+    .reduceRight((query: Lib.Query, step: NotebookStep) => {
+      if (step.revert) {
+        return step.revert(query, step.stageIndex, step.itemIndex ?? undefined);
+      }
 
-    if (step.revert) {
-      return step.revert(query, step.stageIndex, step.itemIndex ?? undefined);
-    }
+      return query;
+    }, queryWithoutNextStages);
 
-    return query;
-  }, previewQuery);
-
-  return queryAfterRevertingSteps;
+  return queryWithoutNextSteps;
 }
