@@ -6,6 +6,7 @@ import { Tabs } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import type { CacheConfig } from "../types";
 import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./Caching.styled";
 import { Data } from "./Data";
 
@@ -17,38 +18,6 @@ enum TabId {
 }
 const isValidTabId = (tab: unknown): tab is TabId =>
   typeof tab === "string" && Object.values(TabId).includes(tab as TabId);
-
-export type CacheStrategy =
-  | "nocache"
-  | "ttl"
-  | "duration"
-  | "schedule"
-  | "query";
-export type CacheConfigUnit = "hours" | "minutes" | "seconds" | "days";
-export type CacheModel =
-  | "root"
-  | "database"
-  | "collection"
-  | "dashboard"
-  | "question";
-
-// TODO: I'm guessing this from caching/strategies.clj
-export type CacheConfig = {
-  model: CacheModel;
-  model_id: number;
-  strategy: CacheStrategy;
-  config: {
-    type?: string;
-    updated_at?: string;
-    multiplier?: number;
-    payload?: string;
-    min_duration?: number;
-    unit?: CacheConfigUnit;
-    schedule?: string;
-    field_id?: string;
-    aggregation?: string;
-  };
-};
 
 export const Caching = () => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
@@ -67,8 +36,7 @@ export const Caching = () => {
       const tabs = tabsRef.current;
       if (!tabs) return;
       const tabsElementTop = tabs.getBoundingClientRect().top;
-      const newHeight =
-        window.innerHeight - tabsElementTop - tabs.clientTop;
+      const newHeight = window.innerHeight - tabsElementTop - tabs.clientTop;
       setTabsHeight(newHeight);
     };
     window.addEventListener("resize", handleResize);
@@ -85,10 +53,23 @@ export const Caching = () => {
   // TODO: instead of tabid, maybe just use a state variable whose type is Element? ah but value prop of Tabs has to be a string
   // "show don't tell"
 
+  const tabs = {
+    dataCachingSettings: (
+      <Data
+        databases={databases}
+        cacheConfigs={cacheConfigs}
+        setCacheConfigs={setCacheConfigs}
+      />
+    ),
+    modelPersistence: <>model persistence</>,
+    dashboardAndQuestionCaching: <>dashboard and question caching</>,
+    cachingStats: <>caching stats</>,
+  };
+
   // TODO: The horizontal row of tabs does not look so good in narrow viewports
   return (
     <Tabs
-      style={{display: "flex", flexDirection: "column"}}
+      style={{ display: "flex", flexDirection: "column" }}
       ref={tabsRef}
       bg="bg-light"
       h={tabsHeight}
@@ -121,40 +102,8 @@ export const Caching = () => {
         </Tab>
       </TabsList>
       <TabsPanel key={tabId} value={tabId}>
-        <TabContentWrapper>
-          <TabContent
-            tabId={tabId}
-            databases={databases}
-            cacheConfigs={cacheConfigs}
-          />
-        </TabContentWrapper>
+        <TabContentWrapper>{tabs[tabId]}</TabContentWrapper>
       </TabsPanel>
     </Tabs>
   );
-};
-
-// TODO: Can probably be removed somehow
-const TabContent = ({
-  tabId,
-  databases,
-  cacheConfigs,
-}: {
-  tabId: TabId;
-  databases: Database[];
-  cacheConfigs: CacheConfig[];
-}) => {
-  switch (tabId) {
-    case TabId.DataCachingSettings:
-      return <Data databases={databases} cacheConfigs={cacheConfigs} />;
-    case TabId.ModelPersistence:
-      return <>model persistence</>;
-    case TabId.DashboardAndQuestionCaching:
-      return <>dashboard and question caching</>;
-    case TabId.CachingStats:
-      return <>caching stats</>;
-    default:
-      // Ensure we've handled all cases
-      const _exhaustiveCheck: never = tabId;
-  }
-  return null;
 };
