@@ -84,6 +84,9 @@ export const SpecialRule = styled.div`
   border: 1px solid ${color("border")};
 `;
 
+export const ClearSpecialRuleButton = styled(CacheAdminButton)`
+`
+
 export const SpecialRuleValue = styled(RuleValue)<
   ButtonProps & { isOverride: boolean }
 >`
@@ -124,3 +127,4 @@ export const ConfigPanelSection = styled.section`
     margin-bottom: 0;
   }
 `;
+

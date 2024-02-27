@@ -58,20 +58,20 @@ export const Caching = () => {
     if (map.size === 0) {
       map.set(0, { modelType: "root", model_id: 0, strategy: "nocache" });
     }
-    console.log("map", map);
     return map;
   }, [cacheConfigs]);
 
-  console.log("databaseConfigurations", databaseConfigurations);
-
   const setDatabaseConfiguration = useCallback(
-    (databaseId: number, config: CacheConfig) => {
-      console.log("setDatabaseConfiguration", databaseId, config);
+    (databaseId: number, config: CacheConfig | null) => {
       const otherConfigs = cacheConfigs.filter(
         config =>
           config.modelType === "database" && config.model_id !== databaseId,
       );
-      setCacheConfigs([...otherConfigs, config]);
+      if (config) {
+        setCacheConfigs([...otherConfigs, config]);
+      } else {
+        setCacheConfigs(otherConfigs);
+      }
     },
     [cacheConfigs],
   );

@@ -9,6 +9,7 @@ import {
 } from "../types";
 import {
   ClearOverridesButton,
+  ClearSpecialRuleButton,
   ConfigPanel,
   ConfigPanelSection,
   DatabaseRuleIcon,
@@ -30,7 +31,10 @@ export const Data = ({
 }: {
   databases: Database[];
   databaseConfigurations: Map<number, CacheConfig>;
-  setDatabaseConfiguration: (databaseId: number, config: CacheConfig) => void;
+  setDatabaseConfiguration: (
+    databaseId: number,
+    config: CacheConfig | null,
+  ) => void;
   clearOverrides: () => void;
 }) => {
   // Note that an id of zero is a special case that means that we're setting the general rule for all databases
@@ -82,9 +86,19 @@ export const Data = ({
                 <SpecialRuleValue
                   // TODO: use variant={specificStrategy ? "filled" : "outline"} if possible
                   isOverride={Boolean(specificStrategy)}
-                  onClick={() => setIdOfDatabaseBeingConfigured(id)}
+                  onClick={() => {
+                    setIdOfDatabaseBeingConfigured(id);
+                  }}
                 >
                   {strategyLabel}
+                  <ClearSpecialRuleButton
+                    variant="subtle"
+                    onClick={() => {
+                      setDatabaseConfiguration(id, null);
+                    }}
+                  >
+                    x
+                  </ClearSpecialRuleButton>
                 </SpecialRuleValue>
               </SpecialRule>
             );
