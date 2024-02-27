@@ -235,21 +235,14 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    let resultsMetadata = getResultsMetadata(getState());
+    const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
 
     if (isModel) {
-      if (!resultsMetadata) {
-        await dispatch(runQuestionQuery());
-        resultsMetadata = getResultsMetadata(getState());
-      }
-
-      if (resultsMetadata) {
-        resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
-          resultsMetadata.columns,
-        );
-      }
+      resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
+        resultsMetadata.columns,
+      );
     }
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
