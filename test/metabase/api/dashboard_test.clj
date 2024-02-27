@@ -4154,6 +4154,18 @@
                                            :user_id          (mt/user->id :rasta)}
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                            :user_id          (mt/user->id :crowberto)}
+           ;; Broken slack pulse
+           :model/Pulse {bad-slack-pulse-id :id} {:name         "Bad Slack Pulse"
+                                                  :dashboard_id dash-id
+                                                  :creator_id   (mt/user->id :trashbird)
+                                                  :parameters   [(assoc param :value ["LinkedIn"])]}
+           :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
+                               :card_id           card-id
+                               :dashboard_card_id dash-card-id}
+           :model/PulseChannel _ {:channel_type :slack
+                                  :pulse_id     bad-slack-pulse-id
+                                  :details      {:channel "#my-channel"}
+                                  :enabled      true}
            ;; Non broken pulse
            :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
                                              :dashboard_id dash-id
@@ -4175,6 +4187,16 @@
                       :id           bad-pulse-id
                       :parameters
                       [{:name "Source" :slug "source" :id "_SOURCE_PARAM_ID_" :type "string/=" :value ["Twitter" "Facebook"]}]
+                      :dashboard_id dash-id}
+                     {:archived     false
+                      :name         "Bad Slack Pulse"
+                      :creator_id   (mt/user->id :trashbird)
+                      :id           bad-slack-pulse-id
+                      :parameters   [{:name  "Source"
+                                      :slug  "source"
+                                      :id    "_SOURCE_PARAM_ID_"
+                                      :type  "string/="
+                                      :value ["LinkedIn"]}],
                       :dashboard_id dash-id}]
                     (#'api.dashboard/broken-pulses dash-id {param-id param}))))
           (testing "We can gather all needed data regarding broken params"
@@ -4192,8 +4214,23 @@
                         :dashboard-id      dash-id
                         :bad-parameters    [{:name "Source" :value ["Twitter" "Facebook"]}]
                         :dashboard-name    "My Awesome Dashboard"
-                        :affected-users    [{:email "crowberto@metabase.com"}
-                                            {:email "rasta@metabase.com"}]}]
+                        :affected-users    [{:notification-type :email
+                                             :recipient         "Crowberto Corv"}
+                                            {:notification-type :email
+                                             :recipient         "Rasta Toucan"}]}
+                       {:pulse-creator     {:email "trashbird@metabase.com"}
+                        :affected-users    [{:notification-type :slack
+                                             :recipient         "#my-channel"}]
+                        :dashboard-creator {:email "rasta@metabase.com"}
+                        :pulse-id          bad-slack-pulse-id
+                        :pulse-name        "Bad Slack Pulse"
+                        :dashboard-id      dash-id
+                        :bad-parameters    [{:name  "Source"
+                                             :slug  "source"
+                                             :id    "_SOURCE_PARAM_ID_"
+                                             :type  "string/="
+                                             :value ["LinkedIn"]}]
+                        :dashboard-name    "My Awesome Dashboard"}]
                       bad-pulses))))
           (testing "Pulse can be archived"
             (testing "Pulse starts as unarchived"
@@ -4233,7 +4270,6 @@
                                                                                          [:field (mt/id :people :source)
                                                                                           {:base-type :type/Text}]]
                                                                           }]}
-           ;; Broken pulse
            :model/Pulse {bad-pulse-id :id} {:name         "Bad Pulse"
                                             :dashboard_id dash-id
                                             :creator_id   (mt/user->id :trashbird)
@@ -4248,6 +4284,18 @@
                                            :user_id          (mt/user->id :rasta)}
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                            :user_id          (mt/user->id :crowberto)}
+           ;; Broken slack pulse
+           :model/Pulse {bad-slack-pulse-id :id} {:name         "Bad Slack Pulse"
+                                                  :dashboard_id dash-id
+                                                  :creator_id   (mt/user->id :trashbird)
+                                                  :parameters   [(assoc param :value ["LinkedIn"])]}
+           :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
+                               :card_id           card-id
+                               :dashboard_card_id dash-card-id}
+           :model/PulseChannel _ {:channel_type :slack
+                                  :pulse_id     bad-slack-pulse-id
+                                  :details      {:channel "#my-channel"}
+                                  :enabled      true}
            ;; Non broken pulse
            :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
                                              :dashboard_id dash-id
@@ -4266,29 +4314,32 @@
             (is (false? (t2/select-one-fn :archived :model/Pulse bad-pulse-id)))
             (is (false? (t2/select-one-fn :archived :model/Pulse good-pulse-id))))
           (mt/with-fake-inbox
-            (mt/with-expected-messages 2
-              (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
-                                                               :rasta :put 200 (str "dashboard/" dash-id)
-                                                               {:parameters []}))
-                    title           (format "Subscription to %s removed" dashboard-name)
-                    ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
-                    ;; as "We've Noticed a New Metabase Login, Rasta".
-                    inbox           (update-vals
-                                      @mt/inbox
-                                      (fn [messages]
-                                        (filterv (comp #{title} :subject) messages)))
-                    email-received? (fn [recipient-email]
-                                      (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
-                                                     (str/includes? title))))]
-                (testing "The dashboard parameters were removed"
-                  (is (empty? parameters)))
-                (testing "The broken pulse was archived"
-                  (is (true? (t2/select-one-fn :archived :model/Pulse bad-pulse-id))))
-                (testing "The unbroken pulse is still active"
-                  (is (false? (t2/select-one-fn :archived :model/Pulse good-pulse-id))))
-                (testing "The dashboard and pulse creators were emailed about the removed pulse"
-                  (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
-                         (set (keys inbox)))))
-                (testing "Notification emails were sent to the dashboard and pulse creators"
-                  (is (email-received? "rasta@metabase.com"))
-                  (is (email-received? "trashbird@metabase.com")))))))))))
+            (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
+                                                             :rasta :put 200 (str "dashboard/" dash-id)
+                                                             {:parameters []}))
+                  title            (format "Subscription to %s removed" dashboard-name)
+                  ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
+                  ;; as "We've Noticed a New Metabase Login, Rasta".
+                  inbox            (update-vals
+                                     @mt/inbox
+                                     (fn [messages]
+                                       (filterv (comp #{title} :subject) messages)))
+                  emails-received? (fn [recipient-email]
+                                     (testing "The first email was received"
+                                       (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
+                                                          (str/includes? title)))))
+                                     (testing "The second email (about the broken slack pulse) was received"
+                                       (is (true? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
+                                                          (str/includes? "#my-channel"))))))]
+              (testing "The dashboard parameters were removed"
+                (is (empty? parameters)))
+              (testing "The broken pulse was archived"
+                (is (true? (t2/select-one-fn :archived :model/Pulse bad-pulse-id))))
+              (testing "The unbroken pulse is still active"
+                (is (false? (t2/select-one-fn :archived :model/Pulse good-pulse-id))))
+              (testing "The dashboard and pulse creators were emailed about the removed pulse"
+                (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
+                       (set (keys inbox)))))
+              (testing "Notification emails were sent to the dashboard and pulse creators"
+                (emails-received? "rasta@metabase.com")
+                (emails-received? "trashbird@metabase.com")))))))))

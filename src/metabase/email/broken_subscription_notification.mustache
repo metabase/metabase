@@ -38,12 +38,17 @@
         <td style="text-align: left;">{{value}}</td>
       </tr>
     {{/badParameters}}
-    <tr/>
+    <tr />
     <tr>
       <td
         style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
       >
-        User
+        Notification Type
+      </td>
+      <td
+        style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+      >
+        Recipient
       </td>
       <td
         style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
@@ -53,7 +58,8 @@
     </tr>
     {{#affectedUsers}}
       <tr>
-        <td>{{common_name}}</td>
+        <td>{{notification-type}}</td>
+        <td>{{recipient}}</td>
         <td>{{role}}</td>
       </tr>
     {{/affectedUsers}}

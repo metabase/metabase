@@ -733,12 +733,17 @@
                                                                            (i18n/tru "or")
                                                                            %))))
                                                      bad-parameters)
-                         :dashboardCreatorName     (:common_name dashboard-creator)
-                         :dashboardCreatorEmail    (:email dashboard-creator)
-                         :subscriptionCreatorName  (:common_name pulse-creator)
-                         :subscriptionCreatorEmail (:email pulse-creator)
-                         :affectedUsers            (into
-                                                     [(assoc dashboard-creator :role "Dashboard Creator")
-                                                      (assoc pulse-creator :role "Subscription Creator")]
-                                                     (map #(assoc % :role "Subscriber") affected-users))
+                         :affectedUsers            (map
+                                                     (fn [{:keys [notification-type] :as m}]
+                                                       (cond-> m
+                                                         notification-type
+                                                         (update :notification-type name)))
+                                                     (into
+                                                       [{:notification-type :email
+                                                         :recipient         (:common_name dashboard-creator)
+                                                         :role              "Dashboard Creator"}
+                                                        {:notification-type :email
+                                                         :recipient         (:common_name pulse-creator)
+                                                         :role              "Subscription Creator"}]
+                                                       (map #(assoc % :role "Subscriber") affected-users)))
                          :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)})))))

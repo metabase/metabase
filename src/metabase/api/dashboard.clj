@@ -609,19 +609,31 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator                  (t2/select-one [:model/User :first_name :last_name :email] creator_id)
-        pulse-channel-ids        (mapv :id (t2/select [:model/PulseChannel :id] :pulse_id [:= bad-pulse-id]))
-        ;; When checks are defensive as in () causes SQL exceptions
-        pulse-channel-recipients (when (seq pulse-channel-ids)
-                                   (t2/select :model/PulseChannelRecipient :pulse_channel_id [:in pulse-channel-ids]))
-        affected-users           (when (seq pulse-channel-recipients)
-                                   (t2/select [:model/User :first_name :last_name :email]
-                                     :id [:in (map :user_id pulse-channel-recipients)]))]
+  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
      :pulse-creator  creator
-     :affected-users affected-users}))
+     :affected-users (flatten
+                       (for [{pulse-channel-id  :id
+                              channel-type      :channel_type
+                              {:keys [channel]} :details} (t2/select [:model/PulseChannel :id :channel_type :details]
+                                                            :pulse_id [:= bad-pulse-id])]
+                         (case channel-type
+                           :email (let [pulse-channel-recipients (when (= :email channel-type)
+                                                                   (t2/select :model/PulseChannelRecipient
+                                                                     :pulse_channel_id pulse-channel-id))]
+                                    (when (seq pulse-channel-recipients)
+                                      (map
+                                        (fn [{:keys [common_name] :as recipient}]
+                                          (assoc recipient
+                                            :notification-type channel-type
+                                            :recipient common_name))
+                                        (t2/select [:model/User :first_name :last_name :email]
+                                          :id [:in (map :user_id pulse-channel-recipients)]))))
+                           :slack {:notification-type channel-type
+                                   :recipient         channel}
+                           nil)))}))
 
 (defn- broken-pulses
   "Identify and return any pulses used in a subscription that contain parameters that are no longer on the dashboard."
