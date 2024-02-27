@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Button, Icon } from "metabase/ui";
-import type { ButtonProps as BaseButtonProps } from "metabase/ui";
 import type { HTMLAttributes } from "react";
+
+import { color } from "metabase/lib/colors";
+import type { ButtonProps as BaseButtonProps } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 
@@ -108,7 +109,7 @@ export const SpecialStrategy = styled(Strategy)<ConfigProps>`
       : color("text-dark")};
 `;
 
-export const DatabaseStrategyIcon = styled(Icon)`
+export const DatabasesConfigIcon = styled(Icon)`
   margin-right: 0.5rem;
 `;
 
