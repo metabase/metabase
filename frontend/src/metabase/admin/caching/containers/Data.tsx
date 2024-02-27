@@ -4,7 +4,8 @@ import { useState } from "react";
 import { t } from "ttag";
 import {
   isValidCacheStrategy,
-  type CacheConfig
+  type CacheConfig,
+  CacheStrategies,
 } from "../types";
 import {
   ClearOverridesButton,
@@ -18,7 +19,7 @@ import {
   RuleEditorPanel,
   SpecialRule,
   SpecialRuleValue,
-  TabWrapper
+  TabWrapper,
 } from "./Data.styled";
 
 export const Data = ({
@@ -61,6 +62,13 @@ export const Data = ({
         </RuleEditorPanel>
         <RuleEditorPanel role="group">
           {databases.map(({ id, name }) => {
+            const strategy = (
+              databaseConfigurations.get(id) ?? databaseConfigurations.get(0)
+            )?.strategy;
+            if (!strategy) throw new Error("Invalid strategy");
+            const strategyLabel = CacheStrategies[strategy];
+            if (!strategyLabel)
+              throw new Error("Could not find label for strategy " + strategy);
             return (
               <SpecialRule key={id}>
                 <DatabaseRuleIcon name="database" />
@@ -68,12 +76,7 @@ export const Data = ({
                 <SpecialRuleValue
                   onClick={() => setIdOfDatabaseBeingConfigured(id)}
                 >
-                  {
-                    (
-                      databaseConfigurations.get(id) ??
-                      databaseConfigurations.get(0)
-                    )?.strategy
-                  }
+                  {strategyLabel}
                 </SpecialRuleValue>
               </SpecialRule>
             );

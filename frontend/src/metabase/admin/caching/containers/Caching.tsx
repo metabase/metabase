@@ -46,9 +46,6 @@ export const Caching = () => {
     };
   }, [tabsRef.current, isLoading]);
 
-  if (error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
-  }
   // TODO: instead of tabid, maybe just use a state variable whose type is Element? ah but value prop of Tabs has to be a string
   // "show don't tell"
   const databaseConfigurations = useMemo(() => {
@@ -74,6 +71,10 @@ export const Caching = () => {
     },
     [cacheConfigs],
   );
+
+  if (error || isLoading) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
 
   // TODO: The horizontal row of tabs does not look so good in narrow viewports
   return (
