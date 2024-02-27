@@ -32,9 +32,8 @@ import {
 } from "metabase/visualizations/echarts/cartesian/waterfall/constants";
 import type { TimelineEventId } from "metabase-types/api";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
-import type { ChartMeasurements } from "../../option/types";
+import type { ChartMeasurements } from "../../chart-measurements/types";
 import type { TimelineEventsModel } from "../../timeline-events/types";
-import { getChartMeasurements } from "../../utils/layout";
 import { getTimelineEventsSeries } from "../../timeline-events/option";
 import { buildAxes } from "../../option/axis";
 import { getSharedEChartsOptions } from "../../option";
@@ -217,22 +216,13 @@ export const buildEChartsWaterfallSeries = (
 
 export const getWaterfallChartOption = (
   chartModel: BaseCartesianChartModel,
+  chartMeasurements: ChartMeasurements,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
-  chartWidth: number,
-  chartHeight: number,
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const hasTimelineEvents = timelineEventsModel != null;
-  const chartMeasurements = getChartMeasurements(
-    chartModel,
-    settings,
-    hasTimelineEvents,
-    chartWidth,
-    chartHeight,
-    renderingContext,
-  );
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(
         timelineEventsModel,
@@ -264,8 +254,8 @@ export const getWaterfallChartOption = (
     series: seriesOption as SeriesOption,
     ...buildAxes(
       chartModel,
-      settings,
       chartMeasurements,
+      settings,
       hasTimelineEvents,
       renderingContext,
     ),

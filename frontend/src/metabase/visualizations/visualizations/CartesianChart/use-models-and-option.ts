@@ -13,6 +13,7 @@ import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesi
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 
 export function useModelsAndOption({
   rawSeries,
@@ -41,6 +42,10 @@ export function useModelsAndOption({
     [fontFamily],
   );
 
+  const hasTimelineEvents = timelineEvents
+    ? timelineEvents.length !== 0
+    : false;
+
   const chartModel = useMemo(() => {
     switch (card.display) {
       case "waterfall":
@@ -58,17 +63,28 @@ export function useModelsAndOption({
     }
   }, [card.display, seriesToRender, settings, renderingContext]);
 
-  const timelineEventsModel = useMemo(
+  const chartMeasurements = useMemo(
     () =>
-      getTimelineEventsModel(
+      getChartMeasurements(
         chartModel,
-        timelineEvents ?? [],
         settings,
+        hasTimelineEvents,
         width,
         height,
         renderingContext,
       ),
-    [chartModel, timelineEvents, settings, width, height, renderingContext],
+    [chartModel, settings, width, height, hasTimelineEvents, renderingContext],
+  );
+
+  const timelineEventsModel = useMemo(
+    () =>
+      getTimelineEventsModel(
+        chartModel,
+        chartMeasurements,
+        timelineEvents ?? [],
+        renderingContext,
+      ),
+    [chartModel, chartMeasurements, timelineEvents, renderingContext],
   );
 
   const option = useMemo(() => {
@@ -80,33 +96,33 @@ export function useModelsAndOption({
       case "waterfall":
         return getWaterfallChartOption(
           chartModel,
+          chartMeasurements,
           timelineEventsModel,
           selectedTimelineEventIds ?? [],
           settings,
-          width,
-          height,
           renderingContext,
         );
       default:
         return getCartesianChartOption(
           chartModel as CartesianChartModel,
+          chartMeasurements,
           timelineEventsModel,
           selectedTimelineEventIds ?? [],
           settings,
           width,
-          height,
           renderingContext,
         );
     }
   }, [
     card.display,
     chartModel,
-    height,
-    width,
+    chartMeasurements,
+    renderingContext,
     selectedTimelineEventIds,
     settings,
     timelineEventsModel,
-    renderingContext,
+    width,
+    height,
   ]);
 
   return { chartModel, timelineEventsModel, option };

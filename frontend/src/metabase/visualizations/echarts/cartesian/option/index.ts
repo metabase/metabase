@@ -7,7 +7,6 @@ import type {
 } from "metabase/visualizations/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/utils/layout";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 import type { TimelineEventId } from "metabase-types/api";
@@ -16,6 +15,7 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { ChartMeasurements } from "../chart-measurements/types";
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLineOptionsAndDatasets } from "./trend-line";
 
@@ -35,22 +35,14 @@ export const getSharedEChartsOptions = () => ({
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
+  chartMeasurements: ChartMeasurements,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
-  chartHeight: number,
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const hasTimelineEvents = timelineEventsModel != null;
-  const chartMeasurements = getChartMeasurements(
-    chartModel,
-    settings,
-    hasTimelineEvents,
-    chartWidth,
-    chartHeight,
-    renderingContext,
-  );
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(
         timelineEventsModel,
@@ -111,8 +103,8 @@ export const getCartesianChartOption = (
     series: seriesOption,
     ...buildAxes(
       chartModel,
-      settings,
       chartMeasurements,
+      settings,
       hasTimelineEvents,
       renderingContext,
     ),
