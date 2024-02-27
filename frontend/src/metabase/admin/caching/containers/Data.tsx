@@ -45,6 +45,11 @@ export const Data = ({
   databases = [...databases, ...databases, ...databases];
   databases = [...databases, ...databases, ...databases];
 
+  const generalStrategy = databaseConfigurations.get(0)?.strategy;
+  const generalStrategyLabel = generalStrategy
+    ? CacheStrategies[generalStrategy]
+    : null;
+
   return (
     <TabWrapper role="region" aria-label="Data caching settings">
       <Explanation>
@@ -56,15 +61,16 @@ export const Data = ({
             <DatabaseRuleIcon name="database" />
             {t`Databases`}
             <GeneralRuleValue onClick={() => setIdOfDatabaseBeingConfigured(0)}>
-              {databaseConfigurations.get(0)?.strategy}
+              {generalStrategyLabel}
             </GeneralRuleValue>
           </GeneralRuleButton>
         </RuleEditorPanel>
         <RuleEditorPanel role="group">
           {databases.map(({ id, name }) => {
-            const strategy = (
-              databaseConfigurations.get(id) ?? databaseConfigurations.get(0)
-            )?.strategy;
+            const specificStrategy = databaseConfigurations.get(id);
+            console.log("specificStrategy", specificStrategy);
+            const strategy = (specificStrategy ?? databaseConfigurations.get(0))
+              ?.strategy;
             if (!strategy) throw new Error("Invalid strategy");
             const strategyLabel = CacheStrategies[strategy];
             if (!strategyLabel)
@@ -74,6 +80,8 @@ export const Data = ({
                 <DatabaseRuleIcon name="database" />
                 {name}
                 <SpecialRuleValue
+                  // TODO: use variant={specificStrategy ? "filled" : "outline"} if possible
+                  isOverride={Boolean(specificStrategy)}
                   onClick={() => setIdOfDatabaseBeingConfigured(id)}
                 >
                   {strategyLabel}
@@ -99,20 +107,26 @@ export const Data = ({
                     console.error("invalid strategy", strategy);
                     return;
                   }
+                  console.log("currentConfig", currentConfig);
+                  console.log(
+                    "idOfDatabaseBeingConfigured",
+                    idOfDatabaseBeingConfigured,
+                  );
+                  console.log("strategy", strategy);
                   setDatabaseConfiguration(idOfDatabaseBeingConfigured, {
-                    ...(currentConfig as CacheConfig),
-                    strategy: strategy,
+                    modelType: "database",
+                    model_id: idOfDatabaseBeingConfigured,
+                    strategy,
                   });
                 }}
                 label={
                   <Text lh="1rem">{t`When should cached query results be invalidated?`}</Text>
                 }
               >
-                {/* TODO: Check that 'query' goes with 'when the data updates'. The values correspond to the values in caching.api.clj */}
                 {/*
                 Add later:
-            <Radio mt=".75rem" value="query" label={t`When the data updates`} />
-            <Radio mt=".75rem" value="schedule" label={t`On a schedule`} />
+                <Radio mt=".75rem" value="query" label={t`When the data updates`} />
+                <Radio mt=".75rem" value="schedule" label={t`On a schedule`} />
               */}
                 <Radio
                   mt=".75rem"

@@ -1,6 +1,10 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
+import type { ButtonProps as BaseButtonProps } from "metabase/ui";
+import type { HTMLAttributes } from "react";
+
+type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 
 export const RuleEditorPanel = styled.div`
   overflow-y: scroll;
@@ -30,16 +34,25 @@ export const Explanation = styled.aside`
   margin-bottom: 1rem;
 `;
 
-export const Button = styled.button`
+export const CacheAdminButton = styled(Button)<ButtonProps>`
   cursor: pointer;
   display: flex;
   flex-flow: row nowrap;
   align-items: center;
   border-radius: 1rem;
   padding: 1rem;
+  & div {
+    flex: 1;
+  }
+  & span {
+    display: flex;
+    flex: 1;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+  }
 `;
 
-export const RuleButton = styled(Button)`
+export const RuleButton = styled(CacheAdminButton)`
   background-color: ${color("bg-medium")};
   min-width: 20rem;
   font-weight: bold;
@@ -49,7 +62,7 @@ export const GeneralRuleButton = styled(RuleButton)`
   border: 1px solid ${color("bg-medium")};
 `;
 
-export const RuleValue = styled(Button)`
+export const RuleValue = styled(CacheAdminButton)`
   margin-left: auto;
   background: ${color("brand")};
   color: ${color("white")};
@@ -71,7 +84,14 @@ export const SpecialRule = styled.div`
   border: 1px solid ${color("border")};
 `;
 
-export const SpecialRuleValue = styled(RuleValue)``;
+export const SpecialRuleValue = styled(RuleValue)<
+  ButtonProps & { isOverride: boolean }
+>`
+  background-color: ${({ isOverride }) =>
+    isOverride ? color("brand") : color("white")};
+  color: ${({ isOverride }) =>
+    isOverride ? color("white") : color("text-dark")};
+`;
 
 export const DatabaseRuleIcon = styled(Icon)`
   margin-right: 0.5rem;

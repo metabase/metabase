@@ -58,11 +58,15 @@ export const Caching = () => {
     if (map.size === 0) {
       map.set(0, { modelType: "root", model_id: 0, strategy: "nocache" });
     }
+    console.log("map", map);
     return map;
   }, [cacheConfigs]);
 
+  console.log("databaseConfigurations", databaseConfigurations);
+
   const setDatabaseConfiguration = useCallback(
     (databaseId: number, config: CacheConfig) => {
+      console.log("setDatabaseConfiguration", databaseId, config);
       const otherConfigs = cacheConfigs.filter(
         config =>
           config.modelType === "database" && config.model_id !== databaseId,
@@ -101,14 +105,14 @@ export const Caching = () => {
       </TabsList>
       <TabsPanel key={tabId} value={tabId}>
         <TabContentWrapper>
-      <Data
-        databases={databases}
-        databaseConfigurations={databaseConfigurations}
-        setDatabaseConfiguration={setDatabaseConfiguration}
-        clearOverrides={() => {
-          // TODO: implement
-        }}
-      />
+          <Data
+            databases={databases}
+            databaseConfigurations={databaseConfigurations}
+            setDatabaseConfiguration={setDatabaseConfiguration}
+            clearOverrides={() => {
+              // TODO: implement
+            }}
+          />
         </TabContentWrapper>
       </TabsPanel>
     </Tabs>
