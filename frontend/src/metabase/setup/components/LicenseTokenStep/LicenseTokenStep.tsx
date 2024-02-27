@@ -41,14 +41,12 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
   };
 
   if (!isStepActive) {
-    const title = isStepCompleted
-      ? storeToken
-        ? t`Commercial license active`
-        : t`I'll activate my commercial license later`
-      : t`Activate your commercial license`;
     return (
       <InactiveStep
-        title={title}
+        title={getInactiveStepTitle({
+          isStepCompleted,
+          hasStoreToken: Boolean(storeToken),
+        })}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
@@ -73,4 +71,22 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
       </Button>
     </ActiveStep>
   );
+};
+
+const getInactiveStepTitle = ({
+  isStepCompleted,
+  hasStoreToken,
+}: {
+  isStepCompleted: boolean;
+  hasStoreToken: boolean;
+}) => {
+  if (isStepCompleted) {
+    if (hasStoreToken) {
+      return t`Commercial license active`;
+    } else {
+      return t`I'll activate my commercial license later`;
+    }
+  } else {
+    return t`Activate your commercial license`;
+  }
 };
