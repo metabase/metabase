@@ -656,7 +656,8 @@
   "Given a dashboard id and original parameters, return data (if any) on any broken subscriptions. This will be a seq
   of maps, each containing:
   - The pulse id that was broken
-  - name and email data for the dashboard creator, pulse creator, and affected recipients
+  - name and email data for the dashboard creator and pulse creator
+  - Affected recipient information
   - Basic descriptive data on the affected dashboard, pulse, and parameters for use in downstream notifications"
   [dashboard-id original-dashboard-params]
   (when-some [broken-pulses (broken-pulses dashboard-id original-dashboard-params)]
@@ -687,15 +688,18 @@
 
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
-  [id {:keys [dashcards tabs] :as dash-updates}]
+  [id {:keys [dashcards tabs parameters] :as dash-updates}]
   (span/with-span!
     {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
     (let [current-dash               (api/write-check Dashboard id)
-          {original-params :resolved-params} (t2/hydrate
-                                               (t2/select-one :model/Dashboard id)
-                                               [:dashcards :card]
-                                               :resolved-params)
+          ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
+          ;; the notifications were broken by the update.
+          {original-params :resolved-params} (when parameters
+                                               (t2/hydrate
+                                                 (t2/select-one :model/Dashboard id)
+                                                 [:dashcards :card]
+                                                 :resolved-params))
           changes-stats              (atom nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
@@ -715,7 +719,9 @@
                                    :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                               :embedding_params :archived :auto_apply_filters}))]
               (t2/update! Dashboard id updates)
-              (handle-broken-subscriptions id original-params))
+              ;; Handle broken subscriptions, if any, when parameters changed
+              (when parameters
+                (handle-broken-subscriptions id original-params)))
             (when update-dashcards-and-tabs?
               (when (not (false? (:archived false)))
                 (api/check-not-archived current-dash))
