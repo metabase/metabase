@@ -64,15 +64,10 @@ export const Caching = () => {
 
   const setDBConfig = useCallback(
     (databaseId: number, config: CacheConfig | null) => {
-      // TODO: perhaps clear all overrides is not working because of how otherConfigs is working
       const otherConfigs = cacheConfigs.filter(
         config => config.model_id !== databaseId,
       );
-      if (config) {
-        setCacheConfigs([...otherConfigs, config]);
-      } else {
-        setCacheConfigs(otherConfigs);
-      }
+      setCacheConfigs(config ? [...otherConfigs, config] : otherConfigs);
     },
     [cacheConfigs],
   );
