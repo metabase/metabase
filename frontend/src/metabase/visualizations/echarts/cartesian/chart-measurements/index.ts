@@ -65,6 +65,50 @@ const getYAxisTicksWidth = (
   return Math.max(...measuredValues);
 };
 
+const getXAxisTicksWidth = (
+  dataset: ChartDataset,
+  settings: ComputedVisualizationSettings,
+  formatter: AxisFormatter,
+  renderingContext: RenderingContext,
+) => {
+  const xAxisDisplay = settings["graph.x_axis.axis_enabled"];
+
+  if (!xAxisDisplay) {
+    return { firstXTickWidth: 0, lastXTickWidth: 0 };
+  }
+
+  if (xAxisDisplay === "rotate-90") {
+    return {
+      firstXTickWidth: CHART_STYLE.axisTicks.size,
+      lastXTickWidth: CHART_STYLE.axisTicks.size,
+    };
+  }
+
+  const firstXTickWidth = renderingContext.measureText(
+    formatter(dataset[0][X_AXIS_DATA_KEY]),
+    {
+      ...CHART_STYLE.axisTicks,
+      family: renderingContext.fontFamily,
+    },
+  );
+  const lastXTickWidth = renderingContext.measureText(
+    formatter(dataset[dataset.length - 1][X_AXIS_DATA_KEY]),
+    {
+      ...CHART_STYLE.axisTicks,
+      family: renderingContext.fontFamily,
+    },
+  );
+
+  if (xAxisDisplay === "rotate-45") {
+    return {
+      firstXTickWidth: firstXTickWidth / Math.SQRT2,
+      lastXTickWidth: lastXTickWidth / Math.SQRT2,
+    };
+  }
+
+  return { firstXTickWidth, lastXTickWidth };
+};
+
 const getXAxisTicksHeight = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
@@ -95,7 +139,7 @@ const getXAxisTicksHeight = (
   }
 
   if (xAxisDisplay === "rotate-45") {
-    return maxTickWidth / Math.sqrt(2);
+    return maxTickWidth / Math.SQRT2;
   }
 
   console.warn(`Unexpected "graph.x_axis.axis_enabled" value ${xAxisDisplay}`);
@@ -113,6 +157,8 @@ export const getTicksDimensions = (
     yTicksWidthLeft: 0,
     yTicksWidthRight: 0,
     xTicksHeight: 0,
+    firstXTickWidth: 0,
+    lastXTickWidth: 0,
   };
 
   if (chartModel.leftAxisModel) {
@@ -141,14 +187,34 @@ export const getTicksDimensions = (
       ) +
       CHART_STYLE.axisTicksMarginX +
       (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0);
+
+    const { firstXTickWidth, lastXTickWidth } = getXAxisTicksWidth(
+      chartModel.dataset,
+      settings,
+      chartModel.xAxisModel.formatter,
+      renderingContext,
+    );
+    ticksDimensions.firstXTickWidth = firstXTickWidth;
+    ticksDimensions.lastXTickWidth = lastXTickWidth;
   }
 
   return ticksDimensions;
 };
 
+const getExtraSidePadding = (
+  xAxisTickOverflow: number,
+  yAxisNameTotalWidth: number,
+  yAxisModel: YAxisModel | null,
+) => {
+  const nameWidth = yAxisModel?.label != null ? yAxisNameTotalWidth : 0;
+  return Math.max(xAxisTickOverflow, nameWidth);
+};
+
 export const getChartPadding = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
+  ticksDimensions: TicksDimensions,
+  chartWidth: number,
 ): Padding => {
   const padding: Padding = {
     top: CHART_STYLE.padding.y,
@@ -167,14 +233,52 @@ export const getChartPadding = (
   }
 
   const yAxisNameTotalWidth =
-    CHART_STYLE.axisName.size / 2 + CHART_STYLE.axisNameMargin;
+    CHART_STYLE.axisName.size + CHART_STYLE.axisNameMargin;
+
+  let currentBoundaryWidth =
+    chartWidth -
+    padding.left -
+    padding.right -
+    ticksDimensions.yTicksWidthLeft -
+    ticksDimensions.yTicksWidthRight;
 
   if (chartModel.leftAxisModel?.label) {
-    padding.left += yAxisNameTotalWidth;
+    currentBoundaryWidth -= yAxisNameTotalWidth;
   }
   if (chartModel.rightAxisModel?.label) {
-    padding.right += yAxisNameTotalWidth;
+    currentBoundaryWidth -= yAxisNameTotalWidth;
   }
+
+  const dimensionWidth = currentBoundaryWidth / chartModel.dataset.length;
+
+  const firstTickOverflow = Math.min(
+    ticksDimensions.firstXTickWidth / 2 -
+      dimensionWidth / 2 -
+      ticksDimensions.yTicksWidthLeft,
+    chartWidth / 8, // don't allow overflow greater than 12.5% of the chart width
+  );
+
+  let lastTickOverflow = 0;
+  if (settings["graph.x_axis.axis_enabled"] !== "rotate-45") {
+    lastTickOverflow = Math.min(
+      ticksDimensions.lastXTickWidth / 2 -
+        dimensionWidth / 2 -
+        ticksDimensions.yTicksWidthRight,
+      chartWidth / 8,
+    );
+  }
+
+  padding.left += getExtraSidePadding(
+    firstTickOverflow,
+    yAxisNameTotalWidth,
+
+    chartModel.leftAxisModel,
+  );
+  padding.right += getExtraSidePadding(
+    lastTickOverflow,
+    yAxisNameTotalWidth,
+    chartModel.rightAxisModel,
+  );
 
   const hasXAxisName = settings["graph.x_axis.labels_enabled"];
   if (hasXAxisName) {
@@ -213,7 +317,7 @@ export const getChartMeasurements = (
     hasTimelineEvents,
     renderingContext,
   );
-  const padding = getChartPadding(chartModel, settings);
+  const padding = getChartPadding(chartModel, settings, ticksDimensions, width);
   const bounds = getChartBounds(width, height, padding, ticksDimensions);
 
   const boundaryWidth =
