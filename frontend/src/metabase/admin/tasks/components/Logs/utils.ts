@@ -55,28 +55,9 @@ export function getAllProcessUUIDs(logs: Log[]) {
   return [...uuids].filter(Boolean).sort();
 }
 
-function memoizeOne<T, U>(fn: (input: T) => U) {
-  let prevInput: T;
-  let prevOutput: U;
-
-  function memoizedFn(input: T) {
-    if (prevInput === input) {
-      return prevOutput;
-    }
-    prevInput = input;
-    prevOutput = fn(input);
-    return prevOutput;
-  }
-  return memoizedFn;
-}
-
+// date formatting is expensive for megabytes of logs
 const formatTs = (ts: string) => dayjs(ts).format();
-
-// logs are sorted by time when we got to format them
-// and many logs happen with in the same exact millisecond
-// this helps avoid expensive format computation if curr
-// value is the same as the last one
-const memoedFormatTs = memoizeOne(formatTs);
+const memoedFormatTs = _.memoize(formatTs);
 
 export function formatLog(log: Log) {
   const timestamp = memoedFormatTs(log.timestamp);
