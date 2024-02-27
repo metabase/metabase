@@ -13,8 +13,6 @@ import * as Lib from "metabase-lib";
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
-const DEFAULT_MAX_HEIGHT = 610;
-
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
 };
@@ -48,7 +46,6 @@ export function QueryColumnPicker({
   hasBinning = false,
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
-  maxHeight = DEFAULT_MAX_HEIGHT,
   color = "brand",
   checkIsColumnSelected,
   onSelect,
@@ -156,7 +153,6 @@ export function QueryColumnPicker({
     <StyledAccordionList
       className={className}
       sections={sections}
-      maxHeight={maxHeight}
       alwaysExpanded={false}
       onChange={handleSelectColumn}
       itemIsSelected={checkIsColumnSelected}
@@ -165,6 +161,9 @@ export function QueryColumnPicker({
       renderItemIcon={renderItemIcon}
       renderItemExtra={renderItemExtra}
       color={color}
+      // disable scrollbars inside the list
+      style={{ overflow: "visible" }}
+      maxHeight={Infinity}
       // Compat with E2E tests around MLv1-based components
       // Prefer using a11y role selectors
       itemTestId="dimension-list-item"

@@ -21,8 +21,6 @@ import {
   InfoIconContainer,
 } from "./AggregationPicker.styled";
 
-const DEFAULT_MAX_HEIGHT = 610;
-
 interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
@@ -30,7 +28,6 @@ interface AggregationPickerProps {
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  maxHeight?: number;
   onSelect: (operator: Lib.Aggregable) => void;
   onClose?: () => void;
 }
@@ -63,7 +60,6 @@ export function AggregationPicker({
   stageIndex,
   operators,
   hasExpressionInput = true,
-  maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
   onClose,
 }: AggregationPickerProps) {
@@ -250,7 +246,6 @@ export function AggregationPicker({
     <Root className={className} color="summarize">
       <AccordionList
         sections={sections}
-        maxHeight={maxHeight}
         alwaysExpanded={false}
         onChange={handleChange}
         onChangeSection={handleSectionChange}
@@ -258,6 +253,9 @@ export function AggregationPicker({
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
         renderItemExtra={renderItemExtra}
+        // disable scrollbars inside the list
+        style={{ overflow: "visible" }}
+        maxHeight={Infinity}
       />
     </Root>
   );

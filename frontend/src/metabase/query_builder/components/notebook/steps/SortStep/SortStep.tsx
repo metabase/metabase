@@ -71,7 +71,6 @@ function SortStep({
         />
       )}
       onRemove={handleRemoveOrderBy}
-      withLegacyPopover
     />
   );
 }
