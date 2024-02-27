@@ -1090,12 +1090,13 @@ class Question {
     return question;
   }
 
-  // TODO: Fix incorrect Flow signature
-  parameters(): ParameterObject[] {
+  parameters({ collectionPreview } = {}): ParameterObject[] {
     return getCardUiParameters(
       this.card(),
       this.metadata(),
       this._parameterValues,
+      undefined,
+      collectionPreview,
     );
   }
 

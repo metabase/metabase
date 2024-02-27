@@ -10,7 +10,18 @@ import { getParameterType } from "./parameter-type";
 export const PULSE_PARAM_EMPTY = null;
 export const PULSE_PARAM_USE_DEFAULT = undefined;
 
-export function getValuePopulatedParameters(parameters, parameterValues) {
+export function getValuePopulatedParameters(
+  parameters,
+  parameterValues,
+  collectionPreview,
+) {
+  // pinned native question can have default values on parameters, usually we
+  // get them from URL, which is not the case for collection preview. to force
+  // BE to apply default values to those filters, empty array is provided
+  if (collectionPreview) {
+    return [];
+  }
+
   return parameters.map(parameter => ({
     ...parameter,
     value: parameterValues?.[parameter.id] ?? null,
