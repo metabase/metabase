@@ -1,6 +1,7 @@
 import { MetabaseProvider } from "metabase-embedding-sdk";
 
 import { Page } from "./Page";
+import {Outlet} from "react-router-dom";
 
 const config = {
   metabaseInstanceUrl:
@@ -8,12 +9,12 @@ const config = {
   font: "Inter",
   authType: "apiKey",
   // jwtProviderUri: "http://localhost:8081/sso/metabase",
-  apiKey: "mb_ibHudja0H7LJiStzxaI1R1EUxlVSDCO9ywbkNY/0Mak=",
+  apiKey: "mb_Sx6DGYlYiJgDVrwRhfBt29PsrmnXpJQg3pnbJqxT52M=",
 };
 
 const App = () => (
   <MetabaseProvider config={config}>
-    <Page />
+    <Outlet />
   </MetabaseProvider>
 );
 

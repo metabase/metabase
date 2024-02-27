@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import cx from "classnames";
 
 import _ from "underscore";
+import PropTypes from "prop-types";
 import { isWithinIframe } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -28,7 +29,15 @@ import {
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
 
-import * as dashboardActions from "metabase/dashboard/actions";
+import {
+  initialize,
+  fetchDashboard,
+  fetchDashboardCardData,
+  cancelFetchDashboardCardData,
+  fetchDashboardCardMetadata,
+  setParameterValue,
+  setParameterValueToDefault,
+} from "metabase/dashboard/actions";
 
 import {
   setPublicDashboardEndpoints,
@@ -58,7 +67,13 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
-  ...dashboardActions,
+  initialize,
+  fetchDashboard,
+  fetchDashboardCardData,
+  cancelFetchDashboardCardData,
+  fetchDashboardCardMetadata,
+  setParameterValue,
+  setParameterValueToDefault,
   setErrorPage,
   onChangeLocation: push,
 };
@@ -102,7 +117,7 @@ class PublicDashboard extends Component {
   };
 
   async componentDidMount() {
-    this._initialize();
+    await this._initialize();
   }
 
   componentWillUnmount() {
@@ -178,7 +193,7 @@ class PublicDashboard extends Component {
         setParameterValueToDefault={setParameterValueToDefault}
         enableParameterRequiredBehavior
         actionButtons={
-          buttons.length > 0 && <div className="flex">{buttons}</div>
+          buttons.length > 0 ? <div className="flex">{buttons}</div> : []
         }
         dashboardTabs={<StyledDashboardTabs location={this.props.location} />}
       >
@@ -208,6 +223,30 @@ class PublicDashboard extends Component {
     );
   }
 }
+
+PublicDashboard.propTypes = {
+  metadata: PropTypes.object,
+  dashboardId: PropTypes.string,
+  dashboard: PropTypes.object,
+  dashcardData: PropTypes.object,
+  slowCards: PropTypes.object,
+  parameters: PropTypes.array,
+  parameterValues: PropTypes.object,
+  draftParameterValues: PropTypes.object,
+  selectedTabId: PropTypes.number,
+
+  location: PropTypes.object,
+  params: PropTypes.object,
+
+  initialize: PropTypes.func,
+  fetchDashboard: PropTypes.func,
+  fetchDashboardCardData: PropTypes.func,
+  cancelFetchDashboardCardData: PropTypes.func,
+  fetchDashboardCardMetadata: PropTypes.func,
+  setParameterValue: PropTypes.func,
+  setParameterValueToDefault: PropTypes.func,
+  setErrorPage: PropTypes.func,
+};
 
 export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),

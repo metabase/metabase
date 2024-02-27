@@ -50,6 +50,16 @@ import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import {
+  navigateToNewCardFromDashboard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  removeCardFromDashboard,
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+  showClickBehaviorSidebar,
+  undoRemoveCardFromDashboard,
+} from "../actions";
+import {
   DashboardCardContainer,
   DashboardGridContainer,
 } from "./DashboardGrid.styled";
@@ -154,7 +164,17 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
-const mapDispatchToProps = { addUndo };
+const mapDispatchToProps = {
+  addUndo,
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+  removeCardFromDashboard,
+  undoRemoveCardFromDashboard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  navigateToNewCardFromDashboard,
+  showClickBehaviorSidebar,
+};
 
 class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   static contextType = ContentViewportContext;
