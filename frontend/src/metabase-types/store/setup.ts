@@ -26,6 +26,7 @@ export interface SubscribeInfo {
 }
 
 export interface SetupState {
+  isPaidPlan: boolean;
   step: SetupStep;
   locale?: Locale;
   user?: UserInfo;
@@ -35,4 +36,5 @@ export interface SetupState {
   invite?: InviteInfo;
   isLocaleLoaded: boolean;
   isTrackingAllowed: boolean;
+  licenseToken?: string | null;
 }

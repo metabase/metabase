@@ -6,6 +6,7 @@ import {
 } from "metabase/home/utils";
 import { loadLocalization } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
+import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
@@ -94,6 +95,13 @@ export const submitUsageReason = createAsyncThunk(
   },
 );
 
+export const submitLicenseToken = createAsyncThunk(
+  "metabase/setup/SUBMIT_LICENSE_TOKEN",
+  (_token: string | null) => {
+    // TODO: add analytics
+  },
+);
+
 export const UPDATE_DATABASE_ENGINE = "metabase/setup/UPDATE_DATABASE_ENGINE";
 export const updateDatabaseEngine = createAsyncThunk(
   UPDATE_DATABASE_ENGINE,
@@ -178,6 +186,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     const invite = getInvite(getState());
     const isTrackingAllowed = getIsTrackingAllowed(getState());
     const usageReason = getUsageReason(getState());
+    const licenseToken = getState().setup.licenseToken;
 
     try {
       await SetupApi.create({
@@ -190,6 +199,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
           site_locale: locale?.code,
           allow_tracking: isTrackingAllowed.toString(),
         },
+        license_token: licenseToken,
       });
 
       if (usageReason === "embedding" || usageReason === "both") {
@@ -203,5 +213,20 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     } catch (error) {
       return rejectWithValue(error);
     }
+  },
+);
+
+export const initSetup = createAsyncThunk(
+  "metabase/setup/INIT_SETUP",
+  async (_, thunkApi) => {
+    const state = thunkApi.getState() as State;
+
+    const tokenFeatures = getSetting(state, "token-features");
+
+    const hasAnyFeature =
+      tokenFeatures &&
+      Object.values(tokenFeatures).some(value => value === true);
+
+    return { isPaidPlan: hasAnyFeature };
   },
 );

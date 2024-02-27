@@ -15,6 +15,8 @@ import {
   updateTracking,
   submitSetup,
   submitUsageReason,
+  submitLicenseToken,
+  initSetup,
 } from "./actions";
 import { getNextStep } from "./selectors";
 
@@ -22,9 +24,13 @@ const initialState: SetupState = {
   step: "welcome",
   isLocaleLoaded: false,
   isTrackingAllowed: true,
+  isPaidPlan: false,
 };
 
 export const reducer = createReducer(initialState, builder => {
+  builder.addCase(initSetup.fulfilled, (state, { payload: { isPaidPlan } }) => {
+    state.isPaidPlan = isPaidPlan;
+  });
   builder.addCase(loadUserDefaults.fulfilled, (state, { payload: user }) => {
     state.user = user;
   });
@@ -54,6 +60,12 @@ export const reducer = createReducer(initialState, builder => {
     state.usageReason = usageReason;
     state.step = getNextStep({ setup: state } as State);
   });
+  builder.addCase(submitLicenseToken.pending, (state, { meta }) => {
+    const token = meta.arg;
+    state.licenseToken = token;
+    state.step = getNextStep({ setup: state } as State);
+  });
+
   builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
     state.databaseEngine = meta.arg;
   });

@@ -4,7 +4,7 @@ import type { UsageReason } from "metabase-types/api";
 import type { SetupStep } from "./types";
 
 const ONBOARDING_VERSION = "1.1.0";
-const SCHEMA_VERSION = "1-0-2";
+const SCHEMA_VERSION = "1-0-3";
 
 export const trackStepSeen = ({
   stepName,
