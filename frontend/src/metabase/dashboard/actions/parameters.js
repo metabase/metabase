@@ -19,7 +19,10 @@ import {
   PULSE_PARAM_EMPTY,
 } from "metabase-lib/parameters/utils/parameter-values";
 
-import { trackAutoApplyFiltersDisabled } from "../analytics";
+import {
+  trackAutoApplyFiltersDisabled,
+  trackFilterRequired,
+} from "../analytics";
 import {
   getDashboard,
   getDraftParameterValues,
@@ -245,16 +248,23 @@ export const SET_PARAMETER_REQUIRED =
   "metabase/dashboard/SET_PARAMETER_REQUIRED";
 export const setParameterRequired = createThunkAction(
   SET_PARAMETER_REQUIRED,
-  (parameterId, value) => (dispatch, getState) => {
+  (parameterId, required) => (dispatch, getState) => {
     const parameter = getParameters(getState()).find(
       ({ id }) => id === parameterId,
     );
 
-    if (parameter.required !== value) {
+    if (parameter.required !== required) {
       updateParameter(dispatch, getState, parameterId, parameter => ({
         ...parameter,
-        required: value,
+        required,
       }));
+    }
+
+    if (required) {
+      const dashboardId = getDashboardId(getState());
+      if (dashboardId) {
+        trackFilterRequired(dashboardId);
+      }
     }
   },
 );
