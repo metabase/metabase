@@ -3,6 +3,11 @@ import { useCallback, useState } from "react";
 import type { PopoverBaseProps } from "metabase/ui";
 import { Popover } from "metabase/ui";
 
+const POPOVER_PROPS: PopoverBaseProps = {
+  position: "bottom-start",
+  offset: { mainAxis: 4 },
+};
+
 interface ClausePopoverProps extends PopoverBaseProps {
   isInitiallyOpen?: boolean;
   renderItem: (open: () => void) => JSX.Element | string;
@@ -13,7 +18,6 @@ export function ClausePopover({
   isInitiallyOpen = false,
   renderItem,
   renderPopover,
-  ...props
 }: ClausePopoverProps) {
   const [isOpen, setIsOpen] = useState(isInitiallyOpen);
 
@@ -26,7 +30,7 @@ export function ClausePopover({
   }, []);
 
   return (
-    <Popover trapFocus {...props} opened={isOpen} onClose={handleClose}>
+    <Popover trapFocus {...POPOVER_PROPS} opened={isOpen} onClose={handleClose}>
       <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
       <Popover.Dropdown>{renderPopover(handleClose)}</Popover.Dropdown>
     </Popover>

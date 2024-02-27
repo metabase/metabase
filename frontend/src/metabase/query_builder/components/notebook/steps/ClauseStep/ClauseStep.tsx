@@ -1,4 +1,3 @@
-import type { PopoverBaseProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
 import {
@@ -8,11 +7,6 @@ import {
 } from "../../NotebookCell";
 
 import { ClausePopover } from "./ClausePopover";
-
-const POPOVER_PROPS: PopoverBaseProps = {
-  position: "bottom-start",
-  offset: { mainAxis: 4 },
-};
 
 type RenderItemOpts<T> = {
   item: T;
@@ -79,7 +73,6 @@ export const ClauseStep = <T,>({
     <NotebookCell color={color} data-testid={props["data-testid"]}>
       {items.map((item, index) => (
         <ClausePopover
-          {...POPOVER_PROPS}
           key={index}
           renderItem={onOpen => renderItem({ item, index, onOpen })}
           renderPopover={onClose => renderPopover({ item, index, onClose })}
@@ -87,7 +80,6 @@ export const ClauseStep = <T,>({
       ))}
       {!readOnly && (
         <ClausePopover
-          {...POPOVER_PROPS}
           isInitiallyOpen={isLastOpened}
           renderItem={onOpen => renderNewItem({ onOpen })}
           renderPopover={onClose => renderPopover({ onClose })}
