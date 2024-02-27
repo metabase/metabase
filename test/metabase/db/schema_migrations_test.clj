@@ -1553,3 +1553,105 @@
           (is (= "no"
                  (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id table-id-2 :group_id group-id :perm_type "perms/create-queries"))))))))
+
+(deftest split-data-permissions-migration-rollback-test
+  (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-26T22:15:55"] [migrate!]
+    (let [migrate-up!  (fn []
+                         (migrate!)
+                         (clear-permissions!))
+          group-id     (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+          db-id        (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+          table-id     (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :schema     "PUBLIC"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :active     true}))
+          insert-perm! (fn [perm-type perm-value & [table-id]]
+                         (t2/insert! (t2/table-name :model/DataPermissions)
+                                     :db_id db-id
+                                     :group_id group-id
+                                     :table_id table-id
+                                     :schema_name "PUBLIC"
+                                     :perm_type perm-type
+                                     :perm_value perm-value))]
+      (testing "DB-level data access"
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder-and-native")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/" db-id)
+                 (format "/db/%d/native/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "no")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "blocked")
+        (insert-perm! "perms/create-queries" "no")
+        (migrate! :down 49)
+        (is (= #{(format "/block/db/%d/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
+
+      (testing "Table-level access"
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder" table-id)
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/PUBLIC/table/%d/" db-id table-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "no" table-id)
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (t2/insert-returning-pks! (t2/table-name :model/GroupTableAccessPolicy)
+                                  {:group_id group-id :table_id table-id})
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "no" table-id)
+        (migrate! :down 49)
+        (is (= #{(format "/block/db/%d/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
+
+      (testing "Impersonated data access"
+        (t2/insert-returning-pks! (t2/table-name :model/ConnectionImpersonation)
+                                  {:group_id group-id :db_id db-id :attribute "foo"})
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder-and-native")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/" db-id)
+                 (format "/db/%d/native/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "no")
+        (migrate! :down 49)
+        (is (= #{(format "/block/db/%d/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))
