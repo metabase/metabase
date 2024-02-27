@@ -248,15 +248,15 @@ export const SET_PARAMETER_REQUIRED =
   "metabase/dashboard/SET_PARAMETER_REQUIRED";
 export const setParameterRequired = createThunkAction(
   SET_PARAMETER_REQUIRED,
-  (parameterId, value) => (dispatch, getState) => {
+  (parameterId, required) => (dispatch, getState) => {
     const parameter = getParameters(getState()).find(
       ({ id }) => id === parameterId,
     );
 
-    if (parameter.required !== value) {
+    if (parameter.required !== required) {
       updateParameter(dispatch, getState, parameterId, parameter => ({
         ...parameter,
-        required: value,
+        required,
       }));
     }
 
