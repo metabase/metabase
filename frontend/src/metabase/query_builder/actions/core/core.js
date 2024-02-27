@@ -32,6 +32,7 @@ import {
   getOriginalQuestion,
   getParameters,
   getQuestion,
+  getResultsMetadata,
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../selectors";
@@ -236,6 +237,15 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
+
+    if (isModel) {
+      const resultsMetadata = getResultsMetadata(getState());
+
+      if (!resultsMetadata) {
+        // running the question will populate results metadata in redux store
+        await dispatch(runQuestionQuery());
+      }
+    }
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
