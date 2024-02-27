@@ -19,7 +19,10 @@ import {
   PULSE_PARAM_EMPTY,
 } from "metabase-lib/parameters/utils/parameter-values";
 
-import { trackAutoApplyFiltersDisabled } from "../analytics";
+import {
+  trackAutoApplyFiltersDisabled,
+  trackFilterRequired,
+} from "../analytics";
 import {
   getDashboard,
   getDraftParameterValues,
@@ -255,6 +258,13 @@ export const setParameterRequired = createThunkAction(
         ...parameter,
         required: value,
       }));
+    }
+
+    if (required) {
+      const dashboardId = getDashboardId(getState());
+      if (dashboardId) {
+        trackFilterRequired(dashboardId);
+      }
     }
   },
 );
