@@ -70,14 +70,8 @@ describe("setup (EE, no token)", () => {
 
       screen.getByRole("button", { name: "Activate" }).click();
 
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: "Activate" }),
-        ).not.toHaveProperty("data-loading", true);
-      });
-
       expect(
-        screen.getByText(
+        await screen.findByText(
           "This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working",
         ),
       ).toBeInTheDocument();
@@ -130,13 +124,7 @@ describe("setup (EE, no token)", () => {
 
       screen.getByRole("button", { name: "Activate" }).click();
 
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: "Activate" }),
-        ).not.toHaveProperty("data-loading", true);
-      });
-
-      screen.getByRole("button", { name: "Finish" }).click();
+      (await screen.findByRole("button", { name: "Finish" })).click();
 
       const setupCall = fetchMock.lastCall(`path:/api/setup`);
       expect(await setupCall?.request?.json()).toMatchObject({
