@@ -96,11 +96,9 @@ describe("setup (EE, no token)", () => {
 
       screen.getByRole("button", { name: "Activate" }).click();
 
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: "Activate" }),
-        ).not.toHaveProperty("data-loading", true);
-      });
+      await screen.findByText(
+        "This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working",
+      );
 
       clickNextStep();
 
