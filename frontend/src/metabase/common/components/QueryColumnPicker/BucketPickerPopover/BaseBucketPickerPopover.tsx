@@ -97,7 +97,10 @@ function _BaseBucketPickerPopover({
           // Compat with E2E tests around MLv1-based components
           // Prefer using a11y role selectors
           data-testid="dimension-list-item-binning"
-          onClick={() => setIsOpened(!isOpened)}
+          onClick={event => {
+            event.stopPropagation();
+            setIsOpened(!isOpened);
+          }}
         >
           <Ellipsified>
             {renderTriggerContent(triggerContentBucketDisplayInfo)}
