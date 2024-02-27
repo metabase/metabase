@@ -31,7 +31,7 @@ export const TransformedVisualization = ({
 
   const transformedSeries = useMemo(() => {
     return transformSeries(rawSeries, settings, renderingContext);
-  }, [transformSeries, rawSeries, settings]);
+  }, [transformSeries, rawSeries, settings, renderingContext]);
 
   const transformedSettings = useMemo(() => {
     return getComputedSettingsForSeries(transformedSeries);
