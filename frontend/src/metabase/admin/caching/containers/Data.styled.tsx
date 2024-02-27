@@ -6,9 +6,9 @@ import type { HTMLAttributes } from "react";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 
-type StrategyButtonProps = ButtonProps & {
-  isOverride?: boolean;
-  isBeingConfigured?: boolean;
+type ConfigProps = ButtonProps & {
+  doesOverrideGeneralConfig?: boolean;
+  isBeingEdited?: boolean;
 };
 
 export const StrategyEditorPanel = styled.div`
@@ -57,14 +57,17 @@ export const CacheAdminButton = styled(Button)<ButtonProps>`
   }
 `;
 
-export const StrategyButton = styled(CacheAdminButton)`
-  background-color: ${color("bg-medium")};
+export const Config = styled(CacheAdminButton)`
   min-width: 20rem;
   font-weight: bold;
 `;
 
-export const GeneralConfigButton = styled(StrategyButton)`
+export const GeneralConfig = styled(Config)<ConfigProps>`
   border: 1px solid ${color("bg-medium")};
+  background-color: ${({ isBeingEdited }) =>
+    isBeingEdited ? color("brand") : color("white")};
+  color: ${({ isBeingEdited }) =>
+    isBeingEdited ? color("white") : color("text-dark")};
 `;
 
 export const Strategy = styled(CacheAdminButton)`
@@ -75,9 +78,14 @@ export const Strategy = styled(CacheAdminButton)`
   font-weight: bold;
 `;
 
-export const GeneralConfigStrategy = styled(Strategy)``;
+export const GeneralStrategy = styled(Strategy)<ConfigProps>`
+  background-color: ${({ isBeingEdited }) =>
+    isBeingEdited ? color("brand") : color("white")};
+  color: ${({ isBeingEdited }) =>
+    isBeingEdited ? color("white") : color("text-dark")};
+`;
 
-export const SpecialConfig = styled(CacheAdminButton)<StrategyButtonProps>`
+export const SpecialConfigStyled = styled(CacheAdminButton)<ConfigProps>`
   width: 100%;
   display: flex;
   font-weight: bold;
@@ -90,11 +98,15 @@ export const SpecialConfig = styled(CacheAdminButton)<StrategyButtonProps>`
   border: 1px solid ${color("border")};
 `;
 
-export const SpecialStrategy = styled(Strategy)<StrategyButtonProps>`
-  background-color: ${({ isOverride, isBeingConfigured }) =>
-    isOverride && !isBeingConfigured ? color("brand") : color("white")};
-  color: ${({ isOverride, isBeingConfigured }) =>
-    isOverride && !isBeingConfigured ? color("white") : color("text-dark")};
+export const SpecialStrategy = styled(Strategy)<ConfigProps>`
+  background-color: ${({ doesOverrideGeneralConfig, isBeingEdited }) =>
+    doesOverrideGeneralConfig && !isBeingEdited
+      ? color("brand")
+      : color("white")};
+  color: ${({ doesOverrideGeneralConfig, isBeingEdited }) =>
+    doesOverrideGeneralConfig && !isBeingEdited
+      ? color("white")
+      : color("text-dark")};
 `;
 
 export const DatabaseStrategyIcon = styled(Icon)`

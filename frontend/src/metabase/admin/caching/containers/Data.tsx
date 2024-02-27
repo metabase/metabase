@@ -1,9 +1,10 @@
 import type Database from "metabase-lib/metadata/Database";
 import { Icon, Radio, Text } from "metabase/ui";
-import { MouseEvent, useState } from "react";
+import { Dispatch, MouseEvent, SetStateAction, useState } from "react";
 import { t } from "ttag";
 import {
   CacheStrategies,
+  CacheStrategy,
   isValidCacheStrategy,
   type CacheConfig,
 } from "../types";
@@ -13,12 +14,12 @@ import {
   ConfigPanelSection,
   DatabaseStrategyIcon,
   Explanation,
-  GeneralConfigButton,
-  GeneralConfigStrategy,
-  StrategyEditor,
-  StrategyPanel,
-  SpecialConfig,
+  GeneralConfig,
+  GeneralStrategy,
+  SpecialConfigStyled,
   SpecialStrategy,
+  StrategyEditor,
+  StrategyEditorPanel,
   TabWrapper,
 } from "./Data.styled";
 
@@ -55,71 +56,34 @@ export const Data = ({
         {t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated. You can set up one rule for all your databases, or apply more specific settings to each database.`}
       </Explanation>
       <StrategyEditor role="form">
-        <StrategyPanel role="group">
-          <GeneralConfigButton animate={false} onClick={() => setIdOfDatabaseBeingConfigured(0)}>
+        <StrategyEditorPanel role="group">
+          <GeneralConfig
+            animate={false}
+            onClick={() => setIdOfDatabaseBeingConfigured(0)}
+            isBeingEdited={idOfDatabaseBeingConfigured === 0}
+          >
             <DatabaseStrategyIcon name="database" />
             {t`Databases`}
-            <GeneralConfigStrategy>{generalStrategyLabel}</GeneralConfigStrategy>
-          </GeneralConfigButton>
-        </StrategyPanel>
-        <StrategyPanel role="group">
-          {databases.map(db => {
-            const specificConfigForDB = databaseConfigurations.get(db.id);
-            const specificStrategyForDB = specificConfigForDB?.strategy;
-            const doesSpecialStrategyOverride =
-              specificStrategyForDB &&
-              specificStrategyForDB !== generalStrategy;
-            const strategyForDB = specificStrategyForDB ?? generalStrategy;
-            if (!strategyForDB)
-              throw new Error(t`Invalid strategy "${strategyForDB}"`);
-            const strategyLabel = CacheStrategies[strategyForDB];
-            if (!strategyLabel)
-              throw new Error(
-                t`Could not find label for strategy ${strategyForDB}`,
-              );
-            const isBeingConfigured = idOfDatabaseBeingConfigured === db.id;
-            const clearOverride = () => {
-              setDatabaseConfiguration(db.id, null);
-              setIdOfDatabaseBeingConfigured(null);
-            };
-            return (
-              <SpecialConfig
-                variant={isBeingConfigured ? "filled" : "outline"}
-                isBeingConfigured={isBeingConfigured}
-                key={db.id}
-                onClick={() => {
-                  setIdOfDatabaseBeingConfigured(db.id);
-                }}
-                animate={false}
-              >
-                <DatabaseStrategyIcon name="database" />
-                {db.name}
-                <SpecialStrategy
-                  // TODO: use variant={specificStrategy ? "filled" : "outline"} if possible
-                  isOverride={doesSpecialStrategyOverride}
-                  isBeingConfigured={isBeingConfigured}
-                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                    if (doesSpecialStrategyOverride) {
-                      clearOverride();
-                      e.stopPropagation();
-                    }
-                  }}
-                  animate={false}
-                >
-                  {strategyLabel}
-                  {doesSpecialStrategyOverride && (
-                    <Icon style={{ marginLeft: ".5rem" }} name="close" />
-                  )}
-                </SpecialStrategy>
-              </SpecialConfig>
-            );
-          })}
+            <GeneralStrategy>{generalStrategyLabel}</GeneralStrategy>
+          </GeneralConfig>
+        </StrategyEditorPanel>
+        <StrategyEditorPanel role="group">
+          {databases.map(database => (
+            <SpecialConfig
+              database={database}
+              databaseConfigurations={databaseConfigurations}
+              setDatabaseConfiguration={setDatabaseConfiguration}
+              idOfDatabaseBeingConfigured={idOfDatabaseBeingConfigured}
+              setIdOfDatabaseBeingConfigured={setIdOfDatabaseBeingConfigured}
+              generalStrategy={generalStrategy}
+            />
+          ))}
           <ClearOverridesButton
             onClick={() => {
               clearAllDatabaseOverrides();
             }}
           >{t`Clear all overrides`}</ClearOverridesButton>
-        </StrategyPanel>
+        </StrategyEditorPanel>
         {idOfDatabaseBeingConfigured !== null && (
           <ConfigPanel role="group">
             <ConfigPanelSection>
@@ -183,5 +147,68 @@ export const Data = ({
         )}
       </StrategyEditor>
     </TabWrapper>
+  );
+};
+
+export const SpecialConfig = ({
+  database,
+  databaseConfigurations,
+  setDatabaseConfiguration,
+  idOfDatabaseBeingConfigured,
+  setIdOfDatabaseBeingConfigured,
+  generalStrategy,
+}: {
+  database: Database;
+  idOfDatabaseBeingConfigured: number | null;
+  databaseConfigurations: Map<number, CacheConfig>;
+  setDatabaseConfiguration: (
+    databaseId: number,
+    config: CacheConfig | null,
+  ) => void;
+  setIdOfDatabaseBeingConfigured: Dispatch<SetStateAction<number | null>>;
+  generalStrategy: CacheStrategy | undefined;
+}) => {
+  const specificConfigForDB = databaseConfigurations.get(database.id);
+  const specificStrategyForDB = specificConfigForDB?.strategy;
+  const doesOverrideGeneralConfig =
+    specificStrategyForDB && specificStrategyForDB !== generalStrategy;
+  const strategyForDB = specificStrategyForDB ?? generalStrategy;
+  if (!strategyForDB) throw new Error(t`Invalid strategy "${strategyForDB}"`);
+  const strategyLabel = CacheStrategies[strategyForDB];
+  const isConfigBeingEdited = idOfDatabaseBeingConfigured === database.id;
+  const clearOverride = () => {
+    setDatabaseConfiguration(database.id, null);
+    setIdOfDatabaseBeingConfigured(null);
+  };
+  return (
+    <SpecialConfigStyled
+      variant={isConfigBeingEdited ? "filled" : "outline"}
+      isBeingEdited={isConfigBeingEdited}
+      key={database.id}
+      onClick={() => {
+        setIdOfDatabaseBeingConfigured(database.id);
+      }}
+      animate={false}
+    >
+      <DatabaseStrategyIcon name="database" />
+      {database.name}
+      <SpecialStrategy
+        // TODO: use variant={specificStrategy ? "filled" : "outline"} if possible
+        doesOverrideGeneralConfig={doesOverrideGeneralConfig}
+        isBeingEdited={isConfigBeingEdited}
+        onClick={(e: MouseEvent<HTMLButtonElement>) => {
+          if (doesOverrideGeneralConfig) {
+            clearOverride();
+            e.stopPropagation();
+          }
+        }}
+        animate={false}
+      >
+        {strategyLabel}
+        {doesOverrideGeneralConfig && (
+          <Icon style={{ marginLeft: ".5rem" }} name="close" />
+        )}
+      </SpecialStrategy>
+    </SpecialConfigStyled>
   );
 };
