@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import ButtonDeprecated from "metabase/core/components/Button";
 import { Button, Icon } from "metabase/ui";
 
 import {
@@ -32,7 +31,7 @@ export function Sidebar({
     <SidebarAside data-testid={dataTestId} $width={SIDEBAR_WIDTH}>
       <ChildrenContainer>{children}</ChildrenContainer>
       {(onClose || onCancel || onRemove) && (
-        <ButtonContainer>
+        <ButtonContainer spaceBetween>
           {onRemove && (
             <Button
               leftIcon={<Icon name="trash" />}
@@ -46,20 +45,20 @@ export function Sidebar({
             >{t`Remove`}</Button>
           )}
           {onCancel && (
-            <ButtonDeprecated
-              small
-              borderless
+            <Button
+              variant="subtle"
+              color="text-medium"
               onClick={onCancel}
-            >{t`Cancel`}</ButtonDeprecated>
+              aria-label={t`Cancel`}
+            >{t`Cancel`}</Button>
           )}
           {onClose && (
-            <ButtonDeprecated
-              primary
-              small
-              className="ml-auto"
-              onClick={onClose}
+            <Button
               disabled={closeIsDisabled}
-            >{t`Done`}</ButtonDeprecated>
+              onClick={onClose}
+              variant="filled"
+              aria-label={t`Done`}
+            >{t`Done`}</Button>
           )}
         </ButtonContainer>
       )}
