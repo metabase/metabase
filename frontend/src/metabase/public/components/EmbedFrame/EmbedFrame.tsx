@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
 import type { Location } from "history";
 
 import { useMount } from "react-use";
+import type {WithRouterProps} from "react-router/lib/withRouter";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 import { getSetting } from "metabase/selectors/settings";
@@ -108,7 +108,7 @@ function EmbedFrame({
   setParameterValue,
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
-}: Props) {
+}: Props & WithRouterProps) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
 
   useMount(() => {
@@ -208,4 +208,4 @@ function EmbedFrame({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(connect(mapStateToProps), withRouter)(EmbedFrame);
+export default _.compose(connect(mapStateToProps))(EmbedFrame);

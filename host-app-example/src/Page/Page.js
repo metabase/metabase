@@ -15,12 +15,7 @@ export const Page = () => {
     useState(false);
 
   return (
-    <div className="Page--container">
-      <header className="Page--header">
-        <Welcome />
-        <LogoutButton />
-      </header>
-
+    <div className="tw-h-full tw-w-full tw-flex tw-flex-col">
       <div className="tw-p-5">
         <QuestionSearchDropdown
           selectedQuestion={question}
@@ -48,11 +43,6 @@ export const Page = () => {
           </div>
         )}
       </div>
-
-      <footer className="Page--footer">
-        <FontSelector />
-        <StyleLeakFlag />
-      </footer>
     </div>
   );
 };

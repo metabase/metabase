@@ -21,10 +21,13 @@ export const setOptions = createAction(SET_OPTIONS);
 
 const options = handleActions(
   {
-    [SET_OPTIONS]: (state, { payload }) => ({
-      ...DEFAULT_EMBED_OPTIONS,
-      ...payload,
-    }),
+    [SET_OPTIONS]: (state, { payload }) => {
+      console.log(payload)
+      return {
+        ...DEFAULT_EMBED_OPTIONS,
+        ...payload,
+      };
+    },
   },
   {},
 );

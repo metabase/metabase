@@ -3,9 +3,9 @@
 }
 
 .Page--header {
-  @apply tw-flex tw-flex-row tw-items-center tw-justify-between tw-py-4 tw-px-8 tw-border-b tw-border-gray-200 tw-bg-gray-900 tw-shadow-2xl;
+  @apply tw-flex tw-flex-row tw-items-center tw-justify-between tw-py-4 tw-px-8 tw-border-b tw-border-gray-200 tw-bg-gray-900 tw-shadow-2xl tw-z-50;
 }
 
 .Page--footer {
-  @apply tw-bg-gray-900 tw-flex tw-flex-row tw-justify-between tw-p-4;
+  @apply tw-bg-gray-900 tw-flex tw-flex-row tw-justify-between tw-p-4  tw-z-50;
 }

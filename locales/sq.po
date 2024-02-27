@@ -4644,7 +4644,7 @@ msgstr "Fut një vlerë të paracaktuar..."
 msgid "An error occurred"
 msgstr "Ndodhi një gabim"
 
-#: frontend/src/metabase/public/components/PublicNotFound.jsx:8
+#: frontend/src/metabase/public/componentsPublicNotFound.jsx:8
 msgid "Not found"
 msgstr "Nuk u gjet"
 

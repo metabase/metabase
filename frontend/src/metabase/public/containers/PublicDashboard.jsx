@@ -182,6 +182,7 @@ class PublicDashboard extends Component {
 
     return (
       <EmbedFrame
+        location={this.props.location}
         name={dashboard && dashboard.name}
         description={dashboard && dashboard.description}
         dashboard={dashboard}

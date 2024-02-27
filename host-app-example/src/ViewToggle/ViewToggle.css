@@ -1,0 +1,3 @@
+.ViewToggle--button {
+    @apply tw-bg-gray-900 tw-text-white tw-p-4 tw-w-1/2 tw-text-center;
+}

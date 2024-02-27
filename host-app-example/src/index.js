@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {createBrowserRouter, redirect, RouterProvider} from "react-router-dom";
 import "./index.css";
 import { SignIn } from "./SignIn";
 import App from "./App";
@@ -17,11 +17,15 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       {
-        path: "/app",
+        index: true,
+        loader: () => redirect("/app/questions"),
+      },
+      {
+        path: "/app/questions",
         element: <Page />,
       },
       {
-        path: "dashboard",
+        path: "/app/dashboard",
         element: <DashboardPage />,
       },
     ],
