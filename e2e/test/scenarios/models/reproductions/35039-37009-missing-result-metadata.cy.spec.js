@@ -11,45 +11,30 @@ describe("issues 35039 and 37009", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/database/*/card_autocomplete_suggestions**").as(
-      "autocomplete",
-    );
   });
 
-  it("should show columns available in the model (metabase#35039)", () => {
-    cy.createNativeQuestion({
-      name: "Base model",
-      type: "model",
-      native: {
-        query: `
-          select 1 as "client_id", 1 as "value"
-          UNION select 1 as "client_id", 2 as "value"
-          UNION select 2 as "client_id", 3 as "value"
-          UNION select 3 as "client_id", 4 as "value"`,
-      },
-    });
-
+  it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
     cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use a native query")
       .click();
 
-    focusNativeEditor().type("select * from {{#base");
-    cy.wait("@autocomplete");
-    cy.realPress("Enter");
+    focusNativeEditor().type("select * from products -- where true=false");
 
     cy.findByTestId("dataset-edit-bar").findByText("Save").click();
     modal()
       .last()
       .within(() => {
-        cy.findByLabelText("Name").type("Model 1").realPress("Tab");
+        cy.findByLabelText("Name").type("Model").realPress("Tab");
         cy.findByText("Save").click();
       });
 
     openQuestionActions();
-
     popover().findByText("Edit query definition").click();
-    focusNativeEditor().type("{enter}-- comment");
+
+    focusNativeEditor().type(
+      "{backspace}{backspace}{backspace}{backspace}{backspace}",
+    );
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.findByText("Save changes").click();
       cy.findByText("Saving changes...").should("not.exist");
@@ -61,11 +46,16 @@ describe("issues 35039 and 37009", () => {
     });
 
     cy.icon("notebook").click();
-
     cy.findByTestId("fields-picker").click();
     popover().within(() => {
-      cy.findByText("client_id").should("exist");
-      cy.findByText("value").should("exist");
+      cy.findByText("ID").should("exist");
+      cy.findByText("EAN").should("exist");
+      cy.findByText("TITLE").should("exist");
+      cy.findByText("CATEGORY").should("exist");
+      cy.findByText("VENDOR").should("exist");
+      cy.findByText("PRICE").should("exist");
+      cy.findByText("RATING").should("exist");
+      cy.findByText("CREATED_AT").should("exist");
     });
   });
 });
