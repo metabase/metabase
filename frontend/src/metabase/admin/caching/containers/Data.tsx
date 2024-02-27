@@ -49,6 +49,7 @@ export const Data = ({
     idOfDatabaseBeingConfigured !== null
       ? databaseConfigurations.get(idOfDatabaseBeingConfigured)
       : null;
+  const isGeneralConfigBeingEdited = idOfDatabaseBeingConfigured === 0;
 
   return (
     <TabWrapper role="region" aria-label="Data caching settings">
@@ -58,6 +59,7 @@ export const Data = ({
       <StrategyEditor role="form">
         <StrategyEditorPanel role="group">
           <GeneralConfig
+            variant={isGeneralConfigBeingEdited ? "filled" : "outline"}
             animate={false}
             onClick={() => setIdOfDatabaseBeingConfigured(0)}
             isBeingEdited={idOfDatabaseBeingConfigured === 0}

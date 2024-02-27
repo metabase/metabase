@@ -31,7 +31,10 @@ export const Caching = () => {
     databases.push({ ...databases[0], id: 5, name: t`Database 5` } as Database);
     databases.push({ ...databases[0], id: 6, name: t`Database 6` } as Database);
     databases.push({ ...databases[0], id: 7, name: t`Database 7` } as Database);
-    databases.push({ ...databases[0], id: 7, name: t`Database 8` } as Database);
+    databases.push({ ...databases[0], id: 8, name: t`Database 8` } as Database);
+    databases.push({ ...databases[0], id: 9, name: t`Database 9` } as Database);
+    databases.push({ ...databases[0], id: 10, name: t`Database 10` } as Database);
+    databases.push({ ...databases[0], id: 11, name: t`Database 11` } as Database);
   }
 
   const tabsRef = useRef<HTMLDivElement>(null);

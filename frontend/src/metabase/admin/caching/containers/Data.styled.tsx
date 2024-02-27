@@ -58,6 +58,7 @@ export const CacheAdminButton = styled(Button)<ButtonProps>`
 `;
 
 export const Config = styled(CacheAdminButton)`
+  padding: 1rem;
   min-width: 20rem;
   font-weight: bold;
 `;
@@ -92,7 +93,7 @@ export const SpecialConfigStyled = styled(CacheAdminButton)<ConfigProps>`
   flex-flow: row nowrap;
   margin-bottom: 1rem;
   align-items: center;
-  padding: 1rem;
+  padding: 2rem 1rem;
   min-width: 20rem;
   border-radius: 1rem;
   border: 1px solid ${color("border")};
