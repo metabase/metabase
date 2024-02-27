@@ -51,6 +51,7 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   headerIcon: IconProps;
+  errorIcon: IconName;
   actionButtons: ReactNode;
   fontFamily: string;
   isPlaceholder?: boolean;
@@ -79,7 +80,7 @@ export interface VisualizationProps {
     yAxisSplit?: number[][];
     warnings?: string[];
   }) => void;
-  onRenderError: (error?: Error) => void;
+  onRenderError: (error?: string) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
