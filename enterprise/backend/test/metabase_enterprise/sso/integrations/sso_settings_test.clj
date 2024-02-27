@@ -1,12 +1,13 @@
 (ns metabase-enterprise.sso.integrations.sso-settings-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.test :as mt]
    [metabase.test.util :as tu]))
 
 (def ^:private default-idp-uri "http://test.idp.metabase.com")
-(def ^:private default-idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))
+(def ^:private default-idp-cert (slurp (io/resource "sso/auth0-public-idp.cert")))
 
 (deftest get-saml-settings-token-features-test
   (testing "Getting SAML settings should return their default values without :sso-saml feature flag enabled"

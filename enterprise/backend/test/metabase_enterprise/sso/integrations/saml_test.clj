@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sso.integrations.saml-test
   (:require
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -48,7 +49,7 @@
 (def ^:private default-idp-uri            "http://test.idp.metabase.com")
 (def ^:private default-redirect-uri       "http://localhost:3000/test")
 (def ^:private default-idp-uri-with-param (str default-idp-uri "?someparam=true"))
-(def ^:private default-idp-cert           (slurp "test_resources/sso/auth0-public-idp.cert"))
+(def ^:private default-idp-cert           (slurp (io/resource "sso/auth0-public-idp.cert")))
 
 (defn call-with-default-saml-config [f]
   (let [current-features (premium-features/*token-features*)]
@@ -250,28 +251,28 @@
                    (saml/base64->str (:RelayState (uri->params-map redirect-url)))))))))))
 
 (defn- saml-response-from-file [filename]
-  (u/encode-base64 (slurp filename)))
+  (u/encode-base64 (slurp (io/resource filename))))
 
 (defn- saml-test-response []
-  (saml-response-from-file "test_resources/saml-test-response.xml"))
+  (saml-response-from-file "saml-test-response.xml"))
 
 (defn- new-user-saml-test-response []
-  (saml-response-from-file "test_resources/saml-test-response-new-user.xml"))
+  (saml-response-from-file "saml-test-response-new-user.xml"))
 
 (defn- new-user-no-names-saml-test-response []
-  (saml-response-from-file "test_resources/saml-test-response-new-user-no-names.xml"))
+  (saml-response-from-file "saml-test-response-new-user-no-names.xml"))
 
 (defn- new-user-with-single-group-saml-test-response []
-  (saml-response-from-file "test_resources/saml-test-response-new-user-with-single-group.xml"))
+  (saml-response-from-file "saml-test-response-new-user-with-single-group.xml"))
 
 (defn- new-user-with-groups-saml-test-response []
-  (saml-response-from-file "test_resources/saml-test-response-new-user-with-groups.xml"))
+  (saml-response-from-file "saml-test-response-new-user-with-groups.xml"))
 
 (defn- whitespace-response []
-  (str (saml-response-from-file "test_resources/saml-test-response.xml") "\n\n"))
+  (str (saml-response-from-file "saml-test-response.xml") "\n\n"))
 
 (defn- new-user-with-groups-in-separate-attribute-nodes-saml-test-response []
-  (saml-response-from-file "test_resources/saml-test-response-new-user-with-groups-in-separate-attribute-nodes.xml"))
+  (saml-response-from-file "saml-test-response-new-user-with-groups-in-separate-attribute-nodes.xml"))
 
 (defn- saml-post-request-options [saml-response relay-state]
   {:request-options {:content-type     :x-www-form-urlencoded

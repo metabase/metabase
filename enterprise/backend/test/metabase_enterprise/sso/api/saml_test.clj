@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sso.api.saml-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.test :as mt]))
 
@@ -13,9 +14,12 @@
                                                                           :saml-keystore-alias "sp"})))))
     (mt/with-premium-features #{:sso-saml}
       (testing "Valid SAML settings can be saved via an API call"
-        (mt/user-http-request :crowberto :put 200 "saml/settings" {:saml-keystore-path "test_resources/keystore.jks"
-                                                                   :saml-keystore-password "123456"
-                                                                   :saml-keystore-alias "sp"}))
+        (mt/with-temp-file [keystore]
+          (with-open [in (io/input-stream (io/resource "keystore.jks"))]
+            (io/copy in (io/file keystore)))
+          (mt/user-http-request :crowberto :put 200 "saml/settings" {:saml-keystore-path keystore
+                                                                     :saml-keystore-password "123456"
+                                                                     :saml-keystore-alias "sp"})))
       (testing "Blank SAML settings returns 200"
         (mt/user-http-request :crowberto :put 200 "saml/settings" {:saml-keystore-path nil
                                                                    :saml-keystore-password nil

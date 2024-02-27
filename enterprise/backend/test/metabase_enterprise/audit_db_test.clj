@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-db :as audit-db]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   metabase-enterprise.serialization.v2.backfill-ids
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
@@ -91,10 +91,13 @@
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
     (try
       (#'audit-db/ia-content->plugins (plugins/plugins-dir))
-      (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
-             (count (file-seq (io/file (io/resource "instance_analytics"))))))
-     (finally
-       (fs/delete-tree (plugins/plugins-dir))))))
+      (if (#'audit-db/running-from-jar?)
+          (is (> (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
+                 25))
+          (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
+                 (count (file-seq (io/file (io/resource "instance_analytics")))))))
+      (finally
+        (fs/delete-tree (plugins/plugins-dir))))))
 
 (defn- get-audit-db-trigger-keys []
   (let [trigger-keys (->> (task/scheduler-info) :jobs (mapcat :triggers) (map :key))

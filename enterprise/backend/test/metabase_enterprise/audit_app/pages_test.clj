@@ -90,6 +90,8 @@
                     (str/replace #"\." "/")
                     (str ".clj"))
         ns-symb (symbol (namespace query-type))]
+    (when-not (io/resource file)
+      (throw (ex-info (str "Cannot find file: " file) {:query-type query-type, :file file})))
     (with-open [reader (java.io.PushbackReader. (io/reader (io/resource file)))]
       (binding [*ns* (the-ns ns-symb)]
         (loop []
