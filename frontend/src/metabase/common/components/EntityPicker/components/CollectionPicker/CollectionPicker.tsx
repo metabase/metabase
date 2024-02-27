@@ -54,7 +54,7 @@ export const CollectionPickerInner = (
 
   const { data: currentCollection, isLoading: loadingCurrentCollection } =
     useCollectionQuery({
-      id: initialValue?.id || "root",
+      id: initialValue?.id ?? "root",
       enabled: !!initialValue?.id,
     });
 
