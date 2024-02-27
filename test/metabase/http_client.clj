@@ -204,10 +204,12 @@
       (throw (ex-info message {:status-code actual-status-code, :body body}))))
   ;; all other status codes should be test assertions against the expected status code if one was specified
   (when expected-status-code
-    (is (= expected-status-code
-           actual-status-code)
-        (format "%s %s expected a status code of %d, got %d."
-                method-name url expected-status-code actual-status-code))))
+    (let [message (format "%s %s expected a status code of %d, got %d."
+                method-name url expected-status-code actual-status-code)]
+      (is (= expected-status-code
+             actual-status-code)
+          message)
+      (throw (ex-info message {:status-code actual-status-code, :body body})))))
 
 (def ^:private method->request-fn
   {:get    http/get
