@@ -26,7 +26,7 @@ import {
 export const DataUsageStep = ({
   stepLabel,
 }: NumberedStepProps): JSX.Element => {
-  const { isStepActive, isStepCompleted, selectThisStep } =
+  const { isStepActive, isStepCompleted, handleStepSelect } =
     useStep("data_usage");
   const [errorMessage, setErrorMessage] = useState<string>();
   const isTrackingAllowed = useSelector(getIsTrackingAllowed);
@@ -35,10 +35,6 @@ export const DataUsageStep = ({
 
   const handleTrackingChange = (isTrackingAllowed: boolean) => {
     dispatch(updateTracking(isTrackingAllowed));
-  };
-
-  const handleStepSelect = () => {
-    selectThisStep();
   };
 
   const handleStepSubmit = async () => {

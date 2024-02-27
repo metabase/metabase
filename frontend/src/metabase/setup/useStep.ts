@@ -16,9 +16,9 @@ export const useStep = (stepName: SetupStep) => {
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
-  const selectThisStep = () => {
+  const handleStepSelect = () => {
     dispatch(selectStep(stepName));
   };
 
-  return { isStepActive, isStepCompleted, selectThisStep, isSetupCompleted };
+  return { isStepActive, isStepCompleted, handleStepSelect, isSetupCompleted };
 };

@@ -15,17 +15,13 @@ import type { NumberedStepProps } from "../types";
 import { LicenseTokenForm } from "./LicenseTokenForm";
 
 export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
-  const { isStepActive, isStepCompleted, selectThisStep } =
+  const { isStepActive, isStepCompleted, handleStepSelect } =
     useStep("license_token");
 
   const storeToken = useSelector(state => state.setup.licenseToken);
 
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
-
-  const handleStepSelect = () => {
-    selectThisStep();
-  };
 
   const handleValidSubmit = (token: string | null) => {
     dispatch(

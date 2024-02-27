@@ -30,7 +30,7 @@ import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./DatabaseStep.styled";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
-  const { isStepActive, isStepCompleted, selectThisStep } =
+  const { isStepActive, isStepCompleted, handleStepSelect } =
     useStep("db_connection");
   const user = useSelector(getUser);
   const database = useSelector(getDatabase);
@@ -55,10 +55,6 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
 
   const handleInviteSubmit = (invite: InviteInfo) => {
     dispatch(submitUserInvite(invite));
-  };
-
-  const handleStepSelect = () => {
-    selectThisStep();
   };
 
   const handleStepCancel = () => {

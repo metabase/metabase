@@ -21,7 +21,7 @@ const COMPLETED_STEP_TITLE: Record<UsageReason, string> = {
 };
 
 export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
-  const { isStepActive, isStepCompleted, selectThisStep } =
+  const { isStepActive, isStepCompleted, handleStepSelect } =
     useStep("usage_question");
   const [usageReason, setUsageReason] = useState<UsageReason>(
     "self-service-analytics",
@@ -29,10 +29,6 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
 
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
-
-  const handleStepSelect = () => {
-    selectThisStep();
-  };
 
   const handleSubmit = () => {
     dispatch(submitUsageReason(usageReason));
