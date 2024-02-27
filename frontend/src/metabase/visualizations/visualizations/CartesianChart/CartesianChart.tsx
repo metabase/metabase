@@ -10,7 +10,7 @@ import LegendCaption from "metabase/visualizations/components/legend/LegendCapti
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
-import { VizErrorBoundary } from "metabase/visualizations/components/VizErrorBoundary";
+import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { useModelsAndOption } from "./use-models-and-option";
 import { useChartDebug } from "./use-chart-debug";
 
@@ -104,12 +104,8 @@ function _CartesianChart(props: VisualizationProps) {
 
 export function CartesianChart(props: VisualizationProps) {
   return (
-    <VizErrorBoundary
-      errorIcon={props.errorIcon}
-      isDashboard={props.isDashboard}
-      small={props.width < 330}
-    >
+    <ChartRenderingErrorBoundary onRenderError={props.onRenderError}>
       <_CartesianChart {...props} />
-    </VizErrorBoundary>
+    </ChartRenderingErrorBoundary>
   );
 }
