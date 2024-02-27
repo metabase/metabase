@@ -13,6 +13,7 @@ describe("issues 35039 and 37009", () => {
     cy.signInAsNormalUser();
   });
 
+  // This test follows #37009 repro steps because they are simpler than #35039 but still equivalent
   it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
     cy.visit("/model/new");
     cy.findByTestId("new-model-options")
