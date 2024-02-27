@@ -7,6 +7,7 @@ import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 
+import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { calculateLegendRows } from "../Legend/utils";
 import { Legend } from "../Legend";
 import { computeStaticComboChartSettings } from "../ComboChart/settings";
@@ -41,13 +42,22 @@ export function ScatterPlot({
   const { height: legendHeight, items: legendLayoutItems } =
     calculateLegendRows(legendItems, width, LEGEND_PADDING, LEGEND_PADDING);
 
+  const chartMeasurements = getChartMeasurements(
+    chartModel,
+    computedVisualizationSettings,
+    false,
+    width,
+    height,
+    renderingContext,
+  );
+
   const option = getCartesianChartOption(
     chartModel,
+    chartMeasurements,
     null,
     [],
     computedVisualizationSettings,
     WIDTH,
-    HEIGHT - legendHeight,
     renderingContext,
   );
   chart.setOption(option);

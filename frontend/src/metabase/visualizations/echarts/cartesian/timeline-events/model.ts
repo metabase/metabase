@@ -7,29 +7,17 @@ import type {
   DateRange,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/utils/layout";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+import type { RenderingContext } from "metabase/visualizations/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
-import type { ChartMeasurements } from "../option/types";
+import type { ChartMeasurements } from "../chart-measurements/types";
 
 const getDayWidth = (
   range: DateRange,
   chartMeasurements: ChartMeasurements,
-  width: number,
 ) => {
   const daysCount = Math.abs(dayjs(range[1]).diff(range[0], "day"));
 
-  const boundaryWidth =
-    width -
-    chartMeasurements.padding.left -
-    chartMeasurements.padding.right -
-    chartMeasurements.ticksDimensions.yTicksWidthLeft -
-    chartMeasurements.ticksDimensions.yTicksWidthRight;
-
-  return boundaryWidth / daysCount;
+  return chartMeasurements.boundaryWidth / daysCount;
 };
 
 const groupEventsByUnitStart = (
@@ -141,10 +129,8 @@ const getTimelineEventsInsideRange = (
 
 export const getTimelineEventsModel = (
   chartModel: BaseCartesianChartModel,
+  chartMeasurements: ChartMeasurements,
   timelineEvents: TimelineEvent[],
-  settings: ComputedVisualizationSettings,
-  width: number,
-  height: number,
   renderingContext: RenderingContext,
 ) => {
   if (timelineEvents.length === 0) {
@@ -161,8 +147,8 @@ export const getTimelineEventsModel = (
     dimensionRange,
   );
 
-  const hasTimelineEvents = visibleTimelineEvents.length === 0;
-  if (hasTimelineEvents) {
+  const hasTimelineEvents = visibleTimelineEvents.length !== 0;
+  if (!hasTimelineEvents) {
     return null;
   }
 
@@ -171,16 +157,7 @@ export const getTimelineEventsModel = (
     chartModel.xAxisModel.timeSeriesInterval?.interval,
   );
 
-  const chartMeasurements = getChartMeasurements(
-    chartModel,
-    settings,
-    hasTimelineEvents,
-    width,
-    height,
-    renderingContext,
-  );
-
-  const dayWidth = getDayWidth(dimensionRange, chartMeasurements, width);
+  const dayWidth = getDayWidth(dimensionRange, chartMeasurements);
   return mergeOverlappingTimelineEventGroups(
     timelineEventsByUnitStart,
     dayWidth,

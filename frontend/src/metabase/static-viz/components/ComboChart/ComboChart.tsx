@@ -5,6 +5,7 @@ import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesi
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
+import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { calculateLegendRows } from "../Legend/utils";
 import { Legend } from "../Legend";
 import { computeStaticComboChartSettings } from "./settings";
@@ -44,13 +45,22 @@ export const ComboChart = ({
   const { height: legendHeight, items: legendLayoutItems } =
     calculateLegendRows(legendItems, width, LEGEND_PADDING, LEGEND_PADDING);
 
+  const chartMeasurements = getChartMeasurements(
+    chartModel,
+    computedVisualizationSettings,
+    false,
+    width,
+    height,
+    renderingContext,
+  );
+
   const option = getCartesianChartOption(
     chartModel,
+    chartMeasurements,
     null,
     [],
     computedVisualizationSettings,
     WIDTH,
-    HEIGHT - legendHeight,
     renderingContext,
   );
 

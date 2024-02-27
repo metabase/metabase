@@ -10,15 +10,14 @@ import type {
 import type {
   BaseCartesianChartModel,
   Extent,
-  XAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/option/types";
 import { getTimeSeriesMinInterval } from "metabase/visualizations/echarts/cartesian/utils/time-series";
+import type { ChartMeasurements } from "../chart-measurements/types";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -104,13 +103,12 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
 export const buildDimensionAxis = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
-  xAxisModel: XAxisModel,
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ): AxisBaseOption => {
   const { getColor } = renderingContext;
-  const { axisType, formatter, timeSeriesInterval } = xAxisModel;
+  const { axisType, formatter, timeSeriesInterval } = chartModel.xAxisModel;
 
   const boundaryGap =
     axisType === "value" || axisType === "log"
@@ -211,8 +209,8 @@ export const buildMetricAxis = (
 
 const buildMetricsAxes = (
   chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
+  settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CartesianAxisOption[] => {
   const axes: CartesianAxisOption[] = [];
@@ -249,8 +247,8 @@ const buildMetricsAxes = (
 
 export const buildAxes = (
   chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
+  settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ) => {
@@ -258,15 +256,14 @@ export const buildAxes = (
     xAxis: buildDimensionAxis(
       chartModel,
       settings,
-      chartModel.xAxisModel,
       chartMeasurements,
       hasTimelineEvents,
       renderingContext,
     ),
     yAxis: buildMetricsAxes(
       chartModel,
-      settings,
       chartMeasurements,
+      settings,
       renderingContext,
     ),
   };
