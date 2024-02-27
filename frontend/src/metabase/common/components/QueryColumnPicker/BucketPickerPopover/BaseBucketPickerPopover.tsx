@@ -118,7 +118,8 @@ function _BaseBucketPickerPopover({
                 name={item.displayName}
                 activeColor={color}
                 isSelected={checkBucketIsSelected(item)}
-                onSelect={() => {
+                onSelect={(_id, event) => {
+                  event.stopPropagation();
                   onSelect(item.bucket);
                   handlePopoverClose();
                 }}
