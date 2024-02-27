@@ -1,15 +1,14 @@
 import type Database from "metabase-lib/metadata/Database";
-import { Radio, Text } from "metabase/ui";
-import { useState } from "react";
+import { Icon, Radio, Text } from "metabase/ui";
+import { MouseEvent, useState } from "react";
 import { t } from "ttag";
 import {
+  CacheStrategies,
   isValidCacheStrategy,
   type CacheConfig,
-  CacheStrategies,
 } from "../types";
 import {
   ClearOverridesButton,
-  ClearSpecialRuleButton,
   ConfigPanel,
   ConfigPanelSection,
   DatabaseRuleIcon,
@@ -37,6 +36,11 @@ export const Data = ({
   ) => void;
   clearOverrides: () => void;
 }) => {
+  const generalStrategy = databaseConfigurations.get(0)?.strategy;
+  const generalStrategyLabel = generalStrategy
+    ? CacheStrategies[generalStrategy]
+    : null;
+
   // Note that an id of zero is a special case that means that we're setting the general rule for all databases
   const [idOfDatabaseBeingConfigured, setIdOfDatabaseBeingConfigured] =
     useState<number | null>(null);
@@ -45,15 +49,6 @@ export const Data = ({
       ? databaseConfigurations.get(idOfDatabaseBeingConfigured)
       : null;
 
-  databases = [...databases, ...databases];
-  databases = [...databases, ...databases, ...databases];
-  databases = [...databases, ...databases, ...databases];
-
-  const generalStrategy = databaseConfigurations.get(0)?.strategy;
-  const generalStrategyLabel = generalStrategy
-    ? CacheStrategies[generalStrategy]
-    : null;
-
   return (
     <TabWrapper role="region" aria-label="Data caching settings">
       <Explanation>
@@ -61,44 +56,55 @@ export const Data = ({
       </Explanation>
       <RuleEditor role="form">
         <RuleEditorPanel role="group">
-          <GeneralRuleButton>
+          <GeneralRuleButton onClick={() => setIdOfDatabaseBeingConfigured(0)}>
             <DatabaseRuleIcon name="database" />
             {t`Databases`}
-            <GeneralRuleValue onClick={() => setIdOfDatabaseBeingConfigured(0)}>
-              {generalStrategyLabel}
-            </GeneralRuleValue>
+            <GeneralRuleValue>{generalStrategyLabel}</GeneralRuleValue>
           </GeneralRuleButton>
         </RuleEditorPanel>
         <RuleEditorPanel role="group">
-          {databases.map(({ id, name }) => {
-            const specificStrategy = databaseConfigurations.get(id);
-            console.log("specificStrategy", specificStrategy);
-            const strategy = (specificStrategy ?? databaseConfigurations.get(0))
+          {databases.map(db => {
+            const specificConfig = databaseConfigurations.get(db.id);
+            const specificStrategy = specificConfig?.strategy;
+            const isOverride =
+              specificStrategy && specificStrategy !== generalStrategy;
+            const strategy = (specificConfig ?? databaseConfigurations.get(0))
               ?.strategy;
-            if (!strategy) throw new Error("Invalid strategy");
+            if (!strategy) throw new Error(t`Invalid strategy "${strategy}"`);
             const strategyLabel = CacheStrategies[strategy];
             if (!strategyLabel)
-              throw new Error("Could not find label for strategy " + strategy);
+              throw new Error(t`Could not find label for strategy ${strategy}`);
+            const isBeingConfigured = idOfDatabaseBeingConfigured === db.id;
+            const clearOverride = () => {
+              setDatabaseConfiguration(db.id, null);
+              setIdOfDatabaseBeingConfigured(null);
+            };
             return (
-              <SpecialRule key={id}>
+              <SpecialRule
+                variant={isBeingConfigured ? "filled" : "outline"}
+                isBeingConfigured={isBeingConfigured}
+                key={db.id}
+                onClick={() => {
+                  setIdOfDatabaseBeingConfigured(db.id);
+                }}
+              >
                 <DatabaseRuleIcon name="database" />
-                {name}
+                {db.name}
                 <SpecialRuleValue
                   // TODO: use variant={specificStrategy ? "filled" : "outline"} if possible
-                  isOverride={Boolean(specificStrategy)}
-                  onClick={() => {
-                    setIdOfDatabaseBeingConfigured(id);
+                  isOverride={isOverride}
+                  isBeingConfigured={isBeingConfigured}
+                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                    if (isOverride) {
+                      clearOverride();
+                      e.stopPropagation();
+                    }
                   }}
                 >
                   {strategyLabel}
-                  <ClearSpecialRuleButton
-                    variant="subtle"
-                    onClick={() => {
-                      setDatabaseConfiguration(id, null);
-                    }}
-                  >
-                    x
-                  </ClearSpecialRuleButton>
+                  {isOverride && (
+                    <Icon style={{ marginLeft: ".5rem" }} name="close" />
+                  )}
                 </SpecialRuleValue>
               </SpecialRule>
             );
@@ -114,19 +120,13 @@ export const Data = ({
             <ConfigPanelSection>
               {/* Make the radio button group name specific to the object whose strategy is being modified? */}
               <Radio.Group
-                value={currentConfig?.strategy}
+                value={currentConfig?.strategy ?? generalStrategy}
                 name={`caching-strategy-for-database-${idOfDatabaseBeingConfigured}`}
                 onChange={strategy => {
                   if (!isValidCacheStrategy(strategy)) {
                     console.error("invalid strategy", strategy);
                     return;
                   }
-                  console.log("currentConfig", currentConfig);
-                  console.log(
-                    "idOfDatabaseBeingConfigured",
-                    idOfDatabaseBeingConfigured,
-                  );
-                  console.log("strategy", strategy);
                   setDatabaseConfiguration(idOfDatabaseBeingConfigured, {
                     modelType: "database",
                     model_id: idOfDatabaseBeingConfigured,

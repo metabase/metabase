@@ -6,9 +6,14 @@ import type { HTMLAttributes } from "react";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 
+type RuleButtonProps = ButtonProps & {
+  isOverride?: boolean;
+  isBeingConfigured?: boolean;
+};
+
 export const RuleEditorPanel = styled.div`
   overflow-y: scroll;
-  xdisplay: flex;
+  display: flex;
   flex-flow: column nowrap;
   padding: 1.5rem;
   background-color: ${color("white")};
@@ -72,7 +77,8 @@ export const RuleValue = styled(CacheAdminButton)`
 
 export const GeneralRuleValue = styled(RuleValue)``;
 
-export const SpecialRule = styled.div`
+export const SpecialRule = styled(CacheAdminButton)<RuleButtonProps>`
+  width: 100%;
   display: flex;
   font-weight: bold;
   flex-flow: row nowrap;
@@ -85,15 +91,15 @@ export const SpecialRule = styled.div`
 `;
 
 export const ClearSpecialRuleButton = styled(CacheAdminButton)`
-`
+  padding: 0;
+  margin-left: 1rem;
+`;
 
-export const SpecialRuleValue = styled(RuleValue)<
-  ButtonProps & { isOverride: boolean }
->`
-  background-color: ${({ isOverride }) =>
-    isOverride ? color("brand") : color("white")};
-  color: ${({ isOverride }) =>
-    isOverride ? color("white") : color("text-dark")};
+export const SpecialRuleValue = styled(RuleValue)<RuleButtonProps>`
+  background-color: ${({ isOverride, isBeingConfigured }) =>
+    isOverride && !isBeingConfigured ? color("brand") : color("white")};
+  color: ${({ isOverride, isBeingConfigured }) =>
+    isOverride && !isBeingConfigured ? color("white") : color("text-dark")};
 `;
 
 export const DatabaseRuleIcon = styled(Icon)`
@@ -117,7 +123,7 @@ export const TabWrapper = styled.div`
 export const ClearOverridesButton = styled.button`
   color: ${color("red")};
   margin-top: auto;
-  align-self: flex-end;
+  margin-left: auto;
   cursor: pointer;
 `;
 
@@ -127,4 +133,3 @@ export const ConfigPanelSection = styled.section`
     margin-bottom: 0;
   }
 `;
-

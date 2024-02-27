@@ -8,6 +8,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { CacheConfig } from "../types";
 import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./Caching.styled";
 import { Data } from "./Data";
+import type Database from "metabase-lib/metadata/Database";
 
 enum TabId {
   DataCachingSettings = "dataCachingSettings",
@@ -22,6 +23,16 @@ export const Caching = () => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
   const [tabsHeight, setTabsHeight] = useState<number>(300);
   const { data: databases = [], error, isLoading } = useDatabaseListQuery();
+
+  if (databases.length === 1) {
+    databases.push({ ...databases[0], id: 2, name: t`Database 2` } as Database);
+    databases.push({ ...databases[0], id: 3, name: t`Database 3` } as Database);
+    databases.push({ ...databases[0], id: 4, name: t`Database 4` } as Database);
+    databases.push({ ...databases[0], id: 5, name: t`Database 5` } as Database);
+    databases.push({ ...databases[0], id: 6, name: t`Database 6` } as Database);
+    databases.push({ ...databases[0], id: 7, name: t`Database 7` } as Database);
+    databases.push({ ...databases[0], id: 7, name: t`Database 8` } as Database);
+  }
 
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -50,14 +61,13 @@ export const Caching = () => {
   // "show don't tell"
   const databaseConfigurations = useMemo(() => {
     const map = new Map<number, CacheConfig>();
+    // TODO: Get root strategy from api
+    map.set(0, { modelType: "root", model_id: 0, strategy: "nocache" });
     cacheConfigs.forEach(config => {
       if (config.modelType === "database") {
         map.set(config.model_id, config);
       }
     });
-    if (map.size === 0) {
-      map.set(0, { modelType: "root", model_id: 0, strategy: "nocache" });
-    }
     return map;
   }, [cacheConfigs]);
 
