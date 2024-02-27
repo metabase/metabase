@@ -5,7 +5,6 @@
   These routes should generally live under prefixes like `/api/ee/<feature>/` -- see the
   `enterprise/backend/README.md` for more details."
   (:require
-   [compojure.core :as compojure]
    [metabase-enterprise.advanced-config.api.logs :as logs]
    [metabase-enterprise.advanced-permissions.api.routes
     :as advanced-permissions]
@@ -17,9 +16,10 @@
    [metabase-enterprise.llm.api :as llm.api]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
    [metabase-enterprise.serialization.api :as api.serialization]
+   [metabase.api.common :refer [context defroutes]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(compojure/defroutes ^{:doc "API routes only available when running Metabase® Enterprise Edition™."} routes
+(defroutes ^{:doc "API routes only available when running Metabase® Enterprise Edition™."} routes
   ;; The following routes are NAUGHTY and do not follow the naming convention (i.e., they do not start with
   ;; `/ee/<feature>/`).
   ;;
@@ -28,23 +28,23 @@
   sandbox/routes
   ;; The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new routes here
   ;; and follow the convention.
-  (compojure/context
+  (context
    "/ee" []
-   (compojure/context
+   (context
     "/billing" []
     billing/routes)
-   (compojure/context
+   (context
     "/audit-app" []
     (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") audit-app/routes))
-   (compojure/context
+   (context
     "/advanced-permissions" []
     (ee.api.common/+require-premium-feature :advanced-permissions (deferred-tru "Advanced Permissions") advanced-permissions/routes))
-   (compojure/context
+   (context
     "/logs" []
     (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))
-   (compojure/context
+   (context
     "/serialization" []
     (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))
-   (compojure/context
+   (context
     "/autodescribe" []
     (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))))

@@ -14,7 +14,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.password :as u.password]))
+   [metabase.util.password :as u.password])
+  (:import [java.io File]))
 
 (set! *warn-on-reflection* true)
 
@@ -369,7 +370,10 @@
    [:re u/uuid-regex]
    (deferred-tru "value must be a valid UUID.")))
 
-(defn QueryVector
-  "Helper for creating a schema that coerces single-value to a vector."
-  [schema]
-  [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} schema])
+(def FormFile
+  "File in a multipart/form-data context"
+  (mu/with-api-error-message
+   [:map {:json-schema {:type "file"}}
+    [:tempfile (InstanceOfClass File)]
+    [:size int?]]
+   (deferred-tru "value must be a file.")))

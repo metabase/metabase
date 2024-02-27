@@ -4,16 +4,17 @@
    [clojure.string :as str]
    [compojure.core :as compojure]
    [malli.core :as mc]
+   [malli.error :as me]
+   [malli.json-schema :as mjs]
    [malli.transform :as mtx]
    [metabase.api.common.internal :as internal]
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [ring.middleware.multipart-params :as mp]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
-   [malli.error :as me]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli.schema :as ms]
+   [ring.middleware.multipart-params :as mp]))
 
 ;;; almost a copy of malli.experimental.lite, but optional is defined by [:maybe]
 
@@ -23,7 +24,9 @@
 (defn- -entry [[k v]]
   (let [optional (and (vector? v)
                       (= :maybe (first v)))]
-    (cond-> [k] optional (conj {:optional true}) :always (conj (make-schema v)))))
+    (cond-> [k]
+      optional (conj {:optional true})
+      :always  (conj (make-schema v)))))
 
 (defn make-schema
   "Compile map-based syntax to Malli schema."
@@ -101,7 +104,8 @@
                     :body-params      "\n\n### Body Parameters\n"
                     :multipart-params "\n\n### `multipart/form-data` Parameters")
                   (str/join "\n"
-                            (for [[param schema] param->schema]
+                            (for [[param schema] param->schema
+                                  :when (not= param :as)]
                               (format "- **`%s`** - %s"
                                       (name param)
                                       #_{:clj-kondo/ignore [:discouraged-var]}
@@ -112,8 +116,12 @@
 (def ^:private MTX
   (mtx/transformer
    (mtx/key-transformer {:decode keyword})
-   internal/defendpoint-transformer
+   (mtx/string-transformer)
+   (mtx/json-transformer)
    (mtx/default-value-transformer)
+   ;; I thought about stripping extra keys in prod, but after a while it occured to me that it could be dangerous if
+   ;; we're using various query/body parameters as maps directly
+   #_
    (when config/is-prod?
      mtx/strip-extra-keys-transformer)))
 
@@ -185,6 +193,8 @@
     `(let [coercer-mw# (make-coercer-mw ~schemas)]
        (def ~(vary-meta fn-name
                         assoc
+                        :method       method-kw
+                        :path         route
                         :doc          docstr
                         :schemas      schemas
                         :is-endpoint? true)
@@ -209,12 +219,13 @@
 
 (comment
   (macroexpand '(defendpoint2 POST "/export"
-                 [{:query-parameters {collection       [:maybe [:vector ms/PositiveInt]]
-                                      all_collections  [:maybe ms/BooleanValue]
-                                      settings         [:maybe ms/BooleanValue]
-                                      data_model       [:maybe ms/BooleanValue]
-                                      field_values     [:maybe ms/BooleanValue]
-                                      database_secrets [:maybe ms/BooleanValue]}}]
+                  [{:query-params {collection       [:maybe [:vector ms/PositiveInt]]
+                                   all_collections  [:maybe ms/BooleanValue]
+                                   settings         [:maybe ms/BooleanValue]
+                                   data_model       [:maybe ms/BooleanValue]
+                                   field_values     [:maybe ms/BooleanValue]
+                                   database_secrets [:maybe ms/BooleanValue]
+                                   :as query}}]
                   (prn collection settings)))
 
   (mc/coerce (make-schema
@@ -233,3 +244,78 @@
              {:collection "1"
               :settings   "false"}
              MTX))
+
+
+;;; OpenAPI generation
+
+(defn collect-routes
+  "This is basically tree-seq with post-processing"
+  [root]
+  (let [walk (fn walk [{:keys [prefix tag]} route]
+               (let [tag  (or (not-empty tag) prefix)
+                     path (str prefix (-> route meta :path))]
+                 (cons {:path  path
+                        :tag   tag
+                        :route route}
+                       (when (-> route meta :routes)
+                         (mapcat (partial walk {:prefix path :tag tag}) (-> route meta :routes))))))]
+    (->> (walk {:prefix ""} root)
+         (filter #(-> % :route meta :schemas)))))
+
+(defn- schema->params [location schema]
+  (let [{:keys [properties required]} (mjs/transform schema)
+        required?                     (set required)]
+    (for [[k schema] properties]
+      {:in          ({:query-params :query :path-params :path} location)
+       :name        k
+       :required    (required? k)
+       :description (:description schema)
+       :schema      schema})))
+
+(defn route->openapi
+  "Generate OpenAPI desc for a single handler"
+  [tag handler-var]
+  (let [data    (meta handler-var)
+        schemas (:schemas data)
+        params  (vec (for [loc   [:path-params :query-params]
+                           :let  [schema (get schemas loc)]
+                           :when schema
+                           item  (schema->params loc schema)]
+                       item))]
+    {(:method data) {:tags        [tag]
+                     :parameters  params
+                     :requestBody (cond
+                                    (:body-params schemas)
+                                    {:content {"application/json" {:schema (mjs/transform (:body-params schemas))}}}
+
+                                    (:multipart-params schemas)
+                                    {:content {"multipart/form-data" {:schema (mjs/transform (:multipart-params schemas))}}})}}))
+
+(defn openapi-routes
+  "Generate a "
+  [root]
+  ;; this is `[["path" {:get x}] ["path" {:post y}]]` => `{"path" {:get x :post y}}`
+  (reduce (fn [acc [k v]]
+            (merge-with into acc {k v}))
+          {}
+          (for [{:keys [path tag route]} (collect-routes root)]
+            [path (route->openapi tag route)])))
+
+(defn openapi-json
+  "Info object documented here: https://spec.openapis.org/oas/latest.html#info-object"
+  [root-symbol info]
+  (let [res (openapi-routes (resolve root-symbol))]
+    {:openapi "3.1.0"
+     :info    info
+     :servers [{:url "/api"
+                :description "Metabase API"}]
+     :paths   res}))
+
+(comment
+  (collect-routes #'metabase.api.routes/routes)
+  (-> #'metabase.api.action/routes meta :routes)
+  (->> (-> #'metabase.api.routes/routes meta :routes second meta :routes first meta :routes second meta))
+  (meta metabase.api.action/routes)
+
+  (route->openapi #'metabase-enterprise.serialization.api/POST_export)
+  (openapi-json 'metabase.api.routes/routes {:title "Metabase API" :version "mb-ver?"}))

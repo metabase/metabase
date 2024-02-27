@@ -9,6 +9,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.defendpoint2 :refer [defendpoint2]]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
    [metabase.models.card :as card]
@@ -50,11 +51,10 @@
    [:parameters         {:optional true} [:maybe [:sequential map?]]]
    [:parameter_mappings {:optional true} [:maybe map?]]])
 
-(api/defendpoint GET "/"
+(defendpoint2 GET "/"
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
-  [model-id]
-  {model-id [:maybe ms/PositiveInt]}
+  [{:query-params {model-id ms/PositiveInt}}]
   (letfn [(actions-for [models]
             (if (seq models)
               (t2/hydrate (action/select-actions models
@@ -141,24 +141,23 @@
       ;; so we return the most recently updated http action.
       (last (action/select-actions nil :type type)))))
 
-(api/defendpoint PUT "/:id"
-  [id :as {action :body}]
-  {id     ms/PositiveInt
-   action [:map
-           [:archived               {:optional true} [:maybe :boolean]]
-           [:database_id            {:optional true} [:maybe ms/PositiveInt]]
-           [:dataset_query          {:optional true} [:maybe :map]]
-           [:description            {:optional true} [:maybe :string]]
-           [:error_handle           {:optional true} [:maybe json-query-schema]]
-           [:kind                   {:optional true} [:maybe implicit-action-kind]]
-           [:model_id               {:optional true} [:maybe ms/PositiveInt]]
-           [:name                   {:optional true} [:maybe :string]]
-           [:parameter_mappings     {:optional true} [:maybe :map]]
-           [:parameters             {:optional true} [:maybe [:sequential :map]]]
-           [:response_handle        {:optional true} [:maybe json-query-schema]]
-           [:template               {:optional true} [:maybe http-action-template]]
-           [:type                   {:optional true} [:maybe supported-action-type]]
-           [:visualization_settings {:optional true} [:maybe :map]]]}
+(defendpoint2 PUT "/:id"
+  [{:path-params {id ms/PositiveInt}
+    :body-params {action [:map
+                          [:archived               {:optional true} [:maybe :boolean]]
+                          [:database_id            {:optional true} [:maybe ms/PositiveInt]]
+                          [:dataset_query          {:optional true} [:maybe :map]]
+                          [:description            {:optional true} [:maybe :string]]
+                          [:error_handle           {:optional true} [:maybe json-query-schema]]
+                          [:kind                   {:optional true} [:maybe implicit-action-kind]]
+                          [:model_id               {:optional true} [:maybe ms/PositiveInt]]
+                          [:name                   {:optional true} [:maybe :string]]
+                          [:parameter_mappings     {:optional true} [:maybe :map]]
+                          [:parameters             {:optional true} [:maybe [:sequential :map]]]
+                          [:response_handle        {:optional true} [:maybe json-query-schema]]
+                          [:template               {:optional true} [:maybe http-action-template]]
+                          [:type                   {:optional true} [:maybe supported-action-type]]
+                          [:visualization_settings {:optional true} [:maybe :map]]]}}]
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))

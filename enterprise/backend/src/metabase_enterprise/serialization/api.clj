@@ -118,37 +118,36 @@
 (defendpoint2 POST "/export"
   "Serialize and retrieve Metabase instance.
 
+  Parameters:
+  - `dirname`: str, name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)
+  - `all_collections`: bool, serialize all collections (default: true, unless you specify `collection`)
+  - `collection`: array of int, db id of a collection to serialize
+  - `settings`: bool, if Metabase settings should be serialized (default: `true`)
+  - `data_model`: bool, if Metabase data model should be serialized (default: `true`)
+  - `field_values`: bool, if cached field values should be serialized (default: `false`)
+  - `database_secrets`: bool, if details how to connect to each db should be serialized (default: `false`)
+
   Outputs .tar.gz file with serialization results and an `export.log` file.
   On error just returns serialization logs."
-  [{:query-params {collection       [:maybe {:mb/doc "[int], db id of a collection to serialize"}
-                                     (ms/QueryVector ms/PositiveInt)]
-                   all_collections  [:and {:mb/doc "bool, serialize all collections, discarded when `collection` is specified"
-                                           :default true}
-                                     ms/BooleanValue]
-                   settings         [:and {:mb/doc "bool, if Metabase settings should be serialized"
-                                           :default true}
-                                     ms/BooleanValue]
-                   data_model       [:and {:mb/doc "bool, if Metabase data model should be serialized"
-                                           :default true}
-                                     ms/BooleanValue]
-                   field_values     [:and {:mb/doc "bool, if cached field values should be serialized"
-                                           :default false}
-                                     ms/BooleanValue]
-                   database_secrets [:and {:mb/doc "bool, if details how to connect to each db should be serialized"
-                                           :default false}
-                                     ms/BooleanValue]
-                   dirname          [:maybe {:mb/doc "string, name of a directory and an archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"}
-                                     string?]}}]
+  [{:query-params {collection       [:maybe {:description "This is collection id"}
+                                     [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ms/PositiveInt]]
+                   all_collections  [:and {:default true} ms/BooleanValue]
+                   settings         [:and {:default true} ms/BooleanValue]
+                   data_model       [:and {:default true} ms/BooleanValue]
+                   field_values     [:maybe ms/BooleanValue]
+                   database_secrets [:maybe ms/BooleanValue]
+                   dirname          [:maybe string?]
+                   :as              query}}]
   (api/check-superuser)
   (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)
-                                                            collection)
+                                                        collection)
                             :no-collections           (and (empty? collection)
-                                                           (not all_collections))
+                                                        (not all_collections))
                             :no-data-model            (not data_model)
                             :no-settings              (not settings)
-                            :include-field-values     field_values
-                            :include-database-secrets database_secrets
+                            :include-field-values     (boolean field_values)
+                            :include-database-secrets (boolean database_secrets)
                             :dirname                  dirname}
         {:keys [archive
                 log-file
@@ -156,18 +155,18 @@
                 error-message
                 callback]} (serialize&pack opts)]
     (snowplow/track-event! ::snowplow/serialization-export api/*current-user-id*
-                           {:source          "api"
-                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                            :count           (count (:seen report))
-                            :collection      (str/join "," (map str collection))
-                            :all_collections (and (empty? collection)
-                                                  (not (:no-collections opts)))
-                            :data_model      (not (:no-data-model opts))
-                            :settings        (not (:no-settings opts))
-                            :field_values    (:include-field-values opts)
-                            :secrets         (:include-database-secrets opts)
-                            :success         (boolean archive)
-                            :error_message   error-message})
+      {:source          "api"
+       :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+       :count           (count (:seen report))
+       :collection      (str/join "," (map str collection))
+       :all_collections (and (empty? collection)
+                          (not (:no-collections opts)))
+       :data_model      (not (:no-data-model opts))
+       :settings        (not (:no-settings opts))
+       :field_values    (:include-field-values opts)
+       :secrets         (:include-database-secrets opts)
+       :success         (boolean archive)
+       :error_message   error-message})
     (if archive
       {:status  200
        :headers {"Content-Type"        "application/gzip"
@@ -184,7 +183,7 @@
   - `file`: archive encoded as `multipart/form-data` (required).
 
   Returns logs of deserialization."
-  [{:multipart-params {file map?}}]
+  [{:multipart-params {file ms/FormFile}}]
   (api/check-superuser)
   (try
     (let [start              (System/nanoTime)
