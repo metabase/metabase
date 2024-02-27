@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { useCollectionListQuery } from "metabase/common/hooks";
-import type { Collection, SearchModelType } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 import type {
   TypeWithModel,
@@ -14,7 +14,6 @@ import { ItemList } from "./ItemList";
 interface PersonalCollectionsItemListProps<TItem extends TypeWithModel> {
   onClick: (val: TItem) => void;
   selectedItem: TItem | null;
-  itemName: string;
   isFolder: TisFolder<TItem>;
   isCurrentLevel: boolean;
 }
@@ -22,7 +21,6 @@ interface PersonalCollectionsItemListProps<TItem extends TypeWithModel> {
 export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
   onClick,
   selectedItem,
-  itemName,
   isFolder,
   isCurrentLevel,
 }: PersonalCollectionsItemListProps<TItem>) => {
@@ -42,7 +40,6 @@ export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
       isLoading={isLoading}
       onClick={onClick}
       selectedItem={selectedItem}
-      itemName={itemName}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
     />
@@ -54,10 +51,12 @@ const getSortedTopLevelPersonalCollections = (
 ): CollectionPickerItem[] | null =>
   personalCollections
     ?.filter(isRootPersonalCollection)
-    .map((collection: Collection) => ({
-      ...collection,
-      model: "collection" as SearchModelType,
-    }))
+    .map(
+      (collection: Collection): CollectionPickerItem => ({
+        ...collection,
+        model: "collection",
+      }),
+    )
     .sort((a, b) => a?.name.localeCompare(b.name)) ?? null;
 
 const isRootPersonalCollection = (collection: Collection) =>

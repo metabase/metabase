@@ -10,7 +10,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useDispatch } from "metabase/lib/redux";
-import { Modal, Button } from "metabase/ui";
+import { Modal, Button, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 interface NewCollectionDialogProps {
@@ -71,12 +71,14 @@ export const NewCollectionDialog = ({
             />
             <FormFooter>
               <FormErrorMessage inline />
-              <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
-              <FormSubmitButton
-                label={t`Create`}
-                disabled={!dirty}
-                variant="filled"
-              />
+              <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
+                <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+                <FormSubmitButton
+                  label={t`Create`}
+                  disabled={!dirty}
+                  variant="filled"
+                />
+              </Flex>
             </FormFooter>
           </Form>
         )}

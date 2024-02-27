@@ -3,6 +3,7 @@ import type {
   SearchResult,
   SearchListQuery,
   SearchModelType,
+  CollectionId,
 } from "metabase-types/api";
 
 import type { CollectionPickerOptions } from "./components/CollectionPicker";
@@ -30,8 +31,9 @@ export type EntityPickerOptions = EntityPickerModalOptions &
 
 export type CollectionPickerItem = Pick<
   SearchResult,
-  "id" | "name" | "description" | "can_write" | "model"
+  "name" | "description" | "can_write" | "model"
 > & {
+  id: CollectionId;
   location?: string | null;
   effective_location?: string | null;
   is_personal?: boolean;

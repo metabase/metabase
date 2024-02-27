@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 
+import { color } from "metabase/lib/colors";
 import { Modal, Flex } from "metabase/ui";
 
 export const ModalContent = styled(Modal.Content)`
@@ -17,4 +18,10 @@ export const ModalBody = styled(Modal.Body)`
 
 export const GrowFlex = styled(Flex)`
   flex-grow: 1;
+`;
+
+export const SinglePickerView = styled.div`
+  border-top: 1px solid ${color("border")};
+  flex-grow: 1;
+  height: 0;
 `;

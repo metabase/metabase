@@ -214,18 +214,6 @@ const setup = async ({
     });
   });
 
-  // setupCollectionItemsEndpoint({
-  //   collection: ROOT_COLLECTION,
-  //   collectionItems: [
-  //     createMockCollectionItem({
-  //       ...COLLECTION,
-  //       type: undefined,
-  //       model: "collection",
-  //     }),
-  //     ...dashboards.map(createMockCollectionItem),
-  //   ],
-  // });
-
   renderWithProviders(
     <Route
       path="/"

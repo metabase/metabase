@@ -14,8 +14,12 @@ import type {
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
 
 import { ButtonBar } from "./ButtonBar";
-import { GrowFlex, ModalContent, ModalBody } from "./EntityPickerModal.styled";
-import { SinglePickerView } from "./SinglePickerView";
+import {
+  GrowFlex,
+  ModalContent,
+  ModalBody,
+  SinglePickerView,
+} from "./EntityPickerModal.styled";
 import { TabsView } from "./TabsView";
 
 export type EntityPickerModalOptions = {
@@ -101,10 +105,7 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
               />
             )}
           </GrowFlex>
-          <Modal.CloseButton
-            size={21}
-            style={{ position: "relative", top: "1px" }}
-          />
+          <Modal.CloseButton size={21} pos="relative" top="1px" />
         </Modal.Header>
         <ModalBody p="0">
           <ErrorBoundary>
@@ -117,7 +118,7 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
                 selectedItem={selectedItem}
               />
             ) : (
-              <SinglePickerView tab={tabs[0]} />
+              <SinglePickerView>{tabs[0].element}</SinglePickerView>
             )}
             {!!hydratedOptions.hasConfirmButtons && (
               <ButtonBar

@@ -11,7 +11,6 @@ import {
 export const CollectionItemPickerResolver = ({
   onClick,
   selectedItem,
-  itemName,
   options,
   query,
   isFolder,
@@ -25,7 +24,6 @@ export const CollectionItemPickerResolver = ({
         options={options}
         selectedItem={selectedItem}
         onClick={onClick}
-        itemName={itemName}
         isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
       />
@@ -37,7 +35,6 @@ export const CollectionItemPickerResolver = ({
       <PersonalCollectionsItemList
         onClick={onClick}
         selectedItem={selectedItem}
-        itemName={itemName}
         isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
       />
@@ -49,7 +46,6 @@ export const CollectionItemPickerResolver = ({
       query={query}
       onClick={onClick}
       selectedItem={selectedItem}
-      itemName={itemName}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
     />

@@ -20,7 +20,6 @@ interface ItemListProps<TItem extends TypeWithModel> {
   selectedItem: TItem | null;
   isFolder: (item: TItem) => boolean;
   isCurrentLevel: boolean;
-  itemName?: string;
 }
 
 export const ItemList = <TItem extends TypeWithModel>({
@@ -36,10 +35,7 @@ export const ItemList = <TItem extends TypeWithModel>({
       return -1;
     }
 
-    return items.findIndex(
-      item =>
-        item.id === selectedItem?.id && item.model === selectedItem?.model,
-    );
+    return items.findIndex(item => isSelectedItem(item, selectedItem));
   }, [items, selectedItem]);
 
   if (isLoading && !items) {
@@ -52,7 +48,8 @@ export const ItemList = <TItem extends TypeWithModel>({
     );
   }
 
-  if (Array.isArray(items) && !items.length) {
+  if (items && !items.length) {
+    // empty array
     return (
       <Flex justify="center" align="center" direction="column" h="100%">
         <EmptyState

@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { IconName } from "metabase/ui";
 import { Button } from "metabase/ui";
 import {
   createMockSearchResult,
@@ -19,7 +18,7 @@ interface setupProps {
   onItemSelect?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;
-  tabs?: EntityTab[];
+  tabs?: [EntityTab, ...EntityTab[]];
   options?: EntityPickerModalOptions;
   selectedItem?: null | CollectionPickerItem;
   actionButtons?: JSX.Element[];
@@ -29,8 +28,8 @@ const TestPicker = ({ name }: { name: string }) => (
   <p>{`Test picker ${name}`}</p>
 );
 
-const TEST_TAB = {
-  icon: "audit" as IconName,
+const TEST_TAB: EntityTab = {
+  icon: "audit",
   displayName: "All the foo",
   model: "test1",
   element: <TestPicker name="foo" />,
@@ -90,10 +89,10 @@ describe("EntityPickerModal", () => {
   });
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
-    const tabs = [
+    const tabs: [EntityTab, ...EntityTab[]] = [
       TEST_TAB,
       {
-        icon: "folder" as IconName,
+        icon: "folder",
         displayName: "All the bar",
         model: "test2",
         element: <TestPicker name="bar" />,
@@ -121,7 +120,7 @@ describe("EntityPickerModal", () => {
     expect(await screen.findByText("Test picker bar")).toBeInTheDocument();
   });
 
-  it("should show a search tab list when a we type in the search input", async () => {
+  it("should show a search tab list when we type in the search input", async () => {
     fetchMock.get(
       "path:/api/search",
       createMockSearchResults({

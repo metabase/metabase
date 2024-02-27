@@ -55,7 +55,7 @@ export type CollectionEssentials = Pick<
 >;
 
 export interface SearchResult {
-  id: CollectionId;
+  id: CollectionId | CardId | DatabaseId | TableId;
   name: string;
   model: SearchModelType;
   description: string | null;

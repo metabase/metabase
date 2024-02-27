@@ -8,7 +8,6 @@ export interface EntityItemListProps<TItem extends TypeWithModel> {
   query: any;
   onClick: (val: any) => void;
   selectedItem: TItem | null;
-  itemName: string;
   isFolder: TisFolder<TItem>;
   isCurrentLevel: boolean;
 }
@@ -17,7 +16,6 @@ export const EntityItemList = <TItem extends TypeWithModel>({
   query,
   onClick,
   selectedItem,
-  itemName,
   isFolder,
   isCurrentLevel,
 }: EntityItemListProps<TItem>) => {
@@ -29,7 +27,6 @@ export const EntityItemList = <TItem extends TypeWithModel>({
       isLoading={isLoading}
       onClick={onClick}
       selectedItem={selectedItem}
-      itemName={itemName}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
     />

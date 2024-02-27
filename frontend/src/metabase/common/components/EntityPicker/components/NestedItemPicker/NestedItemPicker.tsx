@@ -35,7 +35,6 @@ const generateKey = (query?: SearchListQuery) =>
 export function NestedItemPicker<TItem extends TypeWithModel>({
   onFolderSelect,
   onItemSelect,
-  itemName,
   options,
   path,
   isFolder,
@@ -69,7 +68,6 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
                   selectedItem={selectedItem}
                   options={options}
                   onClick={(item: TItem) => handleClick(item)}
-                  itemName={itemName}
                   isCurrentLevel={index === path.length - 2}
                   isFolder={isFolder}
                 />

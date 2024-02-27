@@ -27,7 +27,6 @@ const personalCollectionsRoot: CollectionPickerItem = {
 interface RootItemListProps<CollectionPickerItem extends TypeWithModel> {
   onClick: (val: CollectionPickerItem) => void;
   selectedItem: CollectionPickerItem | null;
-  itemName: string;
   options: EntityPickerOptions;
   isFolder: TisFolder<CollectionPickerItem>;
   isCurrentLevel: boolean;
@@ -41,7 +40,6 @@ interface RootItemListProps<CollectionPickerItem extends TypeWithModel> {
 export const RootItemList = ({
   onClick,
   selectedItem,
-  itemName,
   options,
   isFolder,
   isCurrentLevel,
@@ -120,7 +118,6 @@ export const RootItemList = ({
       isLoading={isLoadingRootCollecton || isLoadingPersonalCollecton}
       onClick={onClick}
       selectedItem={selectedItem}
-      itemName={itemName}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
     />
