@@ -4,7 +4,8 @@ import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import { VariableSizeItemsVirtualizedList } from "metabase/components/VirtualizedList";
 import Search from "metabase/entities/search";
-import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
+import { useDebouncedEffectWithCleanup } from "metabase/hooks/use-debounced-effect";
+import { defer } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
@@ -33,22 +34,32 @@ export function EntityPickerSearchInput({
   models: string[];
   searchFilter?: (results: SearchResultType[]) => SearchResultType[];
 }) {
-  useDebouncedEffect(
+  useDebouncedEffectWithCleanup(
     () => {
-      if (searchQuery) {
-        Search.api
-          .list({ models, q: searchQuery })
-          .then((results: SearchResultsType) => {
-            if (results.data) {
-              const filteredResults = searchFilter(results.data);
-              setSearchResults(filteredResults);
-            } else {
-              setSearchResults(null);
-            }
-          });
-      } else {
-        setSearchResults(null);
-      }
+      const cancelled = defer();
+
+      const searchFn = () => {
+        if (searchQuery) {
+          Search.api
+            .list({ models, q: searchQuery }, { cancelled: cancelled.promise })
+            .then((results: SearchResultsType) => {
+              if (results.data) {
+                const filteredResults = searchFilter(results.data);
+                setSearchResults(filteredResults);
+              } else {
+                setSearchResults(null);
+              }
+            });
+        } else {
+          setSearchResults(null);
+        }
+      };
+
+      const cleanup = () => {
+        cancelled.resolve();
+      };
+
+      return [searchFn, cleanup];
     },
     200,
     [searchQuery, models, searchFilter],

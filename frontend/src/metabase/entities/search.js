@@ -20,7 +20,7 @@ export default createEntity({
   path: "/api/search",
 
   api: {
-    list: async (query = {}) => {
+    list: async (query = {}, queryOptions = {}) => {
       if (query.collection) {
         const {
           collection,
@@ -41,17 +41,20 @@ export default createEntity({
           );
         }
 
-        const { data, ...rest } = await CollectionsApi.listItems({
-          collectionId: collection,
-          archived,
-          models,
-          namespace,
-          pinned_state,
-          limit,
-          offset,
-          sort_column,
-          sort_direction,
-        });
+        const { data, ...rest } = await CollectionsApi.listItems(
+          {
+            collectionId: collection,
+            archived,
+            models,
+            namespace,
+            pinned_state,
+            limit,
+            offset,
+            sort_column,
+            sort_direction,
+          },
+          queryOptions,
+        );
 
         return {
           ...rest,
@@ -64,7 +67,7 @@ export default createEntity({
             : [],
         };
       } else {
-        const { data, ...rest } = await SearchApi.list(query);
+        const { data, ...rest } = await SearchApi.list(query, queryOptions);
 
         return {
           ...rest,
