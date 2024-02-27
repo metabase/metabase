@@ -75,8 +75,7 @@ export const Caching = () => {
     (databaseId: number, config: CacheConfig | null) => {
       // TODO: perhaps clear all overrides is not working because of how otherConfigs is working
       const otherConfigs = cacheConfigs.filter(
-        config =>
-          config.modelType === "database" && config.model_id !== databaseId,
+        config => config.model_id !== databaseId,
       );
       if (config) {
         setCacheConfigs([...otherConfigs, config]);
@@ -86,6 +85,12 @@ export const Caching = () => {
     },
     [cacheConfigs],
   );
+
+  const clearAllDatabaseOverrides = useCallback(() => {
+    setCacheConfigs(configs =>
+      configs.filter(({ modelType }) => modelType !== "database"),
+    );
+  }, [cacheConfigs]);
 
   if (error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
@@ -120,6 +125,7 @@ export const Caching = () => {
             databases={databases}
             databaseConfigurations={databaseConfigurations}
             setDatabaseConfiguration={setDatabaseConfiguration}
+            clearAllDatabaseOverrides={clearAllDatabaseOverrides}
           />
         </TabContentWrapper>
       </TabsPanel>

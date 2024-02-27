@@ -6,12 +6,12 @@ import type { HTMLAttributes } from "react";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 
-type RuleButtonProps = ButtonProps & {
+type StrategyButtonProps = ButtonProps & {
   isOverride?: boolean;
   isBeingConfigured?: boolean;
 };
 
-export const RuleEditorPanel = styled.div`
+export const StrategyEditorPanel = styled.div`
   overflow-y: scroll;
   display: flex;
   flex-flow: column nowrap;
@@ -32,7 +32,7 @@ export const RuleEditorPanel = styled.div`
   }
 `;
 
-export const ConfigPanel = styled(RuleEditorPanel)``;
+export const ConfigPanel = styled(StrategyEditorPanel)``;
 
 export const Explanation = styled.aside`
   max-width: 32rem;
@@ -57,17 +57,17 @@ export const CacheAdminButton = styled(Button)<ButtonProps>`
   }
 `;
 
-export const RuleButton = styled(CacheAdminButton)`
+export const StrategyButton = styled(CacheAdminButton)`
   background-color: ${color("bg-medium")};
   min-width: 20rem;
   font-weight: bold;
 `;
 
-export const GeneralRuleButton = styled(RuleButton)`
+export const GeneralConfigButton = styled(StrategyButton)`
   border: 1px solid ${color("bg-medium")};
 `;
 
-export const RuleValue = styled(CacheAdminButton)`
+export const Strategy = styled(CacheAdminButton)`
   margin-left: auto;
   background: ${color("brand")};
   color: ${color("white")};
@@ -75,9 +75,9 @@ export const RuleValue = styled(CacheAdminButton)`
   font-weight: bold;
 `;
 
-export const GeneralRuleValue = styled(RuleValue)``;
+export const GeneralConfigStrategy = styled(Strategy)``;
 
-export const SpecialRule = styled(CacheAdminButton)<RuleButtonProps>`
+export const SpecialConfig = styled(CacheAdminButton)<StrategyButtonProps>`
   width: 100%;
   display: flex;
   font-weight: bold;
@@ -90,23 +90,18 @@ export const SpecialRule = styled(CacheAdminButton)<RuleButtonProps>`
   border: 1px solid ${color("border")};
 `;
 
-export const ClearSpecialRuleButton = styled(CacheAdminButton)`
-  padding: 0;
-  margin-left: 1rem;
-`;
-
-export const SpecialRuleValue = styled(RuleValue)<RuleButtonProps>`
+export const SpecialStrategy = styled(Strategy)<StrategyButtonProps>`
   background-color: ${({ isOverride, isBeingConfigured }) =>
     isOverride && !isBeingConfigured ? color("brand") : color("white")};
   color: ${({ isOverride, isBeingConfigured }) =>
     isOverride && !isBeingConfigured ? color("white") : color("text-dark")};
 `;
 
-export const DatabaseRuleIcon = styled(Icon)`
+export const DatabaseStrategyIcon = styled(Icon)`
   margin-right: 0.5rem;
 `;
 
-export const RuleEditor = styled.div`
+export const StrategyEditor = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   width: 100%;
