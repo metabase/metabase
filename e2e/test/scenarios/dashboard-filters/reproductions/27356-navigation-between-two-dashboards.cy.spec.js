@@ -46,13 +46,13 @@ describe("issue 27356", () => {
 
     openNavigationSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(regularDashboard.name).click();
+    cy.findByText(regularDashboard.name).click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is looking empty.");
 
     openNavigationSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(paramDashboard.name).click();
+    cy.findByText(paramDashboard.name).click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is looking empty.");
   });
