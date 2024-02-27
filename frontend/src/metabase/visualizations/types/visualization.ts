@@ -80,7 +80,7 @@ export interface VisualizationProps {
     yAxisSplit?: number[][];
     warnings?: string[];
   }) => void;
-  onRenderError: (error?: Error) => void;
+  onRenderError: (error?: string) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
