@@ -8,6 +8,7 @@ import {
 
 const PG_DB_ID = 2;
 const mongoName = "QA Mongo";
+const postgresName = "QA Postgres12";
 const additionalPG = "New Database";
 
 const { DATA_GROUP } = USER_GROUPS;
@@ -26,7 +27,7 @@ describe(
     });
 
     it("smoketest: persisting last used database should work, and it should be user-specific setting", () => {
-      const adminPersistedDatabase = "QA Postgres12";
+      const adminPersistedDatabase = postgresName;
       const userPersistedDatabase = "Sample Database";
 
       startNativeQuestion();
@@ -76,10 +77,10 @@ describe(
       startNativeModel();
       assertNoDatabaseSelected();
 
-      selectDatabase("QA Postgres12");
+      selectDatabase(postgresName);
 
       startNativeQuestion();
-      assertSelectedDatabase("QA Postgres12").click();
+      assertSelectedDatabase(postgresName).click();
       selectDatabase("Sample Database");
 
       startNativeModel();
@@ -123,7 +124,7 @@ describe(
       cy.log(
         "Persisting a database for a native model should not affect actions",
       );
-      selectDatabase("QA Postgres12");
+      selectDatabase(postgresName);
       cy.wait("@persistDatabase");
 
       startNewAction();
@@ -137,7 +138,7 @@ describe(
         startNativeQuestion();
         cy.wait("@persistDatabase");
         cy.findByTestId("selected-database")
-          .should("have.text", "QA Postgres12")
+          .should("have.text", postgresName)
           .click();
 
         cy.get(POPOVER_ELEMENT).should("not.exist");
@@ -151,11 +152,11 @@ describe(
         startNativeQuestion();
 
         cy.findByTestId("selected-database")
-          .should("have.text", "QA Postgres12")
+          .should("have.text", postgresName)
           .click();
 
         popover()
-          .should("contain", "QA Postgres12")
+          .should("contain", postgresName)
           .and("contain", "New Database");
       });
     });
@@ -166,7 +167,7 @@ describe(
       startNativeQuestion();
       cy.wait("@persistDatabase");
       cy.findByTestId("selected-database")
-        .should("have.text", "QA Postgres12")
+        .should("have.text", postgresName)
         .click();
 
       cy.get(POPOVER_ELEMENT).should("not.exist");
@@ -189,7 +190,7 @@ describe(
       cy.signInAsNormalUser();
       startNativeQuestion();
       // Postgres will be automatically selected because it's the only dataabse this user can query
-      assertSelectedDatabase("QA Postgres12");
+      assertSelectedDatabase(postgresName);
     });
   },
 );
