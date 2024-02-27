@@ -310,7 +310,7 @@ function getPreviewQuery(
   query: Lib.Query,
   stageIndex: number,
   steps: NotebookStep[],
-  stepIndex: number,
+  activeStepIndex: number,
 ): Lib.Query {
   const previewQuery = _.range(
     Lib.stageCount(query) - 1,
@@ -321,7 +321,7 @@ function getPreviewQuery(
   // revert query for this step
   const queryAfterRevertingSteps = _.range(
     steps.length - 1,
-    stepIndex,
+    activeStepIndex,
     -1,
   ).reduce((query: Lib.Query, stepIndex: number) => {
     const step = steps[stepIndex];
