@@ -499,6 +499,7 @@ export function getXAxisModel(
     renderingContext.formatValue(value, {
       column: dimensionModel.column,
       ...(settings.column?.(dimensionModel.column) ?? {}),
+      compact: settings["graph.x_axis.axis_enabled"] === "compact",
       noRange: settings["graph.x_axis.scale"] === "histogram",
     });
 
