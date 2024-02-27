@@ -27,6 +27,10 @@ export function ClausePopover({
     setIsOpen(false);
   }, []);
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <Popover
       trapFocus
