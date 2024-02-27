@@ -144,6 +144,11 @@ export const ParameterSidebar = ({
     <Sidebar
       onClose={onClose}
       isCloseDisabled={missingRequiredDefault}
+      closeTooltip={
+        missingRequiredDefault
+          ? t`The parameter requires a default value but none was provided.`
+          : undefined
+      }
       onRemove={handleRemove}
     >
       <SidebarHeader>

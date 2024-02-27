@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Button, Icon } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 
 import {
   ButtonContainer,
@@ -10,11 +10,12 @@ import {
 } from "./Sidebar.styled";
 
 interface SidebarProps {
-  isCloseDisabled?: boolean;
   children: ReactNode;
   onClose?: () => void;
   onCancel?: () => void;
   onRemove?: () => void;
+  isCloseDisabled?: boolean;
+  closeTooltip?: string;
   "data-testid"?: string;
 }
 
@@ -25,6 +26,7 @@ export function Sidebar({
   onClose,
   onCancel,
   onRemove,
+  closeTooltip,
   "data-testid": dataTestId,
 }: SidebarProps) {
   return (
@@ -53,12 +55,17 @@ export function Sidebar({
             >{t`Cancel`}</Button>
           )}
           {onClose && (
-            <Button
-              disabled={isCloseDisabled}
-              onClick={onClose}
-              variant="filled"
-              aria-label={t`Done`}
-            >{t`Done`}</Button>
+            <Tooltip label={closeTooltip} hidden={!closeTooltip}>
+              {/* without a div we will need hacks to make tooltip work */}
+              <div>
+                <Button
+                  disabled={isCloseDisabled}
+                  onClick={onClose}
+                  variant="filled"
+                  aria-label={t`Done`}
+                >{t`Done`}</Button>
+              </div>
+            </Tooltip>
           )}
         </ButtonContainer>
       )}
