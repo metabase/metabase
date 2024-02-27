@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -23,10 +24,17 @@ export function AddAggregationButton({
   const hasAggregations = Lib.aggregations(query, STAGE_INDEX).length > 0;
   const operators = Lib.availableAggregationOperators(query, STAGE_INDEX);
 
+  const renderTooltip = (children: ReactNode) =>
+    hasAggregations ? (
+      <Tooltip label={t`Add metric`}>{children}</Tooltip>
+    ) : (
+      children
+    );
+
   return (
-    <Popover opened={isOpened} onClose={() => setIsOpened(false)}>
+    <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
-        <Tooltip label={t`Add a metric`}>
+        {renderTooltip(
           <AddAggregationButtonRoot
             icon="add"
             borderless
@@ -36,8 +44,8 @@ export function AddAggregationButton({
             data-testid="add-aggregation-button"
           >
             {hasAggregations ? null : t`Add a metric`}
-          </AddAggregationButtonRoot>
-        </Tooltip>
+          </AddAggregationButtonRoot>,
+        )}
       </Popover.Target>
       <Popover.Dropdown>
         <AggregationPicker

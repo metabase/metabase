@@ -90,11 +90,7 @@ function _BaseBucketPickerPopover({
     : items;
 
   return (
-    <Popover
-      opened={isOpened}
-      position="right"
-      onClose={() => setIsOpened(false)}
-    >
+    <Popover opened={isOpened} position="right" onChange={setIsOpened}>
       <Popover.Target>
         <TriggerButton
           aria-label={triggerLabel}

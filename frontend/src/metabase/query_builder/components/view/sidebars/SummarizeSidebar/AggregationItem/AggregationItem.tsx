@@ -31,7 +31,7 @@ export function AggregationItem({
   );
 
   return (
-    <Popover opened={isOpened} onClose={() => setIsOpened(false)}>
+    <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
         <Root
           aria-label={displayName}
