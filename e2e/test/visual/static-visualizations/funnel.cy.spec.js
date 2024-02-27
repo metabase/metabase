@@ -35,9 +35,10 @@ describe("static visualizations", { tags: "@external" }, () => {
 
 function createFunnelBarQuestion() {
   const query = {
-    name: `funnel`,
+    name: "funnel",
     native: {
-      query: `SELECT * FROM ( VALUES ('Stage 1', 1000), ('Stage 2', 400), ('Stage 3', 250), ('Stage 4', 100), ('Stage 5', 20), ('Stage 6', 10))`,
+      query:
+        "SELECT * FROM ( VALUES ('Stage 1', 1000), ('Stage 2', 400), ('Stage 3', 250), ('Stage 4', 100), ('Stage 5', 20), ('Stage 6', 10))",
       "template-tags": {},
     },
     visualization_settings: {},

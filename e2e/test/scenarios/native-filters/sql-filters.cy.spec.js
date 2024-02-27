@@ -87,7 +87,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.toggleRequired();
         filterWidget().within(() => {
           cy.get("input").type("abc").should("have.value", "defaultabc");
-          cy.icon("refresh").click();
+          cy.icon("time_history").click();
           cy.get("input").should("have.value", "default");
         });
       });
@@ -167,7 +167,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.toggleRequired();
         filterWidget().within(() => {
           cy.get("input").type(".11").should("have.value", "3.11");
-          cy.icon("refresh").click();
+          cy.icon("time_history").click();
           cy.get("input").should("have.value", "3");
         });
       });
@@ -263,7 +263,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
           cy.findByText("15").click();
           cy.findByText("Update filter").click();
         });
-        filterWidget().icon("refresh").click();
+        filterWidget().icon("time_history").click();
         filterWidget()
           .findByTestId("field-set-content")
           .should("have.text", "November 1, 2023");

@@ -4,6 +4,7 @@
    [goog.object :as gobject]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.js :as lib.js]
    [metabase.lib.options :as lib.options]
@@ -517,3 +518,49 @@
         (testing "unless it's missing in the input"
           (let [di (lib.js/display-info query -1 (dissoc discount :fingerprint))]
             (is (not (gobject/containsKey di "fingerprint")))))))))
+
+(deftest ^:parallel returned-columns-unique-names-test
+  (testing "returned-columns should ensure the :name fields are unique (#37517)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                               [(lib/= (meta/field-metadata :orders :id)
+                                                       (lib/with-join-alias (meta/field-metadata :orders :id)
+                                                         "Orders"))])))]
+      (is (= #{1}
+             (->> (lib.js/returned-columns query -1)
+                  (map :name)
+                  frequencies
+                  vals
+                  set))))))
+
+(deftest ^:parallel diagnose-expression-test
+  (let [exprs (update-vals {"a" 1
+                            "c" [:+ 0 1]
+                            "b" [:+ [:expression "a"] [:expression "c"]]
+                            "x" [:+ [:expression "b"] 1]
+                            "s" [:+ [:expression "a"] [:expression "b"] [:expression "c"]]}
+                           lib.convert/->pMBQL)
+        query (reduce-kv (fn [query expr-name expr]
+                           (lib/expression query 0 expr-name expr))
+                         lib.tu/venues-query
+                         exprs)
+        c-pos (some (fn [[i e]]
+                      (when (= (-> e lib.options/options :lib/expression-name) "c")
+                        i))
+                    (m/indexed (lib/expressions query)))]
+    (testing "correct expression are accepted silently"
+      (are [mode expr] (nil? (lib.js/diagnose-expression query 0 mode expr js/undefined))
+        "expression"  #js ["/"   #js ["field" 1 nil] 100]
+        "aggregation" #js ["sum" #js ["field" 1 #js {:base-type "type/Integer"}]]
+        "filter"      #js ["="   #js ["field" 1 #js {:base-type "type/Integer"}] 3]))
+    (testing "type errors are reported"
+      (are [mode expr] (-> (lib.js/diagnose-expression query 0 mode expr js/undefined)
+                           .-message
+                           string?)
+        "expression"  #js ["/"   #js ["field" 1 #js {:base-type "type/Address"}] 100]
+        "filter"      #js ["sum" #js ["field" 1 #js {:base-type "type/Integer"}]]))
+    (testing "circular definition"
+      (is (= "Cycle detected: c → x → b → c"
+             (-> (lib.js/diagnose-expression
+                  query 0 "expression" #js ["+" #js ["expression" "x"] 1] c-pos)
+                 .-message))))))

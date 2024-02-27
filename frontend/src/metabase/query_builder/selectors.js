@@ -41,6 +41,7 @@ import {
 import Question from "metabase-lib/Question";
 import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 
 export const getUiControls = state => state.qb.uiControls;
 const getQueryStatus = state => state.qb.queryStatus;
@@ -209,12 +210,6 @@ export const getTables = createSelector(
 
     return [];
   },
-);
-
-export const getNativeDatabases = createSelector(
-  [getDatabasesList],
-  databases =>
-    databases && databases.filter(db => db.native_permissions === "write"),
 );
 
 export const getTableMetadata = createSelector(
@@ -1052,3 +1047,25 @@ export function getEmbeddedParameterVisibility(state, slug) {
   const embeddingParams = card.embedding_params ?? {};
   return embeddingParams[slug] ?? "disabled";
 }
+
+export const getSubmittableQuestion = (state, question) => {
+  const series = getTransformedSeries(state);
+  const resultsMetadata = getResultsMetadata(state);
+  const isResultDirty = getIsResultDirty(state);
+
+  let submittableQuestion = question;
+
+  if (series) {
+    submittableQuestion = getQuestionWithDefaultVisualizationSettings(
+      submittableQuestion,
+      series,
+    );
+  }
+
+  const cleanQuery = Lib.dropEmptyStages(submittableQuestion.query());
+  submittableQuestion = submittableQuestion
+    .setQuery(cleanQuery)
+    .setResultsMetadata(isResultDirty ? null : resultsMetadata);
+
+  return submittableQuestion;
+};

@@ -1,0 +1,81 @@
+{{> metabase/email/_header }}
+<div class="card-container">
+  <h2
+    style="margin: 0; padding: 0; font-weight: 700; font-size: 1.5em; color: {{colorTextDark}}; line-height: 1.5em;"
+  >
+    Subscription to {{dashboardName}} removed
+  </h2>
+
+  <p
+    style="font-weight: 600; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};"
+  >
+    A filter was removed from this dashboard that was used by a subscription, so the subscription was deleted.
+    Here is the removed filter and user information.
+  </p>
+
+  <table
+    cellpadding="0"
+    cellspacing="0"
+    border="0"
+    width="100%"
+    style="border-collapse: separate; border-spacing: 0 2em;"
+  >
+    <tr>
+      <td
+        style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+      >
+        Filter Name
+      </td>
+      <td
+        style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+      >
+        Filter Value
+      </td>
+    </tr>
+    {{#badParameters}}
+      <tr>
+        <td style="text-align: left;">{{name}}</td>
+        <td style="text-align: left;">{{value}}</td>
+      </tr>
+    {{/badParameters}}
+    <tr />
+    <tr>
+      <td
+        style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+      >
+        Notification Type
+      </td>
+      <td
+        style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+      >
+        Recipient
+      </td>
+      <td
+        style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
+      >
+        Role
+      </td>
+    </tr>
+    {{#affectedUsers}}
+      <tr>
+        <td>{{notification-type}}</td>
+        <td>{{recipient}}</td>
+        <td>{{role}}</td>
+      </tr>
+    {{/affectedUsers}}
+  </table>
+
+  <div style="text-align: center;">
+    <a
+      href="{{dashboardUrl}}"
+      style="display: inline-block; padding: 0.75rem 1.125em; background-color: {{applicationColor}};
+        color: #FFF; border-radius: 6px; font-size: 0.875em; font-weight: 700; text-decoration: none;"
+    >
+      Visit this dashboard
+    </a>
+  </div>
+  <div
+    style="height: 1px; width: 100%; background-color: #F0F0F0; margin-top: 2em;"
+  ></div>
+</div>
+{{> metabase/email/_footer }}

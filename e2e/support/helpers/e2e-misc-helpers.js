@@ -1,5 +1,3 @@
-import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
-
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
@@ -151,7 +149,7 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
   const alias = "modelQuery" + id;
 
   if (hasDataAccess) {
-    cy.intercept("POST", `/api/dataset`).as(alias);
+    cy.intercept("POST", "/api/dataset").as(alias);
   } else {
     cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
   }
@@ -288,11 +286,11 @@ export function saveQuestion(
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
 
-  modal().within(() => {
+  cy.findByTestId("save-question-modal").within(modal => {
     if (name) {
       cy.findByLabelText("Name").clear().type(name);
     }
-    cy.button("Save").click();
+    cy.findByText("Save").click();
   });
 
   cy.wait("@saveQuestion").then(({ response: { body } }) => {
@@ -301,7 +299,7 @@ export function saveQuestion(
     }
   });
 
-  modal().within(() => {
+  cy.get("#QuestionSavedModal").within(() => {
     cy.button("Not now").click();
   });
 }
@@ -310,8 +308,8 @@ export function saveSavedQuestion() {
   cy.intercept("PUT", "/api/card/**").as("updateQuestion");
   cy.findByText("Save").click();
 
-  modal().within(() => {
-    cy.button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
   });
   cy.wait("@updateQuestion");
 }

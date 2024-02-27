@@ -1,6 +1,5 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  modal,
   openNotebook,
   openOrdersTable,
   popover,
@@ -38,7 +37,9 @@ describe("issue 30610", () => {
 
 function updateQuestion() {
   queryBuilderHeader().findByText("Save").click();
-  modal().button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
+  });
 }
 
 function removeSourceColumns() {

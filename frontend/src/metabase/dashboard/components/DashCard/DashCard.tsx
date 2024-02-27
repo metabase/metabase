@@ -6,13 +6,11 @@ import { useMount } from "react-use";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import { getQuestionByCard } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
-import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import type { IconProps } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -23,7 +21,7 @@ import type {
   Card,
   CardId,
   Dashboard,
-  QuestionDashboardCard,
+  DashboardCard,
   DashCardId,
   ParameterId,
   ParameterValueOrArray,
@@ -57,7 +55,7 @@ export interface DashCardProps {
   metadata: Metadata;
   mode?: Mode;
 
-  clickBehaviorSidebarDashcard?: QuestionDashboardCard | null;
+  clickBehaviorSidebarDashcard?: DashboardCard | null;
 
   isEditing?: boolean;
   isEditingParameter?: boolean;
@@ -136,12 +134,6 @@ function DashCardInner({
       ),
     }),
     [dashcard],
-  );
-
-  const question = useSelector(state =>
-    isQuestionDashCard(dashcard)
-      ? getQuestionByCard(state, { card: dashcard.card })
-      : undefined,
   );
 
   const cards = useMemo(() => {
@@ -279,7 +271,6 @@ function DashCardInner({
             series={series}
             dashboard={dashboard}
             dashcard={dashcard}
-            question={question}
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}

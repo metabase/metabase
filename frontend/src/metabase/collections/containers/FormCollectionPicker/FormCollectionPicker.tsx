@@ -31,6 +31,7 @@ export interface FormCollectionPickerProps
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
+  zIndex?: number;
 }
 
 function ItemName({
@@ -57,6 +58,7 @@ function FormCollectionPicker({
   initialOpenCollectionId,
   onOpenCollectionChange,
   filterPersonalCollections,
+  zIndex,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -160,6 +162,7 @@ function FormCollectionPicker({
       renderTrigger={renderTrigger}
       popoverContent={renderContent}
       maxWidth={width}
+      zIndex={zIndex}
     />
   );
 }

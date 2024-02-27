@@ -1431,7 +1431,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(anchor).to.have.attr("target", "_blank");
         });
         getTableCell(COLUMN_INDEX.CREATED_AT)
-          .should("have.text", `Created at: October 2023`)
+          .should("have.text", "Created at: October 2023")
           .click();
       })();
     });

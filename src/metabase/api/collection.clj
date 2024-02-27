@@ -976,11 +976,7 @@
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority_level) (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-      (api/check-403 (and api/*is-superuser?*
-                          ;; pre-update of model checks if the collection is a personal collection and rejects changes
-                          ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
-                          ;; here
-                          (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
+      (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :archived :authority_level])]

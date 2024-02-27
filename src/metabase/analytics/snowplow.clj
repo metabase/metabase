@@ -30,9 +30,10 @@
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
   to SnowcatCloud, at the same time that the data sent to the collector is updated."
   {::account              "1-0-1"
+   ::browse_data          "1-0-0"
    ::invite               "1-0-1"
    ::csvupload            "1-0-0"
-   ::dashboard            "1-1-3"
+   ::dashboard            "1-1-4"
    ::database             "1-0-1"
    ::instance             "1-1-2"
    ::metabot              "1-0-1"
@@ -42,6 +43,7 @@
    ::task                 "1-0-0"
    ::action               "1-0-0"
    ::embed_share          "1-0-0"
+   ::llm_usage            "1-0-0"
    ::serialization_export "1-0-0"
    ::serialization_import "1-0-0"})
 
@@ -49,6 +51,8 @@
   "The schema to use for each analytics event."
   {::new-instance-created           ::account
    ::new-user-created               ::account
+   ::browse_data_model_clicked      ::browse_data
+   ::browse_data_table_clicked      ::browse_data
    ::invite-sent                    ::invite
    ::index-model-entities-enabled   ::model
    ::dashboard-created              ::dashboard
@@ -70,6 +74,7 @@
    ::metabot-feedback-received      ::metabot
    ::embedding-enabled              ::embed_share
    ::embedding-disabled             ::embed_share
+   ::llm-usage                      ::llm_usage
    ::serialization-export           ::serialization_export
    ::serialization-import           ::serialization_import})
 

@@ -502,15 +502,21 @@
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (t2/define-before-update :model/Card
-  [card]
+  [{:keys [verified-result-metadata?] :as card}]
   ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
   ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
   ;;
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
-  (-> (into {:id (:id card)} (t2/changes card))
+  (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
       maybe-normalize-query
-      populate-result-metadata
+      ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
+      ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
+      ;; verified-result-metadata? flag (see #37009).
+      (cond-> #_changes
+        (or (empty? (:result_metadata card))
+            (not verified-result-metadata?))
+        populate-result-metadata)
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at
@@ -796,6 +802,7 @@ saved later when it is ready."
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
+
     (when (and (card-is-verified? card-before-update)
                (changed? card-compare-keys card-before-update card-updates))
       ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
@@ -807,12 +814,13 @@ saved later when it is ready."
                                          :text                (tru "Unverified due to edit")}))
     ;; ok, now save the Card
     (t2/update! Card (:id card-before-update)
-                ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
-                ;; modified if they're passed in as non-nil
+                ;; `collection_id` and `description` can be `nil` (in order to unset them).
+                ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates
-                  :present #{:collection_id :collection_position :description :cache_ttl}
-                  :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding :type
-                             :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
+                                    :present #{:collection_id :collection_position :description :cache_ttl}
+                                    :non-nil #{:dataset_query :display :name :visualization_settings :archived
+                                               :enable_embedding :type :parameters :parameter_mappings :embedding_params
+                                               :result_metadata :collection_preview :verified-result-metadata?})))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one Card :id (:id card-before-update))]
     (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)

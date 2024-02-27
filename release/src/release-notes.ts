@@ -7,8 +7,7 @@ import {
 
 import type { ReleaseProps, Issue } from "./types";
 
-const releaseTemplate = `# NOTE: clean up 'Enhancements' and 'Bug fixes' sections and remove this line before publishing!
-**Upgrading**
+const releaseTemplate = `**Upgrading**
 
 You can download a .jar of the release, or get the latest on Docker. Make sure to back up your Metabase
 database before you upgrade! Need help? Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase.html).

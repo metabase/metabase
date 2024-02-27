@@ -5,8 +5,8 @@ describeOSS("issue 25144", { tags: "@OSS" }, () => {
   beforeEach(() => {
     restore("setup");
     cy.signInAsAdmin();
-    cy.intercept("POST", `/api/card`).as("createCard");
-    cy.intercept("PUT", `/api/card/*`).as("updateCard");
+    cy.intercept("POST", "/api/card").as("createCard");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   it("should show Saved Questions section after creating the first question (metabase#25144)", () => {
