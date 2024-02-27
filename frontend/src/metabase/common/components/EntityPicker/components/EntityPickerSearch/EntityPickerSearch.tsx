@@ -39,6 +39,11 @@ export function EntityPickerSearchInput({
       const cancelled = defer();
 
       const searchFn = () => {
+        if (searchQuery && !searchQuery.trim()) {
+          setSearchResults([]);
+          return;
+        }
+
         if (searchQuery) {
           Search.api
             .list({ models, q: searchQuery }, { cancelled: cancelled.promise })
