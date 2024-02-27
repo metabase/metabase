@@ -9,8 +9,6 @@ interface ClausePopoverProps extends PopoverBaseProps {
   renderPopover: (close: () => void) => JSX.Element | null;
 }
 
-const NO_TRANSITION = { duration: 0 };
-
 export function ClausePopover({
   isInitiallyOpen = false,
   renderItem,
@@ -28,13 +26,7 @@ export function ClausePopover({
   }, []);
 
   return (
-    <Popover
-      trapFocus
-      transitionProps={NO_TRANSITION}
-      {...props}
-      opened={isOpen}
-      onClose={handleClose}
-    >
+    <Popover trapFocus {...props} opened={isOpen} onClose={handleClose}>
       <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
       <Popover.Dropdown>{renderPopover(handleClose)}</Popover.Dropdown>
     </Popover>

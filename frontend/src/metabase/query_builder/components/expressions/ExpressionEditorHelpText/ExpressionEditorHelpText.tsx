@@ -40,7 +40,6 @@ export const ExpressionEditorHelpText = ({
   const { description, structure, args } = helpText;
 
   return (
-    /* data-ignore-outside-clicks is required until this expression editor is migrated to the mantine's Popover */
     <TippyPopover
       maxWidth={width}
       reference={target}
@@ -52,19 +51,15 @@ export const ExpressionEditorHelpText = ({
           <Container
             onMouseDown={e => e.preventDefault()}
             data-testid="expression-helper-popover"
-            data-ignore-outside-clicks
           >
-            <FunctionHelpCode
-              data-testid="expression-helper-popover-structure"
-              data-ignore-outside-clicks
-            >
+            <FunctionHelpCode data-testid="expression-helper-popover-structure">
               {structure}
               {args != null && (
                 <>
                   (
                   {args.map(({ name }, index) => (
-                    <span key={name} data-ignore-outside-clicks>
-                      <FunctionHelpCodeArgument data-ignore-outside-clicks>
+                    <span key={name}>
+                      <FunctionHelpCodeArgument>
                         {name}
                       </FunctionHelpCodeArgument>
                       {index + 1 < args.length && ", "}
@@ -74,43 +69,29 @@ export const ExpressionEditorHelpText = ({
                 </>
               )}
             </FunctionHelpCode>
-            <Divider data-ignore-outside-clicks />
+            <Divider />
 
-            <div data-ignore-outside-clicks>{description}</div>
+            <div>{description}</div>
 
             {args != null && (
-              <ArgumentsGrid
-                data-testid="expression-helper-popover-arguments"
-                data-ignore-outside-clicks
-              >
+              <ArgumentsGrid data-testid="expression-helper-popover-arguments">
                 {args.map(({ name, description: argDescription }) => (
                   <React.Fragment key={name}>
-                    <ArgumentTitle data-ignore-outside-clicks>
-                      {name}
-                    </ArgumentTitle>
-                    <div data-ignore-outside-clicks>{argDescription}</div>
+                    <ArgumentTitle>{name}</ArgumentTitle>
+                    <div>{argDescription}</div>
                   </React.Fragment>
                 ))}
               </ArgumentsGrid>
             )}
 
-            <BlockSubtitleText
-              data-ignore-outside-clicks
-            >{t`Example`}</BlockSubtitleText>
-            <ExampleCode data-ignore-outside-clicks>
-              {helpText.example}
-            </ExampleCode>
+            <BlockSubtitleText>{t`Example`}</BlockSubtitleText>
+            <ExampleCode>{helpText.example}</ExampleCode>
             {showMetabaseLinks && (
               <DocumentationLink
                 href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
                 target="_blank"
-                data-ignore-outside-clicks
               >
-                <LearnMoreIcon
-                  name="reference"
-                  size={12}
-                  data-ignore-outside-clicks
-                />
+                <LearnMoreIcon name="reference" size={12} />
                 {t`Learn more`}
               </DocumentationLink>
             )}
