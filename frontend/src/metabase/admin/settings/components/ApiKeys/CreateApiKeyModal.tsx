@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { useCreateApiKeyMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -9,7 +10,6 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useCreateApiKeyMutation } from "metabase/redux/api";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 
 import { SecretKeyModal } from "./SecretKeyModal";

@@ -2,6 +2,10 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
+  useRegenerateApiKeyMutation,
+  useUpdateApiKeyMutation,
+} from "metabase/api";
+import {
   Form,
   FormErrorMessage,
   FormGroupWidget,
@@ -9,10 +13,6 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import {
-  useRegenerateApiKeyMutation,
-  useUpdateApiKeyMutation,
-} from "metabase/redux/api";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";

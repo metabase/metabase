@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useCountApiKeyQuery } from "metabase/redux/api";
+import { useCountApiKeyQuery } from "metabase/api";
 
 import { AuthCardBody } from "./AuthCard/AuthCard";
 

@@ -1,8 +1,3 @@
-import {
-  providesList,
-  API_KEY_TAG,
-  API_KEY_LIST_TAG,
-} from "metabase/redux/api/tags";
 import type {
   ApiKey,
   CreateApiKeyInput,
@@ -13,6 +8,7 @@ import type {
 } from "metabase-types/api/admin";
 
 import { Api } from "./api";
+import { providesList, API_KEY_TAG, API_KEY_LIST_TAG } from "./tags";
 
 const apiKeysApi = Api.injectEndpoints({
   endpoints: builder => ({

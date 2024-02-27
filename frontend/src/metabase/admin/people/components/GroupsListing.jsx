@@ -4,6 +4,7 @@ import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { useListApiKeyQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
@@ -22,7 +23,6 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { useListApiKeyQuery } from "metabase/redux/api";
 import { Stack, Text, Group, Button, Icon } from "metabase/ui";
 
 import { AddRow } from "./AddRow";

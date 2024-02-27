@@ -4,7 +4,7 @@
  * This allows us to use search results to show a particular record in the model.
  */
 
-import { modelIndexesApi } from "metabase/redux/api";
+import { modelIndexesApi } from "metabase/api";
 
 import { updateModelIndexes } from "./actions";
 import {

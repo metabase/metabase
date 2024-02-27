@@ -2,9 +2,8 @@ import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import { routerReducer as routing, routerMiddleware } from "react-router-redux";
 import promise from "redux-promise";
 
+import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
-
-import { Api } from "./redux/api";
 
 export function getStore(reducers, history, intialState) {
   const reducer = combineReducers({

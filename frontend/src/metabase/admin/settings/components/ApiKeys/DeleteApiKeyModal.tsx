@@ -1,13 +1,13 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useDeleteApiKeyMutation } from "metabase/api";
 import {
   FormProvider,
   Form,
   FormSubmitButton,
   FormErrorMessage,
 } from "metabase/forms";
-import { useDeleteApiKeyMutation } from "metabase/redux/api";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 import type { ApiKey } from "metabase-types/api";
 
