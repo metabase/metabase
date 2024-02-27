@@ -440,7 +440,7 @@
   :type :string)
 
 (defsetting last-used-native-database-id
-  (deferred-tru "The last database a user has used for a native query.")
+  (deferred-tru "The last database a user has selected for a native query or a native model.")
   :user-local :only
   :visibility :authenticated
   :type :integer)
