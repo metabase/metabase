@@ -52,7 +52,7 @@ export const LicenseTokenForm = ({
               oldState !== "loading" ? "idle" : "loading",
             );
           }}
-          error={status === "invalid_token"}
+          error={["invalid_token", "unable_to_validate"].includes(status)}
         />
         {status === "invalid_token" && (
           <Text color="error">{t`This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working`}</Text>
