@@ -59,9 +59,11 @@ export const ClauseStep = <T,>({
 
   const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
     input => {
-      const sourceIndex = getItemIndexFromId(input.active.id);
-      const targetIndex = getItemIndexFromId(input.over?.id);
-      onReorder?.(items[sourceIndex], items[targetIndex]);
+      if (input.over) {
+        const sourceIndex = getItemIndexFromId(input.active.id);
+        const targetIndex = getItemIndexFromId(input.over.id);
+        onReorder?.(items[sourceIndex], items[targetIndex]);
+      }
     },
     [items, onReorder],
   );
@@ -132,6 +134,6 @@ function getItemIdFromIndex(index: number) {
   return String(index);
 }
 
-function getItemIndexFromId(id?: string | number) {
+function getItemIndexFromId(id: string | number) {
   return Number(id);
 }
