@@ -43,6 +43,19 @@ export function FilterStep({
     updateQuery(nextQuery);
   };
 
+  const handleReorderFilter = (
+    sourceFilter: Lib.FilterClause,
+    targetFilter: Lib.FilterClause,
+  ) => {
+    const nextQuery = Lib.swapClauses(
+      query,
+      stageIndex,
+      sourceFilter,
+      targetFilter,
+    );
+    updateQuery(nextQuery);
+  };
+
   const handleRemoveFilter = (filter: Lib.FilterClause) => {
     const nextQuery = Lib.removeClause(query, stageIndex, filter);
     updateQuery(nextQuery);
@@ -71,6 +84,7 @@ export function FilterStep({
             onClose={onClose}
           />
         )}
+        onReorder={handleReorderFilter}
         onRemove={handleRemoveFilter}
       />
     </ErrorBoundary>

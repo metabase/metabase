@@ -82,6 +82,15 @@ export function replaceClause(
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
 
+export function swapClauses(
+  query: Query,
+  _stageIndex: number,
+  _sourceClause: Clause,
+  _targetClause: Clause,
+): Query {
+  return query;
+}
+
 export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
 }

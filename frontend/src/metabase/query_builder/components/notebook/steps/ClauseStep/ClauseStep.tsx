@@ -36,9 +36,8 @@ export interface ClauseStepProps<T> {
   readOnly?: boolean;
   renderName: (item: T, index: number) => JSX.Element | string;
   renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
-  canRemove?: (item: T) => boolean;
   onRemove?: ((item: T, index: number) => void) | null;
-  onSortEnd?: (oldIndex: number, newIndex: number) => void;
+  onReorder?: (sourceItem: T, targetItem: T) => void;
   "data-testid"?: string;
 }
 
@@ -50,9 +49,8 @@ export const ClauseStep = <T,>({
   readOnly,
   renderName,
   renderPopover,
-  canRemove,
   onRemove = null,
-  onSortEnd,
+  onReorder,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
   const pointerSensor = useSensor(PointerSensor, {
@@ -61,11 +59,11 @@ export const ClauseStep = <T,>({
 
   const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
     input => {
-      const oldIndex = getItemIndexFromId(input.active.id);
-      const newIndex = getItemIndexFromId(input.over?.id);
-      onSortEnd?.(oldIndex, newIndex);
+      const sourceIndex = getItemIndexFromId(input.active.id);
+      const targetIndex = getItemIndexFromId(input.over?.id);
+      onReorder?.(items[sourceIndex], items[targetIndex]);
     },
-    [onSortEnd],
+    [items, onReorder],
   );
 
   const renderSortContext = (children: ReactNode) => (
@@ -94,7 +92,7 @@ export const ClauseStep = <T,>({
   const renderItem = ({ item, index, onOpen }: RenderItemOpts<T>) => (
     <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
       {renderName(item, index)}
-      {!readOnly && onRemove && (!canRemove || canRemove(item)) && (
+      {!readOnly && onRemove && (
         <Icon
           className="ml1"
           name="close"
