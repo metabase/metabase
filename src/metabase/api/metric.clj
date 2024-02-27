@@ -1,5 +1,5 @@
 (ns metabase.api.metric
-  "/api/metric endpoints."
+  "/api/legacy-metric endpoints."
   (:require
    [clojure.data :as data]
    [compojure.core :refer [DELETE GET POST PUT]]
@@ -129,7 +129,7 @@
   {id               ms/PositiveInt
    revision_message ms/NonBlankString}
   (log/warn
-   (trs "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."))
+   (trs "DELETE /api/legacy-metric/:id is deprecated. Instead, change its `archived` value via PUT /api/legacy-metric/:id."))
   (write-check-and-update-metric! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
