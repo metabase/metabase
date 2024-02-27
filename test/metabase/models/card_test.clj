@@ -272,7 +272,16 @@
         (f {:dataset_query (mt/native-query {:native "SELECT * FROM VENUES"})}
            (fn [metadata]
              (is (= nil
-                    metadata))))))))
+                    metadata)))))
+      (testing "Shouldn't remove verified result metadata from native queries (#37009)"
+        (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))]
+          (f (cond-> {:dataset_query (mt/native-query {:native "SELECT * FROM CHECKINS"})
+                      :result_metadata metadata}
+               (= creating-or-updating "updating")
+               (assoc :verified-result-metadata? true))
+             (fn [new-metadata]
+               (is (= (mt/derecordize metadata)
+                      (mt/derecordize new-metadata))))))))))
 
 ;; this is a separate function so we can use the same tests for DashboardCards as well
 (defn test-visualization-settings-normalization [f]

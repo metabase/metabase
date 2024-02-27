@@ -517,7 +517,8 @@
           timed-out?            (= port metadata-timeout)
           card-updates          (cond-> card-updates
                                   (not timed-out?)
-                                  (assoc :result_metadata fresh-metadata))]
+                                  (assoc :result_metadata fresh-metadata
+                                         :verified-result-metadata? true))]
       (u/prog1 (-> (card/update-card! {:card-before-update card-before-update
                                        :card-updates       card-updates
                                        :actor              @api/*current-user*})
