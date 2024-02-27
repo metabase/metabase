@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
-import type { Location } from "history";
 
 import { useMount } from "react-use";
-import type {WithRouterProps} from "react-router/lib/withRouter";
+import type { WithRouterProps } from "react-router/lib/withRouter";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 import { getSetting } from "metabase/selectors/settings";
@@ -47,6 +46,14 @@ import "./EmbedFrame.css";
 
 type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 
+type HashOptions = {
+  bordered?: boolean;
+  titled?: boolean;
+  theme?: string;
+  hide_parameters?: string;
+  hide_download_button?: boolean;
+};
+
 interface OwnProps {
   className?: string;
   name?: string;
@@ -66,22 +73,11 @@ interface OwnProps {
   dashboardTabs?: ReactNode;
 }
 
-interface StateProps {
+type StateProps = {
   hasEmbedBranding: boolean;
-}
+};
 
-type Props = OwnProps &
-  StateProps & {
-    location: Location;
-  };
-
-interface HashOptions {
-  bordered?: boolean;
-  titled?: boolean;
-  theme?: string;
-  hide_parameters?: string;
-  hide_download_button?: boolean;
-}
+type Props = OwnProps & StateProps & WithRouterProps;
 
 function mapStateToProps(state: State) {
   return {
