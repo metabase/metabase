@@ -33,6 +33,9 @@ export function getMaxLabelDimension(
 interface SliceData {
   key: string;
   value: number;
+  displayValue: number;
+  percentage: number;
+  rowIndex: number;
   color: string;
 }
 
@@ -46,7 +49,7 @@ export const getTooltipModel = (
 ): StackedTooltipModel => {
   const rows = slices.map(slice => ({
     name: dimensionFormatter(slice.key),
-    value: slice.value,
+    value: slice.displayValue,
     color: slice.color,
     formatter: metricFormatter,
   }));
