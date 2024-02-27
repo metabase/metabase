@@ -535,32 +535,32 @@
         (mw.session/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
 
-(deftest last-used-database-id-can-be-read-and-set
-  (testing "last-used-database-id can be read and set"
+(deftest last-used-native-database-id-can-be-read-and-set
+  (testing "last-used-native-database-id can be read and set"
     (mt/with-test-user :rasta
-      (let [old-db-id (user/last-used-database-id)
+      (let [old-db-id (user/last-used-native-database-id)
             new-db-id 42]
         (try
           (is (not= new-db-id old-db-id))
-          (user/last-used-database-id! new-db-id)
-          (is (= new-db-id (user/last-used-database-id)))
+          (user/last-used-native-database-id! new-db-id)
+          (is (= new-db-id (user/last-used-native-database-id)))
           (finally
-            (user/last-used-database-id! old-db-id))))))
+            (user/last-used-native-database-id! old-db-id))))))
 
-  (testing "last-used-database-id should be a user-local setting"
+  (testing "last-used-native-database-id should be a user-local setting"
     (is (=? {:user-local :only}
             (setting/resolve-setting :last-acknowledged-version)))
     (mt/with-test-user :rasta
-      (let [old-db-id (user/last-used-database-id)]
-        (user/last-used-database-id! 42)
+      (let [old-db-id (user/last-used-native-database-id)]
+        (user/last-used-native-database-id! 42)
         (mt/with-test-user :crowberto
-          (let [old-db-id (user/last-used-database-id)]
-            (user/last-used-database-id! 21)
-            (is (= (user/last-used-database-id) 21))
+          (let [old-db-id (user/last-used-native-database-id)]
+            (user/last-used-native-database-id! 21)
+            (is (= (user/last-used-native-database-id) 21))
             (mt/with-test-user :rasta
-              (is (= (user/last-used-database-id) 42)))
-            (user/last-used-database-id! old-db-id)))
-        (user/last-used-database-id! old-db-id)))))
+              (is (= (user/last-used-native-database-id) 42)))
+            (user/last-used-native-database-id! old-db-id)))
+        (user/last-used-native-database-id! old-db-id)))))
 
   (deftest common-name-test
     (testing "common_name should be present depending on what is selected"

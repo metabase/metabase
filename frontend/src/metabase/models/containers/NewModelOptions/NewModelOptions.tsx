@@ -36,7 +36,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
   );
 
   const lastUsedDatabaseId = useSelector(state =>
-    getSetting(state, "last-used-database-id"),
+    getSetting(state, "last-used-native-database-id"),
   );
 
   const collectionId = Urls.extractEntityId(

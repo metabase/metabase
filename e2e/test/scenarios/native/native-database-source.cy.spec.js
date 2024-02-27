@@ -15,7 +15,7 @@ describe(
   { tags: "@external" },
   () => {
     beforeEach(() => {
-      cy.intercept("PUT", "/api/setting/last-used-database-id").as(
+      cy.intercept("PUT", "/api/setting/last-used-native-database-id").as(
         "persistDatabase",
       );
 
@@ -93,7 +93,7 @@ describe(
     });
 
     it("should not update the setting when the same database is selected again", () => {
-      cy.request("PUT", "/api/setting/last-used-database-id", {
+      cy.request("PUT", "/api/setting/last-used-native-database-id", {
         value: SAMPLE_DB_ID,
       });
 

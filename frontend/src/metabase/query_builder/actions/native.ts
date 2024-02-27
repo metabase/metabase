@@ -198,6 +198,6 @@ export const setTemplateTagConfig = createThunkAction(
 
 export const rememberLastUsedDatabase = (id: DatabaseId) =>
   updateSetting({
-    key: "last-used-database-id",
+    key: "last-used-native-database-id",
     value: id,
   });

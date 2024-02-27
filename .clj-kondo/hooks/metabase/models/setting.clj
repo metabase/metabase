@@ -65,7 +65,7 @@
      jwt-user-provisioning-enabled?
      jwt-shared-secret
      last-acknowledged-version
-     last-used-database-id
+     last-used-native-database-id
      ldap-attribute-email
      ldap-attribute-firstname
      ldap-attribute-lastname

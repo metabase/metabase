@@ -227,6 +227,6 @@ export const createMockSettings = (
   "uploads-schema-name": null,
   "user-visibility": null,
   "last-acknowledged-version": "v1",
-  "last-used-database-id": 1,
+  "last-used-native-database-id": 1,
   ...opts,
 });
