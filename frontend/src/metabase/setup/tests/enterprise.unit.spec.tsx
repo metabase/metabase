@@ -252,7 +252,7 @@ describe("setup (EE, no token)", () => {
 
       expect(
         screen.getByText(
-          "We couldn’t connect to our servers to activate the license. Please try again. You can also set this up at a later time in settings.",
+          "We couldn’t connect to our servers to activate the license. Please try again.",
         ),
       ).toBeInTheDocument();
     });
