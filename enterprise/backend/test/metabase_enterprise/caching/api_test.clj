@@ -21,19 +21,16 @@
       (testing "Caching API"
         (mt/with-premium-features #{:cache-granular-controls}
           (mt/with-temp [:model/Database      db     {}
-                         :model/Collection    col1   {}
-                         :model/Collection    col2   {:location (format "/%s/" (:id col1))}
-                         :model/Collection    col3   {}
-                         :model/Dashboard     dash   {:collection_id (:id col1)}
-                         :model/Card          card1  {:database_id   (:id db)
+                         :model/Collection    col1   {:name "col1"}
+                         :model/Dashboard     dash1  {:name          "dash1"
                                                       :collection_id (:id col1)}
-                         :model/Card          card2  {:database_id   (:id db)
+                         :model/Card          card1  {:name          "card1"
+                                                      :database_id   (:id db)
                                                       :collection_id (:id col1)}
-                         :model/Card          card3  {:database_id   (:id db)
-                                                      :collection_id (:id col2)}
-                         :model/Card          card4  {:database_id   (:id db)
-                                                      :collection_id (:id col3)}
-                         :model/Card          card5  {:collection_id (:id col3)}]
+                         :model/Card          card2  {:name          "card2"
+                                                      :database_id   (:id db)
+                                                      :collection_id (:id col1)}
+                         :model/Card          card3  {:name "card3"}]
 
             (testing "No access from regular users"
               (is (= "You don't have permissions to do that."
@@ -53,21 +50,13 @@
                                          :model_id (:id db)
                                          :strategy {:type "nocache" :name "db"}}))
               (is (mt/user-http-request :crowberto :put 200 "ee/caching/"
-                                        {:model    "collection"
-                                         :model_id (:id col1)
-                                         :strategy {:type "nocache" :name "col1"}}))
-              (is (mt/user-http-request :crowberto :put 200 "ee/caching/"
                                         {:model    "dashboard"
-                                         :model_id (:id dash)
+                                         :model_id (:id dash1)
                                          :strategy {:type "nocache" :name "dash"}}))
               (is (mt/user-http-request :crowberto :put 200 "ee/caching/"
                                         {:model    "question"
                                          :model_id (:id card1)
-                                         :strategy {:type "nocache" :name "card1"}}))
-              (is (mt/user-http-request :crowberto :put 200 "ee/caching/"
-                                        {:model    "collection"
-                                         :model_id (:id col2)
-                                         :strategy {:type "nocache" :name "col2"}})))
+                                         :strategy {:type "nocache" :name "card1"}})))
 
             (testing "HTTP responds with correct listings"
               (is (=? {:items [{:model "root" :model_id 0}]}
@@ -75,40 +64,45 @@
               (is (=? {:items [{:model "database" :model_id (:id db)}]}
                       (mt/user-http-request :crowberto :get 200 "ee/caching/" {}
                                             :model :database)))
-              (is (=? {:items [{:model "collection" :model_id (:id col1)}]}
-                      (mt/user-http-request :crowberto :get 200 "ee/caching/" {}
-                                            :model :dashboard)))
-              (is (=? {:items [{:model "dashboard" :model_id (:id dash)}
-                               {:model "question" :model_id (:id card1)}
-                               {:model "collection" :model_id (:id col2)}]}
+              (is (=? {:items [{:model "dashboard" :model_id (:id dash1)}
+                               {:model "question" :model_id (:id card1)}]}
                       (mt/user-http-request :crowberto :get 200 "ee/caching/" {}
                                             :collection (:id col1) :model :dashboard :model :question))))
+
+            (let [test-ids #{(:id dash1) (:id card1) (:id card2) (:id card3)}]
+              (testing "Collection API responds with correct listings"
+                (is (=? [{:id (:id card1) :cache_strategy "nocache"}
+                         {:id (:id card2) :cache_strategy nil}
+                         {:id (:id dash1) :cache_strategy "nocache"}]
+                        (->> (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" (:id col1)) {}
+                                                   :caching true)
+                             :data
+                             (filterv #(contains? test-ids (:id %))))))
+                (is (=? [{:id (:id card3) :cache_strategy nil}]
+                        (->> (mt/user-http-request :crowberto :get 200 "collection/root/items" {}
+                                                   :caching true)
+                             :data
+                             (filterv #(contains? test-ids (:id %))))))))
 
             (testing "We select correct config for something from a db"
               (testing "First card has own config"
                 (is (=? {:type :nocache :name "card1"}
                         (:cache-strategy (#'qp.card/query-for-card card1 {} {} {} {}))))
                 (is (=? {:type :nocache :name "card1"}
-                        (:cache-strategy (#'qp.card/query-for-card card1 {} {} {} {:dashboard-id (u/the-id dash)})))))
-              (testing "Second card should hit collection or dashboard cache"
-                (is (=? {:type :nocache :name "col1"}
+                        (:cache-strategy (#'qp.card/query-for-card card1 {} {} {} {:dashboard-id (u/the-id dash1)})))))
+              (testing "Second card should hit database or dashboard cache"
+                (is (=? {:type :nocache :name "db"}
                         (:cache-strategy (#'qp.card/query-for-card card2 {} {} {} {}))))
                 (is (=? {:type :nocache :name "dash"}
-                        (:cache-strategy (#'qp.card/query-for-card card2 {} {} {} {:dashboard-id (u/the-id dash)})))))
-              (testing "Third card gets other collection config"
-                (is (=? {:type :nocache :name "col2"}
-                        (:cache-strategy (#'qp.card/query-for-card card3 {} {} {} {})))))
-              (testing "Fourth card is in collection with no config and gets db config"
-                (is (=? {:type :nocache :name "db"}
-                        (:cache-strategy (#'qp.card/query-for-card card4 {} {} {} {})))))
-              (testing "Fifth card1 targets other db and gets root config"
+                        (:cache-strategy (#'qp.card/query-for-card card2 {} {} {} {:dashboard-id (u/the-id dash1)})))))
+              (testing "Third card targets other db and gets root config"
                 (is (=? {:type :nocache :name "root"}
-                        (:cache-strategy (#'qp.card/query-for-card card5 {} {} {} {}))))))
+                        (:cache-strategy (#'qp.card/query-for-card card3 {} {} {} {}))))))
 
             (testing "It's possible to delete a configuration"
               (is (nil? (mt/user-http-request :crowberto :delete 204 "ee/caching"
-                                              {:model    "collection"
-                                               :model_id (:id col2)})))
-              (testing "And then card3 gets db config"
-                (is (=? {:type :nocache :name "db"}
-                        (:cache-strategy (#'qp.card/query-for-card card3 {} {} {} {}))))))))))))
+                                              {:model    "database"
+                                               :model_id (:id db)})))
+              (testing "And then card2 gets db config"
+                (is (=? {:type :nocache :name "root"}
+                        (:cache-strategy (#'qp.card/query-for-card card2 {} {} {} {}))))))))))))
