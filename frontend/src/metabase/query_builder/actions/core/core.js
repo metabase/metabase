@@ -30,11 +30,10 @@ import {
   getCard,
   getIsResultDirty,
   getOriginalQuestion,
-  getQuestion,
-  getResultsMetadata,
-  isBasedOnExistingQuestion,
   getParameters,
+  getQuestion,
   getSubmittableQuestion,
+  isBasedOnExistingQuestion,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
@@ -235,15 +234,8 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
-
-    if (isModel) {
-      resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
-        resultsMetadata.columns,
-      );
-    }
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
