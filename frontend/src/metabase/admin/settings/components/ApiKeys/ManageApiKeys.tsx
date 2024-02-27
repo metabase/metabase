@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { t } from "ttag";
 
+import { useListApiKeyQuery } from "metabase/api";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
