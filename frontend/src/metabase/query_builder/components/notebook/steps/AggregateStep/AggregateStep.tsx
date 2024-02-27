@@ -39,8 +39,21 @@ export function AggregateStep({
     updateQuery(nextQuery);
   };
 
-  const handleRemoveAggregation = (aggregation: Lib.AggregationClause) => {
-    const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
+  const handleReorderAggregation = (
+    sourceClause: Lib.AggregationClause,
+    targetClause: Lib.AggregationClause,
+  ) => {
+    const nextQuery = Lib.swapClauses(
+      query,
+      stageIndex,
+      sourceClause,
+      targetClause,
+    );
+    updateQuery(nextQuery);
+  };
+
+  const handleRemoveAggregation = (clause: Lib.AggregationClause) => {
+    const nextQuery = Lib.removeClause(query, stageIndex, clause);
     updateQuery(nextQuery);
   };
 
@@ -66,6 +79,7 @@ export function AggregateStep({
           onClose={onClose}
         />
       )}
+      onReorder={handleReorderAggregation}
       onRemove={handleRemoveAggregation}
       data-testid="aggregate-step"
     />

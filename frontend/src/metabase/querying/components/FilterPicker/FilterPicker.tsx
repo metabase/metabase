@@ -15,9 +15,7 @@ export interface FilterPickerProps {
   filter?: Lib.FilterClause;
   filterIndex?: number;
 
-  onSelect: (
-    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
-  ) => void;
+  onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
 }
 
@@ -46,9 +44,7 @@ export function FilterPicker({
     setFilter(initialFilter);
   }, [initialFilter]);
 
-  const handleChange = (
-    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
-  ) => {
+  const handleChange = (filter: Lib.Filterable) => {
     onSelect(filter);
     onClose?.();
   };

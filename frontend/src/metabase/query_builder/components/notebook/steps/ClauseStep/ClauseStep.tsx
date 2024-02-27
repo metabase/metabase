@@ -36,8 +36,8 @@ export interface ClauseStepProps<T> {
   readOnly?: boolean;
   renderName: (item: T, index: number) => JSX.Element | string;
   renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
-  onRemove?: ((item: T, index: number) => void) | null;
-  onReorder?: (sourceItem: T, targetItem: T) => void;
+  onRemove: ((item: T, index: number) => void) | null;
+  onReorder: (sourceItem: T, targetItem: T) => void;
   "data-testid"?: string;
 }
 
