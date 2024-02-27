@@ -170,7 +170,7 @@ function getCurrentMetricData({ series, insights, settings }) {
 
   if (metricColIndex === -1) {
     throw Error(
-      `The chosen metric column could not be found: ${settings["scalar.field"]}`,
+      "There was a problem with the primary number you chose. Check the viz settings and select a valid column for the primary number field",
     );
   }
 
