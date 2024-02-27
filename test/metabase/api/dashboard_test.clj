@@ -4134,7 +4134,7 @@
                                       :dataset_query {:database (mt/id)
                                                       :type     :query
                                                       :query    {:source-table (mt/id :people)}}
-                                      :dataset       true}
+                                      :type          :model}
            :model/Dashboard {dash-id :id} {:name "My Awesome Dashboard"}
            :model/DashboardCard {dash-card-id :id} {:dashboard_id dash-id
                                                     :card_id      card-id}
@@ -4258,7 +4258,7 @@
                                                                                  {:base-type :type/Text}]
                                                                                 [:field (mt/id :people :source)
                                                                                  {:base-type :type/Text}]]}}
-                                      :dataset       true}
+                                      :type          :model}
            :model/Dashboard {dash-id        :id
                              dashboard-name :name} {:name       "My Awesome Dashboard"
                                                     :parameters [param]}
