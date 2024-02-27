@@ -5855,6 +5855,9 @@ databaseChangeLog:
             path: permissions/view_data.sql
             relativeToChangelogFile: true
       rollback:
+        - sqlFile:
+            path: permissions/rollback/view_data.sql
+            relativeToChangelogFile: true
 
   - changeSet:
       id: v50.2024-02-26T22:15:55
@@ -5865,6 +5868,9 @@ databaseChangeLog:
             path: permissions/create_queries.sql
             relativeToChangelogFile: true
       rollback:
+        - sqlFile:
+            path: permissions/rollback/create_queries.sql
+            relativeToChangelogFile: true
 
   - changeSet:
       id: v50.2024-02-29T15:06:43
