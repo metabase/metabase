@@ -731,7 +731,7 @@
                            [:query_type    [:maybe [:or :string :keyword]]]
                            [:table_id      [:maybe ms/PositiveInt]]
                            ;; is_upload can be provided for an optional optimization
-                           [:is_upload {:optional true} [:maybe :boolean]]]]]
+                           [:is_upload {:optional true} [:maybe :any]]]]]
   (let [table-ids             (->> models
                                    ;; as an optimization when listing collection items (GET /api/collection/items),
                                    ;; we might already know that the table is not an upload if is_upload=false. We

@@ -206,8 +206,8 @@
   (when expected-status-code
     (is (= expected-status-code
            actual-status-code)
-        (format "%s %s expected a status code of %d, got %d. \n\n %s"
-                method-name url expected-status-code actual-status-code body))))
+        (format "%s %s expected a status code of %d, got %d."
+                method-name url expected-status-code actual-status-code))))
 
 (def ^:private method->request-fn
   {:get    http/get
