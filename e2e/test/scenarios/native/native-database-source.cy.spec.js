@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   restore,
   popover,
@@ -9,6 +9,8 @@ import {
 const PG_DB_ID = 2;
 const mongoName = "QA Mongo";
 const additionalPG = "New Database";
+
+const { DATA_GROUP } = USER_GROUPS;
 
 describe(
   "scenarios > question > native > database source",
@@ -168,6 +170,26 @@ describe(
         .click();
 
       cy.get(POPOVER_ELEMENT).should("not.exist");
+    });
+
+    it("users that lose permissions to the last used database should not have that database preselected anymore", () => {
+      cy.signInAsNormalUser();
+      startNativeQuestion();
+      selectDatabase("Sample Database");
+
+      cy.signOut();
+      cy.signInAsAdmin();
+      cy.updatePermissionsGraph({
+        [DATA_GROUP]: {
+          [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        },
+      });
+
+      cy.signOut();
+      cy.signInAsNormalUser();
+      startNativeQuestion();
+      // Postgres will be automatically selected because it's the only dataabse this user can query
+      assertSelectedDatabase("QA Postgres12");
     });
   },
 );
