@@ -13,7 +13,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
@@ -66,7 +66,7 @@ const SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE = {
         id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
         "display-name": "date",
         default: "1999-02-26~2024-02-26",
-        dimension: ["field", 35 /* PEOPLE.BIRTH_DATE */, null],
+        dimension: ["field", PEOPLE.BIRTH_DATE, null],
         "widget-type": "date/range",
       },
     },
