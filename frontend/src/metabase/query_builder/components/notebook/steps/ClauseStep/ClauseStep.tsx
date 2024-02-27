@@ -62,7 +62,7 @@ export const ClauseStep = <T,>({
       if (input.over) {
         const sourceIndex = getItemIndexFromId(input.active.id);
         const targetIndex = getItemIndexFromId(input.over.id);
-        onReorder?.(items[sourceIndex], items[targetIndex]);
+        onReorder(items[sourceIndex], items[targetIndex]);
       }
     },
     [items, onReorder],
