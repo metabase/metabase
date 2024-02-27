@@ -242,7 +242,8 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       const resultsMetadata = getResultsMetadata(getState());
 
       if (!resultsMetadata) {
-        // running the question will populate results metadata in redux store
+        // Running the question will populate results metadata in redux store.
+        // Without it getSubmittableQuestion won't have all the necessary information.
         await dispatch(runQuestionQuery());
       }
     }
