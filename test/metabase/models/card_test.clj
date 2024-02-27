@@ -269,7 +269,7 @@
              (is (= nil
                     metadata)))))
       (testing "Shouldn't remove verified result metadata from native queries (#37009)"
-        (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))]
+        (let [metadata (qp/query->expected-cols (mt/mbql-query checkins))]
           (f (cond-> {:dataset_query (mt/native-query {:native "SELECT * FROM CHECKINS"})
                       :result_metadata metadata}
                (= creating-or-updating "updating")
