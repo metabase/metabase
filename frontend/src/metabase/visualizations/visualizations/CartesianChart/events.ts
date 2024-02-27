@@ -34,7 +34,10 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  ORIGINAL_DATUM_INDEX_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isStructured } from "metabase-lib/queries/utils/card";
 import Question from "metabase-lib/Question";
 import {
@@ -129,7 +132,11 @@ export const getEventColumnsData = (
   seriesIndex: number,
   dataIndex: number,
 ): DataPoint[] => {
-  const datum = chartModel.dataset[dataIndex];
+  const originalDatasetIndex =
+    chartModel.transformedDataset[dataIndex][ORIGINAL_DATUM_INDEX_KEY] ??
+    dataIndex;
+
+  const datum = chartModel.dataset[originalDatasetIndex];
 
   const seriesModel = chartModel.seriesModels[seriesIndex];
   const isBreakoutSeries =
@@ -323,7 +330,11 @@ export const getSeriesClickData = (
     return;
   }
 
-  const datum = chartModel.dataset[dataIndex];
+  const originalDatasetIndex =
+    chartModel.transformedDataset[dataIndex][ORIGINAL_DATUM_INDEX_KEY] ??
+    dataIndex;
+
+  const datum = chartModel.dataset[originalDatasetIndex];
 
   const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
   const dimensions = getEventDimensions(

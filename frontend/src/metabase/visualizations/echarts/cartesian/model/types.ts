@@ -101,16 +101,20 @@ export type BaseXAxisModel = {
   formatter: AxisFormatter;
   axisType: OptionAxisType;
   canBrush?: boolean;
-  tickRenderPredicate?: (value: string | number) => boolean;
 };
 
 export type CategoryXAxisModel = BaseXAxisModel & {
   isHistogram: boolean;
   axisType: "category";
+  tickRenderPredicate?: (index: number, value: string) => boolean;
 };
 
 export type NumericXAxisModel = BaseXAxisModel & {
-  axisType: "value" | "log";
+  isApproximated: boolean;
+  axisType: "category" | "value" | "log";
+  function: "linear" | "pow" | "log";
+  binWidth?: number;
+  range: [number, number];
 };
 
 export type TimeSeriesXAxisModel = BaseXAxisModel & {
@@ -123,6 +127,7 @@ export type TimeSeriesXAxisModel = BaseXAxisModel & {
   ticksMaxInterval?: number;
   ticksMinInterval?: number;
   effectiveTickUnit?: CartesianChartDateTimeAbsoluteUnit;
+  tickRenderPredicate?: (value: string) => boolean;
 };
 
 export type XAxisModel =

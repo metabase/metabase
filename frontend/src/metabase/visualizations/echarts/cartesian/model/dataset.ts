@@ -14,6 +14,9 @@ import type {
   SeriesModel,
   Datum,
   BaseCartesianChartModel,
+  XAxisModel,
+  DimensionModel,
+  NumericXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -24,10 +27,14 @@ import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
+  ORIGINAL_DATUM_INDEX_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
+  TICK_CANDIDATE,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
+import { isRelativeDateTimeUnit } from "metabase-types/guards/date-time";
+import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
 
 /**
  * Sums two metric column values.
@@ -376,7 +383,7 @@ export function getDimensionDisplayValueGetter(
 
   return (value: string) => {
     if (isPowerScale) {
-      return typeof value === "number" ? Math.pow(value, 2) : value;
+      return Math.pow(parseFloat(value), 2);
     }
     if (axisType === "time") {
       // ECharts for ticks ECharts uses UTC time, so we need to adjust the time to the timezone of the dataset
@@ -573,4 +580,102 @@ export const getBubbleSizeDomain = (
   const bubbleSizeDomainMax = Math.max(...bubbleSizeMaxValues);
 
   return [0, bubbleSizeDomainMax];
+};
+
+const smallestNiceValue = (value: number) => {
+  const orderOfMagnitude = Math.pow(10, Math.floor(Math.log10(value)));
+  const normalizedNum = value / orderOfMagnitude;
+
+  let niceValue;
+  if (normalizedNum <= 1) {
+    niceValue = 1;
+  } else if (normalizedNum <= 2) {
+    niceValue = 2;
+  } else if (normalizedNum <= 5) {
+    niceValue = 5;
+  } else {
+    niceValue = 10;
+  }
+
+  return niceValue * orderOfMagnitude;
+};
+
+export const approximateContinuousNumericScale = (
+  transformedDataset: ChartDataset,
+  dimensionModel: DimensionModel,
+  settings: ComputedVisualizationSettings,
+  xAxisModel: NumericXAxisModel,
+  maxWidth: number = screen.width,
+) => {
+  const xAxisScale = settings["graph.x_axis.scale"];
+  if (!xAxisScale) {
+    throw new Error(
+      `Missing "graph.x_axis.scale" in visualization settings ${JSON.stringify(
+        settings,
+      )}`,
+    );
+  }
+
+  const xValues = transformedDataset.map(datum => datum[X_AXIS_DATA_KEY]);
+  const approximatedDataset = [];
+
+  const xInterval = getNumericXInterval(xValues, dimensionModel);
+  const domainRange = Math.abs(xValues[0] - xValues[xValues.length - 1]);
+  const intervalsInRange = domainRange / xInterval;
+
+  const intervalsPerPixel = intervalsInRange / maxWidth;
+  // TODO: may not look nice on sparse data
+  const step =
+    xAxisModel.binWidth != null
+      ? xAxisModel.binWidth
+      : smallestNiceValue(
+          intervalsPerPixel > 1
+            ? Math.round(intervalsPerPixel) * xInterval
+            : xInterval,
+        );
+
+  for (let i = 0; i < transformedDataset.length; i++) {
+    const currentDatum = transformedDataset[i];
+    approximatedDataset.push({
+      ...currentDatum,
+      [ORIGINAL_DATUM_INDEX_KEY]: i,
+      [TICK_CANDIDATE]: true,
+    });
+
+    const nextXValue = transformedDataset[i + 1]?.[X_AXIS_DATA_KEY];
+
+    let currentXValue = currentDatum[X_AXIS_DATA_KEY];
+
+    while (nextXValue != null && currentXValue + step < nextXValue) {
+      currentXValue += step;
+
+      const fakeDatum = {
+        [X_AXIS_DATA_KEY]: currentXValue,
+      };
+
+      if (xAxisModel.binWidth != null) {
+        fakeDatum[TICK_CANDIDATE] = true;
+      }
+
+      approximatedDataset.push(fakeDatum);
+    }
+  }
+
+  return approximatedDataset;
+};
+
+const getNumericXInterval = (
+  xValues: number[],
+  dimensionModel: DimensionModel,
+): number => {
+  if (isRelativeDateTimeUnit(dimensionModel.column.unit)) {
+    return 1;
+  }
+
+  const binningInfo = dimensionModel.column.binning_info;
+  if (binningInfo != null) {
+    // TODO: check whether this be undefined
+    return binningInfo.bin_width;
+  }
+  return computeNumericDataInverval(xValues);
 };

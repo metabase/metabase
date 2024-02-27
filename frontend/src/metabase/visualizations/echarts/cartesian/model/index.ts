@@ -17,12 +17,14 @@ import {
   getSortedSeriesModels,
   applyVisualizationSettingsDataTransformations,
   sortDataset,
+  approximateContinuousNumericScale,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getXAxisModel,
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
+import { isNumericAxis } from "./guards";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
@@ -96,18 +98,6 @@ export const getCartesianChartModel = (
   }
   dataset = sortDataset(dataset, settings["graph.x_axis.scale"]);
 
-  const transformedDataset = applyVisualizationSettingsDataTransformations(
-    dataset,
-    seriesModels,
-    settings,
-  );
-
-  const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
-    rawSeries[0].card.display,
-  );
-
-  const insights = rawSeries.flatMap(series => series.data.insights ?? []);
-
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
@@ -115,6 +105,27 @@ export const getCartesianChartModel = (
     settings,
     renderingContext,
   );
+
+  let transformedDataset = applyVisualizationSettingsDataTransformations(
+    dataset,
+    seriesModels,
+    settings,
+  );
+
+  if (isNumericAxis(xAxisModel) && xAxisModel.isApproximated) {
+    transformedDataset = approximateContinuousNumericScale(
+      transformedDataset,
+      dimensionModel,
+      settings,
+      xAxisModel,
+    );
+  }
+
+  const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
+    rawSeries[0].card.display,
+  );
+
+  const insights = rawSeries.flatMap(series => series.data.insights ?? []);
 
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
