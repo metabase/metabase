@@ -74,7 +74,6 @@ export const ExpressionStep = ({
         const nextQuery = Lib.removeClause(query, stageIndex, clause);
         updateQuery(nextQuery);
       }}
-      withLegacyPopover
     />
   );
 };
