@@ -24,13 +24,14 @@ export function AddAggregationButton({
   const operators = Lib.availableAggregationOperators(query, STAGE_INDEX);
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover opened={isOpened} onClose={() => setIsOpened(false)}>
       <Popover.Target>
         <Tooltip label={t`Add a metric`}>
           <AddAggregationButtonRoot
             icon="add"
             borderless
             onlyIcon={hasAggregations}
+            onClick={() => setIsOpened(!isOpened)}
             aria-label={t`Add aggregation`}
             data-testid="add-aggregation-button"
           >

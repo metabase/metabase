@@ -31,9 +31,13 @@ export function AggregationItem({
   );
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover opened={isOpened} onClose={() => setIsOpened(false)}>
       <Popover.Target>
-        <Root aria-label={displayName} data-testid="aggregation-item">
+        <Root
+          aria-label={displayName}
+          data-testid="aggregation-item"
+          onClick={() => setIsOpened(!isOpened)}
+        >
           <AggregationName>{displayName}</AggregationName>
           <RemoveIcon name="close" onClick={onRemove} />
         </Root>
