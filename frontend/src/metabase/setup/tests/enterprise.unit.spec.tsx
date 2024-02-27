@@ -51,9 +51,11 @@ describe("setup (EE, no token)", () => {
       selectUsageReason("embedding"); // to skip the db connection step
       clickNextStep();
 
-      await screen.findByText(
-        "Unlock access to your paid features before starting",
-      );
+      expect(
+        await screen.findByText(
+          "Unlock access to your paid features before starting",
+        ),
+      ).toBeInTheDocument();
     }
 
     it("should display an error in case of invalid token", async () => {
