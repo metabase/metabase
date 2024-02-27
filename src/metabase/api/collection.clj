@@ -301,6 +301,14 @@
     always-false-hsql-expr
     always-true-hsql-expr))
 
+(defn- join-cache-config [q model-name id-column]
+  (-> q
+      (sql.helpers/left-join [:cache_config :cc] [:and
+                                                  [:= :cc.model model-name]
+                                                  [:= :cc.model_id id-column]])
+      (sql.helpers/select [:cc.strategy :cache_strategy]
+                          [:cc.config :cache_config])))
+
 (defmulti ^:private post-process-collection-children
   {:arglists '([model rows])}
   (fn [model _]
@@ -372,7 +380,7 @@
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
+(defn- card-query [dataset? collection {:keys [archived? caching? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.dataset_query
@@ -408,6 +416,8 @@
       (cond-> dataset?
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
+      (cond-> caching?
+        (join-cache-config "question" :c.id))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
@@ -478,7 +488,7 @@
   [_ rows]
   (map post-process-card-row rows))
 
-(defn- dashboard-query [collection {:keys [archived? pinned-state]}]
+(defn- dashboard-query [collection {:keys [archived? caching? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
@@ -495,6 +505,8 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]]}
+      (cond-> caching?
+        (join-cache-config "dashboard" :d.id))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
@@ -624,7 +636,9 @@
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
    ;; for determining whether a model is based on a csv-uploaded table
-   [:table_id :integer] [:is_upload :boolean] :query_type])
+   [:table_id :integer] [:is_upload :boolean] :query_type
+   ;; for cache configuration
+   :cache_strategy :cache_config])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."
@@ -799,10 +813,11 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything"
-  [id models archived pinned_state sort_column sort_direction]
+  [id models archived caching pinned_state sort_column sort_direction]
   {id             ms/PositiveInt
    models         [:maybe Models]
    archived       [:maybe ms/BooleanString]
+   caching        [:maybe ms/BooleanString]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]}
@@ -810,6 +825,7 @@
     (collection-children (api/read-check Collection id)
                          {:models       model-kwds
                           :archived?    (Boolean/parseBoolean archived)
+                          :caching?     (Boolean/parseBoolean caching)
                           :pinned-state (keyword pinned_state)
                           :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                                          (or (some-> sort_direction normalize-sort-choice) :asc)]})))
@@ -854,9 +870,10 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models archived namespace pinned_state sort_column sort_direction]
+  [models archived caching namespace pinned_state sort_column sort_direction]
   {models         [:maybe Models]
    archived       [:maybe ms/BooleanString]
+   caching        [:maybe ms/BooleanString]
    namespace      [:maybe ms/NonBlankString]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
@@ -870,6 +887,7 @@
      root-collection
      {:models       model-kwds
       :archived?    (Boolean/parseBoolean archived)
+      :caching?     (Boolean/parseBoolean caching)
       :pinned-state (keyword pinned_state)
       :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                      (or (some-> sort_direction normalize-sort-choice) :asc)]})))
