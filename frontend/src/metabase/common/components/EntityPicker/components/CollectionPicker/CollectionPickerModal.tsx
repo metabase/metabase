@@ -1,11 +1,11 @@
 import { useCallback, useState, useRef } from "react";
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
+import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
-import type { CollectionPickerItem } from "../../types";
+import type { CollectionPickerItem, EntityTab } from "../../types";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
 
 import {
@@ -15,10 +15,10 @@ import {
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
 interface CollectionPickerModalProps {
-  title: string;
+  title?: string;
   onChange: (item: CollectionPickerItem) => void;
   onClose: () => void;
-  options: CollectionPickerOptions;
+  options?: CollectionPickerOptions;
   value: Pick<CollectionPickerItem, "id" | "model">;
 }
 
@@ -36,7 +36,12 @@ export const CollectionPickerModal = ({
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
     null,
   );
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  const [
+    isCreateDialogOpen,
+    { turnOn: openCreateDialog, turnOff: closeCreateDialog },
+  ] = useToggle(false);
+
   const pickerRef = useRef<{
     onFolderSelect: (item: { folder: CollectionPickerItem }) => void;
   }>();
@@ -67,7 +72,7 @@ export const CollectionPickerModal = ({
   const modalActions = [
     <Button
       key="collection-on-the-go"
-      onClick={() => setCreateDialogOpen(true)}
+      onClick={openCreateDialog}
       leftIcon={<Icon name="add" />}
       disabled={selectedItem?.can_write === false}
     >
@@ -75,11 +80,11 @@ export const CollectionPickerModal = ({
     </Button>,
   ];
 
-  const tabs = [
+  const tabs: [EntityTab] = [
     {
       displayName: t`Collections`,
       model: "collection",
-      icon: "folder" as IconName,
+      icon: "folder",
       element: (
         <CollectionPicker
           onItemSelect={handleItemSelect}
@@ -108,11 +113,11 @@ export const CollectionPickerModal = ({
         options={options}
         searchResultFilter={searchFilter}
         actionButtons={modalActions}
-        trapFocus={!createDialogOpen}
+        trapFocus={!isCreateDialogOpen}
       />
       <NewCollectionDialog
-        isOpen={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
+        isOpen={isCreateDialogOpen}
+        onClose={closeCreateDialog}
         parentCollectionId={selectedItem?.id || value?.id || "root"}
         onNewCollection={handleNewCollectionCreate}
       />

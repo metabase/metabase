@@ -8,24 +8,17 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { isRootCollection } from "metabase/collections/utils";
 import { useCollectionQuery } from "metabase/common/hooks";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { CollectionId } from "metabase-types/api";
 
-import type {
-  PickerState,
-  CollectionPickerItem,
-  TypeWithModel,
-  TisFolder,
-} from "../../types";
+import type { PickerState, CollectionPickerItem } from "../../types";
 import type { EntityPickerModalOptions } from "../EntityPickerModal";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
 import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
+import { getStateFromIdPath, getCollectionIdPath, isFolder } from "./utils";
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
@@ -43,10 +36,6 @@ interface CollectionPickerProps {
   initialValue?: Partial<CollectionPickerItem>;
   options?: CollectionPickerOptions;
 }
-
-const isFolder: TisFolder<CollectionPickerItem> = <TItem extends TypeWithModel>(
-  item: TItem,
-) => item.model === "collection";
 
 export const CollectionPickerInner = (
   {
@@ -138,70 +127,3 @@ export const CollectionPickerInner = (
 };
 
 export const CollectionPicker = forwardRef(CollectionPickerInner);
-
-const getCollectionIdPath = (
-  collection: Pick<
-    CollectionPickerItem,
-    "id" | "location" | "is_personal" | "effective_location"
-  >,
-  userPersonalCollectionId?: CollectionId,
-): CollectionId[] => {
-  const location = collection?.effective_location ?? collection?.location;
-  const pathFromRoot: CollectionId[] =
-    location?.split("/").filter(Boolean).map(Number) ?? [];
-
-  const isInUserPersonalCollection =
-    userPersonalCollectionId &&
-    (collection.id === userPersonalCollectionId ||
-      pathFromRoot.includes(userPersonalCollectionId));
-
-  if (isRootCollection(collection)) {
-    return ["root"];
-  }
-
-  if (collection.id === PERSONAL_COLLECTIONS.id) {
-    return ["personal"];
-  }
-
-  if (isInUserPersonalCollection) {
-    return [...pathFromRoot, collection.id];
-  } else if (collection.is_personal) {
-    return ["personal", ...pathFromRoot, collection.id];
-  } else {
-    return ["root", ...pathFromRoot, collection.id];
-  }
-};
-
-const getStateFromIdPath = ({
-  idPath,
-  namespace,
-}: {
-  idPath: CollectionId[];
-  namespace?: "snippets";
-}): PickerState<CollectionPickerItem> => {
-  const statePath: PickerState<CollectionPickerItem> = [
-    {
-      selectedItem: {
-        model: "collection",
-        id: idPath[0],
-      },
-    },
-  ];
-
-  idPath.forEach((id, index) => {
-    const nextLevelId = idPath[index + 1] ?? null;
-
-    statePath.push({
-      query: {
-        collection: id,
-        models: ["collection"],
-        namespace,
-      },
-      selectedItem: nextLevelId
-        ? { model: "collection", id: nextLevelId }
-        : null,
-    });
-  });
-
-  return statePath;
-};

@@ -30,7 +30,7 @@ export interface NestedItemPickerProps<TItem extends TypeWithModel> {
 }
 
 const generateKey = (query?: SearchListQuery) =>
-  JSON.stringify(query ?? "root").slice(0, 255);
+  JSON.stringify(query ?? "root");
 
 export function NestedItemPicker<TItem extends TypeWithModel>({
   onFolderSelect,
@@ -41,13 +41,9 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
   isFolder,
   listResolver: ListResolver,
 }: NestedItemPickerProps<TItem>) {
-  const handleFolderSelect = (folder: TItem) => {
-    onFolderSelect({ folder });
-  };
-
   const handleClick = (item: TItem) => {
     if (isFolder(item)) {
-      handleFolderSelect(item);
+      onFolderSelect({ folder: item });
     } else {
       onItemSelect(item);
     }

@@ -35,13 +35,13 @@ export const defaultOptions: EntityPickerModalOptions = {
 };
 
 export interface EntityPickerModalProps<TItem> {
-  title: string;
+  title?: string;
   selectedItem: TItem | null;
   onConfirm: () => void;
   onItemSelect: (item: TItem) => void;
   canSelectItem: boolean;
   onClose: () => void;
-  tabs: EntityTab[];
+  tabs: [EntityTab, ...EntityTab[]]; // requires at least one
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   actionButtons?: JSX.Element[];

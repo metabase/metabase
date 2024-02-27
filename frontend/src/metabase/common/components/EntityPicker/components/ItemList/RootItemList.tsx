@@ -1,4 +1,4 @@
-import { useAsync } from "react-use";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useCollectionQuery } from "metabase/common/hooks";
@@ -61,7 +61,7 @@ export const RootItemList = ({
     error: rootCollectionError,
   } = useCollectionQuery({ id: "root" });
 
-  const { value: data, loading: isLoading } = useAsync(async () => {
+  const data = useMemo(() => {
     const collectionsData: CollectionPickerItem[] = [];
 
     if (options.showRootCollection || options.namespace === "snippets") {
@@ -105,14 +105,19 @@ export const RootItemList = ({
     }
 
     return collectionsData;
-  }, [rootCollection]);
+  }, [
+    currentUser,
+    personalCollection,
+    rootCollection,
+    isAdmin,
+    options,
+    rootCollectionError,
+  ]);
 
   return (
     <ItemList
       items={data}
-      isLoading={
-        isLoading || isLoadingRootCollecton || isLoadingPersonalCollecton
-      }
+      isLoading={isLoadingRootCollecton || isLoadingPersonalCollecton}
       onClick={onClick}
       selectedItem={selectedItem}
       itemName={itemName}
