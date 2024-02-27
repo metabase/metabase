@@ -26,7 +26,6 @@ export const Data = ({
   databases,
   databaseConfigurations,
   setDatabaseConfiguration,
-  clearOverrides,
 }: {
   databases: Database[];
   databaseConfigurations: Map<number, CacheConfig>;
@@ -34,7 +33,6 @@ export const Data = ({
     databaseId: number,
     config: CacheConfig | null,
   ) => void;
-  clearOverrides: () => void;
 }) => {
   const generalStrategy = databaseConfigurations.get(0)?.strategy;
   const generalStrategyLabel = generalStrategy
@@ -111,7 +109,9 @@ export const Data = ({
           })}
           <ClearOverridesButton
             onClick={() => {
-              clearOverrides();
+              console.log('clearing all overrides');
+              console.log('databases', databases);
+              databases.forEach(({ id }) => setDatabaseConfiguration(id, null));
             }}
           >{t`Clear all overrides`}</ClearOverridesButton>
         </RuleEditorPanel>

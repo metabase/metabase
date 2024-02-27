@@ -73,6 +73,7 @@ export const Caching = () => {
 
   const setDatabaseConfiguration = useCallback(
     (databaseId: number, config: CacheConfig | null) => {
+      // TODO: perhaps clear all overrides is not working because of how otherConfigs is working
       const otherConfigs = cacheConfigs.filter(
         config =>
           config.modelType === "database" && config.model_id !== databaseId,
@@ -119,9 +120,6 @@ export const Caching = () => {
             databases={databases}
             databaseConfigurations={databaseConfigurations}
             setDatabaseConfiguration={setDatabaseConfiguration}
-            clearOverrides={() => {
-              // TODO: implement
-            }}
           />
         </TabContentWrapper>
       </TabsPanel>
