@@ -50,9 +50,9 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-    (java.io ByteArrayInputStream)
-    (org.apache.poi.ss.usermodel DataFormatter)
-    (org.quartz.impl StdSchedulerFactory)))
+   (java.io ByteArrayInputStream)
+   (org.apache.poi.ss.usermodel DataFormatter)
+   (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -915,6 +915,23 @@
                                                    {:result_metadata new-metadata})]
             (is (= ["UPDATED" "UPDATED"]
                    (map :display_name (:result_metadata updated))))))))))
+
+(deftest updating-native-card-preserves-metadata
+  (testing "A trivial change in a native question should not remove result_metadata (#37009)"
+    (let [query (to-native (updating-card-updates-metadata-query))
+          updated-query (update-in query [:native :query] str/replace #"\d+$" "1000")]
+      ;; sanity check
+      (is (not= query updated-query))
+      ;; the actual test
+      (mt/with-model-cleanup [:model/Card]
+        (let [card (mt/user-http-request :rasta :post 200 "card"
+                                         (card-with-name-and-query "card-name"
+                                                                   query))
+              metadata (:result_metadata card)]
+          (is (some? metadata))
+          (let [updated (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
+                                              {:dataset_query updated-query})]
+            (is (= metadata (:result_metadata updated)))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"

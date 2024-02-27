@@ -212,12 +212,6 @@ export const getTables = createSelector(
   },
 );
 
-export const getNativeDatabases = createSelector(
-  [getDatabasesList],
-  databases =>
-    databases && databases.filter(db => db.native_permissions === "write"),
-);
-
 export const getTableMetadata = createSelector(
   [getTableId, getMetadata],
   (tableId, metadata) => metadata.table(tableId),
