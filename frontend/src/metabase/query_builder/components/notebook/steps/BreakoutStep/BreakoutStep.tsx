@@ -50,7 +50,7 @@ function BreakoutStep({
       color={color}
       isLastOpened={isLastOpened}
       renderName={renderBreakoutName}
-      renderPopover={({ item: breakout, index }) => (
+      renderPopover={({ item: breakout, index, onClose }) => (
         <BreakoutPopover
           query={query}
           stageIndex={stageIndex}
@@ -58,6 +58,7 @@ function BreakoutStep({
           breakoutIndex={index}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
+          onClose={onClose}
         />
       )}
       onRemove={handleRemoveBreakout}
@@ -76,7 +77,7 @@ interface BreakoutPopoverProps {
     breakout: Lib.BreakoutClause,
     column: Lib.ColumnMetadata,
   ) => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const BreakoutPopover = ({

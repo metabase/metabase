@@ -232,7 +232,6 @@ export function AggregationPicker({
           stageIndex={stageIndex}
           columnGroups={columnGroups}
           hasTemporalBucketing
-          maxHeight={maxHeight}
           color="summarize"
           checkIsColumnSelected={checkColumnSelected}
           onSelect={handleColumnSelect}

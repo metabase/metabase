@@ -55,7 +55,7 @@ export function AggregateStep({
       color={color}
       isLastOpened={isLastOpened}
       renderName={renderAggregationName}
-      renderPopover={({ item: aggregation, index }) => (
+      renderPopover={({ item: aggregation, index, onClose }) => (
         <AggregationPopover
           query={query}
           stageIndex={stageIndex}
@@ -63,6 +63,7 @@ export function AggregateStep({
           clauseIndex={index}
           onAddAggregation={handleAddAggregation}
           onUpdateAggregation={handleUpdateAggregation}
+          onClose={onClose}
         />
       )}
       onRemove={handleRemoveAggregation}
@@ -83,8 +84,7 @@ interface AggregationPopoverProps {
 
   clauseIndex?: number;
 
-  // Implicitly passed by metabase/components/Triggerable
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 function AggregationPopover({

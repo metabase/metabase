@@ -23,7 +23,7 @@ type RenderItemOpts<T> = {
 type RenderPopoverOpts<T> = {
   item?: T;
   index?: number;
-  onClose?: () => void;
+  onClose: () => void;
 };
 
 export interface ClauseStepProps<T> {
