@@ -16,7 +16,7 @@
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Database Field Metric
+    :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric
             PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
             Table User]]
    [metabase.models.humanization :as humanization]
@@ -342,7 +342,7 @@
 (defn- metric-metrics
   "Get metrics based on Metrics."
   []
-  {:metrics (t2/count Metric)})
+  {:metrics (t2/count LegacyMetric)})
 
 
 ;;; Execution Metrics

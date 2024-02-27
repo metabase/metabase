@@ -12,7 +12,7 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.setting :as setting]
@@ -74,7 +74,7 @@
   [instance]
   (some (fn [model]
           (mi/instance-of? model instance))
-        [Pulse Dashboard Metric Segment Field User]))
+        [Pulse Dashboard LegacyMetric Segment Field User]))
 
 (defn- spit-entity!
   [path entity]

@@ -15,7 +15,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Collection Database Field Metric Segment Table]]
+    :refer [Card Collection Database Field LegacyMetric Segment Table]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -148,7 +148,7 @@
 (deftest source-root-metric-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/LegacyMetric"
     (testing "The source of a metric is its underlying table."
-      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+      (t2.with-temp/with-temp [LegacyMetric metric {:table_id   (mt/id :venues)
                                               :definition {:aggregation [[:count]]}}]
         (let [{:keys [entity source]} (#'magic/->root metric)]
           (is (= entity metric))
@@ -215,7 +215,7 @@
         (is (pos? (count (:dashcards (magic/automagic-analysis field {})))))))))
 
 (deftest metric-test
-  (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)
+  (t2.with-temp/with-temp [LegacyMetric metric {:table_id (mt/id :venues)
                                           :definition {:aggregation [[:count]]}}]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
@@ -690,7 +690,7 @@
 (deftest test-metric-title-test
   (testing "Given the current automagic_dashboards/metric/GenericMetric.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [Metric {metric-name :name :as metric} {:table_id   (mt/id :venues)
+      (mt/with-temp [LegacyMetric {metric-name :name :as metric} {:table_id   (mt/id :venues)
                                                             :definition {:aggregation [[:count]]}}]
         (is (= (format "A look at the %s metrics" metric-name)
                (:name (mt/with-test-user :rasta (magic/automagic-analysis metric nil)))))))))
@@ -925,7 +925,7 @@
                  Table    {table-id :id} {:db_id db-id}
                  Field    _ {:table_id table-id}
                  Field    _ {:table_id table-id}
-                 Metric   _ {:table_id table-id}]
+                 LegacyMetric   _ {:table_id table-id}]
     (mt/with-test-user :rasta
       ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
       @api/*current-user-permissions-set*
@@ -1328,10 +1328,10 @@
 (deftest linked-metrics-test
   (testing "Testing the ability to return linked metrics based on a provided entity."
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Metric total-orders {:name       "Total Orders"
+      (t2.with-temp/with-temp [LegacyMetric total-orders {:name       "Total Orders"
                                                     :table_id   (mt/id :orders)
                                                     :definition {:aggregation [[:count]]}}
-                               Metric avg-quantity-ordered {:name       "Average Quantity Ordered"
+                               LegacyMetric avg-quantity-ordered {:name       "Average Quantity Ordered"
                                                             :table_id   (mt/id :orders)
                                                             :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
         (testing "A metric links to a seq of a normalized version of itself"
@@ -1391,10 +1391,10 @@
 (deftest combination-grounded-metrics->dashcards-test
   (testing "Dashcard creation example test"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Metric _total-orders {:name       "Total Orders"
+      (t2.with-temp/with-temp [LegacyMetric _total-orders {:name       "Total Orders"
                                                      :table_id   (mt/id :orders)
                                                      :definition {:aggregation [[:count]]}}
-                               Metric _avg-quantity-ordered {:name       "Average Quantity Ordered"
+                               LegacyMetric _avg-quantity-ordered {:name       "Average Quantity Ordered"
                                                              :table_id   (mt/id :orders)
                                                              :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
         (mt/with-test-user :rasta
@@ -1438,10 +1438,10 @@
 (deftest generate-dashboard-pipeline-test
   (testing "Example new pipeline dashboard generation test"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [Metric _total-orders {:name       "Total Orders"
+      (t2.with-temp/with-temp [LegacyMetric _total-orders {:name       "Total Orders"
                                                      :table_id   (mt/id :orders)
                                                      :definition {:aggregation [[:count]]}}
-                               Metric _avg-quantity-ordered {:name       "Average Quantity Ordered"
+                               LegacyMetric _avg-quantity-ordered {:name       "Average Quantity Ordered"
                                                              :table_id   (mt/id :orders)
                                                              :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
         (mt/with-test-user :rasta

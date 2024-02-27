@@ -22,7 +22,7 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -281,7 +281,7 @@
 
 (defmethod load! "metrics"
   [path context]
-  (maybe-upsert-many! context Metric
+  (maybe-upsert-many! context LegacyMetric
     (for [metric (slurp-dir path)]
       (-> metric
           (assoc :table_id   (:table context)

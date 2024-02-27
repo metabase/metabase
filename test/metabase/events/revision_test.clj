@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.events :as events]
    [metabase.models
-    :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
+    :refer [Card Dashboard DashboardCard Database LegacyMetric Revision Segment Table]]
    [metabase.models.dashboard :as dashboard]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -269,7 +269,7 @@
   (testing :event/metric-create
     (t2.with-temp/with-temp [Database {database-id :id} {}
                              Table    {:keys [id]}      {:db_id database-id}
-                             Metric   metric            {:table_id id, :definition {:a "b"}}]
+                             LegacyMetric   metric            {:table_id id, :definition {:a "b"}}]
       (events/publish-event! :event/metric-create {:object metric :user-id (mt/user->id :rasta)})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                                     :model "Metric"
@@ -295,7 +295,7 @@
   (testing :event/metric-update
    (t2.with-temp/with-temp [Database {database-id :id} {}
                             Table    {:keys [id]}      {:db_id database-id}
-                            Metric   metric            {:table_id id, :definition {:a "b"}}]
+                            LegacyMetric   metric            {:table_id id, :definition {:a "b"}}]
      (events/publish-event! :event/metric-update
                             (assoc {:object metric}
                                    :revision-message "updated"
@@ -324,7 +324,7 @@
   (testing ":metric-delete"
     (t2.with-temp/with-temp [Database {database-id :id} {}
                              Table    {:keys [id]}      {:db_id database-id}
-                             Metric   metric            {:table_id id, :definition {:a "b"}, :archived true}]
+                             LegacyMetric   metric            {:table_id id, :definition {:a "b"}, :archived true}]
       (events/publish-event! :event/metric-delete {:object metric :user-id (mt/user->id :rasta)})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                                     :model "Metric"

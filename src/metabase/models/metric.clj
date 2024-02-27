@@ -27,7 +27,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
-(def Metric
+(def LegacyMetric
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
   We'll keep this till we replace all these symbols in our codebase."
   :model/LegacyMetric)
@@ -50,14 +50,14 @@
   (u/prog1 (t2/changes metric)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)
-      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id Metric :id id))
+      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id LegacyMetric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
 (t2/define-before-delete :model/LegacyMetric
   [{:keys [id] :as _metric}]
   (t2/delete! :model/Revision :model "Metric" :model_id id))
 
-(defmethod mi/perms-objects-set Metric
+(defmethod mi/perms-objects-set LegacyMetric
   [metric read-or-write]
   (let [table (or (:table metric)
                   (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
@@ -119,7 +119,7 @@
       [table-id :- ::lib.schema.id/table]
       (-> table-id table-id->db-id db-id->metadata-provider))))
 
-(methodical/defmethod t2.hydrate/batched-hydrate [Metric :definition_description]
+(methodical/defmethod t2.hydrate/batched-hydrate [LegacyMetric :definition_description]
   [_model _key metrics]
   (let [table-id->warmed-metadata-provider (metrics->table-id->warmed-metadata-provider metrics)]
     (for [metric metrics
@@ -129,11 +129,11 @@
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
 
-(defmethod revision/serialize-instance Metric
+(defmethod revision/serialize-instance LegacyMetric
   [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defmethod revision/diff-map Metric
+(defmethod revision/diff-map LegacyMetric
   [model metric1 metric2]
   (if-not metric1
     ;; model is the first version of the metric
@@ -153,7 +153,7 @@
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
 
-(defmethod serdes/hash-fields Metric
+(defmethod serdes/hash-fields LegacyMetric
   [_metric]
   [:name (serdes/hydrated-hash :table) :created_at])
 

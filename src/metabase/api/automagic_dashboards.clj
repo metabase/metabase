@@ -12,7 +12,7 @@
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
@@ -119,7 +119,7 @@
 
 (defmethod ->entity :metric
   [_entity-type metric-id-str]
-  (api/read-check (t2/select-one Metric :id (ensure-int metric-id-str))))
+  (api/read-check (t2/select-one LegacyMetric :id (ensure-int metric-id-str))))
 
 (defmethod ->entity :field
   [_entity-type field-id-str]

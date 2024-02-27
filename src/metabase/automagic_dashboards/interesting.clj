@@ -52,7 +52,7 @@
     [metabase.mbql.util :as mbql.u]
     [metabase.models.field :as field :refer [Field]]
     [metabase.models.interface :as mi]
-    [metabase.models.metric :refer [Metric]]
+    [metabase.models.metric :refer [LegacyMetric]]
     [metabase.models.table :refer [Table]]
     [metabase.util :as u]
     [metabase.util.date-2 :as u.date]
@@ -151,11 +151,11 @@
   [_ {:keys [display_name full-name]}]
   (or full-name display_name))
 
-(defmethod ->reference [:string Metric]
+(defmethod ->reference [:string LegacyMetric]
   [_ {:keys [name full-name]}]
   (or full-name name))
 
-(defmethod ->reference [:mbql Metric]
+(defmethod ->reference [:mbql LegacyMetric]
   [_ {:keys [id definition]}]
   (if id
     [:metric id]

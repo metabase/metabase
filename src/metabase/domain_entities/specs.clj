@@ -31,11 +31,11 @@
 
 (def ^:private BreakoutDimensions [MBQL])
 
-(def ^:private Metrics {Identifier {(s/required-key :aggregation) MBQL
-                                    (s/required-key :name)        Identifier
-                                    (s/optional-key :breakout)    BreakoutDimensions
-                                    (s/optional-key :filter)      MBQL
-                                    (s/optional-key :description) Description}})
+(def ^:private LegacyMetrics {Identifier {(s/required-key :aggregation) MBQL
+                                          (s/required-key :name)        Identifier
+                                          (s/optional-key :breakout)    BreakoutDimensions
+                                          (s/optional-key :filter)      MBQL
+                                          (s/optional-key :description) Description}})
 
 (def ^:private Segments {Identifier {(s/required-key :filter)      MBQL
                                      (s/required-key :name)        Identifier
@@ -48,7 +48,7 @@
    (s/optional-key :description)         Description
    (s/required-key :required_attributes) Attributes
    (s/optional-key :optional_attributes) Attributes
-   (s/optional-key :metrics)             Metrics
+   (s/optional-key :metrics)             LegacyMetrics
    (s/optional-key :segments)            Segments
    (s/optional-key :breakout_dimensions) BreakoutDimensions})
 
@@ -70,7 +70,7 @@
    DomainEntitySpec
    {MBQL                  mbql.normalize/normalize
     Segments              add-name-from-key
-    Metrics               add-name-from-key
+    LegacyMetrics               add-name-from-key
     BreakoutDimensions    (fn [breakout-dimensions]
                             (for [dimension breakout-dimensions]
                               (if (string? dimension)

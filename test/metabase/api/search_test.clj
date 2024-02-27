@@ -9,7 +9,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
-            DashboardCard Database Metric PermissionsGroup
+            DashboardCard Database LegacyMetric PermissionsGroup
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.collection :as collection]
    [metabase.models.database :as database]
@@ -161,7 +161,7 @@
                    Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
                                                      :dataset true)
                    Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                   Metric      metric         (assoc (data-map "metric %s metric")
+                   LegacyMetric      metric         (assoc (data-map "metric %s metric")
                                                      :table_id (mt/id :checkins))
                    Segment     segment        (data-map "segment %s segment")]
       (f {:action     action
@@ -484,7 +484,7 @@
     (mt/with-temp [Database {db-id :id} {}
                    Table    {table-id :id} {:db_id  db-id
                                             :schema nil}
-                   Metric   _ {:table_id table-id
+                   LegacyMetric   _ {:table_id table-id
                                :name     "test metric"}]
       (perms/revoke-data-perms! (perms-group/all-users) db-id)
       (is (= []
@@ -689,7 +689,7 @@
                      Card        _ (archived {:name "dataset test dataset" :dataset true})
                      Dashboard   _ (archived {:name "dashboard test dashboard 2"})
                      Collection  _ (archived {:name "collection test collection 2"})
-                     Metric      _ (archived {:name     "metric test metric 2"
+                     LegacyMetric      _ (archived {:name     "metric test metric 2"
                                               :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment 2"})]
         (is (= (default-search-results)
@@ -710,7 +710,7 @@
                      Card        _ (archived {:name "dataset test dataset" :dataset true})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     Metric      _ (archived {:name     "metric test metric"
+                     LegacyMetric      _ (archived {:name     "metric test metric"
                                               :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (= (default-archived-results)
@@ -727,7 +727,7 @@
                      Card        _ (archived {:name "dataset test dataset" :dataset true})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     Metric      _ (archived {:name     "metric test metric"
+                     LegacyMetric      _ (archived {:name     "metric test metric"
                                               :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (ordered-subset? (default-archived-results)
@@ -877,11 +877,11 @@
        Database  _              {:name (str "database 3 " search-string)}
        Table     {table-id :id} {:db_id  db-id
                                  :schema nil}
-       Metric    _              {:table_id table-id
+       LegacyMetric    _              {:table_id table-id
                                  :name     (str "metric 1 " search-string)}
-       Metric    _              {:table_id table-id
+       LegacyMetric    _              {:table_id table-id
                                  :name     (str "metric 1 " search-string)}
-       Metric    _              {:table_id table-id
+       LegacyMetric    _              {:table_id table-id
                                  :name     (str "metric 2 " search-string)}
        Segment   _              {:table_id table-id
                                  :name     (str "segment 1 " search-string)}

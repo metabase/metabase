@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.http-client :as client]
    [metabase.models :refer [Database Revision Segment Table]]
-   [metabase.models.metric :as metric :refer [Metric]]
+   [metabase.models.metric :as metric :refer [LegacyMetric]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.server.middleware.util :as mw.util]
@@ -107,7 +107,7 @@
 (deftest update-test
   (testing "PUT /api/metric"
     (testing "test security. Requires superuser perms"
-      (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :checkins)}]
+      (t2.with-temp/with-temp [LegacyMetric metric {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :put 403 (str "metric/" (u/the-id metric))
@@ -137,7 +137,7 @@
 
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
-                   Metric   {:keys [id]} {:table_id table-id}]
+                   LegacyMetric   {:keys [id]} {:table_id table-id}]
       (is (= (merge metric-defaults
                     {:name       "Costa Rica"
                      :creator_id (mt/user->id :rasta)
@@ -161,26 +161,26 @@
 
 (deftest archive-test
   (testing "Can we archive a Metric with the PUT endpoint?"
-    (t2.with-temp/with-temp [Metric {:keys [id]} {:table_id (mt/id :checkins)}]
+    (t2.with-temp/with-temp [LegacyMetric {:keys [id]} {:table_id (mt/id :checkins)}]
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived true, :revision_message "Archive the Metric"})))
       (is (= true
-             (t2/select-one-fn :archived Metric :id id))))))
+             (t2/select-one-fn :archived LegacyMetric :id id))))))
 
 (deftest unarchive-test
   (testing "Can we unarchive a Metric with the PUT endpoint?"
-    (t2.with-temp/with-temp [Metric {:keys [id]} {:archived true
+    (t2.with-temp/with-temp [LegacyMetric {:keys [id]} {:archived true
                                                   :table_id (mt/id :venues)}]
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived false, :revision_message "Unarchive the Metric"})))
-      (is (= false (t2/select-one-fn :archived Metric :id id))))))
+      (is (= false (t2/select-one-fn :archived LegacyMetric :id id))))))
 
 (deftest delete-test
   (testing "DELETE /api/metric/:id"
     (testing "test security. Requires superuser perms"
-      (t2.with-temp/with-temp [Metric {:keys [id]} {:table_id (mt/id :checkins)}]
+      (t2.with-temp/with-temp [LegacyMetric {:keys [id]} {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :delete 403 (str "metric/" id) :revision_message "yeeeehaw!")))))
@@ -201,7 +201,7 @@
   (testing "should still be able to fetch the archived Metric"
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
-                   Metric   {:keys [id]}   {:table_id table-id}]
+                   LegacyMetric   {:keys [id]}   {:table_id table-id}]
       (mt/user-http-request
        :crowberto :delete 204 (format "metric/%d" id) :revision_message "carryon")
       (is (= (merge
@@ -221,14 +221,14 @@
     (testing "test security. Requires perms for the Table it references"
       (mt/with-temp [Database db {}
                      Table    table  {:db_id (u/the-id db)}
-                     Metric   metric {:table_id (u/the-id table)}]
+                     LegacyMetric   metric {:table_id (u/the-id table)}]
         (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "metric/" (u/the-id metric)))))))
 
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
-                   Metric   {:keys [id]}   {:creator_id (mt/user->id :crowberto)
+                   LegacyMetric   {:keys [id]}   {:creator_id (mt/user->id :crowberto)
                                             :table_id   table-id}]
       (is (= (merge
               metric-defaults
@@ -244,14 +244,14 @@
     (testing "test security. Requires read perms for Table it references"
       (mt/with-temp [Database db {}
                      Table    table  {:db_id (u/the-id db)}
-                     Metric   metric {:table_id (u/the-id table)}]
+                     LegacyMetric   metric {:table_id (u/the-id table)}]
         (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (format "metric/%d/revisions" (u/the-id metric)))))))
 
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
-                   Metric   {:keys [id]}   {:creator_id              (mt/user->id :crowberto)
+                   LegacyMetric   {:keys [id]}   {:creator_id              (mt/user->id :crowberto)
                                             :table_id                table-id
                                             :name                    "One Metric to rule them all, one metric to define them"
                                             :description             "One metric to bring them all, and in the DataModel bind them"
@@ -293,7 +293,7 @@
 (deftest revert-metric-test
   (testing "POST /api/metric/:id/revert"
     (testing "test security. Requires superuser perms"
-      (t2.with-temp/with-temp [Metric {:keys [id]} {:table_id (mt/id :checkins)}]
+      (t2.with-temp/with-temp [LegacyMetric {:keys [id]} {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :post 403 (format "metric/%d/revert" id)
@@ -308,7 +308,7 @@
 (deftest metric-revisions-test-2
   (mt/with-temp [Database {database-id :id} {}
                  Table    {table-id :id}    {:db_id database-id}
-                 Metric   {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
+                 LegacyMetric   {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
                                              :table_id                table-id
                                              :name                    "One Metric to rule them all, one metric to define them"
                                              :description             "One metric to bring them all, and in the DataModel bind them"
@@ -397,9 +397,9 @@
                                                        :table_id   (mt/id :checkins)
                                                        :definition (:query (mt/mbql-query checkins
                                                                              {:filter [:= $id 1]}))}
-                             Metric {id-1 :id} {:name     "Metric A"
+                             LegacyMetric {id-1 :id} {:name     "Metric A"
                                                 :table_id (mt/id :users)}
-                             Metric {id-2 :id} {:name       "Metric B"
+                             LegacyMetric {id-2 :id} {:name       "Metric B"
                                                 :definition (:query (mt/mbql-query venues
                                                                       {:aggregation [[:sum $category_id->categories.id]]
                                                                        :filter      [:and
@@ -407,7 +407,7 @@
                                                                                      [:segment segment-id]]}))
                                                 :table_id   (mt/id :venues)}
                              ;; inactive metrics shouldn't show up
-                             Metric {id-3 :id} {:archived true
+                             LegacyMetric {id-3 :id} {:archived true
                                                 :table_id (mt/id :venues)}]
       (is (=? [{:name                   "Metric A"
                 :id                     id-1
@@ -423,6 +423,6 @@
 
 (deftest metric-related-entities-test
   (testing "Test related/recommended entities"
-    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id (mt/id :checkins)}]
+    (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id (mt/id :checkins)}]
       (is (= #{:table :metrics :segments}
              (-> (mt/user-http-request :crowberto :get 200 (format "metric/%s/related" metric-id)) keys set))))))
