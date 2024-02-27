@@ -318,7 +318,7 @@ function getPreviewQuery(
     -1,
   ).reduce(Lib.dropStage, query);
 
-  const queryWithoutNextSteps = steps
+  const queryWithoutNextStagesAndSteps = steps
     .slice(activeStepIndex + 1, steps.length)
     .reduceRight((query: Lib.Query, step: NotebookStep) => {
       if (step.revert) {
@@ -328,5 +328,5 @@ function getPreviewQuery(
       return query;
     }, queryWithoutNextStages);
 
-  return queryWithoutNextSteps;
+  return queryWithoutNextStagesAndSteps;
 }
