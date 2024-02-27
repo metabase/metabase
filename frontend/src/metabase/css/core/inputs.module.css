@@ -25,7 +25,8 @@
 }
 
 :global(.input--focus),
-:global(.input:focus:focus) {
+:global(.input:focus),
+.input:focus:focus {
   outline: none;
   border: 1px solid var(--color-brand);
   transition: border 0.3s linear;
