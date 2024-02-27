@@ -1060,7 +1060,7 @@ export const getSubmittableQuestion = (state, question) => {
   const resultsMetadata = getResultsMetadata(state);
   const isResultDirty = getIsResultDirty(state);
 
-  if (question.type() === "model") {
+  if (question.type() === "model" && resultsMetadata) {
     resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
       resultsMetadata.columns,
     );
