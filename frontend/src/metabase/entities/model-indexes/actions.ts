@@ -1,11 +1,11 @@
 import _ from "underscore";
 
-import { modelIndexesApi } from "metabase/redux/api/model-indexes";
 import type Question from "metabase-lib/Question";
 import type { FieldWithMaybeIndex } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 import type { Dispatch } from "metabase-types/store";
 
+import { ModelIndexes } from "./model-indexes";
 import { getPkRef } from "./utils";
 
 export const updateModelIndexes =
@@ -21,7 +21,7 @@ export const updateModelIndexes =
     }
 
     const listResultSelector =
-      modelIndexesApi.endpoints.listModelIndexes.select(model.id());
+      ModelIndexes.api.endpoints.listModelIndexes.select(model.id());
     const existingIndexes: ModelIndex[] =
       listResultSelector(getState()).data ?? [];
 
@@ -41,7 +41,7 @@ export const updateModelIndexes =
         await Promise.all(
           newFieldsToIndex.map(field =>
             dispatch(
-              modelIndexesApi.endpoints.createModelIndex.initiate({
+              ModelIndexes.api.endpoints.createModelIndex.initiate({
                 model_id: model.id(),
                 value_ref: field.field_ref,
                 pk_ref: pkRef,
@@ -56,7 +56,7 @@ export const updateModelIndexes =
       await Promise.all(
         indexIdsToRemove.map(indexId =>
           dispatch(
-            modelIndexesApi.endpoints.deleteModelIndex.initiate(indexId),
+            ModelIndexes.api.endpoints.deleteModelIndex.initiate(indexId),
           ),
         ),
       );

@@ -3,15 +3,20 @@ import fetchMock from "fetch-mock";
 
 import { setupModelIndexEndpoints } from "__support__/server-mocks";
 import Question from "metabase-lib/Question";
-import type { FieldReference, ModelIndex, Field } from "metabase-types/api";
+import type {
+  FieldReference,
+  ModelIndex,
+  Field,
+  FieldWithMaybeIndex,
+} from "metabase-types/api";
 import {
   createMockField as createBaseMockField,
   createMockCard,
   createMockModelIndex,
 } from "metabase-types/api/mocks";
 
-import type { FieldWithMaybeIndex } from "./actions";
-import { updateModelIndexes, cleanIndexFlags } from "./actions";
+import type {} from "./actions";
+import { updateModelIndexes } from "./actions";
 
 const createMockField = (options?: Partial<FieldWithMaybeIndex>): Field => {
   return createBaseMockField(options as Partial<Field>);
@@ -24,34 +29,6 @@ const createModelWithResultMetadata = (fields: Field[]) => {
 };
 
 describe("Entities > model-indexes > actions", () => {
-  describe("cleanIndexFlags", () => {
-    it("should remove should_index flag from fields", () => {
-      const model = createModelWithResultMetadata([
-        createMockField({ should_index: true }),
-        createMockField({ should_index: false }),
-        createMockField(),
-      ]);
-
-      const cleanedFields = cleanIndexFlags(model.getResultMetadata());
-
-      cleanedFields.forEach((field: any) => {
-        expect(field?.should_index).toBeUndefined();
-      });
-    });
-
-    it("should not mutate the original question", () => {
-      const model = createModelWithResultMetadata([
-        createMockField({ should_index: true }),
-        createMockField({ should_index: true }),
-      ]);
-
-      cleanIndexFlags(model.getResultMetadata());
-
-      model.getResultMetadata().forEach((field: any) => {
-        expect(field?.should_index).toBe(true);
-      });
-    });
-  });
   describe("updateModelIndexes", () => {
     it("should not do anything if there are no fields with should_index flag", async () => {
       const model = createModelWithResultMetadata([
