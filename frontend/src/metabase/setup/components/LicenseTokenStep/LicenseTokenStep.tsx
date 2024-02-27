@@ -7,7 +7,6 @@ import { useStep } from "metabase/setup/useStep";
 import { Button, Divider, Text } from "metabase/ui";
 
 import { submitLicenseToken } from "../../actions";
-import { getIsSetupCompleted } from "../../selectors";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
@@ -15,12 +14,11 @@ import type { NumberedStepProps } from "../types";
 import { LicenseTokenForm } from "./LicenseTokenForm";
 
 export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
-  const { isStepActive, isStepCompleted, handleStepSelect } =
+  const { isStepActive, isStepCompleted, handleStepSelect, isSetupCompleted } =
     useStep("license_token");
 
   const storeToken = useSelector(state => state.setup.licenseToken);
 
-  const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
   const handleValidSubmit = (token: string | null) => {
