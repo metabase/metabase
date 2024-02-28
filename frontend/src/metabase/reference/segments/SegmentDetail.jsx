@@ -16,7 +16,7 @@ import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import S from "../components/Detail.css";
+import S from "../components/Detail.module.css";
 import {
   getSegment,
   getTable,

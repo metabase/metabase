@@ -2,18 +2,18 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SelectList from "metabase/components/SelectList";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { ColorName } from "metabase/lib/colors/types";
+import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
   Content,
   MoreButton,
+  SelectListItem,
   TriggerButton,
   TriggerIcon,
-  SelectListItem,
 } from "./BaseBucketPickerPopover.styled";
 
 export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
@@ -54,6 +54,7 @@ function _BaseBucketPickerPopover({
   renderTriggerContent,
   onSelect,
 }: BaseBucketPickerPopoverProps) {
+  const [isOpened, setIsOpened] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
     isInitiallyExpanded(items, selectedBucket, checkBucketIsSelected),
   );
@@ -74,6 +75,7 @@ function _BaseBucketPickerPopover({
       checkBucketIsSelected,
     );
     setIsExpanded(nextState);
+    setIsOpened(false);
   }, [items, selectedBucket, checkBucketIsSelected]);
 
   const triggerContentBucket = isEditing ? selectedBucket : defaultBucket;
@@ -88,25 +90,25 @@ function _BaseBucketPickerPopover({
     : items;
 
   return (
-    <PopoverWithTrigger
-      renderTrigger={({ onClick }) => (
+    <Popover opened={isOpened} position="right" onClose={handlePopoverClose}>
+      <Popover.Target>
         <TriggerButton
           aria-label={triggerLabel}
-          onClick={event => {
-            event.stopPropagation();
-            onClick();
-          }}
           // Compat with E2E tests around MLv1-based components
           // Prefer using a11y role selectors
           data-testid="dimension-list-item-binning"
+          onClick={event => {
+            event.stopPropagation();
+            setIsOpened(!isOpened);
+          }}
         >
           <Ellipsified>
             {renderTriggerContent(triggerContentBucketDisplayInfo)}
           </Ellipsified>
           {hasArrowIcon && <TriggerIcon name="chevronright" />}
         </TriggerButton>
-      )}
-      popoverContent={({ closePopover }) => (
+      </Popover.Target>
+      <Popover.Dropdown>
         <Content>
           <SelectList>
             {visibleItems.map(item => (
@@ -116,9 +118,10 @@ function _BaseBucketPickerPopover({
                 name={item.displayName}
                 activeColor={color}
                 isSelected={checkBucketIsSelected(item)}
-                onSelect={() => {
+                onSelect={(_id, event) => {
+                  event.stopPropagation();
                   onSelect(item.bucket);
-                  closePopover();
+                  handlePopoverClose();
                 }}
               />
             ))}
@@ -127,9 +130,8 @@ function _BaseBucketPickerPopover({
             <MoreButton onClick={handleExpand}>{t`More…`}</MoreButton>
           )}
         </Content>
-      )}
-      onClose={handlePopoverClose}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
@@ -143,11 +145,10 @@ function isInitiallyExpanded(
     return false;
   }
 
-  const isSelectedBucketAmongHiddenItems =
+  return (
     items.findIndex(item => checkBucketIsSelected(item)) >=
-    INITIALLY_VISIBLE_ITEMS_COUNT;
-
-  return isSelectedBucketAmongHiddenItems;
+    INITIALLY_VISIBLE_ITEMS_COUNT
+  );
 }
 
 export function getBucketListItem(

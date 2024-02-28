@@ -4,11 +4,10 @@ import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Tooltip from "metabase/core/components/Tooltip";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
-import { Flex, Popover } from "metabase/ui";
+import { Flex, Popover, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import type { Dataset, VisualizationSettings } from "metabase-types/api";
 
@@ -71,11 +70,11 @@ const QueryDownloadWidget = ({
       <Popover.Target>
         <Flex className={className}>
           {loading ? (
-            <Tooltip tooltip={t`Downloading…`}>
+            <Tooltip label={t`Downloading…`}>
               <LoadingSpinner size={18} />
             </Tooltip>
           ) : (
-            <Tooltip tooltip={t`Download full results`}>
+            <Tooltip label={t`Download full results`}>
               <DownloadIcon
                 onClick={() => setIsPopoverOpen(!isPopoverOpen)}
                 name="download"

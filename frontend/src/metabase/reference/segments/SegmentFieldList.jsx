@@ -7,14 +7,14 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 import List from "metabase/components/List";
-import S from "metabase/components/List/List.css";
+import S from "metabase/components/List/List.module.css";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import * as metadataActions from "metabase/redux/metadata";
-import R from "metabase/reference/Reference.css";
+import R from "metabase/reference/Reference.module.css";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Field from "metabase/reference/components/Field";
-import F from "metabase/reference/components/Field.css";
+import F from "metabase/reference/components/Field.module.css";
 import * as actions from "metabase/reference/reference";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
 

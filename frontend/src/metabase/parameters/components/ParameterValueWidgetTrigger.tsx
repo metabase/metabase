@@ -1,7 +1,7 @@
 import classnames from "classnames";
 import { forwardRef, type ReactNode, type Ref } from "react";
 
-import styles from "./ParameterValueWidget.css";
+import styles from "./ParameterValueWidget.module.css";
 import { TriggerContainer } from "./ParameterValueWidgetTrigger.styled";
 
 export const ParameterValueWidgetTrigger = forwardRef(

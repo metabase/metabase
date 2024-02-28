@@ -18,9 +18,16 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   isActive: PropTypes.bool.isRequired, // if QB mode is set to "query"
   height: PropTypes.number.isRequired,
+  onSetDatabaseId: PropTypes.func,
 };
 
-function DatasetQueryEditor({ question, isActive, height, ...props }) {
+function DatasetQueryEditor({
+  question,
+  isActive,
+  height,
+  onSetDatabaseId,
+  ...props
+}) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const [isResizing, setResizing] = useState(false);
@@ -73,6 +80,7 @@ function DatasetQueryEditor({ question, isActive, height, ...props }) {
           // which can also cancel the expected query rerun
           // (see https://github.com/metabase/metabase/issues/19180)
           cancelQueryOnLeave={false}
+          onSetDatabaseId={onSetDatabaseId}
         />
       ) : (
         <ResizableNotebook

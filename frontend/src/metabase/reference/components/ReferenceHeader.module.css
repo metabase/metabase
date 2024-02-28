@@ -1,0 +1,45 @@
+:root {
+  --title-color: var(--color-text-medium);
+}
+
+.headerBody {
+  composes: text-dark text-bold from "style";
+  flex: 1 0 auto;
+  display: flex;
+  overflow: hidden;
+  align-items: center;
+  border-color: var(--color-border);
+}
+
+.headerTextInput {
+  composes: p1 from "style";
+  font-size: 18px;
+  color: var(--title-color);
+  max-width: 550px;
+}
+
+.subheader {
+  composes: mt1 mb2 from "style";
+}
+
+.subheaderBody {
+  composes: text-medium text-bold from "style";
+  font-size: 14px;
+}
+
+.subheaderLink {
+  color: var(--color-brand);
+  text-decoration: none;
+}
+
+.subheaderLink:hover {
+  color: var(--color-brand);
+  transition: color 0.3s linear;
+}
+
+.headerSchema {
+  composes: text-light from "style";
+  position: absolute;
+  top: -10px;
+  font-size: 12px;
+}

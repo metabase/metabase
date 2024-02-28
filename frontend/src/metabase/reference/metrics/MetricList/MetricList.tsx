@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import List from "metabase/components/List";
-import S from "metabase/components/List/List.css";
+import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";

@@ -3,9 +3,9 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import QueryButton from "metabase/components/QueryButton";
-import D from "metabase/reference/components/Detail.css";
+import D from "metabase/reference/components/Detail.module.css";
 
-import S from "./UsefulQuestions.css";
+import S from "./UsefulQuestions.module.css";
 
 const UsefulQuestions = ({ questions }) => (
   <div className={D.detail}>

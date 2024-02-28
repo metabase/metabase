@@ -72,13 +72,13 @@ describe("SortStep", () => {
     expect(queryIcon("arrow_up")).not.toBeInTheDocument();
   });
 
-  it("should display orderable columns", () => {
+  it("should display orderable columns", async () => {
     setup();
 
     userEvent.click(getIcon("add"));
 
     // Tables
-    expect(screen.getByText("Order")).toBeInTheDocument();
+    expect(await screen.findByText("Order")).toBeInTheDocument();
     expect(screen.getByText("Product")).toBeInTheDocument();
     expect(screen.getByText("User")).toBeInTheDocument();
     // Order columns
@@ -90,11 +90,11 @@ describe("SortStep", () => {
     ).toBeInTheDocument();
   });
 
-  it("should add an order by", () => {
+  it("should add an order by", async () => {
     const { gerRecentOrderByClause } = setup();
 
     userEvent.click(getIcon("add"));
-    userEvent.click(screen.getByText("Created At"));
+    userEvent.click(await screen.findByText("Created At"));
 
     const orderBy = gerRecentOrderByClause();
     expect(orderBy.displayName).toBe("Created At");

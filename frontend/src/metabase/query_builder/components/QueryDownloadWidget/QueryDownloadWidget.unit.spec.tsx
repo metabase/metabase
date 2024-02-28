@@ -54,6 +54,7 @@ describe("QueryDownloadWidget", () => {
     setup();
 
     userEvent.click(getIcon("download"));
+    userEvent.unhover(getIcon("download"));
 
     expect(
       await screen.findByText("Download full results"),
