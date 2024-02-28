@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+import type { ButtonProps } from "metabase/ui";
 import { Icon, Radio, Text } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 
@@ -56,15 +57,18 @@ export const Data = ({
           style={{ backgroundColor: color("bg-light") }}
         >
           <GeneralConfig
-            variant={editingGeneralConfig ? "filled" : "outline"}
-            radius="sm"
-            animate={false}
+            {...getButtonProps({
+              shouldHighlightButton: editingGeneralConfig,
+            })}
             onClick={() => setTargetId(0)}
-            isBeingEdited={targetId === 0}
           >
             <DatabasesConfigIcon name="database" />
             {t`Databases`}
-            <GeneralStrategy isBeingEdited={editingGeneralConfig}>
+            <GeneralStrategy
+              {...getButtonProps({
+                shouldHighlightButton: !editingGeneralConfig,
+              })}
+            >
               {generalStrategyLabel}
             </GeneralStrategy>
           </GeneralConfig>
@@ -172,7 +176,8 @@ export const SpecialConfig = ({
   const specificConfigForDB = dbConfigs.get(db.id);
   const specificStrategyForDB = specificConfigForDB?.strategy;
   const doesOverrideGeneralConfig =
-    specificStrategyForDB && specificStrategyForDB !== generalStrategy;
+    specificStrategyForDB !== undefined &&
+    specificStrategyForDB !== generalStrategy;
   const strategyForDB = specificStrategyForDB ?? generalStrategy;
   if (!strategyForDB) {
     throw new Error(t`Invalid strategy "${strategyForDB}"`);
@@ -182,31 +187,26 @@ export const SpecialConfig = ({
   const clearOverride = () => {
     setDBConfig(db.id, null);
   };
+  const shouldHighlightButton =
+    doesOverrideGeneralConfig && !isConfigBeingEdited;
   return (
     <SpecialConfigStyled
-      variant={isConfigBeingEdited ? "filled" : "default"}
-      isBeingEdited={isConfigBeingEdited}
+      {...getButtonProps({ shouldHighlightButton: isConfigBeingEdited })}
       key={key}
       onClick={() => {
         setTargetId(db.id);
       }}
-      animate={false}
-      radius="sm"
     >
       <DatabasesConfigIcon name="database" />
       {db.name}
       <SpecialStrategy
-        radius="sm"
-        // TODO: use variant={specificStrategy ? "filled" : "outline"} if possible
-        doesOverrideGeneralConfig={doesOverrideGeneralConfig}
-        isBeingEdited={isConfigBeingEdited}
+        {...getButtonProps({ shouldHighlightButton })}
         onClick={(e: MouseEvent<HTMLButtonElement>) => {
           if (doesOverrideGeneralConfig) {
             clearOverride();
             e.stopPropagation();
           }
         }}
-        animate={false}
       >
         {strategyLabel}
         {doesOverrideGeneralConfig && (
@@ -215,4 +215,21 @@ export const SpecialConfig = ({
       </SpecialStrategy>
     </SpecialConfigStyled>
   );
+};
+
+export const getButtonProps = ({
+  shouldHighlightButton,
+}: {
+  shouldHighlightButton: boolean;
+}): ButtonProps => {
+  return {
+    radius: "sm",
+    style: {
+      border: shouldHighlightButton
+        ? `1px solid ${color("brand")}`
+        : `1px solid ${color("border")}`,
+    },
+    variant: shouldHighlightButton ? "filled" : "white",
+    animate: false,
+  };
 };

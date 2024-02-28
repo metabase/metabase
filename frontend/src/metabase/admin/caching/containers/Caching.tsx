@@ -23,6 +23,13 @@ export const Caching = () => {
   const [tabsHeight, setTabsHeight] = useState<number>(300);
   const { data: databases = [], error, isLoading } = useDatabaseListQuery();
 
+  // if (databases.length === 1) {
+  //   databases.push(...databases);
+  //   databases.push(...databases);
+  //   databases.push(...databases);
+  //   databases.push(...databases);
+  // }
+
   const tabsRef = useRef<HTMLDivElement>(null);
 
   // TODO: Fetch cacheConfigs from the API

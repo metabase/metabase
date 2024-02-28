@@ -46,6 +46,7 @@ export const CacheAdminButton = styled(Button)<ButtonProps>`
   flex-flow: row nowrap;
   align-items: center;
   padding: 1rem;
+  overflow: unset;
   & div {
     flex: 1;
   }
@@ -65,26 +66,15 @@ export const Config = styled(CacheAdminButton)`
 
 export const GeneralConfig = styled(Config)<ConfigProps>`
   border: 1px solid ${color("bg-medium")};
-  background-color: ${({ isBeingEdited }) =>
-    isBeingEdited ? color("brand") : color("bg-medium")};
-  color: ${({ isBeingEdited }) =>
-    isBeingEdited ? color("white") : color("text-dark")};
 `;
 
 export const Strategy = styled(CacheAdminButton)`
   margin-left: auto;
-  background: ${color("brand")};
-  color: ${color("white")};
   padding: 0.75rem 1rem;
   font-weight: bold;
 `;
 
-export const GeneralStrategy = styled(Strategy)<ConfigProps>`
-  background-color: ${({ isBeingEdited }) =>
-    isBeingEdited ? color("white") : color("brand")};
-  color: ${({ isBeingEdited }) =>
-    isBeingEdited ? color("brand") : color("white")};
-`;
+export const GeneralStrategy = styled(Strategy)<ConfigProps>``;
 
 export const SpecialConfigStyled = styled(CacheAdminButton)<ConfigProps>`
   width: 100%;
@@ -99,16 +89,7 @@ export const SpecialConfigStyled = styled(CacheAdminButton)<ConfigProps>`
   border: 1px solid ${color("border")};
 `;
 
-export const SpecialStrategy = styled(Strategy)<ConfigProps>`
-  background-color: ${({ doesOverrideGeneralConfig, isBeingEdited }) =>
-    doesOverrideGeneralConfig && !isBeingEdited
-      ? color("brand")
-      : color("white")};
-  color: ${({ doesOverrideGeneralConfig, isBeingEdited }) =>
-    doesOverrideGeneralConfig && !isBeingEdited
-      ? color("white")
-      : color("text-dark")};
-`;
+export const SpecialStrategy = styled(Strategy)<ConfigProps>``;
 
 export const DatabasesConfigIcon = styled(Icon)`
   margin-right: 0.5rem;
