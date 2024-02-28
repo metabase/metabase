@@ -23,7 +23,8 @@
 }
 
 :local(.fieldSelect) {
-  composes: input p1 block from "style";
+  composes: input p1 from "style";
+  display: block;
 }
 
 :local(.fieldType) {

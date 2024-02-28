@@ -102,7 +102,8 @@
 }
 
 :local(.guideSeeAllLink) {
-  composes: block no-decoration py1 border-top from "style";
+  composes: no-decoration py1 border-top from "style";
+  display: block;
   flex: 1 0 auto;
 }
 
@@ -139,7 +140,8 @@
 }
 
 :local(.guideEditLabel) {
-  composes: block text-bold mb2 from "style";
+  composes: text-bold mb2 from "style";
+  display: block;
   font-size: 16px;
   color: var(--title-color);
 }
@@ -149,7 +151,8 @@
 }
 
 :local(.guideEditTitle) {
-  composes: block text-body text-bold from "style";
+  composes: text-body text-bold from "style";
+  display: block;
   color: var(--title-color);
   font-size: 16px;
   margin-top: 50px;
