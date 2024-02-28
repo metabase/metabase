@@ -45,6 +45,7 @@ export const ExpressionEditorHelpText = ({
       reference={target}
       placement="bottom-start"
       visible
+      zIndex={300}
       content={
         <>
           {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
