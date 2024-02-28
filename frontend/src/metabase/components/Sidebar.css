@@ -12,8 +12,7 @@
 
 :local(.item),
 :local(.sectionTitle) {
-  composes: flex align-center from "style";
-  composes: py1 mb1 from "style";
+  composes: flex align-center py1 mb1 from "style";
 }
 
 :local(.item) {
@@ -27,8 +26,7 @@
 }
 
 :local(.sectionTitle) {
-  composes: my1 from "style";
-  composes: text-bold from "style";
+  composes: my1 text-bold from "style";
   font-size: 16px;
 }
 
@@ -49,8 +47,7 @@
 }
 
 :local(.divider) {
-  composes: my2 from "style";
-  composes: border-bottom from "style";
+  composes: my2 border-bottom from "style";
 }
 
 :local(.name) {
