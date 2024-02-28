@@ -36,6 +36,9 @@ export type StructuredQuerySectionOption = {
   icon: string;
   target: StructuredParameterDimensionTarget;
   isForeign: boolean;
+  query?: Lib.Query;
+  stageIndex?: number;
+  column?: Lib.ColumnMetadata;
 };
 
 function buildStructuredQuerySectionOptions(
@@ -55,6 +58,9 @@ function buildStructuredQuerySectionOptions(
       icon: getColumnIcon(column),
       target: buildColumnTarget(query, stageIndex, column),
       isForeign: columnInfo.isFromJoin || columnInfo.isImplicitlyJoinable,
+      query,
+      stageIndex,
+      column,
     };
   });
 }
