@@ -11,7 +11,7 @@
 }
 
 :local(.editHeaderButtons) {
-  composes: flex-align-right from "style";
+  margin-left: auto;
 }
 
 :local(.editHeaderButton) {
