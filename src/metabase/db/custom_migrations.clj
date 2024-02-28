@@ -89,8 +89,8 @@
 
 ;; metabase.util/upper-case-en
 (defn- upper-case-en
-  [s]
-  (.toUpperCase (str s) (Locale/US)))
+  ^String [s]
+  (.toUpperCase (str s) Locale/US))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |

@@ -23,12 +23,12 @@
 (comment
   (def ReviewChanges
     "Schema for a ModerationReview that's being updated (so most keys are optional)"
-    {(s/optional-key :id)                  mu/IntGreaterThanZero
-     (s/optional-key :moderated_item_id)   mu/IntGreaterThanZero
-     (s/optional-key :moderated_item_type) moderation/moderated-item-types
-     (s/optional-key :status)              Statuses
-     (s/optional-key :text)                [:maybe :string]
-     s/Any                                 :any}))
+    [:map
+     [:id                  {:optional true} mu/IntGreaterThanZero]
+     [:moderated_item_id   {:optional true} mu/IntGreaterThanZero]
+     [:moderated_item_type {:optional true} moderation/moderated-item-types]
+     [:status              {:optional true} Statuses]
+     [:text                {:optional true} [:maybe :string]]]))
 
 (def ModerationReview
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
