@@ -43,7 +43,7 @@ import {
 import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
-import "./DataSelector.css";
+import "./DataSelector.module.css";
 
 const MIN_SEARCH_LENGTH = 2;
 

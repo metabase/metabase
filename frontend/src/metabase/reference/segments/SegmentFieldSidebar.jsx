@@ -5,7 +5,7 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import S from "metabase/components/Sidebar.css";
+import S from "metabase/components/Sidebar.module.css";
 import SidebarItem from "metabase/components/SidebarItem";
 
 const SegmentFieldSidebar = ({ segment, field, style, className }) => (

@@ -383,7 +383,7 @@ describe("scenarios > question > filter", () => {
 
     cy.button("Done").should("not.be.disabled").click();
 
-    cy.get(".QueryBuilder .Icon-add").click();
+    cy.findByTestId("query-builder-root").icon("add").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();

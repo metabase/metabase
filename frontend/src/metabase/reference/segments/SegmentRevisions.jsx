@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import Revision from "metabase/admin/datamodel/components/revisions/Revision";
 import EmptyState from "metabase/components/EmptyState";
-import S from "metabase/components/List/List.css";
+import S from "metabase/components/List/List.module.css";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { assignUserColors } from "metabase/lib/formatting";
 import * as metadataActions from "metabase/redux/metadata";

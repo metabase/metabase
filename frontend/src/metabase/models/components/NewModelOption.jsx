@@ -5,6 +5,8 @@ import { Link } from "react-router";
 
 import { color } from "metabase/lib/colors";
 
+import S from "./NewModelOption.module.css";
+
 export default class NewModelOption extends Component {
   state = {
     hover: false,
@@ -17,7 +19,7 @@ export default class NewModelOption extends Component {
     return (
       <Link
         {...props}
-        className="block no-decoration bg-white p4 align-center bordered rounded cursor-pointer transition-all full-height text-centered"
+        className={S.linkWrapper}
         style={{
           boxSizing: "border-box",
           boxShadow: hover
@@ -42,9 +44,7 @@ export default class NewModelOption extends Component {
           className="text-normal mt2 mb2 text-paragraph"
           style={{ lineHeight: "1.25em" }}
         >
-          <h2 className={cx("transition-all", { "text-brand": hover })}>
-            {title}
-          </h2>
+          <h2 className={cx(S.modelTitle, { "text-brand": hover })}>{title}</h2>
           <p className="text-medium text-small" style={{ maxWidth: "360px" }}>
             {description}
           </p>

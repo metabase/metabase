@@ -8,7 +8,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import "./TableInteractive.css";
+import "./TableInteractive.module.css";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover";

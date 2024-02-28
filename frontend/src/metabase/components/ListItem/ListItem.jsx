@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 
 import Card from "metabase/components/Card";
-import S from "metabase/components/List/List.css";
+import S from "metabase/components/List/List.module.css";
 import { Icon } from "metabase/ui";
 
 import { ListItemLink, ListItemName, Root } from "./ListItem.styled";

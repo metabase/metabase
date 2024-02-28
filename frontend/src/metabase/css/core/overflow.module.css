@@ -1,0 +1,36 @@
+:global(.overflow-auto) {
+  overflow: auto;
+}
+
+:global(.overflow-scroll) {
+  overflow: scroll;
+}
+
+:global(.overflow-hidden) {
+  overflow: hidden;
+}
+
+:global(.overflow-x-hidden) {
+  overflow-x: hidden;
+}
+
+:global(.overflow-y-hidden) {
+  overflow-y: hidden;
+}
+
+:global(.overflow-y-auto) {
+  overflow-y: auto;
+}
+
+:global(.overflow-x-scroll) {
+  overflow-x: scroll;
+}
+
+:global(.bounded-overflow-x-auto) {
+  width: 100%;
+  overflow-x: auto;
+}
+
+:global(.overflow-y-scroll) {
+  overflow-y: scroll;
+}
