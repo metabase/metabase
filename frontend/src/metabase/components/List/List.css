@@ -47,7 +47,7 @@
 }
 
 :local(.empty) {
-  composes: full from "style";
+  width: 100%;
   justify-content: center;
   display: flex;
   padding-top: 75px;
