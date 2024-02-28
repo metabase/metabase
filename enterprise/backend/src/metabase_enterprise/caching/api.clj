@@ -9,6 +9,17 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(defn- assert-valid-model [model model-id]
+  (if (= model "root")
+    (when-not (zero? model-id)
+      (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
+                                                                                  :model_id    model-id})))
+    (api/check-404 (t2/select-one (case model
+                                    "database"  :model/Database
+                                    "dashboard" :model/Dashboard
+                                    "question"  :model/Card)
+                                  :id model-id))))
+
 (api/defendpoint GET "/"
   "Return cache configuration."
   [:as {{:strs [model collection]
@@ -64,15 +75,7 @@
                           [:aggregation [:enum "max" "count"]]
                           [:schedule u.cron/CronScheduleString]]]]]}
   (validation/check-has-application-permission :setting)
-  (if (= model "root")
-    (when (not= model_id 0)
-      (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
-                                                                                  :model_id    model_id})))
-    (api/check-404 (t2/select-one (case model
-                                    "database"  :model/Database
-                                    "dashboard" :model/Dashboard
-                                    "question"  :model/Card)
-                                  :id model_id)))
+  (assert-valid-model model model_id)
   (let [data {:model    model
               :model_id model_id
               :strategy (:type strategy)
@@ -85,9 +88,7 @@
   {model    [:enum "root" "database" "dashboard" "question"]
    model_id ms/PositiveInt}
   (validation/check-has-application-permission :setting)
-  (when (and (= model "root") (not= model_id 0))
-    (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
-                                                                                :model_id model_id})))
+  (assert-valid-model model model_id)
   (t2/delete! :model/CacheConfig :model model :model_id model_id)
   nil)
 
