@@ -1,10 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
@@ -43,7 +39,7 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
   return { onChange, onInput, getNextFilterName };
 }
 
-describe("StringFilterEditor", () => {
+describe("CoordinateFilterEditor", () => {
   const query = createQuery();
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(query, stageIndex);
@@ -60,7 +56,6 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Is"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByLabelText("Filter value"), "10");
       userEvent.tab();
       userEvent.type(screen.getByLabelText("Filter value"), "20");
@@ -79,7 +74,6 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Greater than"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
       userEvent.tab();
 
@@ -111,7 +105,6 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Inside"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Lower latitude"), "-10");
       userEvent.type(screen.getByPlaceholderText("Upper latitude"), "20");
       userEvent.type(screen.getByPlaceholderText("Left longitude"), "-30");

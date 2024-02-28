@@ -325,7 +325,7 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
     .last()
     .within(() => {
       if (shouldExpandList) {
-        cy.button("More…").click();
+        cy.findByText("More…").click();
       }
 
       regularOptions.forEach(option => {
