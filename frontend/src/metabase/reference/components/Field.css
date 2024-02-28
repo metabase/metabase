@@ -3,7 +3,8 @@
 }
 
 :local(.field) {
-  composes: flex align-center from "style";
+  composes: align-center from "style";
+  display: flex;
 }
 
 :local(.fieldNameTitle) {

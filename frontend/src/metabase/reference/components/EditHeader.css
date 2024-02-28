@@ -1,5 +1,6 @@
 :local(.editHeader) {
-  composes: text-white flex align-center from "style";
+  composes: text-white align-center from "style";
+  display: flex;
   position: absolute;
   top: 0;
   left: 0;

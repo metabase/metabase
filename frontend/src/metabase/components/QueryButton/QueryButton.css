@@ -1,5 +1,6 @@
 :local(.queryButton) {
-  composes: flex align-center no-decoration text-brand py1 from "style";
+  composes: align-center no-decoration text-brand py1 from "style";
+  display: flex;
 }
 
 :local(.queryButtonText) {

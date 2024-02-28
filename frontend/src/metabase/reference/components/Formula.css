@@ -5,7 +5,8 @@
 }
 
 :local(.formulaHeader) {
-  composes: flex align-center text-brand py1 px2 from "style";
+  composes: align-center text-brand py1 px2 from "style";
+  display: flex;
 }
 
 :local(.formulaTitle) {

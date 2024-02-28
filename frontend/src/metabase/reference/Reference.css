@@ -5,7 +5,8 @@
 }
 
 :local(.guideEmpty) {
-  composes: flex full justify-center from "style";
+  composes: full justify-center from "style";
+  display: flex;
   padding-top: 75px;
 }
 
@@ -19,7 +20,8 @@
 }
 
 :local(.columnHeader) {
-  composes: flex flex-full from "style";
+  composes: flex-full from "style";
+  display: flex;
   padding-top: 20px;
   padding-bottom: 20px;
 }
@@ -49,7 +51,8 @@
 }
 
 :local(.guideLeftPadded) {
-  composes: flex full justify-center from "style";
+  composes: full justify-center from "style";
+  display: flex;
 }
 
 :local(.guideLeftPadded)::before {
@@ -88,7 +91,8 @@
 }
 
 :local(.guideSeeAllBody) {
-  composes: flex full text-dark text-bold mt4 from "style";
+  composes: full text-dark text-bold mt4 from "style";
+  display: flex;
   composes: guideLeftPaddedBody;
 }
 
@@ -152,7 +156,8 @@
 }
 
 :local(.guideEditAddButton) {
-  composes: flex full my2 pl4 from "style";
+  composes: full my2 pl4 from "style";
+  display: flex;
   padding-right: 3.5rem;
 }
 
@@ -179,7 +184,7 @@
 }
 
 :local(.guideEditContact) {
-  composes: flex from "style";
+  display: flex;
 }
 
 :local(.guideEditContactName) {

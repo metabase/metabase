@@ -1,5 +1,6 @@
 :local(.modalBody) {
-  composes: flex justify-center align-center from "style";
+  composes: justify-center align-center from "style";
+  display: flex;
   padding-left: 32px;
   padding-right: 32px;
   padding-bottom: 32px;

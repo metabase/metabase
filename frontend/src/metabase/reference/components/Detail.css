@@ -4,8 +4,8 @@
 }
 
 :local(.detail) {
-  composes: flex align-center from "style";
-  composes: relative from "style";
+  composes: align-center relative from "style";
+  display: flex;
 }
 
 :local(.detailBody) {
