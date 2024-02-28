@@ -18,11 +18,11 @@ To reference that question or model in a SQL query, use typeahead search in a va
 
 Type `{% raw %}{{#your search term }} {% endraw %}` and Metabase will display a list of models and questions relevant to your search term.
 
-![Typeahad search dropdown for referencing questions and models in SQL queries](../images/search-dropdown.png)
+![Typeahead search dropdown for referencing questions and models in SQL queries](../images/search-dropdown.png)
 
-You can also find the question or model ID by navigating in Metabase to the model or question you'd like to reference in your query. The item's ID is in the URL in your browser's address bar. The ID will be the number after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
+You can also find the question or model ID by navigating in Metabase to the model or question you'd like to reference in your query. The items' ID is in the URL in your browser's address bar. The ID will be the number after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
 
-Only the `#` and `ID` is required. Metabase just displays the model or question name to make the query more readable.
+Only the `#` and `ID` is required. Metabase justo display the model or question name to make the query more readable.
 
 ## Model, table, or saved question as a Common Table Expression (CTE)
 
