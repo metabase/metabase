@@ -20,7 +20,7 @@
 }
 
 :local(.columnHeader) {
-  composes: flex-full from "style";
+  flex: 1 0 auto;
   display: flex;
   padding-top: 20px;
   padding-bottom: 20px;
@@ -97,7 +97,8 @@
 }
 
 :local(.guideSeeAllLink) {
-  composes: flex-full block no-decoration py1 border-top from "style";
+  composes: block no-decoration py1 border-top from "style";
+  flex: 1 0 auto;
 }
 
 :local(.guideContact) {

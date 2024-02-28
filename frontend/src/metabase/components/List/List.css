@@ -25,7 +25,8 @@
 }
 
 :local(.headerBody) {
-  composes: flex-full border-bottom from "style";
+  composes: border-bottom from "style";
+  flex: 1 0 auto;
   display: flex;
   align-items: center;
   height: 100%;
@@ -56,8 +57,8 @@
 }
 
 :local(.itemBody) {
-  composes: flex-full from "style";
   max-width: 100%;
+  flex: 1 0 auto;
 }
 
 :local(.itemTitle) {
