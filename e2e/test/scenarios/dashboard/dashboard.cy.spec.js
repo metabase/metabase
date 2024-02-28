@@ -557,7 +557,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("State").click();
     });
     cy.icon("close");
-    cy.get(".Button--primary").contains("Done").click();
+    cy.button("Done").click();
 
     saveDashboard();
 

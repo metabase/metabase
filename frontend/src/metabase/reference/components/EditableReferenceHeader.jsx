@@ -5,12 +5,12 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
-import L from "metabase/components/List/List.css";
+import L from "metabase/components/List/List.module.css";
 import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/ui";
 
-import S from "./ReferenceHeader.css";
+import S from "./ReferenceHeader.module.css";
 
 const EditableReferenceHeader = ({
   entity = {},

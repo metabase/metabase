@@ -165,10 +165,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           cy.findByPlaceholderText("Enter user names or email addresses")
             .click()
             .type(`${normal.first_name} ${normal.last_name}{enter}`);
-          cy.contains("Done")
-            .closest(".Button")
-            .should("not.be.disabled")
-            .click();
+          clickButton("Done");
 
           cy.findByLabelText("add icon").click();
           cy.findByText("Email this dashboard").should("exist");
@@ -756,8 +753,8 @@ function assignRecipients({
     .blur(); // blur is needed to close the popover
 }
 
-function clickButton(button_name) {
-  cy.contains(button_name).closest(".Button").should("not.be.disabled").click();
+function clickButton(name) {
+  cy.button(name).should("not.be.disabled").click();
 }
 
 function createEmailSubscription() {

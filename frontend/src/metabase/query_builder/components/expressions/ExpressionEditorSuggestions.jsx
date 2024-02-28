@@ -87,7 +87,6 @@ export default class ExpressionEditorSuggestions extends Component {
     }
 
     return (
-      /* data-ignore-outside-clicks is required until this expression editor is migrated to the mantine's Popover */
       <ExpressionPopover
         placement="bottom-start"
         sizeToFit
@@ -98,7 +97,6 @@ export default class ExpressionEditorSuggestions extends Component {
           <ExpressionList
             data-testid="expression-suggestions-list"
             className="pb1"
-            data-ignore-outside-clicks
           >
             {suggestions.map((suggestion, i) => (
               <Fragment key={`$suggestion-${i}`}>
@@ -129,19 +127,13 @@ function ExpressionEditorSuggestionsListItem({
       onMouseDownCapture={onMouseDownCapture}
       isHighlighted={isHighlighted}
       className="hover-parent hover--inherit"
-      data-ignore-outside-clicks
     >
       <Icon
         name={icon}
         color={isHighlighted ? highlighted : normal}
         className="mr1"
-        data-ignore-outside-clicks
       />
-      <SuggestionSpan
-        suggestion={suggestion}
-        isHighlighted={isHighlighted}
-        data-ignore-outside-clicks
-      />
+      <SuggestionSpan suggestion={suggestion} isHighlighted={isHighlighted} />
     </ExpressionListItem>
   );
 }

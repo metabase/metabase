@@ -4,7 +4,7 @@ import cx from "classnames";
 import { Component } from "react";
 import ReactDOM from "react-dom";
 
-import styles from "./Legend.css";
+import styles from "./Legend.module.css";
 import LegendItem from "./LegendItem";
 
 export default class LegendHorizontal extends Component {

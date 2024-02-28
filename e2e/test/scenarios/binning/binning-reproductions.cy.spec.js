@@ -123,7 +123,7 @@ describe("binning related reproductions", () => {
       .findByRole("option", { name: "CREATED_AT" })
       .findByLabelText("Temporal bucket")
       .click();
-    cy.findByRole("menuitem", { name: "Quarter" }).click();
+    popover().last().findByText("Quarter").click();
 
     getNotebookStep("sort").findByText("CREATED_AT: Quarter");
   });

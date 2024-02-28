@@ -104,10 +104,10 @@ function MainNavbar({
 
   return (
     <Sidebar
-      className="Nav"
       isOpen={isOpen}
       aria-hidden={!isOpen}
       data-testid="main-navbar-root"
+      data-element-id="navbar-root"
     >
       <NavRoot isOpen={isOpen}>
         <MainNavbarContainer

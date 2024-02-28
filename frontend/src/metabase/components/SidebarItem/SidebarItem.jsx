@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Link } from "react-router";
 
 import LabelIcon from "../LabelIcon";
-import S from "../Sidebar.css";
+import S from "../Sidebar.module.css";
 
 const SidebarItem = ({ name, sidebar, icon, href }) => (
   <li>

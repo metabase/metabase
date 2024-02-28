@@ -42,9 +42,13 @@ const BABEL_CONFIG = {
 };
 
 const CSS_CONFIG = {
-  localIdentName: devMode
-    ? "[name]__[local]___[hash:base64:5]"
-    : "[hash:base64:5]",
+  modules: {
+    auto: filename =>
+      !filename.includes("node_modules") && !filename.includes("vendor.css"),
+    localIdentName: devMode
+      ? "[name]__[local]___[hash:base64:5]"
+      : "[hash:base64:5]",
+  },
   importLoaders: 1,
 };
 
@@ -58,7 +62,8 @@ const config = (module.exports = {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
-    styles: "./css/index.css",
+    "vendor-styles": "./css/vendor.css",
+    styles: "./css/index.module.css",
   },
 
   externals: {
@@ -228,19 +233,19 @@ const config = (module.exports = {
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-main"],
+      chunks: ["vendor", "vendor-styles", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../public.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-public"],
+      chunks: ["vendor", "vendor-styles", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-embed"],
+      chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new webpack.BannerPlugin({

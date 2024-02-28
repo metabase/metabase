@@ -1,11 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
@@ -105,7 +101,6 @@ describe("TimeFilterEditor", () => {
 
       userEvent.click(screen.getByText("before"));
       userEvent.click(await screen.findByText("Between"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Min"), "{selectall}10:15");
       userEvent.type(screen.getByPlaceholderText("Max"), "{selectall}20:40");
       userEvent.tab();

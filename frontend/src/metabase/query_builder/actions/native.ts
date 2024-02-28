@@ -1,5 +1,6 @@
 import { createAction } from "redux-actions";
 
+import { updateSetting } from "metabase/admin/settings/settings";
 import Questions from "metabase/entities/questions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
@@ -10,6 +11,7 @@ import type {
   NativeQuerySnippet,
   Parameter,
   TemplateTag,
+  DatabaseId,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -193,3 +195,9 @@ export const setTemplateTagConfig = createThunkAction(
     };
   },
 );
+
+export const rememberLastUsedDatabase = (id: DatabaseId) =>
+  updateSetting({
+    key: "last-used-native-database-id",
+    value: id,
+  });

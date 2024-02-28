@@ -180,7 +180,10 @@
   ```
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
-  subtree (below)."
+  subtree (below).
+
+  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
+  some point in the future."
   [exclude-archived exclude-other-user-collections namespace shallow collection-id]
   {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
@@ -196,11 +199,11 @@
                                          :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
-      (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                          (update acc (if dataset :dataset :card) conj collection_id))
+      (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
+                                          (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                                         {:dataset #{}
                                          :card    #{}}
-                                        (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                        (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
                                                                     :where           [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
@@ -211,7 +214,14 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
+  #{"card"       ; SavedQuestion
+    "dataset"    ; Model. TODO : update this
+    "collection"
+    "dashboard"
+    "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
+    "snippet"
+    "no_models"
+    "timeline"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -394,7 +404,7 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :dataset dataset?]]}
+                   [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
       (cond-> dataset?
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))

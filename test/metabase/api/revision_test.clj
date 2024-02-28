@@ -326,7 +326,7 @@
       (create-card-revision! card-id false :crowberto)
 
       ;; 2. turn to a model
-      (t2/update! Card :id card-id {:type "model"})
+      (t2/update! Card :id card-id {:type :model})
       (create-card-revision! card-id false :crowberto)
 
       ;; 3. edit query and metadata

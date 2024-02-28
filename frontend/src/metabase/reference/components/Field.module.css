@@ -1,0 +1,56 @@
+:root {
+  --title-color: var(--color-text-medium);
+}
+
+.field {
+  composes: flex align-center from "style";
+}
+
+.fieldNameTitle {
+  composes: flex-half pr2 from "style";
+}
+
+.fieldName {
+  composes: fieldNameTitle;
+}
+
+.fieldNameTextInput {
+  composes: input p1 from "style";
+  color: var(--title-color);
+  width: 100%;
+  font-size: 14px;
+}
+
+.fieldSelect {
+  composes: input p1 block from "style";
+}
+
+.fieldType {
+  composes: flex-1-quarter text-medium pr2 from "style";
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.fieldDataType {
+  composes: flex-1-quarter text-medium from "style";
+}
+
+.fieldSecondary {
+  composes: field;
+  font-size: 13px;
+}
+
+.fieldActualName {
+  composes: fieldNameTitle;
+  composes: text-monospace text-light from "style";
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.fieldForeignKey {
+  composes: fieldType;
+}
+
+.fieldOther {
+  composes: fieldDataType;
+}

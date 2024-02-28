@@ -64,6 +64,7 @@ import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
 import {
   calcInitialEditorHeight,
   formatQuery,
+  getAutocompleteResultMeta,
   getEditorLineHeight,
   getMaxAutoSizeLines,
 } from "./utils";
@@ -71,11 +72,7 @@ import {
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-type CardCompletionItem = Pick<Card, "id" | "name"> & {
-  /**
-   * TODO: migrate `dataset` to `type` attribute
-   */
-  dataset: boolean;
+type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
   collection_name: string;
 };
 
@@ -140,6 +137,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   toggleSnippetSidebar: () => void;
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
+  onSetDatabaseId?: (id: DatabaseId) => void;
 };
 
 interface StateProps {
@@ -621,16 +619,15 @@ export class NativeQueryEditor extends Component<
       callback(null, []);
     }
     const apiResults = await this.props.cardAutocompleteResultsFn(prefix);
+
     const resultsForAce = apiResults.map(
-      ({ id, name, dataset, collection_name }) => {
+      ({ id, name, type, collection_name }) => {
         const collectionName = collection_name || t`Our analytics`;
         return {
           name: `${id}-${slugg(name)}`,
           value: `${id}-${slugg(name)}`,
-          meta: dataset
-            ? t`Model in ${collectionName}`
-            : t`Question in ${collectionName}`,
-          score: dataset ? 100000 : 0, // prioritize models above questions
+          meta: getAutocompleteResultMeta(type, collectionName),
+          score: type === "model" ? 100000 : 0, // prioritize models above questions
         };
       },
     );
@@ -686,11 +683,14 @@ export class NativeQueryEditor extends Component<
     this.props.setIsNativeEditorOpen?.(!this.props.isNativeEditorOpen);
   };
 
-  /// Change the Database we're currently editing a query for.
+  // Change the Database we're currently editing a query for.
   setDatabaseId = (databaseId: DatabaseId) => {
-    const { query, setDatasetQuery, question } = this.props;
+    const { query, setDatasetQuery, question, onSetDatabaseId } = this.props;
+
     if (question.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
+
+      onSetDatabaseId?.(databaseId);
       if (!this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor?.focus(), 50);

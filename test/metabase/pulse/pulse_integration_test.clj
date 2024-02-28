@@ -34,7 +34,7 @@
                                                                                         [:expression "Tax Rate"]]
                                                                          :limit        10}}}
                     Card {~model-card-id :id} {:name            "Model with percent semantic type"
-                                               :dataset         true
+                                               :type            :model
                                                :dataset_query   {:type     :query
                                                                  :database (mt/id)
                                                                  :query    {:source-table (format "card__%s" ~base-card-id)}}
@@ -314,12 +314,12 @@
                                                                 :native   {:query q}}}
                      Card {model-card-id  :id
                            model-metadata :result_metadata} {:name          "MODEL"
-                                                             :dataset       true
+                                                             :type          :model
                                                              :dataset_query {:database (mt/id)
                                                                              :type     :query
                                                                              :query    (model-query native-card-id)}}
                      Card {meta-model-card-id :id} {:name                   "METAMODEL"
-                                                    :dataset                true
+                                                    :type                   :model
                                                     :dataset_query          {:database (mt/id)
                                                                              :type     :query
                                                                              :query    {:source-table
@@ -464,14 +464,14 @@
                        Card {model-card-name :name
                              model-card-id   :id
                              model-metadata  :result_metadata} {:name          "MODEL"
-                                                                :dataset       true
+                                                                :type          :model
                                                                 :dataset_query {:database (mt/id)
                                                                                 :type     :query
                                                                                 :query    {:source-table
                                                                                            (format "card__%s" base-card-id)}}}
                        Card {meta-model-card-name :name
                              meta-model-card-id   :id} {:name            "MODEL_WITH_META"
-                                                        :dataset         true
+                                                        :type            :model
                                                         :dataset_query   {:database (mt/id)
                                                                           :type     :query
                                                                           :query    {:source-table
@@ -833,7 +833,7 @@
                                                                    [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
                                                     :order-by     [[:asc (mt/id :airport :id)]]
                                                     :limit        5}}
-                       :dataset         true
+                       :type            :model
                        :result_metadata [{:name "ID"
                                           :id   (mt/id :airport :id)}
                                          {:semantic_type :type/Longitude

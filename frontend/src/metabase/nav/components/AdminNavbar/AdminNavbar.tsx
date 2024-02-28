@@ -36,7 +36,10 @@ export const AdminNavbar = ({
   const isPaidPlain = useSelector(getIsPaidPlan);
 
   return (
-    <AdminNavbarRoot className="Nav" aria-label={t`Navigation bar`}>
+    <AdminNavbarRoot
+      data-element-id="navbar-root"
+      aria-label={t`Navigation bar`}
+    >
       <AdminLogoLink to="/admin">
         <AdminLogoContainer>
           <LogoIcon className="text-brand my2" dark />

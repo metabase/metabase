@@ -72,7 +72,6 @@
    :collection_position    nil
    :collection_preview     true
    :dataset_query          {}
-   :dataset                false
    :type                   "question"
    :description            nil
    :display                "scalar"
@@ -266,7 +265,8 @@
                  :model/Table {table-id :id} {:db_id database-id}
                  :model/Segment {segment-id :id} {:table_id table-id}
                  :model/Metric {metric-id :id} {:table_id table-id}
-                 :model/Card {model-id :id :as model} {:name "Model", :dataset true
+                 :model/Card {model-id :id :as model} {:name "Model"
+                                                       :type :model
                                                        :dataset_query {:query {:source-table (mt/id :venues)
                                                                                :filter [:= [:field 1 nil] "1"]}}}
                  ;; matching question
@@ -692,7 +692,7 @@
                (mt/user-http-request :rasta :post 400 "card"
                                      (merge
                                       (mt/with-temp-defaults :model/Card)
-                                      {:dataset       true
+                                      {:type          :model
                                        :query_type    "native"
                                        :dataset_query (:dataset_query card)})))))
       (testing "You can create a card with a saved question CTE as a model"
@@ -899,7 +899,7 @@
           (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
           (let [updated (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
                                               {:description "I'm innocently updating the description"
-                                               :dataset     true})]
+                                               :type        :model})]
             (is (= ["ID" "NAME"] (map norm (:result_metadata updated))))))))))
 
 (deftest updating-card-updates-metadata-4
@@ -1024,58 +1024,24 @@
                          [:trace          [:sequential :any]]]
                         (create-card! :rasta 403)))))))))
 
-(deftest create-card-with-type-and-dataset-test
-  (mt/with-model-cleanup [:model/Card]
-    (testing "type and dataset must match"
-      (is (= ":dataset is inconsistent with :type"
-             (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
-                                                                      :dataset true
-                                                                      :type :question))))
-      (is (= ":dataset is inconsistent with :type"
-             (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query (mt/random-name))
-                                                                      :dataset false
-                                                                      :type "model")))))
-    (testing "can create a model using dataset"
-      (is (=? {:dataset true
-               :type    "model"}
-              (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
-                                                                       :dataset true)))))
-
+(deftest ^:parallel create-card-with-type-and-dataset-test
+  (t2/with-transaction [_]
     (testing "can create a model using type"
-      (is (=? {:dataset true
-               :type    "model"}
+      (is (=? {:type "model"}
               (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
                                                                        :type :model)))))
-
     (testing "default is a question"
-      (is (=? {:dataset false
-               :type    "question"}
+      (is (=? {:type "question"}
               (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
 
-(deftest update-card-with-type-and-dataset-test
+(deftest ^:parallel update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"
     (mt/with-temp [:model/Card card {:dataset_query {}}]
-      (is (=? {:dataset true
-               :type    "model"}
+      (is (=? {:type "model"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+      (is (=? {:type "question"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"}))))))
 
-      (is (=? {:dataset false
-               :type    "question"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))
-
-  (testing "can toggle model using both type and dataset"
-    (mt/with-temp [:model/Card card {:dataset_query {}}]
-      (is (=? {:dataset true
-               :type    "model"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model" :dataset true})))
-
-      (is (=? {:dataset false
-               :type    "question"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question" :dataset false})))
-
-      (testing "but error if type and dataset doesn't match"
-        (is (= ":dataset is inconsistent with :type"
-               (mt/user-http-request :crowberto :put 400 (str "card/" (:id card)) {:type "question" :dataset true})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
@@ -1166,16 +1132,18 @@
                           :moderation_reviews
                           (map clean)))))))))))
 
-(deftest fetch-card-404-test
+(deftest ^:parallel fetch-card-404-test
   (testing "GET /api/card/:id"
    (is (= "Not found."
-         (mt/user-http-request :crowberto :get 404 (format "card/%d" Integer/MAX_VALUE))))))
+          (mt/user-http-request :crowberto :get 404 (format "card/%d" Integer/MAX_VALUE))))))
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 
-(deftest updating-a-card-that-doesnt-exist-should-give-a-404
+(deftest ^:parallel updating-a-card-that-doesnt-exist-should-give-a-404
   (is (= "Not found."
          (mt/user-http-request :crowberto :put 404 (format "card/%d" Integer/MAX_VALUE)))))
 
@@ -1347,13 +1315,13 @@
     (with-temp-native-card-with-params! [_db card]
       (testing  "You cannot update a model to have variables"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
-               (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
+               (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:type :model})))))))
 
 (deftest ^:parallel turn-card-to-model-change-display-test
   (mt/with-temp [:model/Card card {:display :line}]
     (is (=? {:display "table"}
             (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
-                                  {:dataset true}))))
+                                  {:type :model}))))
 
   (mt/with-temp [:model/Card card {:display :line}]
     (is (=? {:display "table"}
@@ -1974,12 +1942,12 @@
                                                                                    :query    query}
                                                           :visualization_settings viz-settings}
                                  Card {model-card-id  :id
-                                       model-metadata :result_metadata} {:dataset       true
+                                       model-metadata :result_metadata} {:type          :model
                                                                          :dataset_query {:database (mt/id)
                                                                                          :type     :query
                                                                                          :query    {:source-table
                                                                                                     (format "card__%s" base-card-id)}}}
-                                 Card {meta-model-card-id :id} {:dataset         true
+                                 Card {meta-model-card-id :id} {:type            :model
                                                                 :dataset_query   {:database (mt/id)
                                                                                   :type     :query
                                                                                   :query    {:source-table
@@ -2084,7 +2052,9 @@
       (is (= [["MONEY"]
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
+
+(deftest xlsx-default-currency-formatting-test-2
   (testing "Default localization settings take effect"
     (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
                                                           :type/Currency {:currency "EUR", :currency_style "symbol"}}]
@@ -2754,9 +2724,9 @@
   (testing "Setting a question to a dataset makes it viz type table"
     (t2.with-temp/with-temp [:model/Card card {:display       :bar
                                                :dataset_query (mbql-count-query)}]
-      (is (=? {:display "table" :dataset true}
+      (is (=? {:display "table" :type "model"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                    (assoc card :dataset true :type "model")))))))
+                                    (assoc card :type :model :type "model")))))))
 
 (deftest dataset-card-2
   (testing "Cards preserve their edited metadata"
@@ -2780,13 +2750,13 @@
                                           {:database (mt/id)
                                            :type     :query
                                            :query    {:source-table (mt/id :venues)}}
-                                          :dataset true}
+                                          :type :model}
                      :model/Card mbql-nested {:dataset_query
                                               {:database (mt/id)
                                                :type     :query
                                                :query    {:source-table
                                                           (str "card__" (u/the-id mbql-ds))}}}
-                     :model/Card native-ds {:dataset true
+                     :model/Card native-ds {:type :model
                                             :dataset_query
                                             {:database (mt/id)
                                              :type :native
@@ -2842,17 +2812,17 @@
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
-                                           :rasta :post 200
-                                           "card"
-                                           (assoc (card-with-name-and-query "card-name"
-                                                                            query)
-                                                  :dataset true))]
+                   :rasta :post 200
+                   "card"
+                   (assoc (card-with-name-and-query "card-name"
+                                                    query)
+                          :type :model))]
               (is (= ["ID" "NAME"] (map norm metadata)))
-              (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                     (->> (update-card!
-                           (assoc card
-                                  :result_metadata (map #(assoc % :display_name "EDITED DISPLAY") metadata)))
-                          :result_metadata (map :display_name))))
+              (is (=? {:result_metadata [{:display_name "EDITED DISPLAY"}
+                                         {:display_name "EDITED DISPLAY"}]}
+                      (update-card!
+                       (assoc card
+                              :result_metadata (map #(assoc % :display_name "EDITED DISPLAY") metadata)))))
               ;; simulate a user changing the query without rerunning the query
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
                      (->> (update-card! (assoc card
@@ -2886,7 +2856,7 @@
     (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query venues
                                                                     {:fields [$id $name]
                                                                      :limit 2})
-                                      :dataset       true}]
+                                      :type          :model}]
       (let [updated-metadata (-> model :result_metadata vec
                                  (assoc-in [1 :visibility_type]
                                            :details-only))
@@ -2938,9 +2908,9 @@
   (testing "Can schedule refreshes for models"
     (with-persistence-setup db
       (t2.with-temp/with-temp
-        [:model/Card          model      {:dataset true :database_id (u/the-id db)}
-         :model/Card          notmodel   {:dataset false :database_id (u/the-id db)}
-         :model/Card          archived   {:dataset true :archived true :database_id (u/the-id db)}
+        [:model/Card          model      {:type :model :database_id (u/the-id db)}
+         :model/Card          notmodel   {:type :question :database_id (u/the-id db)}
+         :model/Card          archived   {:type :model :archived true :database_id (u/the-id db)}
          :model/PersistedInfo pmodel     {:card_id (u/the-id model) :database_id (u/the-id db)}
          :model/PersistedInfo pnotmodel  {:card_id (u/the-id notmodel) :database_id (u/the-id db)}
          :model/PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]
@@ -2963,7 +2933,7 @@
 (deftest unpersist-persist-model-test
   (with-persistence-setup db
     (t2.with-temp/with-temp
-      [:model/Card          model     {:database_id (u/the-id db), :dataset true}
+      [:model/Card          model     {:database_id (u/the-id db), :type :model}
        :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Can't unpersist models without :cache-granular-controls feature flag enabled"
         (mt/with-premium-features #{}
@@ -2986,7 +2956,7 @@
           (is (= "creating"
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel)))))))
     (t2.with-temp/with-temp
-      [:model/Card          notmodel  {:database_id (u/the-id db), :dataset false}
+      [:model/Card          notmodel  {:database_id (u/the-id db), :type :question}
        :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
       (mt/with-premium-features #{:cache-granular-controls}
         (testing "Allows unpersisting non-model cards"
@@ -3085,8 +3055,9 @@
       (testing "GET /api/card/:card-id/params/:param-key/search/:query"
         (is (= {:values          [["Red Medicine"]]
                 :has_more_values false}
-               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
+               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red"))))))))
 
+(deftest parameters-with-source-is-card-test-2
   (testing "fallback to field-values"
     (let [mock-default-result {:values          [["field-values"]]
                                :has_more_values false}]
@@ -3113,8 +3084,9 @@
                                              :values_source_config {:card_id     source-card-id
                                                                     :value_field (mt/$ids $venues.name)}}]}]
             (let [url (param-values-url card "abc")]
-              (is (= mock-default-result (mt/user-http-request :rasta :get 200 url)))))))))
+              (is (= mock-default-result (mt/user-http-request :rasta :get 200 url))))))))))
 
+(deftest parameters-with-source-is-card-test-3
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp
@@ -3311,7 +3283,7 @@
 
 (deftest card-read-event-test
   (testing "Card reads (views) via the API are recorded in the view_log"
-    (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :dataset false}]
+    (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
       (testing "GET /api/card/:id"
         (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
         (is (partial=
@@ -3325,7 +3297,7 @@
     (mt/dataset test-data
       (testing "visualization_settings references field by id"
         (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
-                                                    :dataset true}
+                                                    :type :model}
                                  :model/Card card {:dataset_query
                                                    {:database (mt/id)
                                                     :type :query
@@ -3345,7 +3317,7 @@
 
       (testing "visualization_settings references field by name"
         (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
-                                                    :dataset true}
+                                                    :type :model}
                                  :model/Card card {:dataset_query
                                                    {:database (mt/id)
                                                     :type :query
@@ -3372,7 +3344,7 @@
                      :model/Table      {table-id :id}         {:db_id db-id, :is_upload true}
                      :model/Collection {collection-id :id}    {}]
         (let [card-defaults {:collection_id collection-id
-                             :dataset       true
+                             :type          :model
                              :dataset_query {:type     :query
                                              :database db-id
                                              :query    {:source-table table-id}}}]
@@ -3410,7 +3382,7 @@
                 (mt/with-temporary-setting-values [uploads-enabled false]
                   (is (nil? (:based_on_upload (request card))))))
               (testing "\nIf the card is not a model, based_on_upload should be nil"
-                (mt/with-temp [:model/Card card' (assoc card-defaults :dataset false)]
+                (mt/with-temp [:model/Card card' (assoc card-defaults :type :question)]
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the card is a native query, based_on_upload should be nil"
                 (mt/with-temp [:model/Card card' (assoc card-defaults
