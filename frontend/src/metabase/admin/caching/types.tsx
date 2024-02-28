@@ -1,14 +1,16 @@
-import {t} from "ttag";
+import { t } from "ttag";
 
 export const CacheStrategies = {
-  "nocache": t`Don't cache`,
-  "ttl": t`When the TTL expires`,
-  "duration": t`On a regular duration`,
-  "schedule": t`On a schedule`,
-  "query": t`When the data updates`,
-}
+  nocache: t`Don't cache`,
+  ttl: t`When the TTL expires`,
+  duration: t`On a regular duration`,
+  schedule: t`On a schedule`,
+  query: t`When the data updates`,
+};
 export type CacheStrategy = keyof typeof CacheStrategies;
-export const isValidCacheStrategy = (strategy: string): strategy is CacheStrategy => {
+export const isValidCacheStrategy = (
+  strategy: string,
+): strategy is CacheStrategy => {
   return Object.keys(CacheStrategies).includes(strategy);
 };
 

@@ -14,7 +14,7 @@ export const Tab = styled(Tabs.Tab)`
   top: 1px;
   margin-bottom: 1px;
   border-bottom-width: 3px !important;
-  padding: .625rem 0px;
+  padding: 0.625rem 0px;
   margin-right: 1.25rem;
   &:hover {
     color: ${color("brand")};
@@ -29,7 +29,7 @@ export const TabsPanel = styled(Tabs.Panel)`
   flex: 1;
   height: calc(100% - 41px);
   padding: 1rem 2.5rem;
-  overflow:hidden;
+  overflow: hidden;
   justify-content: stretch;
 `;
 
