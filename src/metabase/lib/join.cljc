@@ -37,7 +37,7 @@
   (= (lib.dispatch/dispatch-value x) :mbql/join))
 
 (def ^:private Joinable
-  [:or lib.metadata/TableMetadata lib.metadata/CardMetadata])
+  [:or lib.metadata/TableMetadata ::lib.schema.metadata/card])
 
 (def ^:private JoinOrJoinable
   [:or

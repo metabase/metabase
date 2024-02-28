@@ -40,3 +40,10 @@ export const XrayIcon = styled(Icon)`
   color: ${color("accent4")};
   margin-right: 1rem;
 `;
+
+export const SuggestionsSidebarWrapper = styled.div`
+  min-height: 100vh;
+  width: 346px;
+  background-color: var(--color-bg-light);
+  border-left: 2px solid var(--color-border);
+`;

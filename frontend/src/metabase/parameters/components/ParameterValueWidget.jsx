@@ -35,7 +35,7 @@ import {
   parameterHasNoDisplayValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 
-import S from "./ParameterValueWidget.css";
+import S from "./ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "./ParameterValueWidgetTrigger";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 

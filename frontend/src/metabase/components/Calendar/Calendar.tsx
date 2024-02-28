@@ -9,7 +9,7 @@ import {
 } from "metabase/lib/date-time";
 import { Icon } from "metabase/ui";
 
-import "./Calendar.css";
+import "./Calendar.module.css";
 import { CalendarDay, CalendarIconContainer } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";

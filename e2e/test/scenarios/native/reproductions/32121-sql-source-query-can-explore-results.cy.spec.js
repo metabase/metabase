@@ -51,7 +51,7 @@ describe("issue 32121", () => {
     });
 
     it("convert GUI question to native query, and 'Explore results' works (metabase#32121)", () => {
-      cy.get(".QueryBuilder .Icon-sql").click();
+      cy.findByTestId("query-builder-root").icon("sql").click();
 
       cy.get(".Modal")
         .findByText("Convert this question to a native query")

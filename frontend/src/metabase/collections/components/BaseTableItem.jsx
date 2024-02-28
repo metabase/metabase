@@ -79,7 +79,7 @@ export function BaseTableItem({
       height: 48,
     };
 
-    const icon = { name: item.getIcon().name };
+    const icon = item.getIcon();
     if (item.model === "card") {
       icon.color = color("text-light");
     }
@@ -92,7 +92,6 @@ export function BaseTableItem({
         {canSelect && (
           <ItemCell data-testid={`${testId}-check`}>
             <EntityIconCheckBox
-              item={item}
               variant="list"
               icon={icon}
               pinned={isPinned}
@@ -104,12 +103,7 @@ export function BaseTableItem({
           </ItemCell>
         )}
         <ItemCell data-testid={`${testId}-type`}>
-          <EntityIconCheckBox
-            item={item}
-            variant="list"
-            icon={icon}
-            pinned={isPinned}
-          />
+          <EntityIconCheckBox variant="list" icon={icon} pinned={isPinned} />
         </ItemCell>
         <ItemNameCell data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>

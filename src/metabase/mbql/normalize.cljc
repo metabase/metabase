@@ -373,9 +373,9 @@
                      :source-query    normalize-source-query
                      :source-metadata {::sequence normalize-source-metadata}
                      :joins           {::sequence normalize-join}}
-   ;; we smuggle metadata for datasets and want to preserve their "database" form vs a normalized form so it matches
+   ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
-   :info            {:metadata/dataset-metadata identity
+   :info            {:metadata/model-metadata identity
                      ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
                      :visualization-settings    identity
                      :context                   maybe-normalize-token}

@@ -307,7 +307,7 @@
   Adds in denormalized models, sql-friendly names, and a json summary of the models
   appropriate for prompt engineering."
   [{database-name :name db_id :id :as database}]
-  (let [models (t2/select Card :database_id db_id :dataset true)]
+  (let [models (t2/select Card :database_id db_id :type :model)]
     (-> database
         (assoc :sql_name (normalize-name database-name))
         (assoc :models (mapv denormalize-model models))
