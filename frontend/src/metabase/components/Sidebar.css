@@ -12,7 +12,8 @@
 
 :local(.item),
 :local(.sectionTitle) {
-  composes: align-center py1 mb1 from "style";
+  composes: py1 mb1 from "style";
+  align-items: center;
   display: flex;
 }
 

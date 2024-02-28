@@ -1,5 +1,5 @@
 :local(.parameter) {
-  composes: align-center from "style";
+  align-items: center;
   display: flex;
   font-weight: 600;
   min-height: 30px;
@@ -8,7 +8,7 @@
 }
 
 :local(.nameInput) {
-  composes: align-center from "style";
+  align-items: center;
   display: flex;
   min-height: 30px;
   min-width: 150px;
@@ -105,7 +105,8 @@
 
 :local(.editButton),
 :local(.removeButton) {
-  composes: align-center cursor-pointer from "style";
+  composes: cursor-pointer from "style";
+  align-items: center;
   display: flex;
 }
 

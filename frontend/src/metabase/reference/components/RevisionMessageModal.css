@@ -1,5 +1,5 @@
 :local(.modalBody) {
-  composes: align-center from "style";
+  align-items: center;
   justify-content: center;
   display: flex;
   padding-left: 32px;

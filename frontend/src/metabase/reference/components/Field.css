@@ -3,7 +3,7 @@
 }
 
 :local(.field) {
-  composes: align-center from "style";
+  align-items: center;
   display: flex;
 }
 

@@ -40,7 +40,8 @@
 }
 
 :local(.headerButton) {
-  composes: ml1 align-center from "style";
+  composes: ml1 from "style";
+  align-items: center;
   display: flex;
   font-size: 14px;
 }
@@ -53,7 +54,8 @@
 }
 
 :local(.item) {
-  composes: align-center relative from "style";
+  composes: relative from "style";
+  align-items: center;
   display: flex;
 }
 
@@ -84,7 +86,8 @@
 }
 
 :local(.icons) {
-  composes: flex-row align-center from "style";
+  composes: flex-row from "style";
+  align-items: center;
   display: flex;
 }
 :local(.leftIcons) {
