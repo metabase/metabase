@@ -151,7 +151,7 @@ const ViewFooter = ({
                 resource={question}
                 resourceType="question"
                 hasPublicLink={!!question.publicUUID()}
-                onModalOpen={onOpenModal}
+                onModalOpen={() => onOpenModal(MODAL_TYPES.EMBED)}
               />
             ) : (
               <ResourceEmbedButton
