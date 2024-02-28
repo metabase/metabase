@@ -27,13 +27,15 @@
 }
 
 :local(.fieldType) {
-  composes: flex-1-quarter text-medium pr2 from "style";
+  composes: text-medium pr2 from "style";
+  flex: 0.25;
   overflow: hidden;
   white-space: nowrap;
 }
 
 :local(.fieldDataType) {
-  composes: flex-1-quarter text-medium from "style";
+  composes: text-medium from "style";
+  flex: 0.25;
 }
 
 :local(.fieldSecondary) {
