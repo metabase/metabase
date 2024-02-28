@@ -21,6 +21,8 @@ const LOG_COLORS = {
 export const LogsContainer = styled(LoadingAndErrorWrapper)`
   height: 100%;
   padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
 `;
 
 export const LogsContent = styled.div`
