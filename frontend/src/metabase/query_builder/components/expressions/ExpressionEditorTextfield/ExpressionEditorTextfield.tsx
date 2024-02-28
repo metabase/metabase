@@ -405,6 +405,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
+      expressionPosition,
     } = this.props;
 
     if (!source || source.length === 0) {
@@ -417,6 +418,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
+      expressionPosition,
     });
   }
 
@@ -427,6 +429,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       onCommit,
       onError,
+      expressionPosition,
     } = this.props;
     const { source } = this.state;
 
@@ -435,6 +438,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       query,
       stageIndex,
+      expressionPosition,
     });
 
     this.setState({ errorMessage });

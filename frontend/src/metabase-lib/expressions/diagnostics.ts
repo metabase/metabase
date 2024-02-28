@@ -44,12 +44,14 @@ export function diagnose({
   query,
   stageIndex,
   name = null,
+  expressionPosition,
 }: {
   source: string;
   startRule: "expression" | "aggregation" | "boolean";
   query: Lib.Query;
   stageIndex: number;
   name?: string | null;
+  expressionPosition?: number;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -131,6 +133,7 @@ export function diagnose({
     stageIndex,
     expressionMode,
     mbqlOrError,
+    expressionPosition,
   );
 
   if (possibleError) {
