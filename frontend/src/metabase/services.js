@@ -187,14 +187,6 @@ export const ModelIndexApi = {
   delete: DELETE("/api/model-index/:id"),
 };
 
-// TODO: move to plugin
-export const CacheConfigApi = {
-  list: GET("/api/ee/caching"),
-  create: POST("/api/ee/caching"),
-  update: PUT("/api/ee/caching/:id"),
-  delete: DELETE("/api/caching/:id"),
-};
-
 export const DashboardApi = {
   // creates a new empty dashboard
   create: POST("/api/dashboard"),
@@ -622,4 +614,12 @@ export const ApiKeysApi = {
   delete: DELETE("/api/api-key/:id"),
   edit: PUT("/api/api-key/:id"),
   regenerate: PUT("/api/api-key/:id/regenerate"),
+};
+
+// TODO: move to plugin
+export const CacheConfigApi = {
+  list: GET("/api/ee/caching"),
+  create: POST("/api/ee/caching"),
+  update: PUT("/api/ee/caching/:id"),
+  delete: DELETE("/api/caching/:id"),
 };

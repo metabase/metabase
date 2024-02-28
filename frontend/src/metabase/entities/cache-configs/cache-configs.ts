@@ -15,7 +15,7 @@ export const CacheConfigs = createEntity({
     ...CacheConfigApi,
     list: () => CacheConfigApi.list(),
   },
-  // actions,
+  actions,
   // utils,
   // TODO: Are these right?
   writableProperties: ["name", "value_ref", "pk_ref", "model_id"],

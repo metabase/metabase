@@ -1,12 +1,20 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 
 // TODO: Add updateCacheConfigs, modeled on updateModelIndexes.
 // Also look at some other examples of API interaction, since modelIndexes might not be the most representative case
 
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { useCacheConfigListQuery } from "metabase/common/hooks/use-cache-config-list-query/use-cache-config-list-query";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { CacheConfigApi } from "metabase/services";
 import { Tabs } from "metabase/ui";
 
 import type { CacheConfig } from "../types";
@@ -25,28 +33,36 @@ const isValidTabId = (tab: unknown): tab is TabId =>
 export const Caching = () => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
   const [tabsHeight, setTabsHeight] = useState<number>(300);
+  const tabsRef = useRef<HTMLDivElement>(null);
+
   const {
     data: databases = [],
     error: errorWhenLoadingDatabases,
     isLoading: areDatabasesLoading,
   } = useDatabaseListQuery();
+
+  // add some dummy data
+  if (databases.length === 1) {
+    databases.push(...databases);
+    databases.push(...databases);
+    databases.push(...databases);
+    databases.push(...databases);
+  }
+
   const {
-    data: _cacheConfigsFromApi = [],
+    loading: areCacheConfigsLoading,
+    value: cacheConfigsFromApi,
     error: errorWhenLoadingCacheConfigs,
-    isLoading: areCacheConfigsLoading,
-  } = useCacheConfigListQuery();
+  } = useAsync(() => CacheConfigApi.list(), []);
 
-  // if (databases.length === 1) {
-  //   databases.push(...databases);
-  //   databases.push(...databases);
-  //   databases.push(...databases);
-  //   databases.push(...databases);
-  // }
-
-  const tabsRef = useRef<HTMLDivElement>(null);
-
-  // TODO: Fetch cacheConfigs from the API
   const [cacheConfigs, setCacheConfigs] = useState<CacheConfig[]>([]);
+
+  useEffect(() => {
+    // TODO: validate json
+    if (cacheConfigsFromApi) {
+      setCacheConfigs(cacheConfigsFromApi.items);
+    }
+  }, [cacheConfigsFromApi]);
 
   // TODO: extract out as a hook?
   // TODO: explain with a comment?
@@ -68,8 +84,6 @@ export const Caching = () => {
     };
   }, [tabsRef, areDatabasesLoading, areCacheConfigsLoading]);
 
-  // TODO: instead of tabid, maybe just use a state variable whose type is Element? ah but value prop of Tabs has to be a string
-  // "show don't tell"
   const dbConfigs = useMemo(() => {
     const map = new Map<number, CacheConfig>();
     // TODO: Get root strategy from api
@@ -88,6 +102,19 @@ export const Caching = () => {
         config => config.model_id !== databaseId,
       );
       setCacheConfigs(config ? [...otherConfigs, config] : otherConfigs);
+      if (config) {
+        CacheConfigApi.update({
+          model: databaseId === 0 ? "root" : "database",
+          model_id: databaseId,
+          strategy: { type: "nocache" }, // config.strategy },
+        });
+      } else {
+        CacheConfigApi.delete({
+          model: databaseId === 0 ? "root" : "database",
+          model_id: databaseId,
+        });
+      }
+      // Re-fetch data from API at this point?
     },
     [cacheConfigs],
   );
