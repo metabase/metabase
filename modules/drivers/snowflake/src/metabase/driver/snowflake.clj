@@ -151,6 +151,13 @@
                    ;; see https://github.com/metabase/metabase/issues/27856
                    (cond-> (:quote-db-name details)
                      (update :db quote-name))
+                   ;; see https://github.com/metabase/metabase/issues/22133
+                   (update :subname (fn [existing-subname]
+                    (if-let [alt-hostname (:alternative-hostname details)]
+                      (if (not (empty? alt-hostname))
+                        (str "//" alt-hostname "/")
+                      existing-subname)
+                    existing-subname)))
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (update :schema upcase-not-nil)

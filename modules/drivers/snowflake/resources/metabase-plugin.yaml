@@ -48,6 +48,12 @@ driver:
       type: boolean
       visible-if:
         advanced-options: true
+    - name: alternative-hostname
+      display-name: Set alternative hostname (instead of <account-name>.snowflakecomputing.com)
+      default: ""
+      type: string
+      visible-if:
+        advanced-options: true
     - default-advanced-options
 init:
   - step: load-namespace

@@ -78,6 +78,7 @@
                  :private-key-options "uploaded"
                  :private-key-source nil
                  :port nil
+                 :subname "//ls10467.us-east-2.aws.snowflakecomputing.com/"
                  :advanced-options true
                  :private-key-id 1
                  :schema-filters-type "all"
@@ -87,13 +88,21 @@
                  :engine :snowflake
                  :private-key-creator-id 3
                  :user "SNOWFLAKE_DEVELOPER"
-                 :private-key-created-at "2024-01-05T19:10:30.861839Z"}]
-    (testing "Database name is quoted iff quoting is requested (#27856)"
+                 :private-key-created-at "2024-01-05T19:10:30.861839Z"
+                 :alternative-hostname ""}]
+    (testing "Database name is quoted if quoting is requested (#27856)"
       (are [quote? result] (=? {:db result}
                                (let [details (assoc details :quote-db-name quote?)]
                                  (sql-jdbc.conn/connection-details->spec :snowflake details)))
         true "\"v3_sample-dataset\""
-        false "v3_sample-dataset"))))
+        false "v3_sample-dataset"))
+    (testing "Subname is replaced if alternative is provided (#22133)"
+      (are [alternative? result] (=? {:subname result}
+                               (let [details (assoc details :alternative-hostname alternative?)]
+                                 (sql-jdbc.conn/connection-details->spec :snowflake details)))
+        nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        "snowflake.example.com" "//snowflake.example.com/"))))
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
