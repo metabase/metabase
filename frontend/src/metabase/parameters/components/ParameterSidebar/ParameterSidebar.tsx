@@ -150,6 +150,7 @@ export const ParameterSidebar = ({
           : undefined
       }
       onRemove={handleRemove}
+      data-testid="dashboard-parameter-sidebar"
     >
       <SidebarHeader>
         <Radio

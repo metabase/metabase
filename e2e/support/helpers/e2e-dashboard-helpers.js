@@ -261,6 +261,10 @@ export function dashboardSaveButton() {
   return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });
 }
 
+export function dashboardParametersDoneButton() {
+  return cy.findByTestId("dashboard-parameter-sidebar").button("Done");
+}
+
 /**
  * @param {Object} option
  * @param {number=} option.id
