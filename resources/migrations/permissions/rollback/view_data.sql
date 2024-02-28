@@ -4,12 +4,10 @@ WHERE perm_type = 'perms/data-access';
 
 -- Insert DB-level block rows on rollback for any group that has sandboxes defined and no 'create-queries' perms.
 
-INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
+INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
 SELECT DISTINCT pg.id AS group_id,
                 'perms/data-access' AS perm_type,
                 mt.db_id,
-                NULL AS schema_name,
-                NULL AS table_id,
                 'block' AS perm_value
 FROM permissions_group pg
 CROSS JOIN metabase_table mt
@@ -31,12 +29,10 @@ WHERE EXISTS
        AND dp.perm_type = 'perms/data-access' );
 
 
-INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
+INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
 SELECT pg.id AS group_id,
        'perms/data-access' AS perm_type,
        md.id AS db_id,
-       NULL AS schema_name,
-       NULL AS table_id,
        CASE
            WHEN EXISTS
                   (SELECT 1
