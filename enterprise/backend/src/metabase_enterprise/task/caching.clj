@@ -14,26 +14,35 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- select-ready-to-run [strategy]
+(defn- select-ready-to-run
+  "Fetch whatever cache configs are ready to be updated."
+  [strategy]
   (t2/select :model/CacheConfig :strategy strategy {:where [:or
                                                             [:= :next_run_at nil]
                                                             [:<= :next_run_at (t/offset-date-time)]]}))
 
-(defn- calc-next-run [^String schedule]
+(defn- calc-next-run
+  "Calculate when a next run should happen based on a cron schedule"
+  [^String schedule]
   (let [^MutableTrigger cron (cron/finalize (cron/cron-schedule schedule))]
     ;; needed by the tests, or the cron will use its own current date
     (.setStartTime cron (t/java-date))
     (-> (.getFireTimeAfter cron (t/java-date (t/offset-date-time)))
         (t/offset-date-time (t/zone-offset)))))
 
-(defn- refresh-schedule-configs []
+(defn- refresh-schedule-configs
+  "Update `last_expired_at` for every cache config with `:schedule` strategy"
+  []
   (count
    (for [{:keys [id config]} (select-ready-to-run :schedule)]
      (t2/update! :model/CacheConfig {:id id}
                  {:next_run_at     (calc-next-run (:schedule config))
                   :last_expired_at (t/offset-date-time)}))))
 
-(defn- refresh-query-configs []
+(defn- refresh-query-configs
+  "Fetches `:query`-strategy configs wants to re-check their queries, runs those queries and updates `last_expired_at`
+  where `(:marker state)` is not equal to the result of the query."
+  []
   (if-let [configs (seq (select-ready-to-run :query))]
     (let [fields (m/index-by :id (t2/select :model/Field :id [:in (map #(-> % :config :field_id) configs)]))
           tables (m/index-by :id (t2/select :model/Table :id [:in (map :table_id (vals fields))]))]

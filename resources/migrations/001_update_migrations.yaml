@@ -5824,7 +5824,7 @@ databaseChangeLog:
             sql: >-
               DROP VIEW IF EXISTS v_content;
 
-      id: v50.2024-02-16T16:00:00
+      id: v50.2024-02-28T16:00:00
       author: piranha
       comment: 'Effective caching #36847'
       changes:
@@ -5852,16 +5852,6 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-              - column:
-                  name: collection_id
-                  remarks: '(denormalized) id of a collection of an entity this references'
-                  type: int
-                  constraints:
-                    nullable: true
-                    referencedTableName: collection
-                    referencedColumnNames: id
-                    foreignKeyName: fk_cache_config_ref_collection_id
-                    deleteCascade: true
               - column:
                   name: created_at
                   remarks: Timestamp when the config was inserted
@@ -5908,7 +5898,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-02-16T16:00:01
+      id: v50.2024-02-28T16:00:01
       author: piranha
       comment: 'Effective caching #36847'
       rollback: # will be removed with the table
@@ -5918,19 +5908,6 @@ databaseChangeLog:
             tableName: cache_config
             constraintName: idx_cache_config_unique_model
             columnNames: model, model_id
-
-  - changeSet:
-      id: v50.2024-02-16T16:00:02
-      author: piranha
-      comment: 'Effective caching #36847'
-      rollback: # will be removed with the table
-      changes:
-        - createIndex:
-            tableName: cache_config
-            indexName: idx_cache_config_collection_id
-            columns:
-              column:
-                name: collection_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
