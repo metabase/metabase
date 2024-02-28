@@ -112,7 +112,7 @@ describe("issue 31628", () => {
             }
           });
 
-          it(`should render descendants of a 'scalar' without overflowing it (metabase#31628)`, () => {
+          it("should render descendants of a 'scalar' without overflowing it (metabase#31628)", () => {
             assertDescendantsNotOverflowDashcards(descendantsSelector);
           });
         });
@@ -267,7 +267,7 @@ describe("issue 31628", () => {
             }
           });
 
-          it(`should render descendants of a 'smartscalar' without overflowing it (metabase#31628)`, () => {
+          it("should render descendants of a 'smartscalar' without overflowing it (metabase#31628)", () => {
             assertDescendantsNotOverflowDashcards(descendantsSelector);
           });
         });

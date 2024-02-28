@@ -213,7 +213,7 @@
                                                                                  [:count]
                                                                                  {:name "count"}]]}}
                                                      (when dataset?
-                                                       {:info {:metadata/dataset-metadata
+                                                       {:info {:metadata/model-metadata
                                                                (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
 
 (deftest ^:parallel sql-source-query-breakout-aggregation-test

@@ -310,7 +310,7 @@ describe("scenarios > visualizations > table", () => {
 describe("scenarios > visualizations > table > conditional formatting", () => {
   beforeEach(() => {
     resetTestTable({ type: "postgres", table: "many_data_types" });
-    restore(`postgres-writable`);
+    restore("postgres-writable");
     cy.signInAsAdmin();
     resyncDatabase({
       dbId: WRITABLE_DB_ID,

@@ -92,7 +92,7 @@ function assertMultipleValuesFilterState() {
 
 function setup() {
   cy.createNativeQuestion({
-    name: `17160Q`,
+    name: "17160Q",
     native: {
       query: "SELECT * FROM products WHERE {{CATEGORY}}",
       "template-tags": {

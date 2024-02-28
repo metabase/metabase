@@ -626,7 +626,7 @@ describe("SaveQuestionModal", () => {
 
   it("should call onClose when close icon is clicked", async () => {
     const { onCloseMock } = await setup(getQuestion());
-    userEvent.click(screen.getByLabelText("close icon"));
+    userEvent.click(screen.getByLabelText("Close"));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
 

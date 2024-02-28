@@ -101,6 +101,10 @@
 (lib.hierarchy/derive :segment ::ref)
 
 (mbql-clause/define-tuple-mbql-clause :metric :- ::expression/type.unknown
+  ;; String references are allowed to support legacy questions
+  ;; (see metabase.lib.convert-test/round-trip-test for examples).
+  ;; :string should be removed once the legacy questions don't have to be
+  ;; supported.
   #_metric-id [:schema [:ref ::id/metric]])
 
 (lib.hierarchy/derive :metric ::ref)

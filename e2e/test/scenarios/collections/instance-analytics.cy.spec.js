@@ -72,9 +72,9 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.findByTestId("qb-header").findByText("Save").click();
 
-        modal().within(() => {
-          cy.findByTextEnsureVisible("Custom reports");
-          cy.button("Save").click();
+        cy.findByTestId("save-question-modal").within(modal => {
+          cy.findByTestId("select-button").findByText("Custom reports");
+          cy.findByText("Save").click();
         });
 
         cy.wait("@saveCard").then(({ response }) => {

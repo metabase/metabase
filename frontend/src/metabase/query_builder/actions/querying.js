@@ -121,7 +121,7 @@ export const runQuestionQuery = ({
 
     const queryTimer = startTimer();
 
-    apiRunQuestionQuery(question, {
+    const runQuestionPromise = apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
       isDirty: cardIsDirty,
@@ -140,6 +140,8 @@ export const runQuestionQuery = ({
       .catch(error => dispatch(queryErrored(startTime, error)));
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
+
+    return runQuestionPromise;
   };
 };
 
@@ -171,20 +173,17 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
-    const [{ data: prevData }] = getQueryResults(getState()) || [{}];
+    const prevQueryResults = getQueryResults(getState());
+    const [{ data: prevData }] = prevQueryResults ?? [{}];
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      const { isNative } = Lib.queryDisplayInfo(question.query());
-
-      if (isNative) {
-        question = question.syncColumnsAndSettings(
-          originalQuestion,
-          queryResults[0],
-        );
-      }
+      question = question.syncColumnsAndSettings(
+        queryResults[0],
+        prevQueryResults?.[0],
+      );
 
       question = question.maybeResetDisplay(
         data,

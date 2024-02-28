@@ -4,8 +4,8 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
 import * as Urls from "metabase/lib/urls";
+import { Modal } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -14,7 +14,7 @@ import { CreateCollectionForm } from "../components/CreateCollectionForm";
 
 interface CreateCollectionModalOwnProps
   extends Omit<CreateCollectionFormOwnProps, "onCancel"> {
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 interface CreateCollectionModalDispatchProps {
@@ -38,7 +38,7 @@ function CreateCollectionModal({
       if (typeof onCreate === "function") {
         onCreate(collection);
       } else {
-        onClose?.();
+        onClose();
         onChangeLocation(Urls.collection(collection));
       }
     },
@@ -46,13 +46,26 @@ function CreateCollectionModal({
   );
 
   return (
-    <ModalContent title={t`New collection`} onClose={onClose}>
-      <CreateCollectionForm
-        {...props}
-        onCreate={handleCreate}
-        onCancel={onClose}
-      />
-    </ModalContent>
+    <Modal.Root
+      opened
+      onClose={onClose}
+      size="lg"
+      data-testid="new-collection-modal"
+    >
+      <Modal.Content p="md">
+        <Modal.Header>
+          <Modal.Title>{t`New collection`}</Modal.Title>
+          <Modal.CloseButton />
+        </Modal.Header>
+        <Modal.Body>
+          <CreateCollectionForm
+            {...props}
+            onCreate={handleCreate}
+            onCancel={onClose}
+          />
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 }
 

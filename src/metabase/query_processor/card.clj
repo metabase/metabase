@@ -224,7 +224,7 @@
                             dashcard-id)
                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
         card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
-                                                 :dataset :result_metadata :visualization_settings]
+                                                 :type :result_metadata :visualization_settings]
                                                 :id card-id))
         query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                      (update :viz-settings (fn [viz] (merge viz dash-viz)))
@@ -238,8 +238,8 @@
                           :card-name              (:name card)
                           :dashboard-id           dashboard-id
                           :visualization-settings (:visualization_settings card)}
-                   (and (:dataset card) (seq (:result_metadata card)))
-                   (assoc :metadata/dataset-metadata (:result_metadata card)))]
+                   (and (= (:type card) :model) (seq (:result_metadata card)))
+                   (assoc :metadata/model-metadata (:result_metadata card)))]
     (api/check-not-archived card)
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))

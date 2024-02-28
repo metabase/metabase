@@ -159,7 +159,7 @@ describe("scenarios > public > dashboard", () => {
 
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
-      it(`should be able to view public dashboards`, () => {
+      it("should be able to view public dashboards", () => {
         cy.get("@dashboardId").then(id => {
           cy.request("POST", `/api/dashboard/${id}/public_link`).then(
             ({ body: { uuid } }) => {

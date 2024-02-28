@@ -92,7 +92,9 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       // Save question
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
-      cy.get(".Modal").button("Save").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save question").should("not.exist");
 

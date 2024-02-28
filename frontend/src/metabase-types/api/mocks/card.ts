@@ -107,6 +107,7 @@ export const createMockTableColumnOrderSetting = (
   opts?: Partial<TableColumnOrderSetting>,
 ): TableColumnOrderSetting => ({
   name: "Column",
+  key: '["ref",["field",1,null]]',
   enabled: true,
   ...opts,
 });
