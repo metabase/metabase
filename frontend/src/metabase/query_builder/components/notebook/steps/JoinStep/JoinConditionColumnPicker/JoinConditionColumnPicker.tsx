@@ -35,8 +35,11 @@ export function JoinConditionColumnPicker({
   isOpened,
   readOnly = false,
   onOpenedChange,
+  getColumnGroups,
   ...props
-}: JoinConditionColumnPickerProps) {
+}: Omit<JoinConditionColumnPickerProps, "columnGroups"> & {
+  getColumnGroups: () => Lib.ColumnGroup[];
+}) {
   const columnInfo = column ? Lib.displayInfo(query, stageIndex, column) : null;
 
   const tableName = useMemo(() => {
@@ -75,6 +78,7 @@ export function JoinConditionColumnPicker({
         <StyledQueryColumnPicker
           {...props}
           query={query}
+          columnGroups={isOpened ? getColumnGroups() : []}
           stageIndex={stageIndex}
           hasTemporalBucketing
           checkIsColumnSelected={checkColumnSelected}

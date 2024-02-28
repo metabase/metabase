@@ -279,15 +279,34 @@ function JoinCondition({
     rhsColumn,
     operator,
     operators,
-    lhsColumns,
-    rhsColumns,
     setOperator,
     setLHSColumn,
     setRHSColumn,
   } = useJoinCondition(query, stageIndex, table, join, condition);
 
-  const lhsColumnGroup = Lib.groupColumns(lhsColumns);
-  const rhsColumnGroup = Lib.groupColumns(rhsColumns);
+  const getLhsColumnGroup = () => {
+    const lhsColumns = Lib.joinConditionLHSColumns(
+      query,
+      stageIndex,
+      join || table,
+      lhsColumn,
+      rhsColumn,
+    );
+
+    return Lib.groupColumns(lhsColumns);
+  };
+
+  const getRhsColumnGroup = () => {
+    const rhsColumns = Lib.joinConditionRHSColumns(
+      query,
+      stageIndex,
+      join || table,
+      lhsColumn,
+      rhsColumn,
+    );
+
+    return Lib.groupColumns(rhsColumns);
+  };
 
   const isNewCondition = !condition;
   const isComplete = Boolean(lhsColumn && rhsColumn && operator);
@@ -327,7 +346,7 @@ function JoinCondition({
             query={query}
             stageIndex={stageIndex}
             column={lhsColumn}
-            columnGroups={lhsColumnGroup}
+            getColumnGroups={getLhsColumnGroup}
             isNewCondition={isNewCondition}
             label={t`Left column`}
             isOpened={isLHSPickerOpened}
@@ -352,7 +371,7 @@ function JoinCondition({
             query={query}
             stageIndex={stageIndex}
             column={rhsColumn}
-            columnGroups={rhsColumnGroup}
+            getColumnGroups={getRhsColumnGroup}
             table={table}
             isNewCondition={isNewCondition}
             label={t`Right column`}

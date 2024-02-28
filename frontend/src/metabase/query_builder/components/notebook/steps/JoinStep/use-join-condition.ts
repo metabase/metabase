@@ -44,30 +44,6 @@ export function useJoinCondition(
     [query, stageIndex],
   );
 
-  const lhsColumns = useMemo(
-    () =>
-      Lib.joinConditionLHSColumns(
-        query,
-        stageIndex,
-        join || table,
-        lhsColumn,
-        rhsColumn,
-      ),
-    [query, stageIndex, join, table, lhsColumn, rhsColumn],
-  );
-
-  const rhsColumns = useMemo(
-    () =>
-      Lib.joinConditionRHSColumns(
-        query,
-        stageIndex,
-        join || table,
-        lhsColumn,
-        rhsColumn,
-      ),
-    [query, stageIndex, join, table, lhsColumn, rhsColumn],
-  );
-
   const setOperator = (operator: Lib.JoinConditionOperator) => {
     _setOperator(operator);
     if (lhsColumn && rhsColumn) {
@@ -151,8 +127,6 @@ export function useJoinCondition(
     rhsColumn,
     operator,
     operators,
-    lhsColumns,
-    rhsColumns,
     setOperator,
     setLHSColumn,
     setRHSColumn,
