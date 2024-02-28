@@ -34,7 +34,7 @@
                                                                                         [:expression "Tax Rate"]]
                                                                          :limit        10}}}
                     Card {~model-card-id :id} {:name            "Model with percent semantic type"
-                                               :dataset         true
+                                               :type            :model
                                                :dataset_query   {:type     :query
                                                                  :database (mt/id)
                                                                  :query    {:source-table (format "card__%s" ~base-card-id)}}
@@ -314,12 +314,12 @@
                                                                 :native   {:query q}}}
                      Card {model-card-id  :id
                            model-metadata :result_metadata} {:name          "MODEL"
-                                                             :dataset       true
+                                                             :type          :model
                                                              :dataset_query {:database (mt/id)
                                                                              :type     :query
                                                                              :query    (model-query native-card-id)}}
                      Card {meta-model-card-id :id} {:name                   "METAMODEL"
-                                                    :dataset                true
+                                                    :type                   :model
                                                     :dataset_query          {:database (mt/id)
                                                                              :type     :query
                                                                              :query    {:source-table
@@ -464,14 +464,14 @@
                        Card {model-card-name :name
                              model-card-id   :id
                              model-metadata  :result_metadata} {:name          "MODEL"
-                                                                :dataset       true
+                                                                :type          :model
                                                                 :dataset_query {:database (mt/id)
                                                                                 :type     :query
                                                                                 :query    {:source-table
                                                                                            (format "card__%s" base-card-id)}}}
                        Card {meta-model-card-name :name
                              meta-model-card-id   :id} {:name            "MODEL_WITH_META"
-                                                        :dataset         true
+                                                        :type            :model
                                                         :dataset_query   {:database (mt/id)
                                                                           :type     :query
                                                                           :query    {:source-table
@@ -730,6 +730,64 @@
                 (testing "Don't send a pulse if no results at all"
                   (is (nil? result)))))))))))
 
+(deftest text-cards-are-not-skipped-when-empty-data-is-skipped-test
+  (testing "Do not skip text cards when filtering out pulse cards with empty results (#39190)"
+    (let [card-text "THIS IS TEXT THAT SHOULD NOT GO AWAY"]
+      (mt/dataset test-data
+        ;; If we don't skip empty cards, we expect 2 cards.
+        ;; If we do skip empty cards, we expect 1 card.
+        (doseq [[skip? expected-count] [[false 2] [true 1]]]
+          (mt/with-temp
+            [Card {base-card-id :id} {:name          "Card1"
+                                      :dataset_query {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (mt/id :orders)
+                                                                 :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                                                                [:field (mt/id :orders :tax) {:base-type :type/Float}]]
+                                                                 :limit        2}}}
+             Card {empty-card-id :id} {:name          "Card1"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (format "card__%s" base-card-id)
+                                                                  :filter       [:= [:field "TAX" {:base-type :type/Float}] -1]}}}
+             Dashboard {dash-id :id} {:name "The Dashboard"}
+             DashboardCard _ {:dashboard_id dash-id
+                              :visualization_settings
+                              {:virtual_card {:display :text}
+                               :text         card-text}}
+             DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                    :card_id      base-card-id}
+             DashboardCard {empty-dash-card-id :id} {:dashboard_id dash-id
+                                                     :card_id      empty-card-id}
+             Pulse {pulse-id :id :as pulse} {:name          "Only populated pulse"
+                                             :dashboard_id  dash-id
+                                             :skip_if_empty skip?}
+             PulseCard _ {:pulse_id          pulse-id
+                          :card_id           base-card-id
+                          :dashboard_card_id base-dash-card-id
+                          :include_csv       true}
+             PulseCard _ {:pulse_id          pulse-id
+                          :card_id           empty-card-id
+                          :dashboard_card_id empty-dash-card-id
+                          :include_csv       true}
+             PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                  :pulse_id     pulse-id
+                                                  :enabled      true}
+             PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                      :user_id          (mt/user->id :rasta)}]
+            (mt/with-fake-inbox
+              (with-redefs [email/bcc-enabled? (constantly false)]
+                (mt/with-test-user nil
+                  (metabase.pulse/send-pulse! pulse)))
+              (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
+                (let [data-tables (hik.s/select
+                                    (hik.s/class "pulse-body")
+                                    (-> html-body hik/parse hik/as-hickory))]
+                  (testing "The expected count will change if empty tables are skipped."
+                    (is (= expected-count (count data-tables))))
+                  (testing "The text card should always be present"
+                    (is (true? (str/includes? html-body card-text)))))))))))))
+
 (deftest xray-dashboards-work-test
   (testing "Dashboards produced by generated by X-Rays should not produce bad results (#38350)"
     (mt/dataset test-data
@@ -775,7 +833,7 @@
                                                                    [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
                                                     :order-by     [[:asc (mt/id :airport :id)]]
                                                     :limit        5}}
-                       :dataset         true
+                       :type            :model
                        :result_metadata [{:name "ID"
                                           :id   (mt/id :airport :id)}
                                          {:semantic_type :type/Longitude

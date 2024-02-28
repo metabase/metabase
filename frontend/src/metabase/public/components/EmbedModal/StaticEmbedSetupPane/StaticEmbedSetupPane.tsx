@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import {
@@ -24,7 +25,6 @@ import type {
   EmbedResourceParameter,
   EmbedResourceType,
 } from "metabase/public/lib/types";
-import { getSetting } from "metabase/selectors/settings";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Stack, Tabs } from "metabase/ui";
 import { getParameterValue } from "metabase-lib/parameters/utils/parameter-values";
@@ -73,10 +73,8 @@ export const StaticEmbedSetupPane = ({
 }: StaticEmbedSetupPaneProps): JSX.Element => {
   const [activePane, setActivePane] = useState<ActivePreviewPane>("code");
 
-  const siteUrl = useSelector(state => getSetting(state, "site-url"));
-  const secretKey = checkNotNull(
-    useSelector(state => getSetting(state, "embedding-secret-key")),
-  );
+  const siteUrl = useSetting("site-url");
+  const secretKey = checkNotNull(useSetting("embedding-secret-key"));
   const initialEmbeddingParams = getDefaultEmbeddingParams(
     resource,
     resourceParameters,

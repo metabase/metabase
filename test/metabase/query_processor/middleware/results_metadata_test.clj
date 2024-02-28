@@ -166,7 +166,7 @@
                           {:database (mt/id)
                            :type     :native
                            :native   {:query native-query}
-                           :info     {:metadata/dataset-metadata existing-metadata}}))]
+                           :info     {:metadata/model-metadata existing-metadata}}))]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))
         (testing "mbql"
@@ -182,7 +182,7 @@
                           (update query
                                   :info
                                   merge
-                                  {:metadata/dataset-metadata existing-metadata})))]
+                                  {:metadata/model-metadata existing-metadata})))]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))))))
 
@@ -359,7 +359,7 @@
                                             :semantic_type)))))
         (testing "When result_metadata is passed into the query processor context, it is preserved in the result."
           (let [results (qp/process-query
-                          (assoc-in dataset_query [:info :metadata/dataset-metadata] result_metadata))]
+                          (assoc-in dataset_query [:info :metadata/model-metadata] result_metadata))]
             (is (= :type/Percentage (->> (get-in results [:data :results_metadata :columns])
                                          (some (fn [{field-name :name :as field-metadata}]
                                                  (when (= field-name "Tax Rate")

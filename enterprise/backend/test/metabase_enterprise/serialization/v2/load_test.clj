@@ -1040,7 +1040,7 @@
                 card     (ts/create! Card
                                      :name "the query"
                                      :query_type :native
-                                     :dataset true
+                                     :type :model
                                      :database_id (:id db)
                                      :dataset_query {:database (:id db)
                                                      :native {:type   :native
@@ -1172,7 +1172,7 @@
                 card       (ts/create! Card
                                  :name "the query"
                                  :query_type :native
-                                 :dataset true
+                                 :type :model
                                  :database_id (:id db)
                                  :dataset_query {:database (:id db)
                                                  :native   {:type   :native

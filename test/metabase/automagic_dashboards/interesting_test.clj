@@ -160,6 +160,7 @@
                 (#'interesting/matching-fields
                  (update-in context [:source :fields] conj another-field)
                  generic-number-dimension)))))))
+
 (deftest candidate-bindings-1f-3b-test
   (testing "Candidate bindings with one field and multiple bindings"
     (let [field                {:base_type     :type/Integer
@@ -415,7 +416,7 @@
                                            :rasta
                                            (result-metadata-for-query
                                             source-query))
-                        :dataset         true}]
+                        :type            :model}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
                   dimensions         [{"GenericNumber" {:field_type [:type/Number], :score 70}}
@@ -456,7 +457,7 @@
                                            :rasta
                                            (result-metadata-for-query
                                             source-query))
-                        :dataset         true}]
+                        :type            :model}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
                   ;; These typically come from the dashboard templates, but can be mocked (injected dyamically if desired) easily.

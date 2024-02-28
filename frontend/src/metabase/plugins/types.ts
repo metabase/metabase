@@ -54,18 +54,15 @@ export type PluginGroupManagersType = {
   confirmUpdateMembershipAction: any;
 };
 
-export type TLLMIndicatorProps = {
+export type LLMIndicatorProps = {
   question: Question;
-  setFieldValue: (field: string, value: string) => void;
-  validateForm: (values?: Record<string, boolean>) => void;
+  onAccept: (values: { name?: string; description?: string }) => void;
 };
 
-export type TLLMSuggestQuestionInfo = ({
-  question,
-  setFieldValue,
-  validateForm,
-}: TLLMIndicatorProps) => JSX.Element | null;
+export type LLMSuggestQuestionInfo = (
+  props: LLMIndicatorProps,
+) => JSX.Element | null;
 
 export type PluginLLMAutoDescription = {
-  LLMSuggestQuestionInfo: TLLMSuggestQuestionInfo;
+  LLMSuggestQuestionInfo: LLMSuggestQuestionInfo;
 };

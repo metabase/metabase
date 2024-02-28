@@ -206,8 +206,12 @@
                                         (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
                     (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard))]
         (if skip_if_empty
-          ;; Remove any component of the parts that have no results when empty results aren't wanted
-          (remove (fn [part] (zero? (get-in part [:result :row_count] 0))) parts)
+          ;; Remove cards that have no results when empty results aren't wanted
+          (remove (fn [{part-type :type :as part}]
+                    (and
+                      (= part-type :card)
+                      (zero? (get-in part [:result :row_count] 0))))
+                  parts)
           parts)))))
 
 (defn- database-id [card]

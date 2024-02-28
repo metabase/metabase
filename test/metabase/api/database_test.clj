@@ -194,14 +194,14 @@
      ;; question
      Card     _                {:database_id db-id
                                 :table_id    table-id-1
-                                :dataset     false}
+                                :type        :question}
      ;; dataset
      Card     _                {:database_id db-id
                                 :table_id    table-id-1
-                                :dataset     true}
+                                :type        :model}
      Card     _                {:database_id db-id
                                 :table_id    table-id-2
-                                :dataset     true
+                                :type        :model
                                 :archived    true}
 
      Metric   _                {:table_id table-id-1}
@@ -723,11 +723,11 @@
     (mt/with-temp
       [Collection collection {:name "Maz Analytics"}
        Card       card-1     (card-with-native-query "Maz Quote Views Per Month" :collection_id (:id collection))
-       Card       card-2     (card-with-native-query "Maz Quote Views Per Day" :dataset true)
+       Card       card-2     (card-with-native-query "Maz Quote Views Per Day" :type :model)
        Card       card-3     (card-with-native-query "Maz Quote Views Per Day")]
-      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name (:name collection))
-                          card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name nil)
-                          card-3 (assoc (select-keys card-3 [:id :name :dataset]) :collection_name nil)}]
+      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name]) :type "question", :collection_name (:name collection))
+                          card-2 (assoc (select-keys card-2 [:id :name]) :type "model", :collection_name nil)
+                          card-3 (assoc (select-keys card-3 [:id :name]) :type "question", :collection_name nil)}]
         (testing "exclude cards without perms"
           (mt/with-non-admin-groups-no-root-collection-perms
             (is (= [(card->result card-1)]
@@ -1499,12 +1499,12 @@
       (mt/with-temp [Collection coll   {:name "My Collection"}
                      Card       card-1 (assoc (card-with-native-query "Card 1")
                                               :collection_id (:id coll)
-                                              :dataset true)
+                                              :type :model)
                      Card       card-2 (assoc (card-with-native-query "Card 2")
-                                              :dataset true)
+                                              :type :model)
                      Card       _card-3 (assoc (card-with-native-query "error")
                                                ;; regular saved question should not be in the results
-                                               :dataset false)]
+                                               :type :question)]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (is (=? {:status "completed"}
@@ -1875,7 +1875,7 @@
       (let [db-id (:id (mt/db))]
         (t2.with-temp/with-temp
           [Card card {:database_id db-id
-                      :dataset     true}]
+                      :type        :model}]
           (mt/with-temporary-setting-values [persisted-models-enabled false]
             (testing "requires persist setting to be enabled"
               (is (= "Persisting models is not enabled."
@@ -1906,7 +1906,7 @@
       (let [db-id (:id (mt/db))]
         (t2.with-temp/with-temp
           [Card     _ {:database_id db-id
-                       :dataset     true}]
+                       :type        :model}]
           (testing "only users with permissions can persist a database"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 (str "database/" db-id "/unpersist")))))

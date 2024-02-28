@@ -37,7 +37,8 @@ class NotebookStepPreview extends Component {
   };
 
   getPreviewQuestion(step) {
-    const { previewQuery: query, stageIndex } = step;
+    const { getPreviewQuery, stageIndex } = step;
+    const query = getPreviewQuery();
     const limit = Lib.currentLimit(query, stageIndex);
     const hasSuitableLimit = limit !== null && limit <= PREVIEW_ROWS_LIMIT;
     const queryWithLimit = hasSuitableLimit
