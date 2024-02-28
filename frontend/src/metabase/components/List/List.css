@@ -110,7 +110,8 @@
 
 :local(.extraIcons) {
   composes: icons;
-  composes: absolute top from "style";
+  composes: top from "style";
+  position: absolute;
   height: 100%;
   right: -40px;
 }

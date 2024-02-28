@@ -38,7 +38,8 @@
 }
 
 :local(.headerSchema) {
-  composes: text-light absolute from "style";
+  composes: text-light from "style";
+  position: absolute;
   top: -10px;
   font-size: 12px;
 }
