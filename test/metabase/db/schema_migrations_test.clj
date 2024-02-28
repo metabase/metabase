@@ -1582,8 +1582,7 @@
         (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
 
         (migrate-up!)
-        (t2/insert-returning-pks! (t2/table-name :model/GroupTableAccessPolicy)
-                                  {:group_id group-id :table_id table-id})
+        (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
         (insert-perm! "perms/view-data" "unrestricted")
         (insert-perm! "perms/create-queries" "no" table-id)
         (migrate! :down 49)
@@ -1591,8 +1590,7 @@
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
 
       (testing "Impersonated data access"
-        (t2/insert-returning-pks! :connection_impersonations
-                                  {:group_id group-id :db_id db-id :attribute "foo"})
+        (t2/insert-returning-pks! :connection_impersonations {:group_id group-id :db_id db-id :attribute "foo"})
         (migrate-up!)
         (insert-perm! "perms/view-data" "unrestricted")
         (insert-perm! "perms/create-queries" "query-builder-and-native")
