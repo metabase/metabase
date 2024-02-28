@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -10,8 +10,7 @@ import type { WithRouterProps } from "react-router/lib/withRouter";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 import { getSetting } from "metabase/selectors/settings";
-import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
-import { parseHashOptions } from "metabase/lib/browser";
+import { initializeIframeResizer } from "metabase/lib/dom";
 
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
@@ -23,9 +22,7 @@ import type {
   ParameterValueOrArray,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import { useDispatch } from "metabase/lib/redux";
-import { setOptions } from "metabase/redux/embed";
+import type { SuperDuperEmbedOptions } from "metabase/public/components/EmbedFrame/types";
 import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import type Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
@@ -46,14 +43,6 @@ import "./EmbedFrame.css";
 
 type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 
-type HashOptions = {
-  bordered?: boolean;
-  titled?: boolean;
-  theme?: string;
-  hide_parameters?: string;
-  hide_download_button?: boolean;
-};
-
 interface OwnProps {
   className?: string;
   name?: string;
@@ -71,6 +60,8 @@ interface OwnProps {
   setParameterValueToDefault: (id: ParameterId) => void;
   children: ReactNode;
   dashboardTabs?: ReactNode;
+  embedOptions: SuperDuperEmbedOptions;
+  hasAbsolutePositioning?: boolean;
 }
 
 type StateProps = {
@@ -95,7 +86,7 @@ function EmbedFrame({
   actionButtons,
   dashboardTabs = null,
   footerVariant = "default",
-  location,
+  embedOptions,
   hasEmbedBranding,
   parameters,
   parameterValues,
@@ -104,25 +95,25 @@ function EmbedFrame({
   setParameterValue,
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
-}: Props & WithRouterProps) {
+  hasAbsolutePositioning,
+}: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
 
   useMount(() => {
-    initializeIframeResizer(() => setInnerScroll(false));
+    if (hasAbsolutePositioning) {
+      initializeIframeResizer(() => setInnerScroll(false));
+    } else {
+      setInnerScroll(false);
+    }
   });
 
-  const dispatch = useDispatch();
-  useEffect(() => {
-    dispatch(setOptions(location));
-  }, [dispatch, location]);
-
   const {
-    bordered = isWithinIframe(),
-    titled = true,
-    theme,
-    hide_parameters,
-    hide_download_button,
-  } = parseHashOptions(location.hash) as HashOptions;
+    bordered = false,
+    titled = !!name,
+    theme = "transparent",
+    hide_parameters = false,
+    hide_download_button = false,
+  } = embedOptions || {};
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)

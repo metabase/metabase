@@ -3,10 +3,8 @@ import { ErrorBoundary } from "react-error-boundary";
 
 export const DashboardPage = () => {
   return (
-    <div>
-      <ErrorBoundary fallback={<div>something went wrong</div>}>
-        <PublicDashboard uuid="c364ca2f-0197-4bda-ac1e-cdde488ef621" />
-      </ErrorBoundary>
-    </div>
+    <ErrorBoundary fallback={<div>something went wrong</div>}>
+      <PublicDashboard uuid="a8c6088d-13eb-48eb-ab43-65d6e3a00928" />
+    </ErrorBoundary>
   );
 };

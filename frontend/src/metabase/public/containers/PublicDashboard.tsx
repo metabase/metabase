@@ -2,7 +2,7 @@ import { isRejected } from "@reduxjs/toolkit";
 import { useMount, usePrevious, useUnmount, useUpdateEffect } from "react-use";
 import _ from "underscore";
 import cx from "classnames";
-import type { Location } from "history";
+import { useCallback } from "react";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {
@@ -48,27 +48,33 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import { checkNotNull } from "metabase/lib/types";
+import type { SuperDuperEmbedOptions } from "../components/EmbedFrame/types";
 
 type DashboardIdOption = {
   uuid?: Dashboard["public_uuid"];
   token?: string;
 };
 
-const getDashboardId = (option: DashboardIdOption): string =>
-  checkNotNull(option.token ?? option.uuid);
+const getDashboardId = (option: DashboardIdOption): string => {
+  return checkNotNull(option.token ?? option.uuid);
+};
 
 export const PublicDashboard = ({
   uuid,
   token,
   isFullscreen,
   isNightMode,
-  location,
+  parameterSelection,
+  embedOptions,
+  hasAbsolutePositioning = true,
 }: {
   uuid?: Dashboard["public_uuid"];
   token?: string;
   isFullscreen?: boolean;
   isNightMode?: boolean;
-  location: Location;
+  embedOptions: SuperDuperEmbedOptions;
+  parameterSelection: Record<string, string | string[] | null | undefined>;
+  hasAbsolutePositioning?: boolean;
 }) => {
   const dispatch = useDispatch();
 
@@ -94,7 +100,7 @@ export const PublicDashboard = ({
     selectedTabId: getSelectedTabId(state),
   }));
 
-  const initializeComponent = async () => {
+  const initializeComponent = useCallback(async () => {
     if (uuid) {
       setPublicDashboardEndpoints();
     } else if (token) {
@@ -106,7 +112,7 @@ export const PublicDashboard = ({
     const result = await dispatch(
       fetchDashboard({
         dashId: assetId,
-        queryParams: location.query,
+        queryParams: parameterSelection,
       }),
     );
 
@@ -129,7 +135,14 @@ export const PublicDashboard = ({
       console.error(error);
       dispatch(setErrorPage(error));
     }
-  };
+  }, [
+    assetId,
+    dashboard?.tabs?.length,
+    dispatch,
+    parameterSelection,
+    token,
+    uuid,
+  ]);
 
   useMount(initializeComponent);
   useUnmount(() => dispatch(cancelFetchDashboardCardData()));
@@ -143,11 +156,18 @@ export const PublicDashboard = ({
   useUpdateEffect(() => {
     if (assetId !== prevProps?.assetId) {
       initializeComponent();
-    } else if (!_.isEqual(prevProps?.selectedTabId, selectedTabId)) {
+      return;
+    }
+
+    if (!_.isEqual(prevProps?.selectedTabId, selectedTabId)) {
       dispatch(fetchDashboardCardData());
       dispatch(fetchDashboardCardMetadata());
-    } else if (!_.isEqual(parameterValues, prevProps?.parameterValues)) {
+      return;
+    }
+
+    if (!_.isEqual(parameterValues, prevProps?.parameterValues)) {
       dispatch(fetchDashboardCardData({ reload: false, clearCache: true }));
+      return;
     }
   }, [assetId, selectedTabId, parameterValues]);
 
@@ -185,9 +205,12 @@ export const PublicDashboard = ({
         )
       : [];
 
+  console.log({ hasAbsolutePositioning });
+
   return (
     <EmbedFrame
-      location={location}
+      hasAbsolutePositioning={hasAbsolutePositioning}
+      embedOptions={embedOptions}
       name={dashboard && dashboard.name}
       description={dashboard && dashboard.description}
       dashboard={dashboard}
@@ -205,9 +228,7 @@ export const PublicDashboard = ({
       actionButtons={
         buttons.length > 0 ? <div className="flex">{buttons}</div> : []
       }
-      dashboardTabs={
-        <StyledDashboardTabs dashboardId={assetId} location={location} />
-      }
+      dashboardTabs={<StyledDashboardTabs dashboardId={assetId} />}
     >
       <LoadingAndErrorWrapper
         className={cx({

@@ -29,18 +29,18 @@ function isTabIdType(id: unknown): id is SelectedTabId {
 }
 
 export function useDashboardTabs({
-  location,
+  // location,
   dashboardId,
 }: {
-  location: Location;
+  // location: Location;
   dashboardId: DashboardId;
 }) {
   const dispatch = useDispatch();
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
 
-  useSyncURLSlug({ location });
-  useMount(() => dispatch(initTabs({ slug: parseSlug({ location }) })));
+  // useSyncURLSlug({ location });
+  // useMount(() => dispatch(initTabs({ slug: parseSlug({ location }) })));
 
   const duplicateTab = (tabId: UniqueIdentifier | null) => {
     if (!isTabIdType(tabId)) {

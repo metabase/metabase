@@ -23,6 +23,8 @@ const loadMetadataForCards = cards => (dispatch, getState) => {
     .filter(card => card.dataset_query) // exclude queries without perms
     .map(card => new Question(card, metadata));
 
+  console.log(questions)
+
   return dispatch(
     loadMetadataForQueries(
       questions.map(question =>

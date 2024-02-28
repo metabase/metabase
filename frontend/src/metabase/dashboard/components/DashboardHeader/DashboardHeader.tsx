@@ -149,7 +149,7 @@ interface OwnProps {
 }
 
 interface StateProps {
-  formInput: unknown;
+  formInput: any;
   selectedTabId: DashboardTabId | null;
   isBookmarked: boolean;
   isNavBarOpen: boolean;
@@ -597,7 +597,26 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       }
     }
 
-    buttons.push(...getDashboardActions(this, this.props));
+    buttons.push(
+      ...getDashboardActions(this, {
+        dashboard,
+        isAdmin: this.props.isAdmin,
+        canManageSubscriptions: this.props.canManageSubscriptions,
+        formInput: this.props.formInput,
+        isEditing: this.props.isEditing,
+        isEmpty: !dashboard.dashcards.length,
+        isFullscreen: this.props.isFullscreen,
+        isNightMode: this.props.isNightMode,
+        isPublic: false,
+        onNightModeChange: this.props.onNightModeChange,
+        refreshPeriod: this.props.refreshPeriod ?? undefined,
+        setRefreshElapsedHook: this.props.setRefreshElapsedHook,
+        onRefreshPeriodChange: this.props.onRefreshPeriodChange,
+        onSharingClick: this.props.onSharingClick,
+        onFullscreenChange: onFullscreenChange,
+        hasNightModeToggle: this.props.hasNightModeToggle,
+      }),
+    );
 
     if (!isEditing) {
       buttons.push(

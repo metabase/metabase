@@ -1,6 +1,6 @@
 import { MetabaseProvider } from "metabase-embedding-sdk";
 
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { Welcome } from "./Welcome";
 import { LogoutButton } from "./Logout";
 import { FontSelector } from "./FontSelector";
@@ -13,7 +13,7 @@ const config = {
   font: "Inter",
   authType: "apiKey",
   // jwtProviderUri: "http://localhost:8081/sso/metabase",
-  apiKey: "mb_Sx6DGYlYiJgDVrwRhfBt29PsrmnXpJQg3pnbJqxT52M=",
+  apiKey: "mb_TnFLorpf7B+dDATK4fChEh9vek/FxwnWgKtay1zZ4mE=",
 };
 
 const App = () => {

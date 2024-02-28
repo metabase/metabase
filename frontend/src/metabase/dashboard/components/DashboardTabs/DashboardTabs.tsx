@@ -13,14 +13,14 @@ import { useDashboardTabs } from "./use-dashboard-tabs";
 
 interface DashboardTabsProps {
   dashboardId: DashboardId;
-  location: Location;
+  location?: Location;
   isEditing?: boolean;
   className?: string;
 }
 
 export function DashboardTabs({
   dashboardId,
-  location,
+  // location,
   isEditing = false,
   className,
 }: DashboardTabsProps) {
@@ -33,7 +33,10 @@ export function DashboardTabs({
     selectTab,
     selectedTabId,
     moveTab,
-  } = useDashboardTabs({ location, dashboardId });
+  } = useDashboardTabs({
+    // location,
+    dashboardId
+  });
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
