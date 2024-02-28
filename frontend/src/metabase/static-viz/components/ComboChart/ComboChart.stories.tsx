@@ -330,6 +330,13 @@ LongDimensionNameCutOff37420.args = {
   renderingContext,
 };
 
+export const CompactXAxisDoesNotWork38917 = Template.bind({});
+CompactXAxisDoesNotWork38917.args = {
+  rawSeries: data.compactXAxisDoesNotWork38917 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
