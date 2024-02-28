@@ -1,41 +1,71 @@
 import { t } from "ttag";
 
-export const CacheStrategies = {
+export const CacheStrategyTypes = {
   nocache: t`Don't cache`,
   ttl: t`When the TTL expires`,
   duration: t`On a regular duration`,
   schedule: t`On a schedule`,
   query: t`When the data updates`,
 };
-export type CacheStrategy = keyof typeof CacheStrategies;
-export const isValidCacheStrategy = (
+export type CacheStrategyType = keyof typeof CacheStrategyTypes;
+export const isValidCacheStrategyType = (
   strategy: string,
-): strategy is CacheStrategy => {
-  return Object.keys(CacheStrategies).includes(strategy);
+): strategy is CacheStrategyType => {
+  return Object.keys(CacheStrategyTypes).includes(strategy);
 };
 
 export type UnitOfTime = "hours" | "minutes" | "seconds" | "days";
-export type CacheableModelType =
+
+export type GetConfigByModelId = Map<number, CacheConfig>;
+
+export type Model =
   | "root"
   | "database"
   | "collection"
   | "dashboard"
   | "question";
 
-// TODO: I'm guessing this from caching/strategies.clj
-export type CacheConfig = {
-  modelType: CacheableModelType; // "model type" rather than "model" makes more sense in my head so I'm using that for now
+interface CacheStrategyMap {
+  type: CacheStrategyType;
+}
+
+interface NoCacheStrategy extends CacheStrategyMap {
+  type: "nocache";
+}
+
+interface TtlStrategy extends CacheStrategyMap {
+  type: "ttl";
+  multiplier: number;
+  min_duration: number;
+}
+
+interface DurationStrategy extends CacheStrategyMap {
+  type: "duration";
+  duration: number;
+  unit: "hours" | "minutes" | "seconds" | "days";
+}
+
+interface ScheduleStrategy extends CacheStrategyMap {
+  type: "schedule";
+  schedule: string;
+}
+
+interface QueryStrategy extends CacheStrategyMap {
+  type: "query";
+  field_id: number;
+  aggregation: "max" | "count";
+  schedule: string;
+}
+
+export type CacheStrategy =
+  | NoCacheStrategy
+  | TtlStrategy
+  | DurationStrategy
+  | ScheduleStrategy
+  | QueryStrategy;
+
+export interface CacheConfig {
+  model: Model;
   model_id: number;
   strategy: CacheStrategy;
-  config?: {
-    type?: string;
-    updated_at?: string;
-    multiplier?: number;
-    payload?: string;
-    min_duration?: number;
-    unit?: UnitOfTime;
-    schedule?: string;
-    field_id?: string;
-    aggregation?: string;
-  };
-};
+}

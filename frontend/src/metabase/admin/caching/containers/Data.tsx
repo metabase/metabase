@@ -7,8 +7,13 @@ import type { ButtonProps } from "metabase/ui";
 import { Icon, Radio, Text } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 
-import type { CacheConfig, CacheStrategy } from "../types";
-import { CacheStrategies, isValidCacheStrategy } from "../types";
+import type {
+  CacheConfig,
+  CacheStrategy,
+  DBConfigSetter,
+  GetConfigByModelId,
+} from "../types";
+import { CacheStrategyTypes, isValidCacheStrategyType } from "../types";
 
 import {
   ClearOverridesButton,
@@ -32,13 +37,13 @@ export const Data = ({
   clearDBOverrides,
 }: {
   databases: Database[];
-  dbConfigs: Map<number, CacheConfig>;
-  setDBConfig: (databaseId: number, config: CacheConfig | null) => void;
+  dbConfigs: GetConfigByModelId;
+  setDBConfig: DBConfigSetter;
   clearDBOverrides: () => void;
 }) => {
   const generalStrategy = dbConfigs.get(0)?.strategy;
   const generalStrategyLabel = generalStrategy
-    ? CacheStrategies[generalStrategy]
+    ? CacheStrategyTypes[generalStrategy.type]
     : null;
 
   // if targetId is 0, the general strategy is being configured
@@ -97,15 +102,15 @@ export const Data = ({
               <Radio.Group
                 value={currentConfig?.strategy ?? generalStrategy}
                 name={`caching-strategy-for-database-${targetId}`}
-                onChange={strategy => {
-                  if (!isValidCacheStrategy(strategy)) {
-                    console.error("invalid strategy", strategy);
+                onChange={strategyType => {
+                  if (!isValidCacheStrategyType(strategyType)) {
+                    console.error("invalid strategy type", strategyType);
                     return;
                   }
                   setDBConfig(targetId, {
-                    modelType: "database",
+                    model: "database",
                     model_id: targetId,
-                    strategy,
+                    strategy: { type: strategyType },
                   });
                 }}
                 label={
@@ -170,19 +175,20 @@ export const SpecialConfig = ({
   targetId: number | null;
   setTargetId: Dispatch<SetStateAction<number | null>>;
   dbConfigs: Map<number, CacheConfig>;
-  setDBConfig: (databaseId: number, config: CacheConfig | null) => void;
+  setDBConfig: DBConfigSetter;
   generalStrategy: CacheStrategy | undefined;
 }) => {
   const specificConfigForDB = dbConfigs.get(db.id);
   const specificStrategyForDB = specificConfigForDB?.strategy;
   const doesOverrideGeneralConfig =
     specificStrategyForDB !== undefined &&
-    specificStrategyForDB !== generalStrategy;
+    specificStrategyForDB.type !== generalStrategy?.type;
+  // TODO: When other kinds of strategies are added we will need a deeper check.
   const strategyForDB = specificStrategyForDB ?? generalStrategy;
   if (!strategyForDB) {
     throw new Error(t`Invalid strategy "${strategyForDB}"`);
   }
-  const strategyLabel = CacheStrategies[strategyForDB];
+  const strategyLabel = CacheStrategyTypes[strategyForDB.type];
   const isConfigBeingEdited = targetId === db.id;
   const clearOverride = () => {
     setDBConfig(db.id, null);

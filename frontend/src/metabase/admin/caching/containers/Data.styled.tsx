@@ -7,11 +7,6 @@ import { Button, Icon } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 
-type ConfigProps = ButtonProps & {
-  doesOverrideGeneralConfig?: boolean;
-  isBeingEdited?: boolean;
-};
-
 export const EditorPanel = styled.div`
   overflow-y: scroll;
   display: flex;
@@ -64,7 +59,7 @@ export const Config = styled(CacheAdminButton)`
   font-weight: bold;
 `;
 
-export const GeneralConfig = styled(Config)<ConfigProps>`
+export const GeneralConfig = styled(Config)<ButtonProps>`
   border: 1px solid ${color("bg-medium")};
 `;
 
@@ -74,9 +69,9 @@ export const Strategy = styled(CacheAdminButton)`
   font-weight: bold;
 `;
 
-export const GeneralStrategy = styled(Strategy)<ConfigProps>``;
+export const GeneralStrategy = styled(Strategy)<ButtonProps>``;
 
-export const SpecialConfigStyled = styled(CacheAdminButton)<ConfigProps>`
+export const SpecialConfigStyled = styled(CacheAdminButton)<ButtonProps>`
   width: 100%;
   display: flex;
   font-weight: bold;
@@ -89,7 +84,7 @@ export const SpecialConfigStyled = styled(CacheAdminButton)<ConfigProps>`
   border: 1px solid ${color("border")};
 `;
 
-export const SpecialStrategy = styled(Strategy)<ConfigProps>``;
+export const SpecialStrategy = styled(Strategy)<ButtonProps>``;
 
 export const DatabasesConfigIcon = styled(Icon)`
   margin-right: 0.5rem;

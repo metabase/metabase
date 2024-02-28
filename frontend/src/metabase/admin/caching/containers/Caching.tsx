@@ -17,7 +17,12 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { CacheConfigApi } from "metabase/services";
 import { Tabs } from "metabase/ui";
 
-import type { CacheConfig } from "../types";
+import type {
+  CacheConfig,
+  CacheStrategy,
+  DBConfigSetter,
+  GetConfigByModelId,
+} from "../types";
 
 import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./Caching.styled";
 import { Data } from "./Data";
@@ -84,35 +89,45 @@ export const Caching = () => {
     };
   }, [tabsRef, areDatabasesLoading, areCacheConfigsLoading]);
 
-  const dbConfigs = useMemo(() => {
-    const map = new Map<number, CacheConfig>();
-    // TODO: Get root strategy from api
-    map.set(0, { modelType: "root", model_id: 0, strategy: "nocache" });
+  const dbConfigs: GetConfigByModelId = useMemo(() => {
+    const map: GetConfigByModelId = new Map();
+    if (!map.has(0)) {
+      map.set(0, { model: "root", model_id: 0, strategy: { type: "nocache" } });
+    }
     cacheConfigs.forEach(config => {
-      if (config.modelType === "database") {
+      if (["root", "database"].includes(config.model)) {
         map.set(config.model_id, config);
       }
     });
     return map;
   }, [cacheConfigs]);
 
-  const setDBConfig = useCallback(
-    (databaseId: number, config: CacheConfig | null) => {
+  const setDBConfig = useCallback<DBConfigSetter>(
+    async (databaseId, newStrategy) => {
+      const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
+        model: databaseId === 0 ? "root" : "database",
+        model_id: databaseId,
+      };
       const otherConfigs = cacheConfigs.filter(
         config => config.model_id !== databaseId,
       );
-      setCacheConfigs(config ? [...otherConfigs, config] : otherConfigs);
-      if (config) {
-        CacheConfigApi.update({
-          model: databaseId === 0 ? "root" : "database",
-          model_id: databaseId,
-          strategy: { type: "nocache" }, // config.strategy },
-        });
+      if (newStrategy) {
+        const existingConfig = cacheConfigs.find(
+          config => config.model_id === databaseId,
+        );
+        const newConfig: CacheConfig = {
+          ...baseConfig,
+          strategy: {
+            ...existingConfig?.strategy,
+            // TODO: Move away from these two defaults
+            ...newStrategy,
+          } as CacheStrategy, // TODO: Remove this 'as' which will be tricky
+        };
+        setCacheConfigs([...otherConfigs, newConfig]);
+        await CacheConfigApi.update(newConfig);
       } else {
-        CacheConfigApi.delete({
-          model: databaseId === 0 ? "root" : "database",
-          model_id: databaseId,
-        });
+        setCacheConfigs(otherConfigs);
+        await CacheConfigApi.delete(baseConfig);
       }
       // Re-fetch data from API at this point?
     },
@@ -121,7 +136,7 @@ export const Caching = () => {
 
   const clearDBOverrides = useCallback(() => {
     setCacheConfigs(configs =>
-      configs.filter(({ modelType }) => modelType !== "database"),
+      configs.filter(({ model }) => model !== "database"),
     );
   }, []);
 
