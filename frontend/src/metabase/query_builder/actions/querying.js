@@ -121,7 +121,7 @@ export const runQuestionQuery = ({
 
     const queryTimer = startTimer();
 
-    const promise = apiRunQuestionQuery(question, {
+    const runQuestionPromise = apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
       isDirty: cardIsDirty,
@@ -141,7 +141,7 @@ export const runQuestionQuery = ({
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
 
-    return promise;
+    return runQuestionPromise;
   };
 };
 
