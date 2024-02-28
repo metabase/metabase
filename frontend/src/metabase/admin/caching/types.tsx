@@ -69,3 +69,8 @@ export interface CacheConfig {
   model_id: number;
   strategy: CacheStrategy;
 }
+
+export type DBConfigSetter = (
+  databaseId: number,
+  newStrategy: Partial<CacheConfig> | null,
+) => void;
