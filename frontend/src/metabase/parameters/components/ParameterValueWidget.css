@@ -105,7 +105,7 @@
 
 :local(.editButton),
 :local(.removeButton) {
-  composes: cursor-pointer from "style";
+  cursor: pointer;
   align-items: center;
   display: flex;
 }
