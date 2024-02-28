@@ -1035,6 +1035,14 @@
                :type    "question"}
               (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
 
+(deftest create-card-with-metric-type
+  (mt/with-model-cleanup [:model/Card]
+    (testing "can create a metric card"
+      (is (=? {:dataset false
+               :type    "metric"}
+              (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
+                                                                       :type "metric")))))))
+
 (deftest update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"
     (mt/with-temp [:model/Card card {:dataset_query {}}]
@@ -1059,6 +1067,15 @@
       (testing "but error if type and dataset doesn't match"
         (is (= ":dataset is inconsistent with :type"
                (mt/user-http-request :crowberto :put 400 (str "card/" (:id card)) {:type "question" :dataset true})))))))
+
+(deftest update-card-with-metric-type
+  (testing "can update a metric"
+    (mt/with-temp [:model/Card card {:dataset_query (mbql-count-query)
+                                     :type "metric"}]
+      (is (=? {:dataset_query {:query {:source-table (mt/id :checkins)}}
+               :type    "metric"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                    {:dataset_query (mbql-count-query (mt/id) (mt/id :checkins))}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
@@ -1152,7 +1169,16 @@
 (deftest fetch-card-404-test
   (testing "GET /api/card/:id"
    (is (= "Not found."
-         (mt/user-http-request :crowberto :get 404 (format "card/%d" Integer/MAX_VALUE))))))
+          (mt/user-http-request :crowberto :get 404 (format "card/%d" Integer/MAX_VALUE))))))
+
+(deftest fetch-card-with-metric-type
+  (testing "can fetch a metric card"
+    (mt/with-temp [:model/Card card {:dataset_query (mbql-count-query)
+                                     :type "metric"}]
+      (is (=? {:dataset false
+               :type    "metric"}
+              (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
