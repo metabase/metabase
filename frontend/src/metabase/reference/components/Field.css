@@ -8,7 +8,8 @@
 }
 
 :local(.fieldNameTitle) {
-  composes: flex-half pr2 from "style";
+  composes: pr2 from "style";
+  flex: 0.5;
 }
 
 :local(.fieldName) {
