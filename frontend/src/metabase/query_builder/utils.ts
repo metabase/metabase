@@ -103,7 +103,13 @@ export const isNavigationAllowed = ({
   }
 
   if (isNative) {
-    const isRunningQuestion = pathname === "/question" && hash.length > 0;
+    const allowedPathnames = [
+      ...validSlugs.map(slug => `/question/${slug}`),
+      "/question",
+    ];
+    const isRunningQuestion =
+      allowedPathnames.includes(pathname) && hash.length > 0;
+
     return isRunningQuestion;
   }
 
