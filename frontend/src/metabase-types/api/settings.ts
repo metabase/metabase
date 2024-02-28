@@ -285,6 +285,7 @@ export interface Settings {
   "user-visibility": string | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
+  "last-used-native-database-id"?: number | null;
 }
 
 export type SettingKey = keyof Settings;
