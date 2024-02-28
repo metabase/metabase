@@ -1632,7 +1632,7 @@
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
 
       (testing "Impersonated data access"
-        (t2/insert-returning-pks! (t2/table-name :model/ConnectionImpersonation)
+        (t2/insert-returning-pks! :connection_impersonations
                                   {:group_id group-id :db_id db-id :attribute "foo"})
         (migrate-up!)
         (insert-perm! "perms/view-data" "unrestricted")
