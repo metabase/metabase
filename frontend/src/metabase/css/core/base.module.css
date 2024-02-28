@@ -48,6 +48,15 @@ ol {
   list-style-type: none;
 }
 
+/*
+  explicitly set the th text alignment to left. this is required for IE
+  which follows the suggested rendering and defaults to center, whereas
+  chrome and others do not
+*/
+th {
+  text-align: left;
+}
+
 /* reset button element */
 button {
   font-size: 100%;

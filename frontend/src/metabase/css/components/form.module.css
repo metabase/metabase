@@ -38,8 +38,7 @@
   padding: 0.75em;
 }
 
-:global(.Form-input),
-:global(.Form-input-border) {
+:global(.Form-input) {
   border: 1px solid var(--form-field-border-color);
   border-radius: var(--input-border-radius);
   outline: none;
