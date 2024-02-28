@@ -1119,9 +1119,13 @@
   [:<= (->honeysql driver field) (->honeysql driver value)])
 
 (defmethod ->honeysql [:sql :=]
-  [driver [_ field value]]
+  [driver [_ field & values]]
   (assert field)
-  [:= (->honeysql driver field) (->honeysql driver value)])
+  (let [field-honeysql (->honeysql driver field)
+        values (map (partial ->honeysql driver) values)]
+    (if (> (count values) 1)
+      [:in field-honeysql values]
+      [:= field-honeysql (first values)])))
 
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
