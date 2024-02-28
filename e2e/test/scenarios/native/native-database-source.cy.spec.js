@@ -161,7 +161,7 @@ describe(
       });
     });
 
-    it.skip("users with no native write permissions should be able to choose only the databases they can query against (metabase#39053)", () => {
+    it("users with no native write permissions should be able to choose only the databases they can query against (metabase#39053)", () => {
       cy.signIn("nosql");
 
       startNativeQuestion();

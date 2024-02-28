@@ -65,7 +65,8 @@ const DataSourceSelectors = ({
   const databases = useMemo(() => {
     const allDatabases = query
       .metadata()
-      .databasesList({ savedQuestions: false });
+      .databasesList({ savedQuestions: false })
+      .filter(db => db.canWrite());
 
     if (editorContext === "action") {
       return allDatabases.filter(database => database.hasActionsEnabled());
