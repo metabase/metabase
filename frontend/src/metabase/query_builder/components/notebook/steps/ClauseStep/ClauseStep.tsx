@@ -1,7 +1,7 @@
 import type { DndContextProps } from "@dnd-kit/core";
 import { PointerSensor, useSensor, DndContext } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
-import { rectSwappingStrategy, SortableContext } from "@dnd-kit/sortable";
+import { SortableContext } from "@dnd-kit/sortable";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 
@@ -76,7 +76,6 @@ export const ClauseStep = <T,>({
     >
       <SortableContext
         items={items.map((_, index) => getItemIdFromIndex(index))}
-        strategy={rectSwappingStrategy}
       >
         {children}
       </SortableContext>

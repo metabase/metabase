@@ -3,8 +3,6 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ElementType, ReactNode } from "react";
 
-import { SortableDiv } from "./Sortable.styled";
-
 interface SortableProps {
   id: UniqueIdentifier;
   as?: ElementType;
@@ -18,7 +16,7 @@ interface SortableProps {
  */
 export function Sortable({
   id,
-  as = "div",
+  as: Component = "div",
   children,
   disabled = false,
 }: SortableProps) {
@@ -26,15 +24,18 @@ export function Sortable({
     useSortable({ id, disabled });
 
   return (
-    <SortableDiv
-      as={as}
+    <Component
       transform={CSS.Transform.toString(transform)}
       transition={transition}
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      style={{
+        transition,
+        transform: CSS.Transform.toString(transform),
+      }}
     >
       {children}
-    </SortableDiv>
+    </Component>
   );
 }
