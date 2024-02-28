@@ -46,7 +46,7 @@ export function diagnose({
   name = null,
 }: {
   source: string;
-  startRule: string;
+  startRule: "expression" | "aggregation" | "boolean";
   query: Lib.Query;
   stageIndex: number;
   name?: string | null;
@@ -88,19 +88,60 @@ export function diagnose({
       : mismatchedParentheses < -1
       ? t`Expecting ${-mismatchedParentheses} opening parentheses`
       : null;
+
   if (message) {
     return { message };
   }
 
+  // try to compile on FE
+  let mbqlOrError: Expr | ErrorWithMessage;
   try {
-    return prattCompiler({ source, startRule, name, query, stageIndex });
+    mbqlOrError = prattCompiler({ source, startRule, name, query, stageIndex });
+
+    if (isErrorWithMessage(mbqlOrError)) {
+      return mbqlOrError;
+    }
+
+    if (startRule === "expression" && isBooleanExpression(mbqlOrError)) {
+      throw new ResolverError(
+        t`Custom columns do not support boolean expressions`,
+        mbqlOrError.node,
+      );
+    }
   } catch (err) {
+    console.warn("compile error", err);
+
     if (isErrorWithMessage(err)) {
       return err;
     }
 
     return { message: t`Invalid expression` };
   }
+
+  // now diagnose on BE
+  const startRuleToExpressionModeMapping: Record<string, Lib.ExpressionMode> = {
+    boolean: "filter",
+  };
+
+  const expressionMode: Lib.ExpressionMode =
+    startRuleToExpressionModeMapping[startRule] ?? startRule;
+
+  const possibleError = Lib.diagnoseExpression(
+    query,
+    stageIndex,
+    expressionMode,
+    mbqlOrError,
+  );
+
+  if (possibleError) {
+    console.warn("diagnostic error", possibleError.message);
+
+    // diagnoseExpression should return a user friendly message, which we'll be
+    // able to return directly
+    return { message: t`Invalid expression` };
+  }
+
+  return null;
 }
 
 function prattCompiler({
@@ -115,7 +156,7 @@ function prattCompiler({
   name: string | null;
   query: Lib.Query;
   stageIndex: number;
-}): ErrorWithMessage | null {
+}): ErrorWithMessage | Expr {
   const tokens = lexify(source);
   const options = { source, startRule, name, query, stageIndex };
 
@@ -124,6 +165,7 @@ function prattCompiler({
     throwOnError: false,
     ...options,
   });
+
   if (errors.length > 0) {
     return errors[0];
   }
@@ -161,34 +203,17 @@ function prattCompiler({
   }
 
   // COMPILE
-  try {
-    const expression = compile(root, {
-      passes: [
-        adjustOptions,
-        useShorthands,
-        adjustCase,
-        expr => resolve(expr, startRule, resolveMBQLField),
-      ],
-      getMBQLName,
-    });
-    const isBoolean = isBooleanExpression(expression);
-    if (startRule === "expression" && isBoolean) {
-      throw new ResolverError(
-        t`Custom columns do not support boolean expressions`,
-        expression.node,
-      );
-    }
-  } catch (err) {
-    console.warn("compile error", err);
+  const mbql = compile(root, {
+    passes: [
+      adjustOptions,
+      useShorthands,
+      adjustCase,
+      expr => resolve(expr, startRule, resolveMBQLField),
+    ],
+    getMBQLName,
+  });
 
-    if (isErrorWithMessage(err)) {
-      return err;
-    }
-
-    return { message: t`Invalid expression` };
-  }
-
-  return null;
+  return mbql;
 }
 
 function isBooleanExpression(
