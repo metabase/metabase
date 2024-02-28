@@ -3,12 +3,10 @@ FROM data_permissions
 WHERE perm_type = 'perms/native-query-editing';
 
 
-INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
+INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
 SELECT pg.id AS group_id,
        'perms/native-query-editing' AS perm_type,
        md.id AS db_id,
-       NULL AS schema_name,
-       NULL AS table_id,
        CASE
            WHEN EXISTS
                   (SELECT 1
