@@ -756,8 +756,8 @@ function assignRecipients({
     .blur(); // blur is needed to close the popover
 }
 
-function clickButton(button_name) {
-  cy.contains(button_name).closest(".Button").should("not.be.disabled").click();
+function clickButton(name) {
+  cy.button(name).should("not.be.disabled").click();
 }
 
 function createEmailSubscription() {
