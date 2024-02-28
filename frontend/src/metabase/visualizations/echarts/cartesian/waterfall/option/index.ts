@@ -218,6 +218,7 @@ export const getWaterfallChartOption = (
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
+  isPlaceholder: boolean,
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -243,7 +244,7 @@ export const getWaterfallChartOption = (
   const echartsDataset = [{ source: chartModel.transformedDataset }];
 
   return {
-    ...getSharedEChartsOptions(),
+    ...getSharedEChartsOptions(isPlaceholder),
     grid: {
       ...chartMeasurements.padding,
       containLabel: true,

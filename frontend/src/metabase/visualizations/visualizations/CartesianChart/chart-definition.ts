@@ -52,6 +52,7 @@ export const getCartesianChartDefinition = (
             "graph.dimensions": ["y"],
           },
           dataset_query: { type: "query" },
+          name: "x",
         },
         data: {
           rows: _.range(0, 11).map(i => [i, i]),
