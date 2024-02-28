@@ -25,7 +25,7 @@
   "Calculate when a next run should happen based on a cron schedule"
   [^String schedule]
   (let [^MutableTrigger cron (cron/finalize (cron/cron-schedule schedule))]
-    ;; needed by the tests, or the cron will use its own current date
+    ;; Synchronize cron runner to our app time, which may be mocked in tests
     (.setStartTime cron (t/java-date))
     (-> (.getFireTimeAfter cron (t/java-date (t/offset-date-time)))
         (t/offset-date-time (t/zone-offset)))))
