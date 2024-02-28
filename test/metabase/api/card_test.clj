@@ -189,8 +189,8 @@
                                 :target [:variable [:template-tag :category]]
                                 :value  2}]})))))))
 
-(deftest run-query-with-default-parameters-test
-  (testing "POST /api/card/:id/query with parameters with default values"
+(deftest execute-card-with-default-parameters-test
+  (testing "GET /api/card/:id/query with parameters with default values"
     (mt/with-temp
       [:model/Card card {:dataset_query
                          {:database (mt/id)
@@ -208,10 +208,10 @@
                       (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)) body))]
         (testing "the default can be overridden"
           (is (= [[2]]
-                 (mt/rows (request {:parameters [{:id     "_VENUE_ID_",
+                 (mt/rows (request {:parameters [{:id    "_VENUE_ID_"
                                                   :target ["dimension" ["template-tag" "venue_id"]],
-                                                  :type   "id",
-                                                  :value  2}]})))))
+                                                  :type  "id"
+                                                  :value 2}]})))))
         (testing "the default should apply if no param value is provided"
           (is (= [[1]]
                  (mt/rows (request {:parameters []}))))
