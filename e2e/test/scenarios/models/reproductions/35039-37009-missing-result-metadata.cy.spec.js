@@ -1,6 +1,5 @@
 import {
   focusNativeEditor,
-  main,
   modal,
   openQuestionActions,
   popover,
@@ -38,10 +37,10 @@ describe("issues 35039 and 37009", () => {
     );
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.findByText("Save changes").click();
-      cy.findByText("Saving changes...").should("not.exist");
+      cy.findByText("Saving…").should("not.exist");
     });
 
-    main().within(() => {
+    cy.findByTestId("query-builder-main").within(() => {
       cy.findByText("Doing science...").should("be.visible");
       cy.findByText("Doing science...").should("not.exist");
     });
