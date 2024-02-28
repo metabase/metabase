@@ -16,6 +16,7 @@ import {
 import {
   updateEditingPulse,
   saveEditingPulse,
+  cancelEditingPulse,
   fetchPulseFormInput,
   testPulse,
 } from "metabase/pulse/actions";
@@ -110,6 +111,7 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = {
   updateEditingPulse,
   saveEditingPulse,
+  cancelEditingPulse,
   fetchPulseFormInput,
   setPulseArchived: Pulses.actions.setArchived,
   testPulse,
@@ -134,6 +136,7 @@ class SharingSidebarInner extends Component {
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
+    cancelEditingPulse: PropTypes.func.isRequired,
     pulses: PropTypes.array,
     onCancel: PropTypes.func.isRequired,
     setPulseArchived: PropTypes.func.isRequired,
