@@ -335,6 +335,7 @@ function JoinCondition({
             readOnly={readOnly}
             onSelect={handleLHSColumnChange}
             onOpenedChange={setIsLHSPickerOpened}
+            data-testid="lhs-column-picker"
           />
         </Box>
         <JoinConditionOperatorPicker
@@ -360,6 +361,7 @@ function JoinCondition({
             readOnly={readOnly}
             onSelect={handleRHSColumnChange}
             onOpenedChange={setIsRHSPickerOpened}
+            data-testid="rhs-column-picker"
           />
         </Box>
       </Flex>
