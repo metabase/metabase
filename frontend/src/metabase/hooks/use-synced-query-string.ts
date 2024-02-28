@@ -1,12 +1,19 @@
 import querystring from "querystring";
 import { useEffect } from "react";
+import { push } from "react-router-redux";
+import { usePrevious } from "react-use";
+import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { useDispatch } from "metabase/lib/redux";
 
 export function useSyncedQueryString(
   fn: () => Record<string, any>,
-  deps?: any[],
+  deps?: any,
 ) {
+  const dispatch = useDispatch();
+  const previousDeps = usePrevious(deps);
+
   useEffect(() => {
     /**
      * We don't want to sync the query string to the URL because when previewing,
@@ -20,16 +27,22 @@ export function useSyncedQueryString(
     const object = fn();
     const searchString = buildSearchString(object);
 
-    if (searchString !== window.location.search) {
-      history.replaceState(
-        null,
-        document.title,
-        window.location.pathname + searchString + window.location.hash,
+    if (
+      !_.isEqual(previousDeps, deps) &&
+      searchString !== window.location.search
+    ) {
+      dispatch(
+        push({
+          pathname: window.location.pathname,
+          search: searchString,
+          hash: window.location.hash,
+        }),
       );
     }
+
     // exhaustive-deps is enabled for useSyncedQueryString so we don't need to include `fn` as a dependency
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deps]);
+  }, [previousDeps, deps]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];

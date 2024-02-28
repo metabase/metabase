@@ -5,9 +5,11 @@ import type { Route } from "react-router";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
+import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -225,6 +227,7 @@ function DashboardInner(props: DashboardProps) {
     toggleSidebar,
   } = props;
 
+  const dispatch = useDispatch();
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [hasScroll, setHasScroll] = useState(getMainElement()?.scrollTop > 0);
@@ -355,6 +358,10 @@ function DashboardInner(props: DashboardProps) {
       setErrorPage,
     ],
   );
+
+  useEffect(() => {
+    dispatch(setParameterValuesFromQueryParams(location.query));
+  }, [dispatch, location.query]);
 
   useEffect(() => {
     if (previousDashboardId !== dashboardId) {
