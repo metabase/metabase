@@ -1,9 +1,9 @@
-INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
+-- Add unrestricted DB-level 'view-data' permissions for all DBs that don't have block
+-- permissions
+INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
 SELECT pg.id AS group_id,
        'perms/view-data' AS perm_type,
        md.id AS db_id,
-       NULL AS schema_name,
-       NULL AS table_id,
        CASE
            WHEN EXISTS
                   (SELECT 1
