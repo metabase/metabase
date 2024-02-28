@@ -11,7 +11,7 @@ export const POPOVER_TRANSITION_DURATION = 150;
 
 // When switching to another hover target in the same delay group,
 // we don't closing immediatly but delay by a short amount to avoid flicker.
-export const POPOVER_CLOSE_DELAY = 25;
+export const POPOVER_CLOSE_DELAY = 10;
 
 export type QueryColumnInfoPopoverProps = QueryColumnInfoProps &
   Omit<PopoverProps, "content">;
