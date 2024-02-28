@@ -9,7 +9,7 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.druid.query-processor :as druid.qp]
-   [metabase.models :refer [Field Metric Table]]
+   [metabase.models :refer [Field LegacyMetric Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -547,7 +547,7 @@
   (mt/test-driver :druid
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
-        (t2.with-temp/with-temp [Metric metric {:definition (mt/$ids checkins
+        (t2.with-temp/with-temp [LegacyMetric metric {:definition (mt/$ids checkins
                                                               {:aggregation [:sum $venue_price]
                                                                :filter      [:> $venue_price 1]})
                                                 :table_id (mt/id :checkins)}]
