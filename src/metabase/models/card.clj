@@ -110,9 +110,7 @@
 
                 Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it gradually.
                 In the mean time we'll have both `type` and `dataset` columns."} card-types
-  #{"model" "question"
-    ;; metric will be added as part of epic #37335
-    #_"metric"})
+  #{"model" "question" "metric"})
 
 (def CardTypes
   "Malli schema for acceptable card types."

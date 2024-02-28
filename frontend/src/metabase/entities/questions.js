@@ -40,55 +40,21 @@ const Questions = createEntity({
         api: {
           get: async payload => {
             const get = GET("/api/card/:id");
-            const result = await get(payload);
-
-            if (result.name.toLowerCase().includes("metric")) {
-              return { ...result, type: "metric" };
-            }
-
-            return result;
+            return await get(payload);
           },
 
           list: async payload => {
             const get = GET("/api/card");
-            const results = await get(payload);
-
-            return results.map(result => {
-              if (result.name.toLowerCase().includes("metric")) {
-                return { ...result, type: "metric" };
-              }
-
-              return result;
-            });
+            return await get(payload);
           },
 
           create: async payload => {
             const create = POST("/api/card");
-
-            if (payload.type === "metric") {
-              const tweakedPayload = {
-                ...payload,
-                type: "question",
-              };
-              const result = await create(tweakedPayload);
-              return { ...result, type: "metric" };
-            }
-
             return await create(payload);
           },
 
           update: async payload => {
             const update = PUT("/api/card/:id");
-
-            if (payload.type === "metric") {
-              const tweakedPayload = {
-                ...payload,
-                type: "question",
-              };
-              const result = await update(tweakedPayload);
-              return { ...result, type: "metric" };
-            }
-
             return await update(payload);
           },
         },
