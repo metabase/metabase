@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import { Icon, Radio, Text } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 
-import type { CacheStrategy, type CacheConfig } from "../types";
+import type { CacheConfig, CacheStrategy } from "../types";
 import { CacheStrategies, isValidCacheStrategy } from "../types";
 
 import {
@@ -14,13 +14,13 @@ import {
   ConfigPanel,
   ConfigPanelSection,
   DatabasesConfigIcon,
+  Editor,
+  EditorPanel,
   Explanation,
   GeneralConfig,
   GeneralStrategy,
   SpecialConfigStyled,
   SpecialStrategy,
-  Editor,
-  EditorPanel,
   TabWrapper,
 } from "./Data.styled";
 
@@ -40,11 +40,10 @@ export const Data = ({
     ? CacheStrategies[generalStrategy]
     : null;
 
-  // if configureeId is 0, the general strategy is being configured
-  const [configureeId, setConfigureeId] = useState<number | null>(null);
-  const currentConfig =
-    configureeId !== null ? dbConfigs.get(configureeId) : null;
-  const editingGeneralConfig = configureeId === 0;
+  // if targetId is 0, the general strategy is being configured
+  const [targetId, setTargetId] = useState<number | null>(null);
+  const currentConfig = targetId !== null ? dbConfigs.get(targetId) : null;
+  const editingGeneralConfig = targetId === 0;
 
   return (
     <TabWrapper role="region" aria-label="Data caching settings">
@@ -60,8 +59,8 @@ export const Data = ({
             variant={editingGeneralConfig ? "filled" : "outline"}
             radius="sm"
             animate={false}
-            onClick={() => setConfigureeId(0)}
-            isBeingEdited={configureeId === 0}
+            onClick={() => setTargetId(0)}
+            isBeingEdited={targetId === 0}
           >
             <DatabasesConfigIcon name="database" />
             {t`Databases`}
@@ -74,11 +73,11 @@ export const Data = ({
           {databases.map(db => (
             <SpecialConfig
               db={db}
-              key={db.id}
+              key={db.id.toString()}
               dbConfigs={dbConfigs}
               setDBConfig={setDBConfig}
-              configureeId={configureeId}
-              setConfigureeId={setConfigureeId}
+              targetId={targetId}
+              setTargetId={setTargetId}
               generalStrategy={generalStrategy}
             />
           ))}
@@ -89,19 +88,19 @@ export const Data = ({
           >{t`Clear all overrides`}</ClearOverridesButton>
         </EditorPanel>
         <ConfigPanel role="group">
-          {configureeId !== null && (
+          {targetId !== null && (
             <ConfigPanelSection>
               <Radio.Group
                 value={currentConfig?.strategy ?? generalStrategy}
-                name={`caching-strategy-for-database-${configureeId}`}
+                name={`caching-strategy-for-database-${targetId}`}
                 onChange={strategy => {
                   if (!isValidCacheStrategy(strategy)) {
                     console.error("invalid strategy", strategy);
                     return;
                   }
-                  setDBConfig(configureeId, {
+                  setDBConfig(targetId, {
                     modelType: "database",
-                    model_id: configureeId,
+                    model_id: targetId,
                     strategy,
                   });
                 }}
@@ -158,16 +157,16 @@ export const SpecialConfig = ({
   key,
   dbConfigs,
   setDBConfig: setDBConfig,
-  configureeId,
-  setConfigureeId,
+  targetId: targetId,
+  setTargetId: setTargetId,
   generalStrategy,
 }: {
   db: Database;
   key: string;
-  configureeId: number | null;
+  targetId: number | null;
+  setTargetId: Dispatch<SetStateAction<number | null>>;
   dbConfigs: Map<number, CacheConfig>;
   setDBConfig: (databaseId: number, config: CacheConfig | null) => void;
-  setConfigureeId: Dispatch<SetStateAction<number | null>>;
   generalStrategy: CacheStrategy | undefined;
 }) => {
   const specificConfigForDB = dbConfigs.get(db.id);
@@ -179,7 +178,7 @@ export const SpecialConfig = ({
     throw new Error(t`Invalid strategy "${strategyForDB}"`);
   }
   const strategyLabel = CacheStrategies[strategyForDB];
-  const isConfigBeingEdited = configureeId === db.id;
+  const isConfigBeingEdited = targetId === db.id;
   const clearOverride = () => {
     setDBConfig(db.id, null);
   };
@@ -189,7 +188,7 @@ export const SpecialConfig = ({
       isBeingEdited={isConfigBeingEdited}
       key={key}
       onClick={() => {
-        setConfigureeId(db.id);
+        setTargetId(db.id);
       }}
       animate={false}
       radius="sm"

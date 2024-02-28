@@ -93,7 +93,8 @@ export const SpecialConfigStyled = styled(CacheAdminButton)<ConfigProps>`
   flex-flow: row nowrap;
   margin-bottom: 1rem;
   align-items: center;
-  padding: 2rem 1rem;
+  // TODO: These shrink vertically when there are too many in the panel
+  padding: 1rem;
   min-width: 20rem;
   border: 1px solid ${color("border")};
 `;
