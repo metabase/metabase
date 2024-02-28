@@ -9,9 +9,6 @@ import {
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-// TODO: Add updateCacheConfigs, modeled on updateModelIndexes.
-// Also look at some other examples of API interaction, since modelIndexes might not be the most representative case
-
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { CacheConfigApi } from "metabase/services";
@@ -19,12 +16,13 @@ import { Tabs } from "metabase/ui";
 
 import type {
   CacheConfig,
-  CacheStrategy,
-  DBConfigSetter,
+  Strategy,
+  StrategySetter,
   GetConfigByModelId,
+  CacheConfigFromAPI,
 } from "../types";
 
-import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./Caching.styled";
+import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./CacheApp.styled";
 import { Data } from "./Data";
 enum TabId {
   DataCachingSettings = "dataCachingSettings",
@@ -35,7 +33,7 @@ enum TabId {
 const isValidTabId = (tab: unknown): tab is TabId =>
   typeof tab === "string" && Object.values(TabId).includes(tab as TabId);
 
-export const Caching = () => {
+export const CacheApp = () => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
   const [tabsHeight, setTabsHeight] = useState<number>(300);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -55,9 +53,13 @@ export const Caching = () => {
   }
 
   const {
-    loading: areCacheConfigsLoading,
     value: cacheConfigsFromApi,
+    loading: areCacheConfigsLoading,
     error: errorWhenLoadingCacheConfigs,
+  }: {
+    value?: { items: CacheConfigFromAPI[] };
+    loading: boolean;
+    error?: any;
   } = useAsync(() => CacheConfigApi.list(), []);
 
   const [cacheConfigs, setCacheConfigs] = useState<CacheConfig[]>([]);
@@ -65,7 +67,16 @@ export const Caching = () => {
   useEffect(() => {
     // TODO: validate json
     if (cacheConfigsFromApi) {
-      setCacheConfigs(cacheConfigsFromApi.items);
+      // TODO: The outgoing data and incoming data have slightly different
+      // formats so we need to modify the data like this. Maybe it would be
+      // good to iron this out.
+      setCacheConfigs(
+        cacheConfigsFromApi.items.map(item => ({
+          ...item,
+          // TODO: Remove this 'as Strategy' by introducing a complex validator
+          strategy: { type: item.strategy, ...item.config } as Strategy,
+        })),
+      );
     }
   }, [cacheConfigsFromApi]);
 
@@ -102,7 +113,7 @@ export const Caching = () => {
     return map;
   }, [cacheConfigs]);
 
-  const setDBConfig = useCallback<DBConfigSetter>(
+  const setStrategy = useCallback<StrategySetter>(
     async (databaseId, newStrategy) => {
       const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
         model: databaseId === 0 ? "root" : "database",
@@ -121,7 +132,7 @@ export const Caching = () => {
             ...existingConfig?.strategy,
             // TODO: Move away from these two defaults
             ...newStrategy,
-          } as CacheStrategy, // TODO: Remove this 'as' which will be tricky
+          } as Strategy, // TODO: Remove this 'as' which will be tricky
         };
         setCacheConfigs([...otherConfigs, newConfig]);
         await CacheConfigApi.update(newConfig);
@@ -186,7 +197,7 @@ export const Caching = () => {
           <Data
             databases={databases}
             dbConfigs={dbConfigs}
-            setDBConfig={setDBConfig}
+            setStrategy={setStrategy}
             clearDBOverrides={clearDBOverrides}
           />
         </TabContentWrapper>

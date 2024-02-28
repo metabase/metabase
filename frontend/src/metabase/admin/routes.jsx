@@ -5,7 +5,7 @@ import { UserAuthWrapper } from "redux-auth-wrapper";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
-import { Caching } from "metabase/admin/caching/containers/Caching";
+import { CacheApp } from "metabase/admin/caching/components/CacheApp";
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp";
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
@@ -161,7 +161,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
       {/* TODO: Make this an enterprise-only plugin */}
       <Route path="caching" component={createAdminRouteGuard("caching")}>
-        <IndexRoute title={t`Caching`} path="" component={Caching}>
+        <IndexRoute title={t`Caching`} path="" component={CacheApp}>
           {/*
               perhaps eventually something like this will be useful:
           <IndexRedirect to={PLUGIN_ADMIN_CACHING.INDEX_ROUTE} />

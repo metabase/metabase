@@ -1,17 +1,34 @@
 import { t } from "ttag";
 
-export const CacheStrategyTypes = {
-  nocache: t`Don't cache`,
-  ttl: t`When the TTL expires`,
-  duration: t`On a regular duration`,
-  schedule: t`On a schedule`,
-  query: t`When the data updates`,
+type StrategyTypeData = {
+  label: string;
+  defaults?: Record<string, string | number>;
 };
-export type CacheStrategyType = keyof typeof CacheStrategyTypes;
-export const isValidCacheStrategyType = (
+
+export type StrategyName =
+  | "nocache"
+  | "ttl"
+  | "duration"
+  | "schedule"
+  | "query";
+
+export const Strategies: Record<StrategyName, StrategyTypeData> = {
+  nocache: { label: t`Don't cache` },
+  ttl: {
+    label: t`When the TTL expires`,
+    defaults: { min_duration: 1, multiplier: 1 },
+  },
+  duration: { label: t`On a regular duration` },
+  schedule: { label: t`On a schedule` },
+  query: {
+    label: t`When the data updates`,
+    defaults: { field_id: 0, aggregation: "", schedule: "" },
+  },
+};
+export const isValidStrategyName = (
   strategy: string,
-): strategy is CacheStrategyType => {
-  return Object.keys(CacheStrategyTypes).includes(strategy);
+): strategy is StrategyName => {
+  return Object.keys(Strategies).includes(strategy);
 };
 
 export type UnitOfTime = "hours" | "minutes" | "seconds" | "days";
@@ -25,39 +42,39 @@ export type Model =
   | "dashboard"
   | "question";
 
-interface CacheStrategyMap {
-  type: CacheStrategyType;
+interface StrategyMap {
+  type: StrategyName;
 }
 
-interface NoCacheStrategy extends CacheStrategyMap {
+interface NoCacheStrategy extends StrategyMap {
   type: "nocache";
 }
 
-interface TtlStrategy extends CacheStrategyMap {
+interface TtlStrategy extends StrategyMap {
   type: "ttl";
   multiplier: number;
   min_duration: number;
 }
 
-interface DurationStrategy extends CacheStrategyMap {
+interface DurationStrategy extends StrategyMap {
   type: "duration";
   duration: number;
   unit: "hours" | "minutes" | "seconds" | "days";
 }
 
-interface ScheduleStrategy extends CacheStrategyMap {
+interface ScheduleStrategy extends StrategyMap {
   type: "schedule";
   schedule: string;
 }
 
-interface QueryStrategy extends CacheStrategyMap {
+interface QueryStrategy extends StrategyMap {
   type: "query";
   field_id: number;
   aggregation: "max" | "count";
   schedule: string;
 }
 
-export type CacheStrategy =
+export type Strategy =
   | NoCacheStrategy
   | TtlStrategy
   | DurationStrategy
@@ -67,10 +84,18 @@ export type CacheStrategy =
 export interface CacheConfig {
   model: Model;
   model_id: number;
-  strategy: CacheStrategy;
+  strategy: Strategy;
 }
 
-export type DBConfigSetter = (
+// This currently has a different shape than CacheConfig
+export interface CacheConfigFromAPI {
+  model: Model;
+  model_id: number;
+  strategy: StrategyName;
+  config: Omit<Strategy, "type">;
+}
+
+export type StrategySetter = (
   databaseId: number,
-  newStrategy: Partial<CacheConfig> | null,
+  newStrategy: Partial<Strategy> | null,
 ) => void;
