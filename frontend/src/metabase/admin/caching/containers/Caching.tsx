@@ -1,7 +1,11 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+// TODO: Add updateCacheConfigs, modeled on updateModelIndexes.
+// Also look at some other examples of API interaction, since modelIndexes might not be the most representative case
+
 import { useDatabaseListQuery } from "metabase/common/hooks";
+import { useCacheConfigListQuery } from "metabase/common/hooks/use-cache-config-list-query/use-cache-config-list-query";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Tabs } from "metabase/ui";
 
@@ -21,7 +25,16 @@ const isValidTabId = (tab: unknown): tab is TabId =>
 export const Caching = () => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
   const [tabsHeight, setTabsHeight] = useState<number>(300);
-  const { data: databases = [], error, isLoading } = useDatabaseListQuery();
+  const {
+    data: databases = [],
+    error: errorWhenLoadingDatabases,
+    isLoading: areDatabasesLoading,
+  } = useDatabaseListQuery();
+  const {
+    data: _cacheConfigsFromApi = [],
+    error: errorWhenLoadingCacheConfigs,
+    isLoading: areCacheConfigsLoading,
+  } = useCacheConfigListQuery();
 
   // if (databases.length === 1) {
   //   databases.push(...databases);
@@ -53,7 +66,7 @@ export const Caching = () => {
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, [tabsRef, isLoading]);
+  }, [tabsRef, areDatabasesLoading, areCacheConfigsLoading]);
 
   // TODO: instead of tabid, maybe just use a state variable whose type is Element? ah but value prop of Tabs has to be a string
   // "show don't tell"
@@ -85,8 +98,22 @@ export const Caching = () => {
     );
   }, []);
 
-  if (error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  if (errorWhenLoadingDatabases || areDatabasesLoading) {
+    return (
+      <LoadingAndErrorWrapper
+        error={errorWhenLoadingDatabases}
+        loading={areDatabasesLoading}
+      />
+    );
+  }
+
+  if (errorWhenLoadingCacheConfigs || areCacheConfigsLoading) {
+    return (
+      <LoadingAndErrorWrapper
+        error={errorWhenLoadingCacheConfigs}
+        loading={areCacheConfigsLoading}
+      />
+    );
   }
 
   // TODO: The horizontal row of tabs does not look so good in narrow viewports
