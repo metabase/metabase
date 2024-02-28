@@ -2,6 +2,7 @@ import type { UserId } from "metabase-types/api/user";
 
 import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
+import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
@@ -55,7 +56,7 @@ export type CollectionEssentials = Pick<
 >;
 
 export interface SearchResult {
-  id: CollectionId | CardId | DatabaseId | TableId;
+  id: CollectionId | CardId | DatabaseId | TableId | DashboardId;
   name: string;
   model: SearchModelType;
   description: string | null;
