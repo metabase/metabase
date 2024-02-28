@@ -4,17 +4,26 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.query-processor.util :as qp.util]
    [metabase.shared.dashboards.constants :as dashboards.constants]
+   [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
+   [metabase.util.i18n :as i18n :refer [deferred-trs]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml])
   (:import
    (java.nio.file Files Path)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private LocalizedString
+  [:schema
+   {:decode/dashboard-template (fn [s]
+                                 (i18n/->UserLocalizedString s nil {}))}
+   i18n/LocalizedString])
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -27,18 +36,49 @@
 
 (def ^:private MBQL [:sequential :any])
 
-(def ^:private Identifier :string)
+(def ^:private Identifier
+  [:string
+   {:decode/dashboard-template (fn [x]
+                                 (if (keyword? x)
+                                   (name x)
+                                   x))}])
+
+(defn- with-defaults
+  [defaults]
+  (fn [x]
+    (let [[identifier definition] (first x)]
+      {identifier (merge defaults definition)})))
+
+(defn- shorthand-definition
+  "Expand definition of the form {identifier value} with regards to key `k` into
+   {identifier {k value}}."
+  [k]
+  (fn [x]
+    (let [[identifier definition] (first x)]
+      (if (map? definition)
+        x
+        {identifier {k definition}}))))
 
 (def ^:private Metric
-  [:map-of Identifier [:map
-                       [:metric MBQL]
-                       [:score  Score]
-                       [:name {:optional true} LocalizedString]]])
+  [:map-of
+   {:decode/dashboard-template
+    (comp (with-defaults {:score max-score})
+          (shorthand-definition :metric))}
+   Identifier
+   [:map
+    [:metric MBQL]
+    [:score  Score]
+    [:name {:optional true} LocalizedString]]])
 
 (def ^:private Filter
-  [:map-of Identifier [:map
-                       [:filter MBQL]
-                       [:score  Score]]])
+  [:map-of
+   {:decode/dashboard-template
+    (comp (with-defaults {:score max-score})
+          (shorthand-definition :filter))}
+   Identifier
+   [:map
+    [:filter MBQL]
+    [:score  Score]]])
 
 (defn ga-dimension?
   "Does string `t` denote a Google Analytics dimension?"
@@ -73,11 +113,13 @@
 
 (def ^:private TableType
   [:and
+   {:decode/dashboard-template ->entity}
    :keyword
    [:fn {:error/message "valid table type"} table-type?]])
 
 (def ^:private FieldType
   [:or
+   {:decode/dashboard-template ->type}
    [:and
     :string
     [:fn {:error/message "Google Analytics dimension"} ga-dimension?]]
@@ -87,12 +129,23 @@
 
 (def ^:private AppliesTo
   [:or
+   {:decode/dashboard-template
+    (fn [x]
+      (let [[table-type field-type] (str/split x #"\.")]
+        (if field-type
+          [(->entity table-type) (->type field-type)]
+          [(if (-> table-type ->entity table-type?)
+             (->entity table-type)
+             (->type table-type))])))}
    [:sequential FieldType]
    [:sequential TableType]
    [:cat TableType [:* FieldType]]])
 
 (def ^:private Dimension
   [:map-of
+   {:decode/dashboard-template
+    (comp (with-defaults {:score max-score})
+          (shorthand-definition :field_type))}
    Identifier
    [:map
     [:field_type AppliesTo]
@@ -102,10 +155,22 @@
     [:max_cardinality {:optional true} :int]]])
 
 (def ^:private OrderByPair
-  [:map-of Identifier [:enum "descending" "ascending"]])
+  [:map-of
+   {:decode/dashboard-template (fn [x]
+                                 (if (string? x)
+                                   {x "ascending"}
+                                   x))}
+   Identifier
+   [:enum "descending" "ascending"]])
 
 (def ^:private Visualization
-  [:cat :string [:* :map]])
+  [:cat
+   {:decode/dashboard-template (fn [x]
+                                 (if (string? x)
+                                   [x {}]
+                                   (first x)))}
+   :string
+   [:* :map]])
 
 (def ^:private Width
   [:int {:min 1, :max populate/grid-width}])
@@ -113,21 +178,31 @@
 (def ^:private Height pos-int?)
 
 (def ^:private CardDimension
-  [:map-of Identifier [:map [:aggregation {:optional true} :string]]])
+  [:map-of
+   {:decode/dashboard-template (fn [x]
+                                 (if (string? x)
+                                   {x {}}
+                                   x))}
+   Identifier
+   [:map [:aggregation {:optional true} :string]]])
 
 (def ^:private Card
   [:map-of
+   {:decode/dashboard-template
+    (with-defaults {:card-score max-score
+                    :width      populate/default-card-width
+                    :height     populate/default-card-height})}
    Identifier
    [:map
     [:title      LocalizedString]
     [:card-score Score]
     [:visualization {:optional true} Visualization]
     [:text          {:optional true} LocalizedString]
-    [:dimensions    {:optional true} [:sequential CardDimension]]
+    [:dimensions    {:optional true} [:sequential {:decode/dashboard-template u/one-or-many} CardDimension]]
     [:filters       {:optional true} [:sequential :string]]
     [:metrics       {:optional true} [:sequential :string]]
     [:limit         {:optional true} pos-int?]
-    [:order_by      {:optional true} [:sequential OrderByPair]]
+    [:order_by      {:optional true} [:sequential {:decode/dashboard-template u/one-or-many} OrderByPair]]
     [:description   {:optional true} LocalizedString]
     [:query         {:optional true} :string]
     [:width         {:optional true} Width]
@@ -139,6 +214,7 @@
 
 (def ^:private Groups
   [:map-of
+   {:decode/dashboard-template (partial apply merge)}
    Identifier
    [:map
     [:title LocalizedString]
@@ -235,7 +311,7 @@
     [:filters           {:optional true} [:sequential Filter]]
     [:groups            {:optional true} Groups]
     [:indepth           {:optional true} [:sequential :any]]
-    [:dashboard_filters {:optional true} [:string]]]
+    [:dashboard_filters {:optional true} [:sequential {:decode/dashboard-template u/one-or-many} :string]]]
    [:fn {:error/message "Valid metrics references"}           valid-metrics-references?]
    [:fn {:error/message "Valid filters references"}           valid-filters-references?]
    [:fn {:error/message "Valid group references"}             valid-group-references?]
@@ -244,67 +320,14 @@
    [:fn {:error/message "Valid dimension references"}         valid-dimension-references?]
    [:fn {:error/message "Valid card dimension references"}    valid-breakout-dimension-references?]])
 
-(defn- with-defaults
-  [defaults]
-  (fn [x]
-    (let [[identifier definition] (first x)]
-      {identifier (merge defaults definition)})))
+(def MySchema
+  [:int {:decode/dashboard-template (constantly 7)}])
 
-(defn- shorthand-definition
-  "Expand definition of the form {identifier value} with regards to key `k` into
-   {identifier {k value}}."
-  [k]
-  (fn [x]
-    (let [[identifier definition] (first x)]
-      (if (map? definition)
-        x
-        {identifier {k definition}}))))
-
-;; FIXME NOCOMMIT
-(def ^:private dashboard-template-validator
-  identity
-  #_(sc/coercer!
-    DashboardTemplate
-    {[:string]         u/one-or-many
-     [OrderByPair]   u/one-or-many
-     OrderByPair     (fn [x]
-                       (if (string? x)
-                         {x "ascending"}
-                         x))
-     Visualization   (fn [x]
-                       (if (string? x)
-                         [x {}]
-                         (first x)))
-     Metric          (comp (with-defaults {:score max-score})
-                           (shorthand-definition :metric))
-     Dimension       (comp (with-defaults {:score max-score})
-                           (shorthand-definition :field_type))
-     Filter          (comp (with-defaults {:score max-score})
-                           (shorthand-definition :filter))
-     Card            (with-defaults {:card-score max-score
-                                     :width      populate/default-card-width
-                                     :height     populate/default-card-height})
-     [CardDimension] u/one-or-many
-     CardDimension   (fn [x]
-                       (if (string? x)
-                         {x {}}
-                         x))
-     TableType       ->entity
-     FieldType       ->type
-     Identifier      (fn [x]
-                       (if (keyword? x)
-                         (name x)
-                         x))
-     Groups          (partial apply merge)
-     AppliesTo       (fn [x]
-                       (let [[table-type field-type] (str/split x #"\.")]
-                         (if field-type
-                           [(->entity table-type) (->type field-type)]
-                           [(if (-> table-type ->entity table-type?)
-                              (->entity table-type)
-                              (->type table-type))])))
-     LocalizedString (fn [s]
-                       (i18n/->UserLocalizedString s nil {}))}))
+(defn x []
+  (mc/coerce MySchema "abc" (mtx/transformer
+                             mtx/string-transformer
+                             mtx/json-transformer
+                             (mtx/transformer {:name :dashboard-template}))))
 
 (def ^:private dashboard-templates-dir "automagic_dashboards/")
 
@@ -330,6 +353,14 @@
   [dashboard-template]
   (update dashboard-template :cards #(mapv ensure-default-card-sizes %)))
 
+(defn- coerce-to-dashboard-template [template]
+  (mc/coerce DashboardTemplate
+             template
+             (mtx/transformer
+              mtx/string-transformer
+              mtx/json-transformer
+              (mtx/transformer {:name :dashboard-template}))))
+
 (defn- make-dashboard-template
   [entity-type {:keys [cards] :as r}]
   (-> (cond-> r
@@ -339,10 +370,10 @@
              :specificity 0)
       (update :applies_to #(or % entity-type))
       set-default-card-dimensions
-      dashboard-template-validator
+      coerce-to-dashboard-template
       (as-> dashboard-template
             (assoc dashboard-template
-              :specificity (specificity dashboard-template)))))
+                   :specificity (specificity dashboard-template)))))
 
 (defn- trim-trailing-slash
   [s]
