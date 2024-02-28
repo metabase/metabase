@@ -22,6 +22,7 @@ interface JoinConditionColumnPickerProps
   isOpened: boolean;
   readOnly?: boolean;
   onOpenedChange: (isOpened: boolean) => void;
+  "data-testid"?: string;
 }
 
 export function JoinConditionColumnPicker({

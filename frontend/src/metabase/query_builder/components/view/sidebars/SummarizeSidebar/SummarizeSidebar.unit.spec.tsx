@@ -219,12 +219,8 @@ describe("SummarizeSidebar", () => {
     const { getNextAggregations } = setup({ withDefaultAggregation: false });
 
     userEvent.click(screen.getByLabelText("Add aggregation"));
-
-    let popover = await screen.findByLabelText("grid");
-    userEvent.click(within(popover).getByText("Average of ..."));
-
-    popover = await screen.findByLabelText("grid");
-    userEvent.click(within(popover).getByText("Total"));
+    userEvent.click(await screen.findByText("Average of ..."));
+    userEvent.click(await screen.findByText("Total"));
 
     await waitFor(() => {
       const [aggregation] = getNextAggregations();
@@ -237,9 +233,7 @@ describe("SummarizeSidebar", () => {
     const { getNextAggregations } = setup({ withDefaultAggregation: false });
 
     userEvent.click(screen.getByLabelText("Add aggregation"));
-
-    const popover = await screen.findByLabelText("grid");
-    userEvent.click(within(popover).getByText("Count of rows"));
+    userEvent.click(await screen.findByText("Count of rows"));
 
     await waitFor(() => {
       const [aggregation] = getNextAggregations();
@@ -253,23 +247,17 @@ describe("SummarizeSidebar", () => {
 
     userEvent.click(screen.getByLabelText("Add aggregation"));
 
-    const popover = await screen.findByLabelText("grid");
-    expect(
-      within(popover).queryByText(/Custom Expression/i),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByText("Total")).toBeInTheDocument();
+    expect(screen.queryByText(/Custom Expression/i)).not.toBeInTheDocument();
   });
 
   it("shouldn't allow changing an aggregation to an expression", async () => {
     setup({ card: createSummarizedCard() });
 
     userEvent.click(screen.getByText("Max of Quantity"));
-    let popover = await screen.findByTestId("aggregation-column-picker");
-    userEvent.click(within(popover).getByLabelText("Back"));
-    popover = await screen.findByLabelText("grid");
+    userEvent.click(await screen.findByLabelText("Back"));
 
-    expect(
-      within(popover).queryByText(/Custom Expression/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Custom Expression/i)).not.toBeInTheDocument();
   });
 
   it("should add a breakout", async () => {

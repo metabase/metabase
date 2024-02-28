@@ -30,6 +30,7 @@ export interface QueryColumnPickerProps {
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
+  "data-testid"?: string;
 }
 
 type Sections = {
@@ -50,6 +51,7 @@ export function QueryColumnPicker({
   checkIsColumnSelected,
   onSelect,
   onClose,
+  "data-testid": dataTestId,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
     () =>
@@ -164,6 +166,7 @@ export function QueryColumnPicker({
       // disable scrollbars inside the list
       style={{ overflow: "visible" }}
       maxHeight={Infinity}
+      data-testid={dataTestId}
       // Compat with E2E tests around MLv1-based components
       // Prefer using a11y role selectors
       itemTestId="dimension-list-item"
