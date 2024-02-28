@@ -79,7 +79,7 @@ export function BaseTableItem({
       height: 48,
     };
 
-    const icon = { name: item.getIcon().name };
+    const icon = item.getIcon();
     if (item.model === "card") {
       icon.color = color("text-light");
     }
