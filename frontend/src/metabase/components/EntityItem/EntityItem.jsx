@@ -25,7 +25,6 @@ import {
 } from "./EntityItem.styled";
 
 function EntityIconCheckBox({
-  item,
   variant,
   icon,
   pinned,

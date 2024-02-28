@@ -103,12 +103,7 @@ export function BaseTableItem({
           </ItemCell>
         )}
         <ItemCell data-testid={`${testId}-type`}>
-          <EntityIconCheckBox
-            item={item}
-            variant="list"
-            icon={icon}
-            pinned={isPinned}
-          />
+          <EntityIconCheckBox variant="list" icon={icon} pinned={isPinned} />
         </ItemCell>
         <ItemNameCell data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>
