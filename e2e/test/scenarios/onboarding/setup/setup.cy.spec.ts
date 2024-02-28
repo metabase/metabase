@@ -451,9 +451,14 @@ describeWithSnowplow("scenarios > setup", () => {
         });
 
         cy.button("Next").click();
+        goodEvents++; // 11/12 - setup/step_seen "commercial_license"
+        expectGoodSnowplowEvent({
+          event: "license_token_step_submitted",
+          valid_token_present: false,
+        });
       }
 
-      goodEvents++; // 10/11 - setup/step_seen "data_usage"
+      goodEvents++; // 11/12 - setup/step_seen "data_usage"
       expectGoodSnowplowEvent({
         event: "step_seen",
         step_number: isEE ? 6 : 5,
@@ -461,9 +466,9 @@ describeWithSnowplow("scenarios > setup", () => {
       });
 
       cy.findByRole("button", { name: "Finish" }).click();
-      goodEvents++; // 11/12 - new_user_created (from BE)
+      goodEvents++; // 12/13- - new_user_created (from BE)
 
-      goodEvents++; // 12/13- setup/step_seen "completed"
+      goodEvents++; // 13/14- setup/step_seen "completed"
       expectGoodSnowplowEvent({
         event: "step_seen",
         step_number: isEE ? 7 : 6,

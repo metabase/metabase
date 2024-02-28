@@ -6,6 +6,8 @@ import fetchMock from "fetch-mock";
 
 import { setupForTokenCheckEndpoint } from "__support__/server-mocks";
 
+import { trackLicenseTokenStepSubmitted } from "../analytics";
+
 import type { SetupOpts } from "./setup";
 import {
   clickNextStep,
@@ -18,6 +20,11 @@ import {
   skipWelcomeScreen,
   submitUserInfoStep,
 } from "./setup";
+
+jest.mock("../analytics", () => ({
+  ...jest.requireActual("../analytics"),
+  trackLicenseTokenStepSubmitted: jest.fn(),
+}));
 
 const setupEnterprise = (opts?: SetupOpts) => {
   return setup({
@@ -44,7 +51,7 @@ describe("setup (EE, no token)", () => {
 
   describe("License activation step", () => {
     async function setupForLicenseStep() {
-      await setup();
+      await setupEnterprise();
       skipWelcomeScreen();
       skipLanguageStep();
       await submitUserInfoStep();
@@ -77,6 +84,34 @@ describe("setup (EE, no token)", () => {
       ).toBeInTheDocument();
     });
 
+    it("should not send the token if it's invalid", async () => {
+      await setupForLicenseStep();
+
+      setupForTokenCheckEndpoint({ valid: false });
+
+      userEvent.paste(
+        screen.getByRole("textbox", { name: "Token" }),
+        sampleToken,
+      );
+
+      screen.getByRole("button", { name: "Activate" }).click();
+
+      await screen.findByText(
+        "This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working",
+      );
+
+      clickNextStep();
+
+      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
+
+      screen.getByRole("button", { name: "Finish" }).click();
+
+      const setupCall = fetchMock.lastCall(`path:/api/setup`);
+      expect(await setupCall?.request?.json()).not.toHaveProperty(
+        "license_token",
+      );
+    });
+
     it("should go to the next step when activating a valid token", async () => {
       await setupForLicenseStep();
 
@@ -95,6 +130,8 @@ describe("setup (EE, no token)", () => {
         ).not.toHaveProperty("data-loading", true);
       });
 
+      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(true);
+
       expect(getSection("Usage data preferences")).toHaveAttribute(
         "aria-current",
         "step",
@@ -105,6 +142,8 @@ describe("setup (EE, no token)", () => {
       await setupForLicenseStep();
 
       clickNextStep();
+
+      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
 
       expect(getSection("Usage data preferences")).toHaveAttribute(
         "aria-current",
