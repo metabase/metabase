@@ -8,6 +8,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
+;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
+
 ;;; Column vs Field?
 ;;;
 ;;; Lately I've been using `Field` to only mean a something that lives in the application database, i.e. something
@@ -15,7 +17,6 @@
 ;;; includes not only `Field`s but also the columns returned by a stage of a query, e.g. `SELECT count(*) AS count`
 ;;; returns a `Column` called `count`, but it's not a `Field` because it's not associated with an actual Field in the
 ;;; application database.
-
 
 (def ColumnMetadata
   "Malli schema for a valid map of column metadata, which can mean one of two things:
@@ -32,12 +33,8 @@
   to differentiate between the two versions."
   [:ref ::lib.schema.metadata/column])
 
-(def CardMetadata
-  "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
-  a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted to
-  pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
-  massaged into a sequence of `ColumnMetadata`s just yet. See [[metabase.lib.card/card-metadata-columns]] that
-  converts these as needed."
+(def ^:deprecated CardMetadata
+  "DEPRECATED: use [[::lib.schema.metadata/card]] instead."
   [:ref ::lib.schema.metadata/card])
 
 (def SegmentMetadata
@@ -180,7 +177,7 @@
              column))
          (:columns (stage query stage-number)))))
 
-(mu/defn card :- [:maybe CardMetadata]
+(mu/defn card :- [:maybe ::lib.schema.metadata/card]
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
   [metadata-providerable :- MetadataProviderable
    card-id               :- ::lib.schema.id/card]
@@ -198,7 +195,7 @@
    metric-id             :- ::lib.schema.id/metric]
   (lib.metadata.protocols/metric (->metadata-provider metadata-providerable) metric-id))
 
-(mu/defn table-or-card :- [:maybe [:or CardMetadata TableMetadata]]
+(mu/defn table-or-card :- [:maybe [:or ::lib.schema.metadata/card TableMetadata]]
   "Convenience, for frontend JS usage (see #31915): look up metadata based on Table ID, handling legacy-style
   `card__<id>` strings as well. Throws an Exception (Clj-only, due to Malli validation) if passed an integer Table ID
   and the Table does not exist, since this is a real error; however if passed a `card__<id>` that does not exist,

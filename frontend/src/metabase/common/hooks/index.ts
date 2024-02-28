@@ -24,3 +24,5 @@ export * from "./use-table-list-query";
 export * from "./use-table-metadata-query";
 export * from "./use-table-query";
 export * from "./use-user-query";
+
+export * from "./use-setting";

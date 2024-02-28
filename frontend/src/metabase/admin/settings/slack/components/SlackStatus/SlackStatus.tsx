@@ -72,7 +72,7 @@ const SlackStatus = ({
         <Button onClick={handleOpen}>{t`Delete Slack App`}</Button>
       </StatusFooter>
       {isOpened && (
-        <Modal isOpen={isOpened} full={false} onClose={handleClose}>
+        <Modal isOpen={isOpened} onClose={handleClose}>
           <SlackDeleteModal onDelete={onDelete} onClose={handleClose} />
         </Modal>
       )}

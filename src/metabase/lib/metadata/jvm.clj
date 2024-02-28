@@ -228,12 +228,12 @@
    (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
                 :card/database_id
-                :card/dataset
                 :card/dataset_query
                 :card/id
                 :card/name
                 :card/result_metadata
                 :card/table_id
+                :card/type
                 :card/visualization_settings
                 :persisted/active
                 :persisted/state

@@ -53,7 +53,7 @@
    [:source-query    mbql.s/SourceQuery]
    [:database        mbql.s/DatabaseID]
    [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
-   [:source-query/dataset? {:optional true} :boolean]
+   [:source-query/model?   {:optional true} :boolean]
    [:persisted-info/native {:optional true} :string]])
 
 (def ^:private MapWithResolvedSourceQuery
@@ -129,7 +129,7 @@
          persisted-info (:lib/persisted-info card)
          {{database-id :database} :dataset-query
           result-metadata         :result-metadata
-          dataset?                :dataset} card
+          card-type               :type} card
          persisted?     (qp.persisted/can-substitute? card persisted-info)
          source-query   (source-query card)]
      (when (and persisted? log?)
@@ -137,12 +137,10 @@
                       card-id
                       (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
                       (:table-name persisted-info))))
-
      ;; log the query at this point, it's useful for some purposes
      (log/debug (trs "Fetched source query from Card {0}:" card-id)
                 "\n"
                 (u/pprint-to-str 'yellow source-query))
-
      (cond-> {:source-query    (cond-> source-query
                                  ;; This will be applied, if still appropriate, by the peristence middleware
                                  persisted?
@@ -152,7 +150,7 @@
                                          persisted-info)))
               :database        database-id
               :source-metadata (seq (map mbql.normalize/normalize-source-metadata result-metadata))}
-       dataset? (assoc :source-query/dataset? dataset?)))))
+       (= card-type :model) (assoc :source-query/model? true)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -296,10 +294,14 @@
       (dissoc query ::source-card-id))))
 
 (defn add-dataset-info
-  "Post-processing middleware that adds `:dataset` `true` or `false` to queries with a source card."
+  "Post-processing middleware that adds `:model` and `:dataset` (for historic reasons) `true` or `false` to queries with
+  a source card.
+
+  TODO -- we should remove remove the `:dataset` key and make sure nothing breaks, and make sure everything is looking
+  at `:model` instead."
   [{::keys [source-card-id], :as _preprocessed-query} rff]
   (if-not source-card-id
     rff
-    (let [dataset? (:dataset (lib.metadata.protocols/card (qp.store/metadata-provider) source-card-id))]
+    (let [model? (= (:type (lib.metadata.protocols/card (qp.store/metadata-provider) source-card-id)) :model)]
       (fn rff' [metadata]
-        (rff (cond-> metadata dataset? (assoc :dataset dataset?)))))))
+        (rff (cond-> metadata model? (assoc :dataset model?, :model model?)))))))

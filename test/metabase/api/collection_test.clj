@@ -125,7 +125,7 @@
                  (->> (mt/user-http-request :rasta :get 200 "collection")
                       (filter (fn [{collection-name :name}]
                                 (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
-                                    (str/includes? collection-name "Personal Collection"))))
+                                    (some-> collection-name (str/includes? "Personal Collection")))))
                       (map :name)))))))))
 
 (deftest list-collections-personal-only-test
@@ -283,6 +283,28 @@
             (let [response (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)]
               (is (= expected-lucky-tree
                      (collection-tree-view ids response))))))))))
+
+(deftest collection-tree-here-and-below-test
+  (testing "Tree should properly indicate contents"
+    (with-collection-hierarchy [a b]
+      (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
+        (t2.with-temp/with-temp [Card _ {:name "Personal Card"
+                                         :collection_preview false
+                                         :collection_id (:id personal-collection)}
+                                 Card _ {:name "Personal Model"
+                                         :type :model
+                                         :collection_preview false
+                                         :collection_id (:id personal-collection)}
+                                 Card _ {:name "A Card"
+                                         :collection_preview false
+                                         :collection_id (:id a)}
+                                 Card _ {:name "B Model"
+                                         :type :model
+                                         :collection_preview false
+                                         :collection_id (:id b)}]
+          (is (=? [{:here ["card"] :below ["dataset"] :children [{:here ["dataset"]}]}
+                   {:here ["card" "dataset"]}]
+                  (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
 
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
@@ -656,7 +678,7 @@
     (testing "Database id is returned for items in which dataset is true"
       (t2.with-temp/with-temp [Collection collection      {}
                                User       _               {:first_name "x" :last_name "x" :email "zzzz@example.com"}
-                               Card       {card-id-1 :id} {:dataset       true
+                               Card       {card-id-1 :id} {:type          :model
                                                            :collection_id (u/the-id collection)}
                                Card       {card-id-2 :id} {:collection_id (u/the-id collection)}]
         (is (= #{{:id card-id-1 :database_id (mt/id)}
@@ -906,7 +928,7 @@
                                                                :location (format "/%d/" collection-id)
                                                                :authority_level "official"}
                                Card       _                   {:name "card" :collection_id collection-id}
-                               Card       _                   {:name "dataset" :dataset true :collection_id collection-id}
+                               Card       _                   {:name "dataset" :type :model :collection_id collection-id}
                                Dashboard  _                   {:name "dash" :collection_id collection-id}]
         (let [items (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
                                                  :models ["dashboard" "card" "collection"]))]

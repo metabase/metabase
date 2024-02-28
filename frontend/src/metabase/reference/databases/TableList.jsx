@@ -7,11 +7,11 @@ import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
 import List from "metabase/components/List";
-import S from "metabase/components/List/List.css";
+import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import * as metadataActions from "metabase/redux/metadata";
-import R from "metabase/reference/Reference.css";
+import R from "metabase/reference/Reference.module.css";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {

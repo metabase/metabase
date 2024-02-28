@@ -215,10 +215,10 @@
   (fn [model _] model))
 
 (mu/defn ^:private shared-card-impl
-  [model      :- [:enum "card" "dataset"]
+  [model      :- [:enum "card" "dataset"] ; TODO -- use :metabase.models.card/type instead and have this `:question`/`:model`/etc.
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
-      (update :where (fn [where] [:and [:= :card.dataset (= "dataset" model)] where]))
+      (sql.helpers/where [:= :card.type (if (= model "dataset") "model" "question")])
       (sql.helpers/left-join [:card_bookmark :bookmark]
                              [:and
                               [:= :bookmark.card_id :card.id]
