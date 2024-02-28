@@ -45,7 +45,6 @@ const CSS_CONFIG = {
   modules: {
     auto: filename =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
-    mode: "local",
     localIdentName: devMode
       ? "[name]__[local]___[hash:base64:5]"
       : "[hash:base64:5]",

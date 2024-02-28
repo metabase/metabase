@@ -212,11 +212,6 @@
   cursor: pointer;
 }
 
-/* we put the brush behind everything so this isn't necessary
-/*:global(.LineAreaBarChart .dc-chart .brush) {
-  pointer-events: none;
-}*/
-
 /* grid lines aren't clickable, and get in the way of the brush */
 :global(.LineAreaBarChart .dc-chart .grid-line) {
   pointer-events: none;

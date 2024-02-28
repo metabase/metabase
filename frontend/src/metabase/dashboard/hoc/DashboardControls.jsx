@@ -204,9 +204,9 @@ export const DashboardControls = ComposedComponent =>
         // NOTE Atte Keinänen 8/10/17: For some reason `document` object isn't present in Jest tests
         // when _showNav is called for the first time
         if (window.document) {
-          const nav =
-            document.body.querySelector("[data-testid='main-navbar-root']") ||
-            document.body.querySelector("[data-testid='admin-navbar-root']");
+          const nav = document.body.querySelector(
+            "[data-element-id='navbar-root']",
+          );
 
           if (show && nav) {
             nav.classList.remove("hide");

@@ -86,16 +86,3 @@
   flex-shrink: 1;
   min-width: 66%;
 }
-
-/* DEBUG */
-/*
-.ChartWithLegend .Legend {
-  background-color: color-mod(var(--color-bg-black) alpha(-90%));
-}
-.ChartWithLegend .Chart {
-  background-color: color-mod(var(--color-success) alpha(-90%));
-}
-.ChartWithLegend.flexChart .Chart {
-  background-color: color-mod(var(--color-error) alpha(-90%));
-}
-*/

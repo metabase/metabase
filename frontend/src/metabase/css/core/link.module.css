@@ -1,4 +1,5 @@
-:global(.no-decoration) {
+:global(.no-decoration),
+.no-decoration {
   text-decoration: none;
 }
 

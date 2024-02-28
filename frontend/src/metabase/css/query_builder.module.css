@@ -61,6 +61,10 @@
   flex-direction: column;
 }
 
+:global(.TooltipFilterList .Query-section) {
+  margin-left: -0.5rem;
+}
+
 /*
     @selectionmodule
 */
