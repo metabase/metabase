@@ -5,7 +5,7 @@
     "vendor": "com.metabase",
     "name": "setup",
     "format": "jsonschema",
-    "version": "1-0-2"
+    "version": "1-0-3"
   },
   "type": "object",
   "properties": {
@@ -15,6 +15,7 @@
       "enum": [
         "step_seen",
         "usage_reason_selected",
+        "license_token_step_submitted",
         "database_selected",
         "add_data_later_clicked"
       ],
@@ -84,6 +85,13 @@
         "null"
       ],
       "maxLength": 1024
+    },
+    "valid_token_present": {
+      "description": "Boolean indicating if a valid token was submitted",
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "source": {
       "description": "String with the product location that the event took place",

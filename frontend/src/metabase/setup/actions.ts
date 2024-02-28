@@ -13,6 +13,7 @@ import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
+  trackLicenseTokenStepSubmitted,
   trackTrackingChanged,
   trackUsageReasonSelected,
 } from "./analytics";
@@ -109,9 +110,9 @@ export const submitUsageReason = createAsyncThunk(
 
 export const submitLicenseToken = createAsyncThunk(
   "metabase/setup/SUBMIT_LICENSE_TOKEN",
-  (_token: string | null, { dispatch }) => {
-    // TODO: add analytics
+  (token: string | null, { dispatch }) => {
     dispatch(goToNextStep());
+    trackLicenseTokenStepSubmitted(Boolean(token));
   },
 );
 
@@ -217,7 +218,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
           site_locale: locale?.code,
           allow_tracking: isTrackingAllowed.toString(),
         },
-        license_token: licenseToken,
+        license_token: licenseToken ?? undefined,
       });
 
       if (usageReason === "embedding" || usageReason === "both") {
