@@ -2,8 +2,8 @@ DELETE
 FROM data_permissions
 WHERE perm_type = 'perms/data-access';
 
--- Insert DB-level block rows on rollback for any group that has sandboxes defined and no 'create-queries' perms.
-
+-- Insert DB-level block rows on rollback for any group that has sandboxes defined and
+-- no 'create-queries' perms.
 INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
 SELECT DISTINCT pg.id AS group_id,
                 'perms/data-access' AS perm_type,
@@ -72,14 +72,7 @@ SELECT pg.id AS group_id,
                    FROM connection_impersonations ci
                    WHERE ci.db_id = md.id
                      AND ci.group_id = pg.id) THEN 'no-self-service'
-           WHEN EXISTS
-                  (SELECT 1
-                   FROM data_permissions dp
-                   WHERE dp.group_id = pg.id
-                     AND dp.db_id = md.id
-                     AND dp.table_id IS NULL
-                     AND dp.perm_type = 'perms/create-queries'
-                     AND dp.perm_value = 'no' ) THEN 'block'
+            ELSE 'block'
        END AS perm_value
 FROM permissions_group pg
 CROSS JOIN metabase_database md
@@ -113,13 +106,7 @@ SELECT pg.id AS group_id,
                      AND dp.table_id = mt.id
                      AND dp.perm_type = 'perms/create-queries'
                      AND dp.perm_value = 'query-builder' ) THEN 'unrestricted'
-           WHEN EXISTS
-                  (SELECT 1
-                   FROM data_permissions dp
-                   WHERE dp.group_id = pg.id
-                     AND dp.table_id = mt.id
-                     AND dp.perm_type = 'perms/create-queries'
-                     AND dp.perm_value = 'no' ) THEN 'no-self-service'
+           ELSE 'no-self-service'
        END AS perm_value
 FROM permissions_group pg
 CROSS JOIN metabase_table mt
