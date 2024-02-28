@@ -16,10 +16,10 @@ import { Tabs } from "metabase/ui";
 
 import type {
   CacheConfig,
+  CacheConfigFromAPI,
+  GetConfigByModelId,
   Strategy,
   StrategySetter,
-  GetConfigByModelId,
-  CacheConfigFromAPI,
 } from "../types";
 
 import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./CacheApp.styled";
@@ -45,7 +45,7 @@ export const CacheApp = () => {
   } = useDatabaseListQuery();
 
   // add some dummy data
-  if (databases.length === 1) {
+  if (databases.length === 2) {
     databases.push(...databases);
     databases.push(...databases);
     databases.push(...databases);
@@ -53,35 +53,43 @@ export const CacheApp = () => {
   }
 
   const {
-    value: cacheConfigsFromApi,
-    loading: areCacheConfigsLoading,
-    error: errorWhenLoadingCacheConfigs,
+    value: configsFromAPI,
+    loading: areConfigsLoading,
+    error: errorWhenLoadingConfigs,
   }: {
-    value?: { items: CacheConfigFromAPI[] };
+    value?: CacheConfigFromAPI[];
     loading: boolean;
     error?: any;
-  } = useAsync(() => CacheConfigApi.list(), []);
+  } = useAsync(async () => {
+    const [rootConfigsFromAPI, dbConfigsFromAPI] = await Promise.all([
+      CacheConfigApi.list({ model: "root" }),
+      CacheConfigApi.list({ model: "database" }),
+    ]);
+    const configs = [
+      ...(rootConfigsFromAPI?.items ?? []),
+      ...(dbConfigsFromAPI?.items ?? []),
+    ];
+    return configs;
+  }, []);
 
-  const [cacheConfigs, setCacheConfigs] = useState<CacheConfig[]>([]);
+  const [configs, setConfigs] = useState<CacheConfig[]>([]);
 
   useEffect(() => {
     // TODO: validate json
-    if (cacheConfigsFromApi) {
+    if (configsFromAPI) {
       // TODO: The outgoing data and incoming data have slightly different
-      // formats so we need to modify the data like this. Maybe it would be
-      // good to iron this out.
-      setCacheConfigs(
-        cacheConfigsFromApi.items.map(item => ({
+      // formats so we need to modify the data like this. It would be good to
+      // iron this out.
+      setConfigs(
+        configsFromAPI.map(item => ({
           ...item,
           // TODO: Remove this 'as Strategy' by introducing a complex validator
           strategy: { type: item.strategy, ...item.config } as Strategy,
         })),
       );
     }
-  }, [cacheConfigsFromApi]);
+  }, [configsFromAPI]);
 
-  // TODO: extract out as a hook?
-  // TODO: explain with a comment?
   useLayoutEffect(() => {
     const handleResize = () => {
       const tabs = tabsRef.current;
@@ -98,33 +106,36 @@ export const CacheApp = () => {
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, [tabsRef, areDatabasesLoading, areCacheConfigsLoading]);
+  }, [tabsRef, areDatabasesLoading, areConfigsLoading, areConfigsLoading]);
 
   const dbConfigs: GetConfigByModelId = useMemo(() => {
     const map: GetConfigByModelId = new Map();
-    if (!map.has(0)) {
-      map.set(0, { model: "root", model_id: 0, strategy: { type: "nocache" } });
-    }
-    cacheConfigs.forEach(config => {
+    // Zero means the root strategy
+    configs.forEach(config => {
       if (["root", "database"].includes(config.model)) {
         map.set(config.model_id, config);
       }
     });
+    const rootStrategy = configs.find((config) => config.model == "root");
+    if (!rootStrategy) {
+      map.set(0, { model: "root", model_id: 0, strategy: { type: "nocache" } });
+    }
     return map;
-  }, [cacheConfigs]);
+  }, [configs]);
 
+  // TODO: Add model to this to make it general
   const setStrategy = useCallback<StrategySetter>(
-    async (databaseId, newStrategy) => {
+    async (modelId, newStrategy) => {
       const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
-        model: databaseId === 0 ? "root" : "database",
-        model_id: databaseId,
+        model: modelId === 0 ? "root" : "database",
+        model_id: modelId,
       };
-      const otherConfigs = cacheConfigs.filter(
-        config => config.model_id !== databaseId,
+      const otherConfigs = configs.filter(
+        config => config.model_id !== modelId,
       );
       if (newStrategy) {
-        const existingConfig = cacheConfigs.find(
-          config => config.model_id === databaseId,
+        const existingConfig = configs.find(
+          config => config.model_id === modelId,
         );
         const newConfig: CacheConfig = {
           ...baseConfig,
@@ -134,37 +145,40 @@ export const CacheApp = () => {
             ...newStrategy,
           } as Strategy, // TODO: Remove this 'as' which will be tricky
         };
-        setCacheConfigs([...otherConfigs, newConfig]);
+        setConfigs([...otherConfigs, newConfig]);
+        // TODO: What if the update fails? This might be over-engineering, but
+        // maybe: always cache the previous state so we can roll back, and show
+        // an error toast?
         await CacheConfigApi.update(newConfig);
       } else {
-        setCacheConfigs(otherConfigs);
+        setConfigs(otherConfigs);
         await CacheConfigApi.delete(baseConfig);
       }
       // Re-fetch data from API at this point?
     },
-    [cacheConfigs],
+    [configs],
   );
 
   const clearDBOverrides = useCallback(() => {
-    setCacheConfigs(configs =>
+    setConfigs(configs =>
       configs.filter(({ model }) => model !== "database"),
     );
   }, []);
+
+  if (errorWhenLoadingConfigs || areConfigsLoading) {
+    return (
+      <LoadingAndErrorWrapper
+        error={errorWhenLoadingConfigs}
+        loading={areConfigsLoading}
+      />
+    );
+  }
 
   if (errorWhenLoadingDatabases || areDatabasesLoading) {
     return (
       <LoadingAndErrorWrapper
         error={errorWhenLoadingDatabases}
         loading={areDatabasesLoading}
-      />
-    );
-  }
-
-  if (errorWhenLoadingCacheConfigs || areCacheConfigsLoading) {
-    return (
-      <LoadingAndErrorWrapper
-        error={errorWhenLoadingCacheConfigs}
-        loading={areCacheConfigsLoading}
       />
     );
   }
@@ -197,7 +211,8 @@ export const CacheApp = () => {
           <Data
             databases={databases}
             dbConfigs={dbConfigs}
-            setStrategy={setStrategy}
+            setRootStrategy={(strategy) => setStrategy('root', 0, strategy)}
+            setDatabaseStrategy={(modelId, strategy) => setStrategy('database', modelId, strategy)}
             clearDBOverrides={clearDBOverrides}
           />
         </TabContentWrapper>
@@ -205,3 +220,4 @@ export const CacheApp = () => {
     </Tabs>
   );
 };
+// TODO: Rename the 'Data' component

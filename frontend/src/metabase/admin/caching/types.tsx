@@ -96,6 +96,6 @@ export interface CacheConfigFromAPI {
 }
 
 export type StrategySetter = (
-  databaseId: number,
+  modelId: number,
   newStrategy: Partial<Strategy> | null,
 ) => void;

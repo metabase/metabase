@@ -7,6 +7,8 @@ import { Button, Icon } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 
+// TODO: Use defaultProps instead of getButtonProps
+
 export const EditorPanel = styled.div`
   overflow-y: scroll;
   display: flex;

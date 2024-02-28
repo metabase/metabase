@@ -32,16 +32,18 @@ import {
 
 export const Data = ({
   databases,
+  rootConfig,
   dbConfigs,
   setStrategy,
   clearDBOverrides,
 }: {
+  rootConfig: CacheConfig;
   databases: Database[];
   dbConfigs: GetConfigByModelId;
   setStrategy: StrategySetter;
   clearDBOverrides: () => void;
 }) => {
-  const generalStrategy = dbConfigs.get(0)?.strategy;
+  const generalStrategy = rootConfig?.strategy;
   const generalStrategyLabel = generalStrategy
     ? Strategies[generalStrategy?.type]?.label
     : null;
@@ -49,7 +51,10 @@ export const Data = ({
   // if targetId is 0, the general strategy is being configured
   const [targetId, setTargetId] = useState<number | null>(null);
   const currentConfig = targetId !== null ? dbConfigs.get(targetId) : null;
+  // TODO: See if I can keep all zero-related logic in CacheApp
   const editingGeneralConfig = targetId === 0;
+
+  // TODO: Extract a single component for both GeneralConfig and SpecialConfig
 
   return (
     <TabWrapper role="region" aria-label="Data caching settings">
@@ -107,11 +112,11 @@ export const Data = ({
                     console.error("invalid strategy type", strategyType);
                     return;
                   }
-
                   const newStrategy = {
                     type: strategyType,
                     ...Strategies[strategyType].defaults,
                   } as Strategy; // TODO See if this 'as' can be avoided
+                  console.log('newStrategy in Radio.Group', newStrategy);
                   setStrategy(targetId, newStrategy);
                 }}
                 label={
@@ -162,6 +167,7 @@ export const Data = ({
   );
 };
 
+// TODO: Rename to DatabaseConfig or something like that
 export const SpecialConfig = ({
   db,
   key,
@@ -224,6 +230,7 @@ export const SpecialConfig = ({
   );
 };
 
+// TODO: No bueno, get rid of this
 export const getButtonProps = ({
   shouldHighlightButton,
 }: {

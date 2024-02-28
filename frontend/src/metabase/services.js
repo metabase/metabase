@@ -619,7 +619,6 @@ export const ApiKeysApi = {
 // TODO: move to plugin
 export const CacheConfigApi = {
   list: GET("/api/ee/caching"),
-  create: POST("/api/ee/caching"),
-  update: PUT("/api/ee/caching/:id"),
+  update: PUT("/api/ee/caching"),
   delete: DELETE("/api/caching/:id"),
 };
