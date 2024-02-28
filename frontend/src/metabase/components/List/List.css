@@ -17,7 +17,8 @@
 }
 
 :local(.header) {
-  composes: flex-row mt4 mb2 from "style";
+  composes: mt4 mb2 from "style";
+  flex-direction: row;
   display: flex;
   color: var(--title-color);
   font-size: 24px;
@@ -87,7 +88,7 @@
 }
 
 :local(.icons) {
-  composes: flex-row from "style";
+  flex-direction: row;
   align-items: center;
   display: flex;
 }
