@@ -14,7 +14,7 @@ CROSS JOIN metabase_table mt
 WHERE EXISTS
     (SELECT 1
      FROM data_permissions dp
-     JOIN sandboxes s ON s.table_id = mt.id
+     JOIN sandboxes s ON s.table_id = dp.table_id
      WHERE dp.group_id = pg.id
        AND dp.table_id = mt.id
        AND dp.perm_type = 'perms/create-queries'
