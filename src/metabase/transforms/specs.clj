@@ -1,7 +1,9 @@
 (ns metabase.transforms.specs
   (:require
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.domain-entities.specs :refer [FieldType MBQL]]
+   [metabase.domain-entities.specs :refer [MBQL]]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -12,11 +14,34 @@
 
 (def ^:private Dimension :string)
 
-(def ^:private Breakout [:sequential MBQL])
+(def ^:private Breakout
+  [:sequential
+   {:decode/transform-spec (fn [breakouts]
+                             (for [breakout (u/one-or-many breakouts)]
+                               (if (mc/validate MBQL breakout)
+                                 [:dimension breakout]
+                                 breakout)))}
+   MBQL])
 
-(def ^:private Aggregation [:map-of Dimension MBQL])
+(defn- extract-dimensions
+  [mbql]
+  (mbql.u/match (mbql.normalize/normalize mbql) [:dimension dimension & _] dimension))
 
-(def ^:private Expressions [:map-of Dimension MBQL])
+(def ^:private ^{:arglists '([m])} stringify-keys
+  (partial m/map-keys name))
+
+(def ^:private Dimension->MBQL
+  [:map-of
+   ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
+   {:decode/transform-spec
+      (comp (partial u/topological-sort extract-dimensions)
+            stringify-keys)}
+   Dimension
+   MBQL])
+
+(def ^:private Aggregation Dimension->MBQL)
+
+(def ^:private Expressions Dimension->MBQL)
 
 (def ^:private Description :string)
 
@@ -24,18 +49,28 @@
 
 (def ^:private Limit pos-int?)
 
+(def ^:private JoinStrategy
+  [:schema
+   {:decode/transform-spec keyword}
+   mbql.s/JoinStrategy])
+
 (def ^:private Joins
   [:sequential
    [:map
     [:source    Source]
     [:condition MBQL]
-    [:strategy {:optional true} mbql.s/JoinStrategy]]])
+    [:strategy {:optional true} JoinStrategy]]])
 
 (def ^:private TransformName :string)
 
 (def Step
   "Transform step"
   [:map
+   {:decode/transform-spec (fn [steps]
+                             (->> steps
+                                  stringify-keys
+                                  (u/topological-sort (fn [{:keys [source joins]}]
+                                                        (conj (map :source joins) source)))))}
    [:source    Source]
    [:name      Source]
    [:transform TransformName]
@@ -51,9 +86,15 @@
 
 (def ^:private DomainEntity :string)
 
-(def ^:private Requires [:sequential DomainEntity])
+(def ^:private Requires
+  [:sequential
+   {:decode/transform-spec u/one-or-many}
+   DomainEntity])
 
-(def ^:private Provides [:sequential DomainEntity])
+(def ^:private Provides
+  [:sequential
+   {:decode/transform-spec u/one-or-many}
+   DomainEntity])
 
 (def TransformSpec
   "Transform spec"
@@ -64,13 +105,6 @@
    [:steps    Steps]
    [:description {:optional true} Description]])
 
-(defn- extract-dimensions
-  [mbql]
-  (mbql.u/match (mbql.normalize/normalize mbql) [:dimension dimension & _] dimension))
-
-(def ^:private ^{:arglists '([m])} stringify-keys
-  (partial m/map-keys name))
-
 (defn- add-metadata-to-steps
   [spec]
   (update spec :steps (partial m/map-kv-vals (fn [step-name step]
@@ -78,33 +112,16 @@
                                                  :name      step-name
                                                  :transform (:name spec))))))
 
-;; NOCOMMIT
-(def ^:private transform-spec-parser
-  identity
-  #_(sc/coercer!
-   TransformSpec
-   {MBQL             mbql.normalize/normalize
-    Steps            (fn [steps]
-                       (->> steps
-                            stringify-keys
-                            (u/topological-sort (fn [{:keys [source joins]}]
-                                                  (conj (map :source joins) source)))))
-    Breakout         (fn [breakouts]
-                       (for [breakout (u/one-or-many breakouts)]
-                         (if (s/check MBQL breakout)
-                           [:dimension breakout]
-                           breakout)))
-    FieldType        (partial keyword "type")
-    [DomainEntity]   u/one-or-many
-    mbql.s/JoinStrategy     keyword
-    ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
-    {Dimension MBQL} (comp (partial u/topological-sort extract-dimensions)
-                           stringify-keys)
-    ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
-    :string            name}))
+(defn- coerce-to-transform-spec [spec]
+  (mc/coerce TransformSpec
+             spec
+             (mtx/transformer
+              mtx/string-transformer
+              mtx/json-transformer
+              (mtx/transformer {:name :transform-spec}))))
 
 (def ^:private transforms-dir "transforms/")
 
 (def transform-specs
   "List of registered dataset transforms."
-  (delay (yaml/load-dir transforms-dir (comp transform-spec-parser add-metadata-to-steps))))
+  (delay (yaml/load-dir transforms-dir (comp coerce-to-transform-spec add-metadata-to-steps))))

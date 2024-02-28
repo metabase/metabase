@@ -11,13 +11,15 @@
   "MBQL clause (ie. a vector starting with a keyword)"
   [:fn
    {:decode/domain-entity-spec mbql.normalize/normalize
+    :decode/transform-spec     mbql.normalize/normalize
     :error/message             "valid MBQL clause"}
    mbql.u/mbql-clause?])
 
 (def FieldType
   "Field type designator -- a keyword derived from `type/*`"
   [:keyword
-   {:decode/domain-entity-spec (partial keyword "type")}])
+   {:decode/domain-entity-spec (partial keyword "type")
+    :decode/transform-spec     (partial keyword "type")}])
 
 (def ^:private DomainEntityReference :string)
 
