@@ -154,7 +154,7 @@
                                                {:spec-gen {:dataset_query {:database 1
                                                                            :type     :native
                                                                            :native   {:query "SELECT * FROM whatever;"}}
-                                                           :dataset       true}}
+                                                           :type          :model}}
                                                {:table_id      [:t    100]
                                                 :collection_id [:coll 100]
                                                 :creator_id    [:u    10]}))
@@ -167,7 +167,7 @@
                                                 {:spec-gen {:dataset_query {:database 1
                                                                             :query {:source-table 3}
                                                                             :type :query}
-                                                            :dataset       true}}
+                                                            :type          :model}}
                                                 {:table_id      [:t    10]
                                                  :collection_id [:coll 10]
                                                  :creator_id    [:u    10]}))
@@ -550,7 +550,7 @@
 
              Card          {model-id   :id
                             model-name :name
-                            model-eid  :entity_id}   {:dataset       true
+                            model-eid  :entity_id}   {:type          :model
                                                       :name          "Linked model"
                                                       :description   "Linked model desc"
                                                       :display       "table"}

@@ -612,7 +612,7 @@
                                            :database_id   (mt/id)
                                            :dataset_query (mt/native-query
                                                            {:query "SELECT category FROM products LIMIT 10;"})
-                                           :dataset       true}
+                                           :type          :model}
        :model/Dashboard     {dash-id :id} {:parameters [{:name      "Text"
                                                          :slug      "text"
                                                          :id        "_TEXT_"
@@ -1129,7 +1129,7 @@
                                            :breakout     [!month.orders.created_at]}})}
          Card          model {:name "A model"
                               :collection_id (u/the-id source-coll)
-                              :dataset true
+                              :type :model
                               :dataset_query
                               (mt/$ids
                                {:database (mt/id)
@@ -1175,7 +1175,7 @@
                        (into #{} (map :name) copied-cards))
                     "Should preserve the titles of the original cards"))
               (testing "Should not deep-copy models"
-                (is (every? (comp false? :dataset) copied-cards)
+                (is (every? #(= (:type %) :question) copied-cards)
                     "Copied a model")))))))))
 
 (deftest copy-dashboard-test-4
@@ -2201,8 +2201,8 @@
     (testing "PUT /api/dashboard/:id"
       ;; fetch a dashboard WITH a dashboard card on it
       (mt/with-temp [Dashboard     {dashboard-id :id} {}
-                     Card          {model-id :id} {:dataset true}
-                     Card          {model-id-2 :id} {:dataset true}
+                     Card          {model-id :id} {:type :model}
+                     Card          {model-id-2 :id} {:type :model}
                      Action        {action-id :id} {:model_id model-id :type :implicit :name "action"}
                      ;; Put the **same** card on the dashboard as both an action card and a question card
                      DashboardCard action-card {:dashboard_id dashboard-id
@@ -2949,7 +2949,7 @@
                                                           :name          "Native Query"
                                                           :dataset_query (mt/native-query
                                                                           {:query "SELECT category FROM products LIMIT 10;"})
-                                                          :dataset       true}]
+                                                          :type          :model}]
         (let [metadata (-> (qp/process-query (:dataset_query native-card))
                            :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
@@ -2965,7 +2965,7 @@
                                                :dataset_query {:type     :query
                                                                :database (mt/id)
                                                                :query    {:source-table (str "card__" model-id)}}
-                                               :dataset       true}
+                                               :type          :model}
                        Dashboard dashboard {:name       "Dashboard"
                                             :parameters [{:name      "Native Dropdown"
                                                            :slug      "native_dropdown"
@@ -3717,7 +3717,7 @@
 (deftest dashcard-hidden-parameter-test
   (mt/with-actions-test-data-tables #{"users"}
     (mt/with-actions-enabled
-      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+      (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query users)}
                         {:keys [action-id model-id]} {:type                   :implicit
                                                       :visualization_settings {:fields {"name" {:id     "name"
                                                                                                 :hidden true}}}}]
@@ -3761,7 +3761,7 @@
          (map #(dissoc % ::good ::bad) types)
          [["init"]]]
         (mt/with-actions-enabled
-          (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+          (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query types)}
                             {:keys [action-id]} {:type :implicit :kind "row/create"}]
             (mt/with-temp [Dashboard {dashboard-id :id} {}
                            DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
@@ -3778,7 +3778,7 @@
                       (is (partial= {field-name value}
                                     (zipmap (map (comp u/lower-case-en :name) cols)
                                             (last rows))))))
-                  (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                  (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query types)}
                                     {:keys [action-id]} (custom-action-for-field field-name)]
                     (t2.with-temp/with-temp [DashboardCard {custom-dashcard-id :id} {:dashboard_id dashboard-id
                                                                                      :action_id action-id
@@ -3800,7 +3800,7 @@
                          (mt/user-http-request :crowberto :post 400
                                                (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
                                                {:parameters {field-name value}}))))
-                  (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                  (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query types)}
                                     {action-id :action-id} (custom-action-for-field field-name)]
                     (t2.with-temp/with-temp [DashboardCard {custom-dashcard-id :id} {:dashboard_id dashboard-id
                                                                                      :action_id action-id
@@ -3911,7 +3911,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-tables #{"venues" "categories"}
       (mt/with-actions-test-data-and-actions-enabled
-        (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
+        (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
                           {:keys [action-id]} {:type :implicit :kind "row/update"}]
           (mt/with-temp [Dashboard {dashboard-id :id} {}
                          DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
@@ -3934,7 +3934,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-tables #{"venues" "categories"}
       (mt/with-actions-test-data-and-actions-enabled
-        (mt/with-actions [{card-id :id} {:dataset true, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+        (mt/with-actions [{card-id :id} {:type :model, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
                           {:keys [action-id]} {:type :implicit
                                                :kind "row/update"
                                                :visualization_settings {:fields {"id"    {:id     "id"
@@ -4134,7 +4134,7 @@
                                       :dataset_query {:database (mt/id)
                                                       :type     :query
                                                       :query    {:source-table (mt/id :people)}}
-                                      :dataset       true}
+                                      :type          :model}
            :model/Dashboard {dash-id :id} {:name "My Awesome Dashboard"}
            :model/DashboardCard {dash-card-id :id} {:dashboard_id dash-id
                                                     :card_id      card-id}
@@ -4258,7 +4258,7 @@
                                                                                  {:base-type :type/Text}]
                                                                                 [:field (mt/id :people :source)
                                                                                  {:base-type :type/Text}]]}}
-                                      :dataset       true}
+                                      :type          :model}
            :model/Dashboard {dash-id        :id
                              dashboard-name :name} {:name       "My Awesome Dashboard"
                                                     :parameters [param]}

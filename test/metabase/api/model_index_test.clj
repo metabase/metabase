@@ -13,7 +13,7 @@
           pk_ref    (mt/$ids $products.id)
           value_ref (mt/$ids $products.title)]
       (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                 :dataset true
+                                                 :type :model
                                                  :name "model index test")]
         (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
                                                 {:model_id  (:id model)
@@ -63,8 +63,8 @@
     (mt/dataset test-data
       (let [query (mt/mbql-query products)]
         (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                   :dataset         true
-                                                   :name            "model index test")]
+                                                   :type :model
+                                                   :name "model index test")]
           (let [by-name (fn [n] (or (some (fn [f] (when (= n (-> f :name u/lower-case-en))
                                                     (:field_ref f)))
                                           (:result_metadata model))
@@ -103,7 +103,7 @@
               pk_ref    (mt/$ids $products.id)
               value_ref (mt/$ids $products.title)]
           (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                     :dataset true
+                                                     :type :model
                                                      :name "model index test")]
             (mt/user-http-request :crowberto :post 200 "/model-index" {:model_id  (:id model)
                                                                        :pk_ref    pk_ref

@@ -781,7 +781,7 @@
        (fn [enums-db]
          (mt/with-db enums-db
            (mt/with-actions-enabled
-             (mt/with-actions [model {:dataset true
+             (mt/with-actions [model {:type :model
                                       :dataset_query
                                       (mt/mbql-query birds)}
                                {action-id :action-id} {:type :implicit
@@ -1224,7 +1224,7 @@
         (mt/with-persistence-enabled [persist-models!]
           (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
             (mt/with-temp [:model/Card _ {:name "model"
-                                          :dataset true
+                                          :type :model
                                           :dataset_query (mt/mbql-query categories)
                                           :database_id (mt/id)}]
               (persist-models!)

@@ -99,7 +99,7 @@
 (deftest moderation-review-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {:name "A question"}
-     :model/Card {model-id :id} {:name "A question" :dataset true}]
+     :model/Card {model-id :id} {:name "A question" :type :model}]
     (testing "can't use verified questions/models if has :official-collections feature"
       (mt/with-premium-features #{:official-collections}
         (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"

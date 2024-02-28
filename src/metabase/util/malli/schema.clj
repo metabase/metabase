@@ -267,7 +267,7 @@
   (-> [:enum {:decode/json (fn [b] (contains? #{"true" true} b))}
        "true" "false" true false]
       (mu/with-api-error-message
-        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
+       (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"

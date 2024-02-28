@@ -8,9 +8,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-
-;;; ------------------- `->field` -------------------
-
 (deftest ->field-test
   (testing "Demonstrate the stated methods in which ->fields works"
     (mt/with-test-user :rasta
@@ -24,7 +21,12 @@
               (is (=? {:id (mt/id :orders :discount)}
                       (magic.util/->field root (mt/id :orders :discount))))
               (is (=? {:id (mt/id :orders :discount)}
-                      (magic.util/->field root [:field (mt/id :orders :discount) nil]))))))
+                      (magic.util/->field root [:field (mt/id :orders :discount) nil]))))))))))
+
+(deftest ->field-test-2
+  (testing "Demonstrate the stated methods in which ->fields works"
+    (mt/with-test-user :rasta
+      (mt/dataset test-data
         (testing "->field checks for a model-based context"
           (let [query (mt/native-query {:query "select * from orders"})]
             (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]

@@ -271,7 +271,7 @@ describe("urls", () => {
       expect(
         bookmark({
           id: "card-5",
-          dataset: false,
+          card_type: "question",
           name: "Orders",
           type: "card",
         }),
@@ -282,7 +282,7 @@ describe("urls", () => {
       expect(
         bookmark({
           id: "card-1",
-          dataset: true,
+          card_type: "model",
           name: "Product",
           type: "card",
         }),
