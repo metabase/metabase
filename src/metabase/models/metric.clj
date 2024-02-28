@@ -157,25 +157,25 @@
   [_metric]
   [:name (serdes/hydrated-hash :table) :created_at])
 
-(defmethod serdes/extract-one "Metric"
+(defmethod serdes/extract-one "LegacyMetric"
   [_model-name _opts metric]
-  (-> (serdes/extract-one-basics "Metric" metric)
+  (-> (serdes/extract-one-basics "LegacyMetric" metric)
       (update :table_id   serdes/*export-table-fk*)
       (update :creator_id serdes/*export-user*)
       (update :definition serdes/export-mbql)))
 
-(defmethod serdes/load-xform "Metric" [metric]
+(defmethod serdes/load-xform "LegacyMetric" [metric]
   (-> metric
       serdes/load-xform-basics
       (update :table_id   serdes/*import-table-fk*)
       (update :creator_id serdes/*import-user*)
       (update :definition serdes/import-mbql)))
 
-(defmethod serdes/dependencies "Metric" [{:keys [definition table_id]}]
+(defmethod serdes/dependencies "LegacyMetric" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes/table->path table_id)}
                       (serdes/mbql-deps definition))))
 
-(defmethod serdes/storage-path "Metric" [metric _ctx]
+(defmethod serdes/storage-path "LegacyMetric" [metric _ctx]
   (let [{:keys [id label]} (-> metric serdes/path last)]
     (-> metric
         :table_id
