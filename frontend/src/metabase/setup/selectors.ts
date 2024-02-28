@@ -82,7 +82,10 @@ export const getIsEmailConfigured = (state: State): boolean => {
 export const getSteps = (state: State) => {
   const usageReason = getUsageReason(state);
   const activeStep = getStep(state);
-  const isPaidPlan = state.setup.isPaidPlan;
+  const tokenFeatures = getSetting(state, "token-features");
+
+  const isPaidPlan =
+    tokenFeatures && Object.values(tokenFeatures).some(value => value === true);
 
   const shouldShowDBConnectionStep = usageReason !== "embedding";
   const shouldShowLicenseStep = isEEBuild() && !isPaidPlan;
