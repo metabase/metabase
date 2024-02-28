@@ -4,6 +4,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.automagic-dashboards.populate :as populate]
@@ -11,7 +12,7 @@
    [metabase.shared.dashboards.constants :as dashboards.constants]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [metabase.util.i18n :as i18n :refer [deferred-trs]]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml])
   (:import
@@ -30,9 +31,7 @@
   100)
 
 (def ^:private Score
-  [:int {:min           0
-         :max           :max-score
-         :error/message (deferred-trs "0 <= score <= {0}" max-score)}])
+  [:int {:min 0, :max max-score}])
 
 (def ^:private MBQL [:sequential :any])
 
@@ -323,12 +322,6 @@
 (def MySchema
   [:int {:decode/dashboard-template (constantly 7)}])
 
-(defn x []
-  (mc/coerce MySchema "abc" (mtx/transformer
-                             mtx/string-transformer
-                             mtx/json-transformer
-                             (mtx/transformer {:name :dashboard-template}))))
-
 (def ^:private dashboard-templates-dir "automagic_dashboards/")
 
 (def ^:private ^{:arglists '([f])} file->entity-type
@@ -382,7 +375,9 @@
     s))
 
 (defn- load-dashboard-template-dir
-  ([dir] (load-dashboard-template-dir dir [] {}))
+  ([dir]
+   (load-dashboard-template-dir dir [] {}))
+
   ([dir path dashboard-templates]
    (with-open [ds (Files/newDirectoryStream dir)]
      (reduce
@@ -403,7 +398,7 @@
 (def ^:private dashboard-templates
   (delay
     (u.files/with-open-path-to-resource [path dashboard-templates-dir]
-                                        (into {} (load-dashboard-template-dir path)))))
+      (into {} (load-dashboard-template-dir path)))))
 
 (defn get-dashboard-templates
   "Get all dashboard templates with prefix `prefix`.
@@ -421,18 +416,14 @@
 
 (defn- extract-localized-strings
   [[path dashboard-template]]
-  ;; NOCOMMIT
-  #_(let [strings (atom [])]
-    ((spec/run-checker
-       (fn [schema params]
-        (let [walk (spec/checker (mr/validator schema) params)]
-          (fn [x]
-            (when (= LocalizedString schema)
-              (swap! strings conj x))
-            (walk x))))
-       false
-       DashboardTemplate)
-     dashboard-template)
+  (let [strings      (atom [])
+        template     (coerce-to-dashboard-template dashboard-template)
+        i18n-string? (mr/validator LocalizedString)]
+    (walk/postwalk
+     (fn [form]
+       (when (i18n-string? form)
+         (swap! strings conj (str form))))
+     template)
     (map vector (distinct @strings) (repeat path))))
 
 (defn- make-pot
@@ -456,13 +447,16 @@
                  (all-dashboard-templates (conj path k) v)))
              dashboard-templates))))
 
+(defn- generate-templates! []
+  (->> (all-dashboard-templates)
+       (mapcat extract-localized-strings)
+       make-pot
+       (spit "locales/metabase-automatic-dashboards.pot")))
+
 (defn -main
   "Entry point for Clojure CLI task `generate-automagic-dashboards-pot`. Run it with
 
     clojure -M:generate-automagic-dashboards-pot"
-  [& _]
-  (->> (all-dashboard-templates)
-       (mapcat extract-localized-strings)
-       make-pot
-       (spit "locales/metabase-automatic-dashboards.pot"))
+  [& _options]
+  (generate-templates!)
   (System/exit 0))
