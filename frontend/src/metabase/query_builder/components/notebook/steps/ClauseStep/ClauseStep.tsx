@@ -1,11 +1,11 @@
 import type { DndContextProps } from "@dnd-kit/core";
 import { PointerSensor, useSensor, DndContext } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
-import { SortableContext } from "@dnd-kit/sortable";
+import { SortableContext, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 
-import { Sortable } from "metabase/core/components/Sortable";
 import { Icon } from "metabase/ui";
 
 import {
@@ -110,12 +110,12 @@ export const ClauseStep = <T,>({
     <NotebookCell color={color} data-testid={props["data-testid"]}>
       {renderSortContext(
         items.map((item, index) => (
-          <Sortable id={getItemIdFromIndex(index)} key={index}>
+          <ClauseStepItem id={getItemIdFromIndex(index)} key={index}>
             <ClausePopover
               renderItem={onOpen => renderItem({ item, index, onOpen })}
               renderPopover={onClose => renderPopover({ item, index, onClose })}
             />
-          </Sortable>
+          </ClauseStepItem>
         )),
       )}
       {!readOnly && (
@@ -128,6 +128,30 @@ export const ClauseStep = <T,>({
     </NotebookCell>
   );
 };
+
+interface ClauseStepItemProps {
+  id: string;
+  children: ReactNode;
+}
+
+function ClauseStepItem({ id, children }: ClauseStepItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{
+        transition,
+        transform: CSS.Translate.toString(transform),
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 function getItemIdFromIndex(index: number) {
   return String(index);

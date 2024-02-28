@@ -1,5 +1,8 @@
 import styled from "@emotion/styled";
 
+import { SortableDiv } from "metabase/core/components/Sortable";
+import { TabButton } from "metabase/core/components/TabButton";
+import TabLink from "metabase/core/components/TabLink";
 import BaseTabList from "metabase/core/components/TabList";
 import { alpha, color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -11,13 +14,24 @@ export const TabList = styled(BaseTabList)`
     display: flex;
     align-items: end;
     overflow-x: scroll;
-    gap: 0.75rem;
     /* Chrome */
     ::-webkit-scrollbar {
       display: none;
     }
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
+  }
+
+  ${TabLink.Root}:not(:last-child) {
+    margin-right: 0.75rem;
+  }
+
+  ${TabButton.Root}:not(:last-child) {
+    margin-right: 0.75rem;
+  }
+
+  ${SortableDiv}:not(:last-child) {
+    margin-right: 0.75rem;
   }
 `;
 
