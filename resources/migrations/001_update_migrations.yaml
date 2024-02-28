@@ -5529,6 +5529,75 @@ databaseChangeLog:
             sql: INSERT INTO setting ("KEY", "VALUE") VALUES ('enable-public-sharing', 'false');
       rollback: # not needed
 
+  - changeSet:
+      id: v50.2024-02-20T19:21:04
+      author: camsaul
+      comment: Drop v1 version of v_content view since it references report_card.dataset which we are dropping in next migration
+      changes:
+        - sql:
+            sql: >
+              DROP VIEW IF EXISTS v_content;
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v1/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v1/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v1/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-02-20T19:25:40
+      author: camsaul
+      comment: Remove report_card.dataset (indicated whether Card was a Model; migrated to report_card.type in 49)
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: dataset
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dataset
+                  type: boolean
+                  remarks: "Indicate whether question is a model"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET dataset = true
+              WHERE type = 'model';
+
+  - changeSet:
+      id: v50.2024-02-20T19:26:38
+      author: camsaul
+      comment: Add new v2 version of v_content view which uses report_card.type instead of report_card.dataset (removed in previous migration)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v2/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v2/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v2/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: >-
+              DROP VIEW IF EXISTS v_content;
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

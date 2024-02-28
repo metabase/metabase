@@ -176,7 +176,7 @@
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
   (let [card           (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
-        persisted-info (when (:dataset card)
+        persisted-info (when (= (:type card) :model)
                          (:lib/persisted-info card))
         query          (or (:dataset-query card)
                            (throw (ex-info (tru "Card {0} not found." card-id)
