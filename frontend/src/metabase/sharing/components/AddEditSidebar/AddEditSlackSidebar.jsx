@@ -39,7 +39,7 @@ function _AddEditSlackSidebar({
 
   return (
     <Sidebar
-      closeIsDisabled={!isValid}
+      isCloseDisabled={!isValid}
       onClose={handleSave}
       onCancel={onCancel}
     >

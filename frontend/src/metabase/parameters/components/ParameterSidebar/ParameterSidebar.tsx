@@ -5,6 +5,7 @@ import Radio from "metabase/core/components/Radio";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { slugify } from "metabase/lib/formatting";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { parameterHasNoDisplayValue } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   Parameter,
   ParameterId,
@@ -73,6 +74,9 @@ export const ParameterSidebar = ({
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
   const [tab, setTab] = useState(tabs[0].value);
 
+  const missingRequiredDefault =
+    parameter.required && parameterHasNoDisplayValue(parameter.default);
+
   const handleNameChange = useCallback(
     (name: string) => {
       onChangeName(parameterId, name);
@@ -137,7 +141,17 @@ export const ParameterSidebar = ({
     onChangeRequired(parameterId, value);
 
   return (
-    <Sidebar onClose={onClose} onRemove={handleRemove}>
+    <Sidebar
+      onClose={onClose}
+      isCloseDisabled={missingRequiredDefault}
+      closeTooltip={
+        missingRequiredDefault
+          ? t`The parameter requires a default value but none was provided.`
+          : undefined
+      }
+      onRemove={handleRemove}
+      data-testid="dashboard-parameter-sidebar"
+    >
       <SidebarHeader>
         <Radio
           value={tab}
