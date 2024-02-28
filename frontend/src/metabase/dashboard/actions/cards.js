@@ -7,7 +7,7 @@ import { trackCardCreated } from "../analytics";
 import { addDashCardToDashboard } from "./cards-typed";
 
 export const addActionToDashboard =
-  async ({ dashId, tabId, action, displayType }) =>
+  ({ dashId, tabId, action, displayType }) =>
   dispatch => {
     trackCardCreated("action", dashId);
 

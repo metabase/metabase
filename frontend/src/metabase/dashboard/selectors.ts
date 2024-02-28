@@ -15,7 +15,6 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/Question";
 import type {
-  Bookmark,
   Card,
   CardId,
   DashboardId,
@@ -230,20 +229,6 @@ export const getDocumentTitle = (state: State) =>
 
 export const getIsNavigatingBackToDashboard = (state: State) =>
   state.dashboard.isNavigatingBackToDashboard;
-
-type IsBookmarkedSelectorProps = {
-  bookmarks: Bookmark[];
-  dashboardId: DashboardId;
-};
-
-export const getIsBookmarked = (
-  state: State,
-  { bookmarks, dashboardId }: IsBookmarkedSelectorProps,
-) =>
-  bookmarks.some(
-    bookmark =>
-      bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
-  );
 
 export const getIsDirty = createSelector(
   [getDashboard, getDashcards],

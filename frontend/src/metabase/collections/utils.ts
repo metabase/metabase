@@ -33,10 +33,10 @@ export function isPublicCollection(
 }
 
 export function isInstanceAnalyticsCollection(
-  collection: Partial<Collection>,
+  collection?: Partial<Collection>,
 ): boolean {
   return (
-    collection &&
+    !!collection &&
     PLUGIN_COLLECTIONS.getCollectionType(collection).type ===
       "instance-analytics"
   );
