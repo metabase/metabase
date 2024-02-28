@@ -5,11 +5,13 @@
 }
 
 :local(.list) {
-  composes: ml-auto mr-auto from "style";
+  composes: mr-auto from "style";
+  margin-left: auto;
 }
 
 :local(.list-wrapper) {
-  composes: ml-auto mr-auto from "style";
+  composes: mr-auto from "style";
+  margin-left: auto;
 }
 
 :local(.list) a {
