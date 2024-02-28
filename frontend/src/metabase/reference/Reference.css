@@ -12,12 +12,13 @@
 }
 
 :local(.guideEmptyBody) {
-  composes: text-centered from "style";
+  text-align: center;
   max-width: 400px;
 }
 
 :local(.guideEmptyMessage) {
-  composes: text-dark text-paragraph text-centered mt3 from "style";
+  composes: text-dark text-paragraph mt3 from "style";
+  text-align: center;
 }
 
 :local(.columnHeader) {

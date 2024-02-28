@@ -6,7 +6,7 @@
 }
 
 :local(.emojiIcon) {
-  composes: text-centered from "style";
+  text-align: center;
   font-size: 20px;
 }
 
