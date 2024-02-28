@@ -1,14 +1,14 @@
-import { default as InternalPublicDashboard } from "metabase/public/containers/PublicDashboard";
+import type { Location } from "history";
+import { PublicDashboard as InternalPublicDashboard } from "metabase/public/containers/PublicDashboard";
 import type { Dashboard } from "metabase-types/api";
 
 export const PublicDashboard = ({
-  dashboardId,
   uuid,
   location = {
     pathname: "",
     search: "?created_at=&plan=&source=&trial_converted=",
     hash: "",
-    action: "",
+    action: "REPLACE",
     key: "",
     query: {
       created_at: "",
@@ -16,24 +16,14 @@ export const PublicDashboard = ({
       source: "",
       trial_converted: "",
     },
+    state: null,
   },
 }: {
-  dashboardId: Dashboard["id"];
   uuid: Dashboard["public_uuid"];
-  location?: {
-    search: string;
-    hash: string;
-    pathname: string;
-    query: Record<string, string>;
-    action: string;
-    key: string;
-  };
+  location?: Location;
 }) => (
   <InternalPublicDashboard
-    params={{
-      dashboardId,
-      uuid,
-    }}
+    uuid={uuid}
     location={location}
   />
 );

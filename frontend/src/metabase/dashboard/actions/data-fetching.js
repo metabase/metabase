@@ -55,6 +55,7 @@ import {
 } from "../utils";
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import { loadMetadataForDashboard } from "./metadata";
+import { PayloadAction } from "@reduxjs/toolkit";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -147,6 +148,32 @@ let fetchDashboardCancellation;
 
 export const fetchDashboard = createAsyncThunk(
   "metabase/dashboard/FETCH_DASHBOARD",
+
+  /**
+   * @typedef {Object} FetchDashboardSuccess
+   * @property {Object} entities - The entities object.
+   * @property {Object} dashboard - The dashboard object.
+   * @property {string} dashboardId - The ID of the dashboard.
+   * @property {Object} parameterValues - The parameter values object.
+   * @property {boolean} preserveParameters - Whether to preserve parameters.
+   */
+
+  /**
+   * @typedef {Object} FetchDashboardError
+   * @property {string} error - The error message.
+   */
+
+  /**
+   * Fetches a dashboard based on the provided parameters.
+   * @param {Object} params - The parameters for fetching the dashboard.
+   * @param {string} params.dashId - The ID of the dashboard to fetch.
+   * @param {Object} params.queryParams - The query parameters for the request.
+   * @param {Object} context - The context object containing getState, dispatch, and rejectWithValue.
+   * @param {Function} context.getState - The function to get the current state.
+   * @param {Function} context.dispatch - The function to dispatch actions.
+   * @param {Function} context.rejectWithValue - The function to handle rejected promises.
+   * @returns {Promise<FetchDashboardSuccess|FetchDashboardError>} A promise that resolves to either a FetchDashboardSuccess object or a FetchDashboardError object.
+   */
   async (
     {
       dashId,
@@ -486,6 +513,13 @@ export const fetchCardData = createThunkAction(
   },
 );
 
+/**
+ * @param {Object} [options={}]
+ * @param {boolean} [options.isRefreshing=false]
+ * @param {boolean} [options.reload=false]
+ * @param {boolean} [options.clearCache=false]
+ * @param {boolean} [options.ignoreCache=false]
+ */
 export const fetchDashboardCardData =
   ({ isRefreshing, ...options } = {}) =>
   (dispatch, getState) => {

@@ -79,7 +79,7 @@ type StateProps = {
 
 type Props = OwnProps & StateProps & WithRouterProps;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State): StateProps {
   return {
     hasEmbedBranding: !getSetting(state, "hide-embed-branding?"),
   };
