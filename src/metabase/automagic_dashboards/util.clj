@@ -15,10 +15,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [ring.util.codec :as codec]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (defn field-isa?

@@ -5,7 +5,8 @@
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse.builder :as b]
    [metabase.util.i18n :refer [tru]]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)
@@ -42,9 +43,10 @@
                  :when                    (.isSupported temporal-accessor field)]
              [k (.getLong temporal-accessor field)])))
 
-(s/defn parse-with-formatter :- (s/maybe Temporal)
+(mu/defn parse-with-formatter :- [:maybe (ms/InstanceOfClass Temporal)]
   "Parse a String with a DateTimeFormatter, returning an appropriate instance of an `java.time` temporal class."
-  [formattr s :- (s/maybe s/Str)]
+  [formattr
+   s :- [:maybe :string]]
   {:pre [((some-fn string? nil?) s)]}
   (when-not (str/blank? s)
     (let [formattr          (t/formatter formattr)

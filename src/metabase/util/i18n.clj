@@ -7,8 +7,7 @@
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.log :as log]
    [potemkin :as p]
-   [potemkin.types :as p.types]
-   [schema.core :as s])
+   [potemkin.types :as p.types])
   (:import
    (java.text MessageFormat)
    (java.util Locale)))
@@ -95,10 +94,7 @@
 (p.types/defrecord+ SiteLocalizedString [format-string args pluralization-opts]
   Object
   (toString [_]
-    (translate-site-locale format-string args pluralization-opts))
-  s/Schema
-  (explain [this]
-    (str this)))
+    (translate-site-locale format-string args pluralization-opts)))
 
 (defn- localized-to-json
   "Write a UserLocalizedString or SiteLocalizedString to the `json-generator`. This is intended for
@@ -112,7 +108,13 @@
 
 (def LocalizedString
   "Schema for user and system localized string instances"
-  (s/cond-pre UserLocalizedString SiteLocalizedString))
+  (letfn [(instance-of [^Class klass]
+            [:fn
+             {:error/message (str "instance of " (.getCanonicalName klass))}
+             (partial instance? klass)])]
+    [:or
+     (instance-of UserLocalizedString)
+     (instance-of SiteLocalizedString)]))
 
 (defn- valid-str-form?
  [str-form]

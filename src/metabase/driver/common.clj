@@ -7,7 +7,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (org.joda.time DateTime)))
 
@@ -19,7 +19,7 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :helper-text (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
+   :helper-text  (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
    :placeholder  "name.database.com"})
 
 (def default-port-details
@@ -304,8 +304,7 @@
   More in (defmethod date [:sql :week-of-year-us])."
   nil)
 
-(s/defn start-of-week->int :- (s/pred (fn [n] (and (integer? n) (<= 0 n 6)))
-                                      "Start of week integer")
+(mu/defn start-of-week->int :- [:int {:min 0, :max 6, :error/message "Start of week integer"}]
   "Returns the int value for the current [[metabase.public-settings/start-of-week]] Setting value, which ranges from
   `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
@@ -323,7 +322,7 @@
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))
 
-(s/defn start-of-week-offset :- s/Int
+(mu/defn start-of-week-offset :- :int
   "Return the offset needed to adjust a day of the week (in the range 1..7) returned by the `driver`, with `1`
   corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.public-settings/start-of-week]] in
   results.

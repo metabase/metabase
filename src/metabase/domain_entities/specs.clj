@@ -3,54 +3,67 @@
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
-   [metabase.util.yaml :as yaml]
-   [schema.coerce :as sc]
-   [schema.core :as s]))
+   [metabase.util.yaml :as yaml]))
 
 (def MBQL
   "MBQL clause (ie. a vector starting with a keyword)"
-  (s/pred mbql.u/mbql-clause?))
+  [:fn {:error/message "valid MBQL clause"} mbql.u/mbql-clause?])
 
 (def FieldType
   "Field type designator -- a keyword derived from `type/*`"
-  (s/constrained s/Keyword
-                                        ;#(isa? % :type/*)
-                 identity))
+  :keyword)
 
-(def ^:private DomainEntityReference s/Str)
+(def ^:private DomainEntityReference :string)
 
-(def ^:private DomainEntityType (s/isa :DomainEntity/*))
+(def ^:private DomainEntityType
+  [:fn
+   {:error/message "Valid DomainEntity"}
+   #(isa? % :DomainEntity/*)])
 
-(def ^:private Identifier s/Str)
+(def ^:private Identifier :string)
 
-(def ^:private Description s/Str)
+(def ^:private Description :string)
 
-(def ^:private Attributes [{(s/optional-key :field)         FieldType
-                            (s/optional-key :domain_entity) DomainEntityReference
-                            (s/optional-key :has_many)      {:domain_entity DomainEntityReference}}])
+(def ^:private Attributes
+  [:sequential
+   [:map
+    [:field         {:optional true} FieldType]
+    [:domain_entity {:optional true} DomainEntityReference]
+    [:has_many      {:optional true} [:map
+                                      [:domain_entity DomainEntityReference]]]]])
 
-(def ^:private BreakoutDimensions [MBQL])
+(def ^:private BreakoutDimensions
+  [:sequential MBQL])
 
-(def ^:private Metrics {Identifier {(s/required-key :aggregation) MBQL
-                                    (s/required-key :name)        Identifier
-                                    (s/optional-key :breakout)    BreakoutDimensions
-                                    (s/optional-key :filter)      MBQL
-                                    (s/optional-key :description) Description}})
+(def ^:private Metrics
+  [:map-of
+   Identifier
+   [:map
+    [:aggregation MBQL]
+    [:name        Identifier]
+    [:breakout    {:optional true} BreakoutDimensions]
+    [:filter      {:optional true} MBQL]
+    [:description {:optional true} Description]]])
 
-(def ^:private Segments {Identifier {(s/required-key :filter)      MBQL
-                                     (s/required-key :name)        Identifier
-                                     (s/optional-key :description) Description}})
+(def ^:private Segments
+  [:map-of
+   Identifier
+   [:map
+    [:filter MBQL]
+    [:name   Identifier]
+    [:description {:optional true} Description]]])
 
 (def DomainEntitySpec
   "Domain entity spec"
-  {(s/required-key :name)                DomainEntityReference
-   (s/required-key :type)                DomainEntityType
-   (s/optional-key :description)         Description
-   (s/required-key :required_attributes) Attributes
-   (s/optional-key :optional_attributes) Attributes
-   (s/optional-key :metrics)             Metrics
-   (s/optional-key :segments)            Segments
-   (s/optional-key :breakout_dimensions) BreakoutDimensions})
+  [:map
+   [:name                DomainEntityReference]
+   [:type                DomainEntityType]
+   [:required_attributes Attributes]
+   [:description         {:optional true} Description]
+   [:optional_attributes {:optional true} Attributes]
+   [:metrics             {:optional true} Metrics]
+   [:segments            {:optional true} Segments]
+   [:breakout_dimensions {:optional true} BreakoutDimensions]])
 
 (defn- add-to-hiearchy!
   [{:keys [name refines] :as spec}]
@@ -65,8 +78,10 @@
   (partial m/map-kv-vals (fn [k v]
                            (assoc v :name k))))
 
+;; NOCOMMIT
 (def ^:private domain-entity-spec-parser
-  (sc/coercer!
+  identity
+  #_(sc/coercer!
    DomainEntitySpec
    {MBQL                  mbql.normalize/normalize
     Segments              add-name-from-key
@@ -80,7 +95,7 @@
                                 dimension)))
     FieldType             (partial keyword "type")
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
-    s/Str                 name}))
+    :string                 name}))
 
 (def ^:private domain-entities-dir "domain_entity_specs/")
 

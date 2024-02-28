@@ -6,66 +6,63 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [metabase.util.yaml :as yaml]
-   [schema.coerce :as sc]
-   [schema.core :as s]))
+   [metabase.util.yaml :as yaml]))
 
-(def ^:private Source s/Str)
+(def ^:private Source :string)
 
-(def ^:private Dimension s/Str)
+(def ^:private Dimension :string)
 
-(def ^:private Breakout [MBQL])
+(def ^:private Breakout [:sequential MBQL])
 
-(def ^:private Aggregation {Dimension MBQL})
+(def ^:private Aggregation [:map-of Dimension MBQL])
 
-(def ^:private Expressions {Dimension MBQL})
+(def ^:private Expressions [:map-of Dimension MBQL])
 
-(def ^:private Description s/Str)
+(def ^:private Description :string)
 
 (def ^:private Filter MBQL)
 
-(def ^:private Limit su/IntGreaterThanZero)
+(def ^:private Limit pos-int?)
 
-(def ^:private JoinStrategy
-  (apply s/enum mbql.s/join-strategies))
+(def ^:private Joins
+  [:sequential
+   [:map
+    [:source    Source]
+    [:condition MBQL]
+    [:strategy {:optional true} mbql.s/JoinStrategy]]])
 
-(def ^:private Joins [{(s/required-key :source)    Source
-                       (s/required-key :condition) MBQL
-
-                       (s/optional-key :strategy)  JoinStrategy}])
-
-(def ^:private TransformName s/Str)
+(def ^:private TransformName :string)
 
 (def Step
   "Transform step"
-  {(s/required-key :source)      Source
-   (s/required-key :name)        Source
-   (s/required-key :transform)   TransformName
-   (s/optional-key :aggregation) Aggregation
-   (s/optional-key :breakout)    Breakout
-   (s/optional-key :expressions) Expressions
-   (s/optional-key :joins)       Joins
-   (s/optional-key :description) Description
-   (s/optional-key :limit)       Limit
-   (s/optional-key :filter)      Filter})
+  [:map
+   [:source    Source]
+   [:name      Source]
+   [:transform TransformName]
+   [:aggregation {:optional true} Aggregation]
+   [:breakout    {:optional true} Breakout]
+   [:expressions {:optional true} Expressions]
+   [:joins       {:optional true} Joins]
+   [:description {:optional true} Description]
+   [:limit       {:optional true} Limit]
+   [:filter      {:optional true} Filter]])
 
-(def ^:private Steps {Source Step})
+(def ^:private Steps [:map-of Source Step])
 
-(def ^:private DomainEntity s/Str)
+(def ^:private DomainEntity :string)
 
-(def ^:private Requires [DomainEntity])
+(def ^:private Requires [:sequential DomainEntity])
 
-(def ^:private Provides [DomainEntity])
+(def ^:private Provides [:sequential DomainEntity])
 
 (def TransformSpec
   "Transform spec"
-  {(s/required-key :name)        TransformName
-   (s/required-key :requires)    Requires
-   (s/required-key :provides)    Provides
-   (s/required-key :steps)       Steps
-   (s/optional-key :description) Description})
+  [:map
+   [:name     TransformName]
+   [:requires Requires]
+   [:provides Provides]
+   [:steps    Steps]
+   [:description {:optional true} Description]])
 
 (defn- extract-dimensions
   [mbql]
@@ -81,8 +78,10 @@
                                                  :name      step-name
                                                  :transform (:name spec))))))
 
+;; NOCOMMIT
 (def ^:private transform-spec-parser
-  (sc/coercer!
+  identity
+  #_(sc/coercer!
    TransformSpec
    {MBQL             mbql.normalize/normalize
     Steps            (fn [steps]
@@ -97,12 +96,12 @@
                            breakout)))
     FieldType        (partial keyword "type")
     [DomainEntity]   u/one-or-many
-    JoinStrategy     keyword
+    mbql.s/JoinStrategy     keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
     {Dimension MBQL} (comp (partial u/topological-sort extract-dimensions)
                            stringify-keys)
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
-    s/Str            name}))
+    :string            name}))
 
 (def ^:private transforms-dir "transforms/")
 

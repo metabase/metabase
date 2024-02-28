@@ -34,9 +34,10 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
-   [saml20-clj.core :as saml]
-   [schema.core :as s])
+   [saml20-clj.core :as saml])
   (:import
    (java.net URI URISyntaxException)
    (java.util Base64 UUID)))
@@ -59,7 +60,7 @@
       flatten
       set))
 
-(defn- sync-groups!
+(defn sync-groups!
   "Sync a user's groups based on mappings configured in the SAML settings"
   [user group-names]
   (when (sso-settings/saml-group-sync)
@@ -68,7 +69,7 @@
                                                    (group-names->ids group-names)
                                                    (all-mapped-group-ids)))))
 
-(s/defn ^:private fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
+(mu/defn ^:private fetch-or-create-user! :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)

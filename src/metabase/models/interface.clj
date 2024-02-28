@@ -38,12 +38,10 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [models.dispatch
   toucan-instance?
   InstanceOf
-  InstanceOf:Schema
   instance-of?
   model
   instance])

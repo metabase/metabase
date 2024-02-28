@@ -7,7 +7,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -64,7 +64,7 @@
 
 ;;; -------------------------------------------- Loading Driver Namespace --------------------------------------------
 
-(s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
+(mu/defn ^:private driver->expected-namespace [driver :- :keyword]
   (symbol
    (or (namespace driver)
        (str "metabase.driver." (name driver)))))
