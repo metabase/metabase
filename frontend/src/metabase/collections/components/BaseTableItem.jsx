@@ -92,7 +92,6 @@ export function BaseTableItem({
         {canSelect && (
           <ItemCell data-testid={`${testId}-check`}>
             <EntityIconCheckBox
-              item={item}
               variant="list"
               icon={icon}
               pinned={isPinned}

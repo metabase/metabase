@@ -45,9 +45,7 @@ function EntityIconCheckBox({
   return (
     <EntityIconWrapper
       isPinned={pinned}
-      model={item.model}
       onClick={selectable ? handleClick : null}
-      rounded
       disabled={disabled}
       {...props}
     >
