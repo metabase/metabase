@@ -202,7 +202,7 @@ export function DashCardVisualization({
       <DashCardMenuConnected
         question={question}
         result={mainSeries}
-        dashcardId={dashcard.id}
+        dashcard={dashcard}
         dashboardId={dashboard.id}
         token={isEmbed ? String(dashcard.dashboard_id) : undefined}
         params={parameterValuesBySlug}
@@ -210,8 +210,7 @@ export function DashCardVisualization({
     );
   }, [
     question,
-    dashcard.id,
-    dashcard.dashboard_id,
+    dashcard,
     series,
     isEmbed,
     isPublic,
