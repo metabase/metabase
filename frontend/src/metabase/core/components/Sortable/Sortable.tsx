@@ -32,7 +32,7 @@ export function Sortable({
       {...listeners}
       style={{
         transition,
-        transform: CSS.Transform.toString(transform),
+        transform: CSS.Translate.toString(transform),
       }}
     >
       {children}
