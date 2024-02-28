@@ -14,12 +14,15 @@ For example, let's say we have a lot of data spread across a number of tables, b
 
 First, create and save a question or model that returns the result set you'd like to make available for people to query.
 
-To reference a question or model in a SQL query, use typeahead search in the your variable to find your model or question.
+To reference that question or model in a SQL query, use typeahead search in a variable prefixed with `#`.
 
 Type `{% raw %}{{#your search term }} {% endraw %}` and Metabase will display a list of models and questions relevant to your search term.
+
 ![Typeahad search dropdown for referencing questions and models in SQL queries](../images/search-dropdown.png)
 
-You can also navigate to the model or question you'd like to reference and find its ID in the URL in your browser's address bar, after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
+You can also find the question or model ID by navigating in Metabase to the model or question you'd like to reference in your query. The item's ID is in the URL in your browser's address bar. The ID will be the number after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
+
+Only the `#` and `ID` is required. Metabase just displays the model or question name to make the query more readable.
 
 ## Model, table, or saved question as a Common Table Expression (CTE)
 
