@@ -9,11 +9,12 @@ import type Database from "metabase-lib/metadata/Database";
 
 import type {
   CacheConfig,
-  Strategy,
-  StrategySetter,
+  DBStrategySetter,
   GetConfigByModelId,
+  RootStrategySetter,
+  Strategy,
 } from "../types";
-import { Strategies, isValidStrategyName } from "../types";
+import { isValidStrategyName, Strategies } from "../types";
 
 import {
   ClearOverridesButton,
@@ -32,27 +33,28 @@ import {
 
 export const Data = ({
   databases,
-  rootConfig,
+  rootStrategy,
   dbConfigs,
-  setStrategy,
+  setRootStrategy,
+  setDBStrategy,
   clearDBOverrides,
 }: {
-  rootConfig: CacheConfig;
+  rootStrategy: Strategy;
   databases: Database[];
   dbConfigs: GetConfigByModelId;
-  setStrategy: StrategySetter;
+  setDBStrategy: DBStrategySetter;
+  setRootStrategy: RootStrategySetter;
   clearDBOverrides: () => void;
 }) => {
-  const generalStrategy = rootConfig?.strategy;
-  const generalStrategyLabel = generalStrategy
-    ? Strategies[generalStrategy?.type]?.label
+  const rootStrategyLabel = rootStrategy
+    ? Strategies[rootStrategy?.type]?.label
     : null;
 
   // if targetId is 0, the general strategy is being configured
   const [targetId, setTargetId] = useState<number | null>(null);
   const currentConfig = targetId !== null ? dbConfigs.get(targetId) : null;
   // TODO: See if I can keep all zero-related logic in CacheApp
-  const editingGeneralConfig = targetId === 0;
+  const editingRootConfig = targetId === 0;
 
   // TODO: Extract a single component for both GeneralConfig and SpecialConfig
 
@@ -68,7 +70,7 @@ export const Data = ({
         >
           <GeneralConfig
             {...getButtonProps({
-              shouldHighlightButton: editingGeneralConfig,
+              shouldHighlightButton: editingRootConfig,
             })}
             onClick={() => setTargetId(0)}
           >
@@ -76,10 +78,10 @@ export const Data = ({
             {t`Databases`}
             <GeneralStrategy
               {...getButtonProps({
-                shouldHighlightButton: !editingGeneralConfig,
+                shouldHighlightButton: !editingRootConfig,
               })}
             >
-              {generalStrategyLabel}
+              {rootStrategyLabel}
             </GeneralStrategy>
           </GeneralConfig>
         </EditorPanel>
@@ -89,10 +91,10 @@ export const Data = ({
               db={db}
               key={db.id.toString()}
               dbConfigs={dbConfigs}
-              setStrategy={setStrategy}
+              setDBStrategy={setDBStrategy}
               targetId={targetId}
               setTargetId={setTargetId}
-              generalStrategy={generalStrategy}
+              rootStrategy={rootStrategy}
             />
           ))}
           <ClearOverridesButton
@@ -105,7 +107,7 @@ export const Data = ({
           {targetId !== null && (
             <ConfigPanelSection>
               <Radio.Group
-                value={currentConfig?.strategy.type ?? generalStrategy?.type}
+                value={currentConfig?.strategy.type ?? rootStrategy?.type}
                 name={`caching-strategy-for-database-${targetId}`}
                 onChange={strategyType => {
                   if (!isValidStrategyName(strategyType)) {
@@ -116,8 +118,11 @@ export const Data = ({
                     type: strategyType,
                     ...Strategies[strategyType].defaults,
                   } as Strategy; // TODO See if this 'as' can be avoided
-                  console.log('newStrategy in Radio.Group', newStrategy);
-                  setStrategy(targetId, newStrategy);
+                  if (editingRootConfig) {
+                    setRootStrategy(newStrategy);
+                  } else {
+                    setDBStrategy(targetId, newStrategy);
+                  }
                 }}
                 label={
                   <Text lh="1rem">{t`When should cached query results be invalidated?`}</Text>
@@ -172,39 +177,38 @@ export const SpecialConfig = ({
   db,
   key,
   dbConfigs,
-  setStrategy: setStrategy,
-  targetId: targetId,
-  setTargetId: setTargetId,
-  generalStrategy,
+  setDBStrategy,
+  targetId,
+  setTargetId,
+  rootStrategy,
 }: {
   db: Database;
   key: string;
   targetId: number | null;
   setTargetId: Dispatch<SetStateAction<number | null>>;
   dbConfigs: Map<number, CacheConfig>;
-  setStrategy: StrategySetter;
-  generalStrategy: Strategy | undefined;
+  setDBStrategy: DBStrategySetter;
+  rootStrategy: Strategy | undefined;
 }) => {
-  const specificConfigForDB = dbConfigs.get(db.id);
-  const specificStrategyForDB = specificConfigForDB?.strategy;
-  const doesOverrideGeneralConfig =
-    specificStrategyForDB !== undefined &&
-    specificStrategyForDB.type !== generalStrategy?.type;
+  const dbConfig = dbConfigs.get(db.id);
+  const savedDBStrategy = dbConfig?.strategy;
+  const overridesRoot =
+    savedDBStrategy !== undefined &&
+    savedDBStrategy.type !== rootStrategy?.type;
   // TODO: When other kinds of strategies are added we will need a deeper check.
-  const strategyForDB = specificStrategyForDB ?? generalStrategy;
+  const strategyForDB = savedDBStrategy ?? rootStrategy;
   if (!strategyForDB) {
     throw new Error(t`Invalid strategy "${strategyForDB}"`);
   }
   const strategyLabel = Strategies[strategyForDB.type]?.label;
-  const isConfigBeingEdited = targetId === db.id;
+  const isBeingEdited = targetId === db.id;
   const clearOverride = () => {
-    setStrategy(db.id, null);
+    setDBStrategy(db.id, null);
   };
-  const shouldHighlightButton =
-    doesOverrideGeneralConfig && !isConfigBeingEdited;
+  const shouldHighlightButton = overridesRoot && !isBeingEdited;
   return (
     <SpecialConfigStyled
-      {...getButtonProps({ shouldHighlightButton: isConfigBeingEdited })}
+      {...getButtonProps({ shouldHighlightButton: isBeingEdited })}
       key={key}
       onClick={() => {
         setTargetId(db.id);
@@ -215,16 +219,14 @@ export const SpecialConfig = ({
       <SpecialStrategy
         {...getButtonProps({ shouldHighlightButton })}
         onClick={(e: MouseEvent<HTMLButtonElement>) => {
-          if (doesOverrideGeneralConfig) {
+          if (overridesRoot) {
             clearOverride();
             e.stopPropagation();
           }
         }}
       >
         {strategyLabel}
-        {doesOverrideGeneralConfig && (
-          <Icon style={{ marginLeft: ".5rem" }} name="close" />
-        )}
+        {overridesRoot && <Icon style={{ marginLeft: ".5rem" }} name="close" />}
       </SpecialStrategy>
     </SpecialConfigStyled>
   );

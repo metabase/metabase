@@ -112,22 +112,26 @@ export const CacheApp = () => {
     const map: GetConfigByModelId = new Map();
     // Zero means the root strategy
     configs.forEach(config => {
-      if (["root", "database"].includes(config.model)) {
+      if (config.model === "database") {
         map.set(config.model_id, config);
       }
     });
-    const rootStrategy = configs.find((config) => config.model == "root");
-    if (!rootStrategy) {
-      map.set(0, { model: "root", model_id: 0, strategy: { type: "nocache" } });
-    }
     return map;
+  }, [configs]);
+
+  const rootStrategy: Strategy = useMemo(() => {
+    return (
+      configs.find(config => config.model === "root")?.strategy ?? {
+        type: "nocache",
+      }
+    );
   }, [configs]);
 
   // TODO: Add model to this to make it general
   const setStrategy = useCallback<StrategySetter>(
-    async (modelId, newStrategy) => {
+    async (model, modelId, newStrategy) => {
       const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
-        model: modelId === 0 ? "root" : "database",
+        model,
         model_id: modelId,
       };
       const otherConfigs = configs.filter(
@@ -160,9 +164,7 @@ export const CacheApp = () => {
   );
 
   const clearDBOverrides = useCallback(() => {
-    setConfigs(configs =>
-      configs.filter(({ model }) => model !== "database"),
-    );
+    setConfigs(configs => configs.filter(({ model }) => model !== "database"));
   }, []);
 
   if (errorWhenLoadingConfigs || areConfigsLoading) {
@@ -211,8 +213,11 @@ export const CacheApp = () => {
           <Data
             databases={databases}
             dbConfigs={dbConfigs}
-            setRootStrategy={(strategy) => setStrategy('root', 0, strategy)}
-            setDatabaseStrategy={(modelId, strategy) => setStrategy('database', modelId, strategy)}
+            rootStrategy={rootStrategy}
+            setRootStrategy={strategy => setStrategy("root", 0, strategy)}
+            setDBStrategy={(modelId, strategy) =>
+              setStrategy("database", modelId, strategy)
+            }
             clearDBOverrides={clearDBOverrides}
           />
         </TabContentWrapper>
