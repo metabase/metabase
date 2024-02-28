@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, renderWithProviders } from "__support__/ui";
+import { screen, renderWithProviders, within } from "__support__/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -103,6 +103,10 @@ describe("DatasetColumnSelector", () => {
     expect(items[1]).toHaveTextContent("ID");
     expect(items[2]).toHaveTextContent("Tax");
     expect(items[3]).toHaveTextContent("Subtotal");
+
+    items.forEach(item =>
+      expect(within(item).getByLabelText("More info")).toBeInTheDocument(),
+    );
   });
 
   it("should display columns without matching setting", () => {

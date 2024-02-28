@@ -40,6 +40,7 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
 `;
 
 export const ColumnItemSpan = styled.span`
+  display: flex;
   word-break: break-word;
   word-wrap: anywhere;
   font-weight: 700;
@@ -49,6 +50,7 @@ export const ColumnItemSpan = styled.span`
   flex: auto;
   display: inline-flex;
   gap: 0.25rem;
+  align-items: center;
 `;
 
 export const ColumnItemContent = styled.div`
@@ -60,7 +62,7 @@ export const ColumnItemContent = styled.div`
 `;
 
 export const ColumnItemContainer = styled.div`
-  padding: 0.75rem 0.5rem;
+  padding: 0 0.5rem;
   position: relative;
   flex: auto;
   display: flex;
@@ -78,6 +80,7 @@ export const ColumnItemIcon = styled(Button)`
 
 export const ColumnItemDragHandle = styled(Icon)`
   flex-shrink: 0;
+  padding: 0.75rem 0;
 `;
 
 export const ColumnItemColorPicker = styled(ChartSettingColorPicker)`

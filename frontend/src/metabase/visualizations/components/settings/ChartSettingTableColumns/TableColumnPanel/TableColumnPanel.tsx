@@ -8,6 +8,7 @@ import type {
 import { ChartSettingOrderedItems } from "../../ChartSettingOrderedItems";
 import type { EditWidgetData } from "../types";
 
+import { ColumnInfoIcon } from "./TableColumnPanel.styled";
 import type { ColumnItem, DragColumnProps } from "./types";
 import {
   getColumnItems,
@@ -65,6 +66,7 @@ export const TableColumnPanel = ({
           <ChartSettingOrderedItems
             items={columnItems}
             getItemName={getItemName}
+            getItemExtra={getItemExtra}
             distance={5}
             onEnable={handleEnableColumn}
             onRemove={handleDisableColumn}
@@ -76,3 +78,11 @@ export const TableColumnPanel = ({
     </div>
   );
 };
+
+function getItemExtra(columnItem: ColumnItem) {
+  if (!columnItem.column) {
+    return null;
+  }
+
+  return <ColumnInfoIcon field={columnItem.column} position="right" />;
+}

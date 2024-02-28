@@ -6,6 +6,7 @@ import {
   SortableElement,
 } from "metabase/components/sortable";
 import type { IconProps } from "metabase/ui";
+import { DelayGroup } from "metabase/ui";
 
 import { ColumnItem } from "../ColumnItem";
 
@@ -22,6 +23,7 @@ interface SortableColumnFunctions<T> {
   onAdd?: (item: T) => void;
   onEnable?: (item: T) => void;
   getItemName: (item: T) => string;
+  getItemExtra: (item: T) => React.ReactNode;
   onColorChange?: (item: T, color: string) => void;
 }
 
@@ -35,6 +37,7 @@ const SortableColumn = SortableElement(function SortableColumn<
 >({
   item,
   getItemName,
+  getItemExtra,
   onEdit,
   onRemove,
   onClick,
@@ -46,6 +49,7 @@ const SortableColumn = SortableElement(function SortableColumn<
   return (
     <ColumnItem
       title={getItemName(item)}
+      extra={getItemExtra ? getItemExtra(item) : null}
       onEdit={
         onEdit
           ? (targetElement: HTMLElement) => onEdit(item, targetElement)
@@ -79,6 +83,7 @@ const SortableColumnList = SortableContainer(function SortableColumnList<
   T extends SortableItem,
 >({
   items,
+  getItemExtra,
   getItemName,
   onEdit,
   onRemove,
@@ -95,6 +100,7 @@ const SortableColumnList = SortableContainer(function SortableColumnList<
           key={`item-${index}`}
           index={index}
           item={item}
+          getItemExtra={getItemExtra}
           getItemName={getItemName}
           onEdit={onEdit}
           onRemove={onRemove}
@@ -130,22 +136,26 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   onEnable,
   onClick,
   getItemName,
+  getItemExtra,
   items,
   onColorChange,
 }: ChartSettingOrderedItemsProps<T>) {
   return (
-    <SortableColumnList
-      helperClass="dragging"
-      items={items}
-      getItemName={getItemName}
-      onEdit={onEdit}
-      onRemove={onRemove}
-      onAdd={onAdd}
-      onEnable={onEnable}
-      onClick={onClick}
-      onSortEnd={onSortEnd}
-      onColorChange={onColorChange}
-      distance={5}
-    />
+    <DelayGroup>
+      <SortableColumnList
+        helperClass="dragging"
+        items={items}
+        getItemName={getItemName}
+        getItemExtra={getItemExtra}
+        onEdit={onEdit}
+        onRemove={onRemove}
+        onAdd={onAdd}
+        onEnable={onEnable}
+        onClick={onClick}
+        onSortEnd={onSortEnd}
+        onColorChange={onColorChange}
+        distance={5}
+      />
+    </DelayGroup>
   );
 }

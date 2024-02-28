@@ -1,3 +1,6 @@
+import type { ReactNode } from "react";
+
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
@@ -13,6 +16,7 @@ import {
 
 interface ColumnItemProps {
   className?: string;
+  extra?: ReactNode;
   title: string;
   color?: string;
   role?: string;
@@ -29,6 +33,7 @@ interface ColumnItemProps {
 const BaseColumnItem = ({
   className,
   title,
+  extra,
   color,
   role,
   draggable = false,
@@ -41,60 +46,63 @@ const BaseColumnItem = ({
   onColorChange,
 }: ColumnItemProps) => {
   return (
-    <ColumnItemRoot
-      className={className}
-      role={role}
-      isDraggable={draggable}
-      onClick={onClick}
-      aria-label={role ? title : undefined}
-      data-testid={draggable ? `draggable-item-${title}` : null}
-      data-enabled={!!onRemove}
-    >
-      <ColumnItemContainer>
-        {draggable && <ColumnItemDragHandle name="grabber" />}
-        {onColorChange && color && (
-          <ColumnItemColorPicker
-            value={color}
-            onChange={onColorChange}
-            pillSize="small"
-          />
-        )}
-        <ColumnItemContent>
-          <ColumnItemSpan>
-            {icon && <Icon name={icon} />}
-            {title}
-          </ColumnItemSpan>
-          {onEdit && (
-            <ActionIcon
-              icon="ellipsis"
-              onClick={onEdit}
-              data-testid={`${title}-settings-button`}
+    <HoverParent>
+      <ColumnItemRoot
+        className={className}
+        role={role}
+        isDraggable={draggable}
+        onClick={onClick}
+        aria-label={role ? title : undefined}
+        data-testid={draggable ? `draggable-item-${title}` : null}
+        data-enabled={!!onRemove}
+      >
+        <ColumnItemContainer>
+          {draggable && <ColumnItemDragHandle name="grabber" />}
+          {onColorChange && color && (
+            <ColumnItemColorPicker
+              value={color}
+              onChange={onColorChange}
+              pillSize="small"
             />
           )}
-          {onAdd && (
-            <ActionIcon
-              icon="add"
-              onClick={onAdd}
-              data-testid={`${title}-add-button`}
-            />
-          )}
-          {onRemove && (
-            <ActionIcon
-              icon="eye_outline"
-              onClick={onRemove}
-              data-testid={`${title}-hide-button`}
-            />
-          )}
-          {onEnable && (
-            <ActionIcon
-              icon="eye_crossed_out"
-              onClick={onEnable}
-              data-testid={`${title}-show-button`}
-            />
-          )}
-        </ColumnItemContent>
-      </ColumnItemContainer>
-    </ColumnItemRoot>
+          <ColumnItemContent>
+            <ColumnItemSpan>
+              {icon && <Icon name={icon} />}
+              {title}
+              {extra}
+            </ColumnItemSpan>
+            {onEdit && (
+              <ActionIcon
+                icon="ellipsis"
+                onClick={onEdit}
+                data-testid={`${title}-settings-button`}
+              />
+            )}
+            {onAdd && (
+              <ActionIcon
+                icon="add"
+                onClick={onAdd}
+                data-testid={`${title}-add-button`}
+              />
+            )}
+            {onRemove && (
+              <ActionIcon
+                icon="eye_outline"
+                onClick={onRemove}
+                data-testid={`${title}-hide-button`}
+              />
+            )}
+            {onEnable && (
+              <ActionIcon
+                icon="eye_crossed_out"
+                onClick={onEnable}
+                data-testid={`${title}-show-button`}
+              />
+            )}
+          </ColumnItemContent>
+        </ColumnItemContainer>
+      </ColumnItemRoot>
+    </HoverParent>
   );
 };
 
