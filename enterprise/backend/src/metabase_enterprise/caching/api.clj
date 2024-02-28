@@ -10,7 +10,7 @@
    [toucan2.core :as t2]))
 
 (api/defendpoint GET "/"
-   "Return cache configuration."
+  "Return cache configuration."
   [:as {{:strs [model collection]
          :or   {model "root"}}
         :query-params}]
@@ -20,8 +20,20 @@
                [:enum "root" "database" "dashboard" "question"]]
    collection [:maybe ms/PositiveInt]}
   (validation/check-has-application-permission :setting)
-
-  (let [items (t2/select :model/CacheConfig :model [:in model] #_#_:collection_id collection)]
+  (let [items (t2/select :model/CacheConfig
+                         :model [:in model]
+                         {:left-join [:report_card      [:and
+                                                         [:= :model [:inline "question"]]
+                                                         [:= :model_id :report_card.id]
+                                                         [:= :report_card.collection_id collection]]
+                                      :report_dashboard [:and
+                                                         [:= :model [:inline "dashboard"]]
+                                                         [:= :model_id :report_dashboard.id]
+                                                         [:= :report_dashboard.collection_id collection]]]
+                          :where     [:case
+                                      [:= :model [:inline "question"]]  [:!= :report_card.id nil]
+                                      [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
+                                      :else                             true]})]
     {:items items}))
 
 (api/defendpoint PUT "/"
@@ -52,21 +64,19 @@
                           [:aggregation [:enum "max" "count"]]
                           [:schedule u.cron/CronScheduleString]]]]]}
   (validation/check-has-application-permission :setting)
-  (when (and (= model "root") (not= model_id 0))
-    (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
-                                                                                :model_id    model_id})))
-  (let [#_#_entity (when-not (= model "root")
-                 (api/check-404 (t2/select-one (case model
-                                                 "database"   :model/Database
-                                                 "dashboard"  :model/Dashboard
-                                                 "question"   :model/Card)
-                                               :id model_id)))
-        #_#_cid    (:collection_id entity)
-        data   {:model         model
-                :model_id      model_id
-                ;;:collection_id cid
-                :strategy      (:type strategy)
-                :config        (dissoc strategy :type)}]
+  (if (= model "root")
+    (when (not= model_id 0)
+      (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
+                                                                                  :model_id    model_id})))
+    (api/check-404 (t2/select-one (case model
+                                    "database"  :model/Database
+                                    "dashboard" :model/Dashboard
+                                    "question"  :model/Card)
+                                  :id model_id)))
+  (let [data {:model    model
+              :model_id model_id
+              :strategy (:type strategy)
+              :config   (dissoc strategy :type)}]
     {:id (or (first (t2/update-returning-pks! :model/CacheConfig {:model model :model_id model_id} data))
              (t2/insert-returning-pk! :model/CacheConfig data))}))
 
