@@ -34,7 +34,8 @@
 }
 
 :local(.headerLink) {
-  composes: ml2 flex-no-shrink from "style";
+  composes: ml2 from "style";
+  flex-shrink: 0;
   color: var(--color-brand);
   font-size: 14px;
 }
@@ -91,7 +92,8 @@
   display: flex;
 }
 :local(.leftIcons) {
-  composes: flex-no-shrink align-self-start mr2 from "style";
+  composes: align-self-start mr2 from "style";
+  flex-shrink: 0;
   display: flex;
   composes: icons;
 }

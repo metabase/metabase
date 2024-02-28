@@ -66,5 +66,5 @@
 }
 
 :local(.icon) {
-  composes: flex-no-shrink from "style";
+  flex-shrink: 0;
 }
