@@ -42,6 +42,7 @@ import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-ba
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
 import longDimensionNameCutOff37420 from "./long-dimension-name-cut-off-37420.json";
+import compactXAxisDoesNotWork38917 from "./compact-x-axis-does-not-work-38917.json";
 
 export const data = {
   lineLinearXScale,
@@ -88,4 +89,5 @@ export const data = {
   combinedBarTimeSeriesDifferentGranularityWithBreakout,
   numericXAxisIncludesZero37082,
   longDimensionNameCutOff37420,
+  compactXAxisDoesNotWork38917,
 };
