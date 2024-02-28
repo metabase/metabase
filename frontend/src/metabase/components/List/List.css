@@ -54,7 +54,7 @@
 }
 
 :local(.item) {
-  composes: relative from "style";
+  position: relative;
   align-items: center;
   display: flex;
 }
@@ -117,7 +117,7 @@
 }
 
 :local(.icon) {
-  composes: relative from "style";
+  position: relative;
   color: var(--muted-color);
 }
 
@@ -150,7 +150,7 @@
 :local(.itemIcon) {
   composes: icon;
   visibility: visible !important;
-  composes: relative from "style";
+  position: relative;
 }
 :local(.item):hover :local(.itemIcon),
 :local(.item.selected) :local(.itemIcon) {
@@ -161,7 +161,7 @@
 :local(.chartIcon) {
   composes: icon;
   visibility: visible !important;
-  composes: relative from "style";
+  position: relative;
 }
 
 /* ACTION ICONS */

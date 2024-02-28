@@ -4,7 +4,7 @@
 }
 
 :local(.detail) {
-  composes: relative from "style";
+  position: relative;
   align-items: center;
   display: flex;
 }
