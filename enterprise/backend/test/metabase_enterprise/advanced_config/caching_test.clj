@@ -95,7 +95,7 @@
               (testing "Deletes backing tables of models that have state='off'"
                 (let [unpersisted-ids (atom #{})
                       test-refresher  (reify task.persist-refresh/Refresher
-                                        (unpersist! [_ database persisted-info]
+                                        (unpersist! [_ _database persisted-info]
                                           (swap! unpersisted-ids conj (:id persisted-info))))
                       deleted?        (fn [{id :id}]
                                         (not (t2/exists? :model/PersistedInfo :id id)))]
