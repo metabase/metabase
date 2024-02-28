@@ -74,6 +74,8 @@ SELECT pg.id AS group_id,
 FROM permissions_group pg
 CROSS JOIN metabase_table mt
 WHERE pg.name != 'Administrators'
+  -- Insert table-level rows for all tables that have table-level data access permissions,
+  -- and don't already have any create-queries permissions stored at the DB- or table-level.
   AND EXISTS
     (SELECT 1
      FROM data_permissions dp
@@ -84,5 +86,5 @@ WHERE pg.name != 'Administrators'
     (SELECT 1
      FROM data_permissions dp
      WHERE dp.group_id = pg.id
-       AND dp.table_id = mt.id
+       AND dp.db_id = mt.db_id
        AND dp.perm_type = 'perms/create-queries' );
