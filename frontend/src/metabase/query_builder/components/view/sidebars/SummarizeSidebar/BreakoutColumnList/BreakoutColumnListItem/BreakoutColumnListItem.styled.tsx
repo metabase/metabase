@@ -79,8 +79,8 @@ const selectedStyle = css`
   }
 
   ${BucketPickerPopover.TriggerButton} {
-    opacity: 0;
-    color: ${alpha("white", 0.5)};
+    opacity: 1;
+    color: ${alpha("white", 0.65)};
     padding-left: 0;
     border-left: 0;
   }
