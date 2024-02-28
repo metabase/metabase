@@ -1,11 +1,10 @@
 import type { Location } from "history";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import Link from "metabase/core/components/Link/Link";
-import { useSelector } from "metabase/lib/redux";
 import { trackDatabasePromptBannerClicked } from "metabase/nav/analytics";
 import { useShouldShowDatabasePromptBanner } from "metabase/nav/hooks";
-import { getSetting } from "metabase/selectors/settings";
 
 import {
   ConnectDatabaseButton,
@@ -20,8 +19,8 @@ interface DatabasePromptBannerProps {
 }
 
 export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
-  const adminEmail = useSelector(state => getSetting(state, "admin-email"));
-  const siteUrl = useSelector(state => getSetting(state, "site-url"));
+  const adminEmail = useSetting("admin-email");
+  const siteUrl = useSetting("site-url");
 
   const helpUrl = new URL("https://metabase.com/help/connect");
   helpUrl.searchParams.set("email", adminEmail || "");

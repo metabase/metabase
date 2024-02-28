@@ -9,38 +9,39 @@ import _ from "underscore";
 import * as Lib from "metabase-lib";
 
 // Needed due to wrong dependency resolution order
+import { MetabaseApi } from "metabase/services";
 import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Databases from "metabase/entities/databases";
 import Timelines from "metabase/entities/timelines";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { parseTimestamp } from "metabase/lib/time";
-import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
-import { getSortedTimelines } from "metabase/lib/timelines";
-import { getSetting } from "metabase/selectors/settings";
 import { getDashboardById } from "metabase/dashboard/selectors";
+import { parseTimestamp } from "metabase/lib/time";
+import { getSortedTimelines } from "metabase/lib/timelines";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
+import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
 
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   normalizeParameters,
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
-import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
 import Question from "metabase-lib/Question";
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
+import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 
 export const getUiControls = state => state.qb.uiControls;
 const getQueryStatus = state => state.qb.queryStatus;
@@ -211,12 +212,6 @@ export const getTables = createSelector(
   },
 );
 
-export const getNativeDatabases = createSelector(
-  [getDatabasesList],
-  databases =>
-    databases && databases.filter(db => db.native_permissions === "write"),
-);
-
 export const getTableMetadata = createSelector(
   [getTableId, getMetadata],
   (tableId, metadata) => metadata.table(tableId),
@@ -337,6 +332,8 @@ export const getQuestion = createSelector(
       return question.lockDisplay();
     }
 
+    const type = question.type();
+
     // When opening a model, we swap it's `dataset_query`
     // with clean query using the model as a source table,
     // to enable "simple mode" like features
@@ -344,7 +341,7 @@ export const getQuestion = createSelector(
     // as it would be blocked by the backend as an ad-hoc query
     // see https://github.com/metabase/metabase/issues/20042
     const hasDataPermission = !!question.database();
-    return question.isDataset() && hasDataPermission && !isEditingModel
+    return type !== "question" && hasDataPermission && !isEditingModel
       ? question.composeDataset()
       : question;
   },
@@ -368,7 +365,8 @@ function areModelsEquivalent({
   currentQuestion,
   tableMetadata,
 }) {
-  if (!lastRunQuestion || !currentQuestion || !originalQuestion?.isDataset()) {
+  const isModel = originalQuestion?.type() === "model";
+  if (!lastRunQuestion || !currentQuestion || !isModel) {
     return false;
   }
 
@@ -564,7 +562,9 @@ export const getIsSavedQuestionChanged = createSelector(
     const hasUnsavedChanges = hasChanges && !wereChangesSaved;
 
     return (
-      isSavedQuestion && hasUnsavedChanges && !originalQuestion.isDataset()
+      isSavedQuestion &&
+      hasUnsavedChanges &&
+      originalQuestion.type() === "question"
     );
   },
 );
@@ -1047,3 +1047,25 @@ export function getEmbeddedParameterVisibility(state, slug) {
   const embeddingParams = card.embedding_params ?? {};
   return embeddingParams[slug] ?? "disabled";
 }
+
+export const getSubmittableQuestion = (state, question) => {
+  const series = getTransformedSeries(state);
+  const resultsMetadata = getResultsMetadata(state);
+  const isResultDirty = getIsResultDirty(state);
+
+  let submittableQuestion = question;
+
+  if (series) {
+    submittableQuestion = getQuestionWithDefaultVisualizationSettings(
+      submittableQuestion,
+      series,
+    );
+  }
+
+  const cleanQuery = Lib.dropEmptyStages(submittableQuestion.query());
+  submittableQuestion = submittableQuestion
+    .setQuery(cleanQuery)
+    .setResultsMetadata(isResultDirty ? null : resultsMetadata);
+
+  return submittableQuestion;
+};

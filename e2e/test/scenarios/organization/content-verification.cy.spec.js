@@ -170,7 +170,7 @@ describeEE("scenarios > premium > content verification", () => {
 
         questionInfoButton().click();
         cy.findByTestId("sidebar-right")
-          .findAllByText(`A moderator verified this`)
+          .findAllByText("A moderator verified this")
           .should("have.length", 2);
 
         cy.findByPlaceholderText("Search…").type("orders{enter}");

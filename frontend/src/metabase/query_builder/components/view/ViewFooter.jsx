@@ -7,13 +7,14 @@ import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import * as Lib from "metabase-lib";
 
+import { ExecutionTime } from "./ExecutionTime";
 import QuestionAlertWidget from "./QuestionAlertWidget";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
 import QuestionLastUpdated from "./QuestionLastUpdated";
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import ViewButton from "./ViewButton";
-import { ViewFooterRoot, FooterButtonGroup } from "./ViewFooter.styled";
+import { FooterButtonGroup, ViewFooterRoot } from "./ViewFooter.styled";
 
 const ViewFooter = ({
   question,
@@ -42,9 +43,10 @@ const ViewFooter = ({
     return null;
   }
 
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const hasDataPermission = isEditable;
   const hideChartSettings = result.error && !hasDataPermission;
+  const type = question.type();
 
   return (
     <ViewFooterRoot
@@ -104,6 +106,7 @@ const ViewFooter = ({
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" />,
+          isNative && <ExecutionTime time={result.running_time} />,
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"
@@ -139,7 +142,7 @@ const ViewFooter = ({
               }
             />
           ),
-          !question.isDataset() && (
+          type === "question" && (
             <EmbedMenu
               key="embed"
               resource={question}

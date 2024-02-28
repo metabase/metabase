@@ -791,11 +791,11 @@
                                                ;; This dimension does not exist and used to break the render
                                                ;; This test verifies that it now works.
                                                :graph.dimensions ["_sdc_extracted_at"]}}]
-        (let [{:keys [dataset_query result_metadata dataset] :as card} (t2/select-one :model/Card :id card-id)
+        (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one :model/Card :id card-id)
               query-results (qp/process-query
                               (cond-> dataset_query
-                                dataset
-                                (assoc-in [:info :metadata/dataset-metadata] result_metadata)))
+                                (= card-type :model)
+                                (assoc-in [:info :metadata/model-metadata] result_metadata)))
               {:keys [content]} (body/render :line :inline "UTC" card nil (:data query-results))]
           (testing "Content is generated (rather than an exception being thrown)"
             (is (= :div (first content)))))))))

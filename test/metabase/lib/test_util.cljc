@@ -76,7 +76,7 @@
   (lib/composed-metadata-provider
    meta/metadata-provider
    (providers.mock/mock-metadata-provider
-    (assoc-in cards [:cards 0 :dataset] true))))
+    (assoc-in cards [:cards 0 :type] :model))))
 
 (def query-with-source-card
   "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
@@ -240,7 +240,7 @@
       :id            1000
       :database-id   (:id (lib.metadata/database metadata-provider))
       :name          "Mock model - Products and Reviews"
-      :dataset       true
+      :type          :model
       :dataset-query
       {:database (:id (lib.metadata/database metadata-provider))
        :type     :query

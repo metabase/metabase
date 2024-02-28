@@ -40,9 +40,9 @@
   (let [two-hours-ago (t/minus (t/local-date-time) (t/hours 2))]
     (t2.with-temp/with-temp
       [Database db {:settings {:persist-models-enabled true}}
-       Card     creating  {:dataset true :database_id (u/the-id db)}
-       Card     deletable {:dataset true :database_id (u/the-id db)}
-       Card     off       {:dataset true :database_id (u/the-id db)}
+       Card     creating  {:type :model, :database_id (u/the-id db)}
+       Card     deletable {:type :model, :database_id (u/the-id db)}
+       Card     off       {:type :model, :database_id (u/the-id db)}
        PersistedInfo pcreating  {:card_id (u/the-id creating)
                                  :database_id (u/the-id db)
                                  :state "creating"
@@ -90,7 +90,10 @@
                             (t2/select-one TaskHistory
                                            :db_id (u/the-id db)
                                            :task "persist-refresh"
-                                           {:order-by [[:id :desc]]}))))))))
+                                           {:order-by [[:id :desc]]}))))))))))
+
+(deftest model-caching-granular-controls-test-2
+  (mt/with-model-cleanup [TaskHistory]
     (testing "with :cache-granular-controls disabled, refresh tables in an 'off' state, but not 'deletable'"
         (mt/with-premium-features #{}
           (with-temp-persist-models [db creating off]
@@ -108,7 +111,10 @@
                               (t2/select-one TaskHistory
                                              :db_id (u/the-id db)
                                              :task "persist-refresh"
-                                             {:order-by [[:id :desc]]}))))))))
+                                             {:order-by [[:id :desc]]}))))))))))
+
+(deftest model-caching-granular-controls-test-3
+  (mt/with-model-cleanup [TaskHistory]
     (testing "with :cache-granular-controls enabled, deletes any tables with state=deletable or state=off"
         (mt/with-premium-features #{:cache-granular-controls}
           (with-temp-persist-models [pdeletable poff]
@@ -130,7 +136,10 @@
                                :task_details {:success 2 :error 0, :skipped 0}}
                               (t2/select-one TaskHistory
                                              :task "unpersist-tables"
-                                             {:order-by [[:id :desc]]}))))))))
+                                             {:order-by [[:id :desc]]}))))))))))
+
+(deftest model-caching-granular-controls-test-4
+  (mt/with-model-cleanup [TaskHistory]
     (testing "with :cache-granular-controls disabled, deletes any tables with state=deletable, but not state=off"
       (mt/with-premium-features #{}
         (with-temp-persist-models [pdeletable poff]

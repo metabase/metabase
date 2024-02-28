@@ -11,7 +11,7 @@ export function VariableTypeSelect(props: {
 }) {
   return (
     <InputContainer>
-      <ContainerLabel smallPaddingBottom>{t`Variable type`}</ContainerLabel>
+      <ContainerLabel>{t`Variable type`}</ContainerLabel>
       <Select
         value={props.value}
         placeholder={t`Select…`}

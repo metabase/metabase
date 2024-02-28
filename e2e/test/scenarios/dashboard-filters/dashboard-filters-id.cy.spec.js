@@ -94,7 +94,10 @@ describe("scenarios > dashboard > filters > ID", () => {
   describe("should work on the implicit join", () => {
     beforeEach(() => {
       popover().within(() => {
-        cy.findAllByText("ID").last().click();
+        // There are three of these, and the order is fixed:
+        // "own" column first, then implicit join on People and User alphabetically.
+        // We select index 1 to get the Product.ID.
+        cy.findAllByText("ID").eq(1).click();
       });
     });
 

@@ -15,6 +15,7 @@ export function getCardUiParameters(
   metadata: Metadata,
   parameterValues: { [key: string]: any } = {},
   parameters = getParametersFromCard(card),
+  collectionPreview?: boolean,
 ): UiParameter[] {
   if (!card) {
     return [];
@@ -22,7 +23,11 @@ export function getCardUiParameters(
 
   const valuePopulatedParameters: (Parameter[] | ParameterWithTarget[]) & {
     value?: any;
-  } = getValuePopulatedParameters({ parameters, values: parameterValues });
+  } = getValuePopulatedParameters({
+    parameters,
+    values: parameterValues,
+    collectionPreview,
+  });
   const question = new Question(card, metadata);
 
   return valuePopulatedParameters.map(parameter => {

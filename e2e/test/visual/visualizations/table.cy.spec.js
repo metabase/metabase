@@ -32,8 +32,8 @@ function saveQuestion() {
 
   cy.findByText("Save").click();
 
-  modal().within(() => {
-    cy.button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
     cy.wait("@saveQuestion");
   });
 

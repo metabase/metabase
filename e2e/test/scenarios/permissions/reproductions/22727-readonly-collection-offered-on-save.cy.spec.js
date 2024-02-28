@@ -32,7 +32,7 @@ describe("issue 22727", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.get(".Modal").within(() => {
+    cy.findByTestId("save-question-modal").then(modal => {
       // This part reproduces https://github.com/metabase/metabase/issues/20717
       cy.findByText(/^Replace original qeustion/).should("not.exist");
 

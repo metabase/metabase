@@ -157,7 +157,7 @@
     (testing "Queries from cache if not sandboxed"
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temp [Card card {:dataset_query (mt/mbql-query venues)
-                                  :dataset true
+                                  :type :model
                                   :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (str/includes?
@@ -172,7 +172,7 @@
                           :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
          :attributes {"cat" 50}}
         (mt/with-temp [Card card {:dataset_query (mt/mbql-query venues)
-                                  :dataset true
+                                  :type :model
                                   :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (not (str/includes?

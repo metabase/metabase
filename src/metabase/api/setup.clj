@@ -237,7 +237,7 @@
                 :pulse         (t2/exists? Pulse)
                 :hidden-table  (t2/exists? Table, :visibility_type [:not= nil])
                 :collection    (t2/exists? Collection)
-                :model         (t2/exists? Card :dataset true)}})
+                :model         (t2/exists? Card :type :model)}})
 
 (defn- get-connected-tasks
   [{:keys [configured counts exists] :as _info}]

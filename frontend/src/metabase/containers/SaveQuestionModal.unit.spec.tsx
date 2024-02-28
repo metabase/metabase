@@ -135,6 +135,7 @@ function getQuestion({
       ...extraCardParams,
       display: "table",
       visualization_settings: {},
+      type: "question",
       dataset_query: {
         type: "query",
         database: SAMPLE_DB_ID,
@@ -625,7 +626,7 @@ describe("SaveQuestionModal", () => {
 
   it("should call onClose when close icon is clicked", async () => {
     const { onCloseMock } = await setup(getQuestion());
-    userEvent.click(screen.getByLabelText("close icon"));
+    userEvent.click(screen.getByLabelText("Close"));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
 

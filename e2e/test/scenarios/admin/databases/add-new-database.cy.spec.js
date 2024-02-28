@@ -162,7 +162,7 @@ describe("admin > database > add", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Additional connection string options");
 
-        typeAndBlurUsingLabel("Display name", "QA Mongo4");
+        typeAndBlurUsingLabel("Display name", "QA Mongo");
         typeAndBlurUsingLabel("Host", "localhost");
         typeAndBlurUsingLabel("Port", QA_MONGO_PORT);
         typeAndBlurUsingLabel("Database name", "sample");
@@ -183,7 +183,7 @@ describe("admin > database > add", () => {
         });
 
         cy.findByRole("table").within(() => {
-          cy.findByText("QA Mongo4");
+          cy.findByText("QA Mongo");
         });
 
         cy.findByRole("status").within(() => {
@@ -205,7 +205,7 @@ describe("admin > database > add", () => {
 
         cy.findByTestId("database-form").within(() => {
           cy.findByText("Paste a connection string").click();
-          typeAndBlurUsingLabel("Display name", "QA Mongo4");
+          typeAndBlurUsingLabel("Display name", "QA Mongo");
           cy.findByLabelText("Port").should("not.exist");
           cy.findByLabelText("Paste your connection string").type(badDBString, {
             delay: 0,
@@ -244,7 +244,7 @@ describe("admin > database > add", () => {
         });
 
         cy.findByRole("table").within(() => {
-          cy.findByText("QA Mongo4");
+          cy.findByText("QA Mongo");
         });
 
         cy.findByRole("status").within(() => {

@@ -100,7 +100,11 @@
    :mbql.clause/cum-sum
    :mbql.clause/sum-where
    :mbql.clause/var
-   any?])
+   ;; We should not allow anything. Fixing this is bigger piece of work,
+   ;; because it makes expressions and aggregations mutually recursive
+   ;; or requires a large amount of duplication. See also
+   ;; metabase.lib.expression-test/diagnose-expression-test.
+   :any])
 
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])

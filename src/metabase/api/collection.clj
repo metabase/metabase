@@ -180,7 +180,10 @@
   ```
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
-  subtree (below)."
+  subtree (below).
+
+  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
+  some point in the future."
   [exclude-archived exclude-other-user-collections namespace shallow collection-id]
   {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
@@ -196,11 +199,11 @@
                                          :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
-      (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                          (update acc (if dataset :dataset :card) conj collection_id))
+      (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
+                                          (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                                         {:dataset #{}
                                          :card    #{}}
-                                        (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                        (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
                                                                     :where           [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
@@ -211,7 +214,14 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
+  #{"card"       ; SavedQuestion
+    "dataset"    ; Model. TODO : update this
+    "collection"
+    "dashboard"
+    "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
+    "snippet"
+    "no_models"
+    "timeline"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -394,7 +404,7 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :dataset dataset?]]}
+                   [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
       (cond-> dataset?
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
@@ -966,11 +976,7 @@
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority_level) (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-      (api/check-403 (and api/*is-superuser?*
-                          ;; pre-update of model checks if the collection is a personal collection and rejects changes
-                          ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
-                          ;; here
-                          (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
+      (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :archived :authority_level])]

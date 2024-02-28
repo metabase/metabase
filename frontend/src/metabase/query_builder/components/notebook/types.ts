@@ -27,9 +27,9 @@ export interface NotebookStep {
   testID: string;
   revert: RevertFn | null;
   actions: NotebookStepAction[];
-  previewQuery: Query | null;
   next: NotebookStep | null;
   previous: NotebookStep | null;
+  getPreviewQuery?: (() => Query) | undefined;
 }
 
 export interface NotebookStepAction {

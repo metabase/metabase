@@ -2,7 +2,6 @@ import {
   filter,
   filterField,
   filterFieldPopover,
-  modal,
   popover,
   restore,
 } from "e2e/support/helpers";
@@ -28,7 +27,9 @@ describe("issue 28971", () => {
       cy.findByText("Orders").click();
     });
     cy.button("Save").click();
-    modal().button("Save").click();
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save").click();
+    });
     cy.wait("@createCard");
 
     filter();
