@@ -95,7 +95,8 @@
   display: flex;
 }
 :local(.leftIcons) {
-  composes: align-self-start mr2 from "style";
+  composes: mr2 from "style";
+  align-self: flex-start;
   flex-shrink: 0;
   display: flex;
   composes: icons;
