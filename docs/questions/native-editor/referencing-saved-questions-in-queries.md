@@ -8,7 +8,7 @@ redirect_from:
 
 With SQL databases, we can use a [model][model] or an existing question as the basis for a new query, or as a common table expression [CTE][CTE].
 
-For example, let's say we have a lot of data spread across a number of tables, but our people are most interested in a subset of that data. We can perform a complicated query once to return those results, and save that question as a model, which people can refer to in their queries just like they would with any other table.
+For example, let's say we have a lot of data spread across a number of tables, but people are most interested in a subset of that data. We can perform a complicated query once to return those results, and save that question as a model, which people can refer to in their queries just like they would with any other table.
 
 ## Search for models and questions as you type
 
@@ -20,9 +20,9 @@ Type `{% raw %}{{#your search term }} {% endraw %}` and Metabase will display a 
 
 ![Typeahead search dropdown for referencing questions and models in SQL queries](../images/search-dropdown.png)
 
-You can also find the question or model ID by navigating in Metabase to the model or question you'd like to reference in your query. The items' ID is in the URL in your browser's address bar. The ID will be the number after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
+You can also find the question or model ID by navigating in Metabase to the model or question you'd like to reference in your query. The ID is in the URL in your browser's address bar. The ID will be the number after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
 
-Only the `#` and `ID` is required. Metabase justo display the model or question name to make the query more readable.
+Only the `#` and `ID` is required. Metabase just displays the model or question name to make the query more readable.
 
 ## Model, table, or saved question as a Common Table Expression (CTE)
 
