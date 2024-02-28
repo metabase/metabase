@@ -9,7 +9,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def statuses
@@ -51,10 +50,11 @@
   "The amount of moderation reviews we will keep on hand."
   10)
 
-(s/defn delete-extra-reviews!
+(mu/defn delete-extra-reviews!
   "Delete extra reviews to maintain an invariant of only `max-moderation-reviews`. Called before inserting so actuall
   insures there are one fewer than that so you can add afterwards."
-  [item-id :- s/Int item-type :- s/Str]
+  [item-id   :- :int
+   item-type :- :string]
   (let [ids (into #{} (comp (map :id)
                             (drop (dec max-moderation-reviews)))
                   (mdb.query/query {:select   [:id]

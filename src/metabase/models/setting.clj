@@ -79,6 +79,7 @@
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [environ.core :as env]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
@@ -96,7 +97,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang Keyword Symbol)
+   (clojure.lang Keyword)
    (com.fasterxml.jackson.core JsonParseException)
    (com.fasterxml.jackson.core.io JsonEOFException)
    (java.io StringWriter)
@@ -757,8 +758,8 @@
   (fn [setting-type _ _]
     (keyword setting-type)))
 
-(s/defmethod set-value-of-type! :string
-  [_setting-type setting-definition-or-name new-value :- (s/maybe s/Str)]
+(mu/defmethod set-value-of-type! :string
+  [_setting-type setting-definition-or-name new-value :- [:maybe :string]]
   (let [new-value                         (when (seq new-value)
                                             new-value)
         {:keys [sensitive? deprecated]
@@ -959,7 +960,7 @@
   internally by [[defsetting]]; you shouldn't need to use it yourself."
   [{setting-name :name, setting-ns :namespace, setting-type :type, default :default, :as setting}]
   (let [munged-name (munge-setting-name (name setting-name))]
-    (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
+    (u/prog1 (let [setting-type (mc/assert Type (or setting-type :string))]
                (merge
                 {:name           setting-name
                  :munged-name    munged-name
@@ -985,7 +986,7 @@
                  ;; Disable auditing by default for user- or database-local settings
                  :audit          (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
-      (s/validate SettingDefinition <>)
+      (mc/assert SettingDefinition <>)
       (validate-default-value-for-type <>)
       ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
       (when-let [registered-setting (core/get @registered-settings setting-name)]
@@ -1094,12 +1095,12 @@
   [description-form]
   (when-not (valid-trs-or-tru? description-form)
     ;; this doesn't need to be i18n'ed because it's a compile-time error.
-    `(ex-info (str "defsetting docstrings must be a *deferred* i18n form unless the Setting has"
-                   " `:visibility` `:internal`, `:setter` `:none`, or is defined in a test namespace."
-                   (format " Got: ^%s %s"
-                           (some-> ~description-form class (.getCanonicalName))
-                           (pr-str ~description-form)))
-              {:description-form ~description-form})))
+    (ex-info (str "defsetting docstrings must be a *deferred* i18n form unless the Setting has"
+                  " `:visibility` `:internal`, `:setter` `:none`, or is defined in a test namespace."
+                  (format " Got: ^%s %s"
+                          (some-> ~description-form class (.getCanonicalName))
+                          (pr-str ~description-form)))
+             {:description-form ~description-form})))
 
 ;; This exists as its own method so that we can stub it in tests
 (defn- ns-in-test? [ns-name] (str/ends-with? ns-name "-test"))

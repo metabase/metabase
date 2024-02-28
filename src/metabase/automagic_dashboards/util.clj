@@ -58,7 +58,7 @@
   [table]
   (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
 
-(s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankString su/IntGreaterThanZero))
+(mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ms/PositiveInt]]
   "Extract field ID from a given field reference form."
   [clause]
   (mbql.u/match-one clause [:field id _] id))

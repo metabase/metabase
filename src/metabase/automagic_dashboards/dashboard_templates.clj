@@ -10,8 +10,7 @@
    [metabase.util.files :as u.files]
    [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.yaml :as yaml]
-   [schema.spec.core :as spec])
+   [metabase.util.yaml :as yaml])
   (:import
    (java.nio.file Files Path)))
 
@@ -391,7 +390,8 @@
 
 (defn- extract-localized-strings
   [[path dashboard-template]]
-  (let [strings (atom [])]
+  ;; NOCOMMIT
+  #_(let [strings (atom [])]
     ((spec/run-checker
        (fn [schema params]
         (let [walk (spec/checker (mr/validator schema) params)]
