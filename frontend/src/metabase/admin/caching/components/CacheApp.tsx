@@ -32,6 +32,8 @@ import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./CacheApp.styled";
 import { DatabaseStrategyEditor } from "./DatabaseStrategyEditor";
 const defaultRootStrategy: Strategy = { type: "nocache" };
 
+// TODO: When setting the strategy of a db back to the root strategy, we should delete the strategy, not set it. (But could there be race conditions here?)
+
 export const CacheApp = () => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
   const [tabsHeight, setTabsHeight] = useState<number>(300);
@@ -42,14 +44,6 @@ export const CacheApp = () => {
     error: errorWhenLoadingDatabases,
     isLoading: areDatabasesLoading,
   } = useDatabaseListQuery();
-
-  // add some dummy data
-  if (databases.length === 2) {
-    databases.push(...databases);
-    databases.push(...databases);
-    databases.push(...databases);
-    databases.push(...databases);
-  }
 
   const {
     value: configsFromAPI,
@@ -130,21 +124,23 @@ export const CacheApp = () => {
       const otherConfigs = configs.filter(
         config => config.model_id !== model_id,
       );
-      const overridesRoot = !_.isEqual(newStrategy, rootStrategy);
-      if (newStrategy && (model === "root" || overridesRoot)) {
-        const existingConfig = configs.find(
-          config => config.model_id === model_id,
-        );
-        const merged = {
-          ...existingConfig?.strategy,
-          ...newStrategy,
-        };
-        if (!isValidStrategy(merged)) {
-          throw new Error(`Invalid strategy: ${merged}`);
+      const existingConfig = configs.find(
+        config => config.model_id === model_id,
+      );
+      const mergedStrategy = {
+        ...existingConfig?.strategy,
+        ...newStrategy,
+      };
+      const overridesRoot = !_.isEqual(mergedStrategy, rootStrategy);
+      const shouldUpdateRatherThanDelete =
+        newStrategy && (model === "root" || overridesRoot);
+      if (shouldUpdateRatherThanDelete) {
+        if (!isValidStrategy(mergedStrategy)) {
+          throw new Error(`Invalid strategy: ${mergedStrategy}`);
         }
         const newConfig: CacheConfig = {
           ...baseConfig,
-          strategy: merged,
+          strategy: mergedStrategy,
         };
         if (!isValidCacheConfig(newConfig)) {
           throw new Error(`Invalid cache config: ${newConfig}`);
