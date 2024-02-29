@@ -74,6 +74,9 @@ export function IllustrationWidget({
   }
 
   function handleRemoveCustomIllustration() {
+    if (fileInputRef.current?.value) {
+      fileInputRef.current.value = "";
+    }
     setFileName("");
     onChange("default");
     onChangeSetting("login-page-illustration-custom", null);
