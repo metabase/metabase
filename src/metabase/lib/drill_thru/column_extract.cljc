@@ -4,6 +4,7 @@
     [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
     [metabase.lib.drill-thru.common :as lib.drill-thru.common]
     [metabase.lib.expression :as lib.expression]
+    [metabase.lib.filter :as lib.filter]
     [metabase.lib.metadata.calculation :as lib.metadata.calculation]
     [metabase.lib.schema :as lib.schema]
     [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -56,5 +57,9 @@
       :day-of-month (lib.expression/get-day column)
       :day-of-week (lib.expression/get-day-of-week column)
       :month (lib.expression/get-month column)
-      :quarter (lib.expression/get-quarter column)
+      :quarter (let [expression (lib.expression/get-quarter column)]
+                 (lib.expression/case
+                  (->> (range 1 4)
+                       (map (fn [n] [(lib.filter/= expression n) (str "Q" n)])))
+                  "Q4"))
       :year (lib.expression/get-year column))))
