@@ -1116,7 +1116,8 @@ export const getDisabledSaveReason = createSelector(
       }
 
       if (question.canRun() && (isResultDirty || !resultsMetadata)) {
-        return t`You need to run the query to save this question`;
+        const type = question.type() === "question" ? t`question` : t`model`;
+        return t`You need to run the query to save this ${type}`;
       }
     }
 

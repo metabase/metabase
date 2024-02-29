@@ -11,8 +11,10 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
+import Tooltip from "metabase/core/components/Tooltip";
 import { modelIndexes } from "metabase/entities";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useSelector } from "metabase/lib/redux";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
@@ -24,6 +26,8 @@ import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
+  getDisabledSaveReason,
+  getIsSaveEnabled,
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
@@ -410,18 +414,13 @@ function DatasetEditor(props) {
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
 
-  const canSaveChanges = useMemo(() => {
-    const { isNative } = Lib.queryDisplayInfo(dataset.query());
-    const isEmpty = !isNative
-      ? Lib.databaseID(dataset.query()) == null
-      : dataset.legacyQuery().isEmpty();
+  const canSaveQuery = useSelector(getIsSaveEnabled);
+  const disabledSaveReason = useSelector(getDisabledSaveReason);
 
-    if (isEmpty || fields.length === 0) {
-      return false;
-    }
+  const canSaveModel = useMemo(() => {
     const everyFieldHasDisplayName = fields.every(field => field.display_name);
-    return everyFieldHasDisplayName && isDirty;
-  }, [dataset, fields, isDirty]);
+    return canSaveQuery && isDirty && everyFieldHasDisplayName;
+  }, [canSaveQuery, isDirty, fields]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -461,16 +460,19 @@ function DatasetEditor(props) {
             small
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
-          <ActionButton
-            key="save"
-            disabled={!canSaveChanges}
-            actionFn={handleSave}
-            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
-            activeText={t`Saving…`}
-            failedText={t`Save failed`}
-            successText={t`Saved`}
-            className="Button Button--primary Button--small"
-          />,
+          <Tooltip key="save" tooltip={disabledSaveReason} placement="left">
+            <div>
+              <ActionButton
+                disabled={!canSaveModel}
+                actionFn={handleSave}
+                normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
+                activeText={t`Saving…`}
+                failedText={t`Save failed`}
+                successText={t`Saved`}
+                className="Button Button--primary Button--small"
+              />
+            </div>
+          </Tooltip>,
         ]}
       />
       <Root>

@@ -536,7 +536,6 @@ function ViewTitleHeaderRightSide(props) {
           disabled={!isSaveEnabled}
           tooltip={{
             tooltip: disabledSaveReason,
-            isEnabled: !isSaveEnabled,
             placement: "left",
           }}
           onClick={() => onOpenModal("save")}
