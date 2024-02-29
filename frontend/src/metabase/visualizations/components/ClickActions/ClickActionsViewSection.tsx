@@ -34,7 +34,7 @@ export const ClickActionsViewSection = ({
   }
 
   return (
-    <Section type={type} direction={contentDirection} data-testid={testId}>
+    <Section type={type} direction={contentDirection}>
       {children}
     </Section>
   );
