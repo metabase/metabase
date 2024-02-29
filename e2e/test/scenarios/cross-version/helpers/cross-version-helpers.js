@@ -170,6 +170,6 @@ export function dismissOkToPlayWithQuestionsModal({ majorVersion }) {
 
 export function fillAreaUnderLineChart({ majorVersion }) {
   if (majorVersion < filledAreaIconRemovedVersion) {
-    cy.findByLabelText("area icon").clear();
+    cy.findByLabelText("area icon").click();
   }
 }
