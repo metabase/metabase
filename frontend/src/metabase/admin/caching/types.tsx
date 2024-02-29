@@ -33,6 +33,9 @@ export const isValidStrategyName = (
 
 export type UnitOfTime = "hours" | "minutes" | "seconds" | "days";
 
+const isValidUnitOfTime = (x: unknown): x is UnitOfTime =>
+  typeof x === "string" && ["hours", "minutes", "seconds", "days"].includes(x);
+
 export type GetConfigByModelId = Map<number, CacheConfig>;
 
 export type Model =
@@ -42,15 +45,19 @@ export type Model =
   | "dashboard"
   | "question";
 
+const isValidModel = (x: unknown): x is Model =>
+  typeof x === "string" &&
+  ["root", "database", "collection", "dashboard", "question"].includes(x);
+
 interface StrategyMap {
   type: StrategyName;
 }
 
-interface NoCacheStrategy extends StrategyMap {
+interface DoNotCacheStrategy extends StrategyMap {
   type: "nocache";
 }
 
-interface TtlStrategy extends StrategyMap {
+interface TimeToLiveStrategy extends StrategyMap {
   type: "ttl";
   multiplier: number;
   min_duration: number;
@@ -74,9 +81,10 @@ interface QueryStrategy extends StrategyMap {
   schedule: string;
 }
 
+/** Cache invalidation strategy */
 export type Strategy =
-  | NoCacheStrategy
-  | TtlStrategy
+  | DoNotCacheStrategy
+  | TimeToLiveStrategy
   | DurationStrategy
   | ScheduleStrategy
   | QueryStrategy;
@@ -109,3 +117,81 @@ export type DBStrategySetter = (
 export type RootStrategySetter = (
   newStrategy: Partial<Strategy> | null,
 ) => void;
+
+export const isValidStrategy = (x: unknown): x is Strategy => {
+  if (!hasType(x)) {
+    return false;
+  }
+  if (x.type === "nocache") {
+    return true;
+  }
+  if (x.type === "ttl") {
+    return (
+      typeof x.min_duration === "number" && typeof x.multiplier === "number"
+    );
+  }
+  if (x.type === "duration") {
+    return typeof x.duration === "number" && isValidUnitOfTime(x.unit);
+  }
+  if (x.type === "schedule") {
+    return x.type === "schedule" && typeof x.schedule === "string";
+  }
+  if (x.type === "query") {
+    return (
+      typeof x.field_id === "number" &&
+      ["max", "count"].includes(x.aggregation) &&
+      typeof x.schedule === "string"
+    );
+  }
+  return false;
+};
+
+type NonNullObject = {
+  [key: string]: any;
+};
+
+type StrategyFromAPI = {
+  strategy: Strategy;
+  config: any;
+};
+
+const isValidObject = (x: unknown): x is NonNullObject => {
+  if (typeof x !== "object") {
+    return false;
+  }
+  if (x === null) {
+    return false;
+  }
+  return true;
+};
+
+export const isValidConfigFromAPI = (x: unknown): x is StrategyFromAPI => {
+  if (!isValidObject(x)) {
+    return false;
+  }
+  return "strategy" in x && "config" in x;
+};
+
+const hasType = (x: unknown): x is NonNullObject & { type: any } =>
+  isValidObject(x) && "type" in x;
+const hasValidModel = (x: unknown): x is NonNullObject & { model: Model } =>
+  isValidObject(x) && "model" in x && isValidModel(x.model);
+const hasValidModelId = (
+  x: unknown,
+): x is NonNullObject & { model_id: number } =>
+  isValidObject(x) && "model_id" in x && typeof x.model_id === "number";
+const hasValidStrategy = (
+  x: unknown,
+): x is NonNullObject & { strategy: Strategy } =>
+  isValidObject(x) && "strategy" in x && isValidStrategy(x.strategy);
+export const isValidCacheConfig = (x: unknown): x is CacheConfig =>
+  hasValidModel(x) && hasValidModelId(x) && hasValidStrategy(x);
+
+export enum TabId {
+  DataCachingSettings = "dataCachingSettings",
+  DashboardAndQuestionCaching = "dashboardAndQuestionCaching",
+  ModelPersistence = "modelPersistence",
+  CachingStats = "cachingStats",
+}
+export const isValidTabId = (tab: unknown): tab is TabId =>
+  typeof tab === "string" && Object.values(TabId).map(String).includes(tab);

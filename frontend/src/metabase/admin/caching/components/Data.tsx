@@ -14,24 +14,23 @@ import type {
   RootStrategySetter,
   Strategy,
 } from "../types";
-import { isValidStrategyName, Strategies } from "../types";
+import { isValidStrategy, isValidStrategyName, Strategies } from "../types";
 
 import {
   ClearOverridesButton,
   ConfigPanel,
   ConfigPanelSection,
+  DatabaseConfigDisplayStyled,
   DatabasesConfigIcon,
   Editor,
   EditorPanel,
   Explanation,
-  GeneralConfig,
-  GeneralStrategy,
-  SpecialConfigStyled,
-  SpecialStrategy,
+  RootConfigDisplay,
+  StrategyDisplay,
   TabWrapper,
 } from "./Data.styled";
 
-export const Data = ({
+export const DatabaseStrategyEditor = ({
   databases,
   rootStrategy,
   dbConfigs,
@@ -68,7 +67,7 @@ export const Data = ({
           role="group"
           style={{ backgroundColor: color("bg-light") }}
         >
-          <GeneralConfig
+          <RootConfigDisplay
             {...getButtonProps({
               shouldHighlightButton: editingRootConfig,
             })}
@@ -76,18 +75,18 @@ export const Data = ({
           >
             <DatabasesConfigIcon name="database" />
             {t`Databases`}
-            <GeneralStrategy
+            <StrategyDisplay
               {...getButtonProps({
                 shouldHighlightButton: !editingRootConfig,
               })}
             >
               {rootStrategyLabel}
-            </GeneralStrategy>
-          </GeneralConfig>
+            </StrategyDisplay>
+          </RootConfigDisplay>
         </EditorPanel>
         <EditorPanel role="group">
           {databases.map(db => (
-            <SpecialConfig
+            <DatabaseConfigDisplay
               db={db}
               key={db.id.toString()}
               dbConfigs={dbConfigs}
@@ -111,13 +110,17 @@ export const Data = ({
                 name={`caching-strategy-for-database-${targetId}`}
                 onChange={strategyType => {
                   if (!isValidStrategyName(strategyType)) {
-                    console.error("invalid strategy type", strategyType);
+                    console.error("Invalid strategy type", strategyType);
                     return;
                   }
                   const newStrategy = {
                     type: strategyType,
                     ...Strategies[strategyType].defaults,
-                  } as Strategy; // TODO See if this 'as' can be avoided
+                  };
+                  if (!isValidStrategy(newStrategy)) {
+                    console.error("Invalid strategy");
+                    return;
+                  }
                   if (editingRootConfig) {
                     setRootStrategy(newStrategy);
                   } else {
@@ -172,8 +175,7 @@ export const Data = ({
   );
 };
 
-// TODO: Rename to DatabaseConfig or something like that
-export const SpecialConfig = ({
+export const DatabaseConfigDisplay = ({
   db,
   key,
   dbConfigs,
@@ -207,7 +209,7 @@ export const SpecialConfig = ({
   };
   const shouldHighlightButton = overridesRoot && !isBeingEdited;
   return (
-    <SpecialConfigStyled
+    <DatabaseConfigDisplayStyled
       {...getButtonProps({ shouldHighlightButton: isBeingEdited })}
       key={key}
       onClick={() => {
@@ -216,7 +218,7 @@ export const SpecialConfig = ({
     >
       <DatabasesConfigIcon name="database" />
       {db.name}
-      <SpecialStrategy
+      <StrategyDisplay
         {...getButtonProps({ shouldHighlightButton })}
         onClick={(e: MouseEvent<HTMLButtonElement>) => {
           if (overridesRoot) {
@@ -227,8 +229,8 @@ export const SpecialConfig = ({
       >
         {strategyLabel}
         {overridesRoot && <Icon style={{ marginLeft: ".5rem" }} name="close" />}
-      </SpecialStrategy>
-    </SpecialConfigStyled>
+      </StrategyDisplay>
+    </DatabaseConfigDisplayStyled>
   );
 };
 

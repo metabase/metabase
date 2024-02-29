@@ -61,19 +61,17 @@ export const Config = styled(CacheAdminButton)`
   font-weight: bold;
 `;
 
-export const GeneralConfig = styled(Config)<ButtonProps>`
-  border: 1px solid ${color("bg-medium")};
-`;
+export const RootConfigDisplay = styled(Config)<ButtonProps>``;
 
-export const Strategy = styled(CacheAdminButton)`
+export const StrategyDisplay = styled(CacheAdminButton)`
   margin-left: auto;
   padding: 0.75rem 1rem;
   font-weight: bold;
 `;
 
-export const GeneralStrategy = styled(Strategy)<ButtonProps>``;
-
-export const SpecialConfigStyled = styled(CacheAdminButton)<ButtonProps>`
+export const DatabaseConfigDisplayStyled = styled(
+  CacheAdminButton,
+)<ButtonProps>`
   width: 100%;
   display: flex;
   font-weight: bold;
@@ -86,7 +84,7 @@ export const SpecialConfigStyled = styled(CacheAdminButton)<ButtonProps>`
   border: 1px solid ${color("border")};
 `;
 
-export const SpecialStrategy = styled(Strategy)<ButtonProps>``;
+export const SpecialStrategy = styled(StrategyDisplay)<ButtonProps>``;
 
 export const DatabasesConfigIcon = styled(Icon)`
   margin-right: 0.5rem;

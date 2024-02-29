@@ -14,24 +14,22 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { CacheConfigApi } from "metabase/services";
 import { Tabs } from "metabase/ui";
 
-import type {
-  CacheConfig,
-  CacheConfigFromAPI,
-  GetConfigByModelId,
-  Strategy,
-  StrategySetter,
+import {
+  isValidStrategy,
+  type CacheConfig,
+  type CacheConfigFromAPI,
+  type GetConfigByModelId,
+  type Strategy,
+  type StrategySetter,
+  isValidConfigFromAPI,
+  isValidCacheConfig,
+  TabId,
+  isValidTabId,
 } from "../types";
 
 import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./CacheApp.styled";
-import { Data } from "./Data";
-enum TabId {
-  DataCachingSettings = "dataCachingSettings",
-  DashboardAndQuestionCaching = "dashboardAndQuestionCaching",
-  ModelPersistence = "modelPersistence",
-  CachingStats = "cachingStats",
-}
-const isValidTabId = (tab: unknown): tab is TabId =>
-  typeof tab === "string" && Object.values(TabId).includes(tab as TabId);
+import { DatabaseStrategyEditor } from "./Data";
+const defaultRootStrategy: Strategy = { type: "nocache" };
 
 export const CacheApp = () => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
@@ -80,13 +78,10 @@ export const CacheApp = () => {
       // TODO: The outgoing data and incoming data have slightly different
       // formats so we need to modify the data like this. It would be good to
       // iron this out.
-      setConfigs(
-        configsFromAPI.map(item => ({
-          ...item,
-          // TODO: Remove this 'as Strategy' by introducing a complex validator
-          strategy: { type: item.strategy, ...item.config } as Strategy,
-        })),
+      const configsForUI = configsFromAPI.map((config: unknown) =>
+        normalizeConfigFromAPI(config),
       );
+      setConfigs(configsForUI);
     }
   }, [configsFromAPI]);
 
@@ -110,7 +105,6 @@ export const CacheApp = () => {
 
   const dbConfigs: GetConfigByModelId = useMemo(() => {
     const map: GetConfigByModelId = new Map();
-    // Zero means the root strategy
     configs.forEach(config => {
       if (config.model === "database") {
         map.set(config.model_id, config);
@@ -121,13 +115,11 @@ export const CacheApp = () => {
 
   const rootStrategy: Strategy = useMemo(() => {
     return (
-      configs.find(config => config.model === "root")?.strategy ?? {
-        type: "nocache",
-      }
+      configs.find(config => config.model === "root")?.strategy ??
+      defaultRootStrategy
     );
   }, [configs]);
 
-  // TODO: Add model to this to make it general
   const setStrategy = useCallback<StrategySetter>(
     async (model, modelId, newStrategy) => {
       const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
@@ -145,7 +137,6 @@ export const CacheApp = () => {
           ...baseConfig,
           strategy: {
             ...existingConfig?.strategy,
-            // TODO: Move away from these two defaults
             ...newStrategy,
           } as Strategy, // TODO: Remove this 'as' which will be tricky
         };
@@ -188,10 +179,6 @@ export const CacheApp = () => {
   // TODO: The horizontal row of tabs does not look so good in narrow viewports
   return (
     <Tabs
-      style={{ display: "flex", flexDirection: "column" }}
-      ref={tabsRef}
-      bg="bg-light"
-      h={tabsHeight}
       value={tabId}
       onTabChange={value => {
         if (isValidTabId(value)) {
@@ -202,6 +189,10 @@ export const CacheApp = () => {
           console.error("Invalid tab value", value);
         }
       }}
+      style={{ display: "flex", flexDirection: "column" }}
+      ref={tabsRef}
+      bg="bg-light"
+      h={tabsHeight}
     >
       <TabsList>
         <Tab key={"DataCachingSettings"} value={TabId.DataCachingSettings}>
@@ -210,7 +201,7 @@ export const CacheApp = () => {
       </TabsList>
       <TabsPanel key={tabId} value={tabId}>
         <TabContentWrapper>
-          <Data
+          <DatabaseStrategyEditor
             databases={databases}
             dbConfigs={dbConfigs}
             rootStrategy={rootStrategy}
@@ -225,4 +216,21 @@ export const CacheApp = () => {
     </Tabs>
   );
 };
-// TODO: Rename the 'Data' component
+
+const normalizeConfigFromAPI = (configFromAPI: unknown): CacheConfig => {
+  if (!isValidConfigFromAPI(configFromAPI)) {
+    throw new Error(`Invalid config retrieved from API: ${configFromAPI}`);
+  }
+  const strategy = { type: configFromAPI.strategy, ...configFromAPI.config };
+  if (!isValidStrategy(strategy)) {
+    throw new Error(`Invalid strategy retrieved from API: ${configFromAPI}`);
+  }
+  const config = {
+    ...configFromAPI,
+    strategy,
+  };
+  if (!isValidCacheConfig(config)) {
+    throw new Error(`Invalid cache configuration: ${config}`);
+  }
+  return config;
+};
