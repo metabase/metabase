@@ -495,7 +495,7 @@
    include_editable_data_model [:maybe ms/BooleanString]
    remove_inactive             [:maybe ms/BooleanString]}
   (db-metadata id
-               (Boolean/parseBoolean     include_hidden)
+               (Boolean/parseBoolean include_hidden)
                (Boolean/parseBoolean include_editable_data_model)
                (Boolean/parseBoolean remove_inactive)))
 
