@@ -20,7 +20,7 @@ export function getDashboardDrillType(clicked) {
     return null;
   }
 
-  const { type, linkType, targetId, tabId, extraData } = getClickBehaviorData(
+  const { type, linkType, targetId, extraData } = getClickBehaviorData(
     clicked,
     clickBehavior,
   );
@@ -34,10 +34,7 @@ export function getDashboardDrillType(clicked) {
     if (linkType === "url") {
       return "link-url";
     } else if (linkType === "dashboard") {
-      if (
-        extraData.dashboard.id === targetId &&
-        extraData.dashcard.dashboard_tab_id === tabId
-      ) {
+      if (extraData.dashboard.id === targetId) {
         return "dashboard-reset";
       } else {
         return "dashboard-url";
@@ -48,6 +45,13 @@ export function getDashboardDrillType(clicked) {
   }
 
   return null;
+}
+
+export function getDashboardDrillTab(clicked) {
+  const clickBehavior = getClickBehavior(clicked);
+  const { tabId } = getClickBehaviorData(clicked, clickBehavior);
+
+  return tabId;
 }
 
 export function getDashboardDrillParameters(clicked) {
