@@ -785,7 +785,6 @@
                          :moderated_item_id card-id
                          :moderated_item_type "card"))))))
 
-;; TODO - not 100% sure I understand
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
   needed to orchestrate a query cancellation.
