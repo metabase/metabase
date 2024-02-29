@@ -2,13 +2,17 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { SetupApi } from "metabase/services";
-import { Box, Button, Text, TextInput } from "metabase/ui";
+import { Box, Button, Flex, Text, TextInput } from "metabase/ui";
 
 type LicenseTokenFormProps = {
   onValidSubmit: (token: string) => void;
+  onSkip: () => void;
 };
 
-export const LicenseTokenForm = ({ onValidSubmit }: LicenseTokenFormProps) => {
+export const LicenseTokenForm = ({
+  onValidSubmit,
+  onSkip,
+}: LicenseTokenFormProps) => {
   const [token, setToken] = useState("");
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
@@ -45,11 +49,15 @@ export const LicenseTokenForm = ({ onValidSubmit }: LicenseTokenFormProps) => {
           <Text color="error">{t`This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working`}</Text>
         )}
       </Box>
-      <Button
-        variant={isInputCorrectLength ? "filled" : "default"}
-        loading={status === "loading"}
-        onClick={submit}
-      >{t`Activate`}</Button>
+      <Flex gap="lg">
+        <Button onClick={onSkip}>{t`Skip`}</Button>
+        <Button
+          disabled={!isInputCorrectLength}
+          loading={status === "loading"}
+          variant="filled"
+          onClick={submit}
+        >{t`Activate`}</Button>
+      </Flex>
     </>
   );
 };

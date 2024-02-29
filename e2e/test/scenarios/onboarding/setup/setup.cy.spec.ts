@@ -540,6 +540,6 @@ const fillUserAndContinue = ({
 
 const skipLicenseStepOnEE = () => {
   if (isEE) {
-    cy.button("Next").click();
+    cy.button("Skip").click();
   }
 };
