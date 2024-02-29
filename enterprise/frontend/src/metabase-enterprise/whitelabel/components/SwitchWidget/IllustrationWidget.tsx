@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Button, Flex, Icon, Paper, Select } from "metabase/ui";
+import { Button, Flex, Icon, Paper, Select, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -100,21 +100,30 @@ export function IllustrationWidget({
             data={data}
             value={value}
             onChange={handleChange}
-            w={isCustomIllustration && fileName ? "10rem" : "100%"}
+            w={isCustomIllustration && fileName ? "8.25rem" : "100%"}
+            style={{
+              flexShrink: isCustomIllustration && fileName ? 0 : undefined,
+            }}
           />
-          {isCustomIllustration && fileName}
+          {isCustomIllustration && (
+            <Text truncate="end" ml="auto">
+              {fileName}
+            </Text>
+          )}
           {/**
            * <Select /> has an annoying 0.25rem top margin which I don't have time to fix yet.
            * This makes sure the X button is aligned with the Select component.
            */}
-          <Button
-            leftIcon={<Icon name="close" />}
-            mt="0.25rem"
-            variant="subtle"
-            c="text-dark"
-            compact
-            onClick={handleRemoveCustomIllustration}
-          />
+          {isCustomIllustration && (
+            <Button
+              leftIcon={<Icon name="close" />}
+              mt="0.25rem"
+              variant="subtle"
+              c="text-dark"
+              compact
+              onClick={handleRemoveCustomIllustration}
+            />
+          )}
           <input
             hidden
             ref={fileInputRef}
