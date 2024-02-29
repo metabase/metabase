@@ -126,6 +126,8 @@
           (data-perms/set-database-permission! all-users-group database :perms/native-query-editing :yes)
           (data-perms/set-database-permission! all-users-group database :perms/download-results :one-million-rows)
           (doseq [group non-magic-groups]
+            (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! group database :perms/create-queries :no)
             (data-perms/set-database-permission! group database :perms/download-results :no)
             (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
             (data-perms/set-database-permission! group database :perms/native-query-editing :no)

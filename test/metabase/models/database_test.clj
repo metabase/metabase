@@ -44,8 +44,8 @@
                 {db-id
                  {:perms/view-data             :unrestricted
                   :perms/create-queries        :query-builder-and-native
-                  :perms/download-results      :one-million-rows
                   :perms/data-access           :unrestricted
+                  :perms/download-results      :one-million-rows
                   :perms/native-query-editing  :yes
                   :perms/manage-table-metadata :no
                   :perms/manage-database       :no}}}
