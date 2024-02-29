@@ -454,12 +454,18 @@ function DashboardInner(props: DashboardProps) {
     );
   };
 
-  const parametersWidget = (
-    <SyncedParametersList
-      parameters={getValuePopulatedParameters({
+  const valuePopulatedParameters = useMemo(
+    () =>
+      getValuePopulatedParameters({
         parameters,
         values: isAutoApplyFilters ? parameterValues : draftParameterValues,
-      })}
+      }),
+    [parameters, isAutoApplyFilters, parameterValues, draftParameterValues],
+  );
+
+  const parametersWidget = (
+    <SyncedParametersList
+      parameters={valuePopulatedParameters}
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}
       dashboard={dashboard}
