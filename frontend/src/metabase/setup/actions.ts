@@ -9,7 +9,7 @@ import {
 } from "metabase/home/utils";
 import { loadLocalization } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
-import { SetupApi, SettingsApi } from "metabase/services";
+import { SetupApi, SettingsApi, MetabaseApi } from "metabase/services";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
@@ -25,6 +25,7 @@ import {
   getLocale,
   getNextStep,
   getSetupToken,
+  getDatabase,
 } from "./selectors";
 import type { SetupStep } from "./types";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
@@ -93,20 +94,22 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     const token = getSetupToken(getState());
     const invite = getInvite(getState());
     const locale = getLocale(getState());
+
     try {
       await SetupApi.create({
         token,
         user,
         invite,
         prefs: {
-          site_name: user?.site_name,
+          site_name: user.site_name,
           site_locale: locale?.code,
         },
       });
-      MetabaseSettings.set("setup-token", null);
     } catch (error) {
       return rejectWithValue(error);
     }
+
+    MetabaseSettings.set("setup-token", null);
     dispatch(goToNextStep());
   },
 );
@@ -161,12 +164,11 @@ export const submitDatabase = createAsyncThunk<
   "metabase/setup/SUBMIT_DATABASE",
   async (database: DatabaseData, { dispatch, rejectWithValue }) => {
     try {
-      await dispatch(createDatabase(database));
+      await MetabaseApi.db_validate({ details: database });
       dispatch(goToNextStep());
       return database;
-    } catch (error: any) {
-      const errMsg = error?.data?.message ?? error.toString();
-      return rejectWithValue(errMsg);
+    } catch (error) {
+      return rejectWithValue(error);
     }
   },
 );
@@ -202,4 +204,19 @@ export const updateTracking = createAsyncThunk(
   },
 );
 
-export const completeSetup = createAction("metabase/setup/COMPLETE_SETUP");
+export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
+  "metabase/setup/COMPLETE_SETUP",
+  async (_, { getState, dispatch, rejectWithValue }) => {
+    const database = getDatabase(getState());
+
+    try {
+      if (database) {
+        await dispatch(createDatabase(database));
+      }
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+
+    dispatch(goToNextStep());
+  },
+);

@@ -9,7 +9,7 @@ import {
   skipDatabase,
   submitDatabase,
   submitLicenseToken,
-  completeSetup,
+  submitSetup,
   submitUsageReason,
   submitUser,
   submitUserInvite,
@@ -75,7 +75,7 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(updateTracking.pending, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;
   });
-  builder.addCase(completeSetup, state => {
+  builder.addCase(submitSetup.fulfilled, state => {
     state.step = "completed";
   });
 });

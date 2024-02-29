@@ -3,13 +3,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { useFormSubmitButton, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Flex, Box } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { UserInfo } from "metabase-types/store";
 
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
@@ -100,13 +98,13 @@ export const UserForm = ({
           title={t`Confirm your password`}
           placeholder={t`Shhh... but one more time so we get it right`}
         />
-        <UserFormFooter />
+        <UserFormSubmitButton />
       </UserFormRoot>
     </FormProvider>
   );
 };
 
-const UserFormFooter = () => {
+const UserFormSubmitButton = () => {
   const { status } = useFormSubmitButton({ isDisabled: false });
 
   return (
@@ -115,11 +113,7 @@ const UserFormFooter = () => {
         title={t`Next`}
         activeTitle={t`Saving`}
         primary={status === "idle"}
-        icon={status === "pending" && <LoadingSpinner size={16} />}
       />
-      <Box ml=".75rem">
-        {status === "rejected" && <FormErrorMessage inline />}
-      </Box>
     </Flex>
   );
 };
