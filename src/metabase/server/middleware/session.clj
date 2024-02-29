@@ -46,7 +46,8 @@
   (:import
    (java.util UUID)))
 
-(def ^:private ^String metabase-session-cookie          "metabase.SESSION")
+(def ^String metabase-session-cookie
+  "Where the session cookie goes."                      "metabase.SESSION")
 (def ^:private ^String metabase-embedded-session-cookie "metabase.EMBEDDED_SESSION")
 (def ^:private ^String metabase-session-timeout-cookie  "metabase.TIMEOUT")
 (def ^:private ^String anti-csrf-token-header           "x-metabase-anti-csrf-token")
