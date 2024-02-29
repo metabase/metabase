@@ -74,6 +74,7 @@ export const NewCollectionDialog = ({
               <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
                 <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
                 <FormSubmitButton
+                  type="submit"
                   label={t`Create`}
                   disabled={!dirty}
                   variant="filled"

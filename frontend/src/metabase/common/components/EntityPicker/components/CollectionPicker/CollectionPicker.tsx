@@ -1,11 +1,6 @@
 import type React from "react";
-import {
-  useEffect,
-  useState,
-  forwardRef,
-  useImperativeHandle,
-  useCallback,
-} from "react";
+import { useState, forwardRef, useImperativeHandle, useCallback } from "react";
+import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { useCollectionQuery } from "metabase/common/hooks";
@@ -86,7 +81,7 @@ export const CollectionPickerInner = (
     [onFolderSelect],
   );
 
-  useEffect(
+  useDeepCompareEffect(
     function setInitialPath() {
       if (currentCollection?.id) {
         const newPath = getStateFromIdPath({
@@ -101,16 +96,17 @@ export const CollectionPickerInner = (
           namespace: options.namespace,
         });
         setPath(newPath);
+
+        if (currentCollection.can_write) {
+          // start with the current item selected if we can
+          onItemSelect({
+            ...currentCollection,
+            model: "collection",
+          });
+        }
       }
-      // we need to trigger this effect on these properties because the object reference isn't stable
     },
-    [
-      currentCollection?.id,
-      currentCollection?.location,
-      currentCollection?.is_personal,
-      options.namespace,
-      userPersonalCollectionId,
-    ],
+    [currentCollection, options.namespace, userPersonalCollectionId],
   );
 
   if (error) {
