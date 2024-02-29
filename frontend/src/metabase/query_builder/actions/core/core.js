@@ -30,11 +30,11 @@ import {
   getCard,
   getIsResultDirty,
   getOriginalQuestion,
-  getParameters,
   getQuestion,
   getResultsMetadata,
   getTransformedSeries,
   isBasedOnExistingQuestion,
+  getParameters,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
@@ -248,17 +248,10 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    let resultsMetadata = getResultsMetadata(getState());
+    const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
 
     if (question.isDataset()) {
-      if (!resultsMetadata) {
-        // Running the question will populate results metadata in redux store.
-        // Without it getSubmittableQuestion won't have all the necessary information.
-        await dispatch(runQuestionQuery());
-        resultsMetadata = getResultsMetadata(getState());
-      }
-
       resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
         resultsMetadata.columns,
       );

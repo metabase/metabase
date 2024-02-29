@@ -40,15 +40,6 @@ export function openNativeEditor({
   return cy.findByTestId("native-query-editor").as(alias).should("be.visible");
 }
 
-export function focusNativeEditor() {
-  return cy
-    .findByTestId("native-query-editor")
-    .should("be.visible")
-    .should("have.class", "ace_editor")
-    .click()
-    .should("have.class", "ace_focus");
-}
-
 /**
  * Executes native query and waits for the results to load.
  * Makes sure that the question is not "dirty" after the query successfully ran.
