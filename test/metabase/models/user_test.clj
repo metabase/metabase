@@ -538,29 +538,32 @@
 (deftest last-used-native-database-id-can-be-read-and-set
   (testing "last-used-native-database-id can be read and set"
     (mt/with-test-user :rasta
-      (let [old-db-id (user/last-used-native-database-id)
-            new-db-id 42]
-        (try
-          (is (not= new-db-id old-db-id))
-          (user/last-used-native-database-id! new-db-id)
-          (is (= new-db-id (user/last-used-native-database-id)))
-          (finally
-            (user/last-used-native-database-id! old-db-id))))))
+      (let [initial-value  (user/last-used-native-database-id)
+            existing-db-id (:id (t2/select-one Database))
+            wrong-db-id    999]
+        (is (nil? initial-value))
+        (user/last-used-native-database-id! existing-db-id)
+        (is (= existing-db-id (user/last-used-native-database-id)))
+        (testing "returns nil if the database doesn't exist"
+          (user/last-used-native-database-id! wrong-db-id)
+          (is (nil? (user/last-used-native-database-id)))))))
 
   (testing "last-used-native-database-id should be a user-local setting"
     (is (=? {:user-local :only}
-            (setting/resolve-setting :last-acknowledged-version)))
-    (mt/with-test-user :rasta
-      (let [old-db-id (user/last-used-native-database-id)]
-        (user/last-used-native-database-id! 42)
-        (mt/with-test-user :crowberto
-          (let [old-db-id (user/last-used-native-database-id)]
-            (user/last-used-native-database-id! 21)
-            (is (= (user/last-used-native-database-id) 21))
-            (mt/with-test-user :rasta
-              (is (= (user/last-used-native-database-id) 42)))
-            (user/last-used-native-database-id! old-db-id)))
-        (user/last-used-native-database-id! old-db-id)))))
+            (setting/resolve-setting :last-used-native-database-id)))
+    (mt/with-temp [Database {id1 :id} {:name "DB1"}
+                   Database {id2 :id} {:name "DB2"}]
+      (mt/with-test-user :rasta
+        (let [old-db-id (user/last-used-native-database-id)]
+          (user/last-used-native-database-id! id1)
+          (mt/with-test-user :crowberto
+            (let [old-db-id (user/last-used-native-database-id)]
+              (user/last-used-native-database-id! id2)
+              (is (= (user/last-used-native-database-id) id2))
+              (mt/with-test-user :rasta
+                (is (= (user/last-used-native-database-id) id1)))
+              (user/last-used-native-database-id! old-db-id)))
+          (user/last-used-native-database-id! old-db-id))))))
 
   (deftest common-name-test
     (testing "common_name should be present depending on what is selected"
