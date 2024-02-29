@@ -38,7 +38,7 @@ function isRealTable(id: number | string): id is number {
   return !isVirtualCardId(id);
 }
 
-function TableInfoPopover({
+export function TableInfoPopover({
   table,
   children,
   placement,
@@ -80,6 +80,3 @@ function TableInfoPopover({
 }
 
 TableInfoPopover.propTypes = propTypes;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TableInfoPopover;
