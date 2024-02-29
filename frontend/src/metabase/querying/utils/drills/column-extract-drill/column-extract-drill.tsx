@@ -53,7 +53,7 @@ const getActionForType = (
   return {
     name: `extract.${displayName.toLowerCase()}`,
     title: displayName,
-    section: "extract",
+    section: "extract-popover",
     buttonType: "horizontal",
     question: () => applyDrill(drill, type),
   };

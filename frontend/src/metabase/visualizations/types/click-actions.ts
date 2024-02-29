@@ -29,6 +29,7 @@ export type ClickActionSection =
   | "breakout-popover"
   | "details"
   | "extract"
+  | "extract-popover"
   | "filter"
   | "info"
   | "records"

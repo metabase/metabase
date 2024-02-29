@@ -106,6 +106,9 @@ export const getSectionTitle = (
 
     case "breakout-popover":
       return t`Break out by…`;
+
+    case "extract-popover":
+      return t`Select a part to extract`;
   }
 
   return null;
