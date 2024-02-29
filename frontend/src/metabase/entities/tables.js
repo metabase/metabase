@@ -83,6 +83,9 @@ const Tables = createEntity({
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
       withForceReload((state, { id }) => {
+        // if there is a virtual table without fields,
+        // it might be due to a question with a long-running request that hasn't finished yet.
+        // in this case we should reload the metadata until we get the fields
         const table = Tables.selectors.getObject(state, { entityId: id });
         return table?.fields?.length === 0;
       }),
