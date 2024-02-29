@@ -70,6 +70,7 @@
       (setting/set-value-of-type! :keyword :humanization-strategy new-value)
       ;; now rehumanize all the Tables and Fields using the new strategy.
       ;; TODO: Should we do this in a background thread because it is potentially slow?
+      ;; https://github.com/metabase/metabase/issues/39406
       (log/info (trs "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''"
                      (name old-strategy) (name new-strategy)))
       (re-humanize-table-and-field-names! old-strategy))))

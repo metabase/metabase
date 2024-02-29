@@ -340,7 +340,7 @@
     metabase.server.middleware.security                             mw.security
     metabase.server.middleware.session                              mw.session
     metabase.server.middleware.ssl                                  mw.ssl
-    metabase.server.middleware.util                                 mw.util
+    metabase.server.request.util                                    req.util
     metabase.server.protocols                                       server.protocols
     metabase.shared.util                                            shared.u
     metabase.shared.util.currency                                   currency
