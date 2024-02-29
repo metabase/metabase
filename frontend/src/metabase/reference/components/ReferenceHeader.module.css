@@ -3,7 +3,9 @@
 }
 
 .headerBody {
-  composes: flex flex-full text-dark text-bold from "style";
+  composes: text-dark text-bold from "style";
+  flex: 1 0 auto;
+  display: flex;
   overflow: hidden;
   align-items: center;
   border-color: var(--color-border);
@@ -36,7 +38,8 @@
 }
 
 .headerSchema {
-  composes: text-light absolute from "style";
+  composes: text-light from "style";
+  position: absolute;
   top: -10px;
   font-size: 12px;
 }

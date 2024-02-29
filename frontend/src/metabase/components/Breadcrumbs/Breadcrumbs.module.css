@@ -47,7 +47,7 @@
 }
 
 .sidebarBreadcrumbs {
-  composes: flex from "style";
+  display: flex;
   composes: breadcrumbs;
   color: var(--sidebar-breadcrumbs-color);
   max-width: 100%;
