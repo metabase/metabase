@@ -36,9 +36,9 @@ export type StructuredQuerySectionOption = {
   icon: string;
   target: StructuredParameterDimensionTarget;
   isForeign: boolean;
-  query?: Lib.Query;
-  stageIndex?: number;
-  column?: Lib.ColumnMetadata;
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
 };
 
 function buildStructuredQuerySectionOptions(
