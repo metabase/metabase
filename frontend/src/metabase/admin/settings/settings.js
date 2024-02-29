@@ -5,7 +5,6 @@ import {
   combineReducers,
 } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   SettingsApi,
   EmailApi,
@@ -18,11 +17,8 @@ import {
 // ACTION TYPES AND ACTION CREATORS
 
 export const reloadSettings = () => async (dispatch, getState) => {
-  const isAdmin = getUserIsAdmin(getState());
-
   await Promise.all([
-    // Calling `GET /api/setting` returns `403` for non-admins
-    isAdmin ? dispatch(refreshSettingsList()) : Promise.resolve(),
+    dispatch(refreshSettingsList()),
     dispatch(refreshSiteSettings()),
   ]);
 };
