@@ -416,7 +416,7 @@ function DatasetEditor(props) {
       ? Lib.databaseID(dataset.query()) == null
       : dataset.legacyQuery().isEmpty();
 
-    if (isEmpty) {
+    if (isEmpty || fields.length === 0) {
       return false;
     }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);
