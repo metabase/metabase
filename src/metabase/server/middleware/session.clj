@@ -121,7 +121,7 @@
   (merge
    {:same-site (session-cookie-samesite)
     ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
-    ;; up breaking things
+    ;; up breaking things issue: https://github.com/metabase/metabase/issues/39346
     :path      "/" #_(site-path)}
    ;; If the authentication request request was made over HTTPS (hopefully always except for
    ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
