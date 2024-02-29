@@ -1080,9 +1080,7 @@ export const getIsSaveEnabled = createSelector(
     return (
       isEditable &&
       question.canRun() &&
-      (!isNative ||
-        question.isSaved() ||
-        (!isResultDirty && resultsMetadata != null))
+      (!isNative || (!isResultDirty && resultsMetadata != null))
     );
   },
 );
@@ -1117,11 +1115,7 @@ export const getDisabledSaveReason = createSelector(
         );
       }
 
-      if (
-        !question.isSaved() &&
-        question.canRun() &&
-        (isResultDirty || !resultsMetadata)
-      ) {
+      if (question.canRun() && (isResultDirty || !resultsMetadata)) {
         return t`You need to run the query to save this question`;
       }
     }
