@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import type { ReactElement } from "react";
 import { hideAll } from "tippy.js";
 
@@ -14,16 +13,6 @@ interface TableSubset {
   id: number | string;
   description?: string;
 }
-
-const propTypes = {
-  table: PropTypes.shape({
-    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    description: PropTypes.string,
-  }).isRequired,
-  children: PropTypes.node,
-  placement: PropTypes.string,
-  offset: PropTypes.arrayOf(PropTypes.number),
-};
 
 type Props = {
   table: TableSubset;
@@ -78,5 +67,3 @@ export function TableInfoPopover({
     children
   );
 }
-
-TableInfoPopover.propTypes = propTypes;
