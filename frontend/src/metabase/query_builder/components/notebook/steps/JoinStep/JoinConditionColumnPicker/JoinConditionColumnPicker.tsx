@@ -1,4 +1,3 @@
-import type { RefObject } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -6,9 +5,7 @@ import type {
   QueryColumnPickerProps,
   ColumnListItem,
 } from "metabase/common/components/QueryColumnPicker";
-import type { TippyPopoverWithTriggerRef } from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { Text } from "metabase/ui";
+import { Popover, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
@@ -22,12 +19,11 @@ interface JoinConditionColumnPickerProps
   column?: Lib.ColumnMetadata;
   table?: Lib.Joinable;
   label?: string;
-  isInitiallyVisible?: boolean;
+  isOpened: boolean;
   readOnly?: boolean;
-  popoverRef?: RefObject<TippyPopoverWithTriggerRef>;
+  onOpenedChange: (isOpened: boolean) => void;
+  "data-testid"?: string;
 }
-
-export type JoinConditionColumnPickerRef = TippyPopoverWithTriggerRef;
 
 export function JoinConditionColumnPicker({
   query,
@@ -36,11 +32,14 @@ export function JoinConditionColumnPicker({
   table,
   label,
   isNewCondition,
-  isInitiallyVisible = false,
+  isOpened,
   readOnly = false,
-  popoverRef,
+  onOpenedChange,
+  getColumnGroups,
   ...props
-}: JoinConditionColumnPickerProps) {
+}: Omit<JoinConditionColumnPickerProps, "columnGroups"> & {
+  getColumnGroups: () => Lib.ColumnGroup[];
+}) {
   const columnInfo = column ? Lib.displayInfo(query, stageIndex, column) : null;
 
   const tableName = useMemo(() => {
@@ -64,31 +63,29 @@ export function JoinConditionColumnPicker({
   );
 
   return (
-    <TippyPopoverWithTrigger
-      disabled={readOnly}
-      isInitiallyVisible={isInitiallyVisible}
-      renderTrigger={({ visible, onClick }) => (
+    <Popover opened={isOpened} onChange={onOpenedChange}>
+      <Popover.Target>
         <ColumnNotebookCellItem
-          isOpen={visible}
+          isOpen={isOpened}
           tableName={tableName}
           columnName={columnInfo?.displayName}
           label={label}
           readOnly={readOnly}
-          onClick={onClick}
+          onClick={() => onOpenedChange(!isOpened)}
         />
-      )}
-      popoverContent={({ closePopover }) => (
+      </Popover.Target>
+      <Popover.Dropdown>
         <StyledQueryColumnPicker
           {...props}
           query={query}
+          columnGroups={isOpened ? getColumnGroups() : []}
           stageIndex={stageIndex}
           hasTemporalBucketing
           checkIsColumnSelected={checkColumnSelected}
-          onClose={closePopover}
+          onClose={() => onOpenedChange(false)}
         />
-      )}
-      popoverRef={popoverRef}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 

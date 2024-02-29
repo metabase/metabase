@@ -985,7 +985,7 @@
                               :aggregation_index 0}]]
         (mt/with-temp [Card {card-id :id} {:display         :table
                                            :dataset_query   q
-                                           :dataset         true
+                                           :type            :model
                                            :result_metadata result-metadata}
                        Pulse {pulse-id :id :as p} {:name "Test Pulse"}
                        PulseCard _ {:pulse_id pulse-id

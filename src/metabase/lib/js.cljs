@@ -901,7 +901,7 @@
     :metadata/card  #js {:databaseId (:database a-query)
                          :tableId (str "card__" (:id metadata))
                          :cardId (:id metadata)
-                         :isModel (:dataset metadata)}
+                         :isModel (= (keyword (:type metadata)) :model)}
     (do
       (log/warn "Cannot provide picker-info for" (:lib/type metadata))
       nil)))

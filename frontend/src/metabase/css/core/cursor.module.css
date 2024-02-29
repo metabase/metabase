@@ -1,0 +1,14 @@
+:global(.cursor-pointer),
+.cursor-pointer {
+  cursor: pointer;
+}
+
+:global(.cursor-grab),
+.cursor-grab {
+  cursor: grab;
+}
+
+:global(.cursor-default),
+.cursor-default {
+  cursor: default;
+}

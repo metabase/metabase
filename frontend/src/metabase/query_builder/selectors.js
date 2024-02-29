@@ -17,6 +17,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
 import Timelines from "metabase/entities/timelines";
 
 import { getAlerts } from "metabase/alert/selectors";
@@ -608,7 +609,6 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     getIsDirty,
     isResultsMetadataDirty,
     getQuestion,
-    getIsSavedQuestionChanged,
     getOriginalQuestion,
     getUiControls,
   ],
@@ -617,7 +617,6 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     isDirty,
     isMetadataDirty,
     question,
-    isSavedQuestionChanged,
     originalQuestion,
     uiControls,
   ) => {
@@ -632,12 +631,15 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
 
     if (isNative) {
       const isNewQuestion = !originalQuestion;
+      const rawQuery = Lib.rawNativeQuery(question.query());
 
       if (isNewQuestion) {
-        return !question.legacyQuery().isEmpty();
+        return rawQuery.length > 0;
       }
 
-      return isSavedQuestionChanged;
+      const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());
+      const hasQueryChanged = rawQuery !== rawOriginalQuery;
+      return hasQueryChanged;
     }
 
     const isOriginalQuestionNative =
@@ -1052,6 +1054,12 @@ export const getSubmittableQuestion = (state, question) => {
   const series = getTransformedSeries(state);
   const resultsMetadata = getResultsMetadata(state);
   const isResultDirty = getIsResultDirty(state);
+
+  if (question.type() === "model" && resultsMetadata) {
+    resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
+      resultsMetadata.columns,
+    );
+  }
 
   let submittableQuestion = question;
 

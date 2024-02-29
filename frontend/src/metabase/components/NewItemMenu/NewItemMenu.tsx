@@ -8,7 +8,9 @@ import CreateCollectionModal from "metabase/collections/containers/CreateCollect
 import EntityMenu from "metabase/components/EntityMenu";
 import Modal from "metabase/components/Modal";
 import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getSetting } from "metabase/selectors/settings";
 import type { CollectionId, WritebackAction } from "metabase-types/api";
 
 type ModalType = "new-action" | "new-dashboard" | "new-collection";
@@ -53,6 +55,10 @@ const NewItemMenu = ({
 }: NewItemMenuProps) => {
   const [modal, setModal] = useState<ModalType>();
 
+  const lastUsedDatabaseId = useSelector(state =>
+    getSetting(state, "last-used-native-database-id"),
+  );
+
   const handleModalClose = useCallback(() => {
     setModal(undefined);
   }, []);
@@ -91,6 +97,7 @@ const NewItemMenu = ({
           creationType: "native_question",
           collectionId,
           cardType: "question",
+          databaseId: lastUsedDatabaseId || undefined,
         }),
         onClose: onCloseNavbar,
       });
@@ -138,6 +145,7 @@ const NewItemMenu = ({
     collectionId,
     onCloseNavbar,
     hasDatabaseWithJsonEngine,
+    lastUsedDatabaseId,
   ]);
 
   return (

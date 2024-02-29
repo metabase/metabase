@@ -6,7 +6,7 @@ import { appendSlug } from "./utils";
 
 function getBookmarkBasePath(bookmark: Bookmark) {
   if (bookmark.type === "card") {
-    return bookmark.dataset ? "model" : "question";
+    return bookmark.card_type;
   }
   return bookmark.type;
 }

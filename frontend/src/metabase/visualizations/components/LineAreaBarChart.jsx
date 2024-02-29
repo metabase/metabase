@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import "./LineAreaBarChart.css";
+import "./LineAreaBarChart.module.css";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";

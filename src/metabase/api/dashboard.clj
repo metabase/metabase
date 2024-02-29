@@ -290,7 +290,7 @@
     (reduce (fn [m [id card]]
               (assoc-in m
                         [:copied id]
-                        (if (:dataset card)
+                        (if (= (:type card) :model)
                           card
                           (card/create-card!
                            (cond-> (assoc card :collection_id dest-coll-id)
