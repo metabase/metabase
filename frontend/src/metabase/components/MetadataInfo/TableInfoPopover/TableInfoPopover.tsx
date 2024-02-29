@@ -7,7 +7,7 @@ import TableInfo from "../TableInfo";
 export type TableInfoPopoverProps = Omit<PopoverProps, "content"> & {
   table: {
     id: string | number;
-    description?: string;
+    description?: string | null;
   };
 };
 
