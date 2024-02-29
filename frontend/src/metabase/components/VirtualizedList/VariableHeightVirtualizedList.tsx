@@ -1,4 +1,4 @@
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 import { useRef } from "react";
 
 import { Box } from "metabase/ui";
@@ -52,7 +52,7 @@ export function VirtualizedList({
             width: "100%",
           }}
         >
-          {items.map(virtualRow => (
+          {items.map((virtualRow: VirtualItem) => (
             <div
               key={virtualRow.key}
               data-index={virtualRow.index}

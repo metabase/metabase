@@ -5,13 +5,20 @@ import { VirtualizedList } from "./VariableHeightVirtualizedList";
 describe("VariableHeightVirtualizedList", () => {
   beforeEach(() => {
     // jsdom doesn't have getBoundingClientRect, so we need to mock it
-    window.Element.prototype.getBoundingClientRect = jest
-      .fn()
+    jest
+      .spyOn(window.Element.prototype, "getBoundingClientRect")
       .mockImplementation(() => {
-        // this will make all elements, the container and the children have the same size
-        // so it will render the first 2 children (one beyond visible)
-        // and not render the last 2 children
-        return { height: 100, width: 200 };
+        return {
+          height: 100,
+          width: 200,
+          top: 0,
+          left: 0,
+          bottom: 0,
+          right: 0,
+          x: 0,
+          y: 0,
+          toJSON: () => {},
+        };
       });
   });
 
