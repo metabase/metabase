@@ -20,4 +20,5 @@ export const Content = styled.div<{ isClickable: boolean }>`
   align-items: center;
   padding: 0.5rem;
   cursor: ${props => (props.isClickable ? "pointer" : "default")};
+  min-width: 0;
 `;

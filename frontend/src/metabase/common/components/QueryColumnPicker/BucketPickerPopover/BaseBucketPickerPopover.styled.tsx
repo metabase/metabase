@@ -12,11 +12,18 @@ export const TriggerIcon = styled(Icon)`
   margin-left: 0.5rem;
 `;
 
+export const ChevronDown = styled(Icon)`
+  flex: 0 0 auto;
+  width: 8px;
+  margin-left: 0.25em;
+  color: currentColor;
+  opacity: 0.75;
+`;
+
 export const TriggerButton = styled.button<{ hasDot?: boolean }>`
   display: flex;
   align-items: center;
   min-width: 0;
-  max-width: 50%;
 
   color: ${alpha(color("white"), 0.5)};
   font-weight: 700;
@@ -26,6 +33,10 @@ export const TriggerButton = styled.button<{ hasDot?: boolean }>`
     ${props => (props.hasDot ? "transparent" : alpha(color("border"), 0.1))};
 
   cursor: pointer;
+
+  ${ChevronDown} {
+    color: currentColor;
+  }
 
   &:hover {
     color: ${color("white")};
@@ -39,13 +50,6 @@ export const Dot = styled.div`
   background: currentColor;
   border-radius: 100%;
   opacity: 0.25;
-`;
-
-export const ChevronDown = styled(Icon)`
-  flex: 0 0 auto;
-  width: 8px;
-  margin-left: 0.25em;
-  opacity: 0.75;
 `;
 
 export const SelectListItem = styled(BaseSelectList.Item)<{
