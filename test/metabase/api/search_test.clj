@@ -101,7 +101,7 @@
                                             :collection (assoc default-collection :id true :name true)
                                             :updated_at false))
 
-(def ^:private action-model-params {:name "ActionModel", :dataset true})
+(def ^:private action-model-params {:name "ActionModel", :type :model})
 
 (defn- default-search-results []
   (sorted-results
@@ -159,7 +159,7 @@
                    QueryAction _qa (query-action action-id)
                    Card        card           (coll-data-map "card %s card" coll)
                    Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
-                                                     :dataset true)
+                                                     :type :model)
                    Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
                    Metric      metric         (assoc (data-map "metric %s metric")
                                                      :table_id (mt/id :checkins))
@@ -324,7 +324,7 @@
       (testing "return a subset of model for verified filter"
         (t2.with-temp/with-temp
           [:model/Card       {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
-           :model/Card       {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}
+           :model/Card       {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}
            :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
           (testing "when has both :content-verification features"
             (mt/with-premium-features #{:content-verification}
@@ -558,7 +558,7 @@
   (testing "Should search indexed entities"
     (mt/dataset airports
       (let [query (mt/mbql-query municipality)]
-        (mt/with-temp [Card model {:dataset       true
+        (mt/with-temp [Card model {:type          :model
                                    :dataset_query query}]
           (let [model-index (model-index/create
                              (mt/$ids {:model-id   (:id model)
@@ -594,10 +594,10 @@
     (let [query (mt/mbql-query municipality)]
       (mt/with-temp [Collection collection           {:name     "test"
                                                       :location "/"}
-                     Card       root-model           {:dataset       true
+                     Card       root-model           {:type         :model
                                                       :dataset_query query
                                                       :collection_id nil}
-                     Card       sub-collection-model {:dataset true
+                     Card       sub-collection-model {:type          :model
                                                       :dataset_query query
                                                       :collection_id (u/id collection)}]
         (let [model-index-1 (model-index/create
@@ -680,13 +680,13 @@
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
-      (mt/with-temp [Card        action-model {:dataset true}
+      (mt/with-temp [Card        action-model {:type :model}
                      Action      {action-id :id} (archived {:name     "action test action 2"
                                                             :type     :query
                                                             :model_id (u/the-id action-model)})
                      QueryAction _ (query-action action-id)
                      Card        _ (archived {:name "card test card 2"})
-                     Card        _ (archived {:name "dataset test dataset" :dataset true})
+                     Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard 2"})
                      Collection  _ (archived {:name "collection test collection 2"})
                      Metric      _ (archived {:name     "metric test metric 2"
@@ -707,7 +707,7 @@
                                               :model_id (u/the-id action-model)})
                      Card        _ (archived {:name "card test card"})
                      Card        _ (archived {:name "card that will not appear in results"})
-                     Card        _ (archived {:name "dataset test dataset" :dataset true})
+                     Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
                      Metric      _ (archived {:name     "metric test metric"
@@ -724,7 +724,7 @@
                                                             :model_id (u/the-id action-model)})
                      QueryAction _ (query-action action-id)
                      Card        _ (archived {:name "card test card"})
-                     Card        _ (archived {:name "dataset test dataset" :dataset true})
+                     Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
                      Metric      _ (archived {:name     "metric test metric"
@@ -998,7 +998,7 @@
                                               :collection_id (:id (collection/user->personal-collection user-id))}
          :model/Card      {card-id-3 :id}    {:name (format "%s Card 3" search-term) :creator_id user-id :archived true}
          :model/Card      {card-id-4 :id}    {:name (format "%s Card 4" search-term) :creator_id user-id-2}
-         :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :dataset true :creator_id user-id}
+         :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :type :model :creator_id user-id}
          :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
          :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
 
@@ -1079,8 +1079,8 @@
     (mt/with-temp
       [:model/Card       {rasta-card-id :id}   {:name search-term}
        :model/Card       {lucky-card-id :id}   {:name search-term}
-       :model/Card       {rasta-model-id :id}  {:name search-term :dataset true}
-       :model/Card       {lucky-model-id :id}  {:name search-term :dataset true}
+       :model/Card       {rasta-model-id :id}  {:name search-term :type :model}
+       :model/Card       {lucky-model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {rasta-dash-id :id}   {:name search-term}
        :model/Dashboard  {lucky-dash-id :id}   {:name search-term}
        :model/Metric     {rasta-metric-id :id} {:name search-term :table_id (mt/id :checkins)}
@@ -1144,8 +1144,8 @@
     (t2.with-temp/with-temp
       [:model/Card {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
        :model/Card {_card-id :id}   {:name (format "%s Normal Card" search-term)}
-       :model/Card {_model-id :id}  {:name (format "%s Normal Model" search-term) :dataset true}
-       :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}]
+       :model/Card {_model-id :id}  {:name (format "%s Normal Model" search-term) :type :model}
+       :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}]
       (mt/with-verified-cards [v-card-id v-model-id]
         (mt/with-premium-features #{:content-verification}
           (testing "Able to filter only verified items"
@@ -1222,7 +1222,7 @@
   (let [search-term "last-edited-at-filtering"]
     (t2.with-temp/with-temp
       [:model/Card       {card-id :id}   {:name search-term}
-       :model/Card       {model-id :id}  {:name search-term :dataset true}
+       :model/Card       {model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {dash-id :id}   {:name search-term}
        :model/Metric     {metric-id :id} {:name search-term :table_id (mt/id :checkins)}
        :model/Action     {action-id :id} {:name       search-term
@@ -1303,10 +1303,10 @@
          :model/Card       {card-old :id}     {:name       search-term
                                                :created_at two-years-ago}
          :model/Card       {model-new :id}    {:name       search-term
-                                               :dataset    true
+                                               :type       :model
                                                :created_at new}
          :model/Card       {model-old :id}    {:name       search-term
-                                               :dataset    true
+                                               :type       :model
                                                :created_at two-years-ago}
          :model/Action     {action-new :id}   {:name       search-term
                                                :model_id   model-new
@@ -1374,9 +1374,9 @@
          :model/Card       {card-new :id}      {:name       search-term}
          :model/Card       {card-old :id}      {:name       search-term}
          :model/Card       {model-new :id}     {:name       search-term
-                                                :dataset    true}
+                                                :type       :model}
          :model/Card       {model-old :id}     {:name       search-term
-                                                :dataset    true}
+                                                :type       :model}
          :model/Metric     {metric-new :id}    {:name       search-term :table_id (mt/id :checkins)}
          :model/Metric     {metric-old :id}    {:name       search-term :table_id (mt/id :checkins)}
          :model/Action     {action-new :id}    {:name       search-term
@@ -1468,11 +1468,11 @@
       [:model/Card {mbql-card :id}             {:name search-term}
        :model/Card {native-card-in-name :id}   {:name search-term}
        :model/Card {native-card-in-query :id}  {:dataset_query (mt/native-query {:query (format "select %s" search-term)})}
-       :model/Card {mbql-model :id}            {:name search-term :dataset true}
-       :model/Card {native-model-in-name :id}  {:name search-term :dataset true}
-       :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :dataset true}]
+       :model/Card {mbql-model :id}            {:name search-term :type :model}
+       :model/Card {native-model-in-name :id}  {:name search-term :type :model}
+       :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :type :model}]
       (mt/with-actions
-        [_                         {:dataset true :dataset_query (mt/mbql-query venues)}
+        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
          {http-action :action-id}  {:type :http :name search-term}
          {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
         (testing "by default do not search for native content"
@@ -1582,8 +1582,8 @@
        :model/Card       {card-rasta :id}          {:collection_id rasta-personal-coll-id :name search-term}
        :model/Card       {card-sub-rasta :id}      {:collection_id coll-sub-rasta :name search-term}
        :model/Collection {coll-sub-crowberto :id}  {:location (format "/%d/" crowberto-personal-coll-id) :name search-term}
-       :model/Card       {model-crowberto :id}     {:collection_id crowberto-personal-coll-id :dataset true :name search-term}
-       :model/Card       {model-sub-crowberto :id} {:collection_id coll-sub-crowberto :dataset true :name search-term}]
+       :model/Card       {model-crowberto :id}     {:collection_id crowberto-personal-coll-id :type :model :name search-term}
+       :model/Card       {model-sub-crowberto :id} {:collection_id coll-sub-crowberto :type :model :name search-term}]
 
       (testing "admin only"
         (is (= #{["dataset" model-crowberto]
@@ -1623,7 +1623,7 @@
                    Card        _ (archived {:name "card test card is returned"})
                    Card        _ (archived {:name "card test card"
                                             :collection_id collection-id})
-                   Card        _ (archived {:name "dataset test dataset" :dataset true
+                   Card        _ (archived {:name "dataset test dataset" :type :model
                                             :collection_id collection-id})
                    Dashboard   _ (archived {:name          "dashboard test dashboard"
                                             :collection_id collection-id})]

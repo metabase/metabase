@@ -121,7 +121,13 @@ class SettingsEditor extends Component {
         }
       }
 
-      this.saveStatusRef.current.setSaved();
+      if (setting.key === "application-colors") {
+        this.saveStatusRef.current.setSaved(
+          t`Changes saved. Please refresh the page to see them`,
+        );
+      } else {
+        this.saveStatusRef.current.setSaved();
+      }
 
       const value = prepareAnalyticsValue(setting);
 

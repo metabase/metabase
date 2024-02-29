@@ -7,7 +7,7 @@ import { canIndexField } from "./utils";
 
 const createModelWithResultMetadata = (fields: FieldAPI[]) => {
   return new Question(
-    createMockCard({ result_metadata: fields, dataset: true }),
+    createMockCard({ result_metadata: fields, type: "model" }),
   );
 };
 

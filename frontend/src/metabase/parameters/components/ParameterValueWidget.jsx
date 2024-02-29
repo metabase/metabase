@@ -30,9 +30,13 @@ import {
   isDateParameter,
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
-import { areParameterValuesIdentical } from "metabase-lib/parameters/utils/parameter-values";
+import {
+  areParameterValuesIdentical,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/parameters/utils/parameter-values";
 
-import S from "./ParameterValueWidget.css";
+import S from "./ParameterValueWidget.module.css";
+import { ParameterValueWidgetTrigger } from "./ParameterValueWidgetTrigger";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 
 class ParameterValueWidget extends Component {
@@ -55,6 +59,7 @@ class ParameterValueWidget extends Component {
     // Should be used for dashboards and native questions in the parameter bar,
     // Don't use in settings sidebars.
     enableRequiredBehavior: PropTypes.bool,
+    mimicMantine: PropTypes.bool,
   };
 
   state = { isFocused: false };
@@ -142,7 +147,7 @@ class ParameterValueWidget extends Component {
     ) {
       return (
         <WidgetStatusIcon
-          name="refresh"
+          name="time_history"
           onClick={() => setParameterValueToDefault(this.props.parameter.id)}
         />
       );
@@ -150,20 +155,25 @@ class ParameterValueWidget extends Component {
   }
 
   render() {
-    const { parameter, value, isEditing, placeholder, className } = this.props;
+    const {
+      parameter,
+      value,
+      isEditing,
+      placeholder,
+      className,
+      mimicMantine,
+    } = this.props;
     const { isFocused } = this.state;
-    const hasValue = value != null;
+    const hasValue = !parameterHasNoDisplayValue(value);
     const noPopover = hasNoPopover(parameter);
     const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
     if (noPopover) {
       return (
-        <div
-          ref={this.trigger}
-          className={cx(S.parameter, S.noPopover, className, {
-            [S.selected]: hasValue,
-          })}
+        <ParameterValueWidgetTrigger
+          className={cx(S.noPopover, className)}
+          hasValue={hasValue}
         >
           {showTypeIcon && (
             <Icon
@@ -179,7 +189,7 @@ class ParameterValueWidget extends Component {
             onPopoverClose={this.onPopoverClose}
           />
           {this.getActionIcon()}
-        </div>
+        </ParameterValueWidgetTrigger>
       );
     }
 
@@ -194,13 +204,12 @@ class ParameterValueWidget extends Component {
         ref={this.valuePopover}
         targetOffsetX={16}
         triggerElement={
-          <div
+          <ParameterValueWidgetTrigger
             ref={this.trigger}
-            className={cx(S.parameter, className, {
-              [S.selected]: hasValue,
-            })}
-            role="button"
-            aria-label={placeholder}
+            hasValue={hasValue}
+            className={className}
+            ariaLabel={placeholder}
+            mimicMantine={mimicMantine}
           >
             {showTypeIcon && (
               <Icon
@@ -217,7 +226,7 @@ class ParameterValueWidget extends Component {
               />
             </div>
             {this.getActionIcon()}
-          </div>
+          </ParameterValueWidgetTrigger>
         }
         target={this.getTargetRef}
         // make sure the full date picker will expand to fit the dual calendars

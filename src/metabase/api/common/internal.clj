@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [colorize.core :as colorize]
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
@@ -109,9 +108,13 @@
     (str "\n\n### PARAMS:\n\n"
          (str/join "\n\n"
                    (for [[param-symb schema] param-symb->schema]
-                     (format "*  **`%s`** %s"
-                             (param-name param-symb schema)
-                             (dox-for-schema schema route-str)))))))
+                     (let [p-name (param-name param-symb schema)
+                           p-desc (dox-for-schema schema route-str)]
+                       (format "-  **`%s`** %s"
+                               p-name
+                               (if (str/blank? p-desc) ; some params lack descriptions
+                                 p-desc
+                                 (u/add-period p-desc)))))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
@@ -245,8 +248,8 @@
                            fix      (str "Either add `" (pr-str schema-type) "` to "
                                          "metabase.api.common.internal/->matching-regex or "
                                          "metabase.api.common.internal/no-regex-schemas.")]
-                       (log/warn (colorize/red overview))
-                       (log/warn (colorize/green fix))))))
+                       (log/warn (u/colorize :red overview))
+                       (log/warn (u/colorize :green fix))))))
                (remove nil?))]
       (cond
         ;; multiple hits -> tack them onto the original route shape.

@@ -1179,7 +1179,7 @@
         [(assoc collection :is_personal (is-personal-collection-or-descendant-of-one? collection))]
         ;; root collection is nil
         [collection]))
-    (let [personal-collection-ids (t2/select-pks-set :model/collection :personal_owner_id [:not= nil])
+    (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
           location-is-personal    (fn [location]
                                     (boolean
                                      (and (string? location)

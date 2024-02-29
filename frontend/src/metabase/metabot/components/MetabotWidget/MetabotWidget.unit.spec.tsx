@@ -43,7 +43,7 @@ const TEST_USER_2 = createMockUser({
 
 const TEST_MODEL = createMockCard({
   name: "Orders",
-  dataset: true,
+  type: "model",
   dataset_query: {
     database: TEST_DATABASE.id,
     type: "query",

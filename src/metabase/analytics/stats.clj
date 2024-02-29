@@ -16,21 +16,9 @@
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            DashboardCard
-            Database
-            Field
-            Metric
-            PermissionsGroup
-            Pulse
-            PulseCard
-            PulseChannel
-            QueryCache
-            Segment
-            Table
-            User]]
+    :refer [Card Collection Dashboard DashboardCard Database Field Metric
+            PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
+            Table User]]
    [metabase.models.humanization :as humanization]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]

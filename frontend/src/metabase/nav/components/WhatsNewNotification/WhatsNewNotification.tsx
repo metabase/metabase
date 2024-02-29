@@ -2,10 +2,10 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
+import { useSetting } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbedded } from "metabase/selectors/embed";
-import { getSetting } from "metabase/selectors/settings";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import { Icon, Anchor, Flex, Paper, Stack, Text } from "metabase/ui";
 
@@ -16,11 +16,9 @@ import { getLatestEligibleReleaseNotes } from "./utils";
 export function WhatsNewNotification() {
   const dispatch = useDispatch();
   const isEmbedded = useSelector(getIsEmbedded);
-  const versionInfo = useSelector(state => getSetting(state, "version-info"));
-  const currentVersion = useSelector(state => getSetting(state, "version"));
-  const lastAcknowledgedVersion = useSelector(state =>
-    getSetting(state, "last-acknowledged-version"),
-  );
+  const versionInfo = useSetting("version-info");
+  const currentVersion = useSetting("version");
+  const lastAcknowledgedVersion = useSetting("last-acknowledged-version");
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
 
   const url: string | undefined = useMemo(() => {

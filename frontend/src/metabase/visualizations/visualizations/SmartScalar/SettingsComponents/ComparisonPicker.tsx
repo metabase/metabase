@@ -32,6 +32,7 @@ interface ComparisonPickerProps {
   value: SmartScalarComparison;
   options: ComparisonMenuOption[];
   comparableColumns: DatasetColumn[];
+  isInitiallyOpen?: boolean;
   isDraggable?: boolean;
   isRemovable?: boolean;
   onChange: (setting: SmartScalarComparison) => void;
@@ -42,12 +43,13 @@ export function ComparisonPicker({
   onChange,
   onRemove,
   options,
+  isInitiallyOpen = false,
   isDraggable = false,
   isRemovable = true,
   comparableColumns,
   value: selectedValue,
 }: ComparisonPickerProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(isInitiallyOpen);
   const [tab, setTab] = useState<Tab>(
     getTabForComparisonType(selectedValue.type),
   );

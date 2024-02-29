@@ -37,7 +37,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
       setFilter("Text or Category", filter);
@@ -64,7 +64,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     );
   });
 
-  it(`should work when set as the default filter and when that filter is removed (metabase#20493)`, () => {
+  it("should work when set as the default filter and when that filter is removed (metabase#20493)", () => {
     setFilter("Text or Category", "Is");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -150,6 +150,7 @@ export const tokenFeatures = [
   "content_verification",
   "embedding",
   "hosting",
+  "llm_autodescription",
   "official_collections",
   "sandboxes",
   "sso_google",
@@ -204,8 +205,9 @@ export interface Settings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": number | null;
   "deprecation-notice-version"?: string;
-  "dismissed-custom-dashboard-toast"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
+  "dismissed-custom-dashboard-toast"?: boolean;
+  "ee-openai-api-key"?: string;
   "email-configured?": boolean;
   "embedding-app-origin": string;
   "embedding-secret-key"?: string;
@@ -283,6 +285,7 @@ export interface Settings {
   "user-visibility": string | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
+  "last-used-native-database-id"?: number | null;
 }
 
 export type SettingKey = keyof Settings;

@@ -236,7 +236,6 @@ if (hasPremiumFeature("whitelabel")) {
 
   PLUGIN_APP_INIT_FUCTIONS.push(() => {
     updateColors();
-    MetabaseSettings.on("application-colors", updateColors);
   });
 
   PLUGIN_LOGO_ICON_COMPONENTS.push(LogoIcon);

@@ -29,7 +29,7 @@ describe("search > recently viewed", () => {
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry
 
-    cy.intercept(`/api/activity/recent_views`).as("recent");
+    cy.intercept("/api/activity/recent_views").as("recent");
     cy.visit("/");
     cy.wait("@recent");
 

@@ -262,7 +262,7 @@ function computeTrendAnotherColumn({ comparison, currentMetricData, series }) {
 function computeTrendStaticValue({ comparison }) {
   const { value, label } = comparison;
   return {
-    comparisonDescStr: t`vs. ${label.toLowerCase()}`,
+    comparisonDescStr: t`vs. ${label}`,
     comparisonValue: value,
   };
 }

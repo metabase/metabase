@@ -146,7 +146,8 @@
         "frontend/lint/**/*",
         "*.stories.*",
         "e2e/**/*",
-        "**/tests/*"
+        "**/tests/*",
+        "release/**/*"
       ],
       "rules": {
         "no-unconditional-metabase-links-render": "off",

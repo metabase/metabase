@@ -40,7 +40,7 @@ describe("issue 25990", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", `/api/dataset`).as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should allow to filter by a column in a joined table (metabase#25990)", () => {

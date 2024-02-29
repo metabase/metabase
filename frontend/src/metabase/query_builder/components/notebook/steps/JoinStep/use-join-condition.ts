@@ -24,7 +24,7 @@ export function useJoinCondition(
   );
   const [operator, _setOperator] = useState<
     Lib.JoinConditionOperator | undefined
-  >(getInitialConditionOperator(query, stageIndex, condition));
+  >(getInitialConditionOperator(query, stageIndex, conditionParts));
 
   useEffect(() => {
     if (condition && previousCondition !== condition) {
@@ -42,30 +42,6 @@ export function useJoinCondition(
   const operators = useMemo(
     () => Lib.joinConditionOperators(query, stageIndex),
     [query, stageIndex],
-  );
-
-  const lhsColumns = useMemo(
-    () =>
-      Lib.joinConditionLHSColumns(
-        query,
-        stageIndex,
-        join || table,
-        lhsColumn,
-        rhsColumn,
-      ),
-    [query, stageIndex, join, table, lhsColumn, rhsColumn],
-  );
-
-  const rhsColumns = useMemo(
-    () =>
-      Lib.joinConditionRHSColumns(
-        query,
-        stageIndex,
-        join || table,
-        lhsColumn,
-        rhsColumn,
-      ),
-    [query, stageIndex, join, table, lhsColumn, rhsColumn],
   );
 
   const setOperator = (operator: Lib.JoinConditionOperator) => {
@@ -151,8 +127,6 @@ export function useJoinCondition(
     rhsColumn,
     operator,
     operators,
-    lhsColumns,
-    rhsColumns,
     setOperator,
     setLHSColumn,
     setRHSColumn,
@@ -180,19 +154,16 @@ function getDefaultJoinOperator(
 function getInitialConditionOperator(
   query: Lib.Query,
   stageIndex: number,
-  condition?: Lib.JoinCondition,
+  conditionParts: Lib.JoinConditionParts | undefined,
 ) {
-  if (condition) {
-    const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
-      query,
-      stageIndex,
-      condition,
-    );
+  if (conditionParts) {
+    const { operator, lhsColumn, rhsColumn } = conditionParts;
+
     return (
       operator ||
       getDefaultJoinOperator(query, stageIndex, lhsColumn, rhsColumn)
     );
-  } else {
-    return getDefaultJoinOperator(query, stageIndex, undefined, undefined);
   }
+
+  return getDefaultJoinOperator(query, stageIndex, undefined, undefined);
 }

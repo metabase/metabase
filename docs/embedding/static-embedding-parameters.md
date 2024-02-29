@@ -15,6 +15,7 @@ Parameters are pieces of information that are passed between Metabase and your w
 Parameters can be signed or unsigned.
 
 **Signed parameters**, such as filter names and values, must be added to your server code.
+
 - [Editable parameters](#adding-a-filter-widget-to-a-static-embed)
 - [Locked parameters](#restricting-data-in-a-static-embed)
 
@@ -37,7 +38,9 @@ You can use **editable parameters** to add [filter widgets](https://www.metabase
 
 Editable parameters are responsible for passing filter values from the embedded filter widget (displayed on the iframe) through to the filters on your original dashboard or SQL question (in your Metabase).
 
-Note that [locked parameters](#restricting-data-in-a-static-embed) may limit the values that show up in an embedded filter widget.
+### You can't disable parameters when the original question or dashboard requires a value
+
+If the filter on a dashboard or question is set to [Always require a value](../dashboards/filters.md#requiring-a-filter), you won't be able to disable the parameter when embedding.
 
 ## Populating an embedded filter widget with a default value
 
@@ -115,6 +118,8 @@ You can use locked parameters to display filtered data based on attributes captu
 
 Locked parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. Locked parameters may also limit the values that are shown in your [editable filter widgets](#adding-a-filter-widget-to-a-static-embed).
 
+If you just want to require a value for the parameter, you could set the filter as editable and configure the underlying question or dashboard to [always require a value](../dashboards/filters.md#requiring-a-filter).
+
 ## Updating a locked parameter
 
 Things to keep in mind if you need to make changes to your locked parameters.
@@ -135,7 +140,7 @@ The values for the locked parameter in your server code should match your filter
 
 If your [locked parameter](#restricting-data-in-a-static-embed) is linked to a dashboard filter that's in turn linked to a SQL question, you'll only be able to choose a _single_ value for your locked parameter.
 
-For example, let's say you have a dashboard filter called "Breakfast" with the values "Scrambled eggs", "Bacon", and "Waffles". If the "Breakfast" filter is linked to _any_ SQL questions on the dashboard, you'll only be able to choose _one_ of "Scrambled eggs", "Bacon", or "Waffles" for a locked parameter linked to the "Breakfast" filter.
+For example, let's say you have a dashboard filter called "Breakfast" with the values "Hash browns", "Muffin", and "Waffles". If the "Breakfast" filter is linked to _any_ SQL questions on the dashboard, you'll only be able to choose _one_ of the options for a locked parameter linked to the "Breakfast" filter.
 
 ## Customizing the appearance of a static embed
 
@@ -149,17 +154,15 @@ your_embedding_url#theme=night&bordered=false&titled=true
 
 You can preview appearance settings from your question or dashboard's [embedded appearance settings](./static-embedding.md#customizing-the-appearance-of-static-embeds).
 
-| Parameter name         | Possible values                               |
-| ---------------------- | --------------------------------------------- |
-| bordered               | true, false                                   |
-| titled                 | true, false                                   |
-| theme                  | null, transparent, night                      |
-| font¹                  | [font name](../configuring-metabase/fonts.md) |
-| hide_download_button²  | true, false                                   |
+| Parameter name                            | Possible values                               |
+| ----------------------------------------- | --------------------------------------------- |
+| `bordered`                                | true, false                                   |
+| `titled`                                  | true, false                                   |
+| `theme`                                   | null, transparent, night                      |
+| `font`\*                                  | [font name](../configuring-metabase/fonts.md) |
+| `hide_download_button`\* (questions only) | true, false                                   |
 
-¹ Available on [paid plans](https://www.metabase.com/pricing).
-
-² Available on [paid plans](https://www.metabase.com/pricing) and works on questions only (not dashboards).
+\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 ## Maximum request size
 

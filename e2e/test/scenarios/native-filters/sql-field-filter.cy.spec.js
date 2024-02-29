@@ -93,7 +93,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.get("input").type("10{enter}");
         cy.findByText("Update filter").click();
       });
-      filterWidget().icon("refresh").click();
+      filterWidget().icon("time_history").click();
       filterWidget().findByTestId("field-set-content").should("have.text", "8");
     });
   });
@@ -149,8 +149,8 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "Longitude",
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("None").should("be.visible");
+      cy.findByTestId("filter-widget-type-select").click();
+      popover().findByText("None").should("be.visible");
 
       filterWidget().should("not.exist");
     });
@@ -229,8 +229,10 @@ describe("scenarios > filters > sql filters > field filter", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter widget type")
         .parent()
-        .findAllByTestId("select-button")
-        .contains("String");
+        .findByTestId("filter-widget-type-select")
+        .click();
+
+      popover().contains("String");
     });
   });
 });

@@ -11,7 +11,7 @@ describe("issue 22517", () => {
     cy.createNativeQuestion(
       {
         name: "22517",
-        native: { query: `select * from orders` },
+        native: { query: "select * from orders" },
         type: "model",
       },
       { visitQuestion: true },

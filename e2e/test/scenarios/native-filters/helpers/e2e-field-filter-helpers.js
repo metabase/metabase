@@ -10,7 +10,7 @@ import { filterWidget, popover } from "e2e/support/helpers";
 export function setWidgetType(type) {
   cy.findByText("Filter widget type")
     .parent()
-    .findByTestId("select-button")
+    .findByTestId("filter-widget-type-select")
     .click();
 
   popover().findByText(type).click();

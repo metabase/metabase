@@ -7,7 +7,7 @@ import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
 import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
@@ -145,21 +145,16 @@ export function DetailsTable({
     if (!columnSettings) {
       return { cols: columns, row: zoomedRow };
     }
-    const columnIndexes = columnSettings
-      .filter(columnSetting => columnSetting?.enabled)
-      .map(columnSetting =>
-        findColumnIndexForColumnSetting(columns, columnSetting),
-      )
-      .filter(
-        (columnIndex: number) =>
-          columnIndex >= 0 && columnIndex < columns.length,
-      );
+    const columnIndexes = findColumnIndexesForColumnSettings(
+      columns,
+      columnSettings.filter(({ enabled }) => enabled),
+    ).filter((columnIndex: number) => columnIndex >= 0);
 
     return {
-      cols: columnIndexes.map((i: number) => columns[i]) as any[],
+      cols: columnIndexes.map((i: number) => columns[i]),
       row: columnIndexes.map((i: number) => zoomedRow[i]),
     };
-  }, [columns, zoomedRow, columnSettings]);
+  }, [columnSettings, columns, zoomedRow]);
 
   if (!cols?.length) {
     return (

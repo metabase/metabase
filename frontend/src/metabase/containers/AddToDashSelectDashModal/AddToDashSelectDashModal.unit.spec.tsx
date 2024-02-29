@@ -3,10 +3,10 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
-  setupMostRecentlyViewedDashboard,
-  setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
   setupDashboardCollectionItemsEndpoint,
+  setupMostRecentlyViewedDashboard,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -98,20 +98,20 @@ const COLLECTIONS = [
 const CARD_IN_ROOT_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
-  dataset: true,
+  type: "model",
 });
 
 const CARD_IN_PUBLIC_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
-  dataset: true,
+  type: "model",
   collection: COLLECTION,
 });
 
 const CARD_IN_PERSONAL_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Card in a personal collection",
-  dataset: true,
+  type: "model",
   collection: PERSONAL_COLLECTION,
 });
 

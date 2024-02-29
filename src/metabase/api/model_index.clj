@@ -58,7 +58,7 @@
   [model_id]
   {model_id ms/PositiveInt}
   (let [model (api/read-check Card model_id)]
-    (when-not (:dataset model)
+    (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" model_id)
                       {:model_id model_id
                        :status-code 400})))
@@ -69,7 +69,7 @@
   {id ms/PositiveInt}
   (let [model-index (api/check-404 (t2/select-one ModelIndex :id id))
         model       (api/read-check Card (:model_id model-index))]
-    (when-not (:dataset model)
+    (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" id)
                       {:model_id id
                        :status-code 400})))

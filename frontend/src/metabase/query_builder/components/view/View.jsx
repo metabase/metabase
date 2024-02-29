@@ -1,11 +1,14 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { Motion, spring } from "react-motion";
+import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
+import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
 import * as Lib from "metabase-lib";
@@ -14,7 +17,7 @@ import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryModals from "../QueryModals";
 import QueryVisualization from "../QueryVisualization";
-import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
+import { SavedQuestionIntroModal } from "../SavedQuestionIntroModal";
 import DataReference from "../dataref/DataReference";
 import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
@@ -228,7 +231,9 @@ class View extends Component {
       isDirty,
       isNativeEditorOpen,
       setParameterValueToDefault,
+      onSetDatabaseId,
     } = this.props;
+
     const legacyQuery = question.legacyQuery();
 
     // Normally, when users open native models,
@@ -239,7 +244,7 @@ class View extends Component {
     // This check makes it hide the editor in this particular case
     // More details: https://github.com/metabase/metabase/pull/20161
     const { isEditable } = Lib.queryDisplayInfo(question.query());
-    if (question.isDataset() && !isEditable) {
+    if (question.type() === "model" && !isEditable) {
       return null;
     }
 
@@ -253,6 +258,7 @@ class View extends Component {
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
           setParameterValueToDefault={setParameterValueToDefault}
+          onSetDatabaseId={onSetDatabaseId}
         />
       </NativeQueryEditorContainer>
     );
@@ -330,7 +336,9 @@ class View extends Component {
       );
     }
 
-    if (question.isDataset() && queryBuilderMode === "dataset") {
+    const isModel = question.type() === "model";
+
+    if (isModel && queryBuilderMode === "dataset") {
       return (
         <>
           <DatasetEditor {...this.props} />
@@ -350,7 +358,10 @@ class View extends Component {
 
     return (
       <div className="full-height">
-        <QueryBuilderViewRoot className="QueryBuilder">
+        <QueryBuilderViewRoot
+          className="QueryBuilder"
+          data-testid="query-builder-root"
+        >
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {!isNative && (
@@ -376,6 +387,7 @@ class View extends Component {
         {isShowingNewbModal && (
           <SavedQuestionIntroModal
             question={question}
+            isShowingNewbModal={isShowingNewbModal}
             onClose={() => closeQbNewbModal()}
           />
         )}
@@ -394,4 +406,11 @@ class View extends Component {
   }
 }
 
-export default ExplicitSize({ refreshMode: "debounceLeading" })(View);
+const mapDispatchToProps = dispatch => ({
+  onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
+});
+
+export default _.compose(
+  ExplicitSize({ refreshMode: "debounceLeading" }),
+  connect(null, mapDispatchToProps),
+)(View);

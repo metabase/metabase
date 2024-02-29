@@ -16,6 +16,7 @@ import {
   setupSMTP,
   sidebar,
   popover,
+  undoToast,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -228,8 +229,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         // General smoke test
         cy.get("#setting-site-name").clear().type("new name").blur();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Saved");
+        undoToast().findByText("Changes saved").should("be.visible");
       });
     });
   });
