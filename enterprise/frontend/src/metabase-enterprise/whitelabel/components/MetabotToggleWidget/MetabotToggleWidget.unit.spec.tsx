@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import MetabotToggleWidget from "./MetabotToggleWidget";
+import { MetabotToggleWidget } from "./MetabotToggleWidget";
 
 const TOGGLE_LABEL = "Display welcome message on the homepage";
 

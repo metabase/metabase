@@ -28,6 +28,7 @@ import { HelpLinkSettings } from "./components/HelpLinkSettings";
 import { ImageUpload } from "./components/ImageUpload";
 import { LandingPageWidget } from "./components/LandingPageWidget";
 import LogoIcon from "./components/LogoIcon";
+import { MetabotToggleWidget } from "./components/MetabotToggleWidget";
 import {
   MetabaseLinksToggleDescription,
   SwitchWidget,
@@ -183,18 +184,6 @@ if (hasPremiumFeature("whitelabel")) {
             },
           },
           {
-            key: "show-metabot",
-            tab: "conceal-metabase",
-            description: null,
-            type: "boolean",
-            defaultValue: true,
-            widget: SwitchWidget,
-            props: {
-              label: t`Show metabot and greeting on the homepage`,
-              mt: "-1rem",
-            },
-          },
-          {
             key: "help-link",
             tab: "conceal-metabase",
             display_name: t`Help Link in the Settings menu`,
@@ -210,6 +199,23 @@ if (hasPremiumFeature("whitelabel")) {
             ),
             widget: HelpLinkSettings,
             defaultValue: "metabase",
+          },
+          {
+            key: "-metabase-illustration",
+            tab: "conceal-metabase",
+            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+            display_name: t`Metabase illustrations`,
+            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+            description: t`Customize each of the illustrations in Metabase`,
+            type: "hidden",
+          },
+          {
+            key: "show-metabot",
+            tab: "conceal-metabase",
+            description: <Text fw="bold">{t`Metabot greeting`}</Text>,
+            type: "boolean",
+            defaultValue: true,
+            widget: MetabotToggleWidget,
           },
         ],
       },
