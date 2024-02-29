@@ -1,7 +1,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import testAcrossTimezones from "__support__/timezones";
-import { computeTimeseriesDataInverval } from "metabase/visualizations/lib/timeseries";
+import { computeTimeseriesDataInverval } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 
 // jsdom doesn't support layout methods like getBBox, so we need to mock it.
 window.SVGElement.prototype.getBBox = () => ({

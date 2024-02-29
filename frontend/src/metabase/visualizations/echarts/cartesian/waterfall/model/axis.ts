@@ -8,10 +8,23 @@ import type {
 import type {
   ChartDataset,
   DimensionModel,
+  TimeSeriesXAxisModel,
+  WaterfallXAxisModel,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getXAxisModel } from "../../model/axis";
+import { isTimeSeriesAxis } from "../../model/guards";
+import { tryGetDate } from "../../utils/timeseries";
+
+const getTotalTimeSeriesXValue = ({
+  interval,
+  range,
+}: TimeSeriesXAxisModel) => {
+  const [, lastDate] = range;
+  const { unit, count } = interval;
+  return lastDate.add(count, unit).toISOString();
+};
 
 export const getWaterfallXAxisModel = (
   dimensionModel: DimensionModel,
@@ -19,7 +32,7 @@ export const getWaterfallXAxisModel = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-) => {
+): WaterfallXAxisModel => {
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
@@ -28,53 +41,51 @@ export const getWaterfallXAxisModel = (
     renderingContext,
   );
 
-  const waterfallFormatter = (value: RowValue) => {
-    const hasTotal = !!settings["waterfall.show_total"];
-    const lastXValue = dataset[dataset.length - 1][X_AXIS_DATA_KEY];
-    const areBooleanXValues =
-      typeof lastXValue === "boolean" || typeof value === "boolean";
+  const hasTotal = !!settings["waterfall.show_total"];
+  let totalXValue = hasTotal ? t`Total` : undefined;
 
+  let tickRenderPredicate: XAxisModel["tickRenderPredicate"];
+
+  if (isTimeSeriesAxis(xAxisModel) && hasTotal) {
+    const timeSeriesTotalXValue = getTotalTimeSeriesXValue(xAxisModel);
+
+    totalXValue = timeSeriesTotalXValue;
+    tickRenderPredicate = (tickValueRaw: string | number) => {
+      const tickValue = dayjs(tickValueRaw);
+      if (
+        tickValue.isSame(
+          tryGetDate(timeSeriesTotalXValue),
+          xAxisModel.effectiveTickUnit,
+        )
+      ) {
+        return true;
+      }
+
+      return xAxisModel.tickRenderPredicate?.(tickValueRaw) ?? true;
+    };
+  }
+
+  const waterfallFormatter = (valueRaw: RowValue) => {
     if (
-      !hasTotal ||
-      settings["graph.x_axis.scale"] !== "timeseries" ||
-      areBooleanXValues ||
-      !xAxisModel.timeSeriesInterval
+      typeof totalXValue === "undefined" ||
+      !isTimeSeriesAxis(xAxisModel) ||
+      typeof valueRaw === "boolean"
     ) {
-      return xAxisModel.formatter(value);
+      return xAxisModel.formatter(valueRaw);
     }
-    const dateValue = dayjs(value);
+    const dateValue = dayjs(valueRaw);
 
-    const totalBucketStart = dayjs(lastXValue).add(
-      xAxisModel.timeSeriesInterval?.count,
-      // @ts-expect-error daysjs
-      xAxisModel.timeSeriesInterval?.interval,
-    );
-
-    if (
-      dateValue.isSame(
-        totalBucketStart,
-        // @ts-expect-error daysjs
-        xAxisModel.timeSeriesInterval?.interval,
-      )
-    ) {
+    if (dateValue.isSame(totalXValue, xAxisModel.interval.unit)) {
       return t`Total`;
-    } else if (
-      dateValue.isAfter(
-        totalBucketStart,
-        // @ts-expect-error daysjs
-        xAxisModel.timeSeriesInterval?.interval,
-      )
-    ) {
-      // If ECharts decides that tick after the Total value should be rendered
-      // we intentionally hide it
-      return " ";
     }
 
-    return xAxisModel.formatter(value);
+    return xAxisModel.formatter(valueRaw);
   };
 
   return {
     ...xAxisModel,
     formatter: waterfallFormatter,
+    totalXValue,
+    tickRenderPredicate,
   };
 };
