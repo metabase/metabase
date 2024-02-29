@@ -23,7 +23,7 @@ interface SortableColumnFunctions<T> {
   onAdd?: (item: T) => void;
   onEnable?: (item: T) => void;
   getItemName: (item: T) => string;
-  getItemExtra: (item: T) => ReactNode;
+  getItemExtra?: (item: T) => ReactNode;
   onColorChange?: (item: T, color: string) => void;
 }
 
