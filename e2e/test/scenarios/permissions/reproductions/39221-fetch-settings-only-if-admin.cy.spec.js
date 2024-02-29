@@ -15,21 +15,15 @@ describe("issue 39221", () => {
     });
   });
 
-  it("admins should fetch site settings", () => {
-    startNewNativeQuestion();
-    popover().findByText("Sample Database").click();
-    cy.wait("@sessionProperties");
+  ["admin", "normal"].forEach(user => {
+    it(`${user.toUpperCase()}: updating user-specific setting should not result in fetching all site settings (metabase#39221)`, () => {
+      user === "normal" ? cy.signInAsNormalUser() : null;
 
-    cy.get("@siteSettings").should("not.be.null");
-  });
+      startNewNativeQuestion();
+      popover().findByText("Sample Database").click();
+      cy.wait("@sessionProperties");
 
-  it("non-admins should not fetch site settings (metabase#39221)", () => {
-    cy.signInAsNormalUser();
-
-    startNewNativeQuestion();
-    popover().findByText("Sample Database").click();
-    cy.wait("@sessionProperties");
-
-    cy.get("@siteSettings").should("be.null");
+      cy.get("@siteSettings").should("be.null");
+    });
   });
 });
