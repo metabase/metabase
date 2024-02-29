@@ -7,7 +7,7 @@
    [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -44,10 +44,10 @@
   (testing "AUTHENTICATION"
     ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
     ;; authentication test on every single individual endpoint
-    (is (= (get mw.util/response-unauthentic :body)
+    (is (= (get req.util/response-unauthentic :body)
            (client/client :get 401 "metric")))
 
-    (is (= (get mw.util/response-unauthentic :body)
+    (is (= (get req.util/response-unauthentic :body)
            (client/client :put 401 "metric/13")))))
 
 (deftest create-test

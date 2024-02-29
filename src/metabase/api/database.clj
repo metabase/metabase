@@ -448,7 +448,11 @@
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (t2/hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+               (t2/hydrate [:tables [:fields
+                                     :has_field_values
+                                     [:target :has_field_values]]
+                            :segments
+                            :metrics]))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -491,7 +495,7 @@
    include_editable_data_model [:maybe ms/BooleanString]
    remove_inactive             [:maybe ms/BooleanString]}
   (db-metadata id
-               (Boolean/parseBoolean include_hidden)
+               (Boolean/parseBoolean     include_hidden)
                (Boolean/parseBoolean include_editable_data_model)
                (Boolean/parseBoolean remove_inactive)))
 
