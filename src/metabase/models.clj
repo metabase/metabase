@@ -15,6 +15,7 @@
    [metabase.models.database :as database]
    [metabase.models.dimension :as dimension]
    [metabase.models.field :as field]
+   [metabase.models.field-usage :as field-usage]
    [metabase.models.field-values :as field-values]
    [metabase.models.login-history :as login-history]
    [metabase.models.metric :as metric]
@@ -68,6 +69,7 @@
          database/keep-me
          dimension/keep-me
          field/keep-me
+         field-usage/keep-me
          field-values/keep-me
          a-perm-revision/keep-me
          login-history/keep-me

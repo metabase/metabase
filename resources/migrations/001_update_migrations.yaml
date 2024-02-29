@@ -5823,6 +5823,60 @@ databaseChangeLog:
         - sql:
             sql: >-
               DROP VIEW IF EXISTS v_content;
+  - changeSet:
+      id: v50.2024-02-29T15:06:43
+      author: tsmacdonald
+      comment: Add the field_usage join table
+      changes:
+        - createTable:
+            tableName: field_usage
+            remarks: Fields used by a card
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_card_id
+              - column:
+                  name: field_id
+                  remarks: referenced field
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_field_id
+              - column:
+                  remarks: Name of the used column, as it is in the query (i.e., the old name)
+                  name: column_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Name of the used table, as it is in the query (i.e., the old name)
+                  name: table_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Is this field usage still valid?
+                  name: is_current
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

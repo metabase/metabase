@@ -153,6 +153,7 @@
     honeysql.helpers                                                hh
     honeysql.types                                                  htypes
     java-time                                                       t
+    macaw.core                                                      mac
     malli.core                                                      mc
     malli.error                                                     me
     malli.experimental                                              mx
@@ -291,6 +292,7 @@
     metabase.models.setting.cache                                   setting.cache
     metabase.models.timeline                                        timeline
     metabase.models.timeline-event                                  timeline-event
+    metabase.native-query-analyzer                                  query-analyzer
     metabase.plugins.initialize                                     plugins.init
     metabase.public-settings                                        public-settings
     metabase.public-settings.premium-features                       premium-features

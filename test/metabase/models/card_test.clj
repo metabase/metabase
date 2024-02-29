@@ -705,6 +705,32 @@
           (is (= (map :display_name metadata)
                  (map :display_name (:result_metadata extracted)))))))))
 
+;;; ------------------------------------------ Native Query Analysis  ---------------------------------------
+
+(deftest field-usage-test
+  (let [table-id (mt/id :orders)
+        tax-id   (t2/select-one-pk :model/Field :table_id table-id :name "TAX")
+        total-id (t2/select-one-pk :model/Field :table_id table-id :name "TOTAL" )]
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query {:query "SELECT NOT_TAX, TOTAL FROM orders"}}]
+      (is (empty? (t2/select :model/FieldUsage :card_id card-id)))
+      (testing "Updating a query ensure we have corresponding FieldUsages for it"
+        (try
+          ;; Update the query to trigger a re-parse
+          (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query "SELECT TAX, TOTAL FROM orders"})})
+          (let [default-field-usage {:card_id    card-id
+                                     :table_name "ORDERS"
+                                     :is_current true}]
+            (is (= #{(merge default-field-usage {:field_id    tax-id
+                                                 :column_name "TAX"})
+                     (merge default-field-usage {:field_id    total-id
+                                                 :column_name "TOTAL"})}
+                   (t2/select-fn-set #(select-keys % [:card_id :field_id :column_name :table_name :is_current]) :model/FieldUsage :card_id card-id))))
+          (finally
+            (t2/delete! :model/FieldUsage :card_id card-id))))
+      (testing "Updating a query with bogus columns does not create FieldUsages"
+        (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query "SELECT DOES, NOT_EXIST FROM orders"})})
+        (is (empty? (t2/select :model/FieldUsage :card_id card-id)))))))
+
 ;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------
 
 (deftest ^:parallel upgrade-to-v2-db-test

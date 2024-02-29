@@ -31,6 +31,7 @@
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
+   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features
@@ -521,6 +522,10 @@
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at
+      ;; TODO: this should go in after-update once camsaul/toucan2#145 is fixed
+      ;; It's at the end for now so that all the before-update validations have a chance to run
+      ;; TODO the Second: No reason this couldn't be async, especially once it's in the after-update
+      (u/prog1 (query-analyzer/update-field-usages-for-card! <>))
       (dissoc :id)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
