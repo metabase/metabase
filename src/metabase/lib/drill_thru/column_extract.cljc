@@ -7,8 +7,6 @@
     [metabase.lib.metadata.calculation :as lib.metadata.calculation]
     [metabase.lib.schema :as lib.schema]
     [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-    [metabase.lib.schema.temporal-bucketing
-     :as lib.schema.temporal-bucketing]
     [metabase.lib.temporal-bucket :as lib.temporal-bucket]
     [metabase.lib.types.isa :as lib.types.isa]
     [metabase.util.malli :as mu]))
@@ -27,7 +25,7 @@
 
 (def column-extract-units
   "TBD"
-  [:year :quarter :month :week-of-year :day-of-year :day-of-week])
+  [:hour-of-day :day-of-month :day-of-week :month :quarter :year])
 
 (mu/defn column-extract-types :- [:sequential ::lib.schema.drill-thru/drill-thru.column-extract-type]
   "TBD"
@@ -45,11 +43,7 @@
 
 (defmethod lib.metadata.calculation/display-info-method :drill-thru/column-extract-type
   [_query _stage-number {:keys [unit]}]
-  (let [display-name (lib.temporal-bucket/describe-temporal-unit unit)]
-    {:display-name (case unit
-                     :week-of-year (str display-name " (1-52)")
-                     :day-of-year (str display-name " (1-356)")
-                     display-name)}))
+  {:display-name (lib.temporal-bucket/describe-temporal-unit unit)})
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-extract
   [_query _stage-number {:keys [query stage-number column]} & [{:keys [unit]}]]
@@ -58,9 +52,9 @@
     stage-number
     (lib.temporal-bucket/describe-temporal-unit unit)
     (case unit
-      :year (lib.expression/get-year column)
-      :quarter (lib.expression/get-quarter column)
+      :hour-of-day (lib.expression/get-hour column)
+      :day-of-month (lib.expression/get-day column)
+      :day-of-week (lib.expression/get-day-of-week column)
       :month (lib.expression/get-month column)
-      :week-of-year (lib.expression/get-week-of-year column)
-      :day-of-year (lib.expression/get-day-of-year column)
-      :day-of-week (lib.expression/get-day-of-week column))))
+      :quarter (lib.expression/get-quarter column)
+      :year (lib.expression/get-year column))))
