@@ -227,9 +227,26 @@
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
 
+(deftest test-ssh-tunnel-connection
+  ;; sqlite cannot be behind a tunnel, h2 is tested below, unsure why others fail
+  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :h2 :vertica :presto :bigquery-cloud-sdk :redshift :athena)
+    (testing "ssh tunnel is established"
+      (let [tunnel-db-details (assoc (:details (mt/db))
+                                     :tunnel-enabled true
+                                     :tunnel-host "localhost"
+                                     :tunnel-auth-option "password"
+                                     :tunnel-port ssh-test/ssh-mock-server-with-password-port
+                                     :tunnel-user ssh-test/ssh-username
+                                     :tunnel-pass ssh-test/ssh-password)]
+        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+          (mt/with-db tunneled-db
+            (sync/sync-database! (mt/db))
+            (is (= [["Polo Lounge"]]
+                   (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))))))))
+
 (deftest test-ssh-tunnel-reconnection
-  ;; sqlite cannot be behind a tunnel, h2 is tested below, unsure why vertica and presto fail
-  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :h2 :vertica :presto)
+  ;; for now, run against Postgres, although in theory it could run against many different kinds
+  (mt/test-drivers #{:postgres :mysql}
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true
@@ -250,6 +267,51 @@
               (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))
               ;; check the query again; the tunnel should have been reestablished
               (check-row))))))))
+
+(deftest test-ssh-tunnel-connection-h2
+  (testing (str "We need a customized version of this test for H2. It will bring up a new H2 TCP server, pointing to "
+                "an existing DB file (stored in source control, called 'tiny-db', with a single table called 'my_tbl' "
+                "and a GUEST user with password 'guest'); it will then use an SSH tunnel over localhost to connect to "
+                "this H2 server's TCP port to execute native queries against that table.")
+    (mt/with-driver :h2
+      (testing "ssh tunnel is established"
+        (let [h2-port (tu/find-free-port)
+              server  (init-h2-tcp-server h2-port)
+              ;; Use ACCESS_MODE_DATA=r to avoid updating the DB file
+              uri     (format "tcp://localhost:%d/./test_resources/ssh/tiny-db;USER=GUEST;PASSWORD=guest;ACCESS_MODE_DATA=r" h2-port)
+              h2-db   {:port               h2-port
+                       :host               "localhost"
+                       :db                 uri
+                       :tunnel-enabled     true
+                       :tunnel-host        "localhost"
+                       :tunnel-auth-option "password"
+                       :tunnel-port        ssh-test/ssh-mock-server-with-password-port
+                       :tunnel-user        ssh-test/ssh-username
+                       :tunnel-pass        ssh-test/ssh-password}]
+          (try
+            (t2.with-temp/with-temp [Database db {:engine :h2, :details h2-db}]
+              (mt/with-db db
+                (sync/sync-database! db)
+                (is (= {:cols [{:base_type    :type/Text
+                                  :effective_type :type/Text
+                                  :display_name "COL1"
+                                  :field_ref    [:field "COL1" {:base-type :type/Text}]
+                                  :name         "COL1"
+                                  :source       :native}
+                                 {:base_type    :type/Decimal
+                                  :effective_type :type/Decimal
+                                  :display_name "COL2"
+                                  :field_ref    [:field "COL2" {:base-type :type/Decimal}]
+                                  :name         "COL2"
+                                  :source       :native}]
+                          :rows [["First Row"  19.10M]
+                                 ["Second Row" 100.40M]
+                                 ["Third Row"  91884.10M]]}
+                         (-> {:query "SELECT col1, col2 FROM my_tbl;"}
+                             (mt/native-query)
+                             (qp/process-query)
+                             (qp.test-util/rows-and-cols))))))
+            (finally (.stop ^Server server))))))))
 
 (deftest test-ssh-tunnel-reconnection-h2
   (testing (str "We need a customized version of this test for H2. It will bring up a new H2 TCP server, pointing to "
