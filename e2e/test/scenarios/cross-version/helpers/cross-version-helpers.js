@@ -170,6 +170,8 @@ export function dismissOkToPlayWithQuestionsModal({ majorVersion }) {
 
 export function fillAreaUnderLineChart({ majorVersion }) {
   if (majorVersion < filledAreaIconRemovedVersion) {
-    cy.findByLabelText("area icon").click();
+    cy.findByTestId("sidebar-left").within(element => {
+      cy.icon("area").click();
+    });
   }
 }
