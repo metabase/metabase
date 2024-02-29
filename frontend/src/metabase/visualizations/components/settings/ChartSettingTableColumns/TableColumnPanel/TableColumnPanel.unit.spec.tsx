@@ -103,10 +103,6 @@ describe("DatasetColumnSelector", () => {
     expect(items[1]).toHaveTextContent("ID");
     expect(items[2]).toHaveTextContent("Tax");
     expect(items[3]).toHaveTextContent("Subtotal");
-
-    items.forEach(item =>
-      expect(within(item).getByLabelText("More info")).toBeInTheDocument(),
-    );
   });
 
   it("should display columns without matching setting", () => {
@@ -139,6 +135,15 @@ describe("DatasetColumnSelector", () => {
     const newSettings = [...COLUMN_SETTINGS];
     newSettings[columnIndex] = { ...newSettings[columnIndex], enabled: false };
     expect(onChange).toHaveBeenCalledWith(newSettings);
+  });
+
+  it("should display the info icon on each column", () => {
+    setup();
+    const items = screen.getAllByTestId(/draggable-item/);
+
+    items.forEach(item =>
+      expect(within(item).getByLabelText("More info")).toBeInTheDocument(),
+    );
   });
 });
 
