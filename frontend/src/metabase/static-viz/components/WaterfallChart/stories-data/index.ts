@@ -26,6 +26,7 @@ import powYScaleMixed from "./pow-y-scale-mixed.json";
 import nativeTimeSeriesQuarter from "./native-time-series-quarter.json";
 import nativeTimeSeriesWithGaps from "./native-time-series-with-gaps.json";
 import structuredTimeSeriesYear from "./structured-time-series-year.json";
+import timeXScaleTwoBarsWithoutTotal from "./time-x-scale-two-bars-without-total.json";
 
 export const data = {
   timeseriesXScale,
@@ -56,4 +57,5 @@ export const data = {
   nativeTimeSeriesQuarter,
   nativeTimeSeriesWithGaps,
   structuredTimeSeriesYear,
+  timeXScaleTwoBarsWithoutTotal,
 };

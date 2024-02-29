@@ -223,3 +223,10 @@ StructuredTimeSeriesYear.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const TimeXScaleTwoBarsWithoutTotal = Template.bind({});
+TimeXScaleTwoBarsWithoutTotal.args = {
+  rawSeries: data.timeXScaleTwoBarsWithoutTotal as any,
+  dashcardSettings: {},
+  renderingContext,
+};

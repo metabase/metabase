@@ -1,19 +1,16 @@
 import { t } from "ttag";
-import dayjs from "dayjs";
 import type { RowValue } from "metabase-types/api";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   DataKey,
   ChartDataset,
-  XAxisModel,
   Datum,
+  WaterfallXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   applySquareRootScaling,
   replaceValues,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
-
 import {
   WATERFALL_DATA_KEYS,
   WATERFALL_END_2_KEY,
@@ -26,7 +23,6 @@ import {
 import { isNotNull, isNumber } from "metabase/lib/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
-import { tryGetDate } from "../../utils/time-series";
 
 const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
   let hasZeros = false;
@@ -61,30 +57,11 @@ const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
   );
 };
 
-const getTotalTimeSeriesXValue = (
-  lastDimensionValue: RowValue,
-  { timeSeriesInterval }: XAxisModel,
-) => {
-  const lastDimensionValueDate = tryGetDate(lastDimensionValue);
-  if (lastDimensionValueDate == null || timeSeriesInterval == null) {
-    return null;
-  }
-  const { interval, count } = timeSeriesInterval;
-
-  if (!isAbsoluteDateTimeUnit(interval)) {
-    return null;
-  }
-
-  // @ts-expect-error fix quarter types in dayjs
-  return dayjs(lastDimensionValue).add(count, interval).toISOString();
-};
-
 export const getWaterfallDataset = (
   dataset: ChartDataset,
   originalSeriesKey: DataKey,
   settings: ComputedVisualizationSettings,
-  xAxisModel: XAxisModel,
-  hasTotal: boolean,
+  xAxisModel: WaterfallXAxisModel,
 ): ChartDataset => {
   let transformedDataset: ChartDataset = [];
 
@@ -110,25 +87,13 @@ export const getWaterfallDataset = (
     transformedDataset.push(waterfallDatum);
   });
 
-  if (hasTotal && transformedDataset.length > 0) {
+  if (
+    typeof xAxisModel.totalXValue !== "undefined" &&
+    transformedDataset.length > 0
+  ) {
     const lastDatum = transformedDataset[transformedDataset.length - 1];
-    const lastValue = lastDatum.end;
-
-    let totalXValue;
-    if (
-      settings["graph.x_axis.scale"] === "timeseries" &&
-      (typeof lastValue === "string" || typeof lastValue === "number")
-    ) {
-      totalXValue = getTotalTimeSeriesXValue(
-        lastDatum[X_AXIS_DATA_KEY],
-        xAxisModel,
-      );
-    } else {
-      totalXValue = t`Total`;
-    }
-
     transformedDataset.push({
-      [X_AXIS_DATA_KEY]: totalXValue,
+      [X_AXIS_DATA_KEY]: xAxisModel.totalXValue,
       [WATERFALL_END_KEY]: lastDatum[WATERFALL_END_KEY],
       [WATERFALL_VALUE_KEY]: lastDatum[WATERFALL_END_KEY],
       [WATERFALL_START_KEY]: 0,

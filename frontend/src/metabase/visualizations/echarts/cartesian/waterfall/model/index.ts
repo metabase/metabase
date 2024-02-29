@@ -58,7 +58,6 @@ export const getWaterfallChartModel = (
     seriesModel.dataKey,
     settings,
     xAxisModel,
-    !!settings["waterfall.show_total"],
   );
 
   // Pass waterfall dataset and keys for correct extent computation

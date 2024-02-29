@@ -10,6 +10,7 @@ import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesi
 import type { RenderingContext } from "metabase/visualizations/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { ChartMeasurements } from "../chart-measurements/types";
+import { isTimeSeriesAxis } from "../model/guards";
 
 const getDayWidth = (
   range: DateRange,
@@ -133,11 +134,11 @@ export const getTimelineEventsModel = (
   timelineEvents: TimelineEvent[],
   renderingContext: RenderingContext,
 ) => {
-  if (timelineEvents.length === 0) {
+  if (timelineEvents.length === 0 || !isTimeSeriesAxis(chartModel.xAxisModel)) {
     return null;
   }
 
-  const dimensionRange = chartModel.xAxisModel.timeSeriesInterval?.range;
+  const dimensionRange = chartModel.xAxisModel.range;
   if (!dimensionRange) {
     return null;
   }
@@ -154,7 +155,7 @@ export const getTimelineEventsModel = (
 
   const timelineEventsByUnitStart = groupEventsByUnitStart(
     timelineEvents,
-    chartModel.xAxisModel.timeSeriesInterval?.interval,
+    chartModel.xAxisModel.interval.unit,
   );
 
   const dayWidth = getDayWidth(dimensionRange, chartMeasurements);

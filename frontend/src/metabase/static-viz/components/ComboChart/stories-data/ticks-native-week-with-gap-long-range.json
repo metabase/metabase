@@ -1,0 +1,292 @@
+[
+  {
+    "card": {
+      "displayIsLocked": true,
+      "collection_id": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": null,
+      "bookmark": false,
+      "database_id": 1,
+      "pk_ref": null,
+      "table_schema": null,
+      "collection_authority_level": null,
+      "creator_id": 1,
+      "updated_at": "2024-02-21T03:57:41.152855Z",
+      "moderated_status": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select '2024-02-05' x, 10 y\nunion all select '2024-02-12', 10\nunion all select '2024-02-19', 10\nunion all select '2024-06-03', 10"
+        }
+      },
+      "model_index_id": null,
+      "model_id": null,
+      "last_editor_id": 1,
+      "model_name": null,
+      "last_edited_at": "2024-02-20T18:30:23.218473Z",
+      "table_description": null,
+      "dashboardcard_count": 0,
+      "context": null,
+      "scores": [
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "pinned"
+        },
+        {
+          "weight": 2,
+          "score": 0,
+          "name": "bookmarked"
+        },
+        {
+          "weight": 1.5,
+          "score": 0.9944444444444444,
+          "name": "recency"
+        },
+        {
+          "weight": 1,
+          "score": 0,
+          "name": "dashboard"
+        },
+        {
+          "weight": 0.5,
+          "score": 0.5,
+          "name": "model"
+        },
+        {
+          "score": 1,
+          "name": "text-consecutivity",
+          "weight": 4,
+          "match": "x-axis: native weekly",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@3b5745af",
+          "column": "name"
+        },
+        {
+          "score": 1,
+          "name": "text-total-occurrences",
+          "weight": 4,
+          "match": "x-axis: native weekly",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@604e7000",
+          "column": "name"
+        },
+        {
+          "score": 0.3333333333333333,
+          "name": "text-fullness",
+          "weight": 2,
+          "match": "x-axis: native weekly",
+          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@2a40c731",
+          "column": "name"
+        }
+      ],
+      "initial_sync_status": null,
+      "table_name": null,
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "created_at": "2024-02-20T18:30:23.206471Z",
+      "model": "card",
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 10
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 10,
+                "q1": 10,
+                "q3": 10,
+                "max": 10,
+                "sd": 0,
+                "avg": 10
+              }
+            }
+          }
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "enable_embedding": false,
+      "query_type": "native",
+      "last_query_start": "2024-02-21T03:57:41.131189Z",
+      "dashboard_count": 0,
+      "type": "question",
+      "average_query_time": 45.34782608695652,
+      "moderation_reviews": [],
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "parameter_mappings": [],
+      "display": "bar",
+      "entity_id": "FTeHbkv5U8nNV2M77a_wL",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"]
+      },
+      "metabase_version": "v0.48.1-SNAPSHOT (c375960)",
+      "parameters": [],
+      "dataset": false,
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "original_card_id": 30
+    },
+    "data": {
+      "rows": [
+        ["2024-02-05", 10],
+        ["2024-02-12", 10],
+        ["2024-02-19", 10],
+        ["2024-06-03", 10]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "Y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "query": "select '2024-02-05' x, 10 y\nunion all select '2024-02-12', 10\nunion all select '2024-02-19', 10\nunion all select '2024-06-03', 10",
+        "params": null
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 10
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y",
+            "field_ref": [
+              "field",
+              "Y",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 10,
+                  "q1": 10,
+                  "q3": 10,
+                  "max": 10,
+                  "sd": 0,
+                  "avg": 10
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

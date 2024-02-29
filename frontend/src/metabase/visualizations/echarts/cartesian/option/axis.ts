@@ -16,8 +16,9 @@ import type {
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import { getTimeSeriesMinInterval } from "metabase/visualizations/echarts/cartesian/utils/time-series";
 import type { ChartMeasurements } from "../chart-measurements/types";
+import { isTimeSeriesAxis } from "../model/guards";
+import { getTimeSeriesIntervalDuration } from "../utils/timeseries";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -108,7 +109,8 @@ export const buildDimensionAxis = (
   renderingContext: RenderingContext,
 ): AxisBaseOption => {
   const { getColor } = renderingContext;
-  const { axisType, formatter, timeSeriesInterval } = chartModel.xAxisModel;
+  const xAxisModel = chartModel.xAxisModel;
+  const { axisType, formatter } = xAxisModel;
 
   const boundaryGap =
     axisType === "value" || axisType === "log"
@@ -119,6 +121,7 @@ export const buildDimensionAxis = (
     chartMeasurements.ticksDimensions.xTicksHeight,
   );
   const valueGetter = getDimensionDisplayValueGetter(chartModel, settings);
+  const isTimeSeries = isTimeSeriesAxis(xAxisModel);
 
   return {
     ...getAxisNameDefaultOption(
@@ -144,7 +147,13 @@ export const buildDimensionAxis = (
       rotate: getRotateAngle(settings),
       ...getTicksDefaultOption(renderingContext),
       // Value is always converted to a string by ECharts
-      formatter: (value: string) => ` ${formatter(valueGetter(value))} `, // spaces force padding between ticks
+      formatter: (rawValue: string) => {
+        const value = valueGetter(rawValue);
+        if (xAxisModel.tickRenderPredicate?.(value) ?? true) {
+          return ` ${formatter(value)} `; // spaces force padding between ticks
+        }
+        return false;
+      },
     },
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
@@ -152,10 +161,22 @@ export const buildDimensionAxis = (
         color: getColor("border"),
       },
     },
-    minInterval:
-      timeSeriesInterval != null
-        ? getTimeSeriesMinInterval(timeSeriesInterval)
-        : undefined,
+    ...(isTimeSeries
+      ? {
+          min: range => {
+            return (
+              range.min - getTimeSeriesIntervalDuration(xAxisModel.interval) / 2
+            );
+          },
+          max: range => {
+            return (
+              range.max + getTimeSeriesIntervalDuration(xAxisModel.interval) / 2
+            );
+          },
+          minInterval: xAxisModel.ticksMinInterval,
+          maxInterval: xAxisModel.ticksMaxInterval,
+        }
+      : {}),
   } as AxisBaseOption;
 };
 

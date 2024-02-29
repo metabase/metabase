@@ -12,7 +12,7 @@ import { formatValue } from "metabase/lib/formatting";
 
 import { hasEventAxis } from "metabase/visualizations/lib/timelines";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
-import { computeTimeseriesTicksInterval } from "./timeseries";
+import { computeTimeseriesTicksInterval } from "../echarts/cartesian/utils/timeseries";
 import timeseriesScale from "./timeseriesScale";
 import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";

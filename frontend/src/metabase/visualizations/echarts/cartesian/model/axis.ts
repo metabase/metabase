@@ -1,6 +1,8 @@
 import d3 from "d3";
 import _ from "underscore";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
+import type { OpUnitType, QUnitType } from "dayjs";
+import dayjs from "dayjs";
 import type {
   AxisFormatter,
   DataKey,
@@ -13,6 +15,8 @@ import type {
   DimensionModel,
   TimeSeriesInterval,
   DateRange,
+  TimeSeriesXAxisModel,
+  CartesianChartDateTimeAbsoluteUnit,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -36,12 +40,22 @@ import {
   getObjectValues,
 } from "metabase/lib/objects";
 import {
+  TIMESERIES_INTERVALS,
   computeTimeseriesDataInverval,
+  getTimezone,
   minTimeseriesUnit,
-} from "metabase/visualizations/lib/timeseries";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+  getTimeSeriesIntervalDuration,
+  tryGetDate,
+} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+import {
+  TICKS_INTERVAL_THRESHOLD,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  isAbsoluteDateTimeUnit,
+  isRelativeDateTimeUnit,
+} from "metabase-types/guards/date-time";
 import { isDate } from "metabase-lib/types/utils/isa";
-import { tryGetDate } from "../utils/time-series";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -484,6 +498,161 @@ export const getXAxisEChartsType = (
   }
 };
 
+const getTickWithinRangePredicate = (range: DateRange) => {
+  const [minDate, maxDate] = range;
+
+  const isWidthinDataRange = (tickDateRaw: string | number) => {
+    const tickDate = dayjs(tickDateRaw);
+    if (minDate.isSame(maxDate)) {
+      return tickDate.isSame(minDate, "day");
+    }
+
+    const isBeforeRange = tickDate.isBefore(minDate);
+    const isAfterRange = tickDate.isAfter(maxDate);
+
+    return !isBeforeRange && !isAfterRange;
+  };
+
+  return isWidthinDataRange;
+};
+
+const findRangeBasedTicksInterval = (
+  range: DateRange,
+): TimeSeriesInterval | null => {
+  const [min, max] = range;
+
+  for (let i = TIMESERIES_INTERVALS.length - 1; i >= 0; i--) {
+    const interval = TIMESERIES_INTERVALS[i];
+    const intervalUnit = interval.unit as QUnitType | OpUnitType;
+    if (
+      max.diff(min, intervalUnit) / interval.count >=
+      TICKS_INTERVAL_THRESHOLD
+    ) {
+      return interval as TimeSeriesInterval;
+    }
+  }
+
+  return null;
+};
+
+const isLargerInterval = (
+  left: TimeSeriesInterval,
+  right: TimeSeriesInterval,
+) => {
+  return (
+    getTimeSeriesIntervalDuration(left) > getTimeSeriesIntervalDuration(right)
+  );
+};
+
+export function getTimeSeriesXAxisModel(
+  dimensionModel: DimensionModel,
+  rawSeries: RawSeries,
+  dataset: ChartDataset,
+  settings: ComputedVisualizationSettings,
+  label: string | undefined,
+  renderingContext: RenderingContext,
+): TimeSeriesXAxisModel {
+  const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
+  const dimensionColumn = dimensionModel.column;
+
+  // Based on the actual data compute interval, range, etc.
+  const timeSeriesInfo = getTimeSeriesXAxisInfo(
+    xValues,
+    rawSeries,
+    dimensionModel,
+  );
+  const { interval: dataTimeSeriesInterval, range } = timeSeriesInfo;
+  const minDate = timeSeriesInfo.range[0];
+
+  // Based on the range compute an optimal interval for ticks
+  const rangeBasedComputedTicksInterval = findRangeBasedTicksInterval(range);
+
+  // If the ticks interval computed based on the range is bigger than interval of data use it
+  const shouldUseRangeBasedInterval =
+    rangeBasedComputedTicksInterval != null &&
+    isLargerInterval(rangeBasedComputedTicksInterval, dataTimeSeriesInterval);
+
+  const isTickWithinRange = getTickWithinRangePredicate(range);
+  let tickRenderPredicate: XAxisModel["tickRenderPredicate"] =
+    isTickWithinRange;
+
+  const ticksMinInterval = shouldUseRangeBasedInterval
+    ? getTimeSeriesIntervalDuration(rangeBasedComputedTicksInterval)
+    : // HACK: we have to divide the actual min interval by empirically choosen constant making in smaller
+      // otherwise on small datasets (2 sequential days) ECharts will not render ticks according to the interval.
+      // This does not apply to the range based interval as if it exists, then the range is big enough.
+      getTimeSeriesIntervalDuration(dataTimeSeriesInterval) / 1.5;
+  let ticksMaxInterval;
+  let effectiveTickUnit: CartesianChartDateTimeAbsoluteUnit | undefined;
+
+  const formatter = (value: RowValue) =>
+    renderingContext.formatValue(value, {
+      ...(settings.column?.(dimensionColumn) ?? {}),
+      column: {
+        ...dimensionColumn,
+        // If there is no unit in column (unbinned data or native queries) use the one computed from the actual data.
+        unit: dimensionColumn.unit ?? dataTimeSeriesInterval.unit,
+      },
+    });
+
+  // If the range of data is small enough not to use a larger interval for ticks
+  // we need to tweak the default ECharts for week and quarter units
+  if (!shouldUseRangeBasedInterval) {
+    switch (dataTimeSeriesInterval.unit) {
+      // For week intervals we force ECharts to try to render ticks for every day
+      // but for ticks we select only ones that have the same day of week as data
+      case "week":
+        effectiveTickUnit = "day";
+        ticksMaxInterval = getTimeSeriesIntervalDuration({
+          count: 1,
+          unit: effectiveTickUnit,
+        });
+        tickRenderPredicate = rawTickDate => {
+          if (!isTickWithinRange(rawTickDate)) {
+            return false;
+          }
+          const tickDate = dayjs(rawTickDate);
+
+          const isStartOfWeek = minDate?.day() === tickDate.day();
+          return isStartOfWeek;
+        };
+        break;
+      // For quarter intervals we force ECharts to try to render ticks for every month
+      // but for ticks we select only months that are start of a quarter
+      case "month":
+        effectiveTickUnit = "month";
+        ticksMaxInterval = getTimeSeriesIntervalDuration({
+          count: 1,
+          unit: effectiveTickUnit,
+        });
+        tickRenderPredicate = rawTickDate => {
+          if (!isTickWithinRange(rawTickDate)) {
+            return false;
+          }
+
+          const isQuarterUnit = dataTimeSeriesInterval.count === 3;
+          if (isQuarterUnit) {
+            const tickDate = dayjs(rawTickDate);
+            return tickDate.startOf("quarter").isSame(tickDate, "month");
+          }
+          return true;
+        };
+        break;
+    }
+  }
+
+  return {
+    label,
+    formatter,
+    axisType: "time",
+    ticksMaxInterval,
+    ticksMinInterval,
+    effectiveTickUnit,
+    tickRenderPredicate,
+    ...timeSeriesInfo,
+  };
+}
+
 export function getXAxisModel(
   dimensionModel: DimensionModel,
   rawSeries: RawSeries,
@@ -495,47 +664,77 @@ export function getXAxisModel(
     ? settings["graph.x_axis.title_text"]
     : undefined;
 
+  if (settings["graph.x_axis.scale"] === "timeseries") {
+    return getTimeSeriesXAxisModel(
+      dimensionModel,
+      rawSeries,
+      dataset,
+      settings,
+      label,
+      renderingContext,
+    );
+  }
+
+  const dimensionColumn = dimensionModel.column;
+  const isHistogram = settings["graph.x_axis.scale"] === "histogram";
+
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
-      column: dimensionModel.column,
-      ...(settings.column?.(dimensionModel.column) ?? {}),
+      column: dimensionColumn,
+      ...(settings.column?.(dimensionColumn) ?? {}),
       compact: settings["graph.x_axis.axis_enabled"] === "compact",
-      noRange: settings["graph.x_axis.scale"] === "histogram",
+      noRange: isHistogram,
     });
 
-  const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
-
-  const timeSeriesInterval =
-    settings["graph.x_axis.scale"] === "timeseries"
-      ? getTimeSeriesXAxisInterval(xValues, rawSeries, dimensionModel)
-      : undefined;
-
-  const axisType = getXAxisEChartsType(dimensionModel, settings);
-
-  return {
+  const axisBaseModel = {
     formatter,
     label,
-    timeSeriesInterval,
-    axisType,
+    isHistogram,
+  };
+
+  if (
+    settings["graph.x_axis.scale"] === "ordinal" ||
+    isHistogram ||
+    isRelativeDateTimeUnit(dimensionColumn.unit)
+  ) {
+    return {
+      ...axisBaseModel,
+      axisType: "category",
+    };
+  }
+
+  return {
+    ...axisBaseModel,
+    // TODO: will be replaced by the category scale
+    axisType: settings["graph.x_axis.scale"] === "log" ? "log" : "value",
   };
 }
 
-// We should always have results_timezone, but just in case we fallback to UTC
-export const DEFAULT_TIMEZONE = "Etc/UTC";
-
-function getTimezone(rawSeries: RawSeries) {
-  const { results_timezone } = rawSeries[0].data;
-  return results_timezone || DEFAULT_TIMEZONE;
-}
-
-const getXAxisDateRange = (xValues: RowValue[]): DateRange | undefined => {
+const getXAxisDateRangeFromSortedXAxisValues = (
+  xValues: RowValue[],
+): DateRange | undefined => {
   if (xValues.length === 0) {
     return undefined;
   }
 
+  // Find the first non-null date from the start
+  let minDateIndex = 0;
+  while (
+    minDateIndex < xValues.length &&
+    tryGetDate(xValues[minDateIndex]) === null
+  ) {
+    minDateIndex++;
+  }
+
+  // Find the first non-null date from the end
+  let maxDateIndex = xValues.length - 1;
+  while (maxDateIndex >= 0 && tryGetDate(xValues[maxDateIndex]) === null) {
+    maxDateIndex--;
+  }
+
   // Assume the dataset is sorted
-  const minDate = tryGetDate(xValues[0]);
-  const maxDate = tryGetDate(xValues[xValues.length - 1]);
+  const minDate = tryGetDate(xValues[minDateIndex]);
+  const maxDate = tryGetDate(xValues[maxDateIndex]);
 
   if (minDate == null || maxDate == null) {
     return undefined;
@@ -544,32 +743,42 @@ const getXAxisDateRange = (xValues: RowValue[]): DateRange | undefined => {
   return [minDate, maxDate];
 };
 
-export function getTimeSeriesXAxisInterval(
+function getTimeSeriesXAxisInfo(
   xValues: RowValue[],
   rawSeries: RawSeries,
   dimensionModel: DimensionModel,
-): TimeSeriesInterval {
+) {
   // We need three pieces of information to define a timeseries range:
   // 1. interval - it's really the "unit": month, day, etc
   // 2. count - how many intervals per tick?
   // 3. timezone - what timezone are values in? days vary in length by timezone
   const unit = minTimeseriesUnit(
-    getObjectValues(dimensionModel.columnByCardId).map(column => column.unit),
+    getObjectValues(dimensionModel.columnByCardId)
+      .map(column => (isAbsoluteDateTimeUnit(column.unit) ? column.unit : null))
+      .filter(isNotNull),
   );
   const timezone = getTimezone(rawSeries);
-  const { count, interval } = (computeTimeseriesDataInverval(xValues, unit) ?? {
+  const interval = (computeTimeseriesDataInverval(xValues, unit) ?? {
     count: 1,
-    interval: "day",
-  }) as Pick<TimeSeriesInterval, "count" | "interval">;
+    unit: "day",
+  }) as TimeSeriesInterval;
 
-  const range = getXAxisDateRange(xValues);
+  const range = getXAxisDateRangeFromSortedXAxisValues(xValues);
+
+  if (!range) {
+    throw new Error("Missing range");
+  }
+
   let lengthInIntervals = 0;
 
   if (range) {
     const [min, max] = range;
     // A single date counts as one interval
-    lengthInIntervals = Math.max(1, Math.ceil(max.diff(min, interval) / count));
+    lengthInIntervals = Math.max(
+      1,
+      Math.ceil(max.diff(min, interval.unit) / interval.count),
+    );
   }
 
-  return { count, interval, timezone, lengthInIntervals, range };
+  return { interval, timezone, lengthInIntervals, range, unit };
 }
