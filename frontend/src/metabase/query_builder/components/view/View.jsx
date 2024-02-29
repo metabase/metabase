@@ -8,6 +8,7 @@ import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
+import CS from "metabase/css/core/index.css";
 import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
@@ -213,7 +214,7 @@ class View extends Component {
             <BorderedViewTitleHeader {...this.props} style={{ opacity }} />
             {opacity < 1 && (
               <NewQuestionHeader
-                className="spread"
+                className={CS.spread}
                 style={{ opacity: 1 - opacity }}
               />
             )}
@@ -291,7 +292,7 @@ class View extends Component {
           <QueryVisualization
             {...this.props}
             noHeader
-            className="spread"
+            className={CS.spread}
             mode={queryMode}
           />
         </StyledDebouncedFrame>

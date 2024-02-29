@@ -16,6 +16,7 @@ import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -991,7 +992,7 @@ class TableInteractive extends Component {
                 data-testid="TableInteractive-root"
               >
                 <canvas
-                  className="spread"
+                  className={CS.spread}
                   style={{ pointerEvents: "none", zIndex: 999 }}
                   width={width}
                   height={height}

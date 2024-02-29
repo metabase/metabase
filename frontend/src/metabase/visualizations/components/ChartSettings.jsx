@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
@@ -395,7 +396,7 @@ class ChartSettings extends Component {
             <SectionWarnings warnings={this.state.warnings} size={20} />
             <ChartSettingsVisualizationContainer>
               <Visualization
-                className="spread"
+                className={CS.spread}
                 rawSeries={rawSeries}
                 showTitle
                 isEditing

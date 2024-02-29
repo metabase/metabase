@@ -94,7 +94,6 @@
 }
 
 /* fully fit the parent element - use as a base for app-y pages like QB or settings */
-:global(.spread),
 .spread {
   position: absolute;
   top: 0;
