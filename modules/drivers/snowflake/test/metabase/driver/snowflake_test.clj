@@ -30,6 +30,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   [metabase.util.ssh :as ssh]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -504,3 +505,30 @@
                     ["2023-11-01T00:00:00+11:00" 1]]
                    (mt/with-temporary-setting-values [report-timezone "Australia/Sydney"]
                      (mt/rows (qp/process-query query)))))))))))
+
+(def ^:private ssh-mock-server-with-password-port 12221)
+(def ^:private ssh-username "jsmith")
+(def ^:private ssh-password "supersecret")
+
+(deftest test-ssh-tunnel-reconnection
+  (mt/test-driver :snowflake
+    (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
+      (let [tunnel-db-details (assoc (:details (mt/db))
+                                     :tunnel-enabled true
+                                     :tunnel-host "localhost"
+                                     :tunnel-auth-option "password"
+                                     :tunnel-port ssh-mock-server-with-password-port
+                                     :tunnel-user ssh-username
+                                     :tunnel-pass ssh-password)]
+        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+          (mt/with-db tunneled-db
+            (sync/sync-database! (mt/db))
+            (letfn [(check-row []
+                      (is (= [["Polo Lounge"]]
+                             (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
+              ;; check that some data can be queried
+              (check-row)
+              ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
+              (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))
+              ;; check the query again; the tunnel should have been reestablished
+              (check-row))))))))
