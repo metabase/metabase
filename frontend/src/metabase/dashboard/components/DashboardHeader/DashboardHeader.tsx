@@ -34,10 +34,7 @@ import {
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
 import type { FetchDashboardResult } from "metabase/dashboard/types";
-import {
-  hasDatabaseActionsEnabled,
-  getIsBookmarked,
-} from "metabase/dashboard/utils";
+import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
@@ -50,6 +47,7 @@ import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import type {
+  Bookmark as IBookmark,
   DashboardId,
   DashboardTabId,
   Dashboard,
@@ -284,6 +282,13 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     onDoneEditing();
   };
 
+  const saveAsPDF = async () => {
+    const cardNodeSelector = "#Dashboard-Cards-Container";
+    await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
+      trackExportDashboardToPDF(dashboard.id);
+    });
+  };
+
   const getEditWarning = (dashboard: Dashboard) => {
     if (dashboard.embedding_params) {
       const currentSlugs = Object.keys(dashboard.embedding_params);
@@ -477,14 +482,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           dashboard={dashboard}
         />,
       );
-
-      // I don't think this is used anymore
-      extraButtons.push({
-        title: t`Revision history`,
-        icon: "history",
-        link: `${location.pathname}/history`,
-        event: "Dashboard;Revisions",
-      });
     }
 
     if (isAnalyticsDashboard) {
@@ -612,13 +609,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     return { buttons };
   };
 
-  const saveAsPDF = async () => {
-    const cardNodeSelector = "#Dashboard-Cards-Container";
-    await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
-      trackExportDashboardToPDF(dashboard.id);
-    });
-  };
-
   if (isLoadingCollection || !collection) {
     return (
       <Flex justify="center" py="1.5rem">
@@ -683,3 +673,17 @@ function getDisabledSaveButtonTooltip(
     missingRequiredParams.length,
   );
 }
+
+type IsBookmarkedSelectorProps = {
+  bookmarks: IBookmark[];
+  dashboardId: DashboardId;
+};
+
+export const getIsBookmarked = ({
+  bookmarks,
+  dashboardId,
+}: IsBookmarkedSelectorProps) =>
+  bookmarks.some(
+    bookmark =>
+      bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
+  );

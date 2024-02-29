@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import type { Location } from "history";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -16,7 +15,10 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import type { DashboardSidebarName } from "metabase-types/store";
-import { createMockDashboardState } from "metabase-types/store/mocks";
+import {
+  createMockDashboardState,
+  createMockLocation,
+} from "metabase-types/store/mocks";
 
 import { DashboardHeader } from "../DashboardHeader";
 
@@ -130,9 +132,7 @@ export const setup = async ({
       name: "" as DashboardSidebarName,
       props: {},
     },
-    location: {
-      query: {},
-    } as Location,
+    location: createMockLocation(),
     setSidebar: jest.fn(),
     closeSidebar: jest.fn(),
     addActionToDashboard: jest.fn(),

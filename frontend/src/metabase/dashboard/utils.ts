@@ -14,13 +14,11 @@ import {
   isStringParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
 import type {
-  Bookmark,
   Card,
   CardId,
   Dashboard,
   DashboardCard,
   DashboardCardLayoutAttrs,
-  DashboardId,
   QuestionDashboardCard,
   Database,
   Dataset,
@@ -366,17 +364,3 @@ export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
     archived: false,
   };
 }
-
-type IsBookmarkedSelectorProps = {
-  bookmarks: Bookmark[];
-  dashboardId: DashboardId;
-};
-
-export const getIsBookmarked = ({
-  bookmarks,
-  dashboardId,
-}: IsBookmarkedSelectorProps) =>
-  bookmarks.some(
-    bookmark =>
-      bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
-  );

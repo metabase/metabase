@@ -17,7 +17,6 @@ import { FilterApplyButton } from "metabase/parameters/components/FilterApplyBut
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-//import type Database from "metabase-lib/metadata/Database";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
