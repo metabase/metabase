@@ -1,1 +1,1 @@
-export { TableInfoPopover } from "./TableInfoPopover";
+export * from "./TableInfoPopover";
