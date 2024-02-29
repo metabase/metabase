@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useStep } from "metabase/setup/useStep";
-import { Button, Divider, Text } from "metabase/ui";
+import { Text } from "metabase/ui";
 
 import { submitLicenseToken } from "../../actions";
 import { ActiveStep } from "../ActiveStep";
@@ -30,7 +30,7 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
     dispatch(submitLicenseToken(token));
   };
 
-  const handleNext = () => {
+  const skipStep = () => {
     dispatch(submitLicenseToken(null));
   };
 
@@ -56,13 +56,7 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
         color={color("text-light")}
       >{t`Unlock access to your paid features before starting`}</Text>
 
-      <LicenseTokenForm onValidSubmit={handleValidSubmit} />
-
-      <Divider my="xl" />
-
-      <Button variant="filled" onClick={handleNext}>
-        {t`Next`}
-      </Button>
+      <LicenseTokenForm onValidSubmit={handleValidSubmit} onSkip={skipStep} />
     </ActiveStep>
   );
 };

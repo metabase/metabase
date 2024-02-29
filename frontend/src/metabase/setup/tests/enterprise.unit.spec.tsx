@@ -100,7 +100,7 @@ describe("setup (EE, no token)", () => {
         "This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working",
       );
 
-      clickNextStep();
+      clickOnSkip();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
 
@@ -110,6 +110,47 @@ describe("setup (EE, no token)", () => {
       expect(await setupCall?.request?.json()).not.toHaveProperty(
         "license_token",
       );
+    });
+
+    it("should have the Activate button disabled when the token is not 64 characters long", async () => {
+      await setupForLicenseStep();
+
+      userEvent.paste(
+        screen.getByRole("textbox", { name: "Token" }),
+        "a".repeat(63),
+      );
+
+      expect(screen.getByRole("button", { name: "Activate" })).toBeDisabled();
+
+      userEvent.type(screen.getByRole("textbox", { name: "Token" }), "a"); //64 characters
+
+      expect(screen.getByRole("button", { name: "Activate" })).toBeEnabled();
+
+      userEvent.type(screen.getByRole("textbox", { name: "Token" }), "a"); //65 characters
+
+      expect(screen.getByRole("button", { name: "Activate" })).toBeDisabled();
+    });
+
+    it("should ignore whitespace around the token", async () => {
+      await setupForLicenseStep();
+
+      const token = "a".repeat(64);
+
+      userEvent.paste(
+        screen.getByRole("textbox", { name: "Token" }),
+        `    ${token}   `,
+      );
+
+      expect(screen.getByRole("button", { name: "Activate" })).toBeEnabled();
+
+      setupForTokenCheckEndpoint({ valid: true });
+
+      screen.getByRole("button", { name: "Activate" }).click();
+
+      const url = fetchMock.lastCall(`path:/api/setup/token-check`)?.request
+        ?.url;
+      const sentToken = url?.split("token=")[1];
+      expect(sentToken).toMatch(token);
     });
 
     it("should go to the next step when activating a valid token", async () => {
@@ -141,7 +182,7 @@ describe("setup (EE, no token)", () => {
     it("should be possible to skip the step without a token", async () => {
       await setupForLicenseStep();
 
-      clickNextStep();
+      clickOnSkip();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
 
@@ -172,3 +213,6 @@ describe("setup (EE, no token)", () => {
     });
   });
 });
+
+const clickOnSkip = () =>
+  userEvent.click(screen.getByRole("button", { name: "Skip" }));

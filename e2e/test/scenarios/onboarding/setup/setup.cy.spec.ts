@@ -450,7 +450,7 @@ describeWithSnowplow("scenarios > setup", () => {
           step: "license_token",
         });
 
-        cy.button("Next").click();
+        cy.button("Skip").click();
         goodEvents++; // 11/12 - setup/step_seen "commercial_license"
         expectGoodSnowplowEvent({
           event: "license_token_step_submitted",
@@ -540,6 +540,6 @@ const fillUserAndContinue = ({
 
 const skipLicenseStepOnEE = () => {
   if (isEE) {
-    cy.button("Next").click();
+    cy.button("Skip").click();
   }
 };
