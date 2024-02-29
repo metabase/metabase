@@ -1,15 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { ParameterValuePicker } from "metabase/parameters/components/ParameterValuePicker";
 import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import { Flex, Text } from "metabase/ui";
 import type { Parameter, TemplateTag } from "metabase-types/api";
 
-import {
-  ContainerLabel,
-  DefaultParameterValueWidget,
-  ErrorSpan,
-} from "./TagEditorParam.styled";
+import { ContainerLabel, ErrorSpan } from "./TagEditorParam.styled";
 
 export function DefaultRequiredValueControl({
   tag,
@@ -24,40 +21,22 @@ export function DefaultRequiredValueControl({
   onChangeDefaultValue: (value: any) => void;
   onChangeRequired: (value: boolean) => void;
 }) {
-  // We want to remove "default" and "required" so that it
-  // doesn't show up in the default value input update button
-  const parameterAmended = _.omit(
-    tag.type === "text" || tag.type === "dimension"
-      ? parameter || {
-          fields: [],
-          ...tag,
-          type: tag["widget-type"] || null,
-        }
-      : {
-          fields: [],
-          hasVariableTemplateTagTarget: true,
-          type:
-            tag["widget-type"] || (tag.type === "date" ? "date/single" : null),
-        },
-    "default",
-    "required",
-  );
+  const isMissing = tag.required && !tag.default;
 
   return (
     <div>
       <ContainerLabel>
         {t`Default filter widget value`}
-        {!tag.default && tag.required && <ErrorSpan>({t`required`})</ErrorSpan>}
+        {isMissing && <ErrorSpan>({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
       <Flex gap="xs" direction="column">
-        <DefaultParameterValueWidget
-          parameter={parameterAmended}
-          value={tag.default}
-          setValue={onChangeDefaultValue}
-          isEditing
-          commitImmediately
-          mimicMantine
+        <ParameterValuePicker
+          tag={tag}
+          parameter={parameter}
+          initialValue={tag.default}
+          onValueChange={onChangeDefaultValue}
+          placeholder={t`Enter a default value…`}
         />
 
         <RequiredParamToggle
