@@ -17,7 +17,6 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
 import Timelines from "metabase/entities/timelines";
 
 import { getAlerts } from "metabase/alert/selectors";
@@ -1054,12 +1053,6 @@ export const getSubmittableQuestion = (state, question) => {
   const series = getTransformedSeries(state);
   const resultsMetadata = getResultsMetadata(state);
   const isResultDirty = getIsResultDirty(state);
-
-  if (question.type() === "model" && resultsMetadata) {
-    resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
-      resultsMetadata.columns,
-    );
-  }
 
   let submittableQuestion = question;
 
