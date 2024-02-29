@@ -35,6 +35,7 @@
 (defmethod pk-field-name :sql/test-extensions [_] "id")
 
 ;; TODO - WHAT ABOUT SCHEMA NAME???
+;; Tech debt issue - #39356
 (defmulti qualified-name-components
   "Return a vector of String names that can be used to refer to a Database, Table, or Field. This is provided so drivers
   have the opportunity to inject things like schema names or even modify the names themselves.
