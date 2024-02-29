@@ -82,14 +82,6 @@ export const ClauseStep = <T,>({
     </DndContext>
   );
 
-  const renderNewItem = ({ onOpen }: { onOpen?: () => void }) => (
-    <NotebookCellAdd
-      initialAddText={items.length === 0 && initialAddText}
-      color={color}
-      onClick={onOpen}
-    />
-  );
-
   const renderItem = ({ item, index, onOpen }: RenderItemOpts<T>) => (
     <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
       {renderName(item, index)}
@@ -104,6 +96,14 @@ export const ClauseStep = <T,>({
         />
       )}
     </NotebookCellItem>
+  );
+
+  const renderNewItem = ({ onOpen }: { onOpen?: () => void }) => (
+    <NotebookCellAdd
+      initialAddText={items.length === 0 && initialAddText}
+      color={color}
+      onClick={onOpen}
+    />
   );
 
   return (
