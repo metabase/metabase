@@ -33,6 +33,7 @@ import {
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
+import type { FetchDashboardResult } from "metabase/dashboard/types";
 import {
   hasDatabaseActionsEnabled,
   getIsBookmarked,
@@ -49,11 +50,9 @@ import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import type {
-  Bookmark as IBookmark,
   DashboardId,
   DashboardTabId,
   Dashboard,
-  Collection,
   DatabaseId,
   Database,
   CardId,
@@ -78,9 +77,7 @@ interface DashboardHeaderProps {
   dashboardId: DashboardId;
   dashboard: Dashboard;
   dashboardBeforeEditing?: Dashboard | null;
-  bookmarks: IBookmark[];
   databases: Record<DatabaseId, Database>;
-  collection: Collection;
   sidebar: DashboardSidebarState;
   location: Location;
   refreshPeriod: number | null;
@@ -93,7 +90,7 @@ interface DashboardHeaderProps {
   isAddParameterPopoverOpen: boolean;
   canManageSubscriptions: boolean;
   hasNightModeToggle: boolean;
-  parametersWidget: ReactNode;
+  parametersWidget?: ReactNode;
 
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -111,12 +108,12 @@ interface DashboardHeaderProps {
       clearCache?: boolean;
       preserveParameters?: boolean;
     };
-  }) => Promise<void>;
+  }) => Promise<FetchDashboardResult>;
   setDashboardAttribute: <Key extends keyof Dashboard>(
     key: Key,
     value: Dashboard[Key],
   ) => void;
-  setRefreshElapsedHook: (hook: (elapsed: number) => void) => void;
+  setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
   updateDashboardAndCards: () => void;
 
   addParameter: (option: ParameterMappingOptions) => void;
@@ -560,7 +557,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
       }
     }
 
-    buttons.push(...getDashboardActions(this, { ...props, formInput }));
+    buttons.push(...getDashboardActions({ ...props, formInput }));
 
     if (!isEditing) {
       buttons.push(

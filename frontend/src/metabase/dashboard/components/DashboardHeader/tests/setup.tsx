@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import type { Location } from "history";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -14,6 +15,7 @@ import {
   createMockDashboardCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import type { DashboardSidebarName } from "metabase-types/store";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { DashboardHeader } from "../DashboardHeader";
@@ -98,11 +100,15 @@ export const setup = async ({
   const dashboardHeaderProps = {
     isAdmin,
     dashboard,
+    dashboardId: dashboard.id,
     canManageSubscriptions: true,
     isEditing: false,
     isFullscreen: false,
     isNavBarOpen: false,
     isNightMode: false,
+    isDirty: false,
+    isAddParameterPopoverOpen: false,
+    hasNightModeToggle: false,
     isAdditionalInfoVisible: false,
     refreshPeriod: 0,
     addMarkdownDashCardToDashboard: jest.fn(),
@@ -121,17 +127,20 @@ export const setup = async ({
     onChangeLocation: jest.fn(),
     toggleSidebar: jest.fn(),
     sidebar: {
-      name: "",
+      name: "" as DashboardSidebarName,
       props: {},
     },
     location: {
       query: {},
-    },
+    } as Location,
     setSidebar: jest.fn(),
     closeSidebar: jest.fn(),
     addActionToDashboard: jest.fn(),
     databases: {},
     params: { tabSlug: undefined },
+    addParameter: jest.fn(),
+    showAddParameterPopover: jest.fn(),
+    hideAddParameterPopover: jest.fn(),
   };
 
   renderWithProviders(<DashboardHeader {...dashboardHeaderProps} />, {

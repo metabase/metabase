@@ -5,14 +5,19 @@ import type { Route } from "react-router";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
+import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
+import type {
+  FetchDashboardResult,
+  SuccessfulFetchDashboardResult,
+} from "metabase/dashboard/types";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import type Database from "metabase-lib/metadata/Database";
+//import type Database from "metabase-lib/metadata/Database";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
@@ -21,6 +26,7 @@ import type {
   DashboardId,
   DashCardDataMap,
   DashCardId,
+  Database,
   DatabaseId,
   Parameter,
   ParameterId,
@@ -60,13 +66,6 @@ import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
-
-type SuccessfulFetchDashboardResult = { payload: { dashboard: IDashboard } };
-type FailedFetchDashboardResult = { error: unknown; payload: unknown };
-
-type FetchDashboardResult =
-  | SuccessfulFetchDashboardResult
-  | FailedFetchDashboardResult;
 
 interface DashboardProps {
   dashboardId: DashboardId;
@@ -108,6 +107,8 @@ interface DashboardProps {
   location: Location;
   isNightMode: boolean;
   isFullscreen: boolean;
+  hasNightModeToggle: boolean;
+  refreshPeriod: number | null;
 
   initialize: (opts?: { clearCache?: boolean }) => void;
   fetchDashboard: (opts: {
@@ -130,10 +131,13 @@ interface DashboardProps {
     cardId: CardId;
     tabId: DashboardTabId | null;
   }) => void;
+  addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
   archiveDashboard: (id: DashboardId) => Promise<void>;
 
   onRefreshPeriodChange: (period: number | null) => void;
-  setEditingDashboard: (dashboard: IDashboard) => void;
+  setEditingDashboard: (dashboard: IDashboard | boolean) => void;
   setDashboardAttributes: (opts: {
     id: DashboardId;
     attributes: Partial<IDashboard>;
@@ -184,6 +188,15 @@ interface DashboardProps {
   getEmbeddedParameterVisibility: (
     slug: string,
   ) => EmbeddingParameterVisibility | null;
+  updateDashboardAndCards: () => void;
+  onFullscreenChange: (
+    isFullscreen: boolean,
+    browserFullscreen?: boolean,
+  ) => void;
+
+  onNightModeChange: () => void;
+  setSidebar: (opts: { name: DashboardSidebarName }) => void;
+  hideAddParameterPopover: () => void;
 }
 
 function DashboardInner(props: DashboardProps) {
@@ -285,7 +298,7 @@ function DashboardInner(props: DashboardProps) {
   );
 
   const handleSetEditing = useCallback(
-    (dashboard: IDashboard) => {
+    (dashboard: IDashboard | boolean) => {
       onRefreshPeriodChange(null);
       setEditingDashboard(dashboard);
     },
