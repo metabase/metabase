@@ -41,6 +41,9 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   extract: {
     icon: "extract",
   },
+  "extract-popover": {
+    icon: "extract",
+  },
   auto: {
     icon: "bolt",
   },

@@ -51,7 +51,7 @@ const getActionForType = (
   const { displayName } = Lib.displayInfo(query, stageIndex, type);
 
   return {
-    name: `extract.${displayName.toLowerCase()}`,
+    name: `extract.${displayName}`,
     title: displayName,
     section: "extract-popover",
     buttonType: "horizontal",
