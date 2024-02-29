@@ -16,6 +16,9 @@ const { admin } = USERS;
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
 
+const TOKEN =
+  "123456aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
 describe("scenarios > setup", () => {
   locales.forEach(locale => {
     beforeEach(() => restore("blank"));
@@ -317,7 +320,13 @@ describe("scenarios > setup", () => {
       // Database
       cy.findByText("Add your data").should("not.exist");
 
-      skipLicenseStepOnEE();
+      if (isEE) {
+        cy.findByLabelText("Token").type(TOKEN);
+      }
+
+      cy.button("Activate").click();
+
+      cy.button("I don't exist").click();
 
       // Turns off anonymous data collection
       cy.findByLabelText(
