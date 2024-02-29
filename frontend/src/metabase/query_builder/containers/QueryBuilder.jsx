@@ -83,7 +83,6 @@ import {
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
   getShouldShowUnsavedChangesWarning,
-  getRequiredTemplateTags,
   getEmbeddedParameterVisibility,
 } from "../selectors";
 import { isNavigationAllowed } from "../utils";
@@ -170,7 +169,6 @@ const mapStateToProps = (state, props) => {
 
     reportTimezone: getSetting(state, "report-timezone-long"),
 
-    requiredTemplateTags: getRequiredTemplateTags(state),
     getEmbeddedParameterVisibility: slug =>
       getEmbeddedParameterVisibility(state, slug),
   };

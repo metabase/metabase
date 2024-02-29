@@ -5,6 +5,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
 import _ from "underscore";
+import { t, msgid, ngettext } from "ttag";
 
 import * as Lib from "metabase-lib";
 
@@ -1019,16 +1020,6 @@ export const getTemplateTags = createSelector([getCard], card =>
   getIn(card, ["dataset_query", "native", "template-tags"]),
 );
 
-export const getRequiredTemplateTags = createSelector(
-  [getTemplateTags],
-  templateTags =>
-    templateTags
-      ? Object.keys(templateTags)
-          .filter(key => templateTags[key].required)
-          .map(key => templateTags[key])
-      : [],
-);
-
 export const getEmbeddingParameters = createSelector([getCard], card => {
   if (!card?.enable_embedding) {
     return {};
@@ -1077,3 +1068,59 @@ export const getSubmittableQuestion = (state, question) => {
 
   return submittableQuestion;
 };
+
+export const getIsSaveEnabled = createSelector(
+  [getQuestion, getResultsMetadata, getIsResultDirty],
+  (question, resultsMetadata, isResultDirty) => {
+    if (!question) {
+      return false;
+    }
+
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    return (
+      isEditable &&
+      !isResultDirty &&
+      resultsMetadata != null &&
+      question.canRun()
+    );
+  },
+);
+
+export const getDisabledSaveReason = createSelector(
+  [getQuestion, getResultsMetadata, getIsResultDirty],
+  (question, resultsMetadata, isResultDirty) => {
+    if (!question) {
+      return null;
+    }
+
+    const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+    if (!isEditable) {
+      return t`You don't have permission to save this question`;
+    }
+
+    if (isNative) {
+      const missingValueRequiredTags = question
+        .legacyQuery()
+        .templateTags()
+        .filter(tag => tag.required && !tag.default);
+
+      if (missingValueRequiredTags.length > 0) {
+        const names = missingValueRequiredTags
+          .map(tag => `"${tag["display-name"] ?? tag.name}"`)
+          .join(", ");
+
+        return ngettext(
+          msgid`The ${names} variable requires a default value but none was provided.`,
+          `The ${names} variables require default values but none were provided.`,
+          missingValueRequiredTags.length,
+        );
+      }
+    }
+
+    if (question.canRun() && (isResultDirty || !resultsMetadata)) {
+      return t`You need to run the query to save this question`;
+    }
+
+    return null;
+  },
+);

@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useEffect, useCallback, useState } from "react";
 import { usePrevious } from "react-use";
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -13,7 +13,11 @@ import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { getDashboard } from "metabase/query_builder/selectors";
+import {
+  getIsSaveEnabled,
+  getDashboard,
+  getDisabledSaveReason,
+} from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 
 import {
@@ -80,8 +84,6 @@ const viewTitleHeaderPropTypes = {
 
   className: PropTypes.string,
   style: PropTypes.object,
-
-  requiredTemplateTags: PropTypes.array,
 };
 
 export function ViewTitleHeader(props) {
@@ -396,7 +398,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
-  requiredTemplateTags: PropTypes.array,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -429,10 +430,8 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
-    requiredTemplateTags,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
 
   const hasExploreResultsLink =
     canExploreResults(question) &&
@@ -460,12 +459,8 @@ function ViewTitleHeaderRightSide(props) {
     [isRunning],
   );
 
-  const isSaveDisabled = !question.canRun() || !isEditable;
-  const disabledSaveTooltip = getDisabledSaveTooltip(
-    question,
-    isEditable,
-    requiredTemplateTags,
-  );
+  const isSaveEnabled = useSelector(getIsSaveEnabled);
+  const disabledSaveReason = useSelector(getDisabledSaveReason);
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
@@ -538,10 +533,10 @@ function ViewTitleHeaderRightSide(props) {
       {hasSaveButton && (
         <SaveButton
           role="button"
-          disabled={isSaveDisabled}
+          disabled={!isSaveEnabled}
           tooltip={{
-            tooltip: disabledSaveTooltip,
-            isEnabled: isSaveDisabled,
+            tooltip: disabledSaveReason,
+            isEnabled: !isSaveEnabled,
             placement: "left",
           }}
           onClick={() => onOpenModal("save")}
@@ -554,40 +549,3 @@ function ViewTitleHeaderRightSide(props) {
 }
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
-
-function getDisabledSaveTooltip(
-  question,
-  isEditable,
-  requiredTemplateTags = [],
-) {
-  if (!isEditable) {
-    return t`You don't have permission to save this question.`;
-  }
-
-  const missingValueRequiredTTags = requiredTemplateTags.filter(
-    tag => tag.required && !tag.default,
-  );
-
-  if (!question.canRun()) {
-    return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
-  }
-
-  // Having an empty tooltip text is ok because it won't be shown.
-  return "";
-}
-
-function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
-  if (!requiredTemplateTags.length) {
-    return "";
-  }
-
-  const names = requiredTemplateTags
-    .map(tag => `"${tag["display-name"] ?? tag.name}"`)
-    .join(", ");
-
-  return ngettext(
-    msgid`The ${names} variable requires a default value but none was provided.`,
-    `The ${names} variables require default values but none were provided.`,
-    requiredTemplateTags.length,
-  );
-}
