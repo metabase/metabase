@@ -1,4 +1,6 @@
 /* eslint-disable react/prop-types */
+import { useMemo } from "react";
+
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import DataSourceSelectors from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
 import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
@@ -30,6 +32,10 @@ const MockNativeQueryEditor = ({
     }
   };
 
+  const parameters = useMemo(() => {
+    query.question().parameters();
+  }, [query]);
+
   return (
     <div data-testid="mock-native-query-editor" id={ACE_ELEMENT_ID}>
       {canChangeDatabase && (
@@ -48,7 +54,7 @@ const MockNativeQueryEditor = ({
       )}
       <SyncedParametersList
         className="mt1"
-        parameters={query.question().parameters()}
+        parameters={parameters}
         setParameterValue={setParameterValue}
         commitImmediately
       />

@@ -359,9 +359,9 @@ function DashboardInner(props: DashboardProps) {
     ],
   );
 
-  useEffect(() => {
-    dispatch(setParameterValuesFromQueryParams(location.query));
-  }, [dispatch, location.query]);
+  // useEffect(() => {
+  //   dispatch(setParameterValuesFromQueryParams(location.query));
+  // }, [dispatch, location.query]);
 
   useEffect(() => {
     if (previousDashboardId !== dashboardId) {

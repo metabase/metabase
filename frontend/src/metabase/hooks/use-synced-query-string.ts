@@ -1,7 +1,6 @@
 import querystring from "querystring";
 import { useEffect } from "react";
 import { push } from "react-router-redux";
-import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { useDispatch } from "metabase/lib/redux";
@@ -11,6 +10,11 @@ export function useSyncedQueryString(
   deps: any[],
 ) {
   const dispatch = useDispatch();
+
+  // !
+  // useEffect(() => {
+  //   dispatch(setParameterValuesFromQueryParams(location.query));
+  // }, [dispatch, location.query]);
 
   useEffect(() => {
     /**
