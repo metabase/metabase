@@ -18,8 +18,8 @@ export function getSearchTabText(
   }
 
   return searchResultTranslationContext.ngettext(
-    msgid`${searchResults.length} results for "${searchQuery.trim()}"`,
-    `${searchResults.length} result for "${searchQuery.trim()}"`,
+    msgid`${searchResults.length} result for "${searchQuery.trim()}"`,
+    `${searchResults.length} results for "${searchQuery.trim()}"`,
     searchResults.length,
   );
 }

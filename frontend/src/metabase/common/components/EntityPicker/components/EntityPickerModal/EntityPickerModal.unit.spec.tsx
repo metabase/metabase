@@ -159,7 +159,7 @@ describe("EntityPickerModal", () => {
 
     expect(await screen.findByRole("tablist")).toBeInTheDocument();
     expect(
-      await screen.findByRole("tab", { name: /2 results for "My "/ }),
+      await screen.findByRole("tab", { name: /2 results for "My"/ }),
     ).toBeInTheDocument();
 
     expect(await screen.findAllByTestId("search-result-item")).toHaveLength(2);
