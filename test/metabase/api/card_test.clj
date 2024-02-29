@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
+   [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
@@ -2904,6 +2905,17 @@
   [db-binding & body]
   `(do-with-persistence-setup (fn [~db-binding] ~@body)))
 
+(defn- job-info-for-individual-refresh
+  "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
+  []
+  (some->> (deref #'task.persist-refresh/refresh-job-key)
+           task/job-info
+           :triggers
+           (map (comp qc/from-job-data :data))
+           (filter (comp #{"individual"} #(get % "type")))
+           (map #(get % "persisted-id"))
+           set))
+
 (deftest refresh-persistence
   (testing "Can schedule refreshes for models"
     (with-persistence-setup db
@@ -2916,17 +2928,17 @@
          :model/PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]
         (testing "Can refresh models"
           (mt/user-http-request :crowberto :post 204 (format "card/%d/refresh" (u/the-id model)))
-          (is (contains? (task.persist-refresh/job-info-for-individual-refresh)
+          (is (contains? (job-info-for-individual-refresh)
                          (u/the-id pmodel))
               "Missing refresh of model"))
         (testing "Won't refresh archived models"
           (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id archived)))
-          (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
+          (is (not (contains? (job-info-for-individual-refresh)
                               (u/the-id pnotmodel)))
               "Scheduled refresh of archived model"))
         (testing "Won't refresh cards no longer models"
           (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id notmodel)))
-          (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
+          (is (not (contains? (job-info-for-individual-refresh)
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
 
