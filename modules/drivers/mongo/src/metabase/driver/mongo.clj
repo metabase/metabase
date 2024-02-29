@@ -23,8 +23,8 @@
    [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
   (:import
-   (org.bson.types ObjectId)
-   (com.mongodb.client MongoClient MongoDatabase)))
+   (com.mongodb.client MongoClient MongoDatabase)
+   (org.bson.types ObjectId)))
 
 (set! *warn-on-reflection* true)
 
