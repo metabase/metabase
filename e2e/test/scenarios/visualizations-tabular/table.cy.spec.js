@@ -400,9 +400,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     // Open the formatting menu
     cy.findByTestId("field-info-popover").click();
 
-    cy.findByTestId("drill-through-section").within(() => {
-      cy.icon("gear").click();
-    });
+    popover().icon("gear").click();
 
     cy.findByTestId("column-formatting-settings").within(() => {
       // Set to hours, minutes, seconds, 24-hour clock

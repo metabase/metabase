@@ -16,8 +16,6 @@ interface Props {
   children: React.ReactNode;
 }
 
-const testId = "drill-through-section";
-
 export const ClickActionsViewSection = ({
   type,
   title,
@@ -26,10 +24,7 @@ export const ClickActionsViewSection = ({
 }: Props): JSX.Element => {
   if (title) {
     return (
-      <SectionWithTitle
-        childrenDirection={contentDirection}
-        data-testid={testId}
-      >
+      <SectionWithTitle childrenDirection={contentDirection}>
         <SectionTitle>{title}</SectionTitle>
         <Section type={type} direction={contentDirection}>
           {children}
