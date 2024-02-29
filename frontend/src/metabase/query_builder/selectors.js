@@ -1092,9 +1092,10 @@ export const getDisabledSaveReason = createSelector(
       return null;
     }
 
+    const type = question.type() === "question" ? t`question` : t`model`;
     const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
     if (!isEditable) {
-      return t`You don't have permission to save this question`;
+      return t`You don't have permission to save this ${type}`;
     }
 
     if (isNative) {
@@ -1116,7 +1117,6 @@ export const getDisabledSaveReason = createSelector(
       }
 
       if (question.canRun() && (isResultDirty || !resultsMetadata)) {
-        const type = question.type() === "question" ? t`question` : t`model`;
         return t`You need to run the query to save this ${type}`;
       }
     }
