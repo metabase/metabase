@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
-import { VariableSizeItemsVirtualizedList } from "metabase/components/VirtualizedList";
+import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { Box, NavLink, Center, Icon, Flex } from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
@@ -68,10 +68,7 @@ export const ItemList = <TItem extends TypeWithModel>({
   }
 
   return (
-    <VariableSizeItemsVirtualizedList
-      Wrapper={PickerColumn}
-      scrollTo={activeItemIndex}
-    >
+    <VirtualizedList Wrapper={PickerColumn} scrollTo={activeItemIndex}>
       {items.map((item: TItem) => (
         <div key={`${item.model ?? "collection"}-${item.id}`}>
           <NavLink
@@ -91,6 +88,6 @@ export const ItemList = <TItem extends TypeWithModel>({
           />
         </div>
       ))}
-    </VariableSizeItemsVirtualizedList>
+    </VirtualizedList>
   );
 };

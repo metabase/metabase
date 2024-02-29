@@ -15,6 +15,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  mockGetBoundingClientRect,
 } from "__support__/ui";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -696,9 +697,7 @@ describe("SaveQuestionModal", () => {
     COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
 
     beforeEach(async () => {
-      window.Element.prototype.getBoundingClientRect = jest
-        .fn()
-        .mockReturnValue({ height: 100, width: 200 });
+      mockGetBoundingClientRect();
 
       setupCollectionItemsEndpoint({
         collection: COLLECTION.ROOT,
@@ -724,6 +723,10 @@ describe("SaveQuestionModal", () => {
           }),
         ],
       });
+    });
+
+    afterAll(() => {
+      jest.restoreAllMocks();
     });
 
     it("should have a new collection button in the collection picker", async () => {

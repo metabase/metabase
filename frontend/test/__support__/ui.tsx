@@ -209,4 +209,26 @@ export const waitForLoaderToBeRemoved = async () => {
   });
 };
 
+/**
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ */
+export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
+  jest
+    .spyOn(window.Element.prototype, "getBoundingClientRect")
+    .mockImplementation(() => {
+      return {
+        height: 200,
+        width: 200,
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+        ...options,
+      };
+    });
+};
+
 export * from "@testing-library/react";

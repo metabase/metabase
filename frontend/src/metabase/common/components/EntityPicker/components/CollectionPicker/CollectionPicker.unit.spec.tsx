@@ -1,7 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  mockGetBoundingClientRect,
+} from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 import {
   createMockCollection,
@@ -114,10 +119,7 @@ const setup = ({
   initialValue = { id: "root", model: "collection" },
   onItemSelect = jest.fn(),
 }: setupProps = {}) => {
-  //This needs to be present for @tanstack/virtualized to render anything in Jest Tests
-  window.Element.prototype.getBoundingClientRect = jest
-    .fn()
-    .mockReturnValue({ height: 100, width: 200 });
+  mockGetBoundingClientRect();
 
   const allCollections =
     flattenCollectionTree(collectionTree).map(createMockCollection);
@@ -140,6 +142,10 @@ const setup = ({
 };
 
 describe("CollectionPicker", () => {
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   it("should select the root collection by default", async () => {
     act(() => {
       setup();

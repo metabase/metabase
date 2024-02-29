@@ -9,7 +9,13 @@ import {
   setupSearchEndpoints,
   setupCollectionItemsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+  mockGetBoundingClientRect,
+} from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
@@ -169,9 +175,7 @@ const setup = async ({
   waitForContent = true,
   searchResults = [],
 }: SetupOpts = {}) => {
-  window.Element.prototype.getBoundingClientRect = jest
-    .fn()
-    .mockReturnValue({ height: 100, width: 200 });
+  mockGetBoundingClientRect();
   const dashboards = Array.from(
     new Set([dashboard, mostRecentlyViewedDashboard].filter(isNotNull)),
   );
@@ -241,6 +245,10 @@ const setup = async ({
 };
 
 describe("AddToDashSelectDashModal", () => {
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   describe("Create new Dashboard", () => {
     it("should open CreateDashboardModal", async () => {
       await setup({

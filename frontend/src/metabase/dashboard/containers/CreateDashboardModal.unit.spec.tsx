@@ -8,7 +8,12 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  mockGetBoundingClientRect,
+} from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   createMockCollection,
@@ -45,9 +50,7 @@ function setup({
   isCachingEnabled = false,
   mockCreateDashboardResponse = true,
 } = {}) {
-  window.Element.prototype.getBoundingClientRect = jest
-    .fn()
-    .mockReturnValue({ height: 100, width: 200 });
+  mockGetBoundingClientRect();
   const onClose = jest.fn();
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
@@ -90,6 +93,10 @@ function setup({
 }
 
 describe("CreateDashboardModal", () => {
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   it("displays empty form fields", () => {
     setup();
 

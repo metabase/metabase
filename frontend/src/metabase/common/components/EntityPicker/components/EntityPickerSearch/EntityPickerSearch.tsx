@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
-import { VariableSizeItemsVirtualizedList } from "metabase/components/VirtualizedList";
+import { VirtualizedList } from "metabase/components/VirtualizedList";
 import Search from "metabase/entities/search";
 import { useDebouncedEffectWithCleanup } from "metabase/hooks/use-debounced-effect";
 import { defer } from "metabase/lib/promise";
@@ -102,7 +102,7 @@ export const EntityPickerSearchResults = <TItem extends TypeWithModel>({
     <Box p="lg" h="100%">
       {searchResults.length > 0 ? (
         <Stack h="100%">
-          <VariableSizeItemsVirtualizedList>
+          <VirtualizedList>
             {searchResults?.map(item => (
               <EntityPickerSearchResult
                 key={item.model + item.id}
@@ -116,7 +116,7 @@ export const EntityPickerSearchResults = <TItem extends TypeWithModel>({
                 }
               />
             ))}
-          </VariableSizeItemsVirtualizedList>
+          </VirtualizedList>
         </Stack>
       ) : (
         <Flex direction="column" justify="center" h="100%">

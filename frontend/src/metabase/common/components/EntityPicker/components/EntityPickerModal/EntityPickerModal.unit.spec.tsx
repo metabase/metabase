@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import { Button } from "metabase/ui";
 import {
   createMockSearchResult,
@@ -44,9 +49,7 @@ const setup = ({
   selectedItem = null,
   ...rest
 }: setupProps = {}) => {
-  window.Element.prototype.getBoundingClientRect = jest
-    .fn()
-    .mockReturnValue({ height: 100, width: 200 });
+  mockGetBoundingClientRect();
 
   renderWithProviders(
     <EntityPickerModal
