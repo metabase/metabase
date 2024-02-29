@@ -9,7 +9,7 @@ import {
   skipDatabase,
   submitDatabase,
   submitLicenseToken,
-  submitSetup,
+  completeSetup,
   submitUsageReason,
   submitUser,
   submitUserInvite,
@@ -45,7 +45,7 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(updateLocale.fulfilled, state => {
     state.isLocaleLoaded = true;
   });
-  builder.addCase(submitUser.pending, (state, { meta }) => {
+  builder.addCase(submitUser.fulfilled, (state, { meta }) => {
     state.user = meta.arg;
   });
   builder.addCase(submitUsageReason.pending, (state, { meta }) => {
@@ -75,7 +75,7 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(updateTracking.pending, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;
   });
-  builder.addCase(submitSetup.fulfilled, state => {
+  builder.addCase(completeSetup, state => {
     state.step = "completed";
   });
 });

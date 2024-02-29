@@ -1,5 +1,3 @@
-import { getIn } from "icepick";
-import { useState } from "react";
 import { jt, t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
@@ -7,7 +5,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
 
-import { submitSetup, updateTracking } from "../../actions";
+import { completeSetup, updateTracking } from "../../actions";
 import { getIsSetupCompleted, getIsTrackingAllowed } from "../../selectors";
 import { useStep } from "../../useStep";
 import { ActiveStep } from "../ActiveStep";
@@ -16,7 +14,6 @@ import type { NumberedStepProps } from "../types";
 
 import {
   StepDescription,
-  StepError,
   StepInfoList,
   StepToggle,
   StepToggleContainer,
@@ -28,7 +25,6 @@ export const DataUsageStep = ({
 }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted, handleStepSelect } =
     useStep("data_usage");
-  const [errorMessage, setErrorMessage] = useState<string>();
   const isTrackingAllowed = useSelector(getIsTrackingAllowed);
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
@@ -37,13 +33,8 @@ export const DataUsageStep = ({
     dispatch(updateTracking(isTrackingAllowed));
   };
 
-  const handleStepSubmit = async () => {
-    try {
-      await dispatch(submitSetup()).unwrap();
-    } catch (error) {
-      setErrorMessage(getSubmitError(error));
-      throw error;
-    }
+  const handleStepSubmit = () => {
+    dispatch(completeSetup());
   };
 
   if (!isStepActive) {
@@ -100,7 +91,6 @@ export const DataUsageStep = ({
         type="button"
         actionFn={handleStepSubmit}
       />
-      {errorMessage && <StepError>{errorMessage}</StepError>}
     </ActiveStep>
   );
 };
@@ -115,18 +105,5 @@ const getStepTitle = (
     return t`Thanks for helping us improve`;
   } else {
     return t`We won't collect any usage events`;
-  }
-};
-
-const getSubmitError = (error: unknown): string => {
-  const message = getIn(error, ["data", "message"]);
-  const errors = getIn(error, ["data", "errors"]);
-
-  if (message) {
-    return String(message);
-  } else if (errors) {
-    return String(Object.values(errors)[0]);
-  } else {
-    return t`An error occurred`;
   }
 };

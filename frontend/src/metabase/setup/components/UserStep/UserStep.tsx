@@ -22,8 +22,11 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
 
   const dispatch = useDispatch();
 
-  const handleSubmit = (user: UserInfo) => {
-    dispatch(submitUser(user));
+  const handleSubmit = async (user: UserInfo) => {
+    const resultAction = await dispatch(submitUser(user));
+    if (submitUser.rejected.match(resultAction)) {
+      throw new Error("" + resultAction.payload);
+    }
   };
 
   if (!isStepActive) {

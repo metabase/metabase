@@ -3,10 +3,13 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import { FormProvider } from "metabase/forms";
+import { useFormSubmitButton, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { Flex, Box } from "metabase/ui";
 import type { UserInfo } from "metabase-types/store";
 
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
@@ -32,7 +35,7 @@ const USER_SCHEMA = Yup.object({
 interface UserFormProps {
   user?: UserInfo;
   onValidatePassword: (password: string) => Promise<string | undefined>;
-  onSubmit: (user: UserInfo) => void;
+  onSubmit: (user: UserInfo) => Promise<void>;
 }
 
 export const UserForm = ({
@@ -97,8 +100,26 @@ export const UserForm = ({
           title={t`Confirm your password`}
           placeholder={t`Shhh... but one more time so we get it right`}
         />
-        <FormSubmitButton title={t`Next`} primary />
+        <UserFormFooter />
       </UserFormRoot>
     </FormProvider>
+  );
+};
+
+const UserFormFooter = () => {
+  const { status } = useFormSubmitButton({ isDisabled: false });
+
+  return (
+    <Flex align="center">
+      <FormSubmitButton
+        title={t`Next`}
+        activeTitle={t`Saving`}
+        primary={status === "idle"}
+        icon={status === "pending" && <LoadingSpinner size={16} />}
+      />
+      <Box ml=".75rem">
+        {status === "rejected" && <FormErrorMessage inline />}
+      </Box>
+    </Flex>
   );
 };

@@ -5,8 +5,8 @@ import { SetupApi } from "metabase/services";
 import { Box, Button, Flex, Text, TextInput } from "metabase/ui";
 
 type LicenseTokenFormProps = {
-  onValidSubmit: (token: string) => void;
-  onSkip: () => void;
+  onValidSubmit: (token: string) => void | Promise<void>;
+  onSkip: () => void | Promise<void>;
 };
 
 export const LicenseTokenForm = ({

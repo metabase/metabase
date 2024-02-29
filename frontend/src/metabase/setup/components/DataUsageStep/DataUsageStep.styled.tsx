@@ -32,8 +32,3 @@ export const StepInfoList = styled.ul`
   list-style: disc inside;
   line-height: 2;
 `;
-
-export const StepError = styled.div`
-  color: ${color("error")};
-  margin-top: 0.5rem;
-`;
