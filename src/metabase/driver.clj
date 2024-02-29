@@ -694,6 +694,8 @@
   [_ query]
   query)
 
+;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
+;; effects? issue: https://github.com/metabase/metabase/issues/39367
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
@@ -782,6 +784,7 @@
 (defmethod default-field-order ::driver [_] :database)
 
 ;; TODO -- this can vary based on session variables or connection options
+;; Issue: https://github.com/metabase/metabase/pull/39386
 (defmulti db-start-of-week
   "Return the day that is considered to be the start of week by `driver`. Should return a keyword such as `:sunday`."
   {:added "0.37.0" :arglists '([driver])}
@@ -804,8 +807,8 @@
 ;;;
 ;;; 1. We definitely should not be asking drivers to "update the value for `:details`". Drivers shouldn't touch the
 ;;;    application database.
-;;;
 ;;; 2. Something that is done for side effects like updating the application DB NEEDS TO END IN AN EXCLAMATION MARK!
+;;; Issue: https://github.com/metabase/metabase/issues/39392
 (defmulti normalize-db-details
   "Normalizes db-details for the given driver. This is to handle migrations that are too difficult to perform via
   regular Liquibase queries. This multimethod will be called from a `:post-select` handler within the database model.

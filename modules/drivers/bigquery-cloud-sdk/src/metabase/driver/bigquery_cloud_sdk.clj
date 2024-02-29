@@ -512,6 +512,8 @@
       (t2/update! Database db-id {:details (:details updated-db)})
       updated-db)))
 
+;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
+;; Issue: https://github.com/metabase/metabase/issues/39392
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
   [_driver {:keys [details] :as database}]
   (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
