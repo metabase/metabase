@@ -7,6 +7,7 @@ import type {
   RegularClickAction,
 } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
 
 export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   query,
@@ -20,19 +21,11 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
     return [];
   }
 
-  const actions: RegularClickAction[] = types.map(type => {
-    const { displayName } = Lib.displayInfo(query, stageIndex, type);
-
-    return {
-      name: "automatic-insights.xray",
-      title: displayName,
-      section: "auto-popover",
-      buttonType: "horizontal",
-      question: () => applyDrill(drill, type),
-    };
-  });
-
   const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
+    const actions = types.map(type => {
+      return getActionForType(query, stageIndex, drill, type, applyDrill);
+    });
+
     return <ClickActionsView clickActions={actions} onClick={onClick} />;
   };
 
@@ -46,4 +39,22 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
       popover: DrillPopover,
     },
   ];
+};
+
+const getActionForType = (
+  query: Lib.Query,
+  stageIndex: number,
+  drill: Lib.DrillThru,
+  type: Lib.ColumnExtractType,
+  applyDrill: (drill: Lib.DrillThru, type: Lib.ColumnExtractType) => Question,
+): RegularClickAction => {
+  const { displayName } = Lib.displayInfo(query, stageIndex, type);
+
+  return {
+    name: `extract.${displayName.toLowerCase()}`,
+    title: displayName,
+    section: "extract",
+    buttonType: "horizontal",
+    question: () => applyDrill(drill, type),
+  };
 };

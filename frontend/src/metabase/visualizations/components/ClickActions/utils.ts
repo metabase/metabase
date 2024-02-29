@@ -38,6 +38,9 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   sum: {
     icon: "sum",
   },
+  extract: {
+    icon: "extract",
+  },
   auto: {
     icon: "bolt",
   },
