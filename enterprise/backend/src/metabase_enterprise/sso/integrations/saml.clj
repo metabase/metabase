@@ -1,24 +1,38 @@
 (ns metabase-enterprise.sso.integrations.saml
   "Implementation of the SAML backend for SSO.
 
-  The basic flow of of a SAML login is:
+  # The basic flow of of a SAML login is:
 
-  1. User attempts to access some `url` but is not authenticated
+  1. User attempts to access some `url` but is not authenticated.
 
-  2. User is redirected to `GET /auth/sso`
+  2. User is redirected to `GET /auth/sso`.
 
-  3. Metabase issues another redirect to the identity provider URI
+  3. Metabase issues another redirect to the identity provider URI.
 
-  4. User logs into their identity provider (i.e. Auth0)
+  4. User logs into their identity provider (i.e. Auth0).
 
-  5. Identity provider POSTs to Metabase with successful auth info
+  5. Identity provider POSTs to Metabase with successful auth info.
 
-  6. Metabase parses/validates the SAML response
+  6. Metabase parses/validates the SAML response.
 
-  7. Metabase inits the user session, responds with a redirect to back to the original `url`"
+  7. Metabase inits the user session, responds with a redirect to back to the original `url`.
+
+  # The basic flow of a SAML logout is:
+
+  1. A SSO SAML User clicks Sign Out.
+
+  2. Metabase issues a redirect to the client with a LogoutRequest to the identity provider.
+
+  3. Client forwards the request to the identity provider.
+
+  4. Identity provider logs the user out + redirects client back to Metabase with a LogoutResponse.
+
+  5. Metabase checks for successful LogoutResponse, clears the user's session, and responds to the client with a redirect to the home page."
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.data.xml :as xml]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.sso.api.interface :as sso.i]
@@ -34,9 +48,12 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.urls :as urls]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
-   [schema.core :as s])
+   [schema.core :as s]
+   [toucan2.core :as t2])
   (:import
    (java.net URI URISyntaxException)
    (java.util Base64 UUID)))
@@ -216,3 +233,28 @@
                            :device-info     (request.u/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
       (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+
+(def ^:private saml2-success-status "urn:oasis:names:tc:SAML:2.0:status:Success")
+
+(mu/defn slo-success? :- :boolean
+  "Given a slo request saml response, return true if the response is successful."
+  [xml-str]
+  (let [*success? (atom false)]
+    (walk/postwalk
+     (fn [x]
+       (when (and (map? x)
+                  (= (:tag x) :StatusCode)
+                  (= (get-in x [:attrs :Value]) saml2-success-status))
+         (reset! *success? true))
+       x)
+     (xml/parse-str xml-str))
+    @*success?))
+
+(defmethod sso.i/sso-handle-slo :saml
+  [{:keys [cookies params]}]
+  (let [xml-str (base64-decode (:SAMLResponse params))
+        success? (slo-success? xml-str)]
+    (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
+      (do (t2/delete! :model/Session :id metabase-session-id)
+          (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
+      {:status 500 :body "SAML logout failed."})))
