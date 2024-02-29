@@ -143,7 +143,7 @@ export default class DatabaseList extends Component {
             <div className="pt4">
               <span
                 className={cx("p2 text-italic", {
-                  "border-top": databases && databases.length > 0,
+                  [CS.borderTop]: databases && databases.length > 0,
                 })}
               >
                 {isAddingSampleDatabase ? (

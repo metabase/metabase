@@ -6,6 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Popover from "metabase/components/Popover";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 export default class SelectionModule extends Component {
@@ -136,7 +137,7 @@ export default class SelectionModule extends Component {
       if (!isExpanded && items.length !== this.props.items.length) {
         items.push(
           <li
-            className="SelectionItem border-top"
+            className={cx("SelectionItem", CS.borderTop)}
             onClick={this._expand}
             key="expand"
           >

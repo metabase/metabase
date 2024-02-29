@@ -3,16 +3,22 @@
 }
 
 h1,
+.h1,
 :global(.h1),
 h2,
+.h2,
 :global(.h2),
 h3,
+.h3,
 :global(.h3),
 h4,
+.h4,
 :global(.h4),
 h5,
+.h5,
 :global(.h5),
 h6,
+.h6,
 :global(.h6) {
   font-weight: 700;
   margin-top: var(--default-header-margin);

@@ -3,6 +3,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import ButtonBar from "metabase/components/ButtonBar";
+import CS from "metabase/css/core/index.css";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import * as Lib from "metabase-lib";
@@ -50,7 +51,7 @@ const ViewFooter = ({
 
   return (
     <ViewFooterRoot
-      className={cx(className, "text-medium border-top")}
+      className={cx(className, CS.textMedium, CS.borderTop)}
       data-testid="view-footer"
     >
       <ButtonBar

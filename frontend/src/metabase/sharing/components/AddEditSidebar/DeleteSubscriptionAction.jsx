@@ -1,8 +1,10 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { t, jt, ngettext, msgid } from "ttag";
 
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import CS from "metabase/css/core/index.css";
 
 function getConfirmItems(pulse) {
   return pulse.channels.map((c, index) =>
@@ -41,7 +43,7 @@ function getConfirmItems(pulse) {
 
 function DeleteSubscriptionAction({ pulse, handleArchive }) {
   return pulse.id != null && !pulse.archived ? (
-    <div className="border-top pt1 pb3 flex justify-end">
+    <div className={cx(CS.borderTop, CS.pt1, CS.pb3, CS.flex, "justify-end")}>
       <ModalWithTrigger
         triggerClasses="Button Button--borderless text-light text-error-hover flex-align-right flex-no-shrink"
         triggerElement={t`Delete this subscription`}
