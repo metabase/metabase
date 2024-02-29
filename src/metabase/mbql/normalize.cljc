@@ -359,7 +359,6 @@
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
-;; TODO - why not make this a multimethod of some sort?
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
