@@ -1,4 +1,4 @@
-import type React from "react";
+import type { ReactNode, ReactElement } from "react";
 import type { SortableElementProps } from "react-sortable-hoc";
 
 import {
@@ -23,7 +23,7 @@ interface SortableColumnFunctions<T> {
   onAdd?: (item: T) => void;
   onEnable?: (item: T) => void;
   getItemName: (item: T) => string;
-  getItemExtra: (item: T) => React.ReactNode;
+  getItemExtra: (item: T) => ReactNode;
   onColorChange?: (item: T, color: string) => void;
 }
 
@@ -72,7 +72,7 @@ const SortableColumn = SortableElement(function SortableColumn<
   );
 }) as unknown as <T extends SortableItem>(
   props: SortableColumnProps<T> & SortableElementProps,
-) => React.ReactElement;
+) => ReactElement;
 
 interface SortableColumnListProps<T extends SortableItem>
   extends SortableColumnFunctions<T> {
