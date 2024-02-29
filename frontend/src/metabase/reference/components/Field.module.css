@@ -3,11 +3,13 @@
 }
 
 .field {
-  composes: flex align-center from "style";
+  align-items: center;
+  display: flex;
 }
 
 .fieldNameTitle {
-  composes: flex-half pr2 from "style";
+  composes: pr2 from "style";
+  flex: 0.5;
 }
 
 .fieldName {
@@ -22,17 +24,20 @@
 }
 
 .fieldSelect {
-  composes: input p1 block from "style";
+  composes: input p1 from "style";
+  display: block;
 }
 
 .fieldType {
-  composes: flex-1-quarter text-medium pr2 from "style";
+  composes: text-medium pr2 from "style";
+  flex: 0.25;
   overflow: hidden;
   white-space: nowrap;
 }
 
 .fieldDataType {
-  composes: flex-1-quarter text-medium from "style";
+  composes: text-medium from "style";
+  flex: 0.25;
 }
 
 .fieldSecondary {

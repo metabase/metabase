@@ -5,21 +5,25 @@
 }
 
 .guideEmpty {
-  composes: flex full justify-center from "style";
+  width: 100%;
+  justify-content: center;
+  display: flex;
   padding-top: 75px;
 }
 
 .guideEmptyBody {
-  composes: text-centered from "style";
+  text-align: center;
   max-width: 400px;
 }
 
 .guideEmptyMessage {
-  composes: text-dark text-paragraph text-centered mt3 from "style";
+  composes: text-dark text-paragraph mt3 from "style";
+  text-align: center;
 }
 
 .columnHeader {
-  composes: flex flex-full from "style";
+  flex: 1 0 auto;
+  display: flex;
   padding-top: 20px;
   padding-bottom: 20px;
 }
@@ -49,7 +53,9 @@
 }
 
 .guideLeftPadded {
-  composes: flex full justify-center from "style";
+  width: 100%;
+  justify-content: center;
+  display: flex;
 }
 
 .guideLeftPadded::before {
@@ -78,7 +84,8 @@
 }
 
 .guideTitleBody {
-  composes: full text-dark text-bold from "style";
+  composes: text-dark text-bold from "style";
+  width: 100%;
   composes: guideLeftPaddedBody;
 }
 
@@ -88,12 +95,17 @@
 }
 
 .guideSeeAllBody {
-  composes: flex full text-dark text-bold mt4 from "style";
+  composes: text-dark text-bold mt4 from "style";
+  width: 100%;
+  display: flex;
   composes: guideLeftPaddedBody;
 }
 
 .guideSeeAllLink {
-  composes: flex-full block no-decoration py1 border-top from "style";
+  composes: py1 border-top from "style";
+  text-decoration: none;
+  display: block;
+  flex: 1 0 auto;
 }
 
 .guideContact {
@@ -103,13 +115,14 @@
 }
 
 .guideContactBody {
-  composes: full from "style";
+  width: 100%;
   composes: guideLeftPaddedBody;
   font-size: 16px;
 }
 
 .guideEditHeader {
-  composes: full text-body my4 from "style";
+  composes: text-body my4 from "style";
+  width: 100%;
   max-width: 550px;
   color: var(--color-text-dark);
 }
@@ -128,7 +141,8 @@
 }
 
 .guideEditLabel {
-  composes: block text-bold mb2 from "style";
+  composes: text-bold mb2 from "style";
+  display: block;
   font-size: 16px;
   color: var(--title-color);
 }
@@ -138,7 +152,8 @@
 }
 
 .guideEditTitle {
-  composes: block text-body text-bold from "style";
+  composes: text-body text-bold from "style";
+  display: block;
   color: var(--title-color);
   font-size: 16px;
   margin-top: 50px;
@@ -152,7 +167,9 @@
 }
 
 .guideEditAddButton {
-  composes: flex full my2 pl4 from "style";
+  composes: my2 pl4 from "style";
+  width: 100%;
+  display: flex;
   padding-right: 3.5rem;
 }
 
@@ -179,7 +196,7 @@
 }
 
 .guideEditContact {
-  composes: flex from "style";
+  display: flex;
 }
 
 .guideEditContactName {
@@ -194,7 +211,8 @@
 }
 
 .guideEditInput {
-  composes: full text-dark input p2 from "style";
+  composes: text-dark input p2 from "style";
+  width: 100%;
   font-size: 16px;
   display: block;
 }

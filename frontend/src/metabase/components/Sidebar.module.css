@@ -12,8 +12,9 @@
 
 .item,
 .sectionTitle {
-  composes: flex align-center from "style";
   composes: py1 mb1 from "style";
+  align-items: center;
+  display: flex;
 }
 
 .item {
@@ -27,8 +28,7 @@
 }
 
 .sectionTitle {
-  composes: my1 from "style";
-  composes: text-bold from "style";
+  composes: my1 text-bold from "style";
   font-size: 16px;
 }
 
@@ -49,8 +49,7 @@
 }
 
 .divider {
-  composes: my2 from "style";
-  composes: border-bottom from "style";
+  composes: my2 border-bottom from "style";
 }
 
 .name {
@@ -67,5 +66,5 @@
 }
 
 .icon {
-  composes: flex-no-shrink from "style";
+  flex-shrink: 0;
 }

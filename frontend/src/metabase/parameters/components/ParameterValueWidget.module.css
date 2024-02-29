@@ -1,5 +1,6 @@
 .parameter {
-  composes: flex align-center from "style";
+  align-items: center;
+  display: flex;
   font-weight: 600;
   min-height: 30px;
   min-width: 150px;
@@ -7,7 +8,8 @@
 }
 
 .nameInput {
-  composes: flex align-center from "style";
+  align-items: center;
+  display: flex;
   min-height: 30px;
   min-width: 150px;
   color: var(--color-text-medium);
@@ -102,7 +104,9 @@
 
 .editButton,
 .removeButton {
-  composes: flex align-center cursor-pointer from "style";
+  cursor: pointer;
+  align-items: center;
+  display: flex;
 }
 
 .editButton:hover {

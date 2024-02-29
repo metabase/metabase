@@ -5,11 +5,13 @@
 }
 
 .list {
-  composes: ml-auto mr-auto from "style";
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .list-wrapper {
-  composes: ml-auto mr-auto from "style";
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .list a {
@@ -17,44 +19,53 @@
 }
 
 .header {
-  composes: flex flex-row from "style";
   composes: mt4 mb2 from "style";
+  flex-direction: row;
+  display: flex;
   color: var(--title-color);
   font-size: 24px;
   min-height: 48px;
 }
 
 .headerBody {
-  composes: flex flex-full border-bottom from "style";
+  composes: border-bottom from "style";
+  flex: 1 0 auto;
+  display: flex;
   align-items: center;
   height: 100%;
   border-color: var(--color-brand);
 }
 
 .headerLink {
-  composes: ml2 flex-no-shrink from "style";
+  composes: ml2 from "style";
+  flex-shrink: 0;
   color: var(--color-brand);
   font-size: 14px;
 }
 
 .headerButton {
-  composes: flex ml1 align-center from "style";
+  composes: ml1 from "style";
+  align-items: center;
+  display: flex;
   font-size: 14px;
 }
 
 .empty {
-  composes: full flex justify-center from "style";
+  width: 100%;
+  justify-content: center;
+  display: flex;
   padding-top: 75px;
 }
 
 .item {
-  composes: flex align-center from "style";
-  composes: relative from "style";
+  position: relative;
+  align-items: center;
+  display: flex;
 }
 
 .itemBody {
-  composes: flex-full from "style";
   max-width: 100%;
+  flex: 1 0 auto;
 }
 
 .itemTitle {
@@ -79,10 +90,15 @@
 }
 
 .icons {
-  composes: flex flex-row align-center from "style";
+  flex-direction: row;
+  align-items: center;
+  display: flex;
 }
 .leftIcons {
-  composes: flex-no-shrink flex align-self-start mr2 from "style";
+  composes: mr2 from "style";
+  align-self: flex-start;
+  flex-shrink: 0;
+  display: flex;
   composes: icons;
 }
 .rightIcons {
@@ -95,7 +111,9 @@
 
 .extraIcons {
   composes: icons;
-  composes: absolute top full-height from "style";
+  top: 0;
+  position: absolute;
+  height: 100%;
   right: -40px;
 }
 
@@ -107,7 +125,7 @@
 }
 
 .icon {
-  composes: relative from "style";
+  position: relative;
   color: var(--muted-color);
 }
 
@@ -140,7 +158,7 @@
 .itemIcon {
   composes: icon;
   visibility: visible !important;
-  composes: relative from "style";
+  position: relative;
 }
 .item:hover .itemIcon,
 .item.selected .itemIcon {
@@ -151,7 +169,7 @@
 .chartIcon {
   composes: icon;
   visibility: visible !important;
-  composes: relative from "style";
+  position: relative;
 }
 
 /* ACTION ICONS */
