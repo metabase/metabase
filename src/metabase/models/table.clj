@@ -76,6 +76,7 @@
         ;; Tables in audit DB should start out with no-self-service in all groups
         (data-perms/set-new-table-permissions! non-admin-groups table :perms/data-access :no-self-service)
         (do
+          (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :query-builder)
           (data-perms/set-new-table-permissions! [all-users-group] table :perms/data-access :unrestricted)
           (data-perms/set-new-table-permissions! non-magic-groups table :perms/data-access :no-self-service)))
       ;; Download permissions
