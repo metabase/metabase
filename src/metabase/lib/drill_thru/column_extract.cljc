@@ -17,21 +17,27 @@
   "TBD"
   [query                       :- ::lib.schema/query
    stage-number                :- :int
-   {:keys [column column-ref]} :- ::lib.schema.drill-thru/context]
-  (when (lib.types.isa/temporal? column)
+   {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
+  (when (and column
+             (nil? value)
+             (lib.types.isa/temporal? column))
     (merge {:lib/type    :metabase.lib.drill-thru/drill-thru
             :type        :drill-thru/column-extract}
             (lib.drill-thru.column-filter/filter-drill-adjusted-query query stage-number column column-ref))))
 
+(def column-extract-units
+  "TBD"
+  [:year :quarter :month :week-of-year :day-of-year :day-of-week])
+
 (mu/defn column-extract-types :- [:sequential ::lib.schema.drill-thru/drill-thru.column-extract-type]
   "TBD"
-  [_drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
+  [{:keys [column]} :- [:and ::lib.schema.drill-thru/drill-thru
                    [:map [:type [:= :drill-thru/column-extract]]]]]
-  (->> lib.schema.temporal-bucketing/ordered-date-truncation-units
-       (map (fn [unit]
-              {:lib/type :drill-thru/column-extract-type
-               :unit      unit}))
-       reverse))
+  (when (lib.types.isa/temporal? column)
+    (map (fn [unit]
+           {:lib/type :drill-thru/column-extract-type
+            :unit      unit})
+         column-extract-units)))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-extract
   [_query _stage-number _drill]
@@ -39,7 +45,11 @@
 
 (defmethod lib.metadata.calculation/display-info-method :drill-thru/column-extract-type
   [_query _stage-number {:keys [unit]}]
-  {:display-name (lib.temporal-bucket/describe-temporal-unit unit)})
+  (let [display-name (lib.temporal-bucket/describe-temporal-unit unit)]
+    {:display-name (case unit
+                     :week-of-year (str display-name " (1-52)")
+                     :day-of-year (str display-name " (1-356)")
+                     display-name)}))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-extract
   [_query _stage-number {:keys [query stage-number column]} & [{:keys [unit]}]]
@@ -48,8 +58,9 @@
     stage-number
     (lib.temporal-bucket/describe-temporal-unit unit)
     (case unit
-      :day (lib.expression/get-day column)
-      :week (lib.expression/get-week column :iso)
-      :month (lib.expression/get-month column)
+      :year (lib.expression/get-year column)
       :quarter (lib.expression/get-quarter column)
-      :year (lib.expression/get-year column))))
+      :month (lib.expression/get-month column)
+      :week-of-year (lib.expression/get-week-of-year column)
+      :day-of-year (lib.expression/get-day-of-year column)
+      :day-of-week (lib.expression/get-day-of-week column))))
