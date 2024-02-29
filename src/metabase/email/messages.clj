@@ -159,7 +159,7 @@
                                                  :joinedUserName    (or (:first_name new-user) (:email new-user))
                                                  :joinedViaSSO      google-auth?
                                                  :joinedUserEmail   (:email new-user)
-                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
                                                  :adminEmail        (first recipients)
                                                  :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
 
