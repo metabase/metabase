@@ -2,14 +2,16 @@ import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 import type { PopoverProps } from "../Popover";
 import { Popover } from "../Popover";
+import type { TableInfoProps } from "../TableInfo";
 import TableInfo from "../TableInfo";
 
-export type TableInfoPopoverProps = Omit<PopoverProps, "content"> & {
-  table: {
-    id: string | number;
-    description?: string | null;
+export type TableInfoPopoverProps = Omit<PopoverProps, "content"> &
+  Omit<TableInfoProps, "tableId"> & {
+    table: {
+      id: string | number;
+      description?: string | null;
+    };
   };
-};
 
 export function TableInfoPopover({
   children,
@@ -17,6 +19,7 @@ export function TableInfoPopover({
   disabled,
   position,
   table,
+  ...rest
 }: TableInfoPopoverProps) {
   const shouldHavePopover = table.description && !isVirtualCardId(table.id);
 
@@ -29,7 +32,7 @@ export function TableInfoPopover({
       position={position}
       delay={delay}
       disabled={disabled}
-      content={<TableInfo tableId={table.id} />}
+      content={<TableInfo tableId={table.id} {...rest} />}
     >
       {children}
     </Popover>
