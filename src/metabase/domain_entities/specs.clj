@@ -18,15 +18,19 @@
 (def FieldType
   "Field type designator -- a keyword derived from `type/*`"
   [:keyword
-   {:decode/domain-entity-spec (partial keyword "type")
-    :decode/transform-spec     (partial keyword "type")}])
+   (letfn [(decoder [k]
+             (keyword "type" (name k)))]
+     {:decode/domain-entity-spec decoder
+      :decode/transform-spec     decoder})])
 
 (def ^:private DomainEntityReference :string)
 
 (def ^:private DomainEntityType
-  [:fn
-   {:error/message "Valid DomainEntity"}
-   #(isa? % :DomainEntity/*)])
+  [:and
+   :keyword
+   [:fn
+    {:error/message "Valid DomainEntity"}
+    #(isa? % :DomainEntity/*)]])
 
 (def ^:private Identifier :string)
 

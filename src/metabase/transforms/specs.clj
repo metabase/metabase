@@ -10,15 +10,22 @@
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]))
 
-(def ^:private Source :string)
+(def ^:private DecodableString
+  [:string
+   {:decode/transform-spec (fn [x]
+                             (if (string? x)
+                               x
+                               (u/qualified-name x)))}])
 
-(def ^:private Dimension :string)
+(def ^:private Source DecodableString)
+
+(def ^:private Dimension DecodableString)
 
 (def ^:private Breakout
   [:sequential
    {:decode/transform-spec (fn [breakouts]
                              (for [breakout (u/one-or-many breakouts)]
-                               (if (mc/validate MBQL breakout)
+                               (if-not (mc/validate MBQL breakout)
                                  [:dimension breakout]
                                  breakout)))}
    MBQL])
@@ -43,7 +50,7 @@
 
 (def ^:private Expressions Dimension->MBQL)
 
-(def ^:private Description :string)
+(def ^:private Description DecodableString)
 
 (def ^:private Filter MBQL)
 
@@ -61,16 +68,11 @@
     [:condition MBQL]
     [:strategy {:optional true} JoinStrategy]]])
 
-(def ^:private TransformName :string)
+(def ^:private TransformName DecodableString)
 
 (def Step
   "Transform step"
   [:map
-   {:decode/transform-spec (fn [steps]
-                             (->> steps
-                                  stringify-keys
-                                  (u/topological-sort (fn [{:keys [source joins]}]
-                                                        (conj (map :source joins) source)))))}
    [:source    Source]
    [:name      Source]
    [:transform TransformName]
@@ -82,9 +84,17 @@
    [:limit       {:optional true} Limit]
    [:filter      {:optional true} Filter]])
 
-(def ^:private Steps [:map-of Source Step])
+(def ^:private Steps
+  [:map-of
+   {:decode/tranform-spec (fn [source->step]
+                            (->> source->step
+                                 stringify-keys
+                                 (u/topological-sort (fn [{:keys [source joins]}]
+                                                       (conj (map :source joins) source)))))}
+   Source
+   Step])
 
-(def ^:private DomainEntity :string)
+(def ^:private DomainEntity DecodableString)
 
 (def ^:private Requires
   [:sequential

@@ -1095,12 +1095,12 @@
   [description-form]
   (when-not (valid-trs-or-tru? description-form)
     ;; this doesn't need to be i18n'ed because it's a compile-time error.
-    (ex-info (str "defsetting docstrings must be a *deferred* i18n form unless the Setting has"
-                  " `:visibility` `:internal`, `:setter` `:none`, or is defined in a test namespace."
-                  (format " Got: ^%s %s"
-                          (some-> ~description-form class (.getCanonicalName))
-                          (pr-str ~description-form)))
-             {:description-form ~description-form})))
+    `(ex-info (str "defsetting docstrings must be a *deferred* i18n form unless the Setting has"
+                   " `:visibility` `:internal`, `:setter` `:none`, or is defined in a test namespace."
+                   (format " Got: ^%s %s"
+                           (some-> ~description-form class (.getCanonicalName))
+                           (pr-str ~description-form)))
+              {:description-form ~description-form})))
 
 ;; This exists as its own method so that we can stub it in tests
 (defn- ns-in-test? [ns-name] (str/ends-with? ns-name "-test"))

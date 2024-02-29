@@ -23,7 +23,9 @@
 (def ^:private LocalizedString
   [:schema
    {:decode/dashboard-template (fn [s]
-                                 (i18n/->UserLocalizedString s nil {}))}
+                                 (if (i18n/localized-string? s)
+                                   s
+                                   (i18n/->UserLocalizedString s nil {})))}
    i18n/LocalizedString])
 
 (def ^Long ^:const max-score
@@ -33,7 +35,7 @@
 (def ^:private Score
   [:int {:min 0, :max max-score}])
 
-(def ^:private MBQL [:sequential :any])
+(def ^:private MBQL [:maybe [:sequential :any]])
 
 (def ^:private Identifier
   [:string
@@ -44,9 +46,10 @@
 
 (defn- with-defaults
   [defaults]
-  (fn [x]
-    (let [[identifier definition] (first x)]
-      {identifier (merge defaults definition)})))
+  (fn [identifier->definition]
+    (update-vals identifier->definition
+                 (fn [definition]
+                   (merge defaults definition)))))
 
 (defn- shorthand-definition
   "Expand definition of the form {identifier value} with regards to key `k` into
@@ -130,12 +133,14 @@
   [:or
    {:decode/dashboard-template
     (fn [x]
-      (let [[table-type field-type] (str/split x #"\.")]
-        (if field-type
-          [(->entity table-type) (->type field-type)]
-          [(if (-> table-type ->entity table-type?)
-             (->entity table-type)
-             (->type table-type))])))}
+      (if (string? x)
+        (let [[table-type field-type] (str/split x #"\.")]
+          (if field-type
+            [(->entity table-type) (->type field-type)]
+            [(if (-> table-type ->entity table-type?)
+               (->entity table-type)
+               (->type table-type))]))
+        x))}
    [:sequential FieldType]
    [:sequential TableType]
    [:cat TableType [:* FieldType]]])
@@ -165,10 +170,15 @@
 (def ^:private Visualization
   [:cat
    {:decode/dashboard-template (fn [x]
-                                 (if (string? x)
-                                   [x {}]
-                                   (first x)))}
-   :string
+                                 (cond
+                                   (string? x) [x {}]
+                                   ;; for malformed YAML when this comes back as a map
+                                   (map? x)    (first x)
+                                   :else       x))}
+   [:string {:decode/dashboard-template (fn [x]
+                                          (if (string? x)
+                                            x
+                                            (u/qualified-name x)))}]
    [:* :map]])
 
 (def ^:private Width
@@ -193,15 +203,19 @@
                     :height     populate/default-card-height})}
    Identifier
    [:map
+    {:decode/dashboard-template (fn [x]
+                                  (if (sequential? x)
+                                    (into {} x)
+                                    x))}
     [:title      LocalizedString]
     [:card-score Score]
     [:visualization {:optional true} Visualization]
     [:text          {:optional true} LocalizedString]
-    [:dimensions    {:optional true} [:sequential {:decode/dashboard-template u/one-or-many} CardDimension]]
-    [:filters       {:optional true} [:sequential :string]]
-    [:metrics       {:optional true} [:sequential :string]]
+    [:dimensions    {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} CardDimension]]]
+    [:filters       {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} :string]]]
+    [:metrics       {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} :string]]]
     [:limit         {:optional true} pos-int?]
-    [:order_by      {:optional true} [:sequential {:decode/dashboard-template u/one-or-many} OrderByPair]]
+    [:order_by      {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} OrderByPair]]]
     [:description   {:optional true} LocalizedString]
     [:query         {:optional true} :string]
     [:width         {:optional true} Width]
@@ -209,11 +223,14 @@
     [:group         {:optional true} :string]
     [:y_label       {:optional true} LocalizedString]
     [:x_label       {:optional true} LocalizedString]
-    [:series_labels {:optional true} [:sequential LocalizedString]]]])
+    [:series_labels {:optional true} [:maybe [:sequential LocalizedString]]]]])
 
 (def ^:private Groups
   [:map-of
-   {:decode/dashboard-template (partial apply merge)}
+   {:decode/dashboard-template (fn [x]
+                                 (if (map? x)
+                                   x
+                                   (apply merge x)))}
    Identifier
    [:map
     [:title LocalizedString]
@@ -301,16 +318,16 @@
     [:title                   LocalizedString]
     [:dashboard-template-name :string]
     [:specificity             :int]
-    [:cards             {:optional true} [:sequential Card]]
-    [:dimensions        {:optional true} [:sequential Dimension]]
+    [:cards             {:optional true} [:maybe [:sequential Card]]]
+    [:dimensions        {:optional true} [:maybe [:sequential Dimension]]]
     [:applies_to        {:optional true} AppliesTo]
     [:transient_title   {:optional true} LocalizedString]
     [:description       {:optional true} LocalizedString]
-    [:metrics           {:optional true} [:sequential Metric]]
-    [:filters           {:optional true} [:sequential Filter]]
+    [:metrics           {:optional true} [:maybe [:sequential Metric]]]
+    [:filters           {:optional true} [:maybe [:sequential Filter]]]
     [:groups            {:optional true} Groups]
-    [:indepth           {:optional true} [:sequential :any]]
-    [:dashboard_filters {:optional true} [:sequential {:decode/dashboard-template u/one-or-many} :string]]]
+    [:indepth           {:optional true} [:maybe [:sequential :any]]]
+    [:dashboard_filters {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} :string]]]]
    [:fn {:error/message "Valid metrics references"}           valid-metrics-references?]
    [:fn {:error/message "Valid filters references"}           valid-filters-references?]
    [:fn {:error/message "Valid group references"}             valid-group-references?]
@@ -388,7 +405,13 @@
             (load-dashboard-template-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) acc)
 
             entity-type
-            (assoc-in acc (concat path [entity-type ::leaf]) (yaml/load (partial make-dashboard-template entity-type) f))
+            (let [template (try
+                             (yaml/load (partial make-dashboard-template entity-type) f)
+                             (catch Throwable e
+                               (throw (ex-info (format "Error loading template %s: %s" (str f) (ex-message e))
+                                               {:path path, :f f}
+                                               e))))]
+              (assoc-in acc (concat path [entity-type ::leaf]) template))
 
             :else
             acc)))
