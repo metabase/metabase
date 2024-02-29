@@ -8,7 +8,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.schema :as su]
-   [ring.adapter.jetty9 :as ring-jetty]
+   [ring.adapter.jetty :as ring-jetty]
    [schema.core :as s]))
 
 (set! *warn-on-reflection* true)

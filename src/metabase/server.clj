@@ -9,8 +9,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [ring.adapter.jetty9 :as ring-jetty]
-   [ring.adapter.jetty9.servlet :as servlet])
+   [ring.adapter.jetty :as ring-jetty]
+   [ring.util.jakarta.servlet :as servlet])
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
