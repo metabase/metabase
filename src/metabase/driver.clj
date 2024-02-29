@@ -425,8 +425,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-;; TODO -- I think we should rename this to `features` since `driver/driver-features` is a bit redundant.
-(def driver-features
+(def features
   "Set of all features a driver can support."
   #{
     ;; Does this database support foreign key relationships?
@@ -560,7 +559,7 @@
   DEPRECATED — [[database-supports?]] should be used instead. This function will be removed in Metabase version 0.50.0."
   {:added "0.32.0", :arglists '([driver feature]), :deprecated "0.47.0"}
   (fn [driver feature]
-    (when-not (driver-features feature)
+    (when-not (features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
@@ -587,7 +586,7 @@
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
   (fn [driver feature _database]
-    (when-not (driver-features feature)
+    (when-not (features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
