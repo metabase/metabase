@@ -110,7 +110,7 @@ export type StrategySetter = (
 ) => void;
 
 export type DBStrategySetter = (
-  modelId: number,
+  databaseId: number,
   newStrategy: Partial<Strategy> | null,
 ) => void;
 

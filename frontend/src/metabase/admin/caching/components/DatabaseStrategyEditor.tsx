@@ -28,7 +28,7 @@ import {
   RootConfigDisplay,
   StrategyDisplay,
   TabWrapper,
-} from "./Data.styled";
+} from "./DatabaseStrategyEditor.styled";
 
 export const DatabaseStrategyEditor = ({
   databases,
@@ -48,14 +48,39 @@ export const DatabaseStrategyEditor = ({
   const rootStrategyLabel = rootStrategy
     ? Strategies[rootStrategy?.type]?.label
     : null;
+  const [editingWhichDatabaseId, setEditingWhichDatabaseId] = useState<
+    number | null
+  >(null);
+  const [editingRootConfig, setEditingRootConfig] = useState<boolean>(false);
+  const currentStrategy = editingRootConfig
+    ? rootStrategy
+    : editingWhichDatabaseId === null
+    ? null
+    : dbConfigs.get(editingWhichDatabaseId)?.strategy;
 
-  // if targetId is 0, the general strategy is being configured
-  const [targetId, setTargetId] = useState<number | null>(null);
-  const currentConfig = targetId !== null ? dbConfigs.get(targetId) : null;
-  // TODO: See if I can keep all zero-related logic in CacheApp
-  const editingRootConfig = targetId === 0;
+  const setDatabaseStrategyType = (strategyType: string) => {
+    if (!isValidStrategyName(strategyType)) {
+      console.error("Invalid strategy type", strategyType);
+      return;
+    }
+    const newStrategy = {
+      type: strategyType,
+      ...Strategies[strategyType].defaults,
+    };
+    if (!isValidStrategy(newStrategy)) {
+      console.error("Invalid strategy");
+      return;
+    }
+    if (editingRootConfig) {
+      setRootStrategy(newStrategy);
+    } else if (editingWhichDatabaseId !== null) {
+      setDBStrategy(editingWhichDatabaseId, newStrategy);
+    } else {
+      console.error("No target specified");
+    }
+  };
 
-  // TODO: Extract a single component for both GeneralConfig and SpecialConfig
+  const showEditor = editingRootConfig || editingWhichDatabaseId !== null;
 
   return (
     <TabWrapper role="region" aria-label="Data caching settings">
@@ -71,7 +96,10 @@ export const DatabaseStrategyEditor = ({
             {...getButtonProps({
               shouldHighlightButton: editingRootConfig,
             })}
-            onClick={() => setTargetId(0)}
+            onClick={() => {
+              setEditingRootConfig(true);
+              setEditingWhichDatabaseId(null);
+            }}
           >
             <DatabasesConfigIcon name="database" />
             {t`Databases`}
@@ -91,8 +119,11 @@ export const DatabaseStrategyEditor = ({
               key={db.id.toString()}
               dbConfigs={dbConfigs}
               setDBStrategy={setDBStrategy}
-              targetId={targetId}
-              setTargetId={setTargetId}
+              targetDatabaseId={editingWhichDatabaseId}
+              setEditingWhichDatabaseId={databaseId => {
+                setEditingRootConfig(false);
+                setEditingWhichDatabaseId(databaseId);
+              }}
               rootStrategy={rootStrategy}
             />
           ))}
@@ -103,29 +134,13 @@ export const DatabaseStrategyEditor = ({
           >{t`Clear all overrides`}</ClearOverridesButton>
         </EditorPanel>
         <ConfigPanel role="group">
-          {targetId !== null && (
+          {showEditor && (
             <ConfigPanelSection>
               <Radio.Group
-                value={currentConfig?.strategy.type ?? rootStrategy?.type}
-                name={`caching-strategy-for-database-${targetId}`}
+                value={currentStrategy?.type ?? rootStrategy?.type}
+                name={`caching-strategy-for-database-${editingWhichDatabaseId}`}
                 onChange={strategyType => {
-                  if (!isValidStrategyName(strategyType)) {
-                    console.error("Invalid strategy type", strategyType);
-                    return;
-                  }
-                  const newStrategy = {
-                    type: strategyType,
-                    ...Strategies[strategyType].defaults,
-                  };
-                  if (!isValidStrategy(newStrategy)) {
-                    console.error("Invalid strategy");
-                    return;
-                  }
-                  if (editingRootConfig) {
-                    setRootStrategy(newStrategy);
-                  } else {
-                    setDBStrategy(targetId, newStrategy);
-                  }
+                  setDatabaseStrategyType(strategyType);
                 }}
                 label={
                   <Text lh="1rem">{t`When should cached query results be invalidated?`}</Text>
@@ -180,14 +195,14 @@ export const DatabaseConfigDisplay = ({
   key,
   dbConfigs,
   setDBStrategy,
-  targetId,
-  setTargetId,
+  targetDatabaseId,
+  setEditingWhichDatabaseId,
   rootStrategy,
 }: {
   db: Database;
   key: string;
-  targetId: number | null;
-  setTargetId: Dispatch<SetStateAction<number | null>>;
+  targetDatabaseId: number | null;
+  setEditingWhichDatabaseId: Dispatch<SetStateAction<number | null>>;
   dbConfigs: Map<number, CacheConfig>;
   setDBStrategy: DBStrategySetter;
   rootStrategy: Strategy | undefined;
@@ -203,7 +218,7 @@ export const DatabaseConfigDisplay = ({
     throw new Error(t`Invalid strategy "${strategyForDB}"`);
   }
   const strategyLabel = Strategies[strategyForDB.type]?.label;
-  const isBeingEdited = targetId === db.id;
+  const isBeingEdited = targetDatabaseId === db.id;
   const clearOverride = () => {
     setDBStrategy(db.id, null);
   };
@@ -213,7 +228,7 @@ export const DatabaseConfigDisplay = ({
       {...getButtonProps({ shouldHighlightButton: isBeingEdited })}
       key={key}
       onClick={() => {
-        setTargetId(db.id);
+        setEditingWhichDatabaseId(db.id);
       }}
     >
       <DatabasesConfigIcon name="database" />

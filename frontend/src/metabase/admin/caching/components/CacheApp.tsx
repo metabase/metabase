@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -15,20 +16,20 @@ import { CacheConfigApi } from "metabase/services";
 import { Tabs } from "metabase/ui";
 
 import {
+  isValidCacheConfig,
+  isValidConfigFromAPI,
   isValidStrategy,
+  isValidTabId,
+  TabId,
   type CacheConfig,
   type CacheConfigFromAPI,
   type GetConfigByModelId,
   type Strategy,
   type StrategySetter,
-  isValidConfigFromAPI,
-  isValidCacheConfig,
-  TabId,
-  isValidTabId,
 } from "../types";
 
 import { Tab, TabContentWrapper, TabsList, TabsPanel } from "./CacheApp.styled";
-import { DatabaseStrategyEditor } from "./Data";
+import { DatabaseStrategyEditor } from "./DatabaseStrategyEditor";
 const defaultRootStrategy: Strategy = { type: "nocache" };
 
 export const CacheApp = () => {
@@ -121,25 +122,33 @@ export const CacheApp = () => {
   }, [configs]);
 
   const setStrategy = useCallback<StrategySetter>(
-    async (model, modelId, newStrategy) => {
+    async (model, model_id, newStrategy) => {
       const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
         model,
-        model_id: modelId,
+        model_id,
       };
       const otherConfigs = configs.filter(
-        config => config.model_id !== modelId,
+        config => config.model_id !== model_id,
       );
-      if (newStrategy) {
+      const overridesRoot = !_.isEqual(newStrategy, rootStrategy);
+      if (newStrategy && (model === "root" || overridesRoot)) {
         const existingConfig = configs.find(
-          config => config.model_id === modelId,
+          config => config.model_id === model_id,
         );
+        const merged = {
+          ...existingConfig?.strategy,
+          ...newStrategy,
+        };
+        if (!isValidStrategy(merged)) {
+          throw new Error(`Invalid strategy: ${merged}`);
+        }
         const newConfig: CacheConfig = {
           ...baseConfig,
-          strategy: {
-            ...existingConfig?.strategy,
-            ...newStrategy,
-          } as Strategy, // TODO: Remove this 'as' which will be tricky
+          strategy: merged,
         };
+        if (!isValidCacheConfig(newConfig)) {
+          throw new Error(`Invalid cache config: ${newConfig}`);
+        }
         setConfigs([...otherConfigs, newConfig]);
         // TODO: What if the update fails? This might be over-engineering, but
         // maybe: always cache the previous state so we can roll back, and show
@@ -206,8 +215,8 @@ export const CacheApp = () => {
             dbConfigs={dbConfigs}
             rootStrategy={rootStrategy}
             setRootStrategy={strategy => setStrategy("root", 0, strategy)}
-            setDBStrategy={(modelId, strategy) =>
-              setStrategy("database", modelId, strategy)
+            setDBStrategy={(databaseId, strategy) =>
+              setStrategy("database", databaseId, strategy)
             }
             clearDBOverrides={clearDBOverrides}
           />
