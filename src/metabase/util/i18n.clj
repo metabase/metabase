@@ -86,10 +86,7 @@
 (p.types/defrecord+ UserLocalizedString [format-string args pluralization-opts]
   Object
   (toString [_]
-    (translate-user-locale format-string args pluralization-opts))
-  schema.core.Schema
-  (explain [this]
-    (str this)))
+    (translate-user-locale format-string args pluralization-opts)))
 
 (p.types/defrecord+ SiteLocalizedString [format-string args pluralization-opts]
   Object
