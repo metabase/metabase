@@ -101,7 +101,7 @@ export type BaseXAxisModel = {
   formatter: AxisFormatter;
   axisType: OptionAxisType;
   canBrush?: boolean;
-  tickRenderPredicate?: (value: string) => boolean;
+  tickRenderPredicate?: (value: string | number) => boolean;
 };
 
 export type CategoryXAxisModel = BaseXAxisModel & {

@@ -147,9 +147,10 @@ export const buildDimensionAxis = (
       rotate: getRotateAngle(settings),
       ...getTicksDefaultOption(renderingContext),
       // Value is always converted to a string by ECharts
-      formatter: (value: string) => {
+      formatter: (rawValue: string) => {
+        const value = valueGetter(rawValue);
         if (xAxisModel.tickRenderPredicate?.(value) ?? true) {
-          return ` ${formatter(valueGetter(value))} `; // spaces force padding between ticks
+          return ` ${formatter(value)} `; // spaces force padding between ticks
         }
         return false;
       },

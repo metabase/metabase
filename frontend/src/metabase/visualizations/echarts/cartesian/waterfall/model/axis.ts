@@ -50,7 +50,7 @@ export const getWaterfallXAxisModel = (
     const timeSeriesTotalXValue = getTotalTimeSeriesXValue(xAxisModel);
 
     totalXValue = timeSeriesTotalXValue;
-    tickRenderPredicate = (tickValueRaw: string) => {
+    tickRenderPredicate = (tickValueRaw: string | number) => {
       const tickValue = dayjs(tickValueRaw);
       if (
         tickValue.isSame(

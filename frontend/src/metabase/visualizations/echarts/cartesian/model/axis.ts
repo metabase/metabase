@@ -51,7 +51,10 @@ import {
   TICKS_INTERVAL_THRESHOLD,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { isRelativeDateTimeUnit } from "metabase-types/guards/date-time";
+import {
+  isAbsoluteDateTimeUnit,
+  isRelativeDateTimeUnit,
+} from "metabase-types/guards/date-time";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 const KEYS_TO_COMPARE = new Set([
@@ -498,9 +501,8 @@ export const getXAxisEChartsType = (
 const getTickWithinRangePredicate = (range: DateRange) => {
   const [minDate, maxDate] = range;
 
-  const isWidthinDataRange = (tickDateRaw: string) => {
+  const isWidthinDataRange = (tickDateRaw: string | number) => {
     const tickDate = dayjs(tickDateRaw);
-
     if (minDate.isSame(maxDate)) {
       return tickDate.isSame(minDate, "day");
     }
@@ -581,7 +583,7 @@ export function getTimeSeriesXAxisModel(
       // This does not apply to the range based interval as if it exists, then the range is big enough.
       getTimeSeriesIntervalDuration(dataTimeSeriesInterval) / 1.5;
   let ticksMaxInterval;
-  let effectiveTickUnit: CartesianChartDateTimeAbsoluteUnit;
+  let effectiveTickUnit: CartesianChartDateTimeAbsoluteUnit | undefined;
 
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
@@ -751,7 +753,9 @@ function getTimeSeriesXAxisInfo(
   // 2. count - how many intervals per tick?
   // 3. timezone - what timezone are values in? days vary in length by timezone
   const unit = minTimeseriesUnit(
-    getObjectValues(dimensionModel.columnByCardId).map(column => column.unit),
+    getObjectValues(dimensionModel.columnByCardId)
+      .map(column => (isAbsoluteDateTimeUnit(column.unit) ? column.unit : null))
+      .filter(isNotNull),
   );
   const timezone = getTimezone(rawSeries);
   const interval = (computeTimeseriesDataInverval(xValues, unit) ?? {
