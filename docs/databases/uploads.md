@@ -71,36 +71,7 @@ CSV files cannot exceed 50 MB in size.
 
 > While Metabase limits uploads to 50 MB, the server you use to run your Metabase may impose a lower limit. For example, the default client upload limit for [NGINX is 1 MB](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size). So you may need to change your server settings to allow uploads up to 50 MB. People on Metabase Cloud don't have to worry about this.
 
-If you have a file larger than 50 MB, the workaround here is to split the data into multiple files and either:
-
-- [Upload and combine with `UNION`](#upload-and-combine-with-union)
-- [Append to an existing model created by an upload](#append-to-an-existing-model-created-by-an-upload)
-
-### Upload and combine with `UNION`
-
-If you want to preserve the uploads as separate tables, but you still want to be able to analyze the data across the CSV files all at once, you can upload those files one by one, and Metabase will create a new model for each sheet.
-
-You can then create a new model using SQL that combines the data from the models created by the uploads. For example, if you uploaded two CSVs, `invocies 1` and `invoices 2`, you could create a new model with a SQL query to combine data from both of the invoice models. The query would look something like:
-
-```sql
-{% raw %}
-SELECT
-  *
-FROM
-  {{#118-invoices-1}}
-UNION -- or UNION ALL if you want to preserve duplicate rows
-SELECT
-  *
-FROM
-  {{#120-invoices-2}}
-{% endraw %}
-```
-
-The above query uses double braces to reference the other models. See [Referencing questions and models](../questions/native-editor/referencing-saved-questions-in-queries.md).
-
-### Append to an existing model created by an upload
-
-Upload one file and Metabase will create a model for it. If you upload another file, you can choose to [append the other CSVs to that model](../exploration-and-organization/collections.md#appending-to-a-model-created-by-an-upload).
+If you have a file larger than 50 MB, the workaround here is to split the data into multiple and [append those files to an existing model](../exploration-and-organization/collections.md#appending-to-a-model-created-by-an-upload).
 
 ## Date formats
 

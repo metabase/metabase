@@ -88,9 +88,9 @@ You can upload additional CSV data to an existing model created by a previous CS
 
 ![Append data to existing upload model](./images/append-data.png)
 
-The uploaded CSV must have the same column and ordering as the CSV that created the model. Metabase will look for a header row to check that the column names are the same. So if you split a large CSV into multiple CSVs, make sure to include header rows for all of the files.
+The uploaded CSV must have the same column name, order, and type as the columns in the model. Metabase will look for a header row to check that the column names are the same. So if you split a large CSV into multiple CSVs, make sure to include header rows for all of the files.
 
-When appending, Metabase will simply insert the rows into the underlying table, and update the model that sits on top of that table. If you have duplicate rows from one upload to the next, Metabase will preserve those duplicate rows.
+When appending, Metabase will simply insert the rows into the underlying table, which will update the model that sits on top of that table. If you have duplicate rows from one upload to the next, Metabase will preserve those duplicate rows.
 
 The upload icon will only be visible on models created by uploads.
 
