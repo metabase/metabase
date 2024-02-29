@@ -3,6 +3,8 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { cloneElement, Children } from "react";
 
+import CS from "metabase/css/core";
+
 // SidebarLayoutFixedWidth is similar to SidebarLayout but uses a fixed sidebar
 // width, which is needed for our current Dashboard component to resize correctly
 
@@ -18,7 +20,13 @@ const SidebarLayoutFixedWidth = ({
     {cloneElement(
       sidebar,
       {
-        className: "Layout-sidebar absolute top left bottom",
+        className: cx(
+          "Layout-sidebar",
+          CS.absolute,
+          CS.top,
+          CS.left,
+          CS.bottom,
+        ),
         style: { width: sidebarWidth, ...(sidebar.props.style || {}) },
       },
       sidebar.props.children,

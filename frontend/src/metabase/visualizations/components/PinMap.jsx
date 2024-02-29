@@ -6,6 +6,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import { hasLatitudeAndLongitudeColumns } from "metabase-lib/types/utils/isa";
 
@@ -194,7 +195,14 @@ export default class PinMap extends Component {
           <Map
             {...mapProps}
             ref={map => (this._map = map)}
-            className="absolute top left bottom right z1"
+            className={cx(
+              CS.absolute,
+              CS.top,
+              CS.left,
+              CS.bottom,
+              CS.right,
+              "z1",
+            )}
             onMapCenterChange={this.onMapCenterChange}
             onMapZoomChange={this.onMapZoomChange}
             lat={lat}
@@ -209,7 +217,18 @@ export default class PinMap extends Component {
             onFiltering={filtering => this.setState({ filtering })}
           />
         ) : null}
-        <div className="absolute top right m1 z2 flex flex-column hover-child">
+        <div
+          className={cx(
+            CS.absolute,
+            CS.top,
+            CS.right,
+            CS.m1,
+            "z2",
+            CS.flex,
+            "flex-column",
+            "hover-child",
+          )}
+        >
           {isEditing || !isDashboard ? (
             <div
               className={cx("PinMapUpdateButton Button Button--small mb1", {

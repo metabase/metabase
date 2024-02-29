@@ -68,7 +68,7 @@ export default class QueryVisualization extends Component {
         {!isObjectDetail && (
           <Warnings
             warnings={this.state.warnings}
-            className="absolute top right mt2 mr2 z2"
+            className={cx(CS.absolute, CS.top, CS.right, CS.mt2, CS.mr2, "z2")}
             size={18}
           />
         )}

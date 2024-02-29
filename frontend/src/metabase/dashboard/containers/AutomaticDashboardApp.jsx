@@ -197,7 +197,9 @@ class AutomaticDashboardAppInner extends Component {
           )}
         </div>
         {hasSidebar && (
-          <SuggestionsSidebarWrapper className="absolute top right bottom">
+          <SuggestionsSidebarWrapper
+            className={cx(CS.absolute, CS.top, CS.right, CS.bottom)}
+          >
             <SuggestionsSidebar related={related} />
           </SuggestionsSidebarWrapper>
         )}

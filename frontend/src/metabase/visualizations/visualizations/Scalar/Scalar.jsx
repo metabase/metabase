@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
@@ -218,7 +220,17 @@ export class Scalar extends Component {
 
     return (
       <ScalarWrapper>
-        <div className="text-default text-smaller absolute top right p1 px2">
+        <div
+          className={cx(
+            CS.textDefault,
+            "text-smaller",
+            CS.absolute,
+            CS.top,
+            CS.right,
+            CS.p1,
+            CS.px2,
+          )}
+        >
           {actionButtons}
         </div>
         <ScalarContainer

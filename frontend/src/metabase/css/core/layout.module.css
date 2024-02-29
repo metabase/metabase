@@ -65,7 +65,7 @@
 .relative {
   position: relative;
 }
-:global(.absolute),
+
 .absolute {
   position: absolute;
 }
