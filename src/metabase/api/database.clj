@@ -828,8 +828,8 @@
    details :map}
   (api/check-superuser)
   (let [details-or-error (test-connection-details engine details)]
-    {:valid (not (false? (:valid details-or-error)))}))
-
+    ;; details that come back without a `:valid` key at all are... valid!
+    (update details-or-error :valid (comp not false?))))
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 

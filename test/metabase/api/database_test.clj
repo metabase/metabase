@@ -1244,7 +1244,7 @@
              (test-connection-details "h2" (:details (mt/db))))))
 
     (testing "Valid database connection details"
-      (is (= {:valid true}
+      (is (= (merge (:details (mt/db)) {:valid true})
              (api-validate-database {:details {:engine :h2, :details (:details (mt/db))}}))))
 
     (testing "invalid database connection details"
@@ -1255,7 +1255,9 @@
                (test-connection-details "h2" {:db "ABC"}))))
 
       (testing "via the API endpoint"
-        (is (= {:valid false}
+        (is (= {:errors  {:db "check your connection string"}
+                :message "Implicitly relative file paths are not allowed."
+                :valid   false}
                (api-validate-database {:details {:engine :h2, :details {:db "ABC"}}})))))))
 
 (deftest validate-database-test-2
