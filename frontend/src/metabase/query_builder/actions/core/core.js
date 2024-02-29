@@ -251,7 +251,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
 
-    if (question.isDataset()) {
+    if (question.isDataset() && resultsMetadata) {
       resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
         resultsMetadata.columns,
       );
