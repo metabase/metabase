@@ -48,15 +48,15 @@
 ;;                             |
 ;;                             |
 ;;                             |
-;;      native query? <--------+------- > mbql query?
-;;            ↓                               ↓
-;; {:perms/native-query-editing :yes}     mbql-required-perms
-;;                                            |
-;;                     no source card  <------+----> has source card
-;;                             ↓                          ↓
-;;               tables->permissions-path-set   source-card-read-perms
-;;                             ↓
-;;     {:perms/data-access {table-id :unrestricted}}
+;;      native query? <--------+--------------- > mbql query?
+;;            ↓                                       ↓
+;; {:perms/make-query :query-builder-and-native}     mbql-required-perms
+;;                                                            |
+;;                                     no source card  <------+----> has source card
+;;                                             ↓                          ↓
+;;                               tables->permissions-path-set   source-card-read-perms
+;;                                             ↓
+;;                     {:perms/make-query :query-builder}
 
 (mu/defn query->source-table-ids :- [:set [:or [:= ::native] ms/PositiveInt]]
   "Return a sequence of all Table IDs referenced by `query`."
@@ -166,9 +166,10 @@
               native?             (.contains ^clojure.lang.PersistentVector table-ids-or-native ::native)]
           (merge
            (when (seq table-ids)
-             {:perms/data-access (zipmap table-ids (repeat :unrestricted))})
-           (when native?
-             {:perms/native-query-editing :yes})))))
+             {:perms/view-data (zipmap table-ids (repeat :unrestricted))})
+           {:perms/make-query (if native?
+                                :query-builder-and-native
+                                :query-builder)}))))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it
     (catch Throwable e
@@ -177,15 +178,15 @@
                                    query)}
                        e)]
         (if throw-exceptions? (throw e) (log/error e)))
-      {:perms/data-access {0 :unrestricted}}))) ; table 0 will never exist
+      {:perms/view-data {0 :unrestricted}}))) ; table 0 will never exist
 
 (defn required-perms
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys
-  :paths (containing legacy permission paths), :perms/data-access, and :perms/native-query-editing."
+  :paths (containing legacy permission paths), :perms/view-data, and :perms/make-query."
   [{query-type :type, :as query} & {:as perms-opts}]
   (cond
     (empty? query)                   {}
-    (= (keyword query-type) :native) {:perms/native-query-editing :yes}
+    (= (keyword query-type) :native) {:perms/make-query :query-builder-and-native}
     (= (keyword query-type) :query)  (mbql-required-perms query perms-opts)
     :else                            (throw (ex-info (tru "Invalid query type: {0}" query-type)
                                                      {:query query}))))
@@ -205,17 +206,22 @@
         (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths-excluding-gtap-paths)
             (throw (perms-exception paths)))))
     ;; Check native query access if required
-    (when (= (:perms/native-query-editing required-perms) :yes)
-      (or (= (:perms/native-query-editing gtap-perms) :yes)
-          (= (data-perms/database-permission-for-user api/*current-user-id* :perms/native-query-editing db-id) :yes)
-          (throw (perms-exception {db-id {:perms/native-query-editing :yes}}))))
+    (when (= (:perms/make-query required-perms) :query-builder-and-native)
+      (or (= (:perms/make-query gtap-perms) :query-builder-and-native)
+          (= (data-perms/database-permission-for-user api/*current-user-id* :perms/make-query db-id) :query-builder-and-native)
+          (throw (perms-exception {db-id {:perms/make-query :query-builder-and-native}}))))
+    ;; Check query builder access if required
+    (when (= (:perms/make-query required-perms) :query-builder)
+      (or (= (:perms/make-query gtap-perms) :query-builder)
+          (contains? #{:query-builder :query-builder-and-native}
+                     (data-perms/database-permission-for-user api/*current-user-id* :perms/make-query db-id))))
     ;; Check for unrestricted data access to any tables referenced by the query
-    (when-let [table-ids (:perms/data-access required-perms)]
+    (when-let [table-ids (:perms/view-data required-perms)]
       (doseq [[table-id _] table-ids]
         (or
-         (= (get-in gtap-perms [:perms/data-access table-id]) :unrestricted)
-         (= (data-perms/table-permission-for-user api/*current-user-id* :perms/data-access db-id table-id) :unrestricted)
-         (throw (perms-exception {db-id {:perms/data-access {table-id :unrestricted}}})))))
+         (= (get-in gtap-perms [:perms/view-data table-id]) :unrestricted)
+         (= (data-perms/table-permission-for-user api/*current-user-id* :perms/view-data db-id table-id) :unrestricted)
+         (throw (perms-exception {db-id {:perms/view-data {table-id :unrestricted}}})))))
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?

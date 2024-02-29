@@ -72,7 +72,7 @@
     (if sandboxed-perms?
       (maybe-filter-fields
        table
-       (data-perms/with-additional-table-permission :perms/data-access (:db_id table) (u/the-id table) :unrestricted
+       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
          (thunk)))
       (thunk))))
 

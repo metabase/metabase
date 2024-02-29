@@ -45,8 +45,10 @@
 (def Permissions
   "Permissions which apply to individual databases or tables"
   {:perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
+   :perms/view-data             {:model :model/Table :values [:unrestricted :block]}
    :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
+   :perms/make-query            {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
 
    :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
@@ -155,6 +157,16 @@
     (first (filter (set perm-values) ordered-values))))
 
 (defmethod coalesce :perms/data-access
+  [perm-type perm-values]
+  (let [perm-values    (set perm-values)
+        ordered-values (-> Permissions perm-type :values)]
+    (if (and (perm-values :block)
+             (not (perm-values :unrestricted)))
+      ;; Block in one group overrides no-self-service in another, but not unrestricted
+      :block
+      (first (filter perm-values ordered-values)))))
+
+(defmethod coalesce :perms/view-data
   [perm-type perm-values]
   (let [perm-values    (set perm-values)
         ordered-values (-> Permissions perm-type :values)]
@@ -370,16 +382,16 @@
 
 (mu/defn user-has-block-perms-for-database? :- :boolean
   "Returns a Boolean indicating whether the given user should have block permissions enforced for the given database.
-  This is a standalone function because block perms are only set at the database-level, but :perms/data-access is
+  This is a standalone function because block perms are only set at the database-level, but :perms/view-data is
   generally checked at the table-level, except in the case of block perms."
   [user-id database-id]
   (if (is-superuser? user-id)
     false
     (let [perm-values
-          (->> (get-permissions user-id :perms/data-access database-id)
+          (->> (get-permissions user-id :perms/view-data database-id)
                (map :perm_value)
                (into #{}))]
-      (= (coalesce :perms/data-access perm-values)
+      (= (coalesce :perms/view-data perm-values)
          :block))))
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
@@ -544,7 +556,7 @@
   "Sets a single permission to a specified value for a given group and database. If a permission value already exists
   for the specified group and object, it will be updated to the new value.
 
-  Block permissions (i.e. :perms/data-access :block) can only be set at the database-level, despite :perms/data-access
+  Block permissions (i.e. :perms/view-data :block) can only be set at the database-level, despite :perms/view-data
   being a table-level permission."
   [group-or-id :- TheIdable
    db-or-id    :- TheIdable
@@ -558,8 +570,10 @@
                                           :group_id   group-id
                                           :perm_value value
                                           :db_id      db-id})
-      (when (= [:perms/data-access :block] [perm-type value])
-        (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)
+      (when (contains? #{[:perms/data-access :block]
+                         [:perms/view-data :block]}
+                       [perm-type value])
+        (set-database-permission! group-or-id db-or-id :perms/make-query :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
 
 (mu/defn set-table-permissions!

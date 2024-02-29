@@ -65,7 +65,7 @@
      false
      (= :unrestricted (data-perms/most-permissive-database-permission-for-user
                        api/*current-user-id*
-                       :perms/data-access
+                       :perms/view-data
                        pk)))))
 
 (defenterprise current-user-can-write-db?

@@ -250,7 +250,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :no-self-service)
           (t2.with-temp/with-temp [Collection collection]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (doseq [[card-1-query-type card-1-query] {"MBQL"   (mt/mbql-query venues
@@ -324,10 +324,10 @@
   (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/perms` in the query"
     (binding [api/*current-user-id* (mt/user->id :rasta)]
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :no-self-service)
         (letfn [(process-query []
                   (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                           ::query-perms/perms {:gtaps {:perms/data-access {(mt/id :venues) :unrestricted}}})))]
+                                           ::query-perms/perms {:gtaps {:perms/view-data {(mt/id :venues) :unrestricted}}})))]
           (testing "Make sure the middleware is actually preventing something by disabling it"
             (with-redefs [qp.perms/remove-permissions-key identity]
               (is (partial= {:status :completed}

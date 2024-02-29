@@ -93,7 +93,7 @@
   ([instance]
    (= :unrestricted (data-perms/table-permission-for-user
                      api/*current-user-id*
-                     :perms/data-access
+                     :perms/view-data
                      (:db_id instance)
                      (:id instance))))
   ([_ pk]

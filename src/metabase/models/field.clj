@@ -150,7 +150,7 @@
    (= :unrestricted
       (data-perms/table-permission-for-user
        api/*current-user-id*
-       :perms/data-access
+       :perms/view-data
        (field->db-id instance)
        (:table_id instance))))
   ([model pk]

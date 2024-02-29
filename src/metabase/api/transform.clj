@@ -16,7 +16,7 @@
    transform-name ms/NonBlankString}
   (api/check-403
    (= (data-perms/full-schema-permission-for-user api/*current-user-id*
-                                                  :perms/data-access
+                                                  :perms/view-data
                                                   db-id
                                                   schema)
       :unrestricted))

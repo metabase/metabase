@@ -219,8 +219,8 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/data-access {(mt/id :checkins) :unrestricted
-                                                                                           (mt/id :venues) :unrestricted}}}})
+                   ::query-perms/perms                        {:gtaps {:perms/view-data {(mt/id :checkins) :unrestricted
+                                                                                         (mt/id :venues) :unrestricted}}}})
                 (apply-row-level-permissions
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
@@ -249,7 +249,7 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/native-query-editing :yes}}})
+                   ::query-perms/perms                        {:gtaps {:perms/make-query :query-buiilder-and-native}}})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
                    {:aggregation [[:count]]}))))))))
@@ -375,7 +375,7 @@
                        Card       card        {:collection_id (u/the-id collection)}]
           (mt/with-group [group]
             (mt/with-no-data-perms-for-all-users!
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :no-self-service)
               (perms/grant-collection-read-permissions! group collection)
               (mt/with-test-user :rasta
                 (binding [qp.perms/*card-id* (u/the-id card)]
@@ -771,7 +771,7 @@
                         {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
                          :attributes {"user_id" 1}})
         ;; grant full data perms for products
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/data-access :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/view-data :unrestricted)
         (mt/with-test-user :rasta
           (testing "Sanity check: should be able to query products"
             (is (=? {:status :completed}
@@ -896,7 +896,7 @@
                         {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
                          :attributes {:user_id "1"}})
         ;; make sure the sandboxed group can still access the Products table, which is referenced below.
-        (data-perms/set-table-permission! &group (mt/id :products) :perms/data-access :unrestricted)
+        (data-perms/set-table-permission! &group (mt/id :products) :perms/view-data :unrestricted)
         (letfn [(do-tests []
                   ;; create a query based on the sandboxed Table
                   (testing "should be able to run the query. Results should come back with correct metadata"
@@ -1010,7 +1010,7 @@
                                        {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                         :products {:remappings {:user_cat [:dimension $products.category]}}})
                          :attributes {:user_id 1, :user_cat "Widget"}}
-          (data-perms/set-table-permission! &group (mt/id :people) :perms/data-access :unrestricted)
+          (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
           (is (= (->> [["Twitter" nil      0 401.51]
                        ["Twitter" "Widget" 0 498.59]
                        [nil       nil      1 401.51]

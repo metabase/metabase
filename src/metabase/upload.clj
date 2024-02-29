@@ -480,7 +480,7 @@
         (ex-info (tru "A schema has not been set.")
                  {:status-code 422})
         (not= :unrestricted (data-perms/full-schema-permission-for-user api/*current-user-id*
-                                                                        :perms/data-access
+                                                                        :perms/view-data
                                                                         (u/the-id db)
                                                                         schema-name))
         (ex-info (tru "You don''t have permissions to do that.")

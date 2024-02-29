@@ -15,7 +15,11 @@
       :unrestricted    [:perms/data-access #{:unrestricted :restricted :none}]
       :no-self-service [:perms/data-access #{:no-self-service :none}]
       :block           [:perms/data-access #{:block}]
-      nil              [:perms/data-access #{}])))
+      nil              [:perms/data-access #{}]
+      :unrestricted    [:perms/view-data #{:unrestricted :restricted :none}]
+      :no-self-service [:perms/view-data #{:no-self-service :none}]
+      :block           [:perms/view-data #{:block}]
+      nil              [:perms/view-data #{}])))
 
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}

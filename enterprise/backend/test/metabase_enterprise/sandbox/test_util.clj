@@ -47,7 +47,7 @@
                                                                 :table_id             (data/id table-kw)
                                                                 :card_id              card-id
                                                                 :attribute_remappings remappings}]
-           (data-perms/set-table-permission! group (data/id table-kw) :perms/data-access :unrestricted)
+           (data-perms/set-table-permission! group (data/id table-kw) :perms/view-data :unrestricted)
            (do-with-gtap-defs! group more f)))))))
 
 (def ^:private WithGTAPsArgs
