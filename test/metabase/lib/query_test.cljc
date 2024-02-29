@@ -91,6 +91,7 @@
                                                 [:expression
                                                  {}
                                                  ;; TODO Fill these in?
+                                                 ;; tech debt issue: #39376
                                                  #_{:base-type :type/Integer}
                                                  "CC"]]]}]}]}
 
@@ -105,21 +106,21 @@
                   (lib/aggregate (lib/count)))]
     (is (=? {:stages [{:lib/stage-metadata {:columns [{:field-ref [:expression "BirthMonth" {:base-type :type/Integer}]} {}]}} {}]}
           (lib/query meta/metadata-provider (assoc-in (lib.convert/->pMBQL (lib.convert/->legacy-MBQL query))
-                                                        [:stages 0 :lib/stage-metadata]
-                                                        {:columns [{:base-type :type/Float,
-                                                                    :display-name "BirthMonth",
-                                                                    :field-ref [:expression
-                                                                                "BirthMonth"
-                                                                                {:base-type :type/Integer}],
-                                                                    :name "BirthMonth",
-                                                                    :lib/type :metadata/column}
-                                                                   {:base-type :type/Integer,
-                                                                    :display-name "Count",
-                                                                    :field-ref [:aggregation 0],
-                                                                    :name "count",
-                                                                    :semantic-type :type/Quantity,
-                                                                    :lib/type :metadata/column}],
-                                                         :lib/type :metadata/results}))))))
+                                                      [:stages 0 :lib/stage-metadata]
+                                                      {:columns [{:base-type :type/Float,
+                                                                  :display-name "BirthMonth",
+                                                                  :field-ref [:expression
+                                                                              "BirthMonth"
+                                                                              {:base-type :type/Integer}],
+                                                                  :name "BirthMonth",
+                                                                  :lib/type :metadata/column}
+                                                                 {:base-type :type/Integer,
+                                                                  :display-name "Count",
+                                                                  :field-ref [:aggregation 0],
+                                                                  :name "count",
+                                                                  :semantic-type :type/Quantity,
+                                                                  :lib/type :metadata/column}],
+                                                       :lib/type :metadata/results}))))))
 
 (deftest ^:parallel stage-count-test
   (is (= 1 (lib/stage-count lib.tu/venues-query)))
