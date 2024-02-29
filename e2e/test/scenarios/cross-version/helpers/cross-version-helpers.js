@@ -126,7 +126,6 @@ export function setupInstance({ version, majorVersion }) {
 
 export function newQuestion({ majorVersion }) {
   if (majorVersion < newQuestionMenuVersion) {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom question").click();
   } else {
     cy.button("New").click();
@@ -162,7 +161,6 @@ export function assertTimelineData({ majorVersion }) {
 
 export function dismissOkToPlayWithQuestionsModal({ majorVersion }) {
   if (majorVersion < questionsAreOkToPlayWithModalVersion) {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("It's okay to play around with saved questions");
     cy.button("Okay").click();
   }
