@@ -9,7 +9,7 @@ const externalDatabaseId = 2;
 
 describe("issue 16170", { tags: "@mongo" }, () => {
   beforeEach(() => {
-    restore("mongo-4");
+    restore("mongo-5");
     cy.signInAsAdmin();
 
     withDatabase(externalDatabaseId, ({ ORDERS, ORDERS_ID }) => {

@@ -26,7 +26,6 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   dataset_query: createMockStructuredDatasetQuery(),
   visualization_settings: createMockVisualizationSettings(),
   result_metadata: [],
-  dataset: false,
   type: "question",
   can_write: true,
   cache_ttl: null,
@@ -108,6 +107,7 @@ export const createMockTableColumnOrderSetting = (
   opts?: Partial<TableColumnOrderSetting>,
 ): TableColumnOrderSetting => ({
   name: "Column",
+  key: '["ref",["field",1,null]]',
   enabled: true,
   ...opts,
 });

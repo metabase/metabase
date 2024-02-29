@@ -2,7 +2,6 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
-  modal,
   openNativeEditor,
   popover,
   restore,
@@ -539,7 +538,9 @@ const getListDimensionTargetQuestion = () => {
 
 const updateQuestion = () => {
   cy.findByText("Save").click();
-  modal().button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
+  });
   cy.wait("@updateQuestion");
 };
 

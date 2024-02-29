@@ -1,13 +1,16 @@
 import type { IconName } from "metabase/ui";
-import type { DatasetColumn, FieldReference } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  TableColumnOrderSetting,
+} from "metabase-types/api";
 
 export type ColumnItem = {
   name: string;
-  fieldRef: FieldReference;
   enabled: boolean;
+  index: number;
   icon: IconName;
   column: DatasetColumn;
-  columnSettingIndex: number;
+  columnSetting: TableColumnOrderSetting;
 };
 
 export type DragColumnProps = {

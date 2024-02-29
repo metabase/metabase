@@ -68,12 +68,12 @@
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query)
           source-card    (when source-card-id
-                           (t2/select-one [Card :result_metadata :dataset] :id source-card-id))
+                           (t2/select-one [Card :result_metadata :type] :id source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
-                           (:dataset source-card)
-                           (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
+                           (= (:type source-card) :model)
+                           (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (binding [qp.perms/*card-id* source-card-id]
         (qp.streaming/streaming-response [rff export-format]
           (qp/process-query (update query :info merge info) rff))))))

@@ -7,7 +7,7 @@ export function saveMetadataChanges() {
     alias: "dataset",
   });
 
-  cy.intercept("PUT", `/api/card/*`).as("updateModelMetadata");
+  cy.intercept("PUT", "/api/card/*").as("updateModelMetadata");
   cy.findByTestId("dataset-edit-bar").button("Save changes").click();
   cy.wait("@updateModelMetadata");
   cy.findByTestId("dataset-edit-bar").should("not.exist");

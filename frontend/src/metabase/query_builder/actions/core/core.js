@@ -30,11 +30,11 @@ import {
   getCard,
   getIsResultDirty,
   getOriginalQuestion,
+  getParameters,
   getQuestion,
   getResultsMetadata,
-  getTransformedSeries,
+  getSubmittableQuestion,
   isBasedOnExistingQuestion,
-  getParameters,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
@@ -42,7 +42,6 @@ import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
 
 import { updateQuestion } from "./updateQuestion";
-import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
@@ -168,11 +167,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
-          // When the dataset query changes, we should loose the dataset flag,
+          // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(
-            setCardAndRun({ ...card, dataset: false, type: "question" }),
-          );
+          dispatch(setCardAndRun({ ...card, type: "question" }));
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));
@@ -196,20 +193,9 @@ export const setDatasetQuery =
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = question => {
   return async (dispatch, getState) => {
-    // Needed for persisting visualization columns for pulses/alerts, see #6749
-    const series = getTransformedSeries(getState());
-    const questionWithVizSettings = series
-      ? getQuestionWithDefaultVisualizationSettings(question, series)
-      : question;
-
-    const resultsMetadata = getResultsMetadata(getState());
-    const isResultDirty = getIsResultDirty(getState());
-    const cleanQuery = Lib.dropEmptyStages(question.query());
-    const questionToCreate = questionWithVizSettings
-      .setQuery(cleanQuery)
-      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
+    const submittableQuestion = getSubmittableQuestion(getState(), question);
     const createdQuestion = await reduxCreateQuestion(
-      questionToCreate,
+      submittableQuestion,
       dispatch,
     );
 
@@ -235,7 +221,8 @@ export const apiCreateQuestion = question => {
 
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
-    const metadataOptions = { reload: createdQuestion.isDataset() };
+    const isModel = question.type() === "model";
+    const metadataOptions = { reload: isModel };
     await dispatch(loadMetadataForCard(card, metadataOptions));
 
     return createdQuestion;
@@ -248,13 +235,17 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
+    const isModel = question.type() === "model";
 
-    if (question.isDataset()) {
-      resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
-        resultsMetadata.columns,
-      );
+    if (isModel) {
+      const resultsMetadata = getResultsMetadata(getState());
+
+      if (!resultsMetadata) {
+        // Running the question will populate results metadata in redux store.
+        // Without it getSubmittableQuestion won't have all the necessary information.
+        await dispatch(runQuestionQuery());
+      }
     }
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -263,22 +254,13 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       rerunQuery = rerunQuery ?? isResultDirty;
     }
 
-    // Needed for persisting visualization columns for pulses/alerts, see #6749
-    const series = getTransformedSeries(getState());
-    const questionWithVizSettings = series
-      ? getQuestionWithDefaultVisualizationSettings(question, series)
-      : question;
-
-    const cleanQuery = Lib.dropEmptyStages(question.query());
-    const questionToUpdate = questionWithVizSettings
-      .setQuery(cleanQuery)
-      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
+    const submittableQuestion = getSubmittableQuestion(getState(), question);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
     // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
     const updatedQuestion = await reduxUpdateQuestion(
-      questionToUpdate,
+      submittableQuestion,
       dispatch,
       {
         excludeDatasetQuery: isAdHocModelQuestion(question, originalQuestion),
@@ -300,13 +282,13 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       payload: updatedQuestion.card(),
     });
 
-    if (question.isDataset()) {
+    if (isModel) {
       // this needs to happen after the question update completes in case we have changed the type
       // of the primary key field in the same update
       await dispatch(ModelIndexes.actions.updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: question.isDataset() };
+    const metadataOptions = { reload: isModel };
     await dispatch(loadMetadataForCard(question.card(), metadataOptions));
 
     if (rerunQuery) {

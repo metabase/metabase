@@ -54,10 +54,7 @@ export function FieldMappingSelect({
                 hasSelectedDimensionField ? tag?.dimension?.[1] : null
               }
               setFieldFn={setFieldFn}
-              className="AdminSelect flex align-center"
               isInitiallyOpen={!tag.dimension}
-              triggerIconSize={12}
-              renderAsSelect={true}
             />
           )}
         </Schemas.Loader>

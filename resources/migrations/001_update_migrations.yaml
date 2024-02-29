@@ -5530,7 +5530,75 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
-      id: v50.2024-02-16T16:00:00
+      id: v50.2024-02-20T19:21:04
+      author: camsaul
+      comment: Drop v1 version of v_content view since it references report_card.dataset which we are dropping in next migration
+      changes:
+        - sql:
+            sql: >
+              DROP VIEW IF EXISTS v_content;
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v1/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v1/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v1/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-02-20T19:25:40
+      author: camsaul
+      comment: Remove report_card.dataset (indicated whether Card was a Model; migrated to report_card.type in 49)
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: dataset
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dataset
+                  type: boolean
+                  remarks: "Indicate whether question is a model"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET dataset = true
+              WHERE type = 'model';
+
+  - changeSet:
+      id: v50.2024-02-20T19:26:38
+      author: camsaul
+      comment: Add new v2 version of v_content view which uses report_card.type instead of report_card.dataset (removed in previous migration)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v2/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v2/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v2/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: >-
+              DROP VIEW IF EXISTS v_content;
+
+      id: v50.2024-02-28T16:00:00
       author: piranha
       comment: 'Effective caching #36847'
       changes:
@@ -5558,16 +5626,6 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-              - column:
-                  name: collection_id
-                  remarks: '(denormalized) id of a collection of an entity this references'
-                  type: int
-                  constraints:
-                    nullable: true
-                    referencedTableName: collection
-                    referencedColumnNames: id
-                    foreignKeyName: fk_cache_config_ref_collection_id
-                    deleteCascade: true
               - column:
                   name: created_at
                   remarks: Timestamp when the config was inserted
@@ -5614,7 +5672,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-02-16T16:00:01
+      id: v50.2024-02-28T16:00:01
       author: piranha
       comment: 'Effective caching #36847'
       rollback: # will be removed with the table
@@ -5624,19 +5682,6 @@ databaseChangeLog:
             tableName: cache_config
             constraintName: idx_cache_config_unique_model
             columnNames: model, model_id
-
-  - changeSet:
-      id: v50.2024-02-16T16:00:02
-      author: piranha
-      comment: 'Effective caching #36847'
-      rollback: # will be removed with the table
-      changes:
-        - createIndex:
-            tableName: cache_config
-            indexName: idx_cache_config_collection_id
-            columns:
-              column:
-                name: collection_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

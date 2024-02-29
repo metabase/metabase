@@ -199,7 +199,7 @@
                         :table_id      no-schema-id
                         :collection_id coll-id
                         :creator_id    mark-id
-                        :dataset       true
+                        :type          :model
                         :dataset_query {:query {:source-table no-schema-id
                                                 :filter [:>= [:field field-id nil] 18]
                                                 :aggregation [[:count]]}
@@ -907,7 +907,7 @@
                            card-eid-1 :entity_id}
                           {:name          "Source question"
                            :database_id   db-id
-                           :dataset       true
+                           :type          :model
                            :query_type    :native
                            :dataset_query (mt/native-query {:native "select 1"})
                            :creator_id    ann-id}
@@ -945,7 +945,7 @@
                            card-eid-1 :entity_id}
                           {:name          "Source question"
                            :database_id   db-id
-                           :dataset       true
+                           :type          :model
                            :query_type    :native
                            :dataset_query (mt/native-query {:native "select 1"})
                            :creator_id    ann-id}
@@ -983,7 +983,7 @@
                            card-eid-1 :entity_id}
                           {:name          "Source question"
                            :database_id   db-id
-                           :dataset       true
+                           :type          :model
                            :query_type    :native
                            :dataset_query (mt/native-query {:native "select 1"})
                            :creator_id    ann-id}

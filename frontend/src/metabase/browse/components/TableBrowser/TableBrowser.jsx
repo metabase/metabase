@@ -14,6 +14,7 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
+import { trackTableClick } from "../../analytics";
 import { BrowseHeaderContent } from "../BrowseHeader.styled";
 
 import {
@@ -64,6 +65,7 @@ const TableBrowser = ({
                 to={
                   !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
                 }
+                onClick={() => trackTableClick(table.id)}
               >
                 <TableBrowserItem
                   database={database}

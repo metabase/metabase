@@ -57,7 +57,7 @@
    "Metabot '/api/metabot/model/%s' being called with prompt: '%s'"
    model-id
    question)
-  (let [model   (api/check-404 (t2/select-one Card :id model-id :dataset true))
+  (let [model   (api/check-404 (t2/select-one Card :id model-id :type :model))
         _       (check-database-support (:database_id model))
         context {:model       (metabot-util/denormalize-model model)
                  :user_prompt question

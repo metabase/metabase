@@ -13,8 +13,8 @@ import { equals } from "metabase/lib/utils";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import {
-  getVisualizationTransformed,
   extractRemappings,
+  getVisualizationTransformed,
 } from "metabase/visualizations";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -23,11 +23,11 @@ import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
-  MinRowsError,
   ChartSettingsError,
+  MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { isSameSeries, getCardKey } from "metabase/visualizations/lib/utils";
+import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import { isRegularClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/Question";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
@@ -38,9 +38,9 @@ import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
-  VisualizationRoot,
-  VisualizationHeader,
   VisualizationActionButtonsContainer,
+  VisualizationHeader,
+  VisualizationRoot,
   VisualizationSlowSpinner,
 } from "./Visualization.styled";
 
@@ -199,7 +199,7 @@ class Visualization extends PureComponent {
     // Datasets in QB should behave as raw tables opened in simple mode
     // composeDataset replaces the dataset_query with a clean query using the dataset as a source table
     // Ideally, this logic should happen somewhere else
-    return question.isDataset() &&
+    return question.type() === "model" &&
       isQueryBuilder &&
       queryBuilderMode !== "dataset"
       ? question.composeDataset()

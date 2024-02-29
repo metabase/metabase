@@ -107,6 +107,7 @@ export const createMockTokenFeatures = (
   embedding: false,
   hosting: false,
   official_collections: false,
+  llm_autodescription: false,
   sandboxes: false,
   sso_google: false,
   sso_jwt: false,
@@ -151,6 +152,8 @@ export const createMockSettings = (
   "help-link": "metabase",
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
+  "ee-openai-model": "",
+  "ee-openai-api-key": "",
   "email-configured?": false,
   "embedding-app-origin": "",
   "enable-embedding": false,
@@ -224,5 +227,6 @@ export const createMockSettings = (
   "uploads-schema-name": null,
   "user-visibility": null,
   "last-acknowledged-version": "v1",
+  "last-used-native-database-id": 1,
   ...opts,
 });

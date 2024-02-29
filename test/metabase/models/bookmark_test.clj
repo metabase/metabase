@@ -21,7 +21,7 @@
                :report_dashboard.archived    false
                :collection.description       "Collection description"
                :collection.archived          true
-               :report_card.dataset          nil
+               :report_card.card_type        nil
                :created_at                   #t "2022-09-14T17:45:13.444716Z"
                :collection.name              "Test Collection"}]
       (is (= {:item_id     853

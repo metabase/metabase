@@ -386,7 +386,7 @@
           (mt/with-persistence-enabled [persist-models!]
             (let [mbql-query (mt/mbql-query categories)]
               (mt/with-temp [Card model {:name "model"
-                                         :dataset true
+                                         :type :model
                                          :dataset_query mbql-query
                                          :database_id (mt/id)}]
                 (persist-models!)

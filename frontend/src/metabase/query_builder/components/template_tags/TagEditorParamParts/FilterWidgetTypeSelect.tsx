@@ -39,7 +39,7 @@ export function FilterWidgetTypeSelect({
 
   return (
     <InputContainer>
-      <ContainerLabel smallPaddingBottom>
+      <ContainerLabel>
         {t`Filter widget type`}
         {hasNoWidgetType && <ErrorSpan>({t`required`})</ErrorSpan>}
       </ContainerLabel>

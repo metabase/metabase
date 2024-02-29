@@ -600,8 +600,8 @@ describe("scenarios > visualizations > table column settings", () => {
       openSettings();
 
       const testData = {
-        column: "Products → Ean",
-        columnName: "Products → Ean",
+        column: "Products → Category",
+        columnName: "Products → Category",
         table: "test question",
       };
 
@@ -731,7 +731,7 @@ describe("scenarios > visualizations > table column settings", () => {
         const taxColumn = {
           column: "Tax",
           columnName: `Question ${card.id} → Tax`,
-          table: `test question 2`,
+          table: "test question 2",
           scrollTimes: 3,
         };
 
@@ -753,7 +753,7 @@ describe("scenarios > visualizations > table column settings", () => {
         const mathColumn = {
           column: "Math",
           columnName: `Question ${card.id} → Math`,
-          table: `test question`,
+          table: "test question",
           needsScroll: false,
         };
 

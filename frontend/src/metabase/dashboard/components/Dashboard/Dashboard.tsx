@@ -41,7 +41,7 @@ import type {
   StoreDashcard,
 } from "metabase-types/store";
 
-import { SIDEBAR_NAME } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardSidebars } from "../DashboardSidebars";
 
@@ -274,12 +274,6 @@ function DashboardInner(props: DashboardProps) {
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
-  const shouldRenderParametersWidgetInViewMode =
-    !isEditing && !isFullscreen && hasVisibleParameters;
-
-  const shouldRenderParametersWidgetInEditMode =
-    isEditing && hasVisibleParameters;
-
   const handleSetDashboardAttribute = useCallback(
     <Key extends keyof IDashboard>(attribute: Key, value: IDashboard[Key]) => {
       setDashboardAttributes({
@@ -473,6 +467,49 @@ function DashboardInner(props: DashboardProps) {
     />
   );
 
+  const renderParameterList = () => {
+    if (!hasVisibleParameters) {
+      return null;
+    }
+
+    if (isEditing) {
+      return (
+        <ParametersWidgetContainer
+          hasScroll
+          isSticky
+          isFullscreen={isFullscreen}
+          isNightMode={shouldRenderAsNightMode}
+          data-testid="edit-dashboard-parameters-widget-container"
+        >
+          <FixedWidthContainer
+            isFixedWidth={dashboard?.width === "fixed"}
+            data-testid="fixed-width-filters"
+          >
+            {parametersWidget}
+          </FixedWidthContainer>
+        </ParametersWidgetContainer>
+      );
+    }
+
+    return (
+      <ParametersWidgetContainer
+        hasScroll={hasScroll}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
+        isSticky={isParametersWidgetContainersSticky(visibleParameters.length)}
+        data-testid="dashboard-parameters-widget-container"
+      >
+        <ParametersFixedWidthContainer
+          isFixedWidth={dashboard?.width === "fixed"}
+          data-testid="fixed-width-filters"
+        >
+          {parametersWidget}
+          <FilterApplyButton />
+        </ParametersFixedWidthContainer>
+      </ParametersWidgetContainer>
+    );
+  };
+
   return (
     <DashboardLoadingAndErrorWrapper
       isFullHeight={isEditing || isSharing}
@@ -497,49 +534,19 @@ function DashboardInner(props: DashboardProps) {
               onEditingChange={handleSetEditing}
               setDashboardAttribute={handleSetDashboardAttribute}
               addParameter={addParameter}
-              parametersWidget={parametersWidget}
               onSharingClick={handleToggleSharing}
             />
           </DashboardHeaderContainer>
 
           <DashboardBody isEditingOrSharing={isEditing || isSharing}>
             <ParametersAndCardsContainer
+              id={DASHBOARD_PDF_EXPORT_ROOT_ID}
               data-testid="dashboard-parameters-and-cards"
               shouldMakeDashboardHeaderStickyAfterScrolling={
                 !isFullscreen && (isEditing || isSharing)
               }
             >
-              {shouldRenderParametersWidgetInEditMode && (
-                <ParametersWidgetContainer
-                  data-testid="edit-dashboard-parameters-widget-container"
-                  hasScroll={true}
-                  isSticky={true}
-                >
-                  <FixedWidthContainer
-                    isFixedWidth={dashboard?.width === "fixed"}
-                    data-testid="fixed-width-filters"
-                  >
-                    {parametersWidget}
-                  </FixedWidthContainer>
-                </ParametersWidgetContainer>
-              )}
-              {shouldRenderParametersWidgetInViewMode && (
-                <ParametersWidgetContainer
-                  data-testid="dashboard-parameters-widget-container"
-                  hasScroll={hasScroll}
-                  isSticky={isParametersWidgetContainersSticky(
-                    visibleParameters.length,
-                  )}
-                >
-                  <ParametersFixedWidthContainer
-                    isFixedWidth={dashboard?.width === "fixed"}
-                    data-testid="fixed-width-filters"
-                  >
-                    {parametersWidget}
-                    <FilterApplyButton />
-                  </ParametersFixedWidthContainer>
-                </ParametersWidgetContainer>
-              )}
+              {renderParameterList()}
               <CardsContainer id="Dashboard-Cards-Container">
                 {renderContent()}
               </CardsContainer>

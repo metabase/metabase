@@ -1,5 +1,5 @@
 import type { Location, LocationDescriptor } from "history";
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent } from "react";
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -66,7 +66,7 @@ import type {
   State,
 } from "metabase-types/store";
 
-import { SIDEBAR_NAME } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
@@ -95,7 +95,6 @@ interface OwnProps {
   isAddParameterPopoverOpen: boolean;
   canManageSubscriptions: boolean;
   hasNightModeToggle: boolean;
-  parametersWidget: ReactNode;
 
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -338,7 +337,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
   getHeaderButtons() {
     const {
       dashboard,
-      parametersWidget,
       isBookmarked,
       isEditing,
       isFullscreen,
@@ -364,10 +362,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
     const buttons = [];
     const extraButtons = [];
-
-    if (isFullscreen && parametersWidget) {
-      buttons.push(parametersWidget);
-    }
 
     if (isEditing) {
       const activeSidebarName = sidebar.name;
@@ -641,7 +635,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
   saveAsPDF = async () => {
     const { dashboard } = this.props;
-    const cardNodeSelector = "#Dashboard-Cards-Container";
+    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
     await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
       trackExportDashboardToPDF(dashboard.id);
     });

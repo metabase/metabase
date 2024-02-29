@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [colorize.core :as colorize]
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
@@ -249,8 +248,8 @@
                            fix      (str "Either add `" (pr-str schema-type) "` to "
                                          "metabase.api.common.internal/->matching-regex or "
                                          "metabase.api.common.internal/no-regex-schemas.")]
-                       (log/warn (colorize/red overview))
-                       (log/warn (colorize/green fix))))))
+                       (log/warn (u/colorize :red overview))
+                       (log/warn (u/colorize :green fix))))))
                (remove nil?))]
       (cond
         ;; multiple hits -> tack them onto the original route shape.

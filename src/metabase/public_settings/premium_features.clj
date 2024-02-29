@@ -407,6 +407,10 @@
   "Enable restrict email recipients?"
   :email-restrict-recipients)
 
+(define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
+  "Enable automatic descriptions of questions and dashboards by LLMs?"
+  :llm-autodescription)
+
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"
   :type       :boolean

@@ -127,24 +127,14 @@ export const updateQuestion = (
 
       // When the dataset query changes, we should change the question type,
       // to start building a new ad-hoc question based on a dataset
-      if (newQuestion.isDataset()) {
+      if (newQuestion.type() === "model") {
         newQuestion = newQuestion.setType("question");
         dispatch(onCloseQuestionInfo());
       }
     }
 
-    // This scenario happens because the DatasetQueryEditor converts the dataset/model question into a normal question
-    // so that its query is shown properly in the notebook editor. Various child components of the notebook editor have access to
-    // this `updateQuestion` action, so they end up triggering the action with the altered question.
-    if (queryBuilderMode === "dataset" && !newQuestion.isDataset()) {
-      newQuestion = newQuestion.setType("model");
-    }
-
     const queryResult = getFirstQueryResult(getState());
-    newQuestion = newQuestion.syncColumnsAndSettings(
-      currentQuestion,
-      queryResult,
-    );
+    newQuestion = newQuestion.syncColumnsAndSettings(queryResult);
 
     if (!newQuestion.canAutoRun()) {
       run = false;

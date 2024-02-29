@@ -41,7 +41,7 @@ const dashboardDetails = {
 
 describe("issue 25374", () => {
   beforeEach(() => {
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     restore();
     cy.signInAsAdmin();

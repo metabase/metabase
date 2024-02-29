@@ -37,7 +37,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
       setFilter("Time", filter);
@@ -67,7 +67,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     );
   });
 
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Time", "Month and Year");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

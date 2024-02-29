@@ -83,11 +83,17 @@
                         :dataset_query {:query    {:source-table (mt/id :orders)}
                                         :type     :query
                                         :database (mt/id)}
-                        :dataset       true}]
+                        :type          :model}]
             (let [{:keys [entity source]} (#'magic/->root card)]
-              (is (true? (:dataset card)))
+              (is (=? {:type :model}
+                      card))
               (is (= entity card))
-              (is (= source (assoc card :entity_type :entity/GenericTable))))))
+              (is (= source (assoc card :entity_type :entity/GenericTable))))))))))
+
+(deftest source-root-card-test-2
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset test-data
+      (testing "Card sourcing has four branches..."
         (testing "A nested query's source is itself with the :entity_type :entity/GenericTable assoced in"
           (mt/with-temp
             [Card {source-query-id :id
@@ -95,25 +101,37 @@
                                                   :dataset_query {:query    {:source-table (mt/id :orders)}
                                                                   :type     :query
                                                                   :database (mt/id)}
-                                                  :dataset       true}
+                                                  :type          :model}
              Card card {:table_id      (mt/id :orders)
                         :dataset_query {:query    {:limit        10
                                                    :source-table (format "card__%s" source-query-id)}
                                         :type     :query
                                         :database (mt/id)}}]
             (let [{:keys [entity source]} (#'magic/->root card)]
-              (is (false? (:dataset card)))
+              (is (=? {:type :question}
+                      card))
               (is (true? (#'magic/nested-query? card)))
               (is (= entity card))
-              (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))
+              (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))))))
+
+(deftest source-root-card-test-3
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset test-data
+      (testing "Card sourcing has four branches..."
         (testing "A native query's source is itself with the :entity_type :entity/GenericTable assoced in"
           (let [query (mt/native-query {:query "select * from orders"})]
             (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
               (let [{:keys [entity source]} (#'magic/->root card)]
-                (is (false? (:dataset card)))
+                (is (=? {:type :question}
+                        card))
                 (is (true? (#'magic/native-query? card)))
                 (is (= entity card))
-                (is (= source (assoc card :entity_type :entity/GenericTable)))))))
+                (is (= source (assoc card :entity_type :entity/GenericTable)))))))))))
+
+(deftest source-root-card-test-4
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset test-data
+      (testing "Card sourcing has four branches..."
         (testing "A plain query card (not native, nested, or a model) is sourced by its base table."
           (mt/with-temp
             [Card {table-id :table_id
@@ -123,7 +141,8 @@
                                                    :type     :query
                                                    :database (mt/id)}}]
             (let [{:keys [entity source]} (#'magic/->root card)]
-              (is (false? (:dataset card)))
+              (is (=? {:type :question}
+                      card))
               (is (false? (#'magic/nested-query? card)))
               (is (false? (#'magic/native-query? card)))
               (is (= entity card))
@@ -360,7 +379,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [root               (#'magic/->root card)
                   {:keys [dimensions] :as _template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
@@ -395,7 +414,7 @@
                                                                             :rasta
                                                                             (result-metadata-for-query
                                                                              source-query))
-                                                         :dataset         true}]
+                                                         :type            :model}]
             (let [root               (#'magic/->root card)
                   {:keys [dimensions] :as _template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
@@ -465,7 +484,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [base-context (#'magic/make-base-context (#'magic/->root card))
                   dimensions   {"GenericCategoryMedium" {:field_type [:entity/GenericTable :type/Category] :max_cardinality 10}
                                 "GenericNumber"         {:field_type [:entity/GenericTable :type/Number]}
@@ -548,7 +567,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   binned-field-id (mt/id :products :price)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
@@ -590,7 +609,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   temporal-field-ids (for [card (:dashcards dashboard)
                                            :let [fields (get-in card [:card :dataset_query :query :breakout])]
@@ -623,7 +642,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [{:keys [dashcards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
               (ensure-single-table-sourced (mt/id :people) dashboard)
               (ensure-dashboard-sourcing card dashboard)
@@ -655,7 +674,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}
+                                             :type            :model}
              Card       question-card       {:table_id        (mt/id :products)
                                              :collection_id   collection-id
                                              :dataset_query   source-query
@@ -663,7 +682,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         false}]
+                                             :type            :question}]
             (let [{model-dashboard-name :name} (mt/with-test-user :rasta (magic/automagic-analysis model-card nil))
                   {question-dashboard-name :name} (mt/with-test-user :rasta (magic/automagic-analysis question-card nil))]
               (is (false? (str/ends-with? model-dashboard-name "question")))
@@ -736,7 +755,7 @@
                                                         (map (fn [m] (update m :display_name {"Created At"            "Created At"
                                                                                               "People - User → State" "State Where Placed"
                                                                                               "Products → Price"      "Ordered Item Price"}))))
-                                  :dataset         true}]
+                                  :type            :model}]
           (let [{:keys [dashcards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                 card-names (set (filter identity (map (comp :name :card) dashcards)))
                 expected-oip-labels #{"Ordered Item Price over time"

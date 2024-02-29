@@ -98,7 +98,7 @@
   metosin/malli                             {:mvn/version "0.14.0"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
-  net.clojars.wkok/openai-clojure           {:mvn/version "0.14.0"
+  net.clojars.wkok/openai-clojure           {:mvn/version "0.15.0"
                                              :exclusions  [lambdaisland/uri]}   ; OpenAI
   net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language

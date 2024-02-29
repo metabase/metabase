@@ -45,7 +45,7 @@ describe("issue 18352", { tags: "@external" }, () => {
     cy.findByText(`${first_name} ${last_name}`).click();
     // Click this just to close the popover that is blocking the "Send email now" button
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`To:`).click();
+    cy.findByText("To:").click();
 
     sendEmailAndAssert(({ html }) => {
       expect(html).not.to.include(

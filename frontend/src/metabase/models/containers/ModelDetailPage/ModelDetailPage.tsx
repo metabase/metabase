@@ -1,6 +1,6 @@
 import type { Location, LocationDescriptor } from "history";
 import type * as React from "react";
-import { useEffect, useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
@@ -120,7 +120,7 @@ function ModelDetailPage({
 
   useMount(() => {
     const card = model.card();
-    const isModel = model.isDataset();
+    const isModel = model.type() === "model";
     if (isModel) {
       if (model.database()) {
         loadMetadataForCard(card);
@@ -168,7 +168,9 @@ function ModelDetailPage({
     (collection: Collection) => {
       onChangeCollection(model.card() as Card, collection, {
         notify: {
-          message: <QuestionMoveToast collectionId={collection.id} isModel />,
+          message: (
+            <QuestionMoveToast collectionId={collection.id} question={model} />
+          ),
           undo: false,
         },
       });
