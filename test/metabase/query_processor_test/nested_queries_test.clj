@@ -1402,7 +1402,7 @@
                         {:source-query {:source-table $$orders
                                         :breakout     [!month.product_id->products.created_at]
                                         :aggregation  [[:count]]}
-                         :filter       [:time-interval *created_at/DateTimeWithLocalTZ -30 :year]
+                         :filter       [:time-interval *created_at/DateTimeWithLocalTZ -32 :year]
                          :aggregation  [[:sum *count/Integer]]
                          :breakout     [*created_at/DateTimeWithLocalTZ]
                          :limit        1})]
