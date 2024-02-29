@@ -1076,12 +1076,13 @@ export const getIsSaveEnabled = createSelector(
       return false;
     }
 
-    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
     return (
       isEditable &&
-      !isResultDirty &&
-      resultsMetadata != null &&
-      question.canRun()
+      question.canRun() &&
+      (!isNative ||
+        question.isSaved() ||
+        (!isResultDirty && resultsMetadata != null))
     );
   },
 );
@@ -1115,10 +1116,14 @@ export const getDisabledSaveReason = createSelector(
           missingValueRequiredTags.length,
         );
       }
-    }
 
-    if (question.canRun() && (isResultDirty || !resultsMetadata)) {
-      return t`You need to run the query to save this question`;
+      if (
+        !question.isSaved() &&
+        question.canRun() &&
+        (isResultDirty || !resultsMetadata)
+      ) {
+        return t`You need to run the query to save this question`;
+      }
     }
 
     return null;
