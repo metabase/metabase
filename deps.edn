@@ -68,7 +68,7 @@
   honeysql/honeysql                         {:mvn/version "1.0.461"             ; Transform Clojure data structures to SQL
                                              :exclusions  [org.clojure/clojurescript]}
   inflections/inflections                   {:mvn/version "0.14.1"}             ; Clojure/Script library used for prularizing words
-  info.sunng/ring-jetty9-adapter            {:mvn/version "0.18.5"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
+  info.sunng/ring-jetty9-adapter            {:mvn/version "0.22.4"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver (Jetty 12 requires JDK 17+).
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   clj-commons/clj-yaml                      {:mvn/version "1.0.26"}             ; Clojure wrapper for YAML library SnakeYAML
   io.github.camsaul/toucan2                 {:mvn/version "1.0.520"}
@@ -96,7 +96,7 @@
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.0"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api]}
   net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20220705"} ; Java implementation of the JQ json query language
-  org.apache.commons/commons-compress       {:mvn/version "1.25.0"}             ; compression utils
+  org.apache.commons/commons-compress       {:mvn/version "1.26.0"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.14.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.20.0"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.20.0"}             ; add compatibility with log4j 1.2
@@ -143,7 +143,7 @@
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.6"}              ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.5.4"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.2"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
   org.slf4j/slf4j-api                       {:mvn/version "2.0.6"}              ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
