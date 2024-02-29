@@ -6,8 +6,6 @@ import Collections, {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
-import { isCypressActive, isProduction, isTest } from "metabase/env";
-import { GET, POST, PUT } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
@@ -27,38 +25,6 @@ const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
-
-  ...(isTest || isCypressActive || isProduction
-    ? {}
-    : {
-        /**
-         * Temporarily mock endpoints for Metrics v2
-         *
-         * Any question with `type: "metric"` will be passed to API as `type: "question"`.
-         * Same goes for any questions with a name starting with "Metric" (case-insensitive).
-         */
-        api: {
-          get: async payload => {
-            const get = GET("/api/card/:id");
-            return await get(payload);
-          },
-
-          list: async payload => {
-            const get = GET("/api/card");
-            return await get(payload);
-          },
-
-          create: async payload => {
-            const create = POST("/api/card");
-            return await create(payload);
-          },
-
-          update: async payload => {
-            const update = PUT("/api/card/:id");
-            return await update(payload);
-          },
-        },
-      }),
 
   objectActions: {
     setArchived: (card, archived, opts) =>
