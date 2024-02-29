@@ -45,7 +45,10 @@
                                       [:= :model [:inline "question"]]  [:!= :report_card.id nil]
                                       [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
                                       :else                             true]})]
-    {:items items}))
+    {:items (for [item items]
+              {:model    (:model item)
+               :model_id (:model_id item)
+               :strategy (assoc (:config items) :type (:strategy item))})}))
 
 (api/defendpoint PUT "/"
   "Store cache configuration."
