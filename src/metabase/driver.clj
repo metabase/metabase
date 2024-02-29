@@ -549,25 +549,6 @@
     ;; Does the driver support column(s) support storing index info
     :index-info})
 
-
-(defmulti supports?
-  "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
-  [[driver-features]].)
-
-    (supports? :postgres :set-timezone) ; -> true
-
-  DEPRECATED — [[database-supports?]] should be used instead. This function will be removed in Metabase version 0.50.0."
-  {:added "0.32.0", :arglists '([driver feature]), :deprecated "0.47.0"}
-  (fn [driver feature]
-    (when-not (features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
-    [(dispatch-on-initialized-driver driver) feature])
-  :hierarchy #'hierarchy)
-
-(defmethod supports? :default [_ _] false)
-
-(defmethod supports? [::driver :schemas] [_ _] true)
-
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
   (A feature is a keyword, and can be any of the ones listed above in `driver-features`.
@@ -591,13 +572,15 @@
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
-(defmethod database-supports? :default [driver feature _] (supports? driver feature))
+(defmethod database-supports?
+  :default [_driver _feature _] false)
 
-(doseq [[feature supported?] {:basic-aggregations                     true
+(doseq [[feature supported?] {:convert-timezone                       false
+                              :basic-aggregations                     true
                               :case-sensitivity-string-filter-options true
                               :date-arithmetics                       true
                               :temporal-extract                       true
-                              :convert-timezone                       false
+                              :schemas                                true
                               :test/jvm-timezone-setting              true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
@@ -711,10 +694,6 @@
   [_ query]
   query)
 
-;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
-;;
-;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
-;; effects?
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
