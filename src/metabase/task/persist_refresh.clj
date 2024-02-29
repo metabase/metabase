@@ -133,7 +133,8 @@
                                          (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
                                          (try
                                            (unpersist! refresher database persisted-info)
-                                           (t2/delete! PersistedInfo :id (:id persisted-info))
+                                           (when-not (= "off" current-state)
+                                             (t2/delete! PersistedInfo :id (:id persisted-info)))
                                            (update stats :success inc)
                                            (catch Exception e
                                              (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
