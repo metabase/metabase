@@ -56,26 +56,31 @@ export default class QueryVisualization extends Component {
       >
         {isRunning ? (
           <VisualizationRunningState
-            className={cx(CS.spread, "z2")}
+            className={cx(CS.spread, CS.z2)}
             loadingMessage={loadingMessage}
           />
         ) : null}
         <VisualizationDirtyState
           {...this.props}
           hidden={!isResultDirty || isRunning || isNativeEditorOpen}
-          className={cx(CS.spread, "z2")}
+          className={cx(CS.spread, CS.z2)}
         />
         {!isObjectDetail && (
           <Warnings
             warnings={this.state.warnings}
-            className={cx(CS.absolute, CS.top, CS.right, CS.mt2, CS.mr2, "z2")}
+            className={cx(CS.absolute, CS.top, CS.right, CS.mt2, CS.mr2, CS.z2)}
             size={18}
           />
         )}
         <div
-          className={cx(CS.spread, "Visualization z1", {
-            "Visualization--loading": isRunning,
-          })}
+          className={cx(
+            CS.spread,
+            "Visualization",
+            {
+              "Visualization--loading": isRunning,
+            },
+            CS.z1,
+          )}
         >
           {result?.error ? (
             <VisualizationError

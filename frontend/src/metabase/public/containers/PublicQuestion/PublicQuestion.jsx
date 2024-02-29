@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 
+import cx from "classnames";
 import { updateIn } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
@@ -7,6 +8,7 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -228,7 +230,7 @@ class PublicQuestionInner extends Component {
             <Visualization
               error={result && result.error}
               rawSeries={[{ card: card, data: result && result.data }]}
-              className="full flex-full z1"
+              className={cx(CS.full, CS.flexFull, CS.z1)}
               onUpdateVisualizationSettings={settings =>
                 this.setState({
                   card: updateIn(

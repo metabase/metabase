@@ -201,7 +201,7 @@ export default class PinMap extends Component {
               CS.left,
               CS.bottom,
               CS.right,
-              "z1",
+              CS.z1,
             )}
             onMapCenterChange={this.onMapCenterChange}
             onMapZoomChange={this.onMapZoomChange}
@@ -223,7 +223,7 @@ export default class PinMap extends Component {
             CS.top,
             CS.right,
             CS.m1,
-            "z2",
+            CS.z2,
             CS.flex,
             "flex-column",
             "hover-child",
