@@ -55,8 +55,15 @@ export type CollectionEssentials = Pick<
   "id" | "name" | "authority_level"
 >;
 
+export type SearchResultId =
+  | CollectionId
+  | CardId
+  | DatabaseId
+  | TableId
+  | DashboardId;
+
 export interface SearchResult {
-  id: CollectionId | CardId | DatabaseId | TableId | DashboardId;
+  id: SearchResultId;
   name: string;
   model: SearchModelType;
   description: string | null;
