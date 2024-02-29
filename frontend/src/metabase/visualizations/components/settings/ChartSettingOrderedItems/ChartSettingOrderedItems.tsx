@@ -1,6 +1,7 @@
 import type { ReactNode, ReactElement } from "react";
 import type { SortableElementProps } from "react-sortable-hoc";
 
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   SortableContainer,
   SortableElement,
@@ -47,28 +48,30 @@ const SortableColumn = SortableElement(function SortableColumn<
   isDragDisabled = false,
 }: SortableColumnProps<T>) {
   return (
-    <ColumnItem
-      title={getItemName(item)}
-      extra={getItemExtra ? getItemExtra(item) : null}
-      onEdit={
-        onEdit
-          ? (targetElement: HTMLElement) => onEdit(item, targetElement)
-          : undefined
-      }
-      onRemove={onRemove && item.enabled ? () => onRemove(item) : undefined}
-      onClick={onClick ? () => onClick(item) : undefined}
-      onAdd={onAdd ? () => onAdd(item) : undefined}
-      onEnable={onEnable && !item.enabled ? () => onEnable(item) : undefined}
-      onColorChange={
-        onColorChange
-          ? (color: string) => onColorChange(item, color)
-          : undefined
-      }
-      color={item.color}
-      draggable={!isDragDisabled}
-      icon={item.icon}
-      role="listitem"
-    />
+    <HoverParent>
+      <ColumnItem
+        title={getItemName(item)}
+        extra={getItemExtra ? getItemExtra(item) : null}
+        onEdit={
+          onEdit
+            ? (targetElement: HTMLElement) => onEdit(item, targetElement)
+            : undefined
+        }
+        onRemove={onRemove && item.enabled ? () => onRemove(item) : undefined}
+        onClick={onClick ? () => onClick(item) : undefined}
+        onAdd={onAdd ? () => onAdd(item) : undefined}
+        onEnable={onEnable && !item.enabled ? () => onEnable(item) : undefined}
+        onColorChange={
+          onColorChange
+            ? (color: string) => onColorChange(item, color)
+            : undefined
+        }
+        color={item.color}
+        draggable={!isDragDisabled}
+        icon={item.icon}
+        role="listitem"
+      />
+    </HoverParent>
   );
 }) as unknown as <T extends SortableItem>(
   props: SortableColumnProps<T> & SortableElementProps,
