@@ -382,7 +382,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
     goodEvents++; // 1 - new_instance_created
     goodEvents++; // 2 - pageview
-    cy.visit(`/setup`);
+    cy.visit("/setup");
 
     goodEvents++; // 3 - setup/step_seen "welcome"
     expectGoodSnowplowEvent({
