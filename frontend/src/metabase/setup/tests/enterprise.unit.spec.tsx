@@ -131,6 +131,28 @@ describe("setup (EE, no token)", () => {
       expect(screen.getByRole("button", { name: "Activate" })).toBeDisabled();
     });
 
+    it("should ignore whitespace around the token", async () => {
+      await setupForLicenseStep();
+
+      const token = "a".repeat(64);
+
+      userEvent.paste(
+        screen.getByRole("textbox", { name: "Token" }),
+        `    ${token}   `,
+      );
+
+      expect(screen.getByRole("button", { name: "Activate" })).toBeEnabled();
+
+      setupForTokenCheckEndpoint({ valid: true });
+
+      screen.getByRole("button", { name: "Activate" }).click();
+
+      const url = fetchMock.lastCall(`path:/api/setup/token-check`)?.request
+        ?.url;
+      const sentToken = url?.split("token=")[1];
+      expect(sentToken).toMatch(token);
+    });
+
     it("should go to the next step when activating a valid token", async () => {
       await setupForLicenseStep();
 
