@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
@@ -162,7 +163,7 @@ const MetricDetail = props => {
         error={loadingError}
       >
         {() => (
-          <div className="wrapper">
+          <div className={CS.wrapper}>
             <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
               <List>
                 <li className="relative">

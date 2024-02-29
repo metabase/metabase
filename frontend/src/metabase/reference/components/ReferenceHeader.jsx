@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import L from "metabase/components/List/List.module.css";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import S from "./ReferenceHeader.module.css";
@@ -17,7 +18,7 @@ const ReferenceHeader = ({
   headerBody,
   headerLink,
 }) => (
-  <div className="wrapper">
+  <div className={CS.wrapper}>
     <div className={cx("relative", L.header)}>
       {headerIcon && (
         <div className="flex align-center mr2">

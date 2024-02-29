@@ -11,6 +11,7 @@ import Card from "metabase/components/Card";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
 import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
@@ -123,7 +124,7 @@ class AutomaticDashboardAppInner extends Component {
               className="bg-white border-bottom"
               data-testid="automatic-dashboard-header"
             >
-              <div className="wrapper">
+              <div className={CS.wrapper}>
                 <FixedWidthContainer
                   data-testid="fixed-width-dashboard-header"
                   isFixedWidth={dashboard?.width === "fixed"}
@@ -149,7 +150,7 @@ class AutomaticDashboardAppInner extends Component {
                     )}
                   </div>
                   {this.props.tabs.length > 1 && (
-                    <div className="wrapper flex align-center">
+                    <div className={cx(CS.wrapper, "flex align-center")}>
                       <DashboardTabs location={this.props.location} />
                     </div>
                   )}
@@ -158,7 +159,7 @@ class AutomaticDashboardAppInner extends Component {
             </div>
           )}
 
-          <div className="wrapper pb4">
+          <div className={cx(CS.wrapper, "pb4")}>
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
                 <FixedWidthContainer

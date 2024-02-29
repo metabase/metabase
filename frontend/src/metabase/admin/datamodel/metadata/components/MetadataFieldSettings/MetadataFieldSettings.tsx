@@ -6,6 +6,7 @@ import { AdminLayout } from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Schemas from "metabase/entities/schemas";
@@ -105,7 +106,7 @@ const MetadataFieldSettings = ({
         />
       }
     >
-      <div className="wrapper">
+      <div className={CS.wrapper}>
         <FieldBreadcrumbs
           database={database}
           schema={schema}

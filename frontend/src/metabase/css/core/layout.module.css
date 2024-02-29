@@ -1,11 +1,4 @@
-:root {
-  --sm-width: 752px;
-  --md-width: 940px;
-  --lg-width: 1140px;
-  --xl-width: 1540px;
-}
 /* When converting to styled components, use FullWidthContainer */
-:global(.wrapper),
 .wrapper {
   width: 100%;
   margin: 0 auto;
@@ -13,7 +6,6 @@
 }
 
 @media screen and (--breakpoint-min-sm) {
-  :global(.wrapper),
   .wrapper {
     padding-left: 2em;
     padding-right: 2em;
@@ -21,7 +13,6 @@
 }
 
 @media screen and (--breakpoint-min-md) {
-  :global(.wrapper),
   .wrapper {
     padding-left: 3em;
     padding-right: 3em;
@@ -97,9 +88,8 @@
 }
 
 @media screen and (--breakpoint-min-md) {
-  :global(.wrapper.wrapper--trim),
-  .wrapper.wrapper--trim {
-    max-width: var(--md-width);
+  .wrapper.wrapperTrim {
+    max-width: 940px;
   }
 }
 
@@ -114,6 +104,7 @@
 }
 
 /* force a stacking context for adding z-index to children */
-:global(.stacking-context) {
+:global(.stacking-context),
+.stackingContext {
   transform: scale(1);
 }

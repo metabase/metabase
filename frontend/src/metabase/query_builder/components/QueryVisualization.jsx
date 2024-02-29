@@ -4,6 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
@@ -45,7 +46,14 @@ export default class QueryVisualization extends Component {
     } = this.props;
 
     return (
-      <div className={cx(className, "relative stacking-context full-height")}>
+      <div
+        className={cx(
+          className,
+          CS.relative,
+          CS.stackingContext,
+          CS.fullHeight,
+        )}
+      >
         {isRunning ? (
           <VisualizationRunningState
             className="spread z2"

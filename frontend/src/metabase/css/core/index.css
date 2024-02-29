@@ -24,4 +24,5 @@
 @import "./shadow.module.css";
 @import "./spacing.module.css";
 @import "./text.module.css";
+@import "./transitions.module.css";
 @import "./width.module.css";

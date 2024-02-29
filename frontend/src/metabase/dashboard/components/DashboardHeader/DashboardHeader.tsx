@@ -14,6 +14,7 @@ import Modal from "metabase/components/Modal";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link/Link";
+import CS from "metabase/css/core/index.css";
 import type {
   AddSectionOpts,
   NewDashCardOpts,
@@ -659,7 +660,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
     return (
       <>
         <DashboardHeaderComponent
-          headerClassName="wrapper"
+          headerClassName={CS.wrapper}
           location={this.props.location}
           dashboard={dashboard}
           collection={collection}
