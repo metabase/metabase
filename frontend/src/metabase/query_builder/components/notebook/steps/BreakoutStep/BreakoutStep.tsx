@@ -122,6 +122,7 @@ const BreakoutPopover = ({
       columnGroups={columnGroups}
       hasBinning
       hasTemporalBucketing
+      withInfoIcons
       color="summarize"
       checkIsColumnSelected={item => checkColumnSelected(item, breakoutIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {

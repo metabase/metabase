@@ -66,8 +66,14 @@
   background-color: currentColor;
 }
 
+/* LIST ITEM CONTENT */
+.List-item-content {
+  min-width: 0;
+}
+
 /* LIST ITEM TITLE */
 .List-item-title {
+  min-width: 0;
   color: var(--color-text-dark);
 }
 
