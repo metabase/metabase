@@ -6,6 +6,7 @@ import {
   renderWithProviders,
   screen,
   mockGetBoundingClientRect,
+  mockScrollBy,
 } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 import {
@@ -120,6 +121,7 @@ const setup = ({
   onItemSelect = jest.fn(),
 }: setupProps = {}) => {
   mockGetBoundingClientRect();
+  mockScrollBy();
 
   const allCollections =
     flattenCollectionTree(collectionTree).map(createMockCollection);

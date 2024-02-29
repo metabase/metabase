@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   mockGetBoundingClientRect,
+  mockScrollBy,
   renderWithProviders,
   screen,
   within,
@@ -50,6 +51,7 @@ const setup = ({
   ...rest
 }: setupProps = {}) => {
   mockGetBoundingClientRect();
+  mockScrollBy();
 
   renderWithProviders(
     <EntityPickerModal

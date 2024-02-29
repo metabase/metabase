@@ -13,6 +13,7 @@ import {
   screen,
   waitFor,
   mockGetBoundingClientRect,
+  mockScrollBy,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
@@ -51,6 +52,7 @@ function setup({
   mockCreateDashboardResponse = true,
 } = {}) {
   mockGetBoundingClientRect();
+  mockScrollBy();
   const onClose = jest.fn();
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });

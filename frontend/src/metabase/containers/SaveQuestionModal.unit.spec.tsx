@@ -16,6 +16,7 @@ import {
   screen,
   waitFor,
   mockGetBoundingClientRect,
+  mockScrollBy,
 } from "__support__/ui";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -698,6 +699,7 @@ describe("SaveQuestionModal", () => {
 
     beforeEach(async () => {
       mockGetBoundingClientRect();
+      mockScrollBy();
 
       setupCollectionItemsEndpoint({
         collection: COLLECTION.ROOT,

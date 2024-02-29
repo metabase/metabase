@@ -15,6 +15,7 @@ import {
   waitFor,
   within,
   mockGetBoundingClientRect,
+  mockScrollBy,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
@@ -176,6 +177,7 @@ const setup = async ({
   searchResults = [],
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
+  mockScrollBy();
   const dashboards = Array.from(
     new Set([dashboard, mostRecentlyViewedDashboard].filter(isNotNull)),
   );
