@@ -18,6 +18,7 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
   getLoadingMessage,
+  getLoginPageIllustration,
   getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
 
@@ -27,12 +28,14 @@ import FontWidget from "./components/FontWidget";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
 import { ImageUpload } from "./components/ImageUpload";
 import { LandingPageWidget } from "./components/LandingPageWidget";
+import { LoginPageIllustrationDescription } from "./components/LoginPageIllustrationDescription";
 import LogoIcon from "./components/LogoIcon";
 import { MetabotToggleWidget } from "./components/MetabotToggleWidget";
 import {
   MetabaseLinksToggleDescription,
   SwitchWidget,
 } from "./components/SwitchWidget";
+import { IllustrationWidget } from "./components/SwitchWidget/IllustrationWidget";
 import { getLoadingMessageOptions } from "./lib/loading-message";
 import { updateColors } from "./lib/whitelabel";
 
@@ -159,18 +162,6 @@ if (hasPremiumFeature("whitelabel")) {
             type: "hidden",
           },
           {
-            key: "show-lighthouse-illustration",
-            tab: "conceal-metabase",
-            description: null,
-            type: "boolean",
-            defaultValue: true,
-            widget: SwitchWidget,
-            props: {
-              label: t`Show lighthouse illustration on the home and login pages`,
-              mt: "-0.5rem",
-            },
-          },
-          {
             key: "show-metabase-links",
             tab: "conceal-metabase",
             description: null,
@@ -217,6 +208,13 @@ if (hasPremiumFeature("whitelabel")) {
             defaultValue: true,
             widget: MetabotToggleWidget,
           },
+          {
+            key: "login-page-illustration",
+            tab: "conceal-metabase",
+            description: <LoginPageIllustrationDescription />,
+            type: "string",
+            widget: IllustrationWidget,
+          },
         ],
       },
     }),
@@ -252,4 +250,5 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
   PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
+  PLUGIN_SELECTORS.getLoginPageIllustration = getLoginPageIllustration;
 }

@@ -20,3 +20,7 @@ export function getCanWhitelabel(state: State) {
 export function getShowMetabaseLinks(state: State) {
   return PLUGIN_SELECTORS.getShowMetabaseLinks(state);
 }
+
+export function getLoginPageIllustration(state: State) {
+  return PLUGIN_SELECTORS.getLoginPageIllustration(state);
+}

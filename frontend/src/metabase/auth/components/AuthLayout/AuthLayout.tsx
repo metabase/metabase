@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 
 import LogoIcon from "metabase/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
-
-import { getHasIllustration } from "../../selectors";
+import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 
 import {
   LayoutBody,
@@ -17,11 +16,16 @@ interface AuthLayoutProps {
 }
 
 export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
-  const hasIllustration = useSelector(getHasIllustration);
+  const loginPageIllustration = useSelector(getLoginPageIllustration);
 
   return (
     <LayoutRoot>
-      {hasIllustration && <LayoutIllustration />}
+      {loginPageIllustration && (
+        <LayoutIllustration
+          src={loginPageIllustration}
+          isDefault={loginPageIllustration === "app/img/bridge.svg"}
+        />
+      )}
       <LayoutBody>
         <LogoIcon height={65} />
         <LayoutCard>{children}</LayoutCard>

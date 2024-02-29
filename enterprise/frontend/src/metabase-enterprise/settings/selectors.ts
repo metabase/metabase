@@ -33,3 +33,18 @@ export function getApplicationName(state: EnterpriseState) {
 export function getShowMetabaseLinks(state: EnterpriseState) {
   return getSetting(state, "show-metabase-links");
 }
+
+export function getLoginPageIllustration(state: EnterpriseState) {
+  const illustrationOption = getSetting(state, "login-page-illustration");
+  if (illustrationOption === "default") {
+    return "app/img/bridge.svg";
+  }
+
+  if (illustrationOption === "no-illustration") {
+    return null;
+  }
+
+  if (illustrationOption === "custom") {
+    return getSetting(state, "login-page-illustration-custom");
+  }
+}

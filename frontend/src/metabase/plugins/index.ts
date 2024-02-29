@@ -133,7 +133,7 @@ export const PLUGIN_SELECTORS = {
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
-  getDashboardOverviewId: (_state: State) => undefined,
+  getLoginPageIllustration: (_state: State) => "app/img/bridge.svg",
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
