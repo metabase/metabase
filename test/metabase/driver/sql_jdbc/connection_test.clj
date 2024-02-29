@@ -32,6 +32,7 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once ssh-test/do-with-mock-servers)
 
 (deftest can-connect-with-details?-test
   (testing "Should not be able to connect without setting h2/*allow-testing-h2-connections*"
