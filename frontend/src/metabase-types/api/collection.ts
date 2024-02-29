@@ -57,7 +57,7 @@ export interface Collection {
   is_personal?: boolean;
 
   location: string | null;
-  effective_location?: string; // location with only user-accessible collections
+  effective_location?: string; // location path containing only those collections that the user has permission to access
   effective_ancestors?: Collection[];
 
   here?: CollectionContentModel[];

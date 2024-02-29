@@ -5,6 +5,7 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
+import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import { Box, NavLink, Center, Icon, Flex } from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
@@ -16,6 +17,7 @@ import { PickerColumn } from "./ItemList.styled";
 interface ItemListProps<TItem extends TypeWithModel> {
   items?: TItem[];
   isLoading?: boolean;
+  error?: unknown;
   onClick: (val: TItem) => void;
   selectedItem: TItem | null;
   isFolder: (item: TItem) => boolean;
@@ -25,6 +27,7 @@ interface ItemListProps<TItem extends TypeWithModel> {
 export const ItemList = <TItem extends TypeWithModel>({
   items,
   isLoading = false,
+  error,
   onClick,
   selectedItem,
   isFolder,
@@ -37,6 +40,10 @@ export const ItemList = <TItem extends TypeWithModel>({
 
     return items.findIndex(item => isSelectedItem(item, selectedItem));
   }, [items, selectedItem]);
+
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
 
   if (isLoading && !items) {
     return (

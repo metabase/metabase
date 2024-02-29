@@ -9,6 +9,7 @@ import {
 import { t } from "ttag";
 
 import { useCollectionQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
@@ -52,11 +53,14 @@ export const CollectionPickerInner = (
     }),
   );
 
-  const { data: currentCollection, isLoading: loadingCurrentCollection } =
-    useCollectionQuery({
-      id: initialValue?.id ?? "root",
-      enabled: !!initialValue?.id,
-    });
+  const {
+    data: currentCollection,
+    error,
+    isLoading: loadingCurrentCollection,
+  } = useCollectionQuery({
+    id: initialValue?.id ?? "root",
+    enabled: !!initialValue?.id,
+  });
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
@@ -108,6 +112,10 @@ export const CollectionPickerInner = (
       userPersonalCollectionId,
     ],
   );
+
+  if (error) {
+    <LoadingAndErrorWrapper error={error} />;
+  }
 
   if (loadingCurrentCollection) {
     return <LoadingSpinner />;

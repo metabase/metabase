@@ -24,7 +24,11 @@ export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
   isFolder,
   isCurrentLevel,
 }: PersonalCollectionsItemListProps<TItem>) => {
-  const { data: collections, isLoading } = useCollectionListQuery({
+  const {
+    data: collections,
+    error,
+    isLoading,
+  } = useCollectionListQuery({
     query: { "personal-only": true },
   });
 
@@ -37,6 +41,7 @@ export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
   return (
     <ItemList
       items={topLevelPersonalCollections}
+      error={error}
       isLoading={isLoading}
       onClick={onClick}
       selectedItem={selectedItem}
@@ -59,5 +64,7 @@ const getSortedTopLevelPersonalCollections = (
     )
     .sort((a, b) => a?.name.localeCompare(b.name)) ?? null;
 
+// the search api lacks `personal_owner_id` field, so we need this check to be different
+// than when checking this elsewhere
 const isRootPersonalCollection = (collection: Collection) =>
   collection.is_personal && collection.location === "/";

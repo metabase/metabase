@@ -18,6 +18,7 @@ import type {
 import type { TypeWithModel } from "../../types";
 
 import { EntityPickerSearchResult } from "./EntityPickerSearch.styled";
+import { getSearchTabText } from "./utils";
 
 const defaultSearchFilter = (results: SearchResultType[]) => results;
 
@@ -143,8 +144,6 @@ export const EntityPickerSearchTab = ({
   searchQuery: string;
 }) => (
   <Tabs.Tab key="search" value="search" icon={<Icon name="search" />}>
-    {searchResults
-      ? t`${searchResults.length} results for "${searchQuery}"`
-      : t`Search results`}
+    {getSearchTabText(searchResults, searchQuery)}
   </Tabs.Tab>
 );

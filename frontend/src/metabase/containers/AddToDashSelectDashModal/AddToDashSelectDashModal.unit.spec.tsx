@@ -181,7 +181,6 @@ const setup = async ({
   );
 
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
-  // setupDashboardCollectionItemsEndpoint(dashboards);
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);

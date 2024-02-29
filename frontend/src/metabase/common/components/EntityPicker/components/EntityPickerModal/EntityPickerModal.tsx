@@ -45,7 +45,7 @@ export interface EntityPickerModalProps<TItem> {
   onItemSelect: (item: TItem) => void;
   canSelectItem: boolean;
   onClose: () => void;
-  tabs: [EntityTab, ...EntityTab[]]; // requires at least one
+  tabs: [EntityTab, ...EntityTab[]]; // Enforces that the array is not empty
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   actionButtons?: JSX.Element[];
