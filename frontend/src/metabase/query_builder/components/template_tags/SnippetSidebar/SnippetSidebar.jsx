@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import Search from "metabase/entities/search";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
@@ -109,7 +110,7 @@ class SnippetSidebarInner extends React.Component {
             <h4 className="text-medium">{t`Snippets are reusable bits of SQL`}</h4>
             <button
               onClick={openSnippetModalWithSelectedText}
-              className="Button Button--primary"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
               style={{ marginTop: 80 }}
             >{t`Create a snippet`}</button>
           </div>

@@ -557,6 +557,8 @@ describe("scenarios > dashboard", () => {
       cy.findByText("State").click();
     });
     cy.icon("close");
+
+    // TODO: fix test after styles migration
     cy.get(".Button--primary").contains("Done").click();
 
     saveDashboard();

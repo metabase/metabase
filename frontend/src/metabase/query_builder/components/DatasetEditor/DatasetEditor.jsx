@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { merge } from "icepick";
 import PropTypes from "prop-types";
 import { useEffect, useCallback, useMemo, useState } from "react";
@@ -11,6 +12,7 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { modelIndexes } from "metabase/entities";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -470,7 +472,11 @@ function DatasetEditor(props) {
             activeText={t`Saving…`}
             failedText={t`Save failed`}
             successText={t`Saved`}
-            className="Button Button--primary Button--small"
+            className={cx(
+              ButtonsS.Button,
+              ButtonsS.ButtonPrimary,
+              ButtonsS.ButtonSmall,
+            )}
           />,
         ]}
       />

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -6,6 +7,8 @@ import ActionButton from "metabase/components/ActionButton";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import type { SelectChangeEvent } from "metabase/core/components/Select/Select";
 import Select from "metabase/core/components/Select/Select";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import * as MetabaseCore from "metabase/lib/core";
 import type Field from "metabase-lib/metadata/Field";
@@ -335,7 +338,7 @@ const FieldCachedValuesSection = ({
         description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
       />
       <ActionButton
-        className="Button mr2"
+        className={cx(ButtonsS.Button, CS.mr2)}
         actionFn={handleRescanFieldValues}
         normalText={t`Re-scan this field`}
         activeText={t`Starting…`}
@@ -343,7 +346,7 @@ const FieldCachedValuesSection = ({
         successText={t`Scan triggered!`}
       />
       <ActionButton
-        className="Button Button--danger"
+        className={cx(ButtonsS.Button, ButtonsS.ButtonDanger)}
         actionFn={handleDiscardFieldValues}
         normalText={t`Discard cached field values`}
         activeText={t`Starting…`}

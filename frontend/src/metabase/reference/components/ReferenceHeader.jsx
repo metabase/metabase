@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import L from "metabase/components/List/List.module.css";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
@@ -38,7 +39,7 @@ const ReferenceHeader = ({
           <div key="2" className={cx("flex-full", S.headerButton)}>
             <Link
               to={headerLink}
-              className={cx("Button", "Button--borderless", "ml3")}
+              className={cx(ButtonsS.Button, ButtonsS.ButtonBorderless, CS.ml3)}
             >
               <div className="flex align-center relative">
                 <span className="mr1 flex-no-shrink">{t`See this ${type}`}</span>

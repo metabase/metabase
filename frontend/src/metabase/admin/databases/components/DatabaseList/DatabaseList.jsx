@@ -8,6 +8,7 @@ import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import FormMessage from "metabase/components/form/FormMessage";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core";
 import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -78,7 +79,11 @@ export default class DatabaseList extends Component {
           {isAdmin && (
             <Link
               to="/admin/databases/create"
-              className="Button Button--primary float-right"
+              className={cx(
+                ButtonsS.Button,
+                ButtonsS.ButtonPrimary,
+                "float-right",
+              )}
             >{t`Add database`}</Link>
           )}
           <h2 className="PageTitle">{t`Databases`}</h2>

@@ -166,6 +166,7 @@ describe("scenarios > dashboard > subscriptions", () => {
             .click()
             .type(`${normal.first_name} ${normal.last_name}{enter}`);
           cy.contains("Done")
+            // TODO: fix test after styles migration
             .closest(".Button")
             .should("not.be.disabled")
             .click();
@@ -757,6 +758,7 @@ function assignRecipients({
 }
 
 function clickButton(button_name) {
+  // TODO: fix test after styles migration
   cy.contains(button_name).closest(".Button").should("not.be.disabled").click();
 }
 

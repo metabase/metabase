@@ -696,6 +696,8 @@ describe("scenarios > question > filter", () => {
 
     // Tab switches the focus to the "Done" button
     cy.realPress("Tab");
+
+    // TODO: fix test after styles migration
     cy.focused().should("have.attr", "class").and("contains", "Button");
   });
 
@@ -719,6 +721,8 @@ describe("scenarios > question > filter", () => {
 
     // Tab switches the focus to the "Done" button
     cy.realPress("Tab");
+
+    // TODO: fix test after styles migration
     cy.focused().should("have.attr", "class").and("contains", "Button");
   });
 

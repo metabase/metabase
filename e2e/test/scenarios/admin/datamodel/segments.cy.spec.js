@@ -118,6 +118,8 @@ describe("scenarios > admin > datamodel > segments", () => {
     it("should see a newly asked question in its questions list", () => {
       // Ask question
       cy.visit("/reference/segments/1/questions");
+
+      // TODO: fix test after styles migration
       cy.get(".full .Button").click();
       cy.findAllByText("37.65");
 

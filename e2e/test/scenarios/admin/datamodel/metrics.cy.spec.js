@@ -164,6 +164,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should see a newly asked question in its questions list", () => {
       // Ask a new qustion
       cy.visit("/reference/metrics/1/questions");
+
+      // TODO: fix test after styles migration
       cy.get(".full").find(".Button").click();
 
       filter();

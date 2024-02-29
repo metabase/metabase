@@ -76,6 +76,7 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
+    // TODO: fix test after styles migration
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").closest(".Button").as("vizButton");
     cy.get("@vizButton").click();

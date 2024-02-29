@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { Location, LocationDescriptor } from "history";
 import type { MouseEvent } from "react";
 import { Component, Fragment } from "react";
@@ -14,6 +15,7 @@ import Modal from "metabase/components/Modal";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link/Link";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import type {
   AddSectionOpts,
@@ -310,7 +312,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
     return [
       <Button
         key="cancel"
-        className="Button Button--small mr1"
+        className={cx(ButtonsS.Button, ButtonsS.ButtonSmall, CS.mr1)}
         onClick={this.onRequestCancel}
       >
         {t`Cancel`}
@@ -323,7 +325,11 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         <span>
           <ActionButton
             actionFn={() => this.onSave()}
-            className="Button Button--primary Button--small"
+            className={cx(
+              ButtonsS.Button,
+              ButtonsS.ButtonPrimary,
+              ButtonsS.ButtonSmall,
+            )}
             normalText={t`Save`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}

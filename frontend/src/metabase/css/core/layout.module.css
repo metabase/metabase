@@ -103,7 +103,6 @@
 }
 
 /* force a stacking context for adding z-index to children */
-:global(.stacking-context),
 .stackingContext {
   transform: scale(1);
 }
