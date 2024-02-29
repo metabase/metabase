@@ -9,7 +9,7 @@ import {
 } from "metabase/home/utils";
 import { loadLocalization } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
-import { SetupApi, SettingsApi, MetabaseApi } from "metabase/services";
+import { SetupApi, MetabaseApi } from "metabase/services";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
@@ -136,10 +136,12 @@ export const submitLicenseToken = createAsyncThunk(
     dispatch(goToNextStep());
     trackLicenseTokenStepSubmitted(Boolean(token));
     try {
-      await SettingsApi.put({
-        key: "premium-embedding-token",
-        value: token,
-      });
+      await dispatch(
+        updateSetting({
+          key: "premium-embedding-token",
+          value: token,
+        }),
+      );
     } catch (err) {
       console.error(err);
       return rejectWithValue(INVALID_TOKEN_ERROR);
