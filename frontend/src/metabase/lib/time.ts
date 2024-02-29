@@ -1,8 +1,11 @@
-import type { DurationInputArg2, MomentInput } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 
 import MetabaseSettings from "metabase/lib/settings";
+import type { RowValue } from "metabase-types/api";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 addAbbreviatedLocale();
@@ -174,7 +177,7 @@ type NUMERIC_UNIT_FORMATS_KEY_TYPE =
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 export function parseTimestamp(
-  value: MomentInput,
+  value: RowValue,
   unit: DatetimeUnit | null = null,
   isLocal = false,
 ) {

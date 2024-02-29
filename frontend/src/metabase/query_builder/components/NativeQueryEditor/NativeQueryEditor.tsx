@@ -833,7 +833,6 @@ export class NativeQueryEditor extends Component<
             onClose={this.togglePromptVisibility}
           />
         )}
-        {/* @ts-expect-error — error in resizable box types  */}
         <StyledResizableBox
           ref={this.resizeBox}
           isOpen={isNativeEditorOpen}
