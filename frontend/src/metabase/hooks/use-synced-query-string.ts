@@ -1,7 +1,6 @@
 import querystring from "querystring";
 import { useEffect } from "react";
 import { push } from "react-router-redux";
-import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -9,10 +8,9 @@ import { useDispatch } from "metabase/lib/redux";
 
 export function useSyncedQueryString(
   fn: () => Record<string, any>,
-  deps?: any,
+  deps: any[],
 ) {
   const dispatch = useDispatch();
-  const previousDeps = usePrevious(deps);
 
   useEffect(() => {
     /**
@@ -27,10 +25,7 @@ export function useSyncedQueryString(
     const object = fn();
     const searchString = buildSearchString(object);
 
-    if (
-      !_.isEqual(previousDeps, deps) &&
-      searchString !== window.location.search
-    ) {
+    if (searchString !== window.location.search) {
       dispatch(
         push({
           pathname: window.location.pathname,
@@ -42,7 +37,7 @@ export function useSyncedQueryString(
 
     // exhaustive-deps is enabled for useSyncedQueryString so we don't need to include `fn` as a dependency
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previousDeps, deps]);
+  }, deps);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];
