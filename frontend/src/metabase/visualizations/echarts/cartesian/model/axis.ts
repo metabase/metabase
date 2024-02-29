@@ -16,6 +16,7 @@ import type {
   TimeSeriesInterval,
   DateRange,
   TimeSeriesXAxisModel,
+  CartesianChartDateTimeAbsoluteUnit,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -41,15 +42,17 @@ import {
 import {
   TIMESERIES_INTERVALS,
   computeTimeseriesDataInverval,
+  getTimezone,
   minTimeseriesUnit,
-} from "metabase/visualizations/lib/timeseries";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { isRelativeDateTimeUnit } from "metabase-types/guards/date-time";
-import { isDate } from "metabase-lib/types/utils/isa";
-import {
   getTimeSeriesIntervalDuration,
   tryGetDate,
-} from "../utils/time-series";
+} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+import {
+  TICKS_INTERVAL_THRESHOLD,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { isRelativeDateTimeUnit } from "metabase-types/guards/date-time";
+import { isDate } from "metabase-lib/types/utils/isa";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -502,8 +505,8 @@ const getTickWithinRangePredicate = (range: DateRange) => {
       return tickDate.isSame(minDate, "day");
     }
 
-    const isBeforeRange = minDate && tickDate.isBefore(minDate);
-    const isAfterRange = maxDate && tickDate.isAfter(maxDate);
+    const isBeforeRange = tickDate.isBefore(minDate);
+    const isAfterRange = tickDate.isAfter(maxDate);
 
     return !isBeforeRange && !isAfterRange;
   };
@@ -514,10 +517,6 @@ const getTickWithinRangePredicate = (range: DateRange) => {
 const findRangeBasedTicksInterval = (
   range: DateRange,
 ): TimeSeriesInterval | null => {
-  // For ticks we want to pick the largest interval that exist 3 times in the range.
-  // For example, if data has week granularity but the range is more than 3 months, we want to show monthly ticks.
-  const ticksIntervalThreshold = 3;
-
   const [min, max] = range;
 
   for (let i = TIMESERIES_INTERVALS.length - 1; i >= 0; i--) {
@@ -525,7 +524,7 @@ const findRangeBasedTicksInterval = (
     const intervalUnit = interval.unit as QUnitType | OpUnitType;
     if (
       max.diff(min, intervalUnit) / interval.count >=
-      ticksIntervalThreshold
+      TICKS_INTERVAL_THRESHOLD
     ) {
       return interval as TimeSeriesInterval;
     }
@@ -574,12 +573,15 @@ export function getTimeSeriesXAxisModel(
   const isTickWithinRange = getTickWithinRangePredicate(range);
   let tickRenderPredicate: XAxisModel["tickRenderPredicate"] =
     isTickWithinRange;
+
+  const ticksMinInterval = shouldUseRangeBasedInterval
+    ? getTimeSeriesIntervalDuration(rangeBasedComputedTicksInterval)
+    : // HACK: we have to divide the actual min interval by empirically choosen constant making in smaller
+      // otherwise on small datasets (2 sequential days) ECharts will not render ticks according to the interval.
+      // This does not apply to the range based interval as if it exists, then the range is big enough.
+      getTimeSeriesIntervalDuration(dataTimeSeriesInterval) / 1.5;
   let ticksMaxInterval;
-  let ticksMinInterval = getTimeSeriesIntervalDuration(
-    shouldUseRangeBasedInterval
-      ? rangeBasedComputedTicksInterval
-      : dataTimeSeriesInterval,
-  );
+  let effectiveTickUnit: CartesianChartDateTimeAbsoluteUnit;
 
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
@@ -598,9 +600,10 @@ export function getTimeSeriesXAxisModel(
       // For week intervals we force ECharts to try to render ticks for every day
       // but for ticks we select only ones that have the same day of week as data
       case "week":
+        effectiveTickUnit = "day";
         ticksMaxInterval = getTimeSeriesIntervalDuration({
           count: 1,
-          unit: "day",
+          unit: effectiveTickUnit,
         });
         tickRenderPredicate = rawTickDate => {
           if (!isTickWithinRange(rawTickDate)) {
@@ -615,9 +618,10 @@ export function getTimeSeriesXAxisModel(
       // For quarter intervals we force ECharts to try to render ticks for every month
       // but for ticks we select only months that are start of a quarter
       case "month":
-        ticksMinInterval = getTimeSeriesIntervalDuration({
+        effectiveTickUnit = "month";
+        ticksMaxInterval = getTimeSeriesIntervalDuration({
           count: 1,
-          unit: "month",
+          unit: effectiveTickUnit,
         });
         tickRenderPredicate = rawTickDate => {
           if (!isTickWithinRange(rawTickDate)) {
@@ -641,6 +645,7 @@ export function getTimeSeriesXAxisModel(
     axisType: "time",
     ticksMaxInterval,
     ticksMinInterval,
+    effectiveTickUnit,
     tickRenderPredicate,
     ...timeSeriesInfo,
   };
@@ -701,14 +706,6 @@ export function getXAxisModel(
     // TODO: will be replaced by the category scale
     axisType: settings["graph.x_axis.scale"] === "log" ? "log" : "value",
   };
-}
-
-// We should always have results_timezone, but just in case we fallback to UTC
-export const DEFAULT_TIMEZONE = "Etc/UTC";
-
-function getTimezone(rawSeries: RawSeries) {
-  const { results_timezone } = rawSeries[0].data;
-  return results_timezone || DEFAULT_TIMEZONE;
 }
 
 const getXAxisDateRangeFromSortedXAxisValues = (

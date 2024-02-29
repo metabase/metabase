@@ -101,7 +101,7 @@ const getBarWidth = (
     dataPointsCount += 1;
   }
   return Math.max(
-    5,
+    1,
     (chartMeasurements.bounds.right - chartMeasurements.bounds.left) *
       getBarWidthPercent(dataPointsCount),
   );

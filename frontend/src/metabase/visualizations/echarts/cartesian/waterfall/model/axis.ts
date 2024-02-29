@@ -6,7 +6,6 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
-  CartesianChartDateTimeAbsoluteUnit,
   ChartDataset,
   DimensionModel,
   TimeSeriesXAxisModel,
@@ -16,7 +15,7 @@ import type {
 
 import { getXAxisModel } from "../../model/axis";
 import { isTimeSeriesAxis } from "../../model/guards";
-import { tryGetDate } from "../../utils/time-series";
+import { tryGetDate } from "../../utils/timeseries";
 
 const getTotalTimeSeriesXValue = ({
   interval,
@@ -24,8 +23,6 @@ const getTotalTimeSeriesXValue = ({
 }: TimeSeriesXAxisModel) => {
   const [, lastDate] = range;
   const { unit, count } = interval;
-
-  // @ts-expect-error fix quarter types in dayjs
   return lastDate.add(count, unit).toISOString();
 };
 
@@ -55,23 +52,12 @@ export const getWaterfallXAxisModel = (
     totalXValue = timeSeriesTotalXValue;
     tickRenderPredicate = (tickValueRaw: string) => {
       const tickValue = dayjs(tickValueRaw);
-      let tickUnit: CartesianChartDateTimeAbsoluteUnit | undefined;
-
-      // HACK: Due to ECharts default tick selection for weekly and quarterly data
-      // we render for each day and month respectively to select the desired ones only.
-      // This logic of unit selection should be in sync with `getTimeSeriesXAxisModel` in
-      // frontend/src/metabase/visualizations/echarts/cartesian/model/axis.ts
-      if (xAxisModel.interval.unit === "week") {
-        tickUnit = "day";
-      } else if (
-        xAxisModel.interval.unit === "month" &&
-        xAxisModel.interval.count === 3
+      if (
+        tickValue.isSame(
+          tryGetDate(timeSeriesTotalXValue),
+          xAxisModel.effectiveTickUnit,
+        )
       ) {
-        tickUnit = "month";
-      }
-
-      // @ts-expect-error FIXME: dayjs quarter plugin types
-      if (tickValue.isSame(tryGetDate(timeSeriesTotalXValue), tickUnit)) {
         return true;
       }
 
@@ -89,7 +75,6 @@ export const getWaterfallXAxisModel = (
     }
     const dateValue = dayjs(valueRaw);
 
-    // @ts-expect-error FIXME: dayjs quarter plugin types
     if (dateValue.isSame(totalXValue, xAxisModel.interval.unit)) {
       return t`Total`;
     }

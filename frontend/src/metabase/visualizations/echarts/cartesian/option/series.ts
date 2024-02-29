@@ -150,7 +150,6 @@ const buildEChartsBarSeries = (
   yAxisIndex: number,
   barSeriesCount: number,
   hasMultipleSeries: boolean,
-  chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["bar"] => {
   const stackName =
@@ -476,7 +475,6 @@ export const buildEChartsSeries = (
             yAxisIndex,
             barSeriesCount,
             hasMultipleSeries,
-            chartMeasurements,
             renderingContext,
           );
         case "scatter":

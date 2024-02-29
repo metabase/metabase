@@ -18,6 +18,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isTimeSeriesAxis } from "../model/guards";
+import { getTimeSeriesIntervalDuration } from "../utils/timeseries";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -159,8 +160,22 @@ export const buildDimensionAxis = (
         color: getColor("border"),
       },
     },
-    minInterval: isTimeSeries ? xAxisModel.ticksMinInterval : undefined,
-    maxInterval: isTimeSeries ? xAxisModel.ticksMaxInterval : undefined,
+    ...(isTimeSeries
+      ? {
+          min: range => {
+            return (
+              range.min - getTimeSeriesIntervalDuration(xAxisModel.interval) / 2
+            );
+          },
+          max: range => {
+            return (
+              range.max + getTimeSeriesIntervalDuration(xAxisModel.interval) / 2
+            );
+          },
+          minInterval: xAxisModel.ticksMinInterval,
+          maxInterval: xAxisModel.ticksMaxInterval,
+        }
+      : {}),
   } as AxisBaseOption;
 };
 
