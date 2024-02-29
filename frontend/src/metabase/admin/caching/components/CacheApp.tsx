@@ -8,7 +8,6 @@ import {
 } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -16,13 +15,11 @@ import { CacheConfigApi } from "metabase/services";
 import { Tabs } from "metabase/ui";
 
 import {
-  isValidCacheConfig,
-  isValidConfigFromAPI,
+  isValidConfig,
   isValidStrategy,
   isValidTabId,
   TabId,
-  type CacheConfig,
-  type CacheConfigFromAPI,
+  type Config,
   type GetConfigByModelId,
   type Strategy,
   type StrategySetter,
@@ -50,7 +47,7 @@ export const CacheApp = () => {
     loading: areConfigsLoading,
     error: errorWhenLoadingConfigs,
   }: {
-    value?: CacheConfigFromAPI[];
+    value?: unknown[];
     loading: boolean;
     error?: any;
   } = useAsync(async () => {
@@ -65,18 +62,26 @@ export const CacheApp = () => {
     return configs;
   }, []);
 
-  const [configs, setConfigs] = useState<CacheConfig[]>([]);
+  const [configs, setConfigs] = useState<Config[]>([]);
 
   useEffect(() => {
-    // TODO: validate json
     if (configsFromAPI) {
-      // TODO: The outgoing data and incoming data have slightly different
-      // formats so we need to modify the data like this. It would be good to
-      // iron this out.
-      const configsForUI = configsFromAPI.map((config: unknown) =>
-        normalizeConfigFromAPI(config),
+      const validConfigs = configsFromAPI.reduce<Config[]>(
+        (acc, configFromAPI: unknown) => {
+          if (isValidConfig(configFromAPI)) {
+            return [...acc, configFromAPI];
+          } else {
+            console.error(
+              `Invalid config retrieved from API: ${JSON.stringify(
+                configFromAPI,
+              )}`,
+            );
+            return acc;
+          }
+        },
+        [],
       );
-      setConfigs(configsForUI);
+      setConfigs(validConfigs);
     }
   }, [configsFromAPI]);
 
@@ -117,32 +122,37 @@ export const CacheApp = () => {
 
   const setStrategy = useCallback<StrategySetter>(
     async (model, model_id, newStrategy) => {
-      const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
+      const baseConfig: Pick<Config, "model" | "model_id"> = {
         model,
         model_id,
       };
-      const otherConfigs = configs.filter(
-        config => config.model_id !== model_id,
-      );
-      const existingConfig = configs.find(
-        config => config.model_id === model_id,
+      const { existingConfig, otherConfigs } = configs.reduce(
+        (acc, config) => {
+          if (config.model_id === model_id) {
+            acc.existingConfig = config;
+          } else {
+            acc.otherConfigs.push(config);
+          }
+          return acc;
+        },
+        {
+          existingConfig: null as Config | null,
+          otherConfigs: [] as Config[],
+        },
       );
       const mergedStrategy = {
         ...existingConfig?.strategy,
         ...newStrategy,
       };
-      const overridesRoot = !_.isEqual(mergedStrategy, rootStrategy);
-      const shouldUpdateRatherThanDelete =
-        newStrategy && (model === "root" || overridesRoot);
-      if (shouldUpdateRatherThanDelete) {
+      if (newStrategy) {
         if (!isValidStrategy(mergedStrategy)) {
           throw new Error(`Invalid strategy: ${mergedStrategy}`);
         }
-        const newConfig: CacheConfig = {
+        const newConfig: Config = {
           ...baseConfig,
           strategy: mergedStrategy,
         };
-        if (!isValidCacheConfig(newConfig)) {
+        if (!isValidConfig(newConfig)) {
           throw new Error(`Invalid cache config: ${newConfig}`);
         }
         setConfigs([...otherConfigs, newConfig]);
@@ -154,7 +164,7 @@ export const CacheApp = () => {
         setConfigs(otherConfigs);
         await CacheConfigApi.delete(baseConfig);
       }
-      // Re-fetch data from API at this point?
+      // TODO: Re-fetch data from API at this point?
     },
     [configs],
   );
@@ -220,22 +230,4 @@ export const CacheApp = () => {
       </TabsPanel>
     </Tabs>
   );
-};
-
-const normalizeConfigFromAPI = (configFromAPI: unknown): CacheConfig => {
-  if (!isValidConfigFromAPI(configFromAPI)) {
-    throw new Error(`Invalid config retrieved from API: ${configFromAPI}`);
-  }
-  const strategy = { type: configFromAPI.strategy, ...configFromAPI.config };
-  if (!isValidStrategy(strategy)) {
-    throw new Error(`Invalid strategy retrieved from API: ${configFromAPI}`);
-  }
-  const config = {
-    ...configFromAPI,
-    strategy,
-  };
-  if (!isValidCacheConfig(config)) {
-    throw new Error(`Invalid cache configuration: ${config}`);
-  }
-  return config;
 };

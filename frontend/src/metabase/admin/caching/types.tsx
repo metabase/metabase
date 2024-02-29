@@ -36,7 +36,7 @@ export type UnitOfTime = "hours" | "minutes" | "seconds" | "days";
 const isValidUnitOfTime = (x: unknown): x is UnitOfTime =>
   typeof x === "string" && ["hours", "minutes", "seconds", "days"].includes(x);
 
-export type GetConfigByModelId = Map<number, CacheConfig>;
+export type GetConfigByModelId = Map<number, Config>;
 
 export type Model =
   | "root"
@@ -89,9 +89,12 @@ export type Strategy =
   | ScheduleStrategy
   | QueryStrategy;
 
-export interface CacheConfig {
+/** Cache invalidation configuration */
+export interface Config {
+  /** The type of cacheable object this configuration concerns */
   model: Model;
   model_id: number;
+  /** Cache invalidation strategy */
   strategy: Strategy;
 }
 
@@ -184,7 +187,7 @@ const hasValidStrategy = (
   x: unknown,
 ): x is NonNullObject & { strategy: Strategy } =>
   isValidObject(x) && "strategy" in x && isValidStrategy(x.strategy);
-export const isValidCacheConfig = (x: unknown): x is CacheConfig =>
+export const isValidConfig = (x: unknown): x is Config =>
   hasValidModel(x) && hasValidModelId(x) && hasValidStrategy(x);
 
 export enum TabId {

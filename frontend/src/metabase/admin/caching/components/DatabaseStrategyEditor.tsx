@@ -8,7 +8,7 @@ import { Icon, Radio, Text } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 
 import type {
-  CacheConfig,
+  Config,
   DBStrategySetter,
   GetConfigByModelId,
   RootStrategySetter,
@@ -203,7 +203,7 @@ export const DatabaseConfigDisplay = ({
   key: string;
   targetDatabaseId: number | null;
   setEditingWhichDatabaseId: Dispatch<SetStateAction<number | null>>;
-  dbConfigs: Map<number, CacheConfig>;
+  dbConfigs: Map<number, Config>;
   setDBStrategy: DBStrategySetter;
   rootStrategy: Strategy | undefined;
 }) => {
