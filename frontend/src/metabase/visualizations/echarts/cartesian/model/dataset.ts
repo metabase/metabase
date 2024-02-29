@@ -379,7 +379,14 @@ export function getDimensionDisplayValueGetter(
       return typeof value === "number" ? Math.pow(value, 2) : value;
     }
     if (axisType === "time") {
-      return dayjs(value).format("YYYY-MM-DDTHH:mm:ss");
+      // ECharts for ticks ECharts uses UTC time, so we need to adjust the time to the timezone of the dataset
+      const offsetMinues =
+        dayjs(value).utcOffset() -
+        dayjs(value).tz(chartModel.xAxisModel.timezone).utcOffset();
+
+      return dayjs(value)
+        .add(offsetMinues, "minute")
+        .format("YYYY-MM-DDTHH:mm:ss");
     }
     if (isNumeric(chartModel.dimensionModel.column)) {
       const parsedNumber = parseInt(value, 10);

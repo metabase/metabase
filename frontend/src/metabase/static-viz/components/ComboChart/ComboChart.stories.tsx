@@ -337,6 +337,20 @@ CompactXAxisDoesNotWork38917.args = {
   renderingContext,
 };
 
+export const TicksNativeWeekWithGapShortRange = Template.bind({});
+TicksNativeWeekWithGapShortRange.args = {
+  rawSeries: data.ticksNativeWeekWithGapShortRange as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TicksNativeWeekWithGapLongRange = Template.bind({});
+TicksNativeWeekWithGapLongRange.args = {
+  rawSeries: data.ticksNativeWeekWithGapLongRange as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
