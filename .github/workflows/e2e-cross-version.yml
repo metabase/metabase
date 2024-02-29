@@ -1,8 +1,8 @@
 name: E2E Cross-version Tests
 
-on: [push]
-#  schedule:
-#    - cron: '0 9 * * 0'
+on:
+  schedule:
+    - cron: '0 9 * * 0'
 
 jobs:
   cross-version-testing:
