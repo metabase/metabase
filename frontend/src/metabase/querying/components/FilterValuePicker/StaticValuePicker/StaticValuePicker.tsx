@@ -1,20 +1,65 @@
-import type { FocusEvent } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { MultiSelect } from "metabase/ui";
+import { MultiSelect, TextInput } from "metabase/ui";
 
 interface StaticValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
   isAutoFocus?: boolean;
+  isMultiple?: boolean;
   isValueValid: (query: string) => boolean;
   onChange: (newValues: string[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
-export function StaticValuePicker({
+export function StaticValuePicker(props: StaticValuePickerProps) {
+  return props.isMultiple ? (
+    <MultiSelectPicker {...props} />
+  ) : (
+    <TextInputPicker {...props} />
+  );
+}
+
+export function TextInputPicker({
+  selectedValues,
+  placeholder,
+  isAutoFocus,
+  isValueValid,
+  onChange,
+  onFocus,
+  onBlur,
+}: StaticValuePickerProps) {
+  const selectedValue = selectedValues[0] ?? "";
+  const [inputValue, setInputValue] = useState(selectedValue);
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.value;
+    setInputValue(newValue);
+    const isValid = isValueValid(newValue);
+    onChange(isValid ? [newValue] : []);
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
+    setInputValue(selectedValue);
+    onBlur?.(event);
+  };
+
+  return (
+    <TextInput
+      value={inputValue}
+      placeholder={placeholder}
+      autoFocus={isAutoFocus}
+      onChange={handleChange}
+      onFocus={onFocus}
+      onBlur={handleBlur}
+    />
+  );
+}
+
+export function MultiSelectPicker({
   selectedValues,
   placeholder,
   isAutoFocus,
