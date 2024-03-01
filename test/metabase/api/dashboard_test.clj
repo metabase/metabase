@@ -3401,9 +3401,10 @@
           (testing "Should return Card results"
             (is (malli= (dashboard-card-query-expected-results-schema)
                         (mt/user-http-request :rasta :post 202 (url))))
-            (testing "Should *not* require data perms"
+            (testing "Should *not* require create query permissions"
               (mt/with-no-data-perms-for-all-users!
-                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
                 (is (malli= (dashboard-card-query-expected-results-schema)
                             (mt/user-http-request :rasta :post 202 (url)))))))
 
@@ -4109,7 +4110,8 @@
                                             (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))
             (testing "Return values with no self-service (#26874)"
               (mt/with-no-data-perms-for-all-users!
-                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
                 (is (=? {:values (comp #(contains? % ["African"]) set)}
                         (mt/user-http-request :rasta :get 200
                                               (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values"))))))
