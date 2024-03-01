@@ -1411,21 +1411,29 @@
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
   source queries are aliased as `source`."
-  [driver honeysql-form {{:keys [native params],
-                          persisted :persisted-info/native
-                          :as source-query} :source-query}]
-  (assoc honeysql-form
-         :from [[(cond
-                   persisted
-                   (sql-source-query persisted nil)
+  [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
+                         source-metadata :source-metadata}]
 
-                   native
-                   (sql-source-query native params)
+  (let [field-aliases (mapv (fn [{[_ ref-name] :field_ref}]
+                                (some-> ref-name keyword))
+                              source-metadata)]
+      (assoc honeysql-form
+             :from [[(cond
+                       persisted
+                       (sql-source-query persisted nil)
 
-                   :else
-                   (apply-clauses driver {} source-query))
-                 (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))]
-                   [table-alias])]]))
+                       native
+                       (sql-source-query native params)
+
+                       :else
+                       (apply-clauses driver {} source-query))
+                     (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))]
+                       (cond-> [table-alias]
+                         (and
+                           (seq field-aliases)
+                           (distinct? field-aliases)
+                           (every? some? field-aliases))
+                         (conj {:columns field-aliases})))]])))
 
 (defn- apply-clauses
   "Like [[apply-top-level-clauses]], but handles `source-query` as well, which needs to be handled in a special way
