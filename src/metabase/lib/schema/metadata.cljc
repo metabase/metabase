@@ -280,7 +280,7 @@
    {:error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
-   ;; TODO -- this should validate against the driver features list in [[metabase.driver/driver-features]] if we're in
+   ;; TODO -- this should validate against the driver features list in [[metabase.driver/features]] if we're in
    ;; Clj mode
    [:dbms-version {:optional true} [:maybe :map]]
    [:details      {:optional true} :map]

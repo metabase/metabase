@@ -184,7 +184,7 @@
                               :type/Time           "TIMESTAMP"}]
   (defmethod sql.tx/field-base-type->sql-type [:athena base-type] [_ _] sql-type))
 
-;; I'm not sure why `driver/supports?` above doesn't rectify this, but make `add-fk-sql a noop
+;; TODO: Maybe make `add-fk-sql a noop
 (defmethod sql.tx/add-fk-sql :athena [& _] nil)
 
 ;; Athena can only execute one statement at a time

@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
+   [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
@@ -39,7 +40,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.task :as task]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -211,8 +212,8 @@
              (card-returned? :database db      card-2))))))
 
 (deftest ^:parallel authentication-test
-  (is (= (get mw.util/response-unauthentic :body) (client/client :get 401 "card")))
-  (is (= (get mw.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
+  (is (= (get req.util/response-unauthentic :body) (client/client :get 401 "card")))
+  (is (= (get req.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
 
 (deftest ^:parallel model-id-requied-when-f-is-database-test
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
@@ -2904,6 +2905,17 @@
   [db-binding & body]
   `(do-with-persistence-setup (fn [~db-binding] ~@body)))
 
+(defn- job-info-for-individual-refresh
+  "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
+  []
+  (some->> (deref #'task.persist-refresh/refresh-job-key)
+           task/job-info
+           :triggers
+           (map (comp qc/from-job-data :data))
+           (filter (comp #{"individual"} #(get % "type")))
+           (map #(get % "persisted-id"))
+           set))
+
 (deftest refresh-persistence
   (testing "Can schedule refreshes for models"
     (with-persistence-setup db
@@ -2916,17 +2928,17 @@
          :model/PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]
         (testing "Can refresh models"
           (mt/user-http-request :crowberto :post 204 (format "card/%d/refresh" (u/the-id model)))
-          (is (contains? (task.persist-refresh/job-info-for-individual-refresh)
+          (is (contains? (job-info-for-individual-refresh)
                          (u/the-id pmodel))
               "Missing refresh of model"))
         (testing "Won't refresh archived models"
           (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id archived)))
-          (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
+          (is (not (contains? (job-info-for-individual-refresh)
                               (u/the-id pnotmodel)))
               "Scheduled refresh of archived model"))
         (testing "Won't refresh cards no longer models"
           (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id notmodel)))
-          (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
+          (is (not (contains? (job-info-for-individual-refresh)
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
 

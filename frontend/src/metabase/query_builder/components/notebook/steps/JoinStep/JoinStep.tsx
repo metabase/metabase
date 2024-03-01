@@ -282,7 +282,7 @@ function JoinCondition({
     setOperator,
     setLHSColumn,
     setRHSColumn,
-  } = useJoinCondition(query, stageIndex, table, join, condition);
+  } = useJoinCondition(query, stageIndex, condition);
 
   const getLhsColumnGroup = () => {
     const lhsColumns = Lib.joinConditionLHSColumns(
