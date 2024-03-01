@@ -182,6 +182,16 @@
                 (is (contains? queued-for-deletion (u/the-id deletable-persisted))))))
           ;; we manually pass in the deleteable ones to not catch others in a running instance
           (#'task.persist-refresh/prune-deletables! test-refresher [deletable parchived punmodeled])
+          (testing "We delete persisted_info records for all of the pruned"
+            (let [persisted-records (t2/select :model/PersistedInfo :id [:in (map :id [parchived punmodeled deletable])])
+                  existing (map (comp
+                                 (update-keys {parchived 'parchived
+                                               punmodeled 'punmodeled
+                                               deletable 'deletable}
+                                              :id)
+                                 :id)
+                                persisted-records)]
+              (is (= [] existing))))
           ;; don't assert equality if there are any deletable in the app db
           (doseq [deletable-persisted [deletable punmodeled parchived]]
             (is (contains? @called-on (u/the-id deletable-persisted))))
