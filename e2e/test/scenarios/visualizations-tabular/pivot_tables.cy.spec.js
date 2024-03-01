@@ -31,7 +31,7 @@ const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
 
 const TEST_CASES = [
-  { case: "question", subject: QUESTION_NAME, confirmSave: true },
+  { case: "question", subject: QUESTION_NAME, confirmSave: false },
   { case: "dashboard", subject: DASHBOARD_NAME, confirmSave: false },
 ];
 
@@ -684,6 +684,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
+          if (test.case === "question") {
+            cy.icon("share").click();
+            modal().within(() => {
+              cy.findByText("Save").click();
+            });
+          }
+
           openStaticEmbeddingModal({
             activeTab: "parameters",
             confirmSave: test.confirmSave,
