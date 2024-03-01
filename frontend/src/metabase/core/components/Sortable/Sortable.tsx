@@ -36,6 +36,7 @@ export function Sortable({
   } = useSortable({
     id,
     disabled,
+    animateLayoutChanges: () => false,
   });
 
   return (
