@@ -188,6 +188,12 @@ describe("setup (EE, no token)", () => {
         "aria-current",
         "step",
       );
+
+      screen.getByText("Commercial license active").click();
+
+      expect(screen.getByRole("textbox", { name: "Token" })).toHaveValue(
+        sampleToken,
+      );
     });
 
     it("should be possible to skip the step without a token", async () => {

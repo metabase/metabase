@@ -7,13 +7,15 @@ import { Box, Button, Flex, Text, TextInput } from "metabase/ui";
 type LicenseTokenFormProps = {
   onValidSubmit: (token: string) => void;
   onSkip: () => void;
+  initialValue?: string;
 };
 
 export const LicenseTokenForm = ({
   onValidSubmit,
   onSkip,
+  initialValue = "",
 }: LicenseTokenFormProps) => {
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(initialValue);
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
