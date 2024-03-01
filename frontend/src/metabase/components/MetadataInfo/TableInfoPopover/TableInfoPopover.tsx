@@ -24,7 +24,7 @@ export function TableInfoPopover({
   const shouldHavePopover = table.description && !isVirtualCardId(table.id);
 
   if (!shouldHavePopover) {
-    return <>children</>;
+    return <>{children}</>;
   }
 
   return (
