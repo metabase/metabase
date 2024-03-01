@@ -62,6 +62,10 @@ export function JoinConditionColumnPicker({
     [isNewCondition],
   );
 
+  const handleCellItemChange = useCallback(() => {
+    onOpenedChange(!isOpened);
+  }, [isOpened, onOpenedChange]);
+
   return (
     <Popover opened={isOpened} onChange={onOpenedChange}>
       <Popover.Target>
@@ -71,7 +75,7 @@ export function JoinConditionColumnPicker({
           columnName={columnInfo?.displayName}
           label={label}
           readOnly={readOnly}
-          onClick={() => onOpenedChange(!isOpened)}
+          onClick={handleCellItemChange}
         />
       </Popover.Target>
       <Popover.Dropdown>
