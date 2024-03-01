@@ -28,7 +28,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   return [
     {
       name: "extract",
-      title: `${drillInfo.displayName}…`,
+      title: drillInfo.displayName,
       section: "extract",
       icon: "extract",
       buttonType: "horizontal",

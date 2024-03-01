@@ -39,10 +39,10 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
-(mu/defn filter-drill-adjusted-query :- [:map
-                                         [:query ::lib.schema/query]
-                                         [:stage-number :int]
-                                         [:column lib.filter/ColumnWithOperators]]
+(mu/defn prepare-query-for-drill-addition :- [:map
+                                              [:query ::lib.schema/query]
+                                              [:stage-number :int]
+                                              [:column lib.filter/ColumnWithOperators]]
   "If the column we're filtering on is an aggregation, the filtering must happen in a later stage. This function returns
   a map with that possibly-updated `:query` and `:stage-number`, plus the `:column` for filtering in that stage (with
   filter operators, as returned by [[lib.filter/filterable-columns]]).
@@ -62,8 +62,8 @@
         base          (cond
                         ;; Not an aggregation or breakout: just the input query and stage.
                         (and
-                         (not= (:lib/source column) :source/aggregations)
-                         (not= (:lib/source column) :source/breakouts))
+                          (not= (:lib/source column) :source/aggregations)
+                          (not= (:lib/source column) :source/breakouts))
                         {:query        query
                          :stage-number stage-number}
 
@@ -106,7 +106,7 @@
          :type       :drill-thru/column-filter
          :initial-op initial-op}
         ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.
-        (filter-drill-adjusted-query query stage-number column column-ref)))))
+        (prepare-query-for-drill-addition query stage-number column column-ref)))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-filter
   [_query _stage-number {:keys [initial-op]}]

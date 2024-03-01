@@ -1140,11 +1140,6 @@
   [a-drill-thru pivot-type]
   (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 
-(defn ^:export column-extract-types
-  ""
-  [a-drill-thru]
-  (to-array (lib.core/column-extract-types a-drill-thru)))
-
 (defn ^:export with-different-table
   "Changes an existing query to use a different source table or card.
    Can be passed an integer table id or a legacy `card__<id>` string."
