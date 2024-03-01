@@ -1,8 +1,4 @@
 :root {
-  --admin-nav-bg-color: var(--color-bg-dark);
-  --admin-nav-bg-color-tint: var(--color-bg-dark);
-  --admin-nav-item-text-color: color-mod(var(--color-text-white) alpha(-37%));
-  --admin-nav-item-text-active-color: var(--color-text-white);
   --page-header-padding: 2.375rem;
 }
 
@@ -147,31 +143,6 @@
   border-color: color-mod(var(--color-border) blackness(10%));
 }
 
-:global(.AdminSelectBorderless) {
-  display: inline-block;
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 3px;
-}
-
-:global(.AdminSelect--borderless) {
-  border: none !important;
-}
-:global(.AdminSelect--borderless .AdminSelect-content) {
-  margin-left: auto;
-}
-:global(.AdminSelect--borderless .AdminSelect-chevron) {
-  margin-left: 0;
-}
-
-:global(.AdminSelect-chevron) {
-  opacity: 0.75;
-}
-
-:global(.AdminSelect:hover .AdminSelect-chevron) {
-  opacity: 1;
-}
-
 :global(.MetadataTable) {
   min-width: 800px;
 }
@@ -180,42 +151,13 @@
   background-color: var(--color-bg-white);
 }
 
-:global(.TableEditor-table-name) {
-  font-size: 24px;
-}
-
-:global(.TableEditor-field-name) {
-  font-size: 16px;
-}
-
-:global(.TableEditor-table-description),
 :global(.TableEditor-field-description) {
   font-size: 14px;
-}
-
-:global(.TableEditor-field-visibility) {
-  /*color: var(--color-warning);*/
-}
-
-:global(.TableEditor-field-visibility .ColumnarSelector-row:hover) {
-  background-color: var(--color-brand) !important;
-  color: white !important;
-}
-
-:global(.TableEditor-field-type .ColumnarSelector-row:hover) {
-  background-color: var(--color-brand) !important;
-  color: white !important;
 }
 
 :global(.TableEditor-field-semantic-type),
 :global(.TableEditor-field-target) {
   margin-top: 3px;
-}
-
-:global(.TableEditor-field-semantic-type .ColumnarSelector-row:hover),
-:global(.TableEditor-field-target .ColumnarSelector-row:hover) {
-  background-color: var(--color-brand) !important;
-  color: white !important;
 }
 
 :global(.SettingsInput) {
@@ -251,18 +193,6 @@
   padding-top: var(--margin-1);
 }
 
-:global(.AdminLink) {
-  opacity: 0.435;
-}
-
-:global(.AdminLink:hover) {
-  opacity: 1;
-}
-
 :global(.ColumnSortHelper) {
   box-shadow: 0 7px 20px var(--color-shadow);
-}
-
-:global(#formField-details-password .Form-input) {
-  margin-bottom: 2em;
 }

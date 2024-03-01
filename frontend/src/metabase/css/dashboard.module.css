@@ -1,37 +1,7 @@
-:global(.Dash-wrapper) {
-  width: 100%;
-}
-
-@media screen and (--breakpoint-min-sm) {
-  :global(.Dash-wrapper) {
-    max-width: var(--sm-width);
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.Dash-wrapper) {
-    max-width: var(--md-width);
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.Dash-wrapper) {
-    max-width: var(--lg-width);
-  }
-}
-
 /* Fullscreen mode */
 :global(.Dashboard.Dashboard--fullscreen) {
   min-height: 100vh;
   height: auto;
-}
-
-:global(.Dashboard.Dashboard--fullscreen .Header-button) {
-  color: var(--color-text-light);
-}
-
-:global(.Dashboard.Dashboard--fullscreen .Header-title-description) {
-  display: none;
 }
 
 /* Night mode */
@@ -41,10 +11,6 @@
 
 :global(.Dashboard.Dashboard--night .Card) {
   color: var(--color-text-white);
-}
-
-:global(.Dashboard.Dashboard--night .Header-button) {
-  color: var(--color-text-medium);
 }
 
 :global(.Dashboard.Dashboard--fullscreen .fullscreen-normal-text) {
@@ -108,8 +74,8 @@
   margin-top: 0.5rem;
 }
 
-:global(.Dash--editing .DashCard:hover .Card .Card-heading) {
-  z-index: 2;
+:global(.Dash--editing .Card-title) {
+  pointer-events: none;
 }
 
 :global(.Dash--editing .PinMap) {
@@ -205,10 +171,6 @@
   transition: all 0.15s linear;
 }
 
-:global(.Dash--editing .Card-title) {
-  pointer-events: none;
-}
-
 :global(.Modal.AddSeriesModal) {
   height: 80%;
   max-height: 600px;
@@ -258,15 +220,6 @@
 :global(.ScalarValue) {
   font-weight: 700;
   white-space: pre;
-}
-
-:global(.SmartWrapper) {
-  font-size: 1.4em;
-}
-
-:global(.Dashboard .SmartWrapper) {
-  position: relative;
-  font-size: inherit;
 }
 
 /*

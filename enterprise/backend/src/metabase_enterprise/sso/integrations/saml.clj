@@ -44,7 +44,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -230,7 +230,7 @@
                            :email           email
                            :group-names     groups
                            :user-attributes attrs
-                           :device-info     (request.u/device-info request)})
+                           :device-info     (req.util/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
       (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
 
