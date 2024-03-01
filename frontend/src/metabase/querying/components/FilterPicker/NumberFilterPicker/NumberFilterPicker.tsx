@@ -122,7 +122,7 @@ function NumberValueInput({
           stageIndex={stageIndex}
           column={column}
           values={values.filter(isNumber)}
-          autoFocus
+          isAutoFocus
           onChange={onChange}
         />
       </Box>

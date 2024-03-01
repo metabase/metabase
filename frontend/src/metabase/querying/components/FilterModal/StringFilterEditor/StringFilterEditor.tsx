@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
-import { Flex, Grid, TextInput, Icon } from "metabase/ui";
+import { Flex, Grid, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { StringFilterValuePicker } from "../../FilterValuePicker";
@@ -124,28 +123,16 @@ function StringValueInput({
   onFocus,
   onBlur,
 }: StringValueInputProps) {
-  if (hasMultipleValues) {
+  if (valueCount > 0) {
     return (
       <StringFilterValuePicker
         query={query}
         stageIndex={stageIndex}
         column={column}
         values={values}
-        compact
+        isCompact
+        isMultiple={hasMultipleValues}
         onChange={onChange}
-        onFocus={onFocus}
-        onBlur={onBlur}
-      />
-    );
-  }
-
-  if (valueCount === 1) {
-    return (
-      <TextInput
-        value={values[0]}
-        placeholder={t`Enter some text`}
-        aria-label={t`Filter value`}
-        onChange={event => onChange([event.target.value])}
         onFocus={onFocus}
         onBlur={onBlur}
       />

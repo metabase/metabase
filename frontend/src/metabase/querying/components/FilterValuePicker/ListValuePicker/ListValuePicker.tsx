@@ -129,12 +129,12 @@ export function SingleSelectPicker({
   isValueValid,
   onChange,
 }: ListValuePickerProps) {
-  const [searchValue, setSearchValue] = useState("");
-
   const options = useMemo(
     () => getFieldAndSelectedOptions(fieldValues, selectedValues),
     [fieldValues, selectedValues],
   );
+
+  const [searchValue, setSearchValue] = useState("");
 
   const handleChange = (value: string | null) => {
     onChange(value != null ? [value] : []);

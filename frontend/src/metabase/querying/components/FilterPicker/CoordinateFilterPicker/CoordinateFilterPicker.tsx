@@ -140,7 +140,7 @@ function CoordinateValueInput({
           stageIndex={stageIndex}
           column={column}
           values={values.filter(isNumber)}
-          autoFocus
+          isAutoFocus
           onChange={onChange}
         />
       </Box>
