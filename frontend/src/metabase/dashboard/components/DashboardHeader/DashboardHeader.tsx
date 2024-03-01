@@ -118,7 +118,7 @@ interface DashboardHeaderProps {
   showAddParameterPopover: () => void;
   hideAddParameterPopover: () => void;
 
-  onEditingChange: (arg: Dashboard | boolean) => void;
+  onEditingChange: (arg: Dashboard | null) => void;
   onRefreshPeriodChange: (period: number | null) => void;
   onFullscreenChange: (
     isFullscreen: boolean,
@@ -249,7 +249,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   };
 
   const onDoneEditing = () => {
-    onEditingChange(false);
+    onEditingChange(null);
   };
 
   const onRevert = () => {
