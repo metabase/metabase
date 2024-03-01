@@ -25,7 +25,10 @@
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.jdbc.options :as t2.jdbc.options]))
 
@@ -35,6 +38,43 @@
   "Return a nicely-formatted version of a `query` string with the current application db driver formatting."
   [sql]
   (driver/prettify-native-form (mdb/db-type) sql))
+
+(def ^:private NamespacedKeyword
+  [:and :keyword [:fn (comp seq namespace)]])
+
+(mu/defn ^:private type-keyword->descendants :- [:set {:min 1} ms/NonBlankString]
+  "Return a set of descendents of Metabase `type-keyword`. This includes `type-keyword` itself, so the set will always
+  have at least one element.
+
+     (type-keyword->descendants :Semantic/Coordinate) ; -> #{\"type/Latitude\" \"type/Longitude\" \"type/Coordinate\"}"
+  [type-keyword :- NamespacedKeyword]
+  (set (map u/qualified-name (cons type-keyword (descendants type-keyword)))))
+
+(defn isa
+  "Convenience for generating an HoneySQL `IN` clause for a keyword and all of its descendents.
+   Intended for use with the type hierarchy in `metabase.types`.
+
+     (t2/select Field :semantic_type (mdb/isa :type/URL))
+      ->
+     (t2/select Field :semantic_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
+
+   Also accepts optional `expr` for use directly in a HoneySQL `where`:
+
+     (t2/select Field {:where (mdb/isa :semantic_type :type/URL)})
+     ->
+     (t2/select Field {:where [:in :semantic_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
+  ([type-keyword]
+   [:in (type-keyword->descendants type-keyword)])
+  ;; when using this with an `expr` (e.g. `(isa :semantic_type :type/URL)`) just go ahead and take the results of the
+  ;; one-arity impl above and splice expr in as the second element
+  ;;
+  ;;    [:in #{"type/URL" "type/ImageURL"}]
+  ;;
+  ;; becomes
+  ;;
+  ;;    [:in :semantic_type #{"type/URL" "type/ImageURL"}]
+  ([expr type-keyword]
+   [:in expr (type-keyword->descendants type-keyword)]))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."

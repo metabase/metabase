@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
@@ -136,9 +136,9 @@
                            {:order-by (case (:field_order table)
                                         :custom       [[:custom_position :asc]]
                                         :smart        [[[:case
-                                                         (mdb.u/isa :semantic_type :type/PK)       0
-                                                         (mdb.u/isa :semantic_type :type/Name)     1
-                                                         (mdb.u/isa :semantic_type :type/Temporal) 2
+                                                         (mdb.query/isa :semantic_type :type/PK)       0
+                                                         (mdb.query/isa :semantic_type :type/Name)     1
+                                                         (mdb.query/isa :semantic_type :type/Temporal) 2
                                                          :else                                     3]
                                                         :asc]
                                                        [:%lower.name :asc]]
@@ -184,7 +184,7 @@
   [{:keys [id]}]
   (t2/select-one-pk Field
     :table_id        id
-    :semantic_type   (mdb.u/isa :type/PK)
+    :semantic_type   (mdb.query/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]

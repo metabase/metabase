@@ -68,7 +68,6 @@
    [honey.sql :as sql]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Field FieldValues Table]]
@@ -504,8 +503,8 @@
                                     [:metabase_field :dest] [:= :dest.table_id :table.id]]
                         :where     [:and
                                     [:= :source.id field-id]
-                                    (mdb.u/isa :source.semantic_type :type/PK)
-                                    (mdb.u/isa :dest.semantic_type :type/Name)]
+                                    (mdb.query/isa :source.semantic_type :type/PK)
+                                    (mdb.query/isa :dest.semantic_type :type/Name)]
                         :limit     1}]}
              :ids]]
    :limit  1})
