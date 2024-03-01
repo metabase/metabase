@@ -29,13 +29,9 @@ export function getDefaultValues(
   values: string[],
 ): string[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  if (hasMultipleValues) {
-    return values.filter(isNotEmpty);
-  }
-
-  return Array(valueCount)
-    .fill("")
-    .map((value, index) => values[index] ?? value);
+  return values
+    .filter(isNotEmpty)
+    .slice(0, hasMultipleValues ? undefined : valueCount);
 }
 
 export function isValidFilter(
