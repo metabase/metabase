@@ -111,8 +111,6 @@ export function diagnose({
       );
     }
   } catch (err) {
-    console.warn("compile error", err);
-
     if (isErrorWithMessage(err)) {
       return err;
     }
