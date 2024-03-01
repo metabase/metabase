@@ -5,10 +5,7 @@ import { t } from "ttag";
 import { MultiSelect, Select } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import {
-  getOptionsWithSearchValue,
-  getFieldAndSelectedOptions,
-} from "../utils";
+import { getOptionsWithSearchInput, getAvailableOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE } from "./constants";
 import { shouldSearch, getSearchValues } from "./utils";
@@ -45,7 +42,7 @@ export function SearchValuePicker({
   );
 
   const options = useMemo(
-    () => getFieldAndSelectedOptions(fieldValues, selectedValues),
+    () => getAvailableOptions(fieldValues, selectedValues),
     [fieldValues, selectedValues],
   );
 
@@ -70,7 +67,7 @@ export function SearchValuePicker({
 
   return isMultiple ? (
     <MultiSelect
-      data={getOptionsWithSearchValue(options, searchValue, isValueValid)}
+      data={getOptionsWithSearchInput(options, searchValue, isValueValid)}
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
@@ -82,7 +79,7 @@ export function SearchValuePicker({
     />
   ) : (
     <Select
-      data={getOptionsWithSearchValue(options, searchValue, isValueValid)}
+      data={getOptionsWithSearchInput(options, searchValue, isValueValid)}
       value={selectedValues[0]}
       searchValue={searchValue}
       placeholder={placeholder}

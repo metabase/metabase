@@ -45,7 +45,7 @@ function getSelectedOptions(selectedValues: string[]): SelectItem[] {
   }));
 }
 
-export function getFieldAndSelectedOptions(
+export function getAvailableOptions(
   fieldValues: FieldValue[],
   selectedValues: string[],
 ): SelectItem[] {
@@ -62,7 +62,7 @@ export function getFieldAndSelectedOptions(
   return Object.entries(mapping).map(([value, label]) => ({ value, label }));
 }
 
-export function getOptionsWithSearchValue(
+export function getOptionsWithSearchInput(
   options: SelectItem[],
   searchValue: string,
   isValueValid: (query: string) => boolean,

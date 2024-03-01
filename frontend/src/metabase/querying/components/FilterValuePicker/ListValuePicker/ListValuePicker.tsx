@@ -13,10 +13,7 @@ import {
 } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
-import {
-  getFieldAndSelectedOptions,
-  getOptionsWithSearchValue,
-} from "../utils";
+import { getAvailableOptions, getOptionsWithSearchInput } from "../utils";
 
 import { ColumnGrid } from "./ListValuePicker.styled";
 import { LONG_OPTION_LENGTH, MAX_INLINE_OPTIONS } from "./constants";
@@ -57,7 +54,7 @@ function CheckboxListPicker({
   onChange,
 }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const options = getFieldAndSelectedOptions(fieldValues, selectedValues);
+  const options = getAvailableOptions(fieldValues, selectedValues);
   const visibleOptions = searchOptions(options, searchValue);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -99,7 +96,7 @@ function CheckboxGridPicker({
   selectedValues,
   onChange,
 }: ListValuePickerProps) {
-  const options = getFieldAndSelectedOptions(fieldValues, selectedValues);
+  const options = getAvailableOptions(fieldValues, selectedValues);
   const hasLongOptions = options.some(
     ({ label }) => label != null && label.length > LONG_OPTION_LENGTH,
   );
@@ -130,7 +127,7 @@ export function SingleSelectPicker({
   onChange,
 }: ListValuePickerProps) {
   const options = useMemo(
-    () => getFieldAndSelectedOptions(fieldValues, selectedValues),
+    () => getAvailableOptions(fieldValues, selectedValues),
     [fieldValues, selectedValues],
   );
 
@@ -142,7 +139,7 @@ export function SingleSelectPicker({
 
   return (
     <Select
-      data={getOptionsWithSearchValue(options, searchValue, isValueValid)}
+      data={getOptionsWithSearchInput(options, searchValue, isValueValid)}
       value={selectedValues[0]}
       searchValue={searchValue}
       placeholder={placeholder}
@@ -162,7 +159,7 @@ export function MultiSelectPicker({
   isAutoFocus,
   onChange,
 }: ListValuePickerProps) {
-  const options = getFieldAndSelectedOptions(fieldValues, selectedValues);
+  const options = getAvailableOptions(fieldValues, selectedValues);
 
   return (
     <MultiSelect
