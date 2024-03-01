@@ -8,7 +8,6 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.db :as mdb]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -380,7 +379,8 @@
   max (nanosecond) resolution)."
   []
   (classloader/require 'metabase.driver.sql.query-processor)
-  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb/db-type)))
+  (let [db-type ((requiring-resolve 'metabase.db/db-type))]
+   ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj

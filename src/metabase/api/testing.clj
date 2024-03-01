@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.db.setup :as mdb.setup]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
@@ -33,10 +32,10 @@
 ;;;; SAVE
 
 (defn- save-snapshot! [snapshot-name]
-  (assert-h2 mdb.connection/*application-db*)
+  (assert-h2 (mdb/app-db))
   (let [path (snapshot-path-for-name snapshot-name)]
     (log/infof "Saving snapshot to %s" path)
-    (jdbc/query {:datasource mdb.connection/*application-db*} ["SCRIPT TO ?" path]))
+    (jdbc/query {:datasource (mdb/app-db)} ["SCRIPT TO ?" path]))
   :ok)
 
 (api/defendpoint POST "/snapshot/:name"
@@ -51,7 +50,7 @@
 (defn- reset-app-db-connection-pool!
   "Immediately destroy all open connections in the app DB connection pool."
   []
-  (let [{:keys [data-source]} mdb.connection/*application-db*]
+  (let [data-source (mdb/data-source)]
      (when (instance? PoolBackedDataSource data-source)
        (log/info "Destroying application database connection pool")
        (.hardReset ^PoolBackedDataSource data-source))))
@@ -61,7 +60,7 @@
   [^String snapshot-path]
   (log/infof "Restoring snapshot from %s" snapshot-path)
   (api/check-404 (.exists (java.io.File. snapshot-path)))
-  (with-open [conn (.getConnection mdb.connection/*application-db*)]
+  (with-open [conn (mdb/get-connection)]
     (doseq [sql-args [["SET LOCK_TIMEOUT 180000"]
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
@@ -90,12 +89,12 @@
   ;; a bunch of time initializing Liquibase and checking for unrun migrations for every test when we don't need to. --
   ;; Cam
   (when config/is-dev?
-    (mdb.setup/migrate! (mdb/db-type) mdb.connection/*application-db* :up)))
+    (mdb.setup/migrate! (mdb/db-type) (mdb/app-db) :up)))
 
 (defn- restore-snapshot! [snapshot-name]
-  (assert-h2 mdb.connection/*application-db*)
+  (assert-h2 (mdb/app-db))
   (let [path                         (snapshot-path-for-name snapshot-name)
-        ^ReentrantReadWriteLock lock (:lock mdb.connection/*application-db*)]
+        ^ReentrantReadWriteLock lock (:lock (mdb/app-db))]
     ;; acquire the application DB WRITE LOCK which will prevent any other threads from getting any new connections until
     ;; we release it.
     (try
