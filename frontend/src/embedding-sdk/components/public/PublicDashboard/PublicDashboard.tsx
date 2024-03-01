@@ -5,20 +5,6 @@ import type { SuperDuperEmbedOptions } from "metabase/public/components/EmbedFra
 
 export const PublicDashboard = ({
   uuid,
-  location = {
-    pathname: "",
-    search: "?created_at=&plan=&source=&trial_converted=",
-    hash: "",
-    action: "REPLACE",
-    key: "",
-    query: {
-      created_at: "",
-      plan: "",
-      source: "",
-      trial_converted: "",
-    },
-    state: null,
-  },
   embedOptions = {
     bordered: true,
     titled: true,

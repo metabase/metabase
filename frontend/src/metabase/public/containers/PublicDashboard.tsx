@@ -205,8 +205,6 @@ export const PublicDashboard = ({
         )
       : [];
 
-  console.log({ hasAbsolutePositioning });
-
   return (
     <EmbedFrame
       hasAbsolutePositioning={hasAbsolutePositioning}
