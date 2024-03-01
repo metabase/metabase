@@ -218,7 +218,7 @@ export class Scalar extends Component {
 
     return (
       <ScalarWrapper>
-        <div className="text-default text-smaller absolute top right p1 px2">
+        <div className="Card-title absolute top right p1 px2">
           {actionButtons}
         </div>
         <ScalarContainer

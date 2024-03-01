@@ -70,6 +70,14 @@
   transition: border 0.3s, background-color 0.3s;
 }
 
+:global(.Dash--editing .Card-title:first-of-type) {
+  margin-top: 0.5rem;
+}
+
+:global(.Dash--editing .Card-title) {
+  pointer-events: none;
+}
+
 :global(.Dash--editing .PinMap) {
   /* allow map to pan. need to stopPropagation in PinMap to prevent weird dragging interaction */
   pointer-events: all;
