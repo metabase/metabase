@@ -16,7 +16,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
@@ -523,9 +523,9 @@
 
 (def ^:private fields-for-table
   "Given a table name, returns a map of column_name -> column_type"
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn fields-for-table [table-name]
-     (u.conn/app-db-column-types mdb.connection/*application-db* table-name))))
+     (u.conn/app-db-column-types mdb/app-db table-name))))
 
 (defn- ->table-name
   "Returns the table name that a particular ingested entity should finally be inserted into."

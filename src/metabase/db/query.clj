@@ -22,7 +22,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log]
@@ -34,7 +34,7 @@
 (defn format-sql
   "Return a nicely-formatted version of a `query` string with the current application db driver formatting."
   [sql]
-  (driver/prettify-native-form (mdb.connection/db-type) sql))
+  (driver/prettify-native-form (mdb/db-type) sql))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."

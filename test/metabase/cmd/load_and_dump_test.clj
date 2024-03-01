@@ -8,11 +8,11 @@
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.test-util :as cmd.test-util]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.spec :as mdb.spec]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
-   [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.i18n.impl :as i18n.impl]))
@@ -37,7 +37,7 @@
                               :classname   "org.h2.Driver"}
                              (let [details (tx/dbdef->connection-details driver/*driver* :db {:database-name db-name})]
                                (mdb.spec/spec driver/*driver* details))))]
-          (binding [setting/*disable-cache*         true
+          (binding [config/*disable-setting-cache*  true
                     mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
             (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
               (when-not (= driver/*driver* :h2)

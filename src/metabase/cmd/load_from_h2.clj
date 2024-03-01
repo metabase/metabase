@@ -20,7 +20,7 @@
   (:require
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]))
 
 (defn load-from-h2!
@@ -33,4 +33,4 @@
   ([h2-filename]
    (let [h2-filename    (str h2-filename ";IFEXISTS=TRUE")
          h2-data-source (copy.h2/h2-data-source h2-filename)]
-     (copy/copy! :h2 h2-data-source (mdb.connection/db-type) (mdb.connection/data-source)))))
+     (copy/copy! :h2 h2-data-source (mdb/db-type) (mdb/data-source)))))

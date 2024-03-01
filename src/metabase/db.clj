@@ -28,13 +28,12 @@
 
   * [[metabase.db.util]] - general util functions for Toucan/HoneySQL queries against the application DB"
   (:require
-   [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.setup :as mdb.setup]
-   [methodical.core :as methodical]
-   [potemkin :as p]
-   [toucan2.pipeline :as t2.pipeline]))
+   [potemkin :as p]))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO - determine if we *actually* need to import any of these
 ;;
@@ -42,8 +41,12 @@
 ;; functions directly where applicable.
 (p/import-vars
  [mdb.connection
+  quoting-style
+
   db-type
-  quoting-style])
+  unique-identifier
+  data-source
+  get-connection])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; [[mdb.connection/*application-db*]] (or its data source)
@@ -51,6 +54,12 @@
   "True if the Metabase DB is setup and ready."
   []
   (= @(:status mdb.connection/*application-db*) ::setup-finished))
+
+(defn app-db
+  "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to acess. Also
+  implements [[javax.sql.DataSource]] directly, so you can call [[.getConnection]] on it directly."
+  ^metabase.db.connection.ApplicationDB []
+  mdb.connection/*application-db*)
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
@@ -63,18 +72,30 @@
     ;; DBs.
     (locking mdb.connection/*application-db*
       (when-not (db-is-set-up?)
-        (let [db-type       (mdb.connection/db-type)
-              data-source   (mdb.connection/data-source)
+        (let [db-type       (db-type)
+              data-source   (data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
           (mdb.setup/setup-db! db-type data-source auto-migrate?))
         (reset! (:status mdb.connection/*application-db*) ::setup-finished))))
   :done)
 
-(methodical/defmethod t2.pipeline/transduce-query :before :default
-  "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively
-  early in the pipeline so the stacktrace when this fails isn't super enormous."
-  [_rf _query-type₁ _model₂ _parsed-args resolved-query]
-  (when (a.impl.dispatch/in-dispatch-thread?)
-    (throw (ex-info "Application database calls are not allowed inside core.async dispatch pool threads."
-                    {})))
-  resolved-query)
+(defn memoize-for-application-db
+  "Like [[clojure.core/memoize]], but only memoizes for the current application database; memoized values will be
+  ignored if the app DB is dynamically rebound. For TTL memoization with [[clojure.core.memoize]], set
+  `:clojure.core.memoize/args-fn` instead; see [[metabase.driver.util/database->driver*]] for an example of how to do
+  this."
+  [f]
+  (let [f* (memoize (fn [_application-db-id & args]
+                      (apply f args)))]
+    (fn [& args]
+      (apply f* (unique-identifier) args))))
+
+
+(defn increment-app-db-unique-indentifier!
+  "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as
+  a key (including things using [[mdb/memoize-for-application-db]]) such as the Settings cache. Should only be used
+  for testing. Not general purpose."
+  []
+  (assert (or (not config/is-prod?)
+              (config/config-bool :mb-enable-test-endpoints)))
+  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))

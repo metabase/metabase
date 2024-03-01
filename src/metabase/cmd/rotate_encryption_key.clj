@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
    [metabase.models :refer [Database Secret Setting]]
    [metabase.models.setting.cache :as setting.cache]
@@ -24,7 +23,7 @@
                              identity))
         encrypt-str-fn   (make-encrypt-fn encryption/maybe-encrypt)
         encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)]
-    (t2/with-transaction [t-conn {:datasource (mdb.connection/data-source)}]
+    (t2/with-transaction [t-conn {:datasource (mdb/data-source)}]
       (doseq [[id details] (t2/select-pk->fn :details Database)]
         (when (encryption/possibly-encrypted-string? details)
           (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))

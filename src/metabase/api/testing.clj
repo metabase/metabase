@@ -6,6 +6,7 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.setup :as mdb.setup]
    [metabase.util.files :as u.files]
@@ -89,14 +90,7 @@
   ;; a bunch of time initializing Liquibase and checking for unrun migrations for every test when we don't need to. --
   ;; Cam
   (when config/is-dev?
-    (mdb.setup/migrate! (mdb.connection/db-type) mdb.connection/*application-db* :up)))
-
-(defn- increment-app-db-unique-indentifier!
-  "Increment the [[mdb.connection/unique-identifier]] for the Metabase application DB. This effectively flushes all
-  caches using it as a key (including things using [[mdb.connection/memoize-for-application-db]]) such as the Settings
-  cache."
-  []
-  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))
+    (mdb.setup/migrate! (mdb/db-type) mdb.connection/*application-db* :up)))
 
 (defn- restore-snapshot! [snapshot-name]
   (assert-h2 mdb.connection/*application-db*)
@@ -108,7 +102,7 @@
       (.. lock writeLock lock)
       (reset-app-db-connection-pool!)
       (restore-app-db-from-snapshot! path)
-      (increment-app-db-unique-indentifier!)
+      (mdb/increment-app-db-unique-indentifier!)
       (finally
         (.. lock writeLock unlock))))
   :ok)

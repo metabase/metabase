@@ -2,12 +2,14 @@
   "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them.
    TODO - consider renaming this namespace `metabase.db.config`."
   (:require
+   [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.db.connection-pool-setup :as connection-pool-setup]
    [metabase.db.env :as mdb.env]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
-   [toucan2.jdbc.connection :as t2.jdbc.conn])
+   [toucan2.jdbc.connection :as t2.jdbc.conn]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -113,6 +115,11 @@
   ^javax.sql.DataSource []
   (.data-source *application-db*))
 
+(defn get-connection
+  "Return a connection from the app-db. Should be called in [[with-open]]."
+  ^java.sql.Connection []
+  (.getConnection *application-db*))
+
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
 ;; something callers of this function really need to be concerned about
@@ -125,17 +132,6 @@
   an example of using this for TTL memoization."
   []
   (.id *application-db*))
-
-(defn memoize-for-application-db
-  "Like [[clojure.core/memoize]], but only memoizes for the current application database; memoized values will be
-  ignored if the app DB is dynamically rebound. For TTL memoization with [[clojure.core.memoize]], set
-  `:clojure.core.memoize/args-fn` instead; see [[metabase.driver.util/database->driver*]] for an example of how to do
-  this."
-  [f]
-  (let [f* (memoize (fn [_application-db-id & args]
-                      (apply f args)))]
-    (fn [& args]
-      (apply f* (unique-identifier) args))))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
@@ -197,3 +193,13 @@
    :else
    (binding [*transaction-depth* (inc *transaction-depth*)]
      (do-transaction connection f))))
+
+
+(methodical/defmethod t2.pipeline/transduce-query :before :default
+  "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively
+  early in the pipeline so the stacktrace when this fails isn't super enormous."
+  [_rf _query-type₁ _model₂ _parsed-args resolved-query]
+  (when (a.impl.dispatch/in-dispatch-thread?)
+    (throw (ex-info "Application database calls are not allowed inside core.async dispatch pool threads."
+                    {})))
+  resolved-query)

@@ -6,7 +6,7 @@
    [metabase.async.streaming-response :as streaming-response]
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.async.util :as async.u]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic
     :as sql-jdbc.execute.diagnostic]
    [metabase.server :as server]
@@ -55,7 +55,7 @@
 
 (defn- stats [diag-info-fn]
   (str
-   (when-let [^PoolBackedDataSource pool (let [data-source (mdb.connection/data-source)]
+   (when-let [^PoolBackedDataSource pool (let [data-source (mdb/data-source)]
                                            (when (instance? PoolBackedDataSource data-source)
                                              data-source))]
      (trs "App DB connections: {0}/{1}"

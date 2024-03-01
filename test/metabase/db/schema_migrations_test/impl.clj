@@ -12,6 +12,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
@@ -225,7 +226,7 @@
                  :down
                  (do
                   (assert (int? version), "Downgrade requires a version")
-                  (mdb.setup/migrate! driver (mdb.connection/data-source) :down version)))))]
+                  (mdb.setup/migrate! driver (mdb/data-source) :down version)))))]
      (f migrate)))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 

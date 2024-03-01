@@ -48,7 +48,7 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.core :as mbc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]
    [metabase.db.setup :as mdb.setup]
    [metabase.driver :as driver]
@@ -249,7 +249,7 @@
   ([]
    (migrate! :up))
   ([direction & [version]]
-   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
+   (mdb.setup/migrate! (mdb/db-type) (mdb/data-source)
                        direction version)))
 
 (methodical/defmethod t2.connection/do-with-connection :model/Database
@@ -303,11 +303,11 @@
     (or (t2/select-one Database :name "Application Database")
         #_:clj-kondo/ignore
         (let [details (#'metabase.db.env/broken-out-details
-                       (mdb.connection/db-type)
+                       (mdb/db-type)
                        @#'metabase.db.env/env)
               app-db  (first (t2/insert-returning-instances! Database
                                                              {:name    "Application Database"
-                                                              :engine  (mdb.connection/db-type)
+                                                              :engine  (mdb/db-type)
                                                               :details details}))]
           (sync/sync-database! app-db)
           app-db))))

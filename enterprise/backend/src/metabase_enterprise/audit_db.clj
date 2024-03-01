@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
@@ -88,7 +88,7 @@
   "Returns the object from entity id and model. Memoizes from entity id.
   Should only be used for audit/pre-loaded objects."
   [model entity-id]
-  ((mdb.connection/memoize-for-application-db
+  ((mdb/memoize-for-application-db
     (fn [entity-id]
       (t2/select-one model :entity_id entity-id))) entity-id))
 
