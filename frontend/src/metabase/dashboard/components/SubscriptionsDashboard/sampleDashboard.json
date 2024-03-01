@@ -1,0 +1,426 @@
+{
+  "dashboard": {
+    "description": null,
+    "archived": false,
+    "collection_position": null,
+    "dashcards": [
+      {
+        "size_x": 12,
+        "dashboard_tab_id": null,
+        "series": [],
+        "action_id": null,
+        "collection_authority_level": null,
+        "card": {
+          "description": null,
+          "archived": false,
+          "collection_position": null,
+          "table_id": 5,
+          "result_metadata": [
+            {
+              "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+              "semantic_type": "type/Category",
+              "coercion_strategy": null,
+              "name": "CATEGORY",
+              "settings": null,
+              "fk_target_field_id": null,
+              "field_ref": [
+                "field",
+                64,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 37
+                }
+              ],
+              "effective_type": "type/Text",
+              "id": 64,
+              "visibility_type": "normal",
+              "display_name": "Product → Category",
+              "fingerprint": {
+                "global": {
+                  "distinct-count": 4,
+                  "nil%": 0
+                },
+                "type": {
+                  "type/Text": {
+                    "percent-json": 0,
+                    "percent-url": 0,
+                    "percent-email": 0,
+                    "percent-state": 0,
+                    "average-length": 6.375
+                  }
+                }
+              },
+              "base_type": "type/Text"
+            },
+            {
+              "display_name": "Count",
+              "semantic_type": "type/Quantity",
+              "field_ref": ["aggregation", 0],
+              "name": "count",
+              "base_type": "type/BigInteger",
+              "effective_type": "type/BigInteger",
+              "fingerprint": {
+                "global": {
+                  "distinct-count": 4,
+                  "nil%": 0
+                },
+                "type": {
+                  "type/Number": {
+                    "min": 3976,
+                    "q1": 4380,
+                    "q3": 5000,
+                    "max": 5061,
+                    "sd": 489.3103990992493,
+                    "avg": 4690
+                  }
+                }
+              }
+            },
+            {
+              "display_name": "Average of Total",
+              "settings": null,
+              "field_ref": ["aggregation", 1],
+              "name": "avg",
+              "base_type": "type/Float",
+              "effective_type": "type/Float",
+              "semantic_type": null,
+              "fingerprint": {
+                "global": {
+                  "distinct-count": 4,
+                  "nil%": 0
+                },
+                "type": {
+                  "type/Number": {
+                    "min": 74.76634648349606,
+                    "q1": 77.41891176132381,
+                    "q3": 83.02043466215214,
+                    "max": 83.71221052631937,
+                    "sd": 3.933038333878259,
+                    "avg": 80.21967321173798
+                  }
+                }
+              }
+            }
+          ],
+          "initially_published_at": null,
+          "can_write": true,
+          "database_id": 1,
+          "enable_embedding": false,
+          "collection_id": null,
+          "query_type": "query",
+          "name": "barrr",
+          "type": "question",
+          "query_average_duration": 68,
+          "creator_id": 1,
+          "moderation_reviews": [],
+          "updated_at": "2024-02-29T20:49:16.336361-03:00",
+          "made_public_by_id": null,
+          "embedding_params": null,
+          "cache_ttl": null,
+          "dataset_query": {
+            "database": 1,
+            "type": "query",
+            "query": {
+              "source-table": 5,
+              "aggregation": [
+                ["count"],
+                [
+                  "avg",
+                  [
+                    "field",
+                    39,
+                    {
+                      "base-type": "type/Float"
+                    }
+                  ]
+                ]
+              ],
+              "breakout": [
+                [
+                  "field",
+                  64,
+                  {
+                    "base-type": "type/Text",
+                    "source-field": 37
+                  }
+                ]
+              ]
+            }
+          },
+          "id": 122,
+          "parameter_mappings": [],
+          "display": "bar",
+          "entity_id": "JnWepXcIOGNjeNGDC0MkN",
+          "collection_preview": true,
+          "visualization_settings": {
+            "graph.dimensions": ["CATEGORY"],
+            "graph.metrics": ["count", "avg"]
+          },
+          "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
+          "parameters": [],
+          "created_at": "2024-01-04T20:40:45.860872-03:00",
+          "public_uuid": null
+        },
+        "updated_at": "2024-02-29T20:49:20.740893-03:00",
+        "col": 0,
+        "id": 285,
+        "parameter_mappings": [],
+        "card_id": 122,
+        "entity_id": "lPqpdd5gQd3zfpGDX4bIl",
+        "visualization_settings": {},
+        "size_y": 6,
+        "dashboard_id": 1,
+        "created_at": "2024-02-29T20:49:20.740893-03:00",
+        "row": 0
+      }
+    ],
+    "param_values": null,
+    "initially_published_at": null,
+    "can_write": true,
+    "tabs": [],
+    "enable_embedding": false,
+    "collection_id": null,
+    "show_in_getting_started": false,
+    "name": "123",
+    "width": "full",
+    "caveats": null,
+    "collection_authority_level": null,
+    "creator_id": 1,
+    "updated_at": "2024-02-29T20:49:20.740893-03:00",
+    "made_public_by_id": null,
+    "embedding_params": null,
+    "cache_ttl": null,
+    "id": 1,
+    "position": null,
+    "entity_id": "NHn2mW5B1YEgGx5YC6oF5",
+    "param_fields": null,
+    "parameters": [],
+    "auto_apply_filters": true,
+    "created_at": "2024-01-02T13:56:12.752164-03:00",
+    "public_uuid": null,
+    "points_of_interest": null
+  },
+  "dashcardData": {
+    "285": {
+      "122": {
+        "data": {
+          "rows": [
+            ["Doohickey", 3976, 74.76634648349606],
+            ["Gadget", 4939, 82.32865879798491],
+            ["Gizmo", 4784, 80.07147703915157],
+            ["Widget", 5061, 83.71221052631937]
+          ],
+          "cols": [
+            {
+              "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+              "semantic_type": "type/Category",
+              "table_id": 8,
+              "coercion_strategy": null,
+              "name": "CATEGORY",
+              "settings": null,
+              "source": "breakout",
+              "fk_target_field_id": null,
+              "fk_field_id": 37,
+              "field_ref": [
+                "field",
+                64,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 37
+                }
+              ],
+              "effective_type": "type/Text",
+              "nfc_path": null,
+              "parent_id": null,
+              "id": 64,
+              "position": 3,
+              "visibility_type": "normal",
+              "display_name": "Product → Category",
+              "fingerprint": {
+                "global": {
+                  "distinct-count": 4,
+                  "nil%": 0
+                },
+                "type": {
+                  "type/Text": {
+                    "percent-json": 0,
+                    "percent-url": 0,
+                    "percent-email": 0,
+                    "percent-state": 0,
+                    "average-length": 6.375
+                  }
+                }
+              },
+              "base_type": "type/Text",
+              "source_alias": "PRODUCTS__via__PRODUCT_ID"
+            },
+            {
+              "base_type": "type/BigInteger",
+              "name": "count",
+              "display_name": "Count",
+              "semantic_type": "type/Quantity",
+              "source": "aggregation",
+              "field_ref": ["aggregation", 0],
+              "aggregation_index": 0,
+              "effective_type": "type/BigInteger"
+            },
+            {
+              "semantic_type": null,
+              "name": "avg",
+              "settings": null,
+              "source": "aggregation",
+              "field_ref": ["aggregation", 1],
+              "effective_type": "type/Float",
+              "aggregation_index": 1,
+              "display_name": "Average of Total",
+              "base_type": "type/Float"
+            }
+          ],
+          "native_form": {
+            "query": "SELECT \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" AS \"PRODUCTS__via__PRODUCT_ID__CATEGORY\", COUNT(*) AS \"count\", AVG(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"avg\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PRODUCTS\" AS \"PRODUCTS__via__PRODUCT_ID\" ON \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" = \"PRODUCTS__via__PRODUCT_ID\".\"ID\" GROUP BY \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" ORDER BY \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" ASC",
+            "params": null
+          },
+          "results_timezone": "America/Montevideo",
+          "results_metadata": {
+            "columns": [
+              {
+                "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+                "semantic_type": "type/Category",
+                "coercion_strategy": null,
+                "name": "CATEGORY",
+                "settings": null,
+                "fk_target_field_id": null,
+                "field_ref": [
+                  "field",
+                  64,
+                  {
+                    "base-type": "type/Text",
+                    "source-field": 37
+                  }
+                ],
+                "effective_type": "type/Text",
+                "id": 64,
+                "visibility_type": "normal",
+                "display_name": "Product → Category",
+                "fingerprint": {
+                  "global": {
+                    "distinct-count": 4,
+                    "nil%": 0
+                  },
+                  "type": {
+                    "type/Text": {
+                      "percent-json": 0,
+                      "percent-url": 0,
+                      "percent-email": 0,
+                      "percent-state": 0,
+                      "average-length": 6.375
+                    }
+                  }
+                },
+                "base_type": "type/Text"
+              },
+              {
+                "display_name": "Count",
+                "semantic_type": "type/Quantity",
+                "field_ref": ["aggregation", 0],
+                "name": "count",
+                "base_type": "type/BigInteger",
+                "effective_type": "type/BigInteger",
+                "fingerprint": {
+                  "global": {
+                    "distinct-count": 4,
+                    "nil%": 0
+                  },
+                  "type": {
+                    "type/Number": {
+                      "min": 3976,
+                      "q1": 4380,
+                      "q3": 5000,
+                      "max": 5061,
+                      "sd": 489.3103990992493,
+                      "avg": 4690
+                    }
+                  }
+                }
+              },
+              {
+                "display_name": "Average of Total",
+                "semantic_type": null,
+                "settings": null,
+                "field_ref": ["aggregation", 1],
+                "name": "avg",
+                "base_type": "type/Float",
+                "effective_type": "type/Float",
+                "fingerprint": {
+                  "global": {
+                    "distinct-count": 4,
+                    "nil%": 0
+                  },
+                  "type": {
+                    "type/Number": {
+                      "min": 74.76634648349606,
+                      "q1": 77.41891176132381,
+                      "q3": 83.02043466215214,
+                      "max": 83.71221052631937,
+                      "sd": 3.933038333878259,
+                      "avg": 80.21967321173798
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "insights": null
+        },
+        "cached": false,
+        "database_id": 1,
+        "started_at": "2024-02-29T20:49:16.271568-03:00",
+        "json_query": {
+          "constraints": {
+            "max-results": 10000,
+            "max-results-bare-rows": 2000
+          },
+          "type": "query",
+          "middleware": {
+            "js-int-to-string?": true,
+            "ignore-cached-results?": false,
+            "process-viz-settings?": false,
+            "userland-query?": true
+          },
+          "database": 1,
+          "query": {
+            "source-table": 5,
+            "aggregation": [
+              ["count"],
+              [
+                "avg",
+                [
+                  "field",
+                  39,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                64,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 37
+                }
+              ]
+            ]
+          }
+        },
+        "average_execution_time": null,
+        "status": "completed",
+        "context": "question",
+        "row_count": 4,
+        "running_time": 68
+      }
+    }
+  }
+}
