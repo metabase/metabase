@@ -190,7 +190,7 @@ export interface OpenAiModel {
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
-export interface Settings extends UserSettings {
+interface InstanceSettings {
   "active-users-count"?: number;
   "admin-email": string;
   "anon-tracking-enabled": boolean;
@@ -290,6 +290,8 @@ export interface UserSettings {
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
 }
+
+export type Settings = InstanceSettings & UserSettings;
 
 export type SettingKey = keyof Settings;
 
