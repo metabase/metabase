@@ -166,7 +166,10 @@ export const submitDatabase = createAsyncThunk<
   "metabase/setup/SUBMIT_DATABASE",
   async (database: DatabaseData, { dispatch, rejectWithValue }) => {
     try {
-      await MetabaseApi.db_validate({ details: database });
+      const result = await MetabaseApi.db_validate({ details: database });
+      if (!result.valid) {
+        return rejectWithValue(result);
+      }
       dispatch(goToNextStep());
       return database;
     } catch (error) {

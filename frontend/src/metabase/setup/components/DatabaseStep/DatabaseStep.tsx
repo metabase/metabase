@@ -1,3 +1,4 @@
+import { updateIn } from "icepick";
 import { t } from "ttag";
 
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
@@ -45,9 +46,10 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   };
 
   const handleDatabaseSubmit = async (database: DatabaseData) => {
-    const resultAction = await dispatch(submitDatabase(database));
-    if (submitDatabase.rejected.match(resultAction)) {
-      throw new Error("" + resultAction.payload);
+    try {
+      await dispatch(submitDatabase(database)).unwrap();
+    } catch (error) {
+      throw getSubmitError(error);
     }
   };
 
@@ -116,4 +118,10 @@ const getStepTitle = (
   } else {
     return t`I'll add my own data later`;
   }
+};
+
+const getSubmitError = (error: unknown): unknown => {
+  return updateIn(error, ["data", "errors"], errors => ({
+    details: errors,
+  }));
 };
