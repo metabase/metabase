@@ -124,5 +124,8 @@ export const metadata = createMockMetadata({
 export const legacyQuery = checkNotNull(metadata.table(TABLE_ID)).legacyQuery({
   useStructuredQuery: true,
 });
-export const expressionOpts = { legacyQuery, startRule: "expression" };
-export const aggregationOpts = { legacyQuery, startRule: "aggregation" };
+export const expressionOpts = { legacyQuery, startRule: "expression" } as const;
+export const aggregationOpts = {
+  legacyQuery,
+  startRule: "aggregation",
+} as const;

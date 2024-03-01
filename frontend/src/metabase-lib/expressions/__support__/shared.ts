@@ -297,7 +297,7 @@ const filter = [
 export const dataForFormatting = [
   ["expression", expression, { startRule: "expression", legacyQuery }],
   ["aggregation", aggregation, { startRule: "aggregation", legacyQuery }],
-  ["filter", filter, { startRule: "boolean", legacyQuery }],
+  ["filter", filter, { startRule: "filter", legacyQuery }],
 ];
 
 /**

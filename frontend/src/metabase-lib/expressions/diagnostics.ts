@@ -47,7 +47,7 @@ export function diagnose({
   expressionPosition,
 }: {
   source: string;
-  startRule: "expression" | "aggregation" | "boolean";
+  startRule: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
   name?: string | null;
@@ -95,7 +95,7 @@ export function diagnose({
     return { message };
   }
 
-  // try to compile on FE
+  // make initial light diagnostics
   let mbqlOrError: Expr | ErrorWithMessage;
   try {
     mbqlOrError = prattCompiler({ source, startRule, name, query, stageIndex });
@@ -120,18 +120,11 @@ export function diagnose({
     return { message: t`Invalid expression` };
   }
 
-  // now diagnose on BE
-  const startRuleToExpressionModeMapping: Record<string, Lib.ExpressionMode> = {
-    boolean: "filter",
-  };
-
-  const expressionMode: Lib.ExpressionMode =
-    startRuleToExpressionModeMapping[startRule] ?? startRule;
-
+  // if first passed, we'll do a more thorough check
   const possibleError = Lib.diagnoseExpression(
     query,
     stageIndex,
-    expressionMode,
+    startRule,
     mbqlOrError,
     expressionPosition,
   );

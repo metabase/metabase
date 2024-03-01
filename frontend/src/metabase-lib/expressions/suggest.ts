@@ -46,7 +46,7 @@ type SuggestArgs = {
   stageIndex: number;
   metadata: Metadata;
   reportTimezone?: string;
-  startRule: string;
+  startRule: Lib.ExpressionMode;
   targetOffset?: number;
   expressionPosition?: number;
   getColumnIcon: (column: Lib.ColumnMetadata) => string;

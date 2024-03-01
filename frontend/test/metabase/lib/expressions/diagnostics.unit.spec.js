@@ -53,8 +53,7 @@ describe("metabase-lib/expressions/diagnostics", () => {
 
   it("should show the correct number of function arguments in a custom expression", () => {
     expect(
-      diagnose({ source: "contains([Category])", startRule: "boolean" })
-        .message,
+      diagnose({ source: "contains([Category])", startRule: "filter" }).message,
     ).toEqual("Function contains expects 2 arguments");
   });
 

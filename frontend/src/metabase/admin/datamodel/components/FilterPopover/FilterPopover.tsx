@@ -184,7 +184,7 @@ export function FilterPopover({
         query={question.query()}
         stageIndex={-1}
         expression={expression}
-        startRule="boolean"
+        startRule="filter"
         header={<ExpressionWidgetHeader onBack={handleExpressionWidgetClose} />}
         onChangeExpression={handleExpressionChange}
         onClose={handleExpressionWidgetClose}
