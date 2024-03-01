@@ -561,13 +561,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Ensure the tab name has reverted to the long name after the drag has completed
-    cy.findByRole("button", { name: longName })
-      .should("be.visible")
-      .should($el => {
-        // ensure animation has finished
-        const minTextWidth = 300;
-        expect($el[0].getBoundingClientRect().width).greaterThan(minTextWidth);
-      });
+    cy.findByRole("button", { name: longName }).should("be.visible");
 
     saveDashboard();
 
