@@ -14,6 +14,7 @@ import {
   getIframeBody,
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
+  modal,
 } from "e2e/support/helpers";
 
 const {
@@ -655,6 +656,12 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in a public link", () => {
+          if (test.case === "question") {
+            cy.icon("share").click();
+            modal().within(() => {
+              cy.findByText("Save").click();
+            });
+          }
           openPublicLinkPopoverFromMenu();
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-input")
