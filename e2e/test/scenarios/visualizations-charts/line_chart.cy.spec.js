@@ -607,7 +607,7 @@ describe("scenarios > visualizations > line chart", () => {
       "Quantity is between",
     );
     const X_AXIS_VALUE = 8;
-    cy.get(".CardVisualization").within(() => {
+    cy.findByTestId("card-visualization").within(() => {
       cy.get(".x-axis-label").should("have.text", "Quantity");
       cy.findByText(X_AXIS_VALUE);
     });

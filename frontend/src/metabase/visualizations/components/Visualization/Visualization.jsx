@@ -503,7 +503,9 @@ class Visualization extends PureComponent {
               <CardVisualization
                 {...this.props}
                 // NOTE: CardVisualization class used to target ExplicitSize HOC
-                className="CardVisualization flex-full flex-basis-none"
+                className="flex-full flex-basis-none"
+                data-element-id="card-visualization"
+                data-testid="card-visualization"
                 isPlaceholder={isPlaceholder}
                 isMobile={isMobile}
                 series={series}
@@ -549,7 +551,7 @@ Visualization.defaultProps = defaultProps;
 
 export default _.compose(
   ExplicitSize({
-    selector: ".CardVisualization",
+    selector: "[data-element-id='card-visualization']",
     refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
   connect(mapStateToProps),

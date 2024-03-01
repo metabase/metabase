@@ -141,7 +141,7 @@ describe("scenarios > question > view", () => {
         "have.length",
         2,
       );
-      cy.get(".CardVisualization").within(() => {
+      cy.findByTestId("card-visualization").within(() => {
         cy.findByText("Widget");
         cy.findByText("Balistreri-Muller");
         cy.findByText("Gizmo").should("not.exist");

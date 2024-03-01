@@ -170,7 +170,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Waterfall chart does not support multiple series");
 
     cy.findByTestId("remove-count").click();
-    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+    cy.findByTestId("card-visualization").get("svg"); // Chart renders after removing the second metric
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Add another/).should("not.exist");
@@ -204,7 +204,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("Count").click();
 
-    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+    cy.findByTestId("card-visualization").get("svg"); // Chart renders after removing the second metric
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Add another/).should("not.exist");

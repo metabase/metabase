@@ -111,7 +111,8 @@ describe("scenarios > visualizations > maps", () => {
 
       cy.wait("@geojson");
 
-      cy.get(".CardVisualization svg path")
+      cy.findByTestId("card-visualization")
+        .get("svg path")
         .should("be.visible")
         .eq(22)
         .as("texas");
@@ -245,7 +246,7 @@ describe("scenarios > visualizations > maps", () => {
       },
     });
 
-    cy.get(".CardVisualization").realHover();
+    cy.findByTestId("card-visualization").realHover();
     cy.findByTestId("visualization-root")
       .findByText("Draw box to filter")
       .click();
@@ -257,7 +258,7 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.wait("@dataset");
 
-    cy.get(".CardVisualization").should("exist");
+    cy.findByTestId("card-visualization").should("exist");
     // selecting area at the map provides different filter values, so the simplified assertion is used
     cy.findByTestId("filter-pill").should("have.length", 1);
   });

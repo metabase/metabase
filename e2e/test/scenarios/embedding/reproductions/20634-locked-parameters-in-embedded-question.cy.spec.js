@@ -62,7 +62,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     // verify that the Text parameter doesn't show up but that its value is reflected in the dashcard
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Text").should("not.exist");
-    cy.get(".CardVisualization").within(() => {
+    cy.findByTestId("card-visualization").within(() => {
       cy.contains("foo");
     });
   });

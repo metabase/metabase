@@ -123,7 +123,7 @@ defaultFilterValues.forEach(value => {
 
           // wait for the results to load
           cy.contains(dashboardDetails.name);
-          cy.get(".CardVisualization")
+          cy.findByTestId("card-visualization")
             .should("contain", "COUNT(*)")
             .and("contain", "5");
         });

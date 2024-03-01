@@ -50,13 +50,17 @@ describe("issue 18747", () => {
 
     addValueToParameterFilter();
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    cy.findByTestId("card-visualization")
+      .get("tbody > tr")
+      .should("have.length", 1);
 
     // check that the parameter value is parsed correctly on page load
     cy.reload();
     cy.get(".LoadingSpinner").should("not.exist");
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    cy.findByTestId("card-visualization")
+      .get("tbody > tr")
+      .should("have.length", 1);
   });
 });
 

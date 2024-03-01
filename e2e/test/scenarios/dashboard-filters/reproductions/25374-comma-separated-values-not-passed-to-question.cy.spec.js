@@ -76,7 +76,7 @@ describe("issue 25374", () => {
       filterWidget().type("1,2,3{enter}");
       cy.findByDisplayValue("1,2,3");
 
-      cy.get(".CardVisualization")
+      cy.findByTestId("card-visualization")
         .should("contain", "COUNT(*)")
         .and("contain", "3");
 
@@ -102,7 +102,7 @@ describe("issue 25374", () => {
     cy.findByDisplayValue("1,2,3");
 
     // Make sure the result in the card is correct
-    cy.get(".CardVisualization")
+    cy.findByTestId("card-visualization")
       .should("contain", "COUNT(*)")
       .and("contain", "3");
 
