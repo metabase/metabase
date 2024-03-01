@@ -417,12 +417,15 @@ export const setParameterValuesFromQueryParams =
   (queryParams?: Record<string, string | string[] | undefined>) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameters = getParameters(getState());
-    const parameterValues = getParameterValuesByIdFromQueryParams(
+    const oldParameterValues = getParameterValues(getState());
+    const newParameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,
     );
 
-    dispatch(setParameterValues(parameterValues));
+    if (!_.isEqual(oldParameterValues, newParameterValues)) {
+      dispatch(setParameterValues(newParameterValues));
+    }
   };
 
 export const TOGGLE_AUTO_APPLY_FILTERS =

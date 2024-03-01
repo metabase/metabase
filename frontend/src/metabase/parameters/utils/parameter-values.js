@@ -17,7 +17,7 @@ export function getParameterValueFromQueryParams(parameter, queryParams) {
   }
 }
 
-export function parseParameterValue(value, parameter) {
+function parseParameterValue(value, parameter) {
   const { fields } = parameter;
   if (Array.isArray(fields) && fields.length > 0) {
     return parseParameterValueForFields(value, fields);
@@ -33,7 +33,7 @@ export function parseParameterValue(value, parameter) {
 
 function parseParameterValueForNumber(value) {
   if (Array.isArray(value)) {
-    return value.map(number => parseFloat(number));
+    return value.map(number => parseFloat(number) || number);
   }
 
   // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
@@ -54,7 +54,7 @@ function parseParameterValueForNumber(value) {
     return valueSplitByCommas.map(item => parseFloat(item)).join(",");
   }
 
-  return parseFloat(value);
+  return parseFloat(value) || value;
 }
 
 function parseParameterValueForFields(value, fields) {
@@ -64,7 +64,7 @@ function parseParameterValueForFields(value, fields) {
 
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
   if (fields.every(f => f.isNumeric() && !f.isDate())) {
-    return parseFloat(value);
+    return parseFloat(value) || value;
   }
 
   if (fields.every(f => f.isBoolean())) {
