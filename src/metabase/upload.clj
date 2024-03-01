@@ -1,11 +1,11 @@
 (ns metabase.upload
+  (:refer-clojure :exclude [derive make-hierarchy parents])
   (:require
    [clj-bom.core :as bom]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [flatland.ordered.set :as ordered-set]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -32,6 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.ordered-hierarchy :as ordered-hierarchy :refer [derive make-hierarchy parents]]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -87,35 +88,18 @@
       (derive ::float ::varchar-255)
       (derive ::varchar-255 ::text)))
 
-(def ^:private value-types
-  (into #{::text} (keys (:parents h))))
-
 (def ^:private concrete-type?
   "Nodes which can correspond to a concrete database column type."
   (complement #{::boolean-or-int}))
 
 (def ^:private column-types
   "All column types"
-  (into #{} (filter concrete-type?) value-types))
+  (into #{} (filter concrete-type?) (ordered-hierarchy/tags h)))
 
-(defn- column-type [tag]
-  (if (concrete-type? tag)
-    tag
-    (case tag
-      ::boolean-or-int ::boolean)))
-
-(defn- bfs-ancestors [type]
-  (loop [up-next (list type)
-         visited (ordered-set/ordered-set)]
-    (if (empty? up-next)
-      visited
-      (let [next-types (mapcat (partial parents h) up-next)]
-        (recur next-types (into visited next-types))))))
-
-(def ^:private type->bfs-ancestors
-  "A map from each type to an ordered set of its ancestors, in breadth-first order"
-  (into {} (for [type value-types]
-             [type (bfs-ancestors type)])))
+(defn ^:private column-type
+  "Get the most specific concrete type corresponding to the given tag."
+  [tag]
+  (if (concrete-type? tag) tag (recur (first (parents h tag)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; [[value->type]] helpers
@@ -213,20 +197,15 @@
   [row settings]
   (map #(value->type % settings) row))
 
-(defn- lowest-common-member [[x & xs :as all-xs] ys]
-  (cond
-    (empty? all-xs)  (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}" all-xs ys)))
-    (contains? ys x) x
-    :else            (recur xs ys)))
-
-(defn- most-specific-common-ancestor [type-a type-b]
-  (cond
-    (nil? type-a) type-b
-    (nil? type-b) type-a
-    (= type-a type-b) type-a
-    (contains? (type->bfs-ancestors type-a) type-b) type-b
-    (contains? (type->bfs-ancestors type-b) type-a) type-a
-    :else (lowest-common-member (type->bfs-ancestors type-a) (type->bfs-ancestors type-b))))
+(defn- most-specific-common-ancestor
+  "Return the first \"ancestor\" of `base-tag` which is also an \"ancestor\" of `new-tag`.
+  We use a more relaxed definition of \"ancestor\" here than usual, which includes the tag itself."
+  [base-tag new-tag]
+  (when (or base-tag new-tag)
+    (or (ordered-hierarchy/first-common-ancestor h base-tag new-tag)
+        (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}"
+                                               base-tag
+                                               new-tag))))))
 
 (defn- coalesce-types
   "Given two collections of types tags, find the first-common-ancestor for each pair.
