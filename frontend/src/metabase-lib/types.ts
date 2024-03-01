@@ -439,8 +439,21 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type ColumnExtraction = {
+  key: ColumnExtractionKey;
+  displayName: string;
+};
+
+declare const ColumnExtractionKey: unique symbol;
+export type ColumnExtractionKey = unknown & {
+  _opaque: typeof ColumnExtractionKey;
+};
+
 export type ColumnExtractDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/column-extract">;
+  BaseDrillThruInfo<"drill-thru/column-extract"> & {
+    displayName: string;
+    extractions: ColumnExtraction[];
+  };
 
 export type QuickFilterDrillThruOperator =
   | "="
@@ -528,15 +541,6 @@ export type FilterDrillDetails = {
 };
 
 export type PivotType = "category" | "location" | "time";
-
-declare const ColumnExtractType: unique symbol;
-export type ColumnExtractType = unknown & {
-  _opaque: typeof ColumnExtractType;
-};
-
-export type ColumnExtractTypeDisplayInfo = {
-  displayName: string;
-};
 
 export interface ClickObjectDimension {
   value: RowValue;
