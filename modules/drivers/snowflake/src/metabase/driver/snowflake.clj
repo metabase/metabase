@@ -38,7 +38,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.ssh :as ssh]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -669,15 +668,4 @@
   (let [details (cond-> db-details
                   (not host) (assoc :host (str account ".snowflakecomputing.com"))
                   (not port) (assoc :port 443))]
-    (cond
-      ;; no ssh tunnel in use
-      (not (ssh/use-ssh-tunnel? details))
-      details
-
-      ;; tunnel in use, and is open
-      (ssh/ssh-tunnel-open? details)
-      details
-
-      ;; tunnel in use, and is not open
-      :else
-      (ssh/include-ssh-tunnel! details))))
+    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))

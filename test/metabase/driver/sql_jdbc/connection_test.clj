@@ -245,7 +245,7 @@
                    (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))))))))
 
 (deftest test-ssh-tunnel-reconnection
-  ;; for now, run against Postgres, although in theory it could run against many different kinds
+  ;; for now, run against Postgres and mysql, although in theory it could run against many different kinds
   (mt/test-drivers #{:postgres :mysql}
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [tunnel-db-details (assoc (:details (mt/db))
@@ -269,10 +269,10 @@
               (check-row))))))))
 
 (deftest test-ssh-tunnel-connection-h2
-  (testing (str "We need a customized version of this test for H2. It will bring up a new H2 TCP server, pointing to "
-                "an existing DB file (stored in source control, called 'tiny-db', with a single table called 'my_tbl' "
-                "and a GUEST user with password 'guest'); it will then use an SSH tunnel over localhost to connect to "
-                "this H2 server's TCP port to execute native queries against that table.")
+  (testing (str "We need a customized version of this test for H2, because H2 requires bringing up its TCP server to tunnel into. "
+                "It will bring up a new H2 TCP server, pointing to an existing DB file (stored in source control, called 'tiny-db', "
+                "with a single table called 'my_tbl' and a GUEST user with password 'guest'); it will then use an SSH tunnel over "
+                "localhost to connect to this H2 server's TCP port to execute native queries against that table.")
     (mt/with-driver :h2
       (testing "ssh tunnel is established"
         (let [h2-port (tu/find-free-port)
@@ -314,10 +314,10 @@
             (finally (.stop ^Server server))))))))
 
 (deftest test-ssh-tunnel-reconnection-h2
-  (testing (str "We need a customized version of this test for H2. It will bring up a new H2 TCP server, pointing to "
-                "an existing DB file (stored in source control, called 'tiny-db', with a single table called 'my_tbl' "
-                "and a GUEST user with password 'guest'); it will then use an SSH tunnel over localhost to connect to "
-                "this H2 server's TCP port to execute native queries against that table.")
+  (testing (str "We need a customized version of this test for H2, because H2 requires bringing up its TCP server to tunnel into. "
+                "It will bring up a new H2 TCP server, pointing to an existing DB file (stored in source control, called 'tiny-db', "
+                "with a single table called 'my_tbl' and a GUEST user with password 'guest'); it will then use an SSH tunnel over "
+                "localhost to connect to this H2 server's TCP port to execute native queries against that table.")
     (mt/with-driver :h2
       (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed (H2 version)"
         (let [h2-port (tu/find-free-port)
