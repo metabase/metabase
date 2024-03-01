@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { useState, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -13,41 +13,54 @@ import { LighthouseImage } from "./IllustrationWidget.styled";
 
 type IllustrationValue = "default" | "no-illustration" | "custom";
 
-interface StringSetting {
-  value: IllustrationValue;
-  default: string;
+export interface StringSetting {
+  value: IllustrationValue | null;
+  default: IllustrationValue;
 }
 
 type IllustrationWidgetProps = {
+  id?: string;
   setting: StringSetting;
   onChange: (value: string) => void;
   onChangeSetting: (key: EnterpriseSettingKey, value: unknown) => void;
-  settingValues: EnterpriseSettings;
+  settingValues: Partial<EnterpriseSettings>;
+  defaultIllustrationLabel: string;
+  customIllustrationSetting:
+    | "login-page-illustration-custom"
+    | "landing-page-illustration-custom"
+    | "no-question-results-illustration-custom"
+    | "no-search-results-illustration-custom";
 };
 
-const data = [
-  { label: t`Lighthouse`, value: "default" },
-  { label: t`No illustration`, value: "no-illustration" },
-  { label: t`Custom`, value: "custom" },
-];
-
 export function IllustrationWidget({
+  id,
   setting,
   onChange,
   onChangeSetting,
   settingValues,
+  defaultIllustrationLabel,
+  customIllustrationSetting,
 }: IllustrationWidgetProps) {
   const value = setting.value ?? setting.default;
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const data = useMemo(
+    () => [
+      { label: defaultIllustrationLabel, value: "default" },
+      { label: t`No illustration`, value: "no-illustration" },
+      { label: t`Custom`, value: "custom" },
+    ],
+    [defaultIllustrationLabel],
+  );
 
   function handleChange(value: IllustrationValue) {
     // Avoid saving the same value
-    if (value === setting.value) {
+    // When setting.value is set to the default value its value would be `null`
+    if (value === (setting.value ?? setting.default)) {
       return;
     }
 
-    if (value === "custom" && settingValues["login-page-illustration-custom"]) {
+    if (value === "custom" && settingValues[customIllustrationSetting]) {
       onChange("custom");
     } else if (value === "custom") {
       fileInputRef.current?.click();
@@ -65,7 +78,7 @@ export function IllustrationWidget({
         setFileName(file.name);
         onChange("custom");
         onChangeSetting(
-          "login-page-illustration-custom",
+          customIllustrationSetting,
           readerEvent.target?.result as string,
         );
       };
@@ -79,7 +92,7 @@ export function IllustrationWidget({
     }
     setFileName("");
     onChange("default");
-    onChangeSetting("login-page-illustration-custom", null);
+    onChangeSetting(customIllustrationSetting, null);
   }
 
   const isCustomIllustration = value === "custom";
@@ -93,13 +106,11 @@ export function IllustrationWidget({
           w="7.5rem"
           style={{ borderRight: `1px solid ${color("border")}` }}
         >
-          {getPreviewImage(
-            value,
-            settingValues["login-page-illustration-custom"],
-          )}
+          {getPreviewImage(value, settingValues[customIllustrationSetting])}
         </Flex>
         <Flex p="lg" w="25rem" align="center" gap="sm">
           <Select
+            id={id}
             data={data}
             value={value}
             onChange={handleChange}
@@ -128,6 +139,7 @@ export function IllustrationWidget({
             />
           )}
           <input
+            data-testid="file-input"
             hidden
             ref={fileInputRef}
             onChange={handleFileUpload}

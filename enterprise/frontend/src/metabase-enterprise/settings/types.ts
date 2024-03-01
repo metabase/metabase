@@ -14,6 +14,12 @@ export interface EnterpriseSettings extends Settings {
   "application-logo-url"?: string;
   "login-page-illustration"?: "default" | "no-illustration" | "custom";
   "login-page-illustration-custom"?: string;
+  "landing-page-illustration"?: "default" | "no-illustration" | "custom";
+  "landing-page-illustration-custom"?: string;
+  "no-question-results-illustration"?: "default" | "no-illustration" | "custom";
+  "no-question-results-illustration-custom"?: string;
+  "no-search-results-illustration"?: "default" | "no-illustration" | "custom";
+  "no-search-results-illustration-custom"?: string;
   "landing-page"?: string;
   "ee-ai-features-enabled"?: boolean;
   "ee-openai-api-key"?: string;

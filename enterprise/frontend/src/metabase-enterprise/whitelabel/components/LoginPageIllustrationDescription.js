@@ -6,12 +6,17 @@ import { Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 export function LoginPageIllustrationDescription() {
   const [opened, { turnOn, turnOff }] = useToggle(false);
   return (
-    <Text fw="bold">
+    <Text fw="bold" transform="none">
       <Flex align="center">
         {t`Login page`}
         <Popover key="popover" position="top-start" opened={opened}>
           <Popover.Target>
-            <Icon name="info" onMouseEnter={turnOn} onMouseLeave={turnOff} />
+            <Icon
+              aria-hidden
+              name="info"
+              onMouseEnter={turnOn}
+              onMouseLeave={turnOff}
+            />
           </Popover.Target>
           <Popover.Dropdown>
             <Stack p="md" spacing="sm" maw={420}>

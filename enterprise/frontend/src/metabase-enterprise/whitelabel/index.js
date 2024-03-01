@@ -196,7 +196,10 @@ if (hasPremiumFeature("whitelabel")) {
           {
             key: "show-metabot",
             tab: "conceal-metabase",
-            description: <Text fw="bold">{t`Metabot greeting`}</Text>,
+            display_name: (
+              <Text fw="bold" transform="none">{t`Metabot greeting`}</Text>
+            ),
+            description: null,
             type: "boolean",
             defaultValue: true,
             widget: MetabotToggleWidget,
@@ -204,9 +207,14 @@ if (hasPremiumFeature("whitelabel")) {
           {
             key: "login-page-illustration",
             tab: "conceal-metabase",
-            description: <LoginPageIllustrationDescription />,
+            display_name: <LoginPageIllustrationDescription />,
+            description: null,
             type: "string",
             widget: IllustrationWidget,
+            props: {
+              defaultIllustrationLabel: t`Lighthouse`,
+              customIllustrationSetting: "login-page-illustration-custom",
+            },
           },
         ],
       },
