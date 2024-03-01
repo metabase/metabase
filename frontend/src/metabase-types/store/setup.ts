@@ -35,4 +35,5 @@ export interface SetupState {
   invite?: InviteInfo;
   isLocaleLoaded: boolean;
   isTrackingAllowed: boolean;
+  licenseToken?: string | null;
 }

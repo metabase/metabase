@@ -486,6 +486,7 @@ export const SetupApi = {
   validate_db: POST("/api/setup/validate"),
   admin_checklist: GET("/api/setup/admin_checklist"),
   user_defaults: GET("/api/setup/user_defaults"),
+  validate_token: GET("/api/setup/token-check"),
 };
 
 export const UserApi = {
