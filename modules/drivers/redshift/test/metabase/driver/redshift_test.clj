@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -409,7 +410,8 @@
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-temp [Database _database {:engine :redshift, :details (tx/dbdef->connection-details :redshift nil nil)}]
         (let [schema-name     (redshift.test/unique-session-schema)
-              username        "privilege_rows_test_example_role"
+              username        (str "privilege_rows_test_role_"
+                                   (sql.tu.unique-prefix/unique-prefix))
               table-name      "test_tp_table"
               qual-tbl-name   (format "\"%s\".\"%s\"" schema-name table-name)
               view-nm         "test_tp_view"
