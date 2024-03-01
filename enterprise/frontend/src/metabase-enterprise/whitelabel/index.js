@@ -26,6 +26,7 @@ import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
 import FontWidget from "./components/FontWidget";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
+import { IllustrationWidget } from "./components/IllustrationWidget";
 import { ImageUpload } from "./components/ImageUpload";
 import { LandingPageWidget } from "./components/LandingPageWidget";
 import { LoginPageIllustrationDescription } from "./components/LoginPageIllustrationDescription";
@@ -35,7 +36,6 @@ import {
   MetabaseLinksToggleDescription,
   SwitchWidget,
 } from "./components/SwitchWidget";
-import { IllustrationWidget } from "./components/SwitchWidget/IllustrationWidget";
 import { getLoadingMessageOptions } from "./lib/loading-message";
 import { updateColors } from "./lib/whitelabel";
 
