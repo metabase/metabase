@@ -8,7 +8,6 @@ import type {
   Settings,
   TokenFeatures,
   TokenStatus,
-  UserSettings,
   Version,
   VersionInfo,
   VersionInfoRecord,
@@ -134,7 +133,7 @@ export const createMockSettingDefinition = (
 });
 
 export const createMockSettings = (
-  opts?: Partial<Settings | EnterpriseSettings | UserSettings>,
+  opts?: Partial<Settings | EnterpriseSettings>,
 ): EnterpriseSettings => ({
   "admin-email": "admin@metabase.test",
   "anon-tracking-enabled": false,

@@ -190,7 +190,7 @@ export interface OpenAiModel {
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
-export interface Settings {
+export interface Settings extends UserSettings {
   "active-users-count"?: number;
   "admin-email": string;
   "anon-tracking-enabled": boolean;
