@@ -18,8 +18,8 @@ If you have a token for the [Pro or Enterprise editions](https://www.metabase.co
 If you have Java installed:
 
 1. [Download the JAR file for Metabase OSS](https://metabase.com/start/oss/jar). If you're on a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, download the [JAR for the Enterprise Edition](https://downloads.metabase.com/enterprise/latest/metabase.jar).
-1. Create a new directory and move the Metabase JAR into it.
-2. Change into your new Metabase directory and run the JAR.
+2. Create a new directory and move the Metabase JAR into it.
+3. Change into your new Metabase directory and run the JAR.
 
 ```
 java -jar metabase.jar
