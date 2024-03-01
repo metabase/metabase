@@ -188,7 +188,7 @@
                 (is (run-saved-question))
                 (is (= true (check-block-perms))))
               ;; 'grant' the block permissions.
-              (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
+              (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :block)
               (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
                 (mt/with-premium-features #{}
                   (is (nil? (check-block-perms)))))
