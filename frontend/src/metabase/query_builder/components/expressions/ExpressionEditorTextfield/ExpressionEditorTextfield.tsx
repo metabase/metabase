@@ -58,7 +58,7 @@ interface ExpressionEditorTextfieldProps {
   query: Lib.Query;
   stageIndex: number;
   metadata: Metadata;
-  startRule: Lib.ExpressionMode;
+  startRule: "expression" | "aggregation" | "boolean";
   expressionPosition?: number;
   width?: number;
   reportTimezone?: string;

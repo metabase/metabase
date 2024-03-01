@@ -442,7 +442,7 @@ describe("metabase/lib/expression/suggest", () => {
             metadata: SAMPLE_METADATA,
             stageIndex: -1,
             getColumnIcon: () => "icon",
-            startRule: "filter",
+            startRule: "boolean",
           }),
         ).toEqual([
           { type: "fields", text: "[Created At] " },
@@ -466,7 +466,7 @@ describe("metabase/lib/expression/suggest", () => {
             metadata: SAMPLE_METADATA,
             stageIndex: -1,
             getColumnIcon: () => "icon",
-            startRule: "filter",
+            startRule: "boolean",
           }),
         ).toEqual([
           { type: "fields", text: "[Product → Category] " },
@@ -482,7 +482,7 @@ describe("metabase/lib/expression/suggest", () => {
             stageIndex: -1,
             getColumnIcon: () => "icon",
             metadata: sharedMetadata,
-            startRule: "filter",
+            startRule: "boolean",
           }),
         ).toEqual([...FIELDS_ORDERS, ...SEGMENTS_ORDERS].sort(suggestionSort));
       });
@@ -495,7 +495,7 @@ describe("metabase/lib/expression/suggest", () => {
             metadata: SAMPLE_METADATA,
             stageIndex: -1,
             getColumnIcon: () => "icon",
-            startRule: "filter",
+            startRule: "boolean",
           }),
         ).toMatchObject({
           name: "contains",
