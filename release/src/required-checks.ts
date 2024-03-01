@@ -1,5 +1,7 @@
 import "dotenv/config";
 import { Octokit } from "@octokit/rest";
+import "zx/globals";
+$.verbose = false;
 
 const { GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO } = process.env;
 
@@ -12,39 +14,48 @@ const config = {
 
 const targetBranch = process.argv[2];
 
-function excludeBackportCheck(checks: string[]) {
-  return checks.filter(c => c !== "Decide whether to backport or not");
+if (!targetBranch) {
+  console.error(chalk.red("You must provide a target branch name"));
+  console.log("Usage: ", chalk.blue("yarn copy-required-checks <branch-to-copy-to>"));
+  process.exit(1);
 }
 
-async function setRequiredChecks(branch: string, contexts: string[]) {
+function filterChecks(checks: string[]) {
+  const checksToExclude = ["Decide whether to backport or not"];
+  return checks.filter(check => !checksToExclude.includes(check));
+}
+
+async function setRequiredChecks(branchName: string, masterCheckList: string[]) {
   await github.rest.repos.updateBranchProtection({
     ...config,
-    branch,
+    branch: branchName,
     required_status_checks: {
       strict: false,
-      contexts,
+      contexts: masterCheckList,
     },
     restrictions: null,
     required_pull_request_reviews: null,
     enforce_admins: true,
   });
+
+  console.log(chalk.green(`✅ ${masterCheckList.length} required checks copied to ${branchName}`));
 }
 
 async function getRequiredChecksFromMaster() {
-  const master = await github.rest.repos.getAllStatusCheckContexts({
+  const { data: masterCheckList } = await github.rest.repos.getAllStatusCheckContexts({
     ...config,
     branch: "master",
   });
 
-  const contexts = excludeBackportCheck(master.data);
+  const filteredCheckList = filterChecks(masterCheckList);
 
-  return contexts;
+  return filteredCheckList;
 }
 
-async function copyRequiredChecksToBranch(branch: string) {
-  const contexts = await getRequiredChecksFromMaster();
+async function copyRequiredChecksToBranch(branchName: string) {
+  const masterCheckList = await getRequiredChecksFromMaster();
 
-  await setRequiredChecks(branch, contexts);
+  await setRequiredChecks(branchName, masterCheckList);
 }
 
 copyRequiredChecksToBranch(targetBranch).catch(e => {
