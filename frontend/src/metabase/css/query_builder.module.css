@@ -1,7 +1,3 @@
-:root {
-  --selection-color: var(--color-text-light);
-}
-
 /* @layout */
 .QueryBuilder {
   transition: margin-right 0.35s;
@@ -11,13 +7,6 @@
 :global(.Query-section) {
   display: flex;
   align-items: center;
-}
-
-:global(.QueryName) {
-  font-weight: 200;
-  margin-top: 0;
-  margin-bottom: 0;
-  font-size: 1.2rem;
 }
 
 :global(.Query-label) {
@@ -41,20 +30,6 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-}
-
-:global(.Query-filter .input) {
-  border-radius: 0;
-  border: none;
-  font-size: inherit;
-  background-color: transparent;
-  width: 150px;
-  padding: 0;
-}
-
-:global(.TooltipFilterList .Query-filter) {
-  padding-left: 0 !important;
-  padding-bottom: 0 !important;
 }
 
 :global(.TooltipFilterList .Query-filterList) {
@@ -156,24 +131,11 @@
   justify-content: center;
 }
 
-:global(.Visualization--scalar) {
-  justify-content: center;
-  font-size: 8rem;
-  font-weight: 200;
-}
-
 :global(.Loading) {
   background-color: color-mod(var(--color-bg-white) alpha(-28%));
   transition: opacity 0.5s;
 }
 :global(.Loading.Loading--hidden) {
-  background-color: transparent;
-}
-:global(.Dirty) {
-  background-color: color-mod(var(--color-bg-white) alpha(-28%));
-  transition: opacity 0.5s;
-}
-:global(.Dirty.Loading--hidden) {
   background-color: transparent;
 }
 
@@ -206,12 +168,6 @@
   width: 120px;
   height: 148px;
   background-image: url("~assets/img/blown_up.svg");
-}
-
-:global(.QueryError-image--timeout) {
-  width: 120px;
-  height: 120px;
-  background-image: url("~assets/img/stopwatch.svg");
 }
 
 :global(.QueryError-messageText) {
@@ -252,12 +208,6 @@
   max-width: 500px;
 }
 
-:global(.QueryError2-detailBody) {
-  background-color: var(--color-bg-light);
-  max-height: 15rem;
-  overflow: auto;
-}
-
 :global(.GuiBuilder) {
   position: relative;
   display: flex;
@@ -292,9 +242,6 @@
 :global(.GuiBuilder-view) {
   border-right: 1px solid var(--color-border);
 }
-:global(.GuiBuilder-sort-limit) {
-  border-left: 1px solid var(--color-border);
-}
 
 /* expanded */
 :global(.GuiBuilder.GuiBuilder--expand) {
@@ -323,70 +270,16 @@
   padding-right: 10px;
 }
 
-/* @transitions */
-
-:global(.AddToDashSuccess) {
-  max-width: 260px;
-  text-align: center;
-}
-
 /* DATA SECTION */
 
 :global(.GuiBuilder-data) {
   z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
-/* FILTER BY SECTION */
-
-:global(.Filter-section-sort-field.selected .QueryOption),
-:global(.Filter-section-sort-direction.selected .QueryOption) {
-  color: inherit;
-}
-
-/* SORT/LIMIT SECTION */
-
-:global(.GuiBuilder-sort-limit) {
-  min-width: 0px;
-}
-
-:global(.EllipsisButton) {
-  font-size: 3em;
-  position: relative;
-  top: -0.8rem;
-}
-
 /* VISUALIZATION SETTINGS */
 
 :global(.VisualizationSettings .GuiBuilder-section) {
   border-right: none !important;
-}
-
-:global(.ChartType-button) {
-  width: 38px;
-  height: 38px;
-  border-radius: 38px;
-  background-color: white;
-  border: 1px solid var(--color-border);
-}
-
-:global(.ChartType-popover) {
-  min-width: 15em !important;
-}
-
-:global(.ChartType--selected) {
-  color: white;
-  background-color: var(--color-brand);
-}
-
-:global(.ChartType--notSensible) {
-  opacity: 0.5;
-}
-
-:global(.ColorWell) {
-  width: 18px;
-  height: 18px;
-  margin: 3px;
-  margin-right: 0.3rem;
 }
 
 :global(.RunButton) {
@@ -413,34 +306,6 @@
 
 /* DATA REFERENCE */
 
-:global(.SideDrawer) {
-  z-index: -1;
-  position: absolute;
-  top: 0;
-  right: -300;
-  width: 300px;
-  height: 100%;
-  background-color: var(--color-bg-light);
-  border-left: 1px solid var(--color-border);
-  overflow: hidden;
-  opacity: 0;
-}
-
-:global(.SideDrawer--show) {
-  z-index: 0;
-  right: 0;
-  opacity: 1;
-  transition: all 0.5s;
-}
-
-:global(.DataReference h1) {
-  font-size: 20pt;
-}
-
-:global(.DataReference-paneCount) {
-  padding-right: 0.6em;
-}
-
 :global(.ObjectJSON) {
   max-height: 200px;
   overflow: scroll;
@@ -451,10 +316,6 @@
   white-space: pre-wrap;
 }
 
-:global(.PopoverBody.AddToDashboard) {
-  min-width: 25em;
-}
-
 :global(.List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger),
 :global(.List-item--selected .FieldList-grouping-trigger) {
   visibility: visible;
@@ -462,7 +323,6 @@
 
 :global(.QuestionTooltipTarget) {
   color: var(--color-text-light);
-  display: inline-block;
   border: 2px solid currentColor;
   border-radius: 99px;
   width: 20px;
@@ -482,44 +342,7 @@
   font-weight: bold;
 }
 
-:global(.FilterInput:hover .FilterRemove-field) {
-  opacity: 1;
-}
-
 /* need to do this ugliness to override the locally scoped font size from Scalar.css */
 :global(.QueryBuilder .ScalarValue) {
   font-size: 5em;
-}
-
-:global(.sql-code) {
-  font-size: 90%;
-  line-height: 1.2em;
-  font-family: "Courier 10 Pitch", Courier, monospace;
-  white-space: pre;
-  white-space: pre-wrap;
-  white-space: -moz-pre-wrap;
-  white-space: -o-pre-wrap;
-  background-color: var(--color-bg-light);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-}
-
-:global(.ParameterValuePickerNoPopover input) {
-  font-size: 16px;
-  color: var(--color-text-dark);
-  border: none;
-}
-
-:global(.ParameterValuePickerNoPopover--selected input) {
-  font-weight: bold;
-  color: var(--color-brand);
-}
-
-:global(.ParameterValuePickerNoPopover input:focus) {
-  outline: none;
-  color: var(--color-text-dark);
-}
-
-:global(.ParameterValuePickerNoPopover input::-webkit-input-placeholder) {
-  color: var(--color-text-medium);
 }

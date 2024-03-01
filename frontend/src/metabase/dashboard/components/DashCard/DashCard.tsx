@@ -257,7 +257,7 @@ function DashCardInner({
     <ErrorBoundary>
       <DashCardRoot
         data-testid="dashcard"
-        className="Card rounded flex flex-column hover-parent hover--visibility"
+        className="Card relative rounded flex flex-column hover-parent hover--visibility"
         hasHiddenBackground={hasHiddenBackground}
         shouldForceHiddenBackground={shouldForceHiddenBackground}
         isNightMode={isNightMode}
