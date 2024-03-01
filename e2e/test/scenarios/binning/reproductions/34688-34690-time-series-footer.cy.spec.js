@@ -4,35 +4,6 @@ import { restore } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const BASE_QUERY = {
-  "source-table": PRODUCTS_ID,
-  expressions: {
-    "Custom column": [
-      "case",
-      [
-        [
-          [
-            "<",
-            [
-              "field",
-              PRODUCTS.ID,
-              {
-                "base-type": "type/BigInteger",
-              },
-            ],
-            10,
-          ],
-          "Foo",
-        ],
-      ],
-      {
-        default: "Bar",
-      },
-    ],
-  },
-  aggregation: [["count"]],
-};
-
 const CREATED_AT_BREAKOUT = [
   "field",
   PRODUCTS.CREATED_AT,
@@ -45,10 +16,22 @@ const CREATED_AT_BREAKOUT = [
 const CUSTOM_COLUMN_BREAKOUT = [
   "expression",
   "Custom column",
-  {
-    "base-type": "type/Text",
-  },
+  { "base-type": "type/Text" },
 ];
+
+const ID_FIELD_REF = ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }];
+
+const BASE_QUERY = {
+  "source-table": PRODUCTS_ID,
+  expressions: {
+    "Custom column": [
+      "case",
+      [[["<", ID_FIELD_REF, 10], "Foo"]],
+      { default: "Bar" },
+    ],
+  },
+  aggregation: [["count"]],
+};
 
 describe("issues 34688 and 34690", () => {
   beforeEach(() => {
