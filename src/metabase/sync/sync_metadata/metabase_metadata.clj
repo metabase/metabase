@@ -11,6 +11,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -42,7 +43,7 @@
 
 (mu/defn ^:private set-property! :- :boolean
   "Set a property for a Field or Table in `database`. Returns `true` if a property was successfully set."
-  [database                          :- i/DatabaseInstance
+  [database                          :- (mi/InstanceOf :model/Database)
    {:keys [table-name field-name k]} :- KeypathComponents
    value]
   (boolean
@@ -79,7 +80,7 @@
   This functionality is currently only used by the Sample Database. In order to use this functionality, drivers *must*
   implement optional fn `:table-rows-seq`."
   [driver
-   database                :- i/DatabaseInstance
+   database                :- (mi/InstanceOf :model/Database)
    metabase-metadata-table :- i/DatabaseMetadataTable]
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
     (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
@@ -95,10 +96,10 @@
   "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
    This table contains information about type information, descriptions, and other properties that
    should be set for Metabase objects like Tables and Fields."
-  ([database :- i/DatabaseInstance]
+  ([database :- (mi/InstanceOf :model/Database)]
    (sync-metabase-metadata! database (fetch-metadata/db-metadata database)))
 
-  ([database :- i/DatabaseInstance db-metadata]
+  ([database :- (mi/InstanceOf :model/Database) db-metadata]
    (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
                                           (sync-util/name-for-logging database))
      (let [driver (driver.u/database->driver database)]

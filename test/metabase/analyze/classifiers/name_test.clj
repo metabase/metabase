@@ -1,9 +1,9 @@
-(ns metabase.sync.analyze.classifiers.name-test
+(ns metabase.analyze.classifiers.name-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.models.interface :as mi]
-   [metabase.models.table :as table :refer [Table]]
-   [metabase.sync.analyze.classifiers.name :as classifiers.name]))
+   [metabase.models.table :as table :refer [Table]]))
 
 (deftest ^:paralell semantic-type-for-name-and-base-type-test
   (doseq [[input expected] {["id"      :type/Integer] :type/PK

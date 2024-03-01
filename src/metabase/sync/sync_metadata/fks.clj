@@ -2,6 +2,7 @@
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
    [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -14,14 +15,14 @@
 (def ^:private FKRelationshipObjects
   "Relevant objects for a foreign key relationship."
   [:map
-   [:source-field i/FieldInstance]
-   [:dest-table   i/TableInstance]
-   [:dest-field   i/FieldInstance]])
+   [:source-field (mi/InstanceOf :model/Field)]
+   [:dest-table   (mi/InstanceOf :model/Table)]
+   [:dest-field   (mi/InstanceOf :model/Field)]])
 
 (mu/defn ^:private fetch-fk-relationship-objects :- [:maybe FKRelationshipObjects]
   "Fetch the Metabase objects (Tables and Fields) that are relevant to a foreign key relationship described by FK."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance
+  [database :- (mi/InstanceOf :model/Database)
+   table    :- (mi/InstanceOf :model/Table)
    fk       :- i/FKMetadataEntry]
   (when-let [source-field (t2/select-one Field
                             :table_id           (u/the-id table)
@@ -47,8 +48,8 @@
 
 
 (mu/defn ^:private mark-fk!
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance
+  [database :- (mi/InstanceOf :model/Database)
+   table    :- (mi/InstanceOf :model/Table)
    fk       :- i/FKMetadataEntry]
   (when-let [{:keys [source-field dest-table dest-field]} (fetch-fk-relationship-objects database table fk)]
     (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
@@ -63,11 +64,11 @@
 
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
-  ([table :- i/TableInstance]
+  ([table :- (mi/InstanceOf :model/Table)]
    (sync-fks-for-table! (table/database table) table))
 
-  ([database :- i/DatabaseInstance
-    table    :- i/TableInstance]
+  ([database :- (mi/InstanceOf :model/Database)
+    table    :- (mi/InstanceOf :model/Table)]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
      (let [fks-to-update (fetch-metadata/fk-metadata database table)]
        {:total-fks   (count fks-to-update)
@@ -80,7 +81,7 @@
 (mu/defn sync-fks!
   "Sync the foreign keys in a `database`. This sets appropriate values for relevant Fields in the Metabase application
   DB based on values from the `FKMetadata` returned by [[metabase.driver/describe-table-fks]]."
-  [database :- i/DatabaseInstance]
+  [database :- (mi/InstanceOf :model/Database)]
   (reduce (fn [update-info table]
             (let [table-fk-info (sync-fks-for-table! database table)]
               ;; Mark the table as done with its initial sync once this step is done even if it failed, because only

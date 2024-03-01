@@ -18,15 +18,12 @@
   In the future, we plan to add more classifiers, including ML ones that run offline."
   (:require
    [clojure.data :as data]
+   [metabase.analyze.classifiers :as classifiers]
+   [metabase.analyze.classifiers.name :as classifiers.name]
+   [metabase.analyze.fingerprint :as fingerprint]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync.analyze.classifiers.category :as classifiers.category]
-   [metabase.sync.analyze.classifiers.name :as classifiers.name]
-   [metabase.sync.analyze.classifiers.no-preview-display
-    :as classifiers.no-preview-display]
-   [metabase.sync.analyze.classifiers.text-fingerprint
-    :as classifiers.text-fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -44,8 +41,8 @@
 
 (def ^:private FieldOrTableInstance
   [:or
-   i/FieldInstance
-   i/TableInstance])
+   (mi/InstanceOf :model/Field)
+   (mi/InstanceOf :model/Table)])
 
 (mu/defn ^:private save-model-updates!
   "Save the updates in `updated-model` (can be either a `Field` or `Table`)."
@@ -70,46 +67,18 @@
         values-to-set)
       true)))
 
-
-(def ^:private classifiers
-  "Various classifier functions available. These should all take two args, a `FieldInstance` and a possibly `nil`
-  `Fingerprint`, and return `FieldInstance` with any inferred property changes, or `nil` if none could be inferred.
-  Order is important!
-
-  A classifier may see the original field (before any classifiers were run) in the metadata of the field at
-  `:sync.classify/original`."
-  [#'classifiers.name/infer-and-assoc-semantic-type
-   #'classifiers.category/infer-is-category-or-list
-   #'classifiers.no-preview-display/infer-no-preview-display
-   #'classifiers.text-fingerprint/infer-semantic-type])
-
-(mu/defn run-classifiers :- i/FieldInstance
-  "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with
-  changes decided upon by the classifiers. The original field can be accessed in the metadata at
-  `:sync.classify/original`."
-  [field       :- i/FieldInstance
-   fingerprint :- [:maybe i/Fingerprint]]
-  (reduce (fn [field classifier]
-            (or (sync-util/with-error-handling (format "Error running classifier on %s"
-                                                       (sync-util/name-for-logging field))
-                  (classifier field fingerprint))
-                field))
-          (vary-meta field assoc :sync.classify/original field)
-          classifiers))
-
-
 (mu/defn ^:private classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
-  ([field :- i/FieldInstance]
+  ([field :- (mi/InstanceOf :model/Field)]
    (classify! field (or (:fingerprint field)
                         (when (qp.store/initialized?)
                           (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
                         (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))
 
-  ([field      :- i/FieldInstance
-    fingerprint :- [:maybe i/Fingerprint]]
+  ([field      :- (mi/InstanceOf :model/Field)
+    fingerprint :- [:maybe fingerprint/Fingerprint]]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
-     (let [updated-field (run-classifiers field fingerprint)]
+     (let [updated-field (classifiers/run-classifiers field fingerprint)]
        (when-not (= field updated-field)
          (save-model-updates! field updated-field))))))
 
@@ -118,10 +87,10 @@
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn ^:private fields-to-classify :- [:maybe [:sequential (mi/InstanceOf :model/Field)]]
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
-  [table :- i/TableInstance]
+  [table :- (mi/InstanceOf :model/Table)]
   (seq (t2/select :model/Field
          :table_id            (u/the-id table)
          :fingerprint_version i/*latest-fingerprint-version*
@@ -130,7 +99,7 @@
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
   things like inferring (and setting) the semantic types and preview display status for Fields belonging to `table`."
-  [table :- i/TableInstance]
+  [table :- (mi/InstanceOf :model/Table)]
   (when-let [fields (fields-to-classify table)]
     {:fields-classified (count fields)
      :fields-failed     (->> fields
@@ -140,7 +109,7 @@
 
 (mu/defn ^:always-validate classify-table!
   "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
-  [table :- i/TableInstance]
+  [table :- (mi/InstanceOf :model/Table)]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))
                         (classifiers.name/infer-entity-type table))]
@@ -150,8 +119,8 @@
 
 (mu/defn classify-tables-for-db!
   "Classify all tables found in a given database"
-  [_database :- i/DatabaseInstance
-   tables    :- [:maybe [:sequential i/TableInstance]]
+  [_database :- (mi/InstanceOf :model/Database)
+   tables    :- [:maybe [:sequential (mi/InstanceOf :model/Table)]]
    log-progress-fn]
   {:total-tables      (count tables)
    :tables-classified (sync-util/sum-numbers (fn [table]
@@ -164,8 +133,8 @@
 
 (mu/defn classify-fields-for-db!
   "Classify all fields found in a given database"
-  [_database :- i/DatabaseInstance
-   tables    :- [:maybe [:sequential i/TableInstance]]
+  [_database :- (mi/InstanceOf :model/Database)
+   tables    :- [:maybe [:sequential (mi/InstanceOf :model/Table)]]
    log-progress-fn]
   (apply merge-with +
          {:fields-classified 0, :fields-failed 0}

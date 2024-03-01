@@ -3,8 +3,8 @@
    [compojure.core :refer [GET POST]]
    [metabase-enterprise.llm.tasks.describe-dashboard :refer [describe-dashboard]]
    [metabase-enterprise.llm.tasks.describe-question :refer [describe-question]]
+   [metabase.analyze.query-results :as qr]
    [metabase.api.common :as api]
-   [metabase.sync.analyze.query-results :as qr]
    [metabase.util.malli.schema :as ms]))
 
 (api/defendpoint POST "/card/summarize"

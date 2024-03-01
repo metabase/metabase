@@ -13,7 +13,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.sync.interface :as i]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -397,7 +396,7 @@
   "Defines a step. `:sync-fn` runs the step, returns a map that contains step specific metadata. `log-summary-fn`
   takes that metadata and turns it into a string for logging"
   [:map
-   [:sync-fn        [:=> [:cat StepRunMetadata] i/DatabaseInstance]]
+   [:sync-fn        [:=> [:cat StepRunMetadata] (mi/InstanceOf :model/Database)]]
    [:step-name      :string]
    [:log-summary-fn [:maybe LogSummaryFunction]]])
 
@@ -413,7 +412,7 @@
 
 (mu/defn run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
-  [database :- i/DatabaseInstance
+  [database :- (mi/InstanceOf :model/Database)
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
   (let [start-time (t/zoned-date-time)
         results    (with-start-and-finish-debug-logging (format "step ''%s'' for %s"
@@ -438,7 +437,7 @@
   "The logging logic from `log-sync-summary`. Separated for testing purposes as the `log/debug` macro won't invoke
   this function unless the logging level is at debug (or higher)."
   [operation :- :string
-   database :- i/DatabaseInstance
+   database :- (mi/InstanceOf :model/Database)
    {:keys [start-time end-time steps]} :- SyncOperationMetadata]
   (str
    (apply format
@@ -468,7 +467,7 @@
 (mu/defn ^:private  log-sync-summary
   "Log a sync/analyze summary message with info from each step"
   [operation :- :string
-   database :- i/DatabaseInstance
+   database :- (mi/InstanceOf :model/Database)
    sync-metadata :- SyncOperationMetadata]
   ;; Note this needs to either stay nested in the `debug` macro call or be guarded by an log/enabled?
   ;; call. Constructing the log below requires some work, no need to incur that cost debug logging isn't enabled
@@ -483,7 +482,7 @@
 
 (mu/defn ^:private create-task-history
   [task-name :- ms/NonBlankString
-   database  :- i/DatabaseInstance
+   database  :- (mi/InstanceOf :model/Database)
    {:keys [start-time end-time]} :- SyncOperationOrStepRunMetadata]
   {:task       task-name
    :db_id      (u/the-id database)
@@ -493,7 +492,7 @@
 
 (mu/defn ^:private store-sync-summary!
   [operation :- :string
-   database  :- i/DatabaseInstance
+   database  :- (mi/InstanceOf :model/Database)
    {:keys [steps] :as sync-md} :- SyncOperationMetadata]
   (try
     (->> (for [[step-name step-info] steps
@@ -522,7 +521,7 @@
 (mu/defn run-sync-operation
   "Run `sync-steps` and log a summary message"
   [operation :- :string
-   database :- i/DatabaseInstance
+   database :- (mi/InstanceOf :model/Database)
    sync-steps :- [:maybe [:sequential StepDefinition]]]
   (let [start-time    (t/zoned-date-time)
         step-metadata (loop [[step-defn & rest-defns] sync-steps

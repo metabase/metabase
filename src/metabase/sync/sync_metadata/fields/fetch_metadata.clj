@@ -7,6 +7,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -20,7 +21,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn ^:private fields->parent-id->fields :- [:map-of common/ParentID [:set common/TableMetadataFieldWithID]]
-  [fields :- [:maybe [:sequential i/FieldInstance]]]
+  [fields :- [:maybe [:sequential (mi/InstanceOf :model/Field)]]]
   (->> (for [field fields]
          {:parent-id                 (:parent_id field)
           :id                        (:id field)
@@ -58,18 +59,18 @@
 (mu/defn fields->our-metadata :- [:set common/TableMetadataFieldWithID]
   "Given a sequence of Metabase Fields, format them and return them in a hierachy so the format matches the one
   `db-metadata` comes back in."
-  ([fields :- [:maybe [:sequential i/FieldInstance]]]
+  ([fields :- [:maybe [:sequential (mi/InstanceOf :model/Field)]]]
    (fields->our-metadata fields nil))
 
-  ([fields :- [:maybe [:sequential i/FieldInstance]], top-level-parent-id :- common/ParentID]
+  ([fields :- [:maybe [:sequential (mi/InstanceOf :model/Field)]], top-level-parent-id :- common/ParentID]
    (let [parent-id->fields (fields->parent-id->fields fields)]
      ;; get all the top-level fields, then call `add-nested-fields` to recursively add the fields
      (set (for [metabase-field (get parent-id->fields top-level-parent-id)]
             (add-nested-fields metabase-field parent-id->fields))))))
 
-(mu/defn ^:private table->fields :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn ^:private table->fields :- [:maybe [:sequential (mi/InstanceOf :model/Field)]]
   "Fetch active Fields from the Metabase application database for a given `table`."
-  [table :- i/TableInstance]
+  [table :- (mi/InstanceOf :model/Table)]
   (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
               :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required
               :database_partitioned :json_unfolding :position]
@@ -80,7 +81,7 @@
 (mu/defn our-metadata :- [:set common/TableMetadataFieldWithID]
   "Return information we have about Fields for a `table` in the application database in (almost) exactly the same
    `TableMetadataField` format returned by `describe-table`."
-  [table :- i/TableInstance]
+  [table :- (mi/InstanceOf :model/Table)]
   (-> table table->fields fields->our-metadata))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -90,8 +91,8 @@
 (mu/defn db-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
   implementation of `describe-table`."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance]
+  [database :- (mi/InstanceOf :model/Database)
+   table    :- (mi/InstanceOf :model/Table)]
   (cond-> (:fields (fetch-metadata/table-metadata database table))
     (driver/database-supports? (:engine database) :nested-field-columns database)
     (set/union (fetch-metadata/nfc-metadata database table))))

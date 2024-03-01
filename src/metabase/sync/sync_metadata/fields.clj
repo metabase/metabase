@@ -39,6 +39,7 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
+   [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
@@ -55,7 +56,7 @@
 (mu/defn ^:private sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
-  [table       :- i/TableInstance
+  [table       :- (mi/InstanceOf :model/Table)
    db-metadata :- [:set i/TableMetadataField]]
   (+ (sync-instances/sync-instances! table db-metadata (fetch-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
@@ -65,11 +66,11 @@
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
-  ([table :- i/TableInstance]
+  ([table :- (mi/InstanceOf :model/Table)]
    (sync-fields-for-table! (table/database table) table))
 
-  ([database :- i/DatabaseInstance
-    table    :- i/TableInstance]
+  ([database :- (mi/InstanceOf :model/Database)
+    table    :- (mi/InstanceOf :model/Table)]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
      (let [db-metadata (fetch-metadata/db-metadata database table)]
        {:total-fields   (count db-metadata)
@@ -81,7 +82,7 @@
                            [:updated-fields ms/IntGreaterThanOrEqualToZero]
                            [:total-fields   ms/IntGreaterThanOrEqualToZero]]]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
-  [database :- i/DatabaseInstance]
+  [database :- (mi/InstanceOf :model/Database)]
   (->> database
        sync-util/db->sync-tables
        (map (partial sync-fields-for-table! database))

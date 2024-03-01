@@ -11,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
@@ -25,10 +26,10 @@
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private matching-inactive-fields :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn ^:private matching-inactive-fields :- [:maybe [:sequential (mi/InstanceOf :model/Field)]]
   "Return inactive Metabase Fields that match any of the Fields described by `new-field-metadatas`, if any such Fields
   exist."
-  [table               :- i/TableInstance
+  [table               :- (mi/InstanceOf :model/Table)
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
@@ -41,7 +42,7 @@
 (mu/defn ^:private insert-new-fields! :- [:maybe [:sequential ::lib.schema.id/field]]
   "Insert new Field rows for for all the Fields described by `new-field-metadatas`. Returns IDs of newly inserted
   Fields."
-  [table               :- i/TableInstance
+  [table               :- (mi/InstanceOf :model/Table)
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
@@ -81,10 +82,10 @@
            :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
            :visibility_type            (or visibility-type :normal)})))))
 
-(mu/defn ^:private create-or-reactivate-fields! :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn ^:private create-or-reactivate-fields! :- [:maybe [:sequential (mi/InstanceOf :model/Field)]]
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively
   handle nested Fields."
-  [table               :- i/TableInstance
+  [table               :- (mi/InstanceOf :model/Table)
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
@@ -117,7 +118,7 @@
   "Sync instances of `Field` in the application database with 'active' Fields in the DB being synced (i.e., ones that
   are returned as part of the `db-metadata`). Creates or reactivates Fields as needed. Returns number of Fields
   synced and updated `our-metadata` including the new Fields and their IDs."
-  [table        :- i/TableInstance
+  [table        :- (mi/InstanceOf :model/Table)
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]
    parent-id    :- common/ParentID]
@@ -148,7 +149,7 @@
 (mu/defn ^:private retire-field! :- [:maybe [:= 1]]
   "Mark an `old-field` belonging to `table` as inactive if corresponding Field object exists. Does *NOT* recurse over
   nested Fields. Returns `1` if a Field was marked inactive, `nil` otherwise."
-  [table          :- i/TableInstance
+  [table          :- (mi/InstanceOf :model/Table)
    metabase-field :- common/TableMetadataFieldWithID]
   (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
   (when (pos? (t2/update! Field (u/the-id metabase-field) {:active false}))
@@ -158,7 +159,7 @@
   "Mark inactive any Fields in the application database that are no longer present in the DB being synced. These
   Fields are ones that are in `our-metadata`, but not in `db-metadata`. Does *NOT* recurse over nested Fields.
   Returns `1` if a Field was marked inactive."
-  [table        :- i/TableInstance
+  [table        :- (mi/InstanceOf :model/Table)
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
   ;; retire all the Fields not present in `db-metadata`, and count how many rows were actually affected
@@ -178,7 +179,7 @@
 (mu/defn ^:private sync-nested-fields-of-one-field! :- [:maybe ms/IntGreaterThanOrEqualToZero]
   "Recursively sync Field instances (i.e., rows in application DB) for nested Fields of a single Field, one or both
   `field-metadata` (from synced DB) and `metabase-field` (from application DB)."
-  [table          :- i/TableInstance
+  [table          :- (mi/InstanceOf :model/Table)
    field-metadata :- [:maybe i/TableMetadataField]
    metabase-field :- [:maybe common/TableMetadataFieldWithID]]
   (let [nested-fields-metadata (:nested-fields field-metadata)
@@ -195,7 +196,7 @@
   "Recursively sync Field instances (i.e., rows in application DB) for *all* the nested Fields of all Fields in
   `db-metadata` and `our-metadata`.
   Not for the flattened nested fields for JSON columns in normal RDBMSes (nested field columns)"
-  [table        :- i/TableInstance
+  [table        :- (mi/InstanceOf :model/Table)
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
   (let [name->field-metadata (m/index-by common/canonical-name db-metadata)
@@ -210,12 +211,12 @@
 (mu/defn sync-instances! :- ms/IntGreaterThanOrEqualToZero
   "Sync rows in the Field table with `db-metadata` describing the current schema of the Table currently being synced,
   creating Field objects or marking them active/inactive as needed."
-  ([table        :- i/TableInstance
+  ([table        :- (mi/InstanceOf :model/Table)
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]]
    (sync-instances! table db-metadata our-metadata nil))
 
-  ([table        :- i/TableInstance
+  ([table        :- (mi/InstanceOf :model/Table)
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]
     parent-id    :- common/ParentID]

@@ -5,8 +5,9 @@
    and infer field semantic types."
   (:require
    [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
    [metabase.sync.analyze.classify :as classify]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -53,7 +54,7 @@
 ;; `last_analyzed` is not `nil`.
 
 (mu/defn ^:private update-last-analyzed!
-  [tables :- [:sequential i/TableInstance]]
+  [tables :- [:sequential (mi/InstanceOf :model/Table)]]
   (when-let [ids (seq (map u/the-id tables))]
     ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
     (t2/update! Field {:table_id            [:in ids]
@@ -63,20 +64,20 @@
 
 (mu/defn ^:private update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
-  [table :- i/TableInstance]
+  [table :- (mi/InstanceOf :model/Table)]
   (update-last-analyzed! [table]))
 
 (mu/defn ^:private update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
-  [_database :- i/DatabaseInstance
-   tables    :- [:sequential i/TableInstance]]
+  [_database :- (mi/InstanceOf :model/Database)
+   tables    :- [:sequential (mi/InstanceOf :model/Table)]]
   ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
   (update-last-analyzed! tables))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
-  [table :- i/TableInstance]
-  (fingerprint/fingerprint-fields! table)
+  [table :- (mi/InstanceOf :model/Table)]
+  (sync.fingerprint/fingerprint-fields! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
   (update-fields-last-analyzed! table))
@@ -101,7 +102,7 @@
 
 (defn- make-analyze-steps [tables log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"
-                               #(fingerprint/fingerprint-fields-for-db! % tables log-fn)
+                               #(sync.fingerprint/fingerprint-fields-for-db! % tables log-fn)
                                fingerprint-fields-summary)
    (sync-util/create-sync-step "classify-fields"
                                #(classify/classify-fields-for-db! % tables log-fn)
@@ -114,7 +115,7 @@
   "Perform in-depth analysis on the data for all Tables in a given `database`. This is dependent on what each database
   driver supports, but includes things like cardinality testing and table row counting. This also updates the
   `:last_analyzed` value for each affected Field."
-  [database :- i/DatabaseInstance]
+  [database :- (mi/InstanceOf :model/Database)]
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
       (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (count tables)))]
@@ -123,8 +124,8 @@
 
 (mu/defn refingerprint-db!
   "Refingerprint a subset of tables in a given `database`. This will re-fingerprint tables up to a threshold amount of
-  [[fingerprint/max-refingerprint-field-count]]."
-  [database :- i/DatabaseInstance]
+  [[sync.fingerprint/max-refingerprint-field-count]]."
+  [database :- (mi/InstanceOf :model/Database)]
   (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)
           log-fn (fn [step table]
@@ -132,5 +133,5 @@
       (sync-util/run-sync-operation "refingerprint database"
                                     database
                                     [(sync-util/create-sync-step "refingerprinting fields"
-                                                                 #(fingerprint/refingerprint-fields-for-db! % tables log-fn)
+                                                                 #(sync.fingerprint/refingerprint-fields-for-db! % tables log-fn)
                                                                  fingerprint-fields-summary)]))))

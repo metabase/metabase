@@ -1,12 +1,12 @@
-(ns metabase.sync.analyze.fingerprint.fingerprinters-test
+(ns metabase.analyze.fingerprint.fingerprinters-test
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.driver :as driver]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
