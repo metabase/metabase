@@ -3,7 +3,7 @@ import { useState } from "react";
 import _ from "underscore";
 
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
-import { TextInput } from "metabase/ui";
+import { Icon, TextInput } from "metabase/ui";
 import type { Parameter, TemplateTag } from "metabase-types/api";
 
 import { isPlainInput } from "./core";
@@ -54,6 +54,7 @@ interface PlainValueInputProps {
 
 function PlainValueInput(props: PlainValueInputProps) {
   const { initialValue, onValueChange, placeholder } = props;
+  // TODO must change when changing filter types
   const [value, setValue] = useState(initialValue);
 
   const commit = (newValue: any) => {
@@ -67,10 +68,9 @@ function PlainValueInput(props: PlainValueInputProps) {
 
   const handleKeyup = (event: KeyboardEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
-
     switch (event.key) {
       case "Enter":
-        commit(value);
+        onValueChange(value);
         target.blur();
         break;
       case "Escape":
@@ -87,9 +87,22 @@ function PlainValueInput(props: PlainValueInputProps) {
       onChange={handleChange}
       onKeyUp={handleKeyup}
       placeholder={placeholder}
+      rightSection={
+        value ? (
+          // TODO value must be null
+          <Icon cursor="pointer" name="close" onClick={() => commit("")} />
+        ) : null
+      }
     />
   );
 }
+
+// function getFirstValue(value: any) {
+//   if (Array.isArray(value)) {
+//     return value[0] ?? null;
+//   }
+//   return value;
+// }
 
 function getAmendedParameter(tag: TemplateTag, parameter: Parameter) {
   const amended =
