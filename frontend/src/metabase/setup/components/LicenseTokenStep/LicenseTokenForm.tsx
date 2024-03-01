@@ -42,7 +42,12 @@ export const LicenseTokenForm = ({
           aria-label={t`Token`}
           placeholder={t`Paste your token here`}
           value={token}
-          onChange={e => setToken(e.target.value.trim())}
+          onChange={e => {
+            setToken(e.target.value.trim());
+            setStatus(oldState =>
+              oldState !== "loading" ? "idle" : "loading",
+            );
+          }}
           error={status === "error"}
         />
         {status === "error" && (

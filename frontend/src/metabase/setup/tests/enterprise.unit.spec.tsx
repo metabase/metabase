@@ -100,6 +100,17 @@ describe("setup (EE, no token)", () => {
         "This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working",
       );
 
+      userEvent.type(
+        screen.getByRole("textbox", { name: "Token" }),
+        "{backspace}b",
+      );
+
+      expect(
+        screen.queryByText("This token doesn’t seem to be valid.", {
+          exact: false,
+        }),
+      ).not.toBeInTheDocument();
+
       clickOnSkip();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
