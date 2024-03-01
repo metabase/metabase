@@ -95,7 +95,7 @@ export function diagnose({
     return { message };
   }
 
-  // try to compile on FE
+  // make a simple check on expression syntax correctness
   let mbqlOrError: Expr | ErrorWithMessage;
   try {
     mbqlOrError = prattCompiler({ source, startRule, name, query, stageIndex });
@@ -118,7 +118,7 @@ export function diagnose({
     return { message: t`Invalid expression` };
   }
 
-  // now diagnose on BE
+  // now make a proper check
   const startRuleToExpressionModeMapping: Record<string, Lib.ExpressionMode> = {
     boolean: "filter",
   };
