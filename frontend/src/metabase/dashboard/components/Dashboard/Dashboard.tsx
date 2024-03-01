@@ -139,7 +139,7 @@ interface DashboardProps {
   archiveDashboard: (id: DashboardId) => Promise<void>;
 
   onRefreshPeriodChange: (period: number | null) => void;
-  setEditingDashboard: (dashboard: IDashboard | boolean) => void;
+  setEditingDashboard: (dashboard: IDashboard | null) => void;
   setDashboardAttributes: (opts: SetDashboardAttributesOpts) => void;
   setSharing: (isSharing: boolean) => void;
   toggleSidebar: (sidebarName: DashboardSidebarName) => void;
@@ -297,7 +297,7 @@ function DashboardInner(props: DashboardProps) {
   );
 
   const handleSetEditing = useCallback(
-    (dashboard: IDashboard | boolean) => {
+    (dashboard: IDashboard | null) => {
       onRefreshPeriodChange(null);
       setEditingDashboard(dashboard);
     },
