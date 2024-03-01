@@ -90,7 +90,7 @@ export const ItemList = <TItem extends TypeWithModel>({
               e.stopPropagation(); // prevent parent onClick
               onClick(item);
             }}
-            variant={isCurrentLevel ? "mb-dark" : "mb-light"}
+            variant={isCurrentLevel ? "default" : "mb-light"}
             mb="xs"
           />
         </div>
