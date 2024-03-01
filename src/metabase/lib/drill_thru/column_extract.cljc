@@ -10,7 +10,9 @@
     [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
     [metabase.lib.temporal-bucket :as lib.temporal-bucket]
     [metabase.lib.types.isa :as lib.types.isa]
-    [metabase.util.malli :as mu]))
+    [metabase.util :as u]
+    [metabase.util.malli :as mu]
+    [metabase.shared.util.time :as shared.ut]))
 
 (mu/defn column-extract-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.column-extract]
   "TBD"
@@ -46,6 +48,14 @@
   [_query _stage-number {:keys [unit]}]
   {:display-name (lib.temporal-bucket/describe-temporal-unit unit)})
 
+(defn case-expression
+  [expression options]
+  (lib.expression/case
+    (map-indexed (fn [index option]
+      [(lib.filter/= expression (inc index)) option])
+      options)
+   ""))
+
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-extract
   [_query _stage-number {:keys [query stage-number column]} & [{:keys [unit]}]]
   (lib.expression/expression
@@ -56,10 +66,8 @@
       :hour-of-day (lib.expression/get-hour column)
       :day-of-month (lib.expression/get-day column)
       :day-of-week (lib.expression/get-day-of-week column)
-      :month (lib.expression/get-month column)
-      :quarter (let [expression (lib.expression/get-quarter column)]
-                 (lib.expression/case
-                  (->> (range 1 4)
-                       (map (fn [n] [(lib.filter/= expression n) (str "Q" n)])))
-                  "Q4"))
+      :month (case-expression
+              (lib.expression/get-month column)
+              (shared.ut/month-names))
+      :quarter (lib.expression/get-quarter column)
       :year (lib.expression/get-year column))))

@@ -44,13 +44,18 @@
   (.isSame d1 d2 "year"))
 
 ;;; ---------------------------------------------- information -------------------------------------------------------
+
+(defn month-names
+  "Month names that vary by locale."
+  []
+  (moment/months))
+
 (defn first-day-of-week
   "The first day of the week varies by locale, but Metabase has a setting that overrides it.
   In CLJS, Moment is already configured with that setting."
   []
-  (-> (moment/weekdays 0)
-      (.toLowerCase)
-      keyword))
+  (nth [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]
+       (.firstDayOfWeek (moment/localeData))))
 
 (def default-options
   "The default map of options - empty in CLJS."

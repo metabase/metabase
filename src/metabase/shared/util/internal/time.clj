@@ -53,6 +53,11 @@
        (= (t/month d1) (t/month d2))))
 
 ;;; ---------------------------------------------- information -------------------------------------------------------
+(defn month-names
+  "Month names that vary by locale."
+  []
+  [])
+
 (defn first-day-of-week
   "The first day of the week varies by locale, but Metabase has a setting that overrides it.
   In JVM, we can just read the setting directly."

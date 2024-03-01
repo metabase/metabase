@@ -29,7 +29,8 @@
   unit-diff
   truncate
   add
-  format-for-base-type])
+  format-for-base-type
+  month-names])
 
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))
