@@ -2,13 +2,3 @@
 .transition-color {
   transition: color 0.3s linear;
 }
-:global(.transition-background),
-.transition-background {
-  transition: background 0.2s linear;
-}
-:global(.transition-shadow) {
-  transition: box-shadow 0.2s linear;
-}
-:global(.transition-all) {
-  transition: all 0.2s linear;
-}

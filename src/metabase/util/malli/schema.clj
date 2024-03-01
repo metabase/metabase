@@ -56,7 +56,6 @@
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
-;;; TODO -- this does not actually ensure that the string cannot be BLANK at all!
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message ::lib.schema.common/non-blank-string (deferred-tru "value must be a non-blank string.")))
