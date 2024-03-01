@@ -31,6 +31,7 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.setup :as mdb.setup]
+   [metabase.db.spec :as mdb.spec]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -46,7 +47,11 @@
   db-type
   unique-identifier
   data-source
-  get-connection])
+  get-connection]
+
+ [mdb.spec
+  make-subname
+  spec])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; [[mdb.connection/*application-db*]] (or its data source)

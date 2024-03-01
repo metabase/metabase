@@ -10,8 +10,8 @@
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.spec :as mdb.spec]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Setting]]
@@ -60,7 +60,7 @@
                {:subprotocol "h2"
                 :subname     (format "mem:%s;DB_CLOSE_DELAY=10" db-name)
                 :classname   "org.h2.Driver"}
-               (mdb.spec/spec db-type (tx/dbdef->connection-details db-type :db {:database-name db-name})))]
+               (mdb/spec db-type (tx/dbdef->connection-details db-type :db {:database-name db-name})))]
     (mdb.test-util/->ClojureJDBCSpecDataSource spec)))
 
 (deftest dump-to-h2-dump-plaintext-test
