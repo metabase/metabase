@@ -33,6 +33,14 @@ export function modal() {
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
+export function entityPickerModal() {
+  return cy.findByTestId("entity-picker-modal");
+}
+
+export function collectionOnTheGoModal() {
+  return cy.findByTestId("create-collection-on-the-go");
+}
+
 export function sidebar() {
   return cy.get("main aside");
 }
