@@ -774,7 +774,7 @@
 
 (deftest data-access-permissions-schema-migration-basic-test
   (testing "Data access permissions are correctly migrated from `permissions` to `permissions_v2`"
-    (impl/test-migrations [first-perms-migration "v50.2024-02-28T14:06:38"] [migrate!]
+    (impl/test-migrations [first-perms-migration "v50.2024-01-10T03:27:30"] [migrate!]
       (let [rollback! (fn []
                         (clear-permissions!)
                         (migrate! :down 49))
@@ -915,7 +915,7 @@
 
 (deftest native-query-editing-permissions-schema-migration-test
   (testing "Native query editing permissions are correctly migrated from `permissions` to `permissions_v2`"
-    (impl/test-migrations [first-perms-migration "v50.2024-02-28T14:06:40"] [migrate!]
+    (impl/test-migrations [first-perms-migration "v50.2024-01-10T03:27:31"] [migrate!]
       (let [rollback! (fn []
                         (clear-permissions!)
                         (migrate! :down 49))
@@ -951,7 +951,7 @@
 
 (deftest download-results-permissions-schema-migration-test
   (testing "Download results permissions are correctly migrated from `permissions` to `permissions_v2`"
-    (impl/test-migrations [first-perms-migration "v50.2024-02-28T14:06:42"] [migrate!]
+    (impl/test-migrations [first-perms-migration "v50.2024-01-10T03:27:32"] [migrate!]
       (let [rollback! (fn []
                         (clear-permissions!)
                         (migrate! :down 49))
@@ -1101,7 +1101,7 @@
 
 (deftest manage-table-metadata-permissions-schema-migration-test
   (testing "Manage table metadata permissions are correctly migrated from `permissions` to `permissions_v2`"
-    (impl/test-migrations [first-perms-migration "v50.2024-02-28T14:06:44"] [migrate!]
+    (impl/test-migrations [first-perms-migration "v50.2024-01-10T03:27:33"] [migrate!]
       (let [rollback! (fn []
                         (clear-permissions!)
                         (migrate! :down 49))
@@ -1166,7 +1166,7 @@
 
 (deftest manage-database-permissions-schema-migration-test
   (testing "Manage database permissions are correctly migrated from `permissions` to `permissions_v2`"
-    (impl/test-migrations [first-perms-migration "v50.2024-02-28T14:06:46"] [migrate!]
+    (impl/test-migrations [first-perms-migration "v50.2024-01-10T03:27:34"] [migrate!]
       (let [rollback! (fn []
                         (clear-permissions!)
                         (migrate! :down 49))
@@ -1193,7 +1193,7 @@
 
 (deftest data-permissions-migration-rollback-test
   (testing "Data permissions are correctly rolled back from `data_permissions` to `permissions`"
-    (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-28T14:06:50"] [migrate!]
+    (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-19T21:32:04"] [migrate!]
       (let [migrate-up!  (fn []
                            (migrate!)
                            (clear-permissions!))
