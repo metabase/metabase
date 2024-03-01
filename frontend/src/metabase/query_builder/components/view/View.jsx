@@ -274,6 +274,11 @@ class View extends Component {
       queryBuilderMode,
     } = this.props;
 
+    if (queryBuilderMode === "notebook") {
+      // we need to render main only in view mode
+      return;
+    }
+
     const queryMode = mode && mode.queryMode();
     const { isNative } = Lib.queryDisplayInfo(question.query());
     const isSidebarOpen = leftSidebar || rightSidebar;
@@ -301,13 +306,11 @@ class View extends Component {
             mode={queryMode}
           />
         </StyledDebouncedFrame>
-        {queryBuilderMode === "view" && (
-          <TimeseriesChrome
-            question={this.props.question}
-            updateQuestion={this.props.updateQuestion}
-            className="flex-no-shrink"
-          />
-        )}
+        <TimeseriesChrome
+          question={this.props.question}
+          updateQuestion={this.props.updateQuestion}
+          className="flex-no-shrink"
+        />
         <ViewFooter {...this.props} className="flex-no-shrink" />
       </QueryBuilderMain>
     );
