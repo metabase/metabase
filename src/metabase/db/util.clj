@@ -2,8 +2,7 @@
   "Utility functions for querying the application database."
   (:require
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.model :as t2.model])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -12,23 +11,7 @@
   [model]
   (isa? model :metabase/model))
 
-(defn qualify
-  "Returns a qualified field for [modelable] with [field-name]."
-  ^clojure.lang.Keyword [modelable field-name]
-  (if (vector? field-name)
-    [(qualify modelable (first field-name)) (second field-name)]
-    (let [model (t2.model/resolve-model modelable)]
-      (keyword (str (name (t2.model/table-name model)) \. (name field-name))))))
 
-(defn join
-  "Convenience for generating a HoneySQL `JOIN` clause.
-
-     (t2/select-pks-set FieldValues
-       (mdb/join [FieldValues :field_id] [Field :id])
-       :active true)"
-  [[source-entity fk] [dest-entity pk]]
-  {:left-join [(t2/table-name (t2.model/resolve-model dest-entity))
-               [:= (qualify source-entity fk) (qualify dest-entity pk)]]})
 
 (defmacro with-conflict-retry
   "Retry a database mutation a single time if it fails due to concurrent insertions.
