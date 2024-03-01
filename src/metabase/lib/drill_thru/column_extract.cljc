@@ -1,5 +1,21 @@
 (ns metabase.lib.drill-thru.column-extract
-  "TBD"
+  "Adds an expression clause based on the selected column and temporal unit.
+
+  Entry points:
+
+  - Column header
+
+  Requirements:
+
+  - Date column
+
+  Query transformation:
+
+  - Add an expression clause with the selected temporal unit.
+
+  Question transformation:
+
+  - None"
   (:require
     [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
     [metabase.lib.drill-thru.common :as lib.drill-thru.common]
@@ -15,7 +31,7 @@
     [metabase.shared.util.time :as shared.ut]))
 
 (mu/defn column-extract-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.column-extract]
-  "TBD"
+  "Adding an expression based on a clicked column."
   [query                       :- ::lib.schema/query
    stage-number                :- :int
    {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
@@ -27,11 +43,11 @@
             (lib.drill-thru.column-filter/filter-drill-adjusted-query query stage-number column column-ref))))
 
 (def column-extract-units
-  "TBD"
+  "Available extraction units for this drill."
   [:hour-of-day :day-of-month :day-of-week :month-of-year :quarter-of-year :year])
 
 (mu/defn column-extract-types :- [:sequential ::lib.schema.drill-thru/drill-thru.column-extract-type]
-  "TBD"
+  "Available extraction types for this drill."
   [{:keys [column]} :- [:and ::lib.schema.drill-thru/drill-thru
                    [:map [:type [:= :drill-thru/column-extract]]]]]
   (when (lib.types.isa/temporal? column)
@@ -48,7 +64,8 @@
   [_query _stage-number {:keys [unit]}]
   {:display-name (lib.temporal-bucket/describe-temporal-unit unit)})
 
-(defn case-expression
+(defn ^:private case-expression
+  "Creates a case expression with a condition for each value of the unit."
   [expression unit count]
   (lib.expression/case
     (->> (range 1 (inc count))
