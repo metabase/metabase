@@ -154,24 +154,17 @@ if (hasPremiumFeature("whitelabel")) {
             widget: SettingTextInput,
           },
           {
-            key: "-toggle-group",
-            tab: "conceal-metabase",
-            display_name: t`Homepage, Documentation and References`,
-            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-            description: t`Control the display of homepage visuals and greeting message plus other Metabase elements such as links to Metabase documentation and Metabase references in your instance.`,
-            type: "hidden",
-          },
-          {
             key: "show-metabase-links",
             tab: "conceal-metabase",
-            description: null,
+            display_name: t`Documentation and references`,
+            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+            description: t`Control the display of Metabase documentation and Metabase references in your instance.`,
             widget: SwitchWidget,
             props: {
               // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
               label: jt`Show links and references to Metabase ${(
                 <MetabaseLinksToggleDescription key="show-metabase-links-description-tooltip" />
               )}`,
-              mt: "-1rem",
             },
           },
           {
