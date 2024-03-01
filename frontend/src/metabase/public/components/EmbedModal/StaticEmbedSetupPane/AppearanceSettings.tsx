@@ -22,7 +22,7 @@ import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 const THEME_OPTIONS = [
-  { label: t`Light`, value: "light" },
+  { label: t`Light`, value:  "light" },
   { label: t`Dark`, value: "night" },
   { label: t`Transparent`, value: "transparent" },
 ] as const;

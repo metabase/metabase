@@ -1,0 +1,7 @@
+.DashboardThemeSelector--dropdown-button {
+    @apply tw-font-bold tw-bg-gray-900 tw-text-white tw-text-center tw-rounded;
+}
+
+.DashboardThemeSelector--dropdown-button:hover {
+    @apply tw-bg-gray-700;
+}

@@ -1,9 +1,9 @@
 .Page--container {
-  @apply tw-flex tw-flex-col tw-h-screen tw-bg-gray-800 tw-text-white tw-divide-y tw-divide-white;
+  @apply tw-flex tw-bg-gray-800 tw-flex-col tw-h-screen tw-text-white;
 }
 
 .Page--header {
-  @apply tw-flex tw-flex-row tw-items-center tw-justify-between tw-py-4 tw-px-8 tw-border-b tw-border-gray-200 tw-bg-gray-900 tw-shadow-2xl tw-z-50;
+  @apply tw-flex tw-flex-row tw-items-center tw-justify-between tw-py-4 tw-px-8 tw-bg-gray-900 tw-shadow-2xl tw-z-50;
 }
 
 .Page--footer {

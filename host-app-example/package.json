@@ -7,6 +7,7 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "localforage": "^1.10.0",
+    "lodash": "^4.17.21",
     "match-sorter": "^6.3.3",
     "metabase-embedding-sdk": "file:../resources/embedding-sdk",
     "react": "^18.2.0",

@@ -205,7 +205,7 @@ export const PublicDashboard = ({
         )
       : [];
 
-  return (
+   return (
     <EmbedFrame
       hasAbsolutePositioning={hasAbsolutePositioning}
       embedOptions={embedOptions}
