@@ -45,7 +45,7 @@ function getSelectedOptions(selectedValues: string[]): SelectItem[] {
   }));
 }
 
-export function getEffectiveOptions(
+export function getFieldAndSelectedOptions(
   fieldValues: FieldValue[],
   selectedValues: string[],
 ): SelectItem[] {
@@ -60,6 +60,19 @@ export function getEffectiveOptions(
   }, {});
 
   return Object.entries(mapping).map(([value, label]) => ({ value, label }));
+}
+
+export function getOptionsWithSearchValue(
+  options: SelectItem[],
+  searchValue: string,
+  isValueValid: (query: string) => boolean,
+) {
+  const isValid = isValueValid(searchValue);
+  const isExisting = options.some(({ label }) => label === searchValue);
+
+  return isValid && !isExisting
+    ? [{ value: searchValue, label: searchValue }, ...options]
+    : options;
 }
 
 export function isKeyColumn(column: Lib.ColumnMetadata) {

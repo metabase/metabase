@@ -22,8 +22,9 @@ interface FilterValuePickerProps<T> {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: T[];
-  autoFocus?: boolean;
-  compact?: boolean;
+  isAutoFocus?: boolean;
+  isCompact?: boolean;
+  isMultiple?: boolean;
   onChange: (newValues: T[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -31,7 +32,7 @@ interface FilterValuePickerProps<T> {
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
   placeholder: string;
-  canAddValue: (query: string) => boolean;
+  isValueValid: (query: string) => boolean;
 }
 
 function FilterValuePicker({
@@ -39,10 +40,11 @@ function FilterValuePicker({
   stageIndex,
   column,
   values: selectedValues,
-  placeholder,
-  autoFocus = false,
-  compact = false,
-  canAddValue,
+  placeholder = "",
+  isAutoFocus = false,
+  isCompact = false,
+  isMultiple = false,
+  isValueValid,
   onChange,
   onFocus,
   onBlur,
@@ -71,8 +73,10 @@ function FilterValuePicker({
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
-        autoFocus={autoFocus}
-        compact={compact}
+        isAutoFocus={isAutoFocus}
+        isCompact={isCompact}
+        isMultiple={isMultiple}
+        isValueValid={isValueValid}
         onChange={onChange}
       />
     );
@@ -88,8 +92,8 @@ function FilterValuePicker({
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
-        canAddValue={canAddValue}
-        autoFocus={autoFocus}
+        isAutoFocus={isAutoFocus}
+        isValueValid={isValueValid}
         onChange={onChange}
       />
     );
@@ -99,8 +103,8 @@ function FilterValuePicker({
     <StaticValuePicker
       selectedValues={selectedValues}
       placeholder={placeholder}
-      canAddValue={canAddValue}
-      autoFocus={autoFocus}
+      isAutoFocus={isAutoFocus}
+      isValueValid={isValueValid}
       onChange={onChange}
       onFocus={onFocus}
       onBlur={onBlur}
@@ -113,7 +117,7 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
-  const canAddValue = (query: string) => {
+  const isValueValid = (query: string) => {
     return query.trim().length > 0 && !values.includes(query);
   };
 
@@ -123,7 +127,7 @@ export function StringFilterValuePicker({
       column={column}
       values={values}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-      canAddValue={canAddValue}
+      isValueValid={isValueValid}
     />
   );
 }
@@ -134,7 +138,7 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<number>) {
-  const canAddValue = (query: string) => {
+  const isValueValid = (query: string) => {
     const number = parseFloat(query);
     return isFinite(number) && !values.includes(number);
   };
@@ -145,7 +149,7 @@ export function NumberFilterValuePicker({
       column={column}
       values={values.map(value => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      canAddValue={canAddValue}
+      isValueValid={isValueValid}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
     />
   );

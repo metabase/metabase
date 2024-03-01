@@ -5,10 +5,13 @@ import { t } from "ttag";
 import { MultiSelect } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import { getEffectiveOptions } from "../utils";
+import {
+  getOptionsWithSearchValue,
+  getFieldAndSelectedOptions,
+} from "../utils";
 
 import { SEARCH_DEBOUNCE } from "./constants";
-import { shouldSearch, getSearchValues, getOptimisticOptions } from "./utils";
+import { shouldSearch, getSearchValues } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -16,8 +19,8 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  canAddValue: (query: string) => boolean;
-  autoFocus?: boolean;
+  isAutoFocus?: boolean;
+  isValueValid: (query: string) => boolean;
   onChange: (newValues: string[]) => void;
 }
 
@@ -27,8 +30,8 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
-  canAddValue,
-  autoFocus,
+  isAutoFocus,
+  isValueValid,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
@@ -40,7 +43,7 @@ export function SearchValuePicker({
   );
 
   const options = useMemo(
-    () => getEffectiveOptions(fieldValues, selectedValues),
+    () => getFieldAndSelectedOptions(fieldValues, selectedValues),
     [fieldValues, selectedValues],
   );
 
@@ -61,12 +64,12 @@ export function SearchValuePicker({
 
   return (
     <MultiSelect
-      data={getOptimisticOptions(options, searchValue, canAddValue)}
+      data={getOptionsWithSearchValue(options, searchValue, isValueValid)}
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
       searchable
-      autoFocus={autoFocus}
+      autoFocus={isAutoFocus}
       aria-label={t`Filter value`}
       onChange={onChange}
       onSearchChange={handleSearchChange}

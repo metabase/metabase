@@ -7,8 +7,8 @@ import { MultiSelect } from "metabase/ui";
 interface StaticValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
-  canAddValue: (query: string) => boolean;
-  autoFocus?: boolean;
+  isAutoFocus?: boolean;
+  isValueValid: (query: string) => boolean;
   onChange: (newValues: string[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -17,8 +17,8 @@ interface StaticValuePickerProps {
 export function StaticValuePicker({
   selectedValues,
   placeholder,
-  canAddValue,
-  autoFocus,
+  isAutoFocus,
+  isValueValid,
   onChange,
   onFocus,
   onBlur,
@@ -49,7 +49,7 @@ export function StaticValuePicker({
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
 
-    const isValid = canAddValue(newSearchValue);
+    const isValid = isValueValid(newSearchValue);
     if (isValid) {
       onChange?.([...lastValues, newSearchValue]);
     } else {
@@ -64,7 +64,7 @@ export function StaticValuePicker({
       searchValue={searchValue}
       placeholder={placeholder}
       searchable
-      autoFocus={autoFocus}
+      autoFocus={isAutoFocus}
       aria-label={t`Filter value`}
       onChange={handleChange}
       onFocus={handleFocus}
