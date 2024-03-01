@@ -44,12 +44,6 @@
   (.isSame d1 d2 "year"))
 
 ;;; ---------------------------------------------- information -------------------------------------------------------
-
-(defn month-names
-  "Month names that vary by locale."
-  []
-  (moment/months))
-
 (defn first-day-of-week
   "The first day of the week varies by locale, but Metabase has a setting that overrides it.
   In CLJS, Moment is already configured with that setting."
@@ -178,8 +172,22 @@
       common/drop-trailing-time-zone
       (moment/utc moment/ISO_8601)))
 
+(defn ^:private format-extraction-unit
+  "Formats a date-time value given the temporal extraction unit.
+  If unit is not supported, returns nil."
+  [t unit]
+  (case unit
+    :day-of-week (.format t "dddd")
+    :month-of-year (.format t "MMM")
+    :minute-of-hour (.format t "m")
+    :hour-of-day (.format t "h A")
+    :day-of-month (.format t "D")
+    :day-of-year (.format t "DDD")
+    :week-of-year (.format t "w")
+    :quarter-of-year (.format t "[Q]Q")))
+
 (defn format-unit
-  "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
+  "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time.
    Time input formatting is only defined with time units."
   [input unit]
@@ -193,15 +201,8 @@
               time? (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
               (or date? date-time?) (coerce-local-date-time input))]
       (if (and t (.isValid t))
-        (case unit
-          :day-of-week (.format t "dddd")
-          :month-of-year (.format t "MMM")
-          :minute-of-hour (.format t "m")
-          :hour-of-day (.format t "h A")
-          :day-of-month (.format t "D")
-          :day-of-year (.format t "DDD")
-          :week-of-year (.format t "w")
-          :quarter-of-year (.format t "[Q]Q")
+        (or
+          (format-extraction-unit t unit)
           (cond
             time? (.format t "h:mm A")
             date? (.format t "MMM D, YYYY")
@@ -209,7 +210,9 @@
         input))
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
-      (str input))))
+      (or
+        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit)
+        (str input)))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.

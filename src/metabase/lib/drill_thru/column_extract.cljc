@@ -28,7 +28,7 @@
 
 (def column-extract-units
   "TBD"
-  [:hour-of-day :day-of-month :day-of-week :month :quarter :year])
+  [:hour-of-day :day-of-month :day-of-week :month-of-year :quarter-of-year :year])
 
 (mu/defn column-extract-types :- [:sequential ::lib.schema.drill-thru/drill-thru.column-extract-type]
   "TBD"
@@ -49,11 +49,12 @@
   {:display-name (lib.temporal-bucket/describe-temporal-unit unit)})
 
 (defn case-expression
-  [expression options]
+  [expression unit count]
   (lib.expression/case
-    (map-indexed (fn [index option]
-      [(lib.filter/= expression (inc index)) option])
-      options)
+    (->> (range 1 (inc count))
+         (map #(shared.ut/format-unit % unit))
+         (map-indexed (fn [index option]
+                        [(lib.filter/= expression (inc index)) option])))
    ""))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-extract
@@ -65,9 +66,7 @@
     (case unit
       :hour-of-day (lib.expression/get-hour column)
       :day-of-month (lib.expression/get-day column)
-      :day-of-week (lib.expression/get-day-of-week column)
-      :month (case-expression
-              (lib.expression/get-month column)
-              (shared.ut/month-names))
-      :quarter (lib.expression/get-quarter column)
+      :day-of-week (case-expression (lib.expression/get-day-of-week column) unit 7)
+      :month-of-year (case-expression (lib.expression/get-month column) unit 12)
+      :quarter-of-year (case-expression (lib.expression/get-quarter column) unit 4)
       :year (lib.expression/get-year column))))
