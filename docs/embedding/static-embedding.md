@@ -115,7 +115,7 @@ You can find a list of all embedded questions and dashboards from **Admin settin
 
 You can change the way an embedded question or dashboard looks in an iframe (which won't change how it looks in your Metabase instance).
 
-From the Click on the **Appearance** tab, and play around with the different appearance settings.
+When setting up a static embed, click on the **Appearance** tab, and play around with the different appearance settings.
 
 Settings include:
 
