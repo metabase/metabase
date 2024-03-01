@@ -14,7 +14,7 @@ export const TablesDivider = styled.span`
 export const TableInfoIcon = styled(_TableInfoIcon)`
   color: ${color("text-light")};
   visibility: visible;
-  font-size: 1rem;
+  font-size: min(1rem, 1em);
   padding: 0;
   margin-left: 0.5em;
   position: relative;
