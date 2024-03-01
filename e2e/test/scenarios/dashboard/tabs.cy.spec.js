@@ -41,6 +41,9 @@ import {
   filterWidget,
   popover,
   createDashboardWithTabs,
+  dashboardGrid,
+  modal,
+  addHeadingWhileEditing,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -176,6 +179,31 @@ describe("scenarios > dashboard > tabs", () => {
       [DASHBOARD_NUMBER_FILTER, 20],
       [DASHBOARD_LOCATION_FILTER, undefined],
     ]);
+  });
+
+  it("should handle canceling adding a new tab (#38055, #38278)", () => {
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
+
+    cy.findByTestId("edit-bar").button("Cancel").click();
+    modal().button("Discard changes").click();
+
+    // Reproduces #38055
+    dashboardGrid().within(() => {
+      cy.findByText(/There's nothing here/).should("not.exist");
+      getDashboardCards().should("have.length", 1);
+    });
+
+    // Reproduces #38278
+    editDashboard();
+    addHeadingWhileEditing("New heading");
+    saveDashboard();
+    dashboardGrid().within(() => {
+      cy.findByText("New heading").should("exist");
+      getDashboardCards().should("have.length", 2);
+    });
   });
 
   it("should allow undoing a tab deletion", () => {
