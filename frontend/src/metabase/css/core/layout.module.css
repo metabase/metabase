@@ -40,12 +40,6 @@
   display: block;
 }
 
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-block) {
-    display: block;
-  }
-}
-
 :global(.inline),
 .inline {
   display: inline;
@@ -54,12 +48,6 @@
 :global(.inline-block),
 .inline-block {
   display: inline-block;
-}
-
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-inline-block) {
-    display: inline-block;
-  }
 }
 
 :global(.table) {
@@ -91,12 +79,6 @@
   position: absolute;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-absolute) {
-    position: absolute;
-  }
-}
-
 :global(.top),
 .top {
   top: 0;
@@ -118,25 +100,6 @@
   :global(.wrapper.wrapper--trim),
   .wrapper.wrapper--trim {
     max-width: var(--md-width);
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.wrapper.wrapper--small),
-  .wrapper.wrapper--small {
-    max-width: var(--sm-width);
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.wrapper.lg-wrapper--trim) {
-    max-width: var(--lg-width);
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.wrapper.lg-wrapper--trim) {
-    max-width: var(--xl-width);
   }
 }
 
