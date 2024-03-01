@@ -11,6 +11,8 @@ jobs:
     strategy:
       matrix:
         version: [
+          # Major OSS upgrade
+          { source: v0.42.2, target: v0.48.7 },
           # OSS upgrade
           { source: v0.41.3.1, target: v0.42.2 },
           # EE upgrade

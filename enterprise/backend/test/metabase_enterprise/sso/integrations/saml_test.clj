@@ -102,7 +102,7 @@
 (defn successful-login?
   "Return true if the response indicates a successful user login"
   [resp]
-  (string? (get-in resp [:cookies @#'mw.session/metabase-session-cookie :value])))
+  (string? (get-in resp [:cookies mw.session/metabase-session-cookie :value])))
 
 (defn- do-with-some-validators-disabled
   "The sample responses all have `InResponseTo=\"_1\"` and invalid assertion signatures (they were edited by hand) so
@@ -272,6 +272,9 @@
 
 (defn- new-user-with-groups-in-separate-attribute-nodes-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user-with-groups-in-separate-attribute-nodes.xml"))
+
+(defn- saml-slo-test-response []
+  (saml-response-from-file "test_resources/saml-slo-test-response.xml"))
 
 (defn- saml-post-request-options [saml-response relay-state]
   {:request-options {:content-type     :x-www-form-urlencoded
@@ -665,3 +668,21 @@
           (#'saml.mt/fetch-or-create-user! {:first-name "Test"
                                             :last-name  "user"
                                             :email      "test1234@metabsae.com"})))))))
+
+(deftest logout-should-delete-session-test
+  (testing "Successful SAML SLO logouts should delete the user's session."
+    (let [session-id (str (random-uuid))]
+      (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
+                     :model/Session _ {:user_id (:id user) :id session-id}]
+        (with-saml-default-setup
+          (is (t2/exists? :model/Session :id session-id))
+          (let [req-options (-> (saml-post-request-options
+                                 (saml-slo-test-response)
+                                 (saml/str->base64 default-redirect-uri))
+                                ;; Client sends their session cookie during the SLO request redirect from the IDP.
+                                (assoc-in [:request-options :cookies mw.session/metabase-session-cookie :value] session-id))
+                response    (client-full-response :post 302 "/auth/sso/handle_slo" req-options)]
+            (is (str/blank? (get-in response [:cookies mw.session/metabase-session-cookie :value]))
+                "After a successful log-out, you don't have a session")
+            (is (not (t2/exists? :model/Session :id session-id))
+                "After a successful log-out, the session is deleted")))))))
