@@ -29,10 +29,10 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       cy.button("New segment").click();
 
-      cy.get(".GuiBuilder").findByText("Select a table").click();
+      cy.findByTestId("gui-builder").findByText("Select a table").click();
       popover().findByText("Orders").click();
 
-      cy.get(".GuiBuilder")
+      cy.findByTestId("gui-builder")
         .findByText("Add filters to narrow your answer")
         .click();
 

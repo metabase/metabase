@@ -228,12 +228,19 @@ export class GuiQueryEditor extends Component {
 
     return (
       <div
-        className={
-          "GuiBuilder-section GuiBuilder-data flex align-center arrow-right"
-        }
+        className={cx(
+          QueryBuilderS.GuiBuilderSection,
+          CS.flex,
+          CS.alignCenter,
+          "arrow-right",
+          QueryBuilderS.GuiBuilderData,
+        )}
       >
         <span
-          className={cx("GuiBuilder-section-label", QueryBuilderS.QueryLabel)}
+          className={cx(
+            QueryBuilderS.GuiBuilderSectionLabel,
+            QueryBuilderS.QueryLabel,
+          )}
         >{t`Data`}</span>
         {this.props.canChangeTable ? (
           <DatabaseSchemaAndTableDataSelector
@@ -260,11 +267,19 @@ export class GuiQueryEditor extends Component {
 
     return (
       <div
-        className="GuiBuilder-section GuiBuilder-filtered-by flex align-center"
+        className={cx(
+          QueryBuilderS.GuiBuilderFilteredBy,
+          QueryBuilderS.GuiBuilderSection,
+          CS.flex,
+          CS.alignCenter,
+        )}
         ref={this.filterSection}
       >
         <span
-          className={cx("GuiBuilder-section-label", QueryBuilderS.QueryLabel)}
+          className={cx(
+            QueryBuilderS.GuiBuilderSectionLabel,
+            QueryBuilderS.QueryLabel,
+          )}
         >{t`Filtered by`}</span>
         {this.renderFilters()}
       </div>
@@ -279,11 +294,21 @@ export class GuiQueryEditor extends Component {
 
     return (
       <div
-        className="GuiBuilder-section GuiBuilder-view flex align-center px1 pr2"
+        className={cx(
+          QueryBuilderS.GuiBuilderView,
+          QueryBuilderS.GuiBuilderSection,
+          CS.flex,
+          CS.alignCenter,
+          CS.px1,
+          CS.pr2,
+        )}
         ref="viewSection"
       >
         <span
-          className={cx("GuiBuilder-section-label", QueryBuilderS.QueryLabel)}
+          className={cx(
+            QueryBuilderS.GuiBuilderSectionLabel,
+            QueryBuilderS.QueryLabel,
+          )}
         >{t`View`}</span>
         {this.renderAggregation()}
       </div>
@@ -316,18 +341,19 @@ export class GuiQueryEditor extends Component {
   render() {
     return (
       <div
-        className={cx("GuiBuilder rounded shadowed", {
-          "GuiBuilder--expand": this.state.expanded,
+        className={cx(QueryBuilderS.GuiBuilder, CS.rounded, CS.shadowed, {
+          [QueryBuilderS.GuiBuilderExpand]: this.state.expanded,
         })}
+        data-testid="gui-builder"
         ref={this.guiBuilder}
       >
-        <div className="GuiBuilder-row flex">
+        <div className={cx(QueryBuilderS.GuiBuilderRow, CS.flex)}>
           {this.renderDataSection()}
           {this.renderFilterSection()}
         </div>
-        <div className="GuiBuilder-row flex flex-full">
+        <div className={cx(QueryBuilderS.GuiBuilderRow, CS.flex, CS.flexFull)}>
           {this.renderViewSection()}
-          <div className="flex-full" />
+          <div className={CS.flexFull} />
           {this.props.children}
         </div>
       </div>

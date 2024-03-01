@@ -156,7 +156,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
     });
 
     it("should be runnable with the None filter being ignored (metabase#20643)", () => {
-      cy.get(".RunButton").first().click();
+      cy.findByTestId("run-button").first().click();
 
       cy.wait("@dataset");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

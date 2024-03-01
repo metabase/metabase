@@ -132,7 +132,7 @@
   background-color: transparent;
 }
 
-:global(.QueryError) {
+.QueryError {
   flex-direction: column;
   justify-content: center;
   max-width: 500px;
@@ -140,34 +140,34 @@
   margin-right: auto;
 }
 
-:global(.QueryError-image) {
+.QueryErrorImage {
   background-repeat: no-repeat;
   margin-bottom: 1rem;
 }
 
-:global(.QueryError-image--noRows) {
+.QueryErrorImageNoRows {
   width: 120px;
   height: 120px;
   background-image: url("~assets/img/no_results.svg");
 }
 
-:global(.QueryError-image--queryError) {
+.QueryErrorImageQueryError {
   width: 120px;
   height: 120px;
   background-image: url("~assets/img/no_understand.svg");
 }
 
-:global(.QueryError-image--serverError) {
+.QueryErrorImageServerError {
   width: 120px;
   height: 148px;
   background-image: url("~assets/img/blown_up.svg");
 }
 
-:global(.QueryError-messageText) {
+.QueryErrorMessageText {
   line-height: 1.4;
 }
 
-:global(.QueryError-adminEmail) {
+.QueryErrorAdminEmail {
   position: relative;
   display: inline-block;
   border-radius: var(--default-border-radius);
@@ -176,7 +176,7 @@
   padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
 }
 
-:global(.QueryError-adminEmail:before) {
+.QueryErrorAdminEmail:before {
   content: "Admin Email";
   font-size: 10px;
   text-align: center;
@@ -191,17 +191,17 @@
   margin-left: -41px; /* ugh */
 }
 
-:global(.QueryError2) {
+.QueryError2 {
   padding-top: 4rem;
   margin-left: auto;
   margin-right: auto;
 }
 
-:global(.QueryError2-details) {
+.QueryError2Details {
   max-width: 500px;
 }
 
-:global(.GuiBuilder) {
+.GuiBuilder {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -214,47 +214,50 @@
 
 /* for medium breakpoint only expand if data reference is not shown */
 @media screen and (--breakpoint-min-md) {
-  :global(.GuiBuilder) {
+  .GuiBuilder {
     font-size: 1em;
   }
 }
 
 /* un-expanded (default) */
-:global(.GuiBuilder-row) {
+.GuiBuilderRow {
   border-bottom: 1px solid var(--color-border);
 }
-:global(.GuiBuilder-row:last-child) {
+.GuiBuilderRow:last-child {
   border-bottom-color: transparent;
 }
-:global(.GuiBuilder-data) {
+.GuiBuilderData {
   border-right: 1px solid var(--color-border);
+
+  z-index: 1; /* moved the arrow thingy above the filter outline */
 }
-:global(.GuiBuilder-filtered-by) {
+
+.GuiBuilderFilteredBy {
   border-right: 1px solid transparent;
 }
-:global(.GuiBuilder-view) {
+.GuiBuilderView {
   border-right: 1px solid var(--color-border);
 }
 
 /* expanded */
-:global(.GuiBuilder.GuiBuilder--expand) {
+.GuiBuilder.GuiBuilderExpand {
   flex-direction: row;
 }
-:global(.GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child) {
+.GuiBuilder.GuiBuilderExpand .GuiBuilderRow:last-child {
   border-right-color: transparent;
   border-bottom-color: var(--color-border);
 }
-:global(.GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by) {
+.GuiBuilder.GuiBuilderExpand .GuiBuilderFilteredBy {
   border-right-color: var(--color-border);
 }
 
-:global(.GuiBuilder-section) {
+.GuiBuilderSection {
   position: relative;
   min-height: 55px;
   min-width: 100px;
 }
 
-:global(.GuiBuilder-section-label) {
+.GuiBuilderSectionLabel {
   background-color: white;
   position: absolute;
   top: -7px;
@@ -263,43 +266,33 @@
   padding-right: 10px;
 }
 
-/* DATA SECTION */
-
-:global(.GuiBuilder-data) {
-  z-index: 1; /* moved the arrow thingy above the filter outline */
-}
-
 /* VISUALIZATION SETTINGS */
 
-:global(.VisualizationSettings .GuiBuilder-section) {
-  border-right: none !important;
-}
-
-:global(.RunButton) {
+.RunButton {
   opacity: 1;
   transition: transform 0.25s, opacity 0.25s;
 }
 
-:global(.RunButton.RunButton--compact) {
+.RunButton.RunButtonCompact {
   padding: 16px 32px;
 }
 
-:global(.RunButton.RunButton--hidden) {
+.RunButton.RunButtonHidden {
   transform: translateY(-20px);
   opacity: 0;
 }
 
 @media (prefers-reduced-motion) {
-  :global(.RunButton),
-  :global(.RunButton.RunButton--compact),
-  :global(.RunButton.RunButton--hidden) {
+  .RunButton,
+  .RunButton.RunButtonCompact,
+  .RunButton.RunButtonHidden {
     transition-duration: 10ms;
   }
 }
 
 /* DATA REFERENCE */
 
-:global(.ObjectJSON) {
+.ObjectJSON {
   max-height: 200px;
   overflow: scroll;
   padding: 1em;
@@ -309,12 +302,12 @@
   white-space: pre-wrap;
 }
 
-:global(.List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger),
-:global(.List-item--selected .FieldList-grouping-trigger) {
+:global(.List-item:not(.List-item--disabled):hover) .FieldListGroupingTrigger,
+:global(.List-item--selected) .FieldListGroupingTrigger {
   visibility: visible;
 }
 
-:global(.QuestionTooltipTarget) {
+.QuestionTooltipTarget {
   color: var(--color-text-light);
   border: 2px solid currentColor;
   border-radius: 99px;
@@ -329,7 +322,7 @@
   cursor: pointer;
 }
 
-:global(.QuestionTooltipTarget:after) {
+.QuestionTooltipTarget:after {
   content: "?";
   font-size: 13px;
   font-weight: bold;
