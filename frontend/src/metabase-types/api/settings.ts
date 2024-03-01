@@ -282,7 +282,7 @@ interface PublicSettings {
   "site-url": string;
   "snowplow-enabled": boolean;
   "snowplow-url": string;
-  "start-of-week"?: DayOfWeekId;
+  "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
   version: Version;
   "version-info-last-checked": string | null;
