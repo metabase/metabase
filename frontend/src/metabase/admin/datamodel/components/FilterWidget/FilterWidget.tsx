@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { Component } from "react";
 import * as React from "react";
 
 import { Filter as FilterComponent } from "metabase/admin/datamodel/components/Filter";
 import Popover from "metabase/components/Popover";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Filter from "metabase-lib/queries/structured/Filter";
 
@@ -49,7 +51,10 @@ export const filterWidgetFilterRenderer = ({
     {values.length > 0 && (
       <div className="flex align-center flex-wrap">
         {values.map((value, valueIndex) => (
-          <div key={valueIndex} className="Filter-section Filter-section-value">
+          <div
+            key={valueIndex}
+            className={cx(QueryBuilderS.FilterSection, "Filter-section-value")}
+          >
             <QueryOption className="QueryOption">{value}</QueryOption>
           </div>
         ))}

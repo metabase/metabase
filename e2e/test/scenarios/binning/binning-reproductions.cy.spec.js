@@ -240,7 +240,7 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").findByText("Count");
+    cy.findByTestId("visualization-root").findByText("Count");
 
     cy.findByTestId("sidebar-right")
       .findAllByText("Created At")
@@ -248,7 +248,7 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("visualization-root").within(() => {
       // ALl of these are implicit assertions and will fail if there's more than one string
       cy.findByText("Count");
       cy.findByText("Created At: Month");

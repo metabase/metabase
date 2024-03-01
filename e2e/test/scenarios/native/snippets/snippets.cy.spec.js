@@ -116,7 +116,7 @@ describe("scenarios > question > snippets", () => {
       );
     });
 
-    cy.get(".Visualization").as("results").findByText("37.65");
+    cy.findByTestId("visualization-root").as("results").findByText("37.65");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly

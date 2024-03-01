@@ -43,7 +43,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
         SQLFilter.runQuery();
 
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("visualization-root").within(() => {
           cy.findByText(representativeResult);
           cy.findByText("Toucan").should("not.exist");
         });
@@ -71,7 +71,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
         SQLFilter.runQuery();
 
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("visualization-root").within(() => {
           cy.findByText(representativeResult);
           cy.findByText("Toucan").should("not.exist");
         });

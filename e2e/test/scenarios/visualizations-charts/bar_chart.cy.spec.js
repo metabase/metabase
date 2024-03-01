@@ -162,7 +162,9 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("not.exist");
+          cy.findByTestId("visualization-root")
+            .findByText(columnName)
+            .should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
           cy.get(".enable-dots").should("have.length", 3);
         });
@@ -177,7 +179,9 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("exist");
+          cy.findByTestId("visualization-root")
+            .findByText(columnName)
+            .should("exist");
           cy.findAllByTestId("legend-item").should("have.length", 4);
           cy.get(".enable-dots").should("have.length", 4);
         });

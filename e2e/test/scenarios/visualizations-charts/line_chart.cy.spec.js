@@ -128,7 +128,8 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".Visualization .enable-dots")
+    cy.findByTestId("visualization-root")
+      .get(".enable-dots")
       .last()
       .find(".dot")
       .eq(3)
@@ -595,7 +596,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.get(".Visualization")
+    cy.findByTestId("visualization-root")
       .trigger("mousedown", 180, 200)
       .trigger("mousemove", 180, 200)
       .trigger("mouseup", 220, 200);

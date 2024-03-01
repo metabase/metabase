@@ -8,6 +8,8 @@ import { t } from "ttag";
 
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -126,8 +128,10 @@ export class GuiQueryEditor extends Component {
     }
 
     return (
-      <div className={cx("Query-section", { disabled: !enabled })}>
-        <div className="Query-filters">{filterList}</div>
+      <div
+        className={cx(QueryBuilderS.QuerySection, { [CS.disabled]: !enabled })}
+      >
+        <div className={QueryBuilderS.QueryFilters}>{filterList}</div>
         <div className="mx2">
           <PopoverWithTrigger
             id="FilterPopover"
@@ -212,7 +216,7 @@ export class GuiQueryEditor extends Component {
     } else {
       // TODO: move this into AggregationWidget?
       return (
-        <div className="Query-section disabled">
+        <div className={cx(QueryBuilderS.QuerySection, CS.disabled)}>
           <a className="QueryOption p1 flex align-center">{t`Raw data`}</a>
         </div>
       );
@@ -228,7 +232,9 @@ export class GuiQueryEditor extends Component {
           "GuiBuilder-section GuiBuilder-data flex align-center arrow-right"
         }
       >
-        <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
+        <span
+          className={cx("GuiBuilder-section-label", QueryBuilderS.QueryLabel)}
+        >{t`Data`}</span>
         {this.props.canChangeTable ? (
           <DatabaseSchemaAndTableDataSelector
             selectedTableId={Lib.sourceTableOrCardId(query)}
@@ -257,7 +263,9 @@ export class GuiQueryEditor extends Component {
         className="GuiBuilder-section GuiBuilder-filtered-by flex align-center"
         ref={this.filterSection}
       >
-        <span className="GuiBuilder-section-label Query-label">{t`Filtered by`}</span>
+        <span
+          className={cx("GuiBuilder-section-label", QueryBuilderS.QueryLabel)}
+        >{t`Filtered by`}</span>
         {this.renderFilters()}
       </div>
     );
@@ -274,7 +282,9 @@ export class GuiQueryEditor extends Component {
         className="GuiBuilder-section GuiBuilder-view flex align-center px1 pr2"
         ref="viewSection"
       >
-        <span className="GuiBuilder-section-label Query-label">{t`View`}</span>
+        <span
+          className={cx("GuiBuilder-section-label", QueryBuilderS.QueryLabel)}
+        >{t`View`}</span>
         {this.renderAggregation()}
       </div>
     );

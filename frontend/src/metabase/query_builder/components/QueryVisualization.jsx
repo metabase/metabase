@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
@@ -75,12 +76,13 @@ export default class QueryVisualization extends Component {
         <div
           className={cx(
             CS.spread,
-            "Visualization",
+            QueryBuilderS.Visualization,
             {
-              "Visualization--loading": isRunning,
+              [QueryBuilderS.VisualizationLoading]: isRunning,
             },
             CS.z1,
           )}
+          data-testid="visualization-root"
         >
           {result?.error ? (
             <VisualizationError
@@ -118,13 +120,15 @@ export const VisualizationRunningState = ({
   <div
     className={cx(
       className,
-      "Loading flex flex-column layout-centered text-brand",
+      QueryBuilderS.Loading,
+      CS.flex,
+      "flex-column",
+      CS.layoutCentered,
+      CS.textBrand,
     )}
   >
     <LoadingSpinner />
-    <h2 className="Loading-message text-brand text-uppercase my3">
-      {loadingMessage}
-    </h2>
+    <h2 className="text-brand text-uppercase my3">{loadingMessage}</h2>
   </div>
 );
 
@@ -139,9 +143,16 @@ export const VisualizationDirtyState = ({
   hidden,
 }) => (
   <div
-    className={cx(className, "Loading flex flex-column layout-centered", {
-      "Loading--hidden pointer-events-none": hidden,
-    })}
+    className={cx(
+      className,
+      QueryBuilderS.Loading,
+      CS.flex,
+      "flex-column layout-centered",
+      {
+        [QueryBuilderS.LoadingHidden]: hidden,
+        "pointer-events-none": hidden,
+      },
+    )}
   >
     <RunButtonWithTooltip
       className="py2 px3 shadowed"

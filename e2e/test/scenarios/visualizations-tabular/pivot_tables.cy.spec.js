@@ -49,14 +49,14 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("visualization-root").within(() => {
       assertOnPivotFields();
     });
   });
 
   it("should correctly display saved question", () => {
     createTestQuestion();
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("visualization-root").within(() => {
       assertOnPivotFields();
     });
 
@@ -78,7 +78,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.contains(`Started from ${QUESTION_NAME}`);
 
     cy.log("Assertions on a table itself");
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("visualization-root").within(() => {
       cy.findByText(/Users? → Source/);
       cy.findByText("783"); // Affiliate - Doohickey
       cy.findByText("986"); // Twitter - Gizmo
@@ -149,7 +149,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("Drag fields here");
 
     cy.log("Implicit assertions on a table itself");
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("visualization-root").within(() => {
       cy.findByText(/Products? → Category/);
       cy.findByText(/Users? → Source/);
       cy.findByText("Count");
@@ -176,7 +176,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       visualization_settings: {},
     });
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("visualization-root").within(() => {
       cy.findByText("Subtotal");
       cy.findByText("Count");
       cy.findByText("2,720");
@@ -391,7 +391,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.get("input[id=column_title]").clear().type("ModifiedTITLE").blur();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("visualization-root").within(() => {
       cy.findByText("ModifiedTITLE");
     });
   });
@@ -421,7 +421,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("Percent").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("visualization-root").within(() => {
       cy.findByText("78,300%");
     });
   });
@@ -776,7 +776,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     cy.wait("@datasetPivot");
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("visualization-root").within(() => {
       cy.contains("Row totals");
       cy.findByText("333"); // Row totals for 2024
       cy.findByText("Grand totals");

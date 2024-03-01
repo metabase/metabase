@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import Popover from "metabase/components/Popover";
 import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Icon } from "metabase/ui";
 
 export default class SelectionModule extends Component {
@@ -102,9 +103,8 @@ export default class SelectionModule extends Component {
 
       const items = sourceItems.map(function (item, index) {
         const display = item ? item[this.props.display] || item : item;
-        const itemClassName = cx({
-          SelectionItem: true,
-          "SelectionItem--selected": selection === display,
+        const itemClassName = cx(QueryBuilderS.SelectionItem, {
+          [QueryBuilderS.SelectionItemSelected]: selection === display,
         });
         let description = null;
         if (
@@ -113,7 +113,7 @@ export default class SelectionModule extends Component {
           item[this.props.descriptionKey]
         ) {
           description = (
-            <div className="SelectionModule-description">
+            <div className={QueryBuilderS.SelectionModuleDescription}>
               {item[this.props.descriptionKey]}
             </div>
           );
@@ -127,7 +127,9 @@ export default class SelectionModule extends Component {
           >
             <Icon name="check" size={12} />
             <div className="flex-full">
-              <div className="SelectionModule-display">{display}</div>
+              <div className={QueryBuilderS.SelectionModuleDisplay}>
+                {display}
+              </div>
               {description}
             </div>
           </li>
@@ -137,13 +139,13 @@ export default class SelectionModule extends Component {
       if (!isExpanded && items.length !== this.props.items.length) {
         items.push(
           <li
-            className={cx("SelectionItem", CS.borderTop)}
+            className={cx(QueryBuilderS.SelectionItem, CS.borderTop)}
             onClick={this._expand}
             key="expand"
           >
             <Icon name="chevrondown" size={12} />
             <div>
-              <div className="SelectionModule-display">
+              <div className={QueryBuilderS.SelectionModuleDisplay}>
                 {this.props.expandedTitle || t`Advanced...`}
               </div>
             </div>
@@ -186,19 +188,25 @@ export default class SelectionModule extends Component {
 
   renderPopover(selection) {
     if (this.state.open) {
-      const itemListClasses = cx("SelectionItems", {
-        "SelectionItems--open": this.state.open,
-        "SelectionItems--expanded": this.state.expanded,
+      const itemListClasses = cx(QueryBuilderS.SelectionItems, {
+        [QueryBuilderS.SelectionItemsOpen]: this.state.open,
+        [QueryBuilderS.SelectionItemsExpanded]: this.state.expanded,
       });
 
       return (
         <Popover
           target={this.rootRef.current}
-          className={"SelectionModule " + this.props.className}
+          className={cx(QueryBuilderS.SelectionModule, this.props.className)}
           onClose={this.onClose}
         >
           <div className={itemListClasses}>
-            <ul className="SelectionList scroll-show scroll-y">
+            <ul
+              className={cx(
+                QueryBuilderS.SelectionList,
+                "scroll-show",
+                CS.scrollY,
+              )}
+            >
               {this._listItems(selection)}
             </ul>
           </div>
@@ -219,8 +227,7 @@ export default class SelectionModule extends Component {
     let remove;
     const removeable = !!this.props.remove;
 
-    const moduleClasses = cx({
-      SelectionModule: true,
+    const moduleClasses = cx(QueryBuilderS.SelectionModule, {
       selected: selection,
       removeable: removeable,
     });

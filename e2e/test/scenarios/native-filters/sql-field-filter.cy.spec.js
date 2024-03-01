@@ -120,14 +120,14 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.log("the default value should apply");
       FieldFilter.addDefaultStringFilter("2");
       SQLFilter.runQuery();
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("visualization-root").within(() => {
         cy.findByText("Small Marble Shoes");
       });
 
       cy.log("the default value should not apply when the value is cleared");
       clearFilterWidget();
       SQLFilter.runQuery();
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("visualization-root").within(() => {
         cy.findByText("Small Marble Shoes");
         cy.findByText("Rustic Paper Wallet");
       });
@@ -176,7 +176,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("visualization-root").within(() => {
         cy.findByText("111 Leupp Road");
       });
     });

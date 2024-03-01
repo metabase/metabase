@@ -9,6 +9,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
@@ -360,7 +361,7 @@ class View extends Component {
     return (
       <div className="full-height">
         <QueryBuilderViewRoot
-          className="QueryBuilder"
+          className={QueryBuilderS.QueryBuilder}
           data-testid="query-builder-root"
         >
           {isHeaderVisible && this.renderHeader()}

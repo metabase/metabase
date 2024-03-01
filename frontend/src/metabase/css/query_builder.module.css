@@ -4,70 +4,67 @@
 }
 
 /* a section of the graphical query itself */
-:global(.Query-section) {
+.QuerySection {
   display: flex;
   align-items: center;
 }
 
-:global(.Query-label) {
+.QueryLabel {
   text-transform: uppercase;
   font-size: 10px;
   font-weight: 700;
   color: var(--color-text-medium);
 }
 
-:global(.Query-filters) {
+.QueryFilters {
   max-width: 400px;
 }
 
-:global(.Query-filterList) {
+.QueryFilterList {
   display: flex;
   overflow-y: hidden;
   white-space: nowrap;
 }
 
-:global(.Filter-section) {
+.FilterSection {
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-:global(.TooltipFilterList .Query-filterList) {
+.TooltipFilterList .QueryFilterList {
   flex-direction: column;
 }
 
-:global(.TooltipFilterList .Query-section) {
+.TooltipFilterList .QuerySection {
   margin-left: -0.5rem;
 }
 
-/*
-    @selectionmodule
-*/
-:global(.SelectionModule) {
+.SelectionModule {
   color: var(--color-brand);
 }
 
-:global(.SelectionList) {
+.SelectionList {
   padding-top: 5px;
   overflow-y: auto;
   max-height: 340px;
 }
 
-:global(.SelectionItems) {
+.SelectionItems {
   max-width: 320px;
 }
 
-:global(.SelectionItems.SelectionItems--open) {
+.SelectionItems.SelectionItemsOpen {
   opacity: 1;
   transition: opacity 0.3s linear;
   pointer-events: all;
 }
 
-:global(.SelectionItems.SelectionItems--expanded) {
+.SelectionItems.SelectionItemsExpanded {
   max-height: inherit;
 }
 
-:global(.SelectionItem) {
+.SelectionItem {
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -75,67 +72,63 @@
   background-color: var(--color-bg-white);
 }
 
-:global(.SelectionItem:hover) {
+.SelectionItem:hover {
   background-color: currentColor;
 }
 
-:global(.SelectionItem .Icon) {
+.SelectionItem :global(.Icon) {
   margin-left: 0.5rem;
   margin-right: 0.75rem;
   color: currentcolor;
 }
 
-:global(.SelectionItem .Icon-check) {
+.SelectionItem :global(.Icon-check) {
   opacity: 0;
 }
 
-:global(.SelectionItem .Icon-chevrondown) {
+.SelectionItem :global(.Icon-chevrondown) {
   opacity: 1;
 }
 
-:global(.SelectionItem:hover .Icon) {
+.SelectionItem:hover :global(.Icon) {
   color: var(--color-text-white) !important;
 }
 
-:global(.SelectionItem:hover .SelectionModule-display) {
+.SelectionItem:hover .SelectionModuleDisplay {
   color: var(--color-text-white);
 }
 
-:global(.SelectionItem:hover .SelectionModule-description) {
+.SelectionItem:hover .SelectionModuleDescription {
   color: var(--color-text-white);
 }
 
-:global(.SelectionItem.SelectionItem--selected .Icon-check) {
+.SelectionItem.SelectionItemSelected :global(.Icon-check) {
   opacity: 1;
 }
 
-:global(.SelectionModule-display) {
+.SelectionModuleDisplay {
   color: currentColor;
   margin-bottom: 0.25em;
 }
 
-:global(.SelectionModule-description) {
+.SelectionModuleDescription {
   color: var(--color-text-medium);
   font-size: 0.8rem;
 }
 
-:global(.Visualization) {
+.Visualization {
   transition: background 0.3s linear;
 }
 
-:global(.Visualization.Visualization--loading) {
+.Visualization.VisualizationLoading {
   transition: background 0.3s linear;
 }
 
-:global(.Visualization.Visualization--error) {
-  justify-content: center;
-}
-
-:global(.Loading) {
+.Loading {
   background-color: color-mod(var(--color-bg-white) alpha(-28%));
   transition: opacity 0.5s;
 }
-:global(.Loading.Loading--hidden) {
+.Loading.LoadingHidden {
   background-color: transparent;
 }
 
@@ -343,6 +336,6 @@
 }
 
 /* need to do this ugliness to override the locally scoped font size from Scalar.css */
-:global(.QueryBuilder .ScalarValue) {
+.QueryBuilder :global(.ScalarValue) {
   font-size: 5em;
 }
