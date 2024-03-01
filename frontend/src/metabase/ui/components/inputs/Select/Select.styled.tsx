@@ -22,19 +22,24 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     styles: (theme, _, { size = "md" }) => ({
+      ...getSelectDropdownOverrides(),
       ...getSelectInputOverrides(theme, size),
       ...getSelectItemsOverrides(theme, size),
-      // For epic (metabase#38699)
-      dropdown: {
-        ">div": {
-          maxHeight: "none !important",
-        },
-        padding: 0,
-        overflow: "auto",
-      },
     }),
   },
 });
+
+export const getSelectDropdownOverrides = (): Record<string, CSSObject> => {
+  return {
+    dropdown: {
+      display: "flex",
+      flexDirection: "column",
+      ">div": {
+        minHeight: 0,
+      },
+    },
+  };
+};
 
 export const getSelectInputOverrides = (
   theme: MantineTheme,
