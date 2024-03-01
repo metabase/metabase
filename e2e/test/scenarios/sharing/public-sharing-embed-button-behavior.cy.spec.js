@@ -98,7 +98,7 @@ import {
 
             openPublicLinkPopoverFromMenu();
 
-            assertValidPublicLink({ resource });
+            assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
           });
         });
 
@@ -123,7 +123,7 @@ import {
 
             openPublicLinkPopoverFromMenu();
 
-            assertValidPublicLink({ resource });
+            assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
             cy.signInAsNormalUser();
 
@@ -274,7 +274,7 @@ describe("#39152 sharing an unsaved question", () => {
 
     openNewPublicLinkDropdown("card");
 
-    assertValidPublicLink({ resource: "question" });
+    assertValidPublicLink({ resource: "question", shouldHaveRemoveLink: true });
   });
 });
 
@@ -840,7 +840,7 @@ function enableEmbeddingForResource({ resource, id }) {
   });
 }
 
-function assertValidPublicLink({ resource, shouldHaveRemoveLink = true }) {
+function assertValidPublicLink({ resource, shouldHaveRemoveLink }) {
   const regex = new RegExp(
     `https?:\\/\\/[^\\/]+\\/public\\/${resource}\\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(\\.csv|\\.json|\\.xlsx)?`,
   );
