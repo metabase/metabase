@@ -30,6 +30,7 @@
   (:require
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.db.setup :as mdb.setup]
    [metabase.db.spec :as mdb.spec]
    [potemkin :as p]))
@@ -51,7 +52,11 @@
 
  [mdb.spec
   make-subname
-  spec])
+  spec]
+
+ [mdb.connection-pool-setup
+  recent-activity?]
+ )
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; [[mdb.connection/*application-db*]] (or its data source)
