@@ -6,7 +6,6 @@
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db :as mdb]
-   [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
    [metabase.models.setting :refer [defsetting]]
@@ -125,11 +124,11 @@
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
-  (when (contains? #{:mysql :h2} mdb.env/db-type)
+  (when (contains? #{:mysql :h2} (mdb/db-type))
     (t2/update! :model/Database audit-db-id {:engine "postgres"})
-    (when (= :mysql mdb.env/db-type)
+    (when (= :mysql (mdb/db-type))
       (t2/update! :model/Table {:db_id audit-db-id} {:schema "public"}))
-    (when (= :h2 mdb.env/db-type)
+    (when (= :h2 (mdb/db-type))
       (t2/update! :model/Table {:db_id audit-db-id} {:schema [:lower :schema] :name [:lower :name]})
       (t2/update! :model/Field
                   {:table_id
@@ -142,12 +141,12 @@
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine]}]
-  (when (not= engine mdb.env/db-type)
+  (when (not= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
-    (t2/update! :model/Database audit-db-id {:engine (name mdb.env/db-type)})
-    (when (= :mysql mdb.env/db-type)
+    (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
+    (when (= :mysql (mdb/db-type))
       (t2/update! :model/Table {:db_id audit-db-id} {:schema nil}))
-    (when (= :h2 mdb.env/db-type)
+    (when (= :h2 (mdb/db-type))
       (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
       (t2/update! :model/Field
                   {:table_id
@@ -156,7 +155,7 @@
                      :from [(t2/table-name :model/Table)]
                      :where [:= :db_id audit-db-id]}]}
                   {:name [:upper :name]}))
-    (log/infof "Adjusted Audit DB to match host engine: %s" (name mdb.env/db-type))))
+    (log/infof "Adjusted Audit DB to match host engine: %s" (name (mdb/db-type)))))
 
 (def ^:private analytics-dir-resource
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
@@ -270,11 +269,11 @@
       (nil? audit-db)
       (u/prog1 ::installed
        (log/info "Installing Audit DB...")
-       (install-database! mdb.env/db-type perms/audit-db-id))
+       (install-database! (mdb/db-type) perms/audit-db-id))
 
-      (not= mdb.env/db-type (:engine audit-db))
+      (not= (mdb/db-type) (:engine audit-db))
       (u/prog1 ::updated
-       (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name mdb.env/db-type))
+       (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name (mdb/db-type)))
        (adjust-audit-db-to-host! audit-db))
 
       :else
