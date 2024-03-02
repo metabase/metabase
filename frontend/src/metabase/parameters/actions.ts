@@ -138,13 +138,13 @@ const loadDashboardParameterValues =
   async (request: DashboardParameterValuesRequestInput) => {
     const { values, has_more_values } = request.query
       ? await dispatch(
-          dashboardApi.endpoints.dashboardParameterValues.initiate(request),
+          dashboardApi.endpoints.dashboardParameterSearch.initiate(request),
           // @ts-expect-error -- TODO: get better dispatch typings...
           { subscribe: false },
           // @ts-expect-error -- TODO: get better dispatch typings...
         ).unwrap()
       : await dispatch(
-          dashboardApi.endpoints.dashboardParameterSearch.initiate(request),
+          dashboardApi.endpoints.dashboardParameterValues.initiate(request),
           // @ts-expect-error -- TODO: get better dispatch typings...
           { subscribe: false },
           // @ts-expect-error -- TODO: get better dispatch typings...
