@@ -1,9 +1,8 @@
 (ns metabase.cmd.migrate
   (:require
-   [metabase.db :as mdb]
-   [metabase.db.setup :as mdb.setup]))
+   [metabase.db :as mdb]))
 
 (defn migrate!
   "Migrate the Metabase application DB."
   [direction]
-  (mdb.setup/migrate! (mdb/db-type) (mdb/data-source) (keyword direction)))
+  (mdb/migrate! (mdb/db-type) (mdb/data-source) (keyword direction)))

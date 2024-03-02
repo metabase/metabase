@@ -50,12 +50,15 @@
   data-source
   get-connection]
 
+ [mdb.connection-pool-setup
+  recent-activity?]
+
+ [mdb.setup
+  migrate!]
+
  [mdb.spec
   make-subname
   spec]
-
- [mdb.connection-pool-setup
-  recent-activity?]
  )
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on

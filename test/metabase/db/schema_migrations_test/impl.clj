@@ -16,7 +16,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
-   [metabase.db.setup :as mdb.setup]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -226,7 +225,7 @@
                  :down
                  (do
                   (assert (int? version), "Downgrade requires a version")
-                  (mdb.setup/migrate! driver (mdb/data-source) :down version)))))]
+                  (mdb/migrate! driver (mdb/data-source) :down version)))))]
      (f migrate)))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 

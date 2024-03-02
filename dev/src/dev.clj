@@ -50,7 +50,6 @@
    [metabase.core :as mbc]
    [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]
-   [metabase.db.setup :as mdb.setup]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -249,8 +248,8 @@
   ([]
    (migrate! :up))
   ([direction & [version]]
-   (mdb.setup/migrate! (mdb/db-type) (mdb/data-source)
-                       direction version)))
+   (mdb/migrate! (mdb/db-type) (mdb/data-source)
+                 direction version)))
 
 (methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers

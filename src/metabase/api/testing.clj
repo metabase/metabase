@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.db.setup :as mdb.setup]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms])
@@ -89,7 +88,7 @@
   ;; a bunch of time initializing Liquibase and checking for unrun migrations for every test when we don't need to. --
   ;; Cam
   (when config/is-dev?
-    (mdb.setup/migrate! (mdb/db-type) (mdb/app-db) :up)))
+    (mdb/migrate! (mdb/db-type) (mdb/app-db) :up)))
 
 (defn- restore-snapshot! [snapshot-name]
   (assert-h2 (mdb/app-db))
