@@ -191,6 +191,7 @@ export const PublicLinksActionListing = connect(mapStateToProps)(
 
 export const EmbeddedResources = () => {
   const dispatch = useDispatch();
+
   return (
     <Stack spacing="md" className="flex-full">
       <div>

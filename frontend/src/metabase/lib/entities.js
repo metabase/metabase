@@ -75,7 +75,6 @@ import { normalize, denormalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 
-import { Api } from "metabase/api";
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import {
   combineReducers,
@@ -116,7 +115,7 @@ export function createEntity(def) {
     entity.api = {};
   }
   if (entity.path) {
-    const path = entity.path; // Flow not recognizing path won't be undefined
+    const path = entity.path;
     entity.api = {
       list: GET(`${path}`),
       create: POST(`${path}`),
@@ -208,14 +207,16 @@ export function createEntity(def) {
   const invalidateRtkListTagById = dispatch => {
     if (entity.rtkEntityTagName) {
       const tag = { type: entity.rtkEntityTagName, id: "LIST" };
-      dispatch(Api.util.invalidateTags([tag]));
+      // TODO: solve differently
+      dispatch(import("metabase/api").utils.invalidateTags([tag]));
     }
   };
 
   const invalidateRtkTagByIds = (dispatch, ids) => {
     if (entity.rtkEntityTagName) {
       const tags = ids.map(id => ({ type: entity.rtkEntityTagName, id }));
-      dispatch(Api.util.invalidateTags(tags));
+      // TODO: solve differently
+      dispatch(import("metabase/api").Api.utils.invalidateTags(tags));
     }
   };
 
