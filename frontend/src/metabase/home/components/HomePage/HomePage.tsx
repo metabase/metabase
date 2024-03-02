@@ -3,8 +3,8 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
+import { useGetDashboardQuery } from "metabase/api";
 import {
-  useDashboardQuery,
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
@@ -86,10 +86,10 @@ const useDashboardPage = () => {
   const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
   const dispatch = useDispatch();
 
-  const { data: dashboard, isLoading: isLoadingDash } = useDashboardQuery({
-    enabled: dashboardId !== null,
-    id: dashboardId as DashboardId,
-  });
+  const { data: dashboard, isLoading: isLoadingDash } = useGetDashboardQuery(
+    dashboardId as DashboardId,
+    { skip: !dashboardId },
+  );
 
   useEffect(() => {
     if (

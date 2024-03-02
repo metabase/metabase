@@ -75,6 +75,7 @@ import { normalize, denormalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import {
   combineReducers,
@@ -204,6 +205,20 @@ export function createEntity(def) {
     return entity.actionDecorators[action] || (_ => _);
   }
 
+  const invalidateRtkListTagById = dispatch => {
+    if (entity.rtkEntityTagName) {
+      const tag = { type: entity.rtkEntityTagName, id: "LIST" };
+      dispatch(Api.util.invalidateTags([tag]));
+    }
+  };
+
+  const invalidateRtkTagByIds = (dispatch, ids) => {
+    if (entity.rtkEntityTagName) {
+      const tags = ids.map(id => ({ type: entity.rtkEntityTagName, id }));
+      dispatch(Api.util.invalidateTags(tags));
+    }
+  };
+
   // `objectActions` are for actions that accept an entity as their first argument,
   // and they are bound to instances when `wrapped: true` is passed to `EntityListLoader`
   entity.objectActions = {
@@ -226,10 +241,12 @@ export function createEntity(def) {
       withEntityAnalytics("create"),
       withEntityRequestState(() => ["create"]),
       withEntityActionDecorators("create"),
-    )(entityObject => async (dispatch, getState) => {
-      return entity.normalize(
-        await entity.api.create(getWritableProperties(entityObject)),
+    )(entityObject => async dispatch => {
+      const result = await entity.api.create(
+        getWritableProperties(entityObject),
       );
+      invalidateRtkListTagById(dispatch);
+      return entity.normalize(result);
     }),
 
     update: compose(
@@ -255,6 +272,7 @@ export function createEntity(def) {
           const result = entity.normalize(
             await entity.api.update(getWritableProperties(entityObject)),
           );
+          invalidateRtkTagByIds(dispatch, [entityObject.id]);
 
           if (notify) {
             if (notify.undo) {
@@ -272,6 +290,8 @@ export function createEntity(def) {
                       // don't show an undo for the undo
                       { notify: false },
                     ),
+                    // TODO: see if above action calls this function again
+                    // if not, dispatch another invalidateRtkTagByIds call here
                   ],
                   ...notify,
                 }),
@@ -289,8 +309,10 @@ export function createEntity(def) {
       withEntityAnalytics("delete"),
       withEntityRequestState(object => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
-    )(entityObject => async (dispatch, getState) => {
+    )(entityObject => async dispatch => {
       await entity.api.delete(entityObject);
+      invalidateRtkTagByIds(dispatch, [entityObject.id]);
+
       return {
         entities: { [entity.name]: { [entityObject.id]: null } },
         result: entityObject.id,
@@ -339,7 +361,10 @@ export function createEntity(def) {
     invalidateLists: compose(
       withAction(INVALIDATE_LISTS_ACTION),
       withEntityActionDecorators("invalidateLists"),
-    )(() => null),
+    )(() => (dispatch, getState) => {
+      invalidateRtkListTagById(dispatch);
+      invalidateRtkTagByIds(dispatch, getEntityIds(getState));
+    }),
 
     // user defined actions should override defaults
     ...entity.objectActions,

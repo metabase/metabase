@@ -194,3 +194,9 @@ export interface GetCompatibleCardsPayload {
   query?: string;
   exclude_ids: number[];
 }
+
+export interface DashboardParameterValuesRequestInput {
+  dashId: DashboardId;
+  paramId: ParameterId;
+  query?: string;
+}

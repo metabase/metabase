@@ -3,14 +3,16 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { dashboardApi } from "metabase/api";
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";
-import { ActionsApi, CardApi, DashboardApi } from "metabase/services";
+import { ActionsApi, CardApi } from "metabase/services";
 import { Icon, Stack, Text } from "metabase/ui";
 
 import { RevokeIconWrapper } from "./PublicLinksListing.styled";
@@ -132,16 +134,26 @@ class PublicLinksListing extends Component {
   }
 }
 
-export const PublicLinksDashboardListing = () => (
-  <PublicLinksListing
-    load={DashboardApi.listPublic}
-    revoke={DashboardApi.deletePublicLink}
-    type={t`Public Dashboard Listing`}
-    getUrl={dashboard => Urls.dashboard(dashboard)}
-    getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
-    noLinksMessage={t`No dashboards have been publicly shared yet.`}
-  />
-);
+export const PublicLinksDashboardListing = () => {
+  const dispatch = useDispatch();
+
+  return (
+    <PublicLinksListing
+      load={() =>
+        dispatch(dashboardApi.endpoints.listPublic.initiate(undefined), {
+          subscribe: false,
+        }).unwrap()
+      }
+      revoke={({ id }) =>
+        dispatch(dashboardApi.endpoints.deletePublicLink.initiate(id)).unwrap()
+      }
+      type={t`Public Dashboard Listing`}
+      getUrl={dashboard => Urls.dashboard(dashboard)}
+      getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
+      noLinksMessage={t`No dashboards have been publicly shared yet.`}
+    />
+  );
+};
 
 export const PublicLinksQuestionListing = () => (
   <PublicLinksListing
@@ -177,32 +189,40 @@ export const PublicLinksActionListing = connect(mapStateToProps)(
   },
 );
 
-export const EmbeddedResources = () => (
-  <Stack spacing="md" className="flex-full">
-    <div>
-      <Text mb="sm">{t`Embedded Dashboards`}</Text>
-      <div className="bordered rounded full" style={{ maxWidth: 820 }}>
-        <PublicLinksListing
-          data-testId="-embedded-dashboards-setting"
-          load={DashboardApi.listEmbeddable}
-          getUrl={dashboard => Urls.dashboard(dashboard)}
-          type={t`Embedded Dashboard Listing`}
-          noLinksMessage={t`No dashboards have been embedded yet.`}
-        />
+export const EmbeddedResources = () => {
+  const dispatch = useDispatch();
+  return (
+    <Stack spacing="md" className="flex-full">
+      <div>
+        <Text mb="sm">{t`Embedded Dashboards`}</Text>
+        <div className="bordered rounded full" style={{ maxWidth: 820 }}>
+          <PublicLinksListing
+            data-testId="-embedded-dashboards-setting"
+            load={() =>
+              dispatch(
+                dashboardApi.endpoints.listEmbeddable.initiate(undefined),
+                { subscribe: false },
+              ).unwrap()
+            }
+            getUrl={dashboard => Urls.dashboard(dashboard)}
+            type={t`Embedded Dashboard Listing`}
+            noLinksMessage={t`No dashboards have been embedded yet.`}
+          />
+        </div>
       </div>
-    </div>
 
-    <div>
-      <Text mb="sm">{t`Embedded Questions`}</Text>
-      <div className="bordered rounded full" style={{ maxWidth: 820 }}>
-        <PublicLinksListing
-          data-testId="-embedded-questions-setting"
-          load={CardApi.listEmbeddable}
-          getUrl={question => Urls.question(question)}
-          type={t`Embedded Card Listing`}
-          noLinksMessage={t`No questions have been embedded yet.`}
-        />
+      <div>
+        <Text mb="sm">{t`Embedded Questions`}</Text>
+        <div className="bordered rounded full" style={{ maxWidth: 820 }}>
+          <PublicLinksListing
+            data-testId="-embedded-questions-setting"
+            load={CardApi.listEmbeddable}
+            getUrl={question => Urls.question(question)}
+            type={t`Embedded Card Listing`}
+            noLinksMessage={t`No questions have been embedded yet.`}
+          />
+        </div>
       </div>
-    </div>
-  </Stack>
-);
+    </Stack>
+  );
+};

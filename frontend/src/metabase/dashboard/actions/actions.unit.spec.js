@@ -1,5 +1,3 @@
-import { DashboardApi } from "metabase/services";
-
 import { SIDEBAR_NAME } from "../constants";
 
 import {
@@ -16,8 +14,9 @@ import {
   updateDashboardAndCards,
 } from "./index";
 
-DashboardApi.parameterSearch = jest.fn();
-DashboardApi.parameterValues = jest.fn();
+// TODO: testing turning these off
+// DashboardApi.parameterSearch = jest.fn();
+// DashboardApi.parameterValues = jest.fn();
 
 describe("dashboard actions", () => {
   let dispatch;

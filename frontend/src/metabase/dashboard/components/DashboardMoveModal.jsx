@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
+import { useGetDashboardQuery } from "metabase/api";
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -17,30 +17,31 @@ const mapDispatchToProps = {
   setDashboardCollection: Dashboards.actions.setCollection,
 };
 
-class DashboardMoveModal extends Component {
-  render() {
-    const { dashboard, onClose, setDashboardCollection } = this.props;
-    const title = t`Move dashboard to…`;
-    return (
-      <CollectionMoveModal
-        title={title}
-        onClose={onClose}
-        onMove={async destination => {
-          await setDashboardCollection({ id: dashboard.id }, destination, {
-            notify: {
-              message: (
-                <DashboardMoveToast
-                  collectionId={destination.id || ROOT_COLLECTION.id}
-                />
-              ),
-            },
-          });
-          onClose();
-        }}
-      />
-    );
-  }
-}
+const DashboardMoveModal = ({ params, onClose, setDashboardCollection }) => {
+  // TODO LATER: handle error / loading states
+  const { data: dashboard } = useGetDashboardQuery(
+    Urls.extractCollectionId(params.slug),
+  );
+
+  return (
+    <CollectionMoveModal
+      title={t`Move dashboard to…`}
+      onClose={onClose}
+      onMove={async destination => {
+        await setDashboardCollection({ id: dashboard.id }, destination, {
+          notify: {
+            message: (
+              <DashboardMoveToast
+                collectionId={destination.id || ROOT_COLLECTION.id}
+              />
+            ),
+          },
+        });
+        onClose();
+      }}
+    />
+  );
+};
 
 const DashboardMoveToast = ({ collectionId }) => (
   <ToastRoot>
@@ -55,9 +56,7 @@ const DashboardMoveToast = ({ collectionId }) => (
   </ToastRoot>
 );
 
-export const DashboardMoveModalConnected = _.compose(
-  connect(null, mapDispatchToProps),
-  Dashboards.load({
-    id: (state, props) => Urls.extractCollectionId(props.params.slug),
-  }),
+export const DashboardMoveModalConnected = connect(
+  null,
+  mapDispatchToProps,
 )(DashboardMoveModal);

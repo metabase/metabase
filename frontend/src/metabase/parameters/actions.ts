@@ -1,9 +1,11 @@
-import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
+import { dashboardApi } from "metabase/api";
+import { CardApi, ParameterApi } from "metabase/services";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   CardId,
   DashboardId,
+  DashboardParameterValuesRequestInput,
   FieldId,
   Parameter,
   ParameterId,
@@ -91,7 +93,7 @@ export const fetchDashboardParameterValues =
 
     return fetchParameterValuesWithCache(
       request,
-      loadDashboardParameterValues,
+      loadDashboardParameterValues(dispatch),
       dispatch,
       getState,
     );
@@ -131,24 +133,28 @@ const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
   };
 };
 
-interface DashboardParameterValuesRequest {
-  dashId: DashboardId;
-  paramId: ParameterId;
-  query?: string;
-}
+const loadDashboardParameterValues =
+  (dispatch: Dispatch) =>
+  async (request: DashboardParameterValuesRequestInput) => {
+    const { values, has_more_values } = request.query
+      ? await dispatch(
+          dashboardApi.endpoints.dashboardParameterValues.initiate(request),
+          // @ts-expect-error -- TODO: get better dispatch typings...
+          { subscribe: false },
+          // @ts-expect-error -- TODO: get better dispatch typings...
+        ).unwrap()
+      : await dispatch(
+          dashboardApi.endpoints.dashboardParameterSearch.initiate(request),
+          // @ts-expect-error -- TODO: get better dispatch typings...
+          { subscribe: false },
+          // @ts-expect-error -- TODO: get better dispatch typings...
+        ).unwrap();
 
-const loadDashboardParameterValues = async (
-  request: DashboardParameterValuesRequest,
-) => {
-  const { values, has_more_values } = request.query
-    ? await DashboardApi.parameterSearch(request)
-    : await DashboardApi.parameterValues(request);
-
-  return {
-    values: values,
-    has_more_values: request.query ? true : has_more_values,
+    return {
+      values: values,
+      has_more_values: request.query ? true : has_more_values,
+    };
   };
-};
 
 const fetchParameterValuesWithCache = async <T>(
   request: T,

@@ -1,7 +1,7 @@
+import { dashboardApi } from "metabase/api";
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { setErrorPage } from "metabase/redux/app";
-import { DashboardApi } from "metabase/services";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
@@ -60,7 +60,13 @@ async function verifyMatchingDashcardAndParameters({
   parameters: Parameter[];
 }) {
   try {
-    const dashboard = await DashboardApi.get({ dashId: dashboardId });
+    const dashboard = await dispatch(
+      dashboardApi.endpoints.getDashboard.initiate(dashboardId),
+      // @ts-expect-error -- TODO: fix dispatch typing
+      { subscribe: false },
+      // @ts-expect-error -- TODO: fix dispatch typing
+    ).unwrap();
+
     if (
       !hasMatchingParameters({
         dashboard,

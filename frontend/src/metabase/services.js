@@ -183,32 +183,14 @@ export const CardApi = {
 };
 
 export const DashboardApi = {
-  // creates a new empty dashboard
-  create: POST("/api/dashboard"),
-  // saves a complete transient dashboard
-  save: POST("/api/dashboard/save"),
-  get: GET("/api/dashboard/:dashId"),
-  update: PUT("/api/dashboard/:id"),
-  delete: DELETE("/api/dashboard/:dashId"),
-  favorite: POST("/api/dashboard/:dashId/favorite"),
-  unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
   parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
-
-  listPublic: GET("/api/dashboard/public"),
-  listEmbeddable: GET("/api/dashboard/embeddable"),
-  createPublicLink: POST("/api/dashboard/:id/public_link"),
-  deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
-
   cardQuery: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
   ),
   cardQueryPivot: POST(
     "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
-  ),
-  exportCardQuery: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
   ),
 };
 
@@ -571,6 +553,9 @@ function setCardEndpoints(prefix, params) {
   );
 }
 
+// TODO: we should either make the public and embed endpoints their
+// own endpoint defitions & just call them OR set some kind of state
+// in redux and use getState to fetch the current endpoint pathname
 function setDashboardEndpoints(prefix) {
   DashboardApi.parameterValues = GET(
     `${prefix}/dashboard/:dashId/params/:paramId/values`,

@@ -2,6 +2,7 @@ import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 
+import { dashboardApi } from "metabase/api";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { defer } from "metabase/lib/promise";
@@ -220,10 +221,12 @@ export const fetchDashboard = createAsyncThunk(
         result = expandInlineDashboard(dashId);
         dashId = result.id = String(dashId);
       } else {
-        result = await DashboardApi.get(
-          { dashId: dashId },
-          { cancelled: fetchDashboardCancellation.promise },
-        );
+        result = await dispatch(
+          dashboardApi.endpoints.getDashboard.initiate(dashId),
+          { subscribe: false },
+        ).unwrap();
+        // TODO: kinda doubt this works
+        fetchDashboardCancellation.promise.then(() => result.abort());
       }
 
       fetchDashboardCancellation = null;
@@ -246,7 +249,9 @@ export const fetchDashboard = createAsyncThunk(
         // copy over any virtual cards from the dashcard to the underlying card/question
         result.dashcards.forEach(card => {
           if (card.visualization_settings.virtual_card) {
+            card = { ...card }; // TODO: hack as rtk freezes object
             card.card = Object.assign(
+              {}, // TODO: hack as rtk freezes object
               card.card || {},
               card.visualization_settings.virtual_card,
             );
