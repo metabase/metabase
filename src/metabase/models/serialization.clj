@@ -525,7 +525,7 @@
   "Given a table name, returns a map of column_name -> column_type"
   (mdb/memoize-for-application-db
    (fn fields-for-table [table-name]
-     (u.conn/app-db-column-types mdb/app-db table-name))))
+     (u.conn/app-db-column-types (mdb/app-db) table-name))))
 
 (defn- ->table-name
   "Returns the table name that a particular ingested entity should finally be inserted into."
