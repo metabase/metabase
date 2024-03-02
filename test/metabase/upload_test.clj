@@ -267,7 +267,7 @@
            [datetime-type    text-type        text-type]
            [offset-dt-type   text-type        text-type]
            [vchar-type       text-type        text-type]]]
-    (is (= expected (#'upload/lowest-common-ancestor type-a type-b))
+    (is (= expected (#'upload/most-specific-common-ancestor type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
 (defn csv-file-with

@@ -74,48 +74,43 @@
 ;;
 ;; </code></pre>
 
-(def ^:private type+parent-pairs
-  ;; listed in depth-first order
-  '([::boolean-or-int ::boolean]
-    [::boolean-or-int ::int]
-    [::auto-incrementing-int-pk ::int]
-    [::int ::float]
-    [::date ::datetime]
-    [::boolean ::varchar-255]
-    [::offset-datetime ::varchar-255]
-    [::datetime ::varchar-255]
-    [::float ::varchar-255]
-    [::varchar-255 ::text]))
-
-(defn ^:private column-type
-  "Returns the type of a column given the lowest common ancestor type of the values in the column."
-  [type]
-  (case type
-    ::boolean-or-int ::boolean
-    type))
-
-(def ^:private type->parents
-  (reduce
-   (fn [m [type parent]]
-     (update m type conj parent))
-   {}
-   type+parent-pairs))
+(def ^:private h
+  (-> (make-hierarchy)
+      (derive ::boolean-or-int ::boolean)
+      (derive ::boolean-or-int ::int)
+      (derive ::auto-incrementing-int-pk ::int)
+      (derive ::int ::float)
+      (derive ::date ::datetime)
+      (derive ::boolean ::varchar-255)
+      (derive ::offset-datetime ::varchar-255)
+      (derive ::datetime ::varchar-255)
+      (derive ::float ::varchar-255)
+      (derive ::varchar-255 ::text)))
 
 (def ^:private value-types
-  "All value types including the root type, ::text"
-  (conj (keys type->parents) ::text))
+  (into #{::text} (keys (:parents h))))
+
+(def ^:private concrete-type?
+  "Nodes which can correspond to a concrete database column type."
+  (complement #{::boolean-or-int}))
 
 (def ^:private column-types
   "All column types"
-  (map column-type value-types))
+  (into #{} (filter concrete-type?) value-types))
+
+(defn- column-type [tag]
+  (if (concrete-type? tag)
+    tag
+    (case tag
+      ::boolean-or-int ::boolean)))
 
 (defn- bfs-ancestors [type]
-  (loop [visit   (list type)
+  (loop [up-next (list type)
          visited (ordered-set/ordered-set)]
-    (if (empty? visit)
+    (if (empty? up-next)
       visited
-      (let [parents (mapcat type->parents visit)]
-        (recur parents (into visited parents))))))
+      (let [next-types (mapcat (partial parents h) up-next)]
+        (recur next-types (into visited next-types))))))
 
 (def ^:private type->bfs-ancestors
   "A map from each type to an ordered set of its ancestors, in breadth-first order"
@@ -179,7 +174,7 @@
   (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
 
 (defn- boolean-or-int-string? [s]
-  (boolean (#{"0" "1"} s)))
+  (contains? #{"0" "1"} s))
 
 ;; end [[value->type]] helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -224,7 +219,7 @@
     (contains? ys x) x
     :else            (recur xs ys)))
 
-(defn- lowest-common-ancestor [type-a type-b]
+(defn- most-specific-common-ancestor [type-a type-b]
   (cond
     (nil? type-a) type-b
     (nil? type-b) type-a
@@ -233,21 +228,11 @@
     (contains? (type->bfs-ancestors type-b) type-a) type-a
     :else (lowest-common-member (type->bfs-ancestors type-a) (type->bfs-ancestors type-b))))
 
-(defn- map-with-nils
-  "like map with two args except it continues to apply f until ALL of the colls are
-  exhausted. if colls are of uneven length, nils are supplied."
-  [f c1 c2]
-  (lazy-seq
-   (let [s1 (seq c1) s2 (seq c2)]
-     (when (or s1 s2)
-       (cons (f (first s1) (first s2))
-             (map-with-nils f (rest s1) (rest s2)))))))
-
 (defn- coalesce-types
-  "compares types-a and types-b pairwise, finding the lowest-common-ancestor for each pair.
-  types-a and types-b can be different lengths."
+  "Given two collections of types tags, find the first-common-ancestor for each pair.
+  If one of the collections is longer, we resolve to its literal value for the remaining length."
   [types-a types-b]
-  (map-with-nils lowest-common-ancestor types-a types-b))
+  (u/map-all most-specific-common-ancestor types-a types-b))
 
 (defn- normalize-column-name
   [raw-name]
@@ -274,11 +259,11 @@
   (->> rows
        (map #(row->value-types % settings))
        (reduce coalesce-types (repeat column-count nil))
-       (map (fn [type]
+       (map (fn [tag]
               ;; if there's no values in the column, assume it's a string
-              (if (nil? type)
+              (if (nil? tag)
                 ::text
-                (column-type type))))))
+                (column-type tag))))))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
@@ -369,12 +354,12 @@
 
 (defn- parse-rows
   "Returns a lazy seq of parsed rows, given a sequence of upload types for each column.
-  Replaces empty strings with nil."
+  Empty strings are parsed as nil."
   [col-upload-types rows]
   (let [settings (upload-parsing/get-settings)
         parsers  (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
     (for [row rows]
-      (for [[value parser] (map-with-nils vector row parsers)]
+      (for [[value parser] (u/map-all vector row parsers)]
         (when-not (str/blank? value)
           (parser value))))))
 
