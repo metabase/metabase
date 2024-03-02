@@ -28,9 +28,10 @@ export default class FunnelNormal extends Component {
       onVisualizationClick,
       visualizationIsClickable,
       settings,
+      isPlaceholder,
     } = this.props;
 
-    const [series] = rawSeries;
+    const [series] = isPlaceholder ? this.props.series : rawSeries;
     const {
       data: { cols, rows },
     } = series;
