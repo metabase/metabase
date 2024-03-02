@@ -7,9 +7,10 @@ import type {
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
 } from "../types";
+
 import { OPERATOR_OPTIONS } from "./constants";
-import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
 import type { OptionType } from "./types";
+import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
 
 const TODAY = new Date(2020, 0, 1, 0, 0);
 const PAST_30DAYS = new Date(2019, 11, 2, 0, 0);

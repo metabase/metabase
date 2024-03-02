@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
-import { checkNotNull } from "metabase/lib/types";
+
 import ExplicitSize from "metabase/components/ExplicitSize";
+import { checkNotNull } from "metabase/lib/types";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type { State } from "metabase-types/store";
+
 import { cancelQuery, runQuestionQuery, updateQuestion } from "../../actions";
 import { getQuestion } from "../../selectors";
 

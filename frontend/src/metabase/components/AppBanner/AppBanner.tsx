@@ -1,13 +1,13 @@
 import type { Location } from "history";
 
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { DatabasePromptBanner } from "metabase/nav/components/DatabasePromptBanner";
 import {
   PaymentBanner,
   shouldRenderPaymentBanner,
 } from "metabase/nav/components/PaymentBanner/PaymentBanner";
-import { DatabasePromptBanner } from "metabase/nav/components/DatabasePromptBanner";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 interface AppBannerProps {
   location: Location;
@@ -15,7 +15,7 @@ interface AppBannerProps {
 
 export const AppBanner = ({ location }: AppBannerProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
-  const tokenStatus = useSelector(state => getSetting(state, "token-status"));
+  const tokenStatus = useSetting("token-status");
   if (tokenStatus && shouldRenderPaymentBanner({ isAdmin, tokenStatus })) {
     return <PaymentBanner isAdmin={isAdmin} tokenStatus={tokenStatus} />;
   }

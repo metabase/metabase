@@ -1,7 +1,6 @@
 import PropTypes from "prop-types";
 
 import Badge from "metabase/components/Badge";
-
 import Collection from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 

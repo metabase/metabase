@@ -1,19 +1,22 @@
 import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
-import Radio from "metabase/core/components/Radio";
+
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { Radio, Stack, Text, TextInput } from "metabase/ui";
+import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+import { parameterHasNoDisplayValue } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { Text, TextInput } from "metabase/ui";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
-import ValuesSourceSettings from "../ValuesSourceSettings";
 import { RequiredParamToggle } from "../RequiredParamToggle";
+import { ValuesSourceSettings } from "../ValuesSourceSettings";
+
 import {
   SettingLabel,
   SettingLabelError,
@@ -80,6 +83,7 @@ export const ParameterSettings = ({
   );
 
   const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
+  const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
   return (
     <SettingsRoot>
@@ -107,24 +111,33 @@ export const ParameterSettings = ({
       {isSingleOrMultiSelectable(parameter) && (
         <SettingSection>
           <SettingLabel>{t`People can pick`}</SettingLabel>
-          <Radio
-            value={getIsMultiSelect(parameter)}
-            options={[
-              { name: t`Multiple values`, value: true },
-              { name: t`A single value`, value: false },
-            ]}
-            vertical
-            onChange={onChangeIsMultiSelect}
-          />
+          <Radio.Group
+            value={isMultiValue}
+            onChange={val => onChangeIsMultiSelect(val === "multi")}
+          >
+            <Stack spacing="xs">
+              <Radio
+                checked={isMultiValue === "multi"}
+                label={t`Multiple values`}
+                value="multi"
+              />
+              <Radio
+                checked={isMultiValue === "single"}
+                label={t`A single value`}
+                value="single"
+              />
+            </Stack>
+          </Radio.Group>
         </SettingSection>
       )}
 
       <SettingSection>
         <SettingLabel>
           {t`Default value`}
-          {parameter.required && !parameter.default && (
-            <SettingLabelError>({t`required`})</SettingLabelError>
-          )}
+          {parameter.required &&
+            parameterHasNoDisplayValue(parameter.default) && (
+              <SettingLabelError>({t`required`})</SettingLabelError>
+            )}
         </SettingLabel>
 
         <SettingValueWidget
@@ -133,6 +146,7 @@ export const ParameterSettings = ({
           value={parameter.default}
           placeholder={t`No default`}
           setValue={onChangeDefaultValue}
+          mimicMantine
         />
 
         <RequiredParamToggle

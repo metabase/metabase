@@ -1,13 +1,11 @@
 import { t } from "ttag";
 
+import { formatColumn } from "metabase/lib/formatting";
 import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
-
 import {
   buildTableColumnSettings,
   columnSettings,
 } from "metabase/visualizations/lib/settings/column";
-
-import { formatColumn } from "metabase/lib/formatting";
 import {
   getDefaultSize,
   getMinSize,

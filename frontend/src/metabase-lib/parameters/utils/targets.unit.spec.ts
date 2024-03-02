@@ -1,5 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
-import { isDimensionTarget } from "metabase-types/guards";
+import type Database from "metabase-lib/metadata/Database";
+import {
+  getParameterTargetField,
+  isParameterVariableTarget,
+  getTemplateTagFromTarget,
+} from "metabase-lib/parameters/utils/targets";
 import type { ParameterDimensionTarget } from "metabase-types/api";
 import { createMockTemplateTag } from "metabase-types/api/mocks";
 import {
@@ -8,12 +13,7 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import type Database from "metabase-lib/metadata/Database";
-import {
-  getParameterTargetField,
-  isVariableTarget,
-  getTemplateTagFromTarget,
-} from "metabase-lib/parameters/utils/targets";
+import { isDimensionTarget } from "metabase-types/guards";
 
 describe("parameters/utils/targets", () => {
   const metadata = createMockMetadata({
@@ -27,8 +27,6 @@ describe("parameters/utils/targets", () => {
       expect(isDimensionTarget(["variable", ["template-tag", "foo"]])).toBe(
         false,
       );
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(isDimensionTarget()).toBe(false);
     });
 
     it('should return true for a target that contains a "dimension" string in the first entry', () => {
@@ -41,18 +39,18 @@ describe("parameters/utils/targets", () => {
 
   describe("isVariableTarget", () => {
     it("should return false for non-variable targets", () => {
-      expect(isVariableTarget(["dimension", ["field", 1, null]])).toBe(false);
-      expect(isVariableTarget(["dimension", ["template-tag", "foo"]])).toBe(
+      expect(isParameterVariableTarget(["dimension", ["field", 1, null]])).toBe(
         false,
       );
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(isVariableTarget()).toBe(false);
+      expect(
+        isParameterVariableTarget(["dimension", ["template-tag", "foo"]]),
+      ).toBe(false);
     });
 
     it("should return true for a variable target", () => {
-      expect(isVariableTarget(["variable", ["template-tag", "foo"]])).toBe(
-        true,
-      );
+      expect(
+        isParameterVariableTarget(["variable", ["template-tag", "foo"]]),
+      ).toBe(true);
     });
   });
 
@@ -67,10 +65,6 @@ describe("parameters/utils/targets", () => {
     });
 
     it("should return null for targets that are not template tags", () => {
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(getTemplateTagFromTarget(["dimension"])).toBe(null);
-      // @ts-expect-error - this function is still used in untyped code -- making sure non-arrays don't blow up
-      expect(getTemplateTagFromTarget()).toBe(null);
       expect(
         getTemplateTagFromTarget(["dimension", ["field", 123, null]]),
       ).toBe(null);

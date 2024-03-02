@@ -6,6 +6,7 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
+
 import type { NotebookStep } from "./types";
 
 export const metadata = createMockMetadata({
@@ -35,7 +36,6 @@ export function createMockNotebookStep({
     active: true,
     visible: true,
     actions: [],
-    previewQuery: null,
     next: null,
     previous: null,
     revert: jest.fn(),

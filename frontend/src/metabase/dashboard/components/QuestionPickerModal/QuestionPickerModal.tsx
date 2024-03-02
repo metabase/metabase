@@ -1,9 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+
 import type { ModalProps } from "metabase/ui";
 import { Modal } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
+
 import { QuestionPicker } from "../QuestionPicker";
+
 import { QuestionPickerContainer } from "./QuestionPickerModal.styled";
 
 interface QuestionPickerModalProps

@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+
 import { removeClause } from "./query";
 import type {
   ColumnMetadata,

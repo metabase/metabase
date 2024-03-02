@@ -1,4 +1,8 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   setTokenFeatures,
   popover,
@@ -6,6 +10,8 @@ import {
   modal,
   visitDashboard,
   visitModel,
+  visitQuestion,
+  describeOSS,
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
@@ -66,9 +72,11 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.findByTestId("qb-header").findByText("Save").click();
 
-        modal().within(() => {
-          cy.findByTextEnsureVisible("Custom reports");
-          cy.button("Save").click();
+        cy.findByTestId("save-question-modal").within(modal => {
+          cy.findByTestId("collection-picker-button").findByText(
+            "Custom reports",
+          );
+          cy.findByText("Save").click();
         });
 
         cy.wait("@saveCard").then(({ response }) => {
@@ -247,6 +255,108 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           });
         });
       });
+    });
+  });
+});
+
+describe("question and dashboard links", () => {
+  describeEE("ee", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+    });
+
+    it("should show a analytics link for questions", () => {
+      visitQuestion(ORDERS_QUESTION_ID);
+
+      cy.intercept("GET", "/api/collection/**").as("collection");
+
+      cy.findByTestId("qb-header-action-panel")
+        .button(/\.\.\./)
+        .click();
+      popover().findByText("Usage insights").click();
+
+      cy.wait("@collection");
+
+      cy.findByDisplayValue("Question overview").should("exist");
+
+      cy.findByRole("button", { name: /Question ID/ }).should(
+        "contain.text",
+        ORDERS_QUESTION_ID,
+      );
+
+      cy.findAllByTestId("dashcard")
+        .contains("[data-testid=dashcard]", "Question metadata")
+        .within(() => {
+          cy.findByText("Entity ID");
+          cy.findByText(ORDERS_QUESTION_ID);
+          cy.findByText("Name");
+          cy.findByText("Orders");
+          cy.findByText("Entity Type");
+          cy.findByText("question");
+        });
+    });
+
+    it("should show a analytics link for dashboards", () => {
+      visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.intercept("GET", "/api/collection/**").as("collection");
+      cy.button("dashboard-menu-button").click();
+      popover().findByText("Usage insights").click();
+
+      cy.wait("@collection");
+
+      cy.findByDisplayValue("Dashboard overview").should("exist");
+
+      cy.findByRole("button", { name: /Dashboard ID/ }).should(
+        "contain.text",
+        ORDERS_DASHBOARD_ID,
+      );
+
+      cy.findAllByTestId("dashcard")
+        .contains("[data-testid=dashcard]", "Dashboard metadata")
+        .within(() => {
+          cy.findByText("Entity ID");
+          cy.findByText(ORDERS_DASHBOARD_ID);
+          cy.findByText("Name");
+          cy.findByText("Orders in a dashboard");
+          cy.findByText("Entity Type");
+          cy.findByText("dashboard");
+        });
+    });
+
+    it("should not show option for users with no access to Metabase Analytics", () => {
+      cy.signInAsNormalUser();
+      visitQuestion(ORDERS_QUESTION_ID);
+
+      cy.findByTestId("qb-header-action-panel")
+        .button(/\.\.\./)
+        .click();
+      popover().findByText("Usage insights").should("not.exist");
+
+      visitDashboard(ORDERS_DASHBOARD_ID);
+
+      cy.button("dashboard-menu-button").click();
+      popover().findByText("Usage insights").should("not.exist");
+    });
+  });
+  describeOSS("oss", { tags: "@OSS" }, () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+    it("should never appear in OSS", () => {
+      visitQuestion(ORDERS_QUESTION_ID);
+
+      cy.findByTestId("qb-header-action-panel")
+        .button(/\.\.\./)
+        .click();
+      popover().findByText("Usage insights").should("not.exist");
+
+      visitDashboard(ORDERS_DASHBOARD_ID);
+
+      cy.button("dashboard-menu-button").click();
+      popover().findByText("Usage insights").should("not.exist");
     });
   });
 });

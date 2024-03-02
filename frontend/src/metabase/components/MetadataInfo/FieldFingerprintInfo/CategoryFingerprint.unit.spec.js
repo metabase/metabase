@@ -1,14 +1,15 @@
-import { getMetadata } from "metabase/selectors/metadata";
+import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   createSampleDatabase,
   PEOPLE,
   PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import { renderWithProviders, screen } from "__support__/ui";
-import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import { createMockState } from "metabase-types/store/mocks";
+
 import CategoryFingerprint from "./CategoryFingerprint";
 
 const state = createMockState({

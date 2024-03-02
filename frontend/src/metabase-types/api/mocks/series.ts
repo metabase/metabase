@@ -1,5 +1,6 @@
-import type { SingleSeries, Series } from "../dataset";
 import type { Card } from "../card";
+import type { SingleSeries, Series } from "../dataset";
+
 import { createMockCard } from "./card";
 import type { MockDatasetOpts } from "./dataset";
 import { createMockDataset } from "./dataset";

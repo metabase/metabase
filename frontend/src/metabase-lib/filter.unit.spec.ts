@@ -1,3 +1,10 @@
+import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import {
+  columnFinder,
+  createQuery,
+  findTemporalBucket,
+} from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
@@ -7,13 +14,6 @@ import {
   createSampleDatabase,
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
-import * as Lib from "metabase-lib";
-import {
-  columnFinder,
-  createQuery,
-  findTemporalBucket,
-} from "metabase-lib/test-helpers";
 
 const PEOPLE_TABLE = createPeopleTable();
 

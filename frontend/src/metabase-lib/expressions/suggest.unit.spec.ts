@@ -1,24 +1,26 @@
 import _ from "underscore";
-import {
-  ORDERS,
-  ORDERS_ID,
-  REVIEWS,
-  REVIEWS_ID,
-} from "metabase-types/api/mocks/presets";
-import type { DatasetQuery, Join } from "metabase-types/api";
+
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_DATABASE,
   SAMPLE_METADATA,
   createQuery,
 } from "metabase-lib/test-helpers";
-import { sharedMetadata } from "./__support__/shared";
+import type { DatasetQuery, Join } from "metabase-types/api";
+import {
+  ORDERS,
+  ORDERS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} from "metabase-types/api/mocks/presets";
+
 import {
   aggregationOpts,
   expressionOpts,
   metadata,
   DEFAULT_QUERY,
 } from "./__support__/expressions";
+import { sharedMetadata } from "./__support__/shared";
 import type { Suggestion } from "./suggest";
 import { suggest as suggest_ } from "./suggest";
 

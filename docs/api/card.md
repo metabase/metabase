@@ -27,12 +27,13 @@ Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.
 ## `GET /api/card/`
 
 Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model` and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filterp option. :card_index.
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
+  `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior of each
+  filterp option. :card_index.
 
 ### PARAMS:
 
-*  **`f`** nullable enum of archived, table, using_model, bookmarked, all, mine, database
+*  **`f`** nullable enum of archived, table, using_model, bookmarked, using_segment, all, mine, using_metric, database
 
 *  **`model_id`** nullable value must be an integer greater than zero.
 
@@ -146,6 +147,8 @@ Create a new `Card`.
 *  **`collection_id`** nullable value must be an integer greater than zero.
 
 *  **`name`** value must be a non-blank string.
+
+*  **`type`** nullable enum of model, question
 
 *  **`cache_ttl`** nullable value must be an integer greater than zero.
 
@@ -298,6 +301,8 @@ Update a `Card`.
 *  **`card-updates`** 
 
 *  **`name`** nullable value must be a non-blank string.
+
+*  **`type`** nullable enum of model, question
 
 *  **`embedding_params`** nullable value must be a valid embedding params map.
 

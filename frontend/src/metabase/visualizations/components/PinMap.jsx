@@ -1,17 +1,18 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import { t } from "ttag";
-import _ from "underscore";
 import cx from "classnames";
 import d3 from "d3";
 import L from "leaflet";
+import { Component } from "react";
+import { t } from "ttag";
+import _ from "underscore";
+
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import { hasLatitudeAndLongitudeColumns } from "metabase-lib/types/utils/isa";
 
+import LeafletGridHeatMap from "./LeafletGridHeatMap";
+import LeafletHeatMap from "./LeafletHeatMap";
 import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
 import LeafletTilePinMap from "./LeafletTilePinMap";
-import LeafletHeatMap from "./LeafletHeatMap";
-import LeafletGridHeatMap from "./LeafletGridHeatMap";
 
 const WORLD_BOUNDS = [
   [-90, -180],

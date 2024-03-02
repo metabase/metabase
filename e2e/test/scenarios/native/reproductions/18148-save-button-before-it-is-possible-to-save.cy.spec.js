@@ -16,9 +16,10 @@ describe("issue 18148", () => {
 
   it("should not offer to save the question before it is actually possible to save it (metabase#18148)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select a database");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").should("have.attr", "aria-disabled", "true");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Select a database").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(dbName).click();
@@ -28,6 +29,6 @@ describe("issue 18148", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.get(".Modal").should("exist");
+    cy.findByTestId("save-question-modal").findByText("Save").should("exist");
   });
 });

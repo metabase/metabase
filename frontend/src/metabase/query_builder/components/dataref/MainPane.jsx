@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import Databases from "metabase/entities/databases";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+
 import {
   NodeListItemLink,
   NodeListItemName,

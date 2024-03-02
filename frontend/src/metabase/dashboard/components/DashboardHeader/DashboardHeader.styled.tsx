@@ -1,8 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
+import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const DashboardHeaderActionDivider = styled.div`
@@ -29,13 +29,13 @@ export const DashboardHeaderButton = styled(Button)<{
           padding: 0;
         `}
 
-  color: ${props => (props.isActive ? color("brand") : color("text-medium"))};
+  color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
   font-size: 1rem;
 
   &:hover {
     color: ${color("brand")};
     background: ${({ hasBackground }) =>
-      hasBackground ? color("bg-light") : "transparent"};
+      hasBackground ? color("bg-medium") : "transparent"};
   }
 
   svg {
@@ -53,7 +53,7 @@ export const DashboardHeaderButton = styled(Button)<{
 
 DashboardHeaderButton.defaultProps = {
   onlyIcon: true,
-  iconSize: 20,
+  iconSize: 16,
   visibleOnSmallScreen: true,
   hasBackground: true,
 };

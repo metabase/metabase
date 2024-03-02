@@ -1,9 +1,11 @@
 import { useMemo } from "react";
-import { PopoverBackButton } from "metabase/ui";
+
 import type { DatePickerValue } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
+import { PopoverBackButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import type { FilterPickerWidgetProps } from "../types";
 
 export function DateFilterPicker({

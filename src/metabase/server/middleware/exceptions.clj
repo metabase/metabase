@@ -18,7 +18,7 @@
   "Catch any exceptions other than 404 thrown in the request handler body and rethrow a generic 400 exception instead.
   This minimizes information available to bad actors when exceptions occur on public endpoints."
   [handler]
-  (fn [request respond _]
+  (fn [request respond _raise]
     (let [raise (fn [e]
                   (log/warn e (trs "Exception in API call"))
                   (if (= 404 (:status-code (ex-data e)))
@@ -34,9 +34,9 @@
   the original instead (i.e., don't rethrow the original stacktrace). This reduces the information available to bad
   actors but still provides some information that will prove useful in debugging errors."
   [handler]
-  (fn [request respond _]
+  (fn [request respond _raise]
     (let [raise (fn [^Throwable e]
-                  (respond {:status 400, :body (.getMessage e)}))]
+                  (respond {:status 400, :body (ex-message e)}))]
       (try
         (handler request respond raise)
         (catch Throwable e
@@ -97,7 +97,6 @@
      request
      respond
      (comp respond api-exception-response))))
-
 
 (defn catch-uncaught-exceptions
   "Middleware (with `[request respond raise]`) that catches any unexpected Exceptions and reroutes them through `raise`

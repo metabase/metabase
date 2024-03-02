@@ -1,10 +1,9 @@
 import { restore, openNativeEditor } from "e2e/support/helpers";
 
-import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
-
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
-import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
+import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
+import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const dateFilters = Object.entries(DATE_FILTER_SUBTYPES);
 
@@ -32,7 +31,10 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
       cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
       FieldFilter.setWidgetType(subType);
-      dateFilterSelector({ filterType: subType, filterValue: value });
+      dateFilterSelector({
+        filterType: subType,
+        filterValue: value,
+      });
 
       SQLFilter.runQuery();
 
@@ -96,12 +98,12 @@ function dateFilterSelector({
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Relative Date":

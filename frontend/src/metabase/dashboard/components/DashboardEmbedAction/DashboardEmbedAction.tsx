@@ -1,6 +1,8 @@
 import { useState } from "react";
-import type { Dashboard } from "metabase-types/api";
+
 import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
+import type { Dashboard } from "metabase-types/api";
+
 import { EmbedMenu } from "../EmbedMenu";
 
 export const DashboardEmbedAction = ({

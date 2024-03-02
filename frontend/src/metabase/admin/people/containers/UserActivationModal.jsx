@@ -4,11 +4,10 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import User from "metabase/entities/users";
-
-import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import Text from "metabase/components/type/Text";
+import Button from "metabase/core/components/Button";
+import User from "metabase/entities/users";
 
 // NOTE: we have to load the list of users because /api/user/:id doesn't return deactivated users
 // but that's ok because it's probably already loaded through the people PeopleListingApp

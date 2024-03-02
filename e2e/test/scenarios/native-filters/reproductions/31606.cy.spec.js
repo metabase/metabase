@@ -5,8 +5,9 @@ import {
   queryBuilderMain,
   popover,
 } from "e2e/support/helpers";
-import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
+
 import * as FieldFilter from "../helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
 const SQL_QUERY = "SELECT * FROM PRODUCTS WHERE CATEGORY = {{test}}";
 
@@ -57,6 +58,7 @@ describe("issue 31606", { tags: "@external" }, () => {
     queryBuilderMain()
       .findByText(/missing required parameters/)
       .should("be.visible");
+
     filterWidget().within(() => {
       cy.icon("close").should("not.exist");
     });
@@ -77,8 +79,11 @@ describe("issue 31606", { tags: "@external" }, () => {
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("Enter a default value…").should("not.exist");
-
-      cy.findByText("Default filter widget value").next().click();
+      cy.findByText("Default filter widget value")
+        .next()
+        .find("a")
+        .first()
+        .click();
     });
 
     popover().within(() => {

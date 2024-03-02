@@ -1,9 +1,11 @@
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+
 import { getNativeDashCardEmptyMappingText } from "metabase/dashboard/utils";
-import type { Parameter } from "metabase-types/api";
 import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import type { Parameter } from "metabase-types/api";
+
 import {
   NativeCardDefault,
   NativeCardIcon,

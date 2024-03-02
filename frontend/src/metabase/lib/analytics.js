@@ -1,4 +1,5 @@
 import * as Snowplow from "@snowplow/browser-tracker";
+
 import { shouldLogAnalytics } from "metabase/env";
 import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";

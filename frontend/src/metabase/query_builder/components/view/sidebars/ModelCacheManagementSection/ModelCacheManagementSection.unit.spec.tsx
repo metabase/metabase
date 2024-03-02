@@ -1,18 +1,15 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 import fetchMock from "fetch-mock";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-
-import { checkNotNull } from "metabase/lib/types";
 import PersistedModels from "metabase/entities/persisted-models";
-
+import { checkNotNull } from "metabase/lib/types";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
@@ -36,7 +33,7 @@ async function setup({
     ...question.card(),
     id: 1,
     name: "Order model",
-    dataset: true,
+    type: "model",
   });
 
   const modelCacheInfo = getMockModelCacheInfo({

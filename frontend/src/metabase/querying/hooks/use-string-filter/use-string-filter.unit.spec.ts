@@ -1,8 +1,10 @@
 import { act, renderHook } from "@testing-library/react-hooks";
+
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
+
 import { useStringFilter } from "./use-string-filter";
 
 interface CreateFilterCase {

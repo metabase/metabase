@@ -68,7 +68,7 @@
   (try
     (let [card-id (u/the-id card-or-id)
           card    (t2/select-one :model/Card :id card-id)
-          result  (qp.dashboard/run-query-for-dashcard-async
+          result  (qp.dashboard/process-query-for-dashcard
                    :dashboard-id  (u/the-id dashboard)
                    :card-id       card-id
                    :dashcard-id   (u/the-id dashcard)
@@ -77,10 +77,9 @@
                    :parameters    parameters
                    :middleware    {:process-viz-settings? true
                                    :js-int-to-string?     false}
-                   :run           (fn [query info]
-                                    (qp/process-query-and-save-with-max-results-constraints!
-                                     (assoc query :async? false)
-                                     info)))]
+                   :run           (^:once fn* [query info]
+                                   (qp/process-query
+                                    (qp/userland-query-with-default-constraints query info))))]
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? result))
         {:card     card
          :dashcard dashcard
@@ -207,8 +206,12 @@
                                         (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
                     (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard))]
         (if skip_if_empty
-          ;; Remove any component of the parts that have no results when empty results aren't wanted
-          (remove (fn [part] (zero? (get-in part [:result :row_count] 0))) parts)
+          ;; Remove cards that have no results when empty results aren't wanted
+          (remove (fn [{part-type :type :as part}]
+                    (and
+                      (= part-type :card)
+                      (zero? (get-in part [:result :row_count] 0))))
+                  parts)
           parts)))))
 
 (defn- database-id [card]
@@ -487,7 +490,7 @@
                       (create-slack-attachment-data parts))})
 
 (defmethod notification :default
-  [_ _ {:keys [channel_type]}]
+  [_alert-or-pulse _parts {:keys [channel_type], :as _channel}]
   (throw (UnsupportedOperationException. (tru "Unrecognized channel type {0}" (pr-str channel_type)))))
 
 (defn- parts->notifications [{:keys [channels channel-ids] pulse-id :id :as pulse} parts]
@@ -575,8 +578,9 @@
   the Pulse.
 
    Example:
-       (send-pulse! pulse)                       Send to all Channels
-       (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
+
+    (send-pulse! pulse)                    ; Send to all Channels
+    (send-pulse! pulse :channel-ids [312]) ; Send only to Channel with :id = 312"
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
   (let [dashboard (t2/select-one Dashboard :id dashboard_id)

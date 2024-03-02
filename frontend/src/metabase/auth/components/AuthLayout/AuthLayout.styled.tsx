@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color, hueRotate } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 

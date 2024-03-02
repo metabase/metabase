@@ -1,4 +1,8 @@
 import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   describeEE,
   modal,
   restore,
@@ -8,10 +12,6 @@ import {
   visitDashboard,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const allowedDomain = "metabase.test";
 const deniedDomain = "metabase.example";

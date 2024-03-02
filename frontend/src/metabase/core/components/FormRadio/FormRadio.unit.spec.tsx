@@ -1,7 +1,8 @@
-import { Form, Formik } from "formik";
-import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Form, Formik } from "formik";
+import * as Yup from "yup";
+
 import FormRadio from "./FormRadio";
 
 const TEST_SCHEMA = Yup.object({

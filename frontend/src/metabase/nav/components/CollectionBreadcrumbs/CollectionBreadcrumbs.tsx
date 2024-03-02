@@ -1,8 +1,10 @@
 import { Fragment } from "react";
-import { useToggle } from "metabase/hooks/use-toggle";
+
 import { isRootCollection } from "metabase/collections/utils";
+import { useToggle } from "metabase/hooks/use-toggle";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import type { Collection } from "metabase-types/api";
+
 import {
   ExpandButton,
   PathContainer,

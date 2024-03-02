@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
-import BaseTableItem from "./BaseTableItem";
+
 import {
   ColumnHeader,
   Table,
@@ -12,6 +12,7 @@ import {
   LastEditedByCol,
   BulkSelectWrapper,
 } from "./BaseItemsTable.styled";
+import BaseTableItem from "./BaseTableItem";
 
 const sortingOptsShape = PropTypes.shape({
   sort_column: PropTypes.string.isRequired,

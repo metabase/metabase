@@ -192,7 +192,7 @@
     rff    :- fn?
     opts   :- TableRowsSampleOptions]
    (let [query (table-rows-sample-query table fields opts)]
-     (qp/process-query query rff nil))))
+     (qp/process-query query rff))))
 
 (defmethod driver/table-rows-sample :default
   [_driver table fields rff opts]

@@ -1,8 +1,3 @@
-import type {
-  ClientCodeSampleConfig,
-  CodeSampleParameters,
-  ServerCodeSampleConfig,
-} from "./types";
 import {
   clojure,
   getHtmlSource,
@@ -12,25 +7,34 @@ import {
   python,
   ruby,
 } from "./code-templates";
+import type {
+  ClientCodeSampleConfig,
+  CodeSampleParameters,
+  ServerCodeSampleConfig,
+} from "./types";
 
 export const getEmbedClientCodeExampleOptions =
   (): ClientCodeSampleConfig[] => [
     {
+      id: "pug",
       name: "Pug / Jade",
       source: getPugSource({ iframeUrl: `iframeUrl` }),
       mode: "ace/mode/jade",
     },
     {
+      id: "mustache",
       name: "Mustache",
       source: getHtmlSource({ iframeUrl: `"{{iframeUrl}}"` }),
       mode: "ace/mode/html",
     },
     {
+      id: "erb",
       name: "ERB",
       source: getHtmlSource({ iframeUrl: `"<%= @iframe_url %>"` }),
       mode: "ace/mode/html_ruby",
     },
     {
+      id: "jsx",
       name: "JSX",
       source: getJsxSource({ iframeUrl: `{iframeUrl}` }),
       mode: "ace/mode/jsx",
@@ -41,6 +45,7 @@ export const getEmbedServerCodeExampleOptions = (
   codeSampleParameters: CodeSampleParameters,
 ): ServerCodeSampleConfig[] => [
   {
+    id: "node",
     name: "Node.js",
     source: node.getServerSource(codeSampleParameters),
     parametersSource: node.getParametersSource(codeSampleParameters.params),
@@ -48,9 +53,10 @@ export const getEmbedServerCodeExampleOptions = (
       codeSampleParameters.displayOptions,
     ),
     mode: "ace/mode/javascript",
-    embedOption: "Pug / Jade",
+    embedOption: "pug",
   },
   {
+    id: "ruby",
     name: "Ruby",
     source: ruby.getServerSource(codeSampleParameters),
     parametersSource: ruby.getParametersSource(codeSampleParameters.params),
@@ -58,9 +64,10 @@ export const getEmbedServerCodeExampleOptions = (
       codeSampleParameters.displayOptions,
     ),
     mode: "ace/mode/ruby",
-    embedOption: "ERB",
+    embedOption: "erb",
   },
   {
+    id: "python",
     name: "Python",
     source: python.getServerSource(codeSampleParameters),
     parametersSource: python.getParametersSource(codeSampleParameters.params),
@@ -68,9 +75,10 @@ export const getEmbedServerCodeExampleOptions = (
       codeSampleParameters.displayOptions,
     ),
     mode: "ace/mode/python",
-    embedOption: "Pug / Jade",
+    embedOption: "pug",
   },
   {
+    id: "clojure",
     name: "Clojure",
     source: clojure.getServerSource(codeSampleParameters),
     parametersSource: clojure.getParametersSource(codeSampleParameters.params),
@@ -78,7 +86,7 @@ export const getEmbedServerCodeExampleOptions = (
       codeSampleParameters.displayOptions,
     ),
     mode: "ace/mode/clojure",
-    embedOption: "Pug / Jade",
+    embedOption: "pug",
   },
 ];
 

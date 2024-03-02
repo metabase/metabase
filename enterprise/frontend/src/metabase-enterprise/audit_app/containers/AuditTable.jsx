@@ -1,20 +1,21 @@
-import { useState } from "react";
-import PropTypes from "prop-types";
-import _ from "underscore";
+import "../components/AuditTableVisualization";
+
 import { chain } from "icepick";
+import PropTypes from "prop-types";
+import { useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import _ from "underscore";
 
 import PaginationControls from "metabase/components/PaginationControls";
-
-import { getMetadata } from "metabase/selectors/metadata";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/Question";
 
 import { AuditMode } from "../lib/mode";
-import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
-import "../components/AuditTableVisualization";
+
 import { PaginationControlsContainer } from "./AuditTable.styled";
+import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),

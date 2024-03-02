@@ -1,15 +1,16 @@
-import type { EngineField } from "metabase-types/api";
-import FormNumericInput from "metabase/core/components/FormNumericInput";
 import FormFileInput from "metabase/core/components/FormFileInput";
 import FormInput from "metabase/core/components/FormInput";
+import FormNumericInput from "metabase/core/components/FormNumericInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import FormToggle from "metabase/core/components/FormToggle";
 import type { IconName } from "metabase/ui";
-import DatabaseInfoField from "../DatabaseInfoField";
-import DatabaseSectionField from "../DatabaseSectionField";
+import type { EngineField } from "metabase-types/api";
+
 import { FIELD_OVERRIDES } from "../../constants";
 import type { EngineFieldOverride } from "../../types";
+import DatabaseInfoField from "../DatabaseInfoField";
+import DatabaseSectionField from "../DatabaseSectionField";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;

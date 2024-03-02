@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMockDashboard } from "metabase-types/api/mocks";
+
 import { getBrokenUpTextMatcher } from "__support__/ui";
+import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { getMockResource, setup } from "./setup";
 
@@ -448,7 +449,11 @@ describe("Static Embed Setup phase", () => {
           `"#theme=transparent&bordered=true&titled=true"`,
         );
 
-        userEvent.click(screen.getByText("Dashboard title"));
+        userEvent.click(
+          screen.getByText(
+            resourceType === "dashboard" ? "Dashboard title" : "Question title",
+          ),
+        );
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
           `"#theme=transparent&bordered=true&titled=false"`,

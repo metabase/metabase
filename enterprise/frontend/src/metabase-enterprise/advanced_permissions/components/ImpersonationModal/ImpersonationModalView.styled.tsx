@@ -9,4 +9,5 @@ export const ImpersonationModalViewRoot = styled.div`
 
 export const ImpersonationDescription = styled.p`
   line-height: 1.4rem;
+  margin: 0.5rem 0;
 `;

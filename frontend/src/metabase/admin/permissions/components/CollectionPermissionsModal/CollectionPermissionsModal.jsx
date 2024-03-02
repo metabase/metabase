@@ -1,33 +1,30 @@
-import { useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
+import { useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import * as Urls from "metabase/lib/urls";
-
-import Collections from "metabase/entities/collections";
-
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import Collections from "metabase/entities/collections";
 import Groups from "metabase/entities/groups";
+import * as Urls from "metabase/lib/urls";
 
-import { PermissionsTable } from "../PermissionsTable";
-import { permissionEditorPropTypes } from "../PermissionsEditor";
+import {
+  initializeCollectionPermissions,
+  updateCollectionPermission,
+  saveCollectionPermissions,
+} from "../../permissions";
 import {
   getIsDirty,
   getCollectionsPermissionEditor,
   collectionsQuery,
   getCollectionEntity,
 } from "../../selectors/collection-permissions";
-import {
-  initializeCollectionPermissions,
-  updateCollectionPermission,
-  saveCollectionPermissions,
-} from "../../permissions";
+import { permissionEditorPropTypes } from "../PermissionsEditor";
+import { PermissionsTable } from "../PermissionsTable";
 
 import { PermissionTableContainer } from "./CollectionPermissionsModal.styled";
 

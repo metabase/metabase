@@ -1,5 +1,6 @@
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockCollection } from "metabase-types/api/mocks";
+
 import { PERSONAL_COLLECTIONS } from "./constants";
 import {
   buildCollectionTree,

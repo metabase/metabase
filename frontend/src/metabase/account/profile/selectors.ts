@@ -1,9 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { getUser } from "metabase/selectors/user";
-import { getSettings } from "metabase/selectors/settings";
-
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import { getSettings } from "metabase/selectors/settings";
+import { getUser } from "metabase/selectors/user";
 
 export const getIsSsoUser = createSelector(getUser, user => {
   if (!user) {

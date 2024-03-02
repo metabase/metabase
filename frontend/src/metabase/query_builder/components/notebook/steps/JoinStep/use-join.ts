@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState, useMemo } from "react";
 import { usePrevious } from "react-use";
+
 import * as Lib from "metabase-lib";
 
 export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {

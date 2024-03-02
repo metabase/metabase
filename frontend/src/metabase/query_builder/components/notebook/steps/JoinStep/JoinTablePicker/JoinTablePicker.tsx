@@ -1,23 +1,20 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
-import Tooltip from "metabase/core/components/Tooltip";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { DATA_BUCKET } from "metabase/containers/DataPicker";
-
 import Tables from "metabase/entities/tables";
-import { getMetadata } from "metabase/selectors/metadata";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-
-import type { TableId } from "metabase-types/api";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Table from "metabase-lib/metadata/Table";
+import type { TableId } from "metabase-types/api";
 
-import { NotebookCellItem } from "../../../NotebookCell";
 import { FIELDS_PICKER_STYLES } from "../../../FieldsPickerIcon";
+import { NotebookCellItem } from "../../../NotebookCell";
+
 import { PickerButton, ColumnPickerButton } from "./JoinTablePicker.styled";
 
 interface JoinTablePickerProps {
@@ -133,6 +130,7 @@ function JoinTableColumnsPicker({
   isColumnSelected,
   onChange,
 }: JoinTableColumnsPickerProps) {
+  const [isOpened, setIsOpened] = useState(false);
   const handleToggle = (changedIndex: number, isSelected: boolean) => {
     const nextColumns = columns.filter((_, currentIndex) =>
       currentIndex === changedIndex
@@ -151,8 +149,19 @@ function JoinTableColumnsPicker({
   };
 
   return (
-    <TippyPopoverWithTrigger
-      popoverContent={
+    <Popover opened={isOpened} onChange={setIsOpened}>
+      <Popover.Target>
+        <Tooltip label={t`Pick columns`}>
+          <ColumnPickerButton
+            onClick={() => setIsOpened(!isOpened)}
+            aria-label={t`Pick columns`}
+            data-testid="fields-picker"
+          >
+            <Icon name="chevrondown" />
+          </ColumnPickerButton>
+        </Tooltip>
+      </Popover.Target>
+      <Popover.Dropdown>
         <FieldPicker
           query={query}
           stageIndex={stageIndex}
@@ -163,20 +172,7 @@ function JoinTableColumnsPicker({
           onSelectNone={handleSelectNone}
           data-testid="join-columns-picker"
         />
-      }
-      renderTrigger={({ onClick }) => (
-        <div>
-          <Tooltip tooltip={t`Pick columns`}>
-            <ColumnPickerButton
-              onClick={onClick}
-              aria-label={t`Pick columns`}
-              data-testid="fields-picker"
-            >
-              <Icon name="chevrondown" />
-            </ColumnPickerButton>
-          </Tooltip>
-        </div>
-      )}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 }

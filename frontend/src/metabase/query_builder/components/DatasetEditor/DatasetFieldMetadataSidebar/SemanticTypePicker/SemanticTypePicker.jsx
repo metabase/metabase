@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
+import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import Select from "metabase/core/components/Select";

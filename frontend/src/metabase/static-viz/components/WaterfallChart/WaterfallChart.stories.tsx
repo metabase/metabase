@@ -1,8 +1,10 @@
 import type { ComponentStory } from "@storybook/react";
+
 import {
   CATEGORICAL,
   TIMESERIES,
 } from "metabase/static-viz/components/WaterfallChart/stories-data";
+
 import WaterfallChart from "./WaterfallChart";
 
 export default {

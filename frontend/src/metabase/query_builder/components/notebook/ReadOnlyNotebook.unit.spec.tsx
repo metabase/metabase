@@ -1,17 +1,15 @@
-import { renderWithProviders, screen, getIcon } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, getIcon } from "__support__/ui";
+import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/Question";
 import type { DatasetQuery } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
-import { getMetadata } from "metabase/selectors/metadata";
-
-import Question from "metabase-lib/Question";
+import { createMockState } from "metabase-types/store/mocks";
 
 import ReadOnlyNotebook from "./ReadOnlyNotebook";
 

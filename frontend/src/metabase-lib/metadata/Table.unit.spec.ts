@@ -1,9 +1,9 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   createMockField,
   createMockForeignKey,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
 
 const TABLE_ORIGIN_ID = 1;
 const TABLE_DESTINATION_ID = 2;

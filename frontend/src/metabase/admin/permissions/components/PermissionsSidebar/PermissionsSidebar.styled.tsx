@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
@@ -14,12 +15,6 @@ export const SidebarRoot = styled.aside`
 export const SidebarHeader = styled.div`
   padding: 0.75rem 1.5rem 0 1.5rem;
   flex-shrink: 0;
-`;
-
-export const SidebarContent = styled.div`
-  flex-grow: 1;
-  padding: 1rem 0;
-  overflow: auto;
 `;
 
 export const BackIcon = styled(Icon)`

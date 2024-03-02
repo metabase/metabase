@@ -1,5 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
+
 import { color } from "metabase/lib/colors";
+
 import ColorPill from "./ColorPill";
 
 export default {

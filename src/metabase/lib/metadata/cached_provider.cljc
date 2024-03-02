@@ -4,6 +4,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -39,7 +40,7 @@
                      [:metadata/database lib.metadata/DatabaseMetadata]
                      [:metadata/table    lib.metadata/TableMetadata]
                      [:metadata/column   lib.metadata/ColumnMetadata]
-                     [:metadata/card     lib.metadata/CardMetadata]
+                     [:metadata/card     ::lib.schema.metadata/card]
                      [:metadata/metric   lib.metadata/MetricMetadata]
                      [:metadata/segment  lib.metadata/SegmentMetadata]]]
   (let [metadata (-> metadata

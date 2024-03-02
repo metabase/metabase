@@ -1,15 +1,16 @@
 import type { ChangeEvent } from "react";
-import Select, { Option } from "metabase/core/components/Select";
+
 import { CopyButton } from "metabase/components/CopyButton";
 import AceEditor from "metabase/components/TextEditor";
+import Select, { Option } from "metabase/core/components/Select";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 
 import { CopyButtonContainer } from "./CodeSample.styled";
 
 interface CodeSampleProps {
-  selectedOptionName: CodeSampleOption["name"];
+  selectedOptionId: CodeSampleOption["id"];
   source: string;
-  languageOptions: CodeSampleOption["name"][];
+  languageOptions: CodeSampleOption[];
   title?: string;
   textHighlightMode: string;
   highlightedTexts?: string[];
@@ -18,10 +19,11 @@ interface CodeSampleProps {
   className?: string;
 
   onChangeOption: (optionName: string) => void;
+  onCopy?: () => void;
 }
 
 export const CodeSample = ({
-  selectedOptionName,
+  selectedOptionId,
   source,
   title,
   languageOptions,
@@ -30,6 +32,7 @@ export const CodeSample = ({
   highlightedTexts,
   className,
   onChangeOption,
+  onCopy,
 }: CodeSampleProps): JSX.Element => {
   return (
     <div className={className} data-testid={dataTestId}>
@@ -38,8 +41,8 @@ export const CodeSample = ({
           {title && <h4>{title}</h4>}
           {languageOptions.length > 1 ? (
             <Select
-              className="AdminSelect--borderless ml-auto"
-              value={selectedOptionName}
+              className="ml-auto"
+              value={selectedOptionId}
               onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                 onChangeOption(e.target.value)
               }
@@ -48,8 +51,8 @@ export const CodeSample = ({
               }}
             >
               {languageOptions.map(option => (
-                <Option key={option} value={option}>
-                  {option}
+                <Option key={option.id} value={option.id}>
+                  {option.name}
                 </Option>
               ))}
             </Select>
@@ -68,7 +71,7 @@ export const CodeSample = ({
         />
         {source && (
           <CopyButtonContainer>
-            <CopyButton className="p1" value={source} />
+            <CopyButton className="p1" value={source} onCopy={onCopy} />
           </CopyButtonContainer>
         )}
       </div>

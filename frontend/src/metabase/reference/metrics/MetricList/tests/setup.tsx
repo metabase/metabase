@@ -1,12 +1,13 @@
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+
 import { MetricList } from "../MetricList";
 
 export interface SetupOpts {

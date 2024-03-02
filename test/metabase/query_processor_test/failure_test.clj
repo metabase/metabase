@@ -39,7 +39,7 @@
    [:params :nil]])
 
 (deftest ^:parallel process-userland-query-test
-  (testing "running a bad query via `process-query` should return stacktrace, query, preprocessed query, and native query"
+  (testing "running a bad `userland-query` via `process-query` should return stacktrace, query, preprocessed query, and native query"
     (is (malli= [:map
                  [:status       [:= :failed]]
                  [:class        (ms/InstanceOfClass Class)]
@@ -49,10 +49,10 @@
                  [:json_query   (bad-query-schema)]
                  [:preprocessed (bad-query-preprocessed-schema)]
                  [:native       bad-query-native-schema]]
-                (qp/process-userland-query (bad-query))))))
+                (qp/process-query (qp/userland-query (bad-query)))))))
 
-(deftest ^:parallel process-query-and-save-execution-test
-  (testing "running via `process-query-and-save-execution!` should return similar info and a bunch of other nonsense too"
+(deftest ^:parallel process-userland-query-test-2
+  (testing "running a bad `userland-query` via `process-query` should return stacktrace, query, preprocessed query, and native query"
     (is (malli= [:map
                  [:database_id  [:= (mt/id)]]
                  [:started_at   (ms/InstanceOfClass java.time.ZonedDateTime)]
@@ -69,4 +69,4 @@
                  [:data         [:map
                                  [:rows [:= []]]
                                  [:cols [:= []]]]]]
-                (qp/process-query-and-save-execution! (bad-query) {:context :question})))))
+                (qp/process-query (qp/userland-query (bad-query) {:context :question}))))))

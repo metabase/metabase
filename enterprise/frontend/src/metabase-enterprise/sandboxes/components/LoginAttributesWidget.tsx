@@ -1,6 +1,6 @@
+import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
-import { useField } from "formik";
 
 import FormField from "metabase/core/components/FormField";
 

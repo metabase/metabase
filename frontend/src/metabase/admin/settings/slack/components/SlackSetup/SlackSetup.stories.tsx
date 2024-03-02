@@ -1,4 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
+
 import SlackSetup from "./SlackSetup";
 
 export default {

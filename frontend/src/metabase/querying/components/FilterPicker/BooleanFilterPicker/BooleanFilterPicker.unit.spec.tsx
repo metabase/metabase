@@ -1,13 +1,16 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithBooleanFilter,
   findBooleanColumn,
   storeInitialState,
 } from "../test-utils";
+
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
 
 type SetupOpts = {

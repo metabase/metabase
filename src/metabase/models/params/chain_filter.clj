@@ -80,6 +80,7 @@
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -431,7 +432,7 @@
     (log/debugf "Chain filter MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
     (try
       (let [query-limit (get-in mbql-query [:query :limit])
-            values      (qp/process-query mbql-query (constantly conj) nil)]
+            values      (qp/process-query mbql-query (constantly conj))]
         {:values          values
          ;; It's unlikely that we don't have a query-limit, but better safe than sorry and default it true
          ;; so that calling chain-filter-search on the same field will search from DB.
@@ -522,7 +523,7 @@
   "Check query permissions against the chain-filter-mbql-query (private #196)"
   [field-id constraints options]
   (->> (chain-filter-mbql-query field-id constraints options)
-       qp/preprocess
+       qp.preprocess/preprocess
        qp.perms/check-query-permissions*))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]

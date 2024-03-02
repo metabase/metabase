@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { DatabaseId, GroupId, Impersonation } from "metabase-types/api";
 
 export const setupExistingImpersonationEndpoint = (

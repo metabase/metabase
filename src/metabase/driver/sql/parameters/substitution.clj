@@ -22,6 +22,7 @@
     :as qp.wrap-value-literals]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -115,9 +116,17 @@
     :day))
 
 (defmethod align-temporal-unit-with-param-type-and-value :default
-  [driver field param-type _value]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (align-temporal-unit-with-param-type driver field param-type))
+  [_driver _field param-type value]
+  (when (params.dates/date-type? param-type)
+    (if-let [exclusion-type (params.dates/exclusion-date-type param-type value)]
+      exclusion-type
+      (let [value* (if (params.dates/not-single-date-type? param-type)
+                     (let [param-range (params.dates/date-string->range value)]
+                       (or (:start param-range) (:end param-range))) ;; Before or after filters only have one of these
+                     value)]
+        (if (re-matches shared.ut/local-date-regex value*)
+          :day
+          :minute)))))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
@@ -290,9 +299,7 @@
            ->honeysql
            (honeysql->replacement-snippet-info driver))
 
-      (and (params.dates/date-type? param-type)
-           (string? value)
-           (re-matches params.dates/date-exclude-regex value))
+      (params.dates/exclusion-date-type param-type value)
       (let [field-clause (field->clause driver field param-type value)]
         (->> (params.dates/date-string->filter value field-clause)
              mbql.u/desugar-filter-clause

@@ -1,9 +1,10 @@
 import _ from "underscore";
 
-import type { FieldReference, Filter } from "metabase-types/api";
-import * as Lib from "metabase-lib";
 import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { FieldReference, Filter } from "metabase-types/api";
+
 import {
   MBQL_CLAUSES,
   OPERATOR_PRECEDENCE,

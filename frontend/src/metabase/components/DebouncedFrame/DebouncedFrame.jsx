@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-
 import cx from "classnames";
+import { Component } from "react";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";

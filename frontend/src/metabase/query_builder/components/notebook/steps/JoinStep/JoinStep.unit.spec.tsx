@@ -1,12 +1,15 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { useState } from "react";
+
 import { createMockMetadata } from "__support__/metadata";
-import { createMockEntitiesState } from "__support__/store";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import {
   createMockCollectionItem,
   createMockDatabase,
@@ -17,9 +20,9 @@ import {
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
 import { createMockNotebookStep } from "../../test-utils";
+
 import { JoinStep } from "./JoinStep";
 
 const SAMPLE_DATABASE = createSampleDatabase();
@@ -230,7 +233,7 @@ describe("Notebook Editor > Join Step", () => {
     const tablePicker = await screen.findByTestId("popover");
     userEvent.click(await within(tablePicker).findByText("Reviews"));
 
-    const lhsColumnPicker = await screen.findByLabelText("grid");
+    const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
 
     expect(within(lhsColumnPicker).getByText("Order")).toBeInTheDocument();
     expect(within(lhsColumnPicker).getByText("Product ID")).toBeInTheDocument();
@@ -240,8 +243,7 @@ describe("Notebook Editor > Join Step", () => {
 
     userEvent.click(within(lhsColumnPicker).getByText("Total"));
 
-    await screen.findAllByLabelText("grid");
-    const [, rhsColumnPicker] = screen.getAllByLabelText("grid");
+    const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
 
     expect(within(rhsColumnPicker).getByText("Reviewer")).toBeInTheDocument();
     expect(within(rhsColumnPicker).getByText("Body")).toBeInTheDocument();
@@ -260,7 +262,7 @@ describe("Notebook Editor > Join Step", () => {
     setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
     userEvent.click(screen.getByLabelText("Left column"));
-    const popover = await screen.findByLabelText("grid");
+    const popover = await screen.findByTestId("lhs-column-picker");
 
     expect(within(popover).getByLabelText("Product ID")).toHaveAttribute(
       "aria-selected",
@@ -276,7 +278,7 @@ describe("Notebook Editor > Join Step", () => {
     setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
     userEvent.click(screen.getByLabelText("Right column"));
-    const popover = await screen.findByLabelText("grid");
+    const popover = await screen.findByTestId("rhs-column-picker");
 
     expect(within(popover).getByLabelText("ID")).toHaveAttribute(
       "aria-selected",
@@ -291,7 +293,7 @@ describe("Notebook Editor > Join Step", () => {
   it("should automatically open RHS table picker", async () => {
     setup();
 
-    const popover = screen.getByTestId("popover");
+    const popover = await screen.findByTestId("popover");
 
     expect(await within(popover).findByText("Products")).toBeInTheDocument();
     expect(within(popover).getByText("People")).toBeInTheDocument();
@@ -326,7 +328,7 @@ describe("Notebook Editor > Join Step", () => {
     const { getRecentJoin } = setup(createMockNotebookStep({ query }));
 
     userEvent.click(screen.getByLabelText("Left column"));
-    const popover = await screen.findByLabelText("grid");
+    const popover = await screen.findByTestId("lhs-column-picker");
     userEvent.click(within(popover).getByText("User ID"));
 
     const [condition] = getRecentJoin().conditions;
@@ -339,7 +341,7 @@ describe("Notebook Editor > Join Step", () => {
     const { getRecentJoin } = setup(createMockNotebookStep({ query }));
 
     userEvent.click(screen.getByLabelText("Right column"));
-    const popover = await screen.findByLabelText("grid");
+    const popover = await screen.findByTestId("rhs-column-picker");
     userEvent.click(within(popover).getByText("Price"));
 
     const [condition] = getRecentJoin().conditions;
@@ -361,7 +363,7 @@ describe("Notebook Editor > Join Step", () => {
     setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
     userEvent.click(screen.getByLabelText("Left column"));
-    const popover = await screen.findByLabelText("grid");
+    const popover = await screen.findByTestId("lhs-column-picker");
     const numericColumn = within(popover).getByLabelText("Total");
     const dateTimeColumn = within(popover).getByLabelText("Created At");
 
@@ -388,7 +390,7 @@ describe("Notebook Editor > Join Step", () => {
 
     userEvent.click(rightJoin);
     await waitFor(() =>
-      expect(screen.queryByTestId("select-list")).not.toBeVisible(),
+      expect(screen.queryByTestId("select-list")).not.toBeInTheDocument(),
     );
 
     userEvent.click(screen.getByLabelText("Change join type"));
@@ -466,7 +468,7 @@ describe("Notebook Editor > Join Step", () => {
       userEvent.click(within(joinColumnsPicker).getByText("Reviewer"));
 
       userEvent.click(screen.getByLabelText("Left column"));
-      const lhsColumnPicker = await screen.findByLabelText("grid");
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
       userEvent.click(within(lhsColumnPicker).getByText("Product ID"));
       await waitFor(() =>
         expect(screen.getByLabelText("Left column")).toHaveTextContent(
@@ -474,7 +476,7 @@ describe("Notebook Editor > Join Step", () => {
         ),
       );
 
-      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
+      const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
       userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { query, fields } = getRecentJoin();
@@ -508,7 +510,7 @@ describe("Notebook Editor > Join Step", () => {
       userEvent.click(within(joinColumnsPicker).getByText("Select none"));
 
       userEvent.click(screen.getByLabelText("Left column"));
-      const lhsColumnPicker = await screen.findByLabelText("grid");
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
       userEvent.click(within(lhsColumnPicker).getByText("Product ID"));
       await waitFor(() =>
         expect(screen.getByLabelText("Left column")).toHaveTextContent(
@@ -516,7 +518,7 @@ describe("Notebook Editor > Join Step", () => {
         ),
       );
 
-      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
+      const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
       userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { fields } = getRecentJoin();
@@ -618,7 +620,7 @@ describe("Notebook Editor > Join Step", () => {
 
       expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
 
-      const lhsColumnPicker = await screen.findByLabelText("grid");
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
       userEvent.click(within(lhsColumnPicker).getByText("Product ID"));
       await waitFor(() =>
         expect(screen.getByLabelText("Left column")).toHaveTextContent(
@@ -628,8 +630,7 @@ describe("Notebook Editor > Join Step", () => {
 
       expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByLabelText("Right column"));
-      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
+      const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
       userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       expect(screen.getByLabelText("Add condition")).toBeInTheDocument();
@@ -643,7 +644,7 @@ describe("Notebook Editor > Join Step", () => {
       userEvent.click(screen.getByLabelText("Add condition"));
       const conditionContainer = screen.getByTestId("new-join-condition");
 
-      const lhsColumnPicker = await screen.findByLabelText("grid");
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
       userEvent.click(within(lhsColumnPicker).getByText("Created At"));
       await waitFor(() =>
         expect(
@@ -651,10 +652,7 @@ describe("Notebook Editor > Join Step", () => {
         ).toHaveTextContent("Created At"),
       );
 
-      userEvent.click(
-        within(conditionContainer).getByLabelText("Right column"),
-      );
-      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
+      const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
       userEvent.click(within(rhsColumnPicker).getByText("Created At"));
 
       const { conditions } = getRecentJoin();
@@ -685,7 +683,7 @@ describe("Notebook Editor > Join Step", () => {
       userEvent.click(screen.getByLabelText("Add condition"));
       conditionContainer = screen.getByTestId("new-join-condition");
 
-      const lhsColumnPicker = await screen.findByLabelText("grid");
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
       userEvent.click(within(lhsColumnPicker).getByText("Created At"));
       await waitFor(() =>
         expect(

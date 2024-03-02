@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
+
+import { getIcon, screen } from "__support__/ui";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { getIcon, queryIcon, screen } from "__support__/ui";
+
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
@@ -80,7 +82,7 @@ describe("CollectionMenu", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should not be able to make the collection official if it's a personal collection", () => {
+  it("should be able to make the collection official if it's a personal collection", async () => {
     const collection = createMockCollection({
       personal_owner_id: 1,
       can_write: true,
@@ -90,7 +92,10 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+    userEvent.click(getIcon("ellipsis"));
+    expect(
+      await screen.findByText("Make collection official"),
+    ).toBeInTheDocument();
   });
 
   it("should not be able to make the collection official if it's a personal collection child", () => {

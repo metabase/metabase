@@ -4,10 +4,10 @@ import { connect } from "react-redux";
 
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
-import RevisionHistory from "../components/revisions/RevisionHistory";
 
-import { getRevisions, getCurrentUser } from "../selectors";
+import RevisionHistory from "../components/revisions/RevisionHistory";
 import { fetchRevisions } from "../datamodel";
+import { getRevisions, getCurrentUser } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
   objectType: props.params.entity,

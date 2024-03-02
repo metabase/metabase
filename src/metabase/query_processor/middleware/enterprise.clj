@@ -47,8 +47,8 @@
   "Helper middleware wrapper for [[check-download-permissions]] to make sure we do [[defenterprise]] dispatch
   correctly on each QP run rather than just once when we combine all of the QP middleware."
   [qp]
-  (fn [query rff context]
-    ((check-download-permissions qp) query rff context)))
+  (fn [query rff]
+    ((check-download-permissions qp) query rff)))
 
 (defenterprise maybe-apply-column-level-perms-check
   "Execution middleware. Check column-level permissions if applicable."
@@ -60,8 +60,8 @@
   "Helper middleware wrapper for [[maybe-apply-column-level-perms-check]] to make sure we do [[defenterprise]] dispatch
   correctly on each QP run rather than just once when we combine all of the QP middleware."
   [qp]
-  (fn [query rff context]
-    ((maybe-apply-column-level-perms-check qp) query rff context)))
+  (fn [query rff]
+    ((maybe-apply-column-level-perms-check qp) query rff)))
 
 ;;;; Post-processing middleware
 
@@ -89,15 +89,15 @@
   "'Around' middleware that handles `:internal` (Audit App) type queries."
   metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
   [qp]
-  (fn [{query-type :type, :as query} rff context]
+  (fn [{query-type :type, :as query} rff]
     (when (= (keyword query-type) :internal)
       (throw (ex-info (i18n/tru "Audit App queries are not enabled on this instance.")
                       {:type qp.error-type/invalid-query})))
-    (qp query rff context)))
+    (qp query rff)))
 
 (defn handle-audit-app-internal-queries-middleware
   "Helper middleware wrapper for [[handle-audit-app-internal-queries]] to make sure we do [[defenterprise]] dispatch
   correctly on each QP run rather than just once when we combine all of the QP middleware."
   [qp]
-  (fn [query rff context]
-    ((handle-audit-app-internal-queries qp) query rff context)))
+  (fn [query rff]
+    ((handle-audit-app-internal-queries qp) query rff)))

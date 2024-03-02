@@ -16,6 +16,7 @@
  [sql-jdbc.sync.interface
   active-tables
   column->semantic-type
+  current-user-table-privileges
   database-type->base-type
   db-default-timezone
   describe-nested-field-columns

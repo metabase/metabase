@@ -1,11 +1,13 @@
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import { Text } from "@visx/text";
+import PropTypes from "prop-types";
+import { t } from "ttag";
+
 import { getTextColorForBackground } from "metabase/lib/colors";
-import { formatNumber, formatPercent } from "../../lib/numbers";
+
 import { DIMENSION_ACCESSORS } from "../../constants/accessors";
+import { formatNumber, formatPercent } from "../../lib/numbers";
 
 const propTypes = {
   data: PropTypes.array,

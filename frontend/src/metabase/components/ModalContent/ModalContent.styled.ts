@@ -1,7 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { Icon } from "metabase/ui";
+import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const HeaderContainer = styled.div`
   padding: 2rem;

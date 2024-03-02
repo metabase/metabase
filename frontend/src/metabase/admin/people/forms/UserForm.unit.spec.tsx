@@ -1,16 +1,16 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { mockSettings } from "__support__/settings";
 import { setupEnterprisePlugins } from "__support__/enterprise";
-
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockGroup,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+
 import { UserForm } from "./UserForm";
 
 const GROUPS = [

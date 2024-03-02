@@ -1,38 +1,32 @@
+import type { Location, LocationDescriptor } from "history";
+import { updateIn } from "icepick";
 import type { ComponentType } from "react";
 import { useState } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 import type { Route } from "react-router";
-
+import { push } from "react-router-redux";
+import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { updateIn } from "icepick";
 
-import { useMount } from "react-use";
-import type { Location, LocationDescriptor } from "history";
-import title from "metabase/hoc/Title";
-
-import Breadcrumbs from "metabase/components/Breadcrumbs";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
-
-import { getSetting } from "metabase/selectors/settings";
-
+import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { GenericError } from "metabase/containers/ErrorPages";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import title from "metabase/hoc/Title";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { getSetting } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import Database from "metabase-lib/metadata/Database";
 import type {
   Database as DatabaseType,
   DatabaseData,
   DatabaseId,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
-
-import { getEditingDatabase, getInitializeError } from "../selectors";
 
 import {
   reset,
@@ -46,6 +40,8 @@ import {
   deleteDatabase,
   selectEngine,
 } from "../database";
+import { getEditingDatabase, getInitializeError } from "../selectors";
+
 import {
   DatabaseEditContent,
   DatabaseEditForm,

@@ -1,4 +1,5 @@
 import cx from "classnames";
+
 import { SettingInputBlurChange } from "./SettingInput.styled";
 
 const getValue = (value: string, type: string) => {
@@ -30,6 +31,9 @@ export interface SettingInputProps {
 
 const identity = (value: Value) => value;
 
+/**
+ * @deprecated use SettingTextInput instead
+ */
 export const SettingInput = ({
   setting,
   onChange,
@@ -64,6 +68,3 @@ export const SettingInput = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SettingInput;

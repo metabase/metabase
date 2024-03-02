@@ -1,12 +1,11 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visualize,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { REVIEWS, REVIEWS_ID, PRODUCTS, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 

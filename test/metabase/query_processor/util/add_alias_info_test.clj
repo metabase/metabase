@@ -8,9 +8,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fix-bad-references
     :as fix-bad-refs]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]))
@@ -42,7 +42,7 @@
                                (qp.store/metadata-provider)
                                meta/metadata-provider)
     (driver/with-driver (or driver/*driver* :h2)
-      (-> query qp/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
+      (-> query qp.preprocess/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
 
 (deftest ^:parallel join-in-source-query-test
   (is (query= (lib.tu.macros/mbql-query venues
@@ -393,29 +393,32 @@
       (mt/with-db db
         (is (query= (lib.tu.macros/$ids venues
                       (merge
-                          {:source-query (let [price [:field %price {::add/source-table  $$venues
-                                                                     ::add/source-alias  "PRICE"
-                                                                     ::add/desired-alias "COOL.PRICE"
-                                                                     ::add/position      0}]]
-                                           {:source-table $$venues
-                                            :expressions  {"double_price" [:* price 2]}
-                                            :fields       [price
-                                                           [:expression "double_price" {::add/desired-alias "COOL.double_price"
-                                                                                        ::add/position      1}]]
-                                            :limit        1})}
-                          (let [double-price [:field
-                                              "double_price"
-                                              {:base-type          :type/Integer
-                                               ::add/source-table  ::add/source
-                                               ::add/source-alias  "COOL.double_price"
-                                               ::add/desired-alias "COOL.COOL.double_price"
-                                               ::add/position      0}]]
-                            {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
-                                                                           ::add/position      1
-                                                                           ::add/source-alias  "count"
-                                                                           ::add/desired-alias "COOL.count"}]]
-                             :breakout    [double-price]
-                             :order-by    [[:asc double-price]]})))
+                       {:source-query (let [price [:field %price {::add/source-table  $$venues
+                                                                  ::add/source-alias  "PRICE"
+                                                                  ::add/desired-alias "COOL.PRICE"
+                                                                  ::add/position      0}]]
+                                        {:source-table $$venues
+                                         :expressions  {"double_price" [:* price 2]}
+                                         :fields       [price
+                                                        [:expression "double_price" {::add/desired-alias "COOL.double_price"
+                                                                                     ::add/position      1}]]
+                                         :limit        1})}
+                       (let [double-price [:field
+                                           "double_price"
+                                           {:base-type          :type/Integer
+                                            ::add/source-table  ::add/source
+                                            ::add/source-alias  "COOL.double_price"
+                                            ::add/desired-alias "COOL.COOL.double_price"
+                                            ::add/position      0}]]
+                         ;; this is escaped once during preprocessing by
+                         ;; the [[metabase.query-processor.middleware.pre-alias-aggregations]] middleware and then once
+                         ;; more when we call [[metabase.query-processor.util.add-alias-info/add-alias-info]]
+                         {:aggregation [[:aggregation-options [:count] {:name               "COOL.COOL.count"
+                                                                        ::add/position      1
+                                                                        ::add/source-alias  "COOL.count"
+                                                                        ::add/desired-alias "COOL.COOL.count"}]]
+                          :breakout    [double-price]
+                          :order-by    [[:asc double-price]]})))
                     (-> (lib.tu.macros/mbql-query venues
                           {:source-query {:source-table $$venues
                                           :expressions  {"double_price" [:* $price 2]}
@@ -489,7 +492,7 @@
       (is (query= (lib.tu.macros/$ids nil
                     {:source-query {:source-table $$orders
                                     :joins        [{:source-table $$products
-                                                    :alias        "Products Renamed"
+                                                    :alias        "Products_Renamed"
                                                     :condition
                                                     [:=
                                                      [:field
@@ -501,16 +504,16 @@
                                                       {::add/desired-alias "Products_Renamed__ID"
                                                        ::add/position      0
                                                        ::add/source-alias  "ID"
-                                                       ::add/source-table  "Products Renamed"
-                                                       :join-alias         "Products Renamed"}]]
+                                                       ::add/source-table  "Products_Renamed"
+                                                       :join-alias         "Products_Renamed"}]]
                                                     :fields
                                                     [[:field
                                                       %products.id
                                                       {::add/desired-alias "Products_Renamed__ID"
                                                        ::add/position      0
                                                        ::add/source-alias  "ID"
-                                                       ::add/source-table  "Products Renamed"
-                                                       :join-alias         "Products Renamed"}]]
+                                                       ::add/source-table  "Products_Renamed"
+                                                       :join-alias         "Products_Renamed"}]]
                                                     :strategy     :left-join}]
                                     :expressions  {"CC" [:+ 1 1]}
                                     :fields
@@ -519,16 +522,16 @@
                                       {::add/desired-alias "Products_Renamed__ID"
                                        ::add/position      0
                                        ::add/source-alias  "ID"
-                                       ::add/source-table  "Products Renamed"
-                                       :join-alias         "Products Renamed"}]
+                                       ::add/source-table  "Products_Renamed"
+                                       :join-alias         "Products_Renamed"}]
                                      [:expression "CC" {::add/desired-alias "CC", ::add/position 1}]]
                                     :filter
                                     [:=
                                      [:field
                                       %products.category
                                       {::add/source-alias "CATEGORY"
-                                       ::add/source-table  "Products Renamed"
-                                       :join-alias        "Products Renamed"}]
+                                       ::add/source-table  "Products_Renamed"
+                                       :join-alias        "Products_Renamed"}]
                                      [:value
                                       "Doohickey"
                                       {:base_type         :type/Text
@@ -543,7 +546,7 @@
                                       ::add/position      0
                                       ::add/source-alias  "Products_Renamed__ID"
                                       ::add/source-table  ::add/source
-                                      :join-alias         "Products Renamed"}]
+                                      :join-alias         "Products_Renamed"}]
                                     [:field
                                      "CC"
                                      {::add/desired-alias "CC"
@@ -607,7 +610,7 @@
                     :field_ref    [:field (meta/id :people :address) {:join-alias "Question 54"}]
                     :display_name "Question 54 → Address"
                     :source_alias "Question 54"}]
-                  (qp/query->expected-cols query))))))))
+                  (qp.preprocess/query->expected-cols query))))))))
 
 (deftest ^:parallel use-source-unique-aliases-test
   (testing "Make sure uniquified aliases in the source query end up getting used for `::add/source-alias`"

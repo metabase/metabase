@@ -1,7 +1,9 @@
 import { act, renderHook } from "@testing-library/react-hooks";
+
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
 import { useNumberFilter } from "./use-number-filter";
 
 interface CreateFilterCase {

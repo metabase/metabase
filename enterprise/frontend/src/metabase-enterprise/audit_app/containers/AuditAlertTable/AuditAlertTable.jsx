@@ -1,8 +1,9 @@
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import { AuditEntitiesTable } from "../AuditEntitiesTable";
+
 import * as AlertCards from "../../lib/cards/alerts";
+import { AuditEntitiesTable } from "../AuditEntitiesTable";
 
 const mapStateToProps = (state, props) => ({
   table: AlertCards.table(),

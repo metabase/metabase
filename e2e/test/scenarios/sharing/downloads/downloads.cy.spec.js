@@ -1,3 +1,9 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   downloadAndAssert,
@@ -16,12 +22,6 @@ import {
   enableTracking,
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
-import {
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -281,7 +281,7 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
 
   it("should allow you to download a PDF of a dashboard", () => {
     cy.createDashboardWithQuestions({
-      dashboardName: `test dashboard`,
+      dashboardName: "test dashboard",
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);

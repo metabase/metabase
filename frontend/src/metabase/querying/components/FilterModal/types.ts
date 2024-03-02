@@ -1,5 +1,5 @@
-import type * as Lib from "metabase-lib";
 import type { IconName } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 
 export interface ColumnItem {
   column: Lib.ColumnMetadata;

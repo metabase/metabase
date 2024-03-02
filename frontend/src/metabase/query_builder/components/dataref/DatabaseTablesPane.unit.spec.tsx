@@ -3,11 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { checkNotNull } from "metabase/lib/types";
 import {
   createMockDatabase,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/lib/types";
 
 import type { DatabaseTablesPaneProps } from "./DatabaseTablesPane";
 import { DatabaseTablesPane } from "./DatabaseTablesPane";

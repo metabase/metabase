@@ -1,9 +1,9 @@
 /* eslint "react/prop-types": "warn" */
-import { createRef, Component } from "react";
 import PropTypes from "prop-types";
+import { createRef, Component } from "react";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "metabase/components/ConfirmContent";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 export default class Confirm extends Component {
   constructor(props) {

@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import { Box } from "metabase/ui";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import type { SectionLayout } from "metabase/dashboard/sections";
-
+import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import { Box } from "metabase/ui";
 import type { DashboardCardLayoutAttrs } from "metabase-types/api";
 
 const WIDTH = 160;

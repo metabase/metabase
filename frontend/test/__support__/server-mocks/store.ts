@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { StoreTokenStatus } from "metabase-types/api";
 
 export function setupStoreTokenEndpoints(tokenStatus: StoreTokenStatus) {

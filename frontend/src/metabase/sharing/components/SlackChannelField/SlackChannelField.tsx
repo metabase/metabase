@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { Channel, ChannelSpec } from "metabase-types/api";
+import AutocompleteInput from "metabase/core/components/AutocompleteInput";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import AutocompleteInput from "metabase/core/components/AutocompleteInput";
+import type { Channel, ChannelSpec } from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";
 const CHANNEL_PREFIX = "#";

@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { DashboardEmbedHeaderButton } from "./DashboardEmbedHeaderButton";
 
 const setup = ({

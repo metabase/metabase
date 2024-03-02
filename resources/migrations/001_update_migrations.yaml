@@ -5318,6 +5318,38 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v49.2024-02-02T11:27:49
+      author: oisincoveney
+      comment: >-
+        Add report_card.initially_published_at
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: initially_published_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+                  remarks: The timestamp when the card was first published in a static embed
+
+  - changeSet:
+        id: v49.2024-02-02T11:28:36
+        author: oisincoveney
+        comment: >-
+          Add report_dashboard.initially_published_at
+        changes:
+          - addColumn:
+              tableName: report_dashboard
+              columns:
+                - column:
+                    name: initially_published_at
+                    type: ${timestamp_type}
+                    constraints:
+                      nullable: true
+                    remarks: The timestamp when the dashboard was first published in a static embed
+
+  - changeSet:
       id: v49.2024-02-07T21:52:01
       author: noahmoss
       comment: Added 0.49.0 - updated view v_view_log
@@ -5454,6 +5486,118 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/users/v1/h2-users.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-02-09T13:55:26
+      author: noahmoss
+      comment: Set default value for enable-public-sharing to `false` for existing instances with users, if not already set
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - or:
+                - and:
+                    - dbms:
+                        type: postgresql
+                    - sqlCheck:
+                        expectedResult: 0
+                        sql: SELECT count(*) FROM setting WHERE key = 'enable-public-sharing';
+                - and:
+                    - dbms:
+                        type: h2
+                    - sqlCheck:
+                        expectedResult: 0
+                        sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-public-sharing';
+                - and:
+                    - dbms:
+                        type: mysql,mariadb
+                    - sqlCheck:
+                        expectedResult: 0
+                        sql: SELECT count(*) FROM setting WHERE `key` = 'enable-public-sharing';
+            - sqlCheck:
+                expectedResult: 1
+                sql: >
+                  SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM core_user;
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: INSERT INTO setting (key, value) VALUES ('enable-public-sharing', 'false');
+        - sql:
+            dbms: mysql,mariadb
+            sql: INSERT INTO setting (`key`, value) VALUES ('enable-public-sharing', 'false');
+        - sql:
+            dbms: h2
+            sql: INSERT INTO setting ("KEY", "VALUE") VALUES ('enable-public-sharing', 'false');
+      rollback: # not needed
+
+  - changeSet:
+      id: v50.2024-02-20T19:21:04
+      author: camsaul
+      comment: Drop v1 version of v_content view since it references report_card.dataset which we are dropping in next migration
+      changes:
+        - sql:
+            sql: >
+              DROP VIEW IF EXISTS v_content;
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v1/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v1/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v1/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-02-20T19:25:40
+      author: camsaul
+      comment: Remove report_card.dataset (indicated whether Card was a Model; migrated to report_card.type in 49)
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: dataset
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dataset
+                  type: boolean
+                  remarks: "Indicate whether question is a model"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET dataset = true
+              WHERE type = 'model';
+
+  - changeSet:
+      id: v50.2024-02-20T19:26:38
+      author: camsaul
+      comment: Add new v2 version of v_content view which uses report_card.type instead of report_card.dataset (removed in previous migration)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v2/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v2/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v2/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: >-
+              DROP VIEW IF EXISTS v_content;
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

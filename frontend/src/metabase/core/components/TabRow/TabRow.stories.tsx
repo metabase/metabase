@@ -1,14 +1,16 @@
-import { useState } from "react";
-import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/addons";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
+import { useArgs } from "@storybook/addons";
+import type { ComponentStory } from "@storybook/react";
+import { useState } from "react";
 
 import { color } from "metabase/lib/colors";
+
+import { Sortable } from "../Sortable";
 import type { TabButtonMenuItem, TabButtonMenuAction } from "../TabButton";
 import { TabButton } from "../TabButton";
 import TabLink from "../TabLink";
-import { Sortable } from "../Sortable";
+
 import { TabRow } from "./TabRow";
 
 export default {

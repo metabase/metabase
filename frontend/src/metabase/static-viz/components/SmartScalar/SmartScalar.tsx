@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+
 import type {
   StaticVisualizationProps,
   RenderingContext,
@@ -8,6 +9,7 @@ import {
   CHANGE_TYPE_OPTIONS,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
+
 import { computeSmartScalarSettings } from "./settings";
 
 export function SmartScalar({

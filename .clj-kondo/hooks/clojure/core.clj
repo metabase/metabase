@@ -43,6 +43,9 @@
      methodical.core/remove-aux-method-with-unique-key!
      next.jdbc/execute!
 
+     ;; Definitely thread safe
+     metabase.test.util.dynamic-redefs/patch-vars!
+
      ;; TODO: most of these symbols shouldn't be here, we should go through them and
      ;; find the functions/macros that use them and make sure their names end with !
      ;; best way to do this is try remove each of these and rely on kondo output to find places where it's used

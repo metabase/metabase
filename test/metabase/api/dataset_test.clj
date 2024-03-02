@@ -128,21 +128,25 @@
             result (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "\nAPI Response"
           (is (malli= [:map
-                       [:data        [:fn #(= % {:rows [] :cols []})]]
+                       [:data        [:map
+                                      [:rows [:= []]]
+                                      [:cols [:= []]]]]
                        [:row_count   [:= 0]]
                        [:status      [:= "failed"]]
                        [:context     [:= "ad-hoc"]]
                        [:error       #"Syntax error in SQL statement"]
-                       [:json_query  [:fn #(= % (merge
-                                                  query-defaults
-                                                  {:database (mt/id)
-                                                   :type     "native"
-                                                   :native   {:query "foobar"}}))]]
+                       [:json_query  [:map
+                                      [:database   [:= (mt/id)]]
+                                      [:type       [:= "native"]]
+                                      [:native     [:map
+                                                    [:query [:= "foobar"]]]]
+                                      [:middleware [:map
+                                                    [:add-default-userland-constraints? [:= true]]
+                                                    [:js-int-to-string?                 [:= true]]]]]]
                        [:database_id [:= (mt/id)]]
                        [:state       [:= "42000"]]
                        [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
                       result)))
-
         (testing "\nSaved QueryExecution"
           (is (malli=
                [:map

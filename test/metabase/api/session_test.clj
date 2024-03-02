@@ -39,7 +39,7 @@
   [:map
    [:id ms/UUIDString]])
 
-(def ^:private session-cookie @#'mw.session/metabase-session-cookie)
+(def ^:private session-cookie mw.session/metabase-session-cookie)
 
 (deftest login-test
   (reset-throttlers!)
@@ -269,12 +269,12 @@
 
 (deftest forgot-password-throttling-test
   (reset-throttlers!)
-  (testing "Test that email based throttling kicks in after the login failure threshold (10) has been reached"
+  (testing "Test that email based throttling kicks in after the login failure threshold (3) has been reached"
     (letfn [(send-password-reset! [& [expected-status & _more]]
               (mt/client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
       (with-redefs [api.session/forgot-password-throttlers (cleaned-throttlers #'api.session/forgot-password-throttlers
                                                                                [:email :ip-address])]
-        (dotimes [_ 10]
+        (dotimes [_ 3]
           (send-password-reset!))
         (let [error (fn []
                       (-> (send-password-reset! 400)

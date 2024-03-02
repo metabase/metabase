@@ -5,9 +5,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
+import Tooltip from "metabase/core/components/Tooltip";
+
 import {
   ScalarRoot,
   ScalarValueWrapper,
@@ -17,7 +18,6 @@ import {
   ScalarDescriptionPlaceholder,
   ScalarTitleContent,
 } from "./ScalarValue.styled";
-
 import { findSize, getMaxFontSize } from "./utils";
 
 export const ScalarWrapper = ({ children }) => (

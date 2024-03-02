@@ -15,14 +15,16 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (org.eclipse.jetty.io EofException)))
 
@@ -154,9 +156,13 @@
            (vreset! final-metadata row)
            (rf acc row)))))))
 
-(defn- maybe-reduce-cached-results
+(mu/defn ^:private maybe-reduce-cached-results :- [:tuple
+                                                   #_status
+                                                   [:enum ::ok ::miss ::canceled]
+                                                   #_result
+                                                   :any]
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
-  [ignore-cache? query-hash max-age-seconds rff context]
+  [ignore-cache? query-hash max-age-seconds rff]
   (try
     (or (when-not ignore-cache?
           (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
@@ -168,41 +174,51 @@
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
                   (log/tracef "Reducing cached rows...")
-                  (qp.context/reducef (cached-results-rff rff query-hash) context metadata reducible-rows)
-                  (log/tracef "All cached rows reduced")
-                  ::ok)))))
-        ::miss)
+                  (let [result (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)]
+                    (log/tracef "All cached rows reduced")
+                    [::ok result]))))))
+        [::miss nil])
     (catch EofException _
       (log/debug (trs "Request is closed; no one to return cached results to"))
-      ::canceled)
+      [::canceled nil])
     (catch Throwable e
       (log/error e (trs "Error attempting to fetch cached results for query with hash {0}: {1}"
                         (i/short-hex-hash query-hash) (ex-message e)))
-      ::miss)))
+      [::miss nil])))
 
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(defn- run-query-with-cache
-  [qp {:keys [cache-ttl middleware], :as query} rff {:keys [reducef], :as context}]
+(mu/defn ^:private run-query-with-cache :- :some
+  [qp {:keys [cache-ttl middleware], :as query} :- ::qp.schema/query
+   rff                                          :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see
   ;; #14388.
-  (let [query-hash (qp.util/query-hash query)
-        result     (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff context)]
-    (when (= result ::miss)
-      (let [start-time-ms (System/currentTimeMillis)]
+  (let [query-hash      (qp.util/query-hash query)
+        [status result] (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff)]
+    (case status
+      ::ok
+      result
+
+      ::canceled
+      ::canceled
+
+      ::miss
+      (let [start-time-ms (System/currentTimeMillis)
+            orig-reduce   qp.pipeline/*reduce*]
         (log/trace "Running query and saving cached results (if eligible)...")
-        (let [reducef' (fn [rff context metadata rows]
-                         (impl/do-with-serialization
-                          (fn [in-fn result-fn]
-                            (binding [*in-fn*     in-fn
-                                      *result-fn* result-fn]
-                              (reducef rff context metadata rows)))))]
+        (binding [qp.pipeline/*reduce* (fn reduce'
+                                         [rff metadata rows]
+                                         {:post [(some? %)]}
+                                         (impl/do-with-serialization
+                                          (fn [in-fn result-fn]
+                                            (binding [*in-fn*     in-fn
+                                                      *result-fn* result-fn]
+                                              (orig-reduce rff metadata rows)))))]
           (qp query
               (fn [metadata]
-                (save-results-xform start-time-ms metadata query-hash (rff metadata)))
-              (assoc context :reducef reducef')))))))
+                (save-results-xform start-time-ms metadata query-hash (rff metadata)))))))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-ttl]}]
   (and (public-settings/enable-query-caching)
@@ -221,9 +237,9 @@
         running the query, satisfying this requirement.)
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
-  (fn maybe-return-cached-results* [query rff context]
+  (fn maybe-return-cached-results* [query rff]
     (let [cacheable? (is-cacheable? query)]
       (log/tracef "Query is cacheable? %s" (boolean cacheable?))
       (if cacheable?
-        (run-query-with-cache qp query rff context)
-        (qp query rff context)))))
+        (run-query-with-cache qp query rff)
+        (qp query rff)))))

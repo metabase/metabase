@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, within } from "__support__/ui";
 
+import { renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 
 import { createMockNotebookStep } from "../test-utils";
+
 import { ExpressionStep } from "./ExpressionStep";
 
 interface SetupOpts {

@@ -1,5 +1,7 @@
 import slugg from "slugg";
+
 import type { Card } from "metabase-types/api";
+
 import type { QuestionUrlBuilderParams } from "./questions";
 import { question } from "./questions";
 import { appendSlug } from "./utils";
@@ -18,7 +20,7 @@ export function model(
 }
 
 export function modelDetail(card: CardOrSearchResult, tab = "") {
-  const baseUrl = `${model({ ...card, dataset: true })}/detail`;
+  const baseUrl = `${model({ ...card, type: "model" })}/detail`;
   return tab ? `${baseUrl}/${tab}` : baseUrl;
 }
 

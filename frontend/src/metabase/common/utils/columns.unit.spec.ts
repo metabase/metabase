@@ -1,5 +1,6 @@
 import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+
 import { getColumnIcon } from "./columns";
 
 describe("common/utils/columns", () => {

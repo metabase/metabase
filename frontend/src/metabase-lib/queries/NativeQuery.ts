@@ -1,31 +1,31 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
-import _ from "underscore";
 import slugg from "slugg";
+import { t } from "ttag";
+import _ from "underscore";
+
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
+import ValidationError from "metabase-lib/ValidationError";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
+import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
+import AtomicQuery from "metabase-lib/queries/AtomicQuery";
+import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import type Variable from "metabase-lib/variables/Variable";
 import type {
   Card,
   DatabaseId,
   DatasetQuery,
-  DependentMetadataItem,
   NativeDatasetQuery,
   ParameterValuesConfig,
   TemplateTag,
   TemplateTags,
 } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
-import type Table from "metabase-lib/metadata/Table";
-import type Database from "metabase-lib/metadata/Database";
-import AtomicQuery from "metabase-lib/queries/AtomicQuery";
-import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
-import type Variable from "metabase-lib/variables/Variable";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import ValidationError from "metabase-lib/ValidationError";
-import { isFieldReference } from "metabase-lib/references";
+
 import type Dimension from "../Dimension";
-import { FieldDimension, TemplateTagDimension } from "../Dimension";
+import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
@@ -420,23 +420,5 @@ export default class NativeQuery extends AtomicQuery {
     return queryText && this.supportsNativeParameters()
       ? Lib.extractTemplateTags(queryText, this.templateTagsMap())
       : {};
-  }
-
-  dependentMetadata(): DependentMetadataItem[] {
-    const templateTags = this.templateTags();
-    return templateTags
-      .filter(
-        tag => tag.type === "dimension" && isFieldReference(tag.dimension),
-      )
-      .map(tag => {
-        const dimension = FieldDimension.parseMBQL(
-          tag.dimension,
-          this.metadata(),
-        );
-        return {
-          type: "field",
-          id: dimension.field().id,
-        };
-      });
   }
 }

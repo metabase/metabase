@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/Question";
 import {
   createSampleDatabase,
   createAdHocCard,
@@ -13,7 +14,6 @@ import {
   PEOPLE,
 } from "metabase-types/api/mocks/presets";
 
-import Question from "metabase-lib/Question";
 import { getParameterMappingOptions } from "./mapping-options";
 
 const metadata = createMockMetadata({
@@ -49,9 +49,11 @@ describe("parameters/utils/mapping-options", () => {
       let virtualCardTable;
       beforeEach(() => {
         const question = ordersTable.question();
-        dataset = question
-          .setCard({ ...question.card(), id: 123 })
-          .setType("model");
+        dataset = question.setCard({
+          ...question.card(),
+          id: 123,
+          type: "model",
+        });
 
         // create a virtual table for the card
         // that contains fields with custom, model-specific metadata
@@ -60,7 +62,7 @@ describe("parameters/utils/mapping-options", () => {
         virtualCardTable.fields = [
           metadata.field(ORDERS.CREATED_AT).clone({
             table_id: `card__123`,
-            uniqueId: `card__123:${ORDERS.CREATED_AT.id}`,
+            uniqueId: `card__123:${ORDERS.CREATED_AT}`,
             display_name: "~*~Created At~*~",
           }),
         ];

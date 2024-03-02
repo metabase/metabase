@@ -1,6 +1,5 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
-// NOTE: some overlap with parameters-embedded.cy.spec.js
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visitDashboard } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 

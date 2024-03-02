@@ -1,6 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
-
 import { GET, POST } from "metabase/lib/api";
+import { createEntity } from "metabase/lib/entities";
 
 import Dashboards from "./dashboards";
 import Questions from "./questions";

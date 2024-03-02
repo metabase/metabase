@@ -1,8 +1,9 @@
-import type { ButtonHTMLAttributes } from "react";
 import styled from "@emotion/styled";
+import type { ButtonHTMLAttributes } from "react";
+
 import { alpha, color } from "metabase/lib/colors";
-import { Button } from "metabase/ui";
 import type { ButtonProps } from "metabase/ui";
+import { Button } from "metabase/ui";
 
 type FilterButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   ButtonProps & {

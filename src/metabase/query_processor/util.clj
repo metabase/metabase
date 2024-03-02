@@ -5,6 +5,7 @@
    [buddy.core.hash :as buddy-hash]
    [cheshire.core :as json]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -71,6 +72,18 @@
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
+(defn- walk-query-sort-maps
+  "We don't want two queries to have different hashes because their map keys are in different orders, now do we? Convert
+  all the maps to sorted maps so queries are serialized to JSON in an identical order."
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (and (map? x)
+              (not (sorted? x)))
+       (into (sorted-map) x)
+       x))
+   x))
+
 (mu/defn ^:private select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
@@ -80,7 +93,8 @@
                                                                         :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
-      (empty? parameters)  (dissoc :parameters))))
+      (empty? parameters)  (dissoc :parameters)
+      true                 walk-query-sort-maps)))
 
 #_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
 (mu/defn ^"[B" query-hash :- bytes?

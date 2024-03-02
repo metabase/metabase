@@ -1,10 +1,12 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Alerts from "metabase/entities/alerts";
 import { getUser } from "metabase/selectors/user";
+
 import { navigateToArchive } from "../../actions";
-import { getAlertId } from "../../selectors";
 import UnsubscribeModal from "../../components/UnsubscribeModal";
+import { getAlertId } from "../../selectors";
 
 const mapStateToProps = (state, { alert }) => ({
   item: alert,

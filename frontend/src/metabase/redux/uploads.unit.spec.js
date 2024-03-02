@@ -136,7 +136,6 @@ describe("csv uploads", () => {
         type: UPLOAD_FILE_ERROR,
         payload: {
           id: now,
-          message: "There was an error uploading the file",
           error: "It's dead Jim",
         },
       });

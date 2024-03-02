@@ -1,5 +1,6 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
+
 import { UserApi } from "metabase/services";
 import { Text } from "metabase/ui";
 import type { UserId, UserListResult } from "metabase-types/api";

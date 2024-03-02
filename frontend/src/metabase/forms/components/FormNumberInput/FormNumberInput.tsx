@@ -1,8 +1,9 @@
-import { forwardRef, useCallback } from "react";
-import type { FocusEvent, Ref } from "react";
 import { useField } from "formik";
-import { NumberInput } from "metabase/ui";
+import type { FocusEvent, Ref } from "react";
+import { forwardRef, useCallback } from "react";
+
 import type { NumberInputProps } from "metabase/ui";
+import { NumberInput } from "metabase/ui";
 
 export interface FormNumberInputProps
   extends Omit<NumberInputProps, "value" | "error"> {

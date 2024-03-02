@@ -2,10 +2,10 @@
 import { t } from "ttag";
 
 import { EntityName } from "metabase/entities/containers/EntityName";
+
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTable from "../containers/AuditTable";
-
 import * as UserDetailCards from "../lib/cards/user_detail";
 
 const AuditUserDetail = ({ params, ...props }) => {

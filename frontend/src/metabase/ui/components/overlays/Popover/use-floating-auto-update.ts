@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { autoUpdate } from "@floating-ui/react";
 import type { Placement } from "@floating-ui/react";
+import { autoUpdate } from "@floating-ui/react";
 import { useDidUpdate } from "@mantine/hooks";
+import { useState, useEffect } from "react";
 
 interface Payload {
   opened: boolean;

@@ -1,3 +1,4 @@
+import type { Middleware, Placement } from "@floating-ui/react";
 import {
   useFloating,
   shift,
@@ -8,9 +9,9 @@ import {
   inline,
   limitShift,
 } from "@floating-ui/react";
-import type { Middleware, Placement } from "@floating-ui/react";
 import type { PopoverProps } from "@mantine/core";
 import { useDidUpdate, useUncontrolled } from "@mantine/hooks";
+
 import { useFloatingAutoUpdate } from "./use-floating-auto-update";
 
 interface UsePopoverOptions {

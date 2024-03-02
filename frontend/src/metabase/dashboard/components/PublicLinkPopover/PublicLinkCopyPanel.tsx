@@ -1,5 +1,6 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
+
 import {
   PublicLinkCopyButton,
   RemoveLinkAnchor,
@@ -13,6 +14,7 @@ import {
   TextInput,
   Tooltip,
 } from "metabase/ui";
+
 import type { ExportFormatType } from "./types";
 
 export const PublicLinkCopyPanel = ({
@@ -24,6 +26,7 @@ export const PublicLinkCopyPanel = ({
   onChangeExtension,
   removeButtonLabel,
   removeTooltipLabel,
+  onCopy,
 }: {
   loading?: boolean;
   url: string | null;
@@ -33,6 +36,7 @@ export const PublicLinkCopyPanel = ({
   extensions?: ExportFormatType[];
   removeButtonLabel?: string;
   removeTooltipLabel?: string;
+  onCopy?: () => void;
 }) => (
   <Stack spacing={0}>
     <TextInput
@@ -41,7 +45,7 @@ export const PublicLinkCopyPanel = ({
       placeholder={loading ? t`Loading…` : undefined}
       value={url ?? undefined}
       inputWrapperOrder={["label", "input", "error", "description"]}
-      rightSection={url && <PublicLinkCopyButton value={url} />}
+      rightSection={url && <PublicLinkCopyButton value={url} onCopy={onCopy} />}
     />
     <Box pos="relative">
       <Group mt="sm" pos="absolute" w="100%" position="apart" align="center">
@@ -56,6 +60,7 @@ export const PublicLinkCopyPanel = ({
               }
             >
               <RemoveLinkAnchor
+                component="button"
                 fz="sm"
                 c="error"
                 fw={700}

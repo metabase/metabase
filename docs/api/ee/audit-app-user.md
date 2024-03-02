@@ -17,6 +17,11 @@ Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so th
 
 *  **`id`** value must be an integer greater than zero.
 
+## `GET /api/ee/audit-app/user/audit-info`
+
+Gets audit info for the current user if he has permissions to access the audit collection.
+  Otherwise return an empty map.
+
 ---
 
 [<< Back to API index](../../api-documentation.md)

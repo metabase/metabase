@@ -1,4 +1,5 @@
 import { render, getIcon, queryIcon } from "__support__/ui";
+
 import { ModerationStatusIcon } from "./ModerationStatusIcon";
 
 describe("ModerationReviewBanner", () => {

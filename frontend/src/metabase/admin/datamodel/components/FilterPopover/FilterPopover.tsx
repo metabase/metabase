@@ -1,34 +1,33 @@
-import { useState, useEffect } from "react";
 import type * as React from "react";
+import { useState, useEffect } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { usePrevious } from "react-use";
-
 import { color } from "metabase/lib/colors";
-
-import { Icon } from "metabase/ui";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-import type { Expression } from "metabase-types/api";
-import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
+import { Icon } from "metabase/ui";
 import type { FieldDimension } from "metabase-lib/Dimension";
+import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
-import { isExpression } from "metabase-lib/expressions";
+import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
+import type { Expression } from "metabase-types/api";
 
-import DatePicker from "../filters/pickers/DatePicker/DatePicker";
-import TimePicker from "../filters/pickers/TimePicker";
-import type { DateShortcutOptions } from "../filters/pickers/DatePicker/DatePickerShortcutOptions";
 import { DimensionList } from "../DimensionList";
+import DatePicker from "../filters/pickers/DatePicker/DatePicker";
+import type { DateShortcutOptions } from "../filters/pickers/DatePicker/DatePickerShortcutOptions";
+import TimePicker from "../filters/pickers/TimePicker";
+
 import {
   Button,
   EmptyFilterPickerPlaceholder,
   FilterPopoverSeparator,
 } from "./FilterPopover.styled";
 import { FilterPopoverFooter } from "./FilterPopoverFooter";
-import { FilterPopoverPicker } from "./FilterPopoverPicker";
 import { FilterPopoverHeader } from "./FilterPopoverHeader";
+import { FilterPopoverPicker } from "./FilterPopoverPicker";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -52,7 +51,6 @@ type Props = {
   dateShortcutOptions?: DateShortcutOptions;
   showCustom?: boolean;
   isNew?: boolean;
-  isTopLevel?: boolean;
   checkedColor?: string;
 };
 
@@ -70,7 +68,6 @@ export function FilterPopover({
   query: legacyQuery,
   showOperatorSelector,
   fieldPickerTitle,
-  isTopLevel,
   dateShortcutOptions,
   checkedColor,
   onChange,
@@ -209,17 +206,12 @@ export function FilterPopover({
           style={{ color: color("filter") }}
           maxHeight={Infinity}
           dimension={dimension}
-          sections={
-            isTopLevel
-              ? legacyQuery.topLevelFilterFieldOptionSections()
-              : (
-                  (filter &&
-                    filter.legacyQuery({ useStructuredQuery: true })) ||
-                  legacyQuery
-                ).filterFieldOptionSections(filter, {
-                  includeSegments: showCustom,
-                })
-          }
+          sections={(
+            (filter && filter.legacyQuery({ useStructuredQuery: true })) ||
+            legacyQuery
+          ).filterFieldOptionSections(filter, {
+            includeSegments: showCustom,
+          })}
           onChangeDimension={(dimension: FieldDimension) =>
             handleDimensionChange(dimension)
           }
@@ -228,7 +220,7 @@ export function FilterPopover({
             handleCommitFilter(item.filter, item.query);
           }}
           width="100%"
-          alwaysExpanded={isTopLevel}
+          alwaysExpanded={false}
         />
         {showCustom && (
           <div

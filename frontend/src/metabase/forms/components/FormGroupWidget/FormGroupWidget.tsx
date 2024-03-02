@@ -1,12 +1,12 @@
+import { useField } from "formik";
+import type { FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
-import type { FocusEvent, Ref } from "react";
-import { useField } from "formik";
-import { Select, Loader } from "metabase/ui";
-import type { SelectProps } from "metabase/ui";
 
-import type { GroupId } from "metabase-types/api";
 import { useGroupListQuery } from "metabase/common/hooks";
+import type { SelectProps } from "metabase/ui";
+import { Select, Loader } from "metabase/ui";
+import type { GroupId } from "metabase-types/api";
 
 interface FormGroupWidgetProps
   extends Omit<SelectProps, "value" | "error" | "data"> {

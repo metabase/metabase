@@ -1,35 +1,32 @@
-import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 import { createSelectorCreator, lruMemoize } from "reselect";
-
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { getMetadata } from "metabase/selectors/metadata";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import _ from "underscore";
 
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/Question";
 import type {
-  Bookmark,
   Card,
   CardId,
-  QuestionDashboardCard,
   DashboardId,
   DashCardId,
+  DashboardCard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
   State,
 } from "metabase-types/store";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import Question from "metabase-lib/Question";
+
 import { isQuestionDashCard } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
@@ -95,6 +92,10 @@ export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;
 
 export const getSidebar = (state: State) => state.dashboard.sidebar;
+export const getIsSidebarOpen = createSelector(
+  [getSidebar],
+  sidebar => !!sidebar.name,
+);
 export const getIsSharing = createSelector(
   [getSidebar],
   sidebar => sidebar.name === SIDEBAR_NAME.sharing,
@@ -229,20 +230,6 @@ export const getDocumentTitle = (state: State) =>
 export const getIsNavigatingBackToDashboard = (state: State) =>
   state.dashboard.isNavigatingBackToDashboard;
 
-type IsBookmarkedSelectorProps = {
-  bookmarks: Bookmark[];
-  dashboardId: DashboardId;
-};
-
-export const getIsBookmarked = (
-  state: State,
-  { bookmarks, dashboardId }: IsBookmarkedSelectorProps,
-) =>
-  bookmarks.some(
-    bookmark =>
-      bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
-  );
-
 export const getIsDirty = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) => {
@@ -288,10 +275,8 @@ export const getEditingParameter = createSelector(
 );
 
 const getCard = (state: State, { card }: { card: Card }) => card;
-const getDashCard = (
-  state: State,
-  { dashcard }: { dashcard: QuestionDashboardCard },
-) => dashcard;
+const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
+  dashcard;
 
 export const getParameterTarget = createSelector(
   [getEditingParameter, getCard, getDashCard],

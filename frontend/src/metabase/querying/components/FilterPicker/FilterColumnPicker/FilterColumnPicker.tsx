@@ -1,18 +1,17 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
 import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-
-import { Icon } from "metabase/ui";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import type { IconName } from "metabase/ui";
-
+import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { ColumnListItem, SegmentListItem } from "../types";
+
 import { StyledAccordionList } from "./FilterColumnPicker.styled";
 
 export interface FilterColumnPickerProps {

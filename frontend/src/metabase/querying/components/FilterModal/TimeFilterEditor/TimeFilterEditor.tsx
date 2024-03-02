@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Flex, Grid, Text, TimeInput, Icon } from "metabase/ui";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
 import type { TimeValue } from "metabase/querying/hooks/use-time-filter";
+import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
+import { Flex, Grid, Text, TimeInput, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import type { FilterEditorProps } from "../types";

@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
-import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 
 import AdHocQuestionLoader from "metabase/containers/AdHocQuestionLoader";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
-
+import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 import { serializeCardForUrl } from "metabase/lib/card";
 
 /*

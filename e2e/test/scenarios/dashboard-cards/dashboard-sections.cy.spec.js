@@ -1,20 +1,25 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createNewTab,
   dashboardGrid,
+  describeWithSnowplow,
   editDashboard,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   findDashCardAction,
   getDashboardCard,
   getDashboardCards,
   goToTab,
   menu,
   modal,
+  resetSnowplow,
   restore,
   saveDashboard,
   selectDashboardFilter,
   sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 const CATEGORY_FILTER = createMockParameter({
@@ -23,17 +28,23 @@ const CATEGORY_FILTER = createMockParameter({
   type: "string/=",
 });
 
-describe("scenarios > dashboard cards > sections", () => {
+describeWithSnowplow("scenarios > dashboard cards > sections", () => {
   beforeEach(() => {
+    resetSnowplow();
     restore();
     cy.signInAsAdmin();
+    enableTracking();
 
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [CATEGORY_FILTER],
     });
     visitDashboard(ORDERS_DASHBOARD_ID);
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
   });
 
   it("should add sections and select a question for an empty card", () => {
@@ -42,6 +53,10 @@ describe("scenarios > dashboard cards > sections", () => {
     getDashboardCards().should("have.length", 1);
     addSection("KPIs w/ large chart below");
     getDashboardCards().should("have.length", 7);
+    expectGoodSnowplowEvent({
+      event: "dashboard_section_added",
+      section_layout: "kpi_chart_below",
+    });
 
     cy.findByPlaceholderText("Heading").type("This is a heading");
     selectQuestion("Orders, Count");
@@ -50,6 +65,10 @@ describe("scenarios > dashboard cards > sections", () => {
     getDashboardCards().should("have.length", 0);
     addSection("KPI grid");
     getDashboardCards().should("have.length", 5);
+    expectGoodSnowplowEvent({
+      event: "dashboard_section_added",
+      section_layout: "kpi_grid",
+    });
 
     selectQuestion("Orders, Count, Grouped by Created At (year)");
 

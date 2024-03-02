@@ -1,36 +1,29 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-
-import * as React from "react";
 import { assocIn } from "icepick";
-import _ from "underscore";
+import { Component } from "react";
+import * as React from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
-
-import Visualization from "metabase/visualizations/components/Visualization";
-
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
   updateSettings,
   getClickBehaviorSettings,
   getComputedSettings,
   getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
-
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-
-import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
-import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 
 import {
   SectionContainer,
@@ -42,6 +35,8 @@ import {
   ChartSettingsVisualizationContainer,
   ChartSettingsFooterRoot,
 } from "./ChartSettings.styled";
+import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
+import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];

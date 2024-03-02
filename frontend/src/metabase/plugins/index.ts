@@ -1,38 +1,45 @@
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
 
-import type { IconName, IconProps } from "metabase/ui";
-import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
-
+import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import type {
   DataPermission,
   DatabaseEntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
-
+import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import type {
+  AvailableModelFilters,
+  ModelFilterControlsProps,
+} from "metabase/browse/utils";
+import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import type { SearchFilterComponent } from "metabase/search/types";
+import type { IconName, IconProps } from "metabase/ui";
+import type Question from "metabase-lib/Question";
+import type Database from "metabase-lib/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
+  CollectionEssentials,
   CollectionInstanceAnaltyicsConfig,
+  Dashboard,
   Dataset,
   Group,
   GroupPermissions,
   GroupsPermissions,
   Revision,
+  SearchResult,
   User,
   UserListResult,
 } from "metabase-types/api";
-
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
-
 import type { AdminPathKey, State } from "metabase-types/store";
-import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
-import type { SearchFilterComponent } from "metabase/search/types";
-import type Question from "metabase-lib/Question";
 
-import type Database from "metabase-lib/metadata/Database";
-import type { GetAuthProviders, PluginGroupManagersType } from "./types";
+import type {
+  GetAuthProviders,
+  PluginGroupManagersType,
+  PluginLLMAutoDescription,
+} from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -128,8 +135,10 @@ export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
   getLoadingMessage: (_state: State) => t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
+  // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
+  getDashboardOverviewId: (_state: State) => undefined,
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
@@ -142,6 +151,10 @@ export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,
+};
+
+export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
+  LLMSuggestQuestionInfo: PluginPlaceholder,
 };
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
@@ -222,6 +235,7 @@ export const PLUGIN_MODERATION = {
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
+  getQuestionIcon: PluginPlaceholder,
   getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
     undefined,
   getModerationTimelineEvents: (
@@ -251,10 +265,12 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
+  auditInfo: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
+  auditInfo: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -322,4 +338,23 @@ export const PLUGIN_EMBEDDING = {
 
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
+  availableModelFilters: {} as AvailableModelFilters,
+  ModelFilterControls: (() => null) as ComponentType<ModelFilterControlsProps>,
+  sortModelsByVerification: (_a: SearchResult, _b: SearchResult) => 0,
+  sortCollectionsByVerification: (
+    _a: CollectionEssentials,
+    _b: CollectionEssentials,
+  ) => 0,
+};
+
+export const PLUGIN_DASHBOARD_HEADER = {
+  extraButtons: (_dashboard: Dashboard) => [],
+};
+
+export const PLUGIN_QUERY_BUILDER_HEADER = {
+  extraButtons: (_question: Question) => [],
+};
+
+export const PLUGIN_IS_EE_BUILD = {
+  isEEBuild: () => false,
 };

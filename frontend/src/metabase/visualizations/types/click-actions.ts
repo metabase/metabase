@@ -1,10 +1,11 @@
 import type React from "react";
+
 import type { IconName } from "metabase/ui";
-import type { Dispatch, GetState } from "metabase-types/store";
-import type { Series, VisualizationSettings, Card } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type { ClickActionProps } from "metabase-lib/queries/drills/types";
+import type { Series, VisualizationSettings, Card } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 export type {
   ClickActionProps,

@@ -1,7 +1,21 @@
 import _ from "underscore";
+
 import { isQuestionDashCard } from "metabase/dashboard/utils";
-import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
+import { generateParameterId } from "metabase/parameters/utils/parameter-id";
+import Question from "metabase-lib/Question";
+import type Field from "metabase-lib/metadata/Field";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type {
+  UiParameter,
+  FieldFilterUiParameter,
+  ParameterWithTarget,
+} from "metabase-lib/parameters/types";
+import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
+import {
+  getParameterTargetField,
+  isParameterVariableTarget,
+} from "metabase-lib/parameters/utils/targets";
 import type {
   Card,
   Dashboard,
@@ -13,19 +27,6 @@ import type {
   CardId,
   ParameterTarget,
 } from "metabase-types/api";
-import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
-import type {
-  UiParameter,
-  FieldFilterUiParameter,
-  ParameterWithTarget,
-} from "metabase-lib/parameters/types";
-import {
-  getParameterTargetField,
-  isVariableTarget,
-} from "metabase-lib/parameters/utils/targets";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Field from "metabase-lib/metadata/Field";
-import Question from "metabase-lib/Question";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: DashCardId;
@@ -182,7 +183,7 @@ function buildFieldFilterUiParameter(
   });
 
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
-    return isVariableTarget(mapping.target);
+    return isParameterVariableTarget(mapping.target);
   });
 
   const fields = mappedFields

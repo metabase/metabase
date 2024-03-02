@@ -1,22 +1,25 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
+
 import Button from "metabase/core/components/Button/Button";
-import { Form, FormProvider } from "metabase/forms";
-import FormInput from "metabase/core/components/FormInput";
 import FormDateInput from "metabase/core/components/FormDateInput";
-import FormTextArea from "metabase/core/components/FormTextArea";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormTextArea from "metabase/core/components/FormTextArea";
+import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
 import type {
   FormattingSettings,
   Timeline,
   TimelineEventData,
 } from "metabase-types/api";
+
 import FormArchiveButton from "../FormArchiveButton";
+
 import { EventFormFooter } from "./EventForm.styled";
 
 const EVENT_SCHEMA = Yup.object({

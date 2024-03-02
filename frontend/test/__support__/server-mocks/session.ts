@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { PasswordResetTokenInfo, Settings } from "metabase-types/api";
 
 export function setupPropertiesEndpoints(settings: Settings) {

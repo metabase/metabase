@@ -2,20 +2,21 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  isSchemaEntityId,
+  isTableEntityId,
+} from "metabase/admin/permissions/utils/data-entity-id";
+import {
   getFieldsPermission,
   getNativePermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
+import type Database from "metabase-lib/metadata/Database";
 import type {
   Group,
   GroupsPermissions,
   ConcreteTableId,
 } from "metabase-types/api";
-import {
-  isSchemaEntityId,
-  isTableEntityId,
-} from "metabase/admin/permissions/utils/data-entity-id";
-import type Database from "metabase-lib/metadata/Database";
+
 import type { EntityId } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>

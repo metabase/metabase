@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+
 import { QuestionPicker } from "../QuestionPicker";
 
 AddCardSidebar.propTypes = {

@@ -1,18 +1,18 @@
-import querystring from "querystring";
 import { KJUR } from "jsrsasign"; // using jsrsasign because jsonwebtoken doesn't work on the web :-/
+import querystring from "querystring";
 
 import type {
   EmbedResourceType,
   EmbedResource,
-  EmbeddingParameters,
+  EmbeddingParametersValues,
 } from "./types";
 
 function getSignedToken(
   resourceType: EmbedResourceType,
   resourceId: EmbedResource["id"],
-  params: EmbeddingParameters = {},
+  params: EmbeddingParametersValues = {},
   secretKey: string,
-  previewEmbeddingParams: EmbeddingParameters,
+  previewEmbeddingParams: EmbeddingParametersValues,
 ) {
   const unsignedToken: Record<string, any> = {
     resource: { [resourceType]: resourceId },
@@ -32,9 +32,9 @@ export function getSignedPreviewUrlWithoutHash(
   siteUrl: string,
   resourceType: EmbedResourceType,
   resourceId: EmbedResource["id"],
-  params: EmbeddingParameters = {},
+  params: EmbeddingParametersValues = {},
   secretKey: string,
-  previewEmbeddingParams: EmbeddingParameters,
+  previewEmbeddingParams: EmbeddingParametersValues,
 ) {
   const token = getSignedToken(
     resourceType,

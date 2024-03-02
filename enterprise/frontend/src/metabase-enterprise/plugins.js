@@ -1,10 +1,11 @@
 import MetabaseSettings from "metabase/lib/settings";
+import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 // SETTINGS OVERRIDES:
 
 // NOTE: temporarily use "latest" for Enterprise Edition docs
 MetabaseSettings.docsTag = () => "latest";
-MetabaseSettings.isEnterprise = () => true;
+PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
 import "./shared";
 
@@ -31,3 +32,4 @@ import "./model_persistence";
 import "./feature_level_permissions";
 import "./application_permissions";
 import "./group_managers";
+import "./llm_autodescription";

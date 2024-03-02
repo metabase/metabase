@@ -1,15 +1,18 @@
 import userEvent from "@testing-library/user-event";
+
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { createQuery, findSegment } from "metabase-lib/test-helpers";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
-import { createQuery, findSegment } from "metabase-lib/test-helpers";
+
 import type { SegmentItem } from "../types";
+
 import { SegmentFilterEditor } from "./SegmentFilterEditor";
 
 const SEGMENT1 = createMockSegment({

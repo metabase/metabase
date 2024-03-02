@@ -1,10 +1,11 @@
 import type { ComponentStory } from "@storybook/react";
+
+import { color } from "metabase/lib/colors";
+import GaugeContainer from "metabase/static-viz/components/Gauge/GaugeContainer";
 import {
   DEFAULT,
   WITH_FORMATTING,
 } from "metabase/static-viz/components/Gauge/stories-data";
-import GaugeContainer from "metabase/static-viz/components/Gauge/GaugeContainer";
-import { color } from "metabase/lib/colors";
 
 export default {
   title: "static-viz/Gauge",

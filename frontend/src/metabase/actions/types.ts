@@ -1,9 +1,9 @@
+import type Field from "metabase-lib/metadata/Field";
 import type {
   ActionFormOption,
   FieldSettings as BaseFieldSettings,
   InputComponentType,
 } from "metabase-types/api";
-import type Field from "metabase-lib/metadata/Field";
 
 export type FieldSettings = BaseFieldSettings & {
   field?: Field;

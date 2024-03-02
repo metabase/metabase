@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
+
+import { screen } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 

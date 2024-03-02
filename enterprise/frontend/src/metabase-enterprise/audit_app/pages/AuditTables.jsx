@@ -3,7 +3,6 @@ import { t } from "ttag";
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTableWithSearch from "../containers/AuditTableWithSearch";
-
 import * as TablesCards from "../lib/cards/tables";
 
 const AuditTables = props => (

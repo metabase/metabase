@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openNativeEditor,
@@ -6,9 +7,8 @@ import {
   popover,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -78,7 +78,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       filterWidget().click();
       popover().within(() => {
         cy.icon("close").click();
-        cy.findByText("Update filter").click();
+        cy.findByText("Set to default").click();
       });
       filterWidget()
         .findByTestId("field-set-content")
@@ -93,7 +93,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.get("input").type("10{enter}");
         cy.findByText("Update filter").click();
       });
-      filterWidget().icon("refresh").click();
+      filterWidget().icon("time_history").click();
       filterWidget().findByTestId("field-set-content").should("have.text", "8");
     });
   });
@@ -149,8 +149,8 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "Longitude",
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("None").should("be.visible");
+      cy.findByTestId("filter-widget-type-select").click();
+      popover().findByText("None").should("be.visible");
 
       filterWidget().should("not.exist");
     });
@@ -215,7 +215,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
       popover().within(() => {
         cy.findByText("Gizmo").click();
-        cy.button("Add filter").click();
+        cy.button("Update filter").click();
       });
 
       cy.findByTestId("qb-header").find(".Icon-play").click();
@@ -229,8 +229,10 @@ describe("scenarios > filters > sql filters > field filter", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter widget type")
         .parent()
-        .findAllByTestId("select-button")
-        .contains("String");
+        .findByTestId("filter-widget-type-select")
+        .click();
+
+      popover().contains("String");
     });
   });
 });

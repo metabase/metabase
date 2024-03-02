@@ -1,12 +1,11 @@
 import { t, jt } from "ttag";
 
+import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import ModalContent from "metabase/components/ModalContent";
-
 import { useSelector } from "metabase/lib/redux";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getDocsUrl } from "metabase/selectors/settings";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 type Props = {
   onClose: () => void;

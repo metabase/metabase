@@ -2,6 +2,7 @@ import { memo } from "react";
 
 import CheckBox from "metabase/core/components/CheckBox";
 import type { Card } from "metabase-types/api";
+
 import {
   QuestionListItemRoot,
   CheckboxContainer,

@@ -1,7 +1,10 @@
 import { t } from "ttag";
-import type { DatasetColumn } from "metabase-types/api";
+
 import type Field from "metabase-lib/metadata/Field";
+import type { DatasetColumn } from "metabase-types/api";
+
 import { Description, EmptyDescription } from "../MetadataInfo.styled";
+
 import {
   InfoContainer,
   FieldSemanticTypeLabel,

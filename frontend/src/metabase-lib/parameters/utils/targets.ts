@@ -1,14 +1,30 @@
-import type { ParameterTarget } from "metabase-types/api";
-import { isDimensionTarget } from "metabase-types/guards";
 import * as Lib from "metabase-lib";
-import Dimension from "metabase-lib/Dimension";
+import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import { isTemplateTagReference } from "metabase-lib/references";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import type {
+  ConcreteFieldReference,
+  FieldReference,
+  NativeParameterDimensionTarget,
+  ParameterTarget,
+  ParameterTextTarget,
+  ParameterVariableTarget,
+  StructuredParameterDimensionTarget,
+} from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 
-export function isVariableTarget(target: ParameterTarget) {
-  return target?.[0] === "variable";
+export function isParameterVariableTarget(
+  target: ParameterTarget,
+): target is ParameterVariableTarget {
+  return target[0] === "variable";
+}
+
+function isConcreteFieldReference(
+  reference: FieldReference,
+): reference is ConcreteFieldReference {
+  return reference[0] === "field" || reference[0] === "expression";
 }
 
 export function getTemplateTagFromTarget(target: ParameterTarget) {
@@ -24,20 +40,36 @@ export function getParameterTargetField(
   target: ParameterTarget,
   question: Question,
 ) {
-  if (isDimensionTarget(target)) {
-    const query = question.legacyQuery({ useStructuredQuery: true }) as
-      | NativeQuery
-      | StructuredQuery;
-    const metadata = question.metadata();
-    const dimension = Dimension.parseMBQL(target[1], metadata, query);
+  if (!isDimensionTarget(target)) {
+    return null;
+  }
 
+  const fieldRef = target[1];
+  const query = question.query();
+  const metadata = question.metadata();
+
+  // native queries
+  if (isTemplateTagReference(fieldRef)) {
+    const dimension = TemplateTagDimension.parseMBQL(
+      fieldRef,
+      metadata,
+      question.legacyQuery() as NativeQuery,
+    );
     return dimension?.field();
+  }
+
+  if (isConcreteFieldReference(fieldRef)) {
+    const fieldId = fieldRef[1];
+    const tableId = Lib.sourceTableOrCardId(query);
+    return metadata.field(fieldId, tableId) ?? metadata.field(fieldId);
   }
 
   return null;
 }
 
-export function buildDimensionTarget(dimension: Dimension) {
+export function buildDimensionTarget(
+  dimension: TemplateTagDimension,
+): NativeParameterDimensionTarget {
   return ["dimension", dimension.mbql()];
 }
 
@@ -45,15 +77,23 @@ export function buildColumnTarget(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-) {
-  return ["dimension", Lib.legacyRef(query, stageIndex, column)];
+): StructuredParameterDimensionTarget {
+  const fieldRef = Lib.legacyRef(query, stageIndex, column);
+
+  if (!isConcreteFieldReference(fieldRef)) {
+    throw new Error(`Cannot build column target field reference: ${fieldRef}`);
+  }
+
+  return ["dimension", fieldRef];
 }
 
-export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {
+export function buildTemplateTagVariableTarget(
+  variable: TemplateTagVariable,
+): ParameterVariableTarget {
   return ["variable", variable.mbql()];
 }
 
-export function buildTextTagTarget(tagName: string): ["text-tag", string] {
+export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
 }
 

@@ -1,5 +1,6 @@
-import * as Lib from "metabase-lib";
 import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
+import * as Lib from "metabase-lib";
+
 import { OPERATOR_OPTIONS } from "./constants";
 import type { OptionType } from "./types";
 

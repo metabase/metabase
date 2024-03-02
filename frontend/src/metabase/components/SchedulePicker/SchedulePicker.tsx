@@ -1,16 +1,9 @@
 import { Component } from "react";
 import { t } from "ttag";
 
+import { SegmentedControl } from "metabase/components/SegmentedControl";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select from "metabase/core/components/Select";
-import { SegmentedControl } from "metabase/components/SegmentedControl";
-import { capitalize } from "metabase/lib/formatting/strings";
-import type {
-  ScheduleDayType,
-  ScheduleFrameType,
-  ScheduleSettings,
-  ScheduleType,
-} from "metabase-types/api";
 import {
   AM_PM_OPTIONS,
   getDayOfWeekOptions,
@@ -18,8 +11,15 @@ import {
   MINUTE_OPTIONS,
   MONTH_DAY_OPTIONS,
 } from "metabase/lib/date-time";
+import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import type {
+  ScheduleDayType,
+  ScheduleFrameType,
+  ScheduleSettings,
+  ScheduleType,
+} from "metabase-types/api";
 
 import {
   PickerRoot,

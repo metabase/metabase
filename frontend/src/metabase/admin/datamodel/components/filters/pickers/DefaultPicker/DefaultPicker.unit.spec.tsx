@@ -1,22 +1,20 @@
 import userEvent from "@testing-library/user-event";
+
+import { createMockMetadata } from "__support__/metadata";
+import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockMetadata } from "__support__/metadata";
-import { setupFieldValuesEndpoints } from "__support__/server-mocks";
-
 import { checkNotNull } from "metabase/lib/types";
-
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   createSampleDatabase,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type { DefaultPickerProps } from "./DefaultPicker";
 import { DefaultPicker } from "./DefaultPicker";

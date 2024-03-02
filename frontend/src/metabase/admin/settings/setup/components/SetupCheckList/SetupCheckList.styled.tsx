@@ -1,8 +1,9 @@
-import { Link } from "react-router";
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+import { Link } from "react-router";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { color } from "metabase/lib/colors";
 
 export const SetupListRoot = styled.div`
   display: flex;

@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+
 import { createQuery, DEFAULT_QUERY } from "./test-helpers";
 
 describe("query", () => {

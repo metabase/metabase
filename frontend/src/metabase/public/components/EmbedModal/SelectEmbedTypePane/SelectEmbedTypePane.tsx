@@ -1,23 +1,28 @@
 import type { MouseEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
-import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
-import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
-import { Group, Text, Anchor, Stack } from "metabase/ui";
-import { getPublicEmbedHTML } from "metabase/public/lib/code";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+
 import Link from "metabase/core/components/Link";
+import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { useSelector } from "metabase/lib/redux";
+import {
+  trackPublicEmbedCodeCopied,
+  trackPublicLinkRemoved,
+} from "metabase/public/lib/analytics";
+import { getPublicEmbedHTML } from "metabase/public/lib/code";
 import type {
   EmbedResource,
   EmbedResourceType,
 } from "metabase/public/lib/types";
+import { getSetting } from "metabase/selectors/settings";
+import { Group, Text, Anchor, Stack } from "metabase/ui";
 
-import { SharingPaneActionButton } from "./SharingPaneButton/SharingPaneButton.styled";
-import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
-import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
 import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
+import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
+import { SharingPaneActionButton } from "./SharingPaneButton/SharingPaneButton.styled";
+import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
 
 interface SelectEmbedTypePaneProps {
   resource: EmbedResource;
@@ -67,6 +72,12 @@ export function SelectEmbedTypePane({
         "Public Link Disabled",
         resourceType,
       );
+
+      trackPublicLinkRemoved({
+        artifact: resourceType,
+        source: "public-embed",
+      });
+
       await onDeletePublicLink();
       setIsLoadingLink(false);
     }
@@ -96,6 +107,12 @@ export function SelectEmbedTypePane({
       return (
         <PublicLinkCopyPanel
           url={iframeSource}
+          onCopy={() =>
+            trackPublicEmbedCodeCopied({
+              artifact: resourceType,
+              source: "public-embed",
+            })
+          }
           onRemoveLink={deletePublicLink}
           removeButtonLabel={t`Remove public URL`}
           removeTooltipLabel={t`Affects both embed URL and public link for this dashboard`}
@@ -146,6 +163,7 @@ export function SelectEmbedTypePane({
           }
           disabled={!isPublicSharingEnabled}
           onClick={createPublicLink}
+          data-testid="sharing-pane-public-embed-button"
           illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
         >
           {getPublicLinkElement()}

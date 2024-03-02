@@ -1,14 +1,17 @@
 import { t } from "ttag";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { getIcon, getName } from "metabase/entities/recent-items";
-import { getUser } from "metabase/selectors/user";
+
 import { useRecentItemListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { getIcon, getName } from "metabase/entities/recent-items";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { getUser } from "metabase/selectors/user";
+
+import { isWithinWeeks } from "../../utils";
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeModelCard } from "../HomeModelCard";
-import { isWithinWeeks } from "../../utils";
+
 import { SectionBody } from "./HomeRecentSection.styled";
 
 export const HomeRecentSection = () => {

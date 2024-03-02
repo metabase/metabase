@@ -1,9 +1,8 @@
 import { restore, openNativeEditor } from "e2e/support/helpers";
 
 import { STRING_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
-
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const stringFilters = Object.entries(STRING_FILTER_SUBTYPES);
 
@@ -28,18 +27,25 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
   it("when set through the filter widget", () => {
     stringFilters.forEach(
-      ([subType, { searchTerm, value, representativeResult }]) => {
+      ([subType, { value, representativeResult, isList }]) => {
         cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
         FieldFilter.setWidgetType(subType);
 
         FieldFilter.openEntryForm();
-        FieldFilter.addWidgetStringFilter(value);
+
+        if (isList) {
+          FieldFilter.setWidgetStringFilter(value);
+          FieldFilter.selectFilterValueFromList(value);
+        } else {
+          FieldFilter.addWidgetStringFilter(value);
+        }
 
         SQLFilter.runQuery();
 
         cy.get(".Visualization").within(() => {
           cy.findByText(representativeResult);
+          cy.findByText("Toucan").should("not.exist");
         });
       },
     );
@@ -67,6 +73,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
         cy.get(".Visualization").within(() => {
           cy.findByText(representativeResult);
+          cy.findByText("Toucan").should("not.exist");
         });
       },
     );

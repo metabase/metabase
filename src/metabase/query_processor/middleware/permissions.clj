@@ -13,6 +13,8 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.fetch-source-query
+    :as fetch-source-query]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.tag-referenced-cards
     :as qp.u.tag-referenced-cards]
@@ -47,8 +49,8 @@
   for [[metabase.models.collection]] for more details.
 
   Note that this feature is Metabase© Enterprise Edition™ only. Actual implementation is
-  in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE code is
-  present. This feature is only enabled if we have a valid Enterprise Edition™ token."
+  in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE
+  code is present. This feature is only enabled if we have a valid Enterprise Edition™ token."
   (let [dlay (delay
               (when config/ee-available?
                 (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
@@ -112,22 +114,23 @@
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (when (= perms/audit-db-id database-id)
-     (check-audit-db-permissions outer-query))
-    (cond
-      *card-id*
-      (do
-        (check-card-read-perms database-id *card-id*)
+      (check-audit-db-permissions outer-query))
+    (let [card-id (or *card-id* (::fetch-source-query/source-card-id outer-query))]
+      (cond
+        card-id
+        (do
+          (check-card-read-perms database-id card-id)
+          (when-not (has-data-perms? (required-perms outer-query))
+            (check-block-permissions outer-query)))
+
+        ;; set when querying for field values of dashboard filters, which only require
+        ;; collection perms for the dashboard and not ad-hoc query perms
+        *param-values-query*
         (when-not (has-data-perms? (required-perms outer-query))
-          (check-block-permissions outer-query)))
+          (check-block-permissions outer-query))
 
-      ;; set when querying for field values of dashboard filters, which only require
-      ;; collection perms for the dashboard and not ad-hoc query perms
-      *param-values-query*
-      (when-not (has-data-perms? (required-perms outer-query))
-        (check-block-permissions outer-query))
-
-      :else
-      (check-ad-hoc-query-perms outer-query))))
+        :else
+        (check-ad-hoc-query-perms outer-query)))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
@@ -135,9 +138,9 @@
   be checked separately before allowing the relevant objects to be create (e.g., when saving a new Pulse or
   'publishing' a Card)."
   [qp]
-  (fn [query rff context]
+  (fn [query rff]
     (check-query-permissions* query)
-    (qp query rff context)))
+    (qp query rff)))
 
 (defn remove-permissions-key
   "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
@@ -162,9 +165,9 @@
 (defn check-query-action-permissions
   "Middleware that check that the current user has permissions to run the current query action."
   [qp]
-  (fn [query rff context]
+  (fn [query rff]
     (check-query-action-permissions* query)
-    (qp query rff context)))
+    (qp query rff)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -173,7 +176,7 @@
 
 (defn current-user-has-adhoc-native-query-perms?
   "If current user is bound, do they have ad-hoc native query permissions for `query`'s database? (This is used by
-  [[metabase.query-processor/compile]] and
+  [[metabase.query-processor.compile/compile]] and
   the [[metabase.query-processor.middleware.catch-exceptions/catch-exceptions]] middleware to check the user should be
   allowed to see the native query before converting the MBQL query to native.)"
   [{database-id :database, :as _query}]

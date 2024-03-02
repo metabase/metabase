@@ -1,13 +1,5 @@
 import { unique_expression_name } from "cljs/metabase.domain_entities.queries.util";
 
-export function getExpressions(expressions = {}) {
-  return expressions;
-}
-
-export function addExpression(expressions = {}, name, expression) {
-  return { ...expressions, [name]: expression };
-}
-
 /**
  * Ensures expression's name uniqueness
  *

@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import SelectList from "metabase/components/SelectList";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";

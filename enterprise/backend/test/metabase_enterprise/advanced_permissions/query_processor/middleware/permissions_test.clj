@@ -45,9 +45,9 @@
 
   ([table-name]
    (-> {:database (mt/id)
-        :type :query
-        :query {:source-table (mt/id table-name)}
-        :info {:context (api.dataset/export-format->context :csv)}})))
+        :type     :query
+        :query    {:source-table (mt/id table-name)}
+        :info     {:context (api.dataset/export-format->context :csv)}})))
 
 (defn- native-download-query []
   {:database (mt/id)
@@ -110,7 +110,10 @@
                  (-> (native-download-query) limit-download-result-rows mt/rows count))))))))
 
 (defn- check-download-permisions [query]
-  (:pre (mt/test-qp-middleware ee.qp.perms/check-download-permissions query)))
+  (let [qp (ee.qp.perms/check-download-permissions
+            (fn [query _rff]
+              query))]
+    (qp query qp.reducible/default-rff)))
 
 (def ^:private download-perms-error-msg #"You do not have permissions to download the results of this query\.")
 
@@ -125,8 +128,9 @@
 
         (testing "No exception is thrown for non-download queries"
           (let [query (dissoc (mbql-download-query 'venues) :info)]
-            (is (= query (check-download-permisions query))))))))
+            (is (= query (check-download-permisions query)))))))))
 
+(deftest check-download-permissions-test-2
   (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"
     (with-download-perms-for-db (mt/id) :full
       (mt/with-current-user (mt/user->id :rasta)

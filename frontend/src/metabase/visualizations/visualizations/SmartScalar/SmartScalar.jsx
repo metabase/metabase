@@ -1,40 +1,30 @@
 /* eslint-disable react/prop-types */
 import { useMemo, useRef } from "react";
-import { t, jt } from "ttag";
 import innerText from "react-innertext";
+import { t, jt } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { NoBreakoutError } from "metabase/visualizations/lib/errors";
+import Tooltip from "metabase/core/components/Tooltip";
+import { color } from "metabase/lib/colors";
+import { formatValue } from "metabase/lib/formatting/value";
+import { measureTextWidth } from "metabase/lib/measure-text";
+import { isEmpty } from "metabase/lib/validate";
 import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
+import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
+import { NoBreakoutError } from "metabase/visualizations/lib/errors";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
-import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 
-import { color } from "metabase/lib/colors";
-import { isEmpty } from "metabase/lib/validate";
-import { measureTextWidth } from "metabase/lib/measure-text";
-import { formatValue } from "metabase/lib/formatting/value";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { ScalarContainer } from "../Scalar/Scalar.styled";
-import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 
-import {
-  DASHCARD_HEADER_HEIGHT,
-  ICON_MARGIN_RIGHT,
-  ICON_SIZE,
-  MAX_COMPARISONS,
-  SPACING,
-  TOOLTIP_ICON_SIZE,
-  VIZ_SETTINGS_DEFAULTS,
-} from "./constants";
+import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 import {
   PreviousValueDetails,
   VariationContainer,
@@ -47,6 +37,16 @@ import {
   VariationValue,
   ScalarPeriodContent,
 } from "./SmartScalar.styled";
+import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
+import {
+  DASHCARD_HEADER_HEIGHT,
+  ICON_MARGIN_RIGHT,
+  ICON_SIZE,
+  MAX_COMPARISONS,
+  SPACING,
+  TOOLTIP_ICON_SIZE,
+  VIZ_SETTINGS_DEFAULTS,
+} from "./constants";
 import {
   getDefaultComparison,
   getColumnsForComparison,
@@ -60,7 +60,6 @@ import {
   isSuitableScalarColumn,
   validateComparisons,
 } from "./utils";
-import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
 
 export function SmartScalar({
   onVisualizationClick,

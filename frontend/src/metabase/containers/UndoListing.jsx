@@ -2,14 +2,13 @@ import PropTypes from "prop-types";
 import { Motion, spring } from "react-motion";
 import { t } from "ttag";
 
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import BodyComponent from "metabase/components/BodyComponent";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { capitalize, inflect } from "metabase/lib/formatting";
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 
-import BodyComponent from "metabase/components/BodyComponent";
-
-import { isReducedMotionPreferred } from "metabase/lib/dom";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   CardContent,
   CardContentSide,

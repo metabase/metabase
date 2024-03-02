@@ -2,20 +2,20 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Icon } from "metabase/ui";
-import SchedulePicker from "metabase/containers/SchedulePicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import SchedulePicker from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
-
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
-
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import { Icon } from "metabase/ui";
+
 import SlackChannelField from "../SlackChannelField";
+
 import { CaveatMessage } from "./CaveatMessage";
-import Heading from "./Heading";
-import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
 import DefaultParametersSection from "./DefaultParametersSection";
+import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
+import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
 function _AddEditSlackSidebar({
@@ -39,7 +39,7 @@ function _AddEditSlackSidebar({
 
   return (
     <Sidebar
-      closeIsDisabled={!isValid}
+      isCloseDisabled={!isValid}
       onClose={handleSave}
       onCancel={onCancel}
     >

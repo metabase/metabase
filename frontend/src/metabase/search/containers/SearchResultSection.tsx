@@ -1,6 +1,7 @@
 import { msgid, ngettext } from "ttag";
-import type { WrappedResult } from "metabase/search/types";
+
 import { SearchResult } from "metabase/search/components/SearchResult";
+import type { WrappedResult } from "metabase/search/types";
 import { Paper, Stack, Text } from "metabase/ui";
 
 export const SearchResultSection = ({

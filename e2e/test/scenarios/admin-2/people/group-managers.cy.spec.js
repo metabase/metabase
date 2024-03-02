@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   restore,
   modal,
@@ -6,7 +7,6 @@ import {
   getFullName,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
 
 const { normal, nocollection } = USERS;
 

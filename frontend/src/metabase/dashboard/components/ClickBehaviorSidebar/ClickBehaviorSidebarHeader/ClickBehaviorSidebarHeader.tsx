@@ -1,12 +1,12 @@
 import type * as React from "react";
 import { t, jt } from "ttag";
 
+import { isTableDisplay } from "metabase/lib/click-behavior";
 import { Icon } from "metabase/ui";
-
 import type { QuestionDashboardCard, DatasetColumn } from "metabase-types/api";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
+
 import {
   ColumnClickBehaviorHeader,
   ChevronIconContainer,

@@ -1,12 +1,13 @@
-import { useMemo } from "react";
 import type { FormEvent } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
-import { Icon, Box, Button, Radio, Stack } from "metabase/ui";
 
 import { useBooleanOptionFilter } from "metabase/querying/hooks/use-boolean-option-filter";
+import { Icon, Box, Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { FilterPickerHeader } from "../FilterPickerHeader";
+
 import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
 import { MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 

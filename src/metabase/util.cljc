@@ -874,3 +874,18 @@
       (if (empty? to-traverse)
         traversed
         (recur to-traverse traversed)))))
+
+(defn reverse-compare
+  "A reversed java.util.Comparator, useful for sorting elements in descending in order"
+  [x y]
+  (compare y x))
+
+(defn conflicting-keys
+  "Given two maps, return a seq of the keys on which they disagree. We only consider keys that are present in both."
+  [m1 m2]
+  (keep (fn [[k v]] (when (not= v (get m1 k v)) k)) m2))
+
+(defn conflicting-keys?
+  "Given two maps, are any keys on which they disagree? We only consider keys that are present in both."
+  [m1 m2]
+  (boolean (some identity (conflicting-keys m1 m2))))

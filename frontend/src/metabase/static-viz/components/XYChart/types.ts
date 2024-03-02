@@ -1,8 +1,9 @@
 import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
-import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+
 import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import type { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 export type XValue = string | number;
 export type YValue = number;

@@ -1,7 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { color } from "metabase/lib/colors";
 
 const LOG_PREFIX = ".react-ansi-style";
 
@@ -20,6 +21,8 @@ const LOG_COLORS = {
 export const LogsContainer = styled(LoadingAndErrorWrapper)`
   height: 100%;
   padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
 `;
 
 export const LogsContent = styled.div`

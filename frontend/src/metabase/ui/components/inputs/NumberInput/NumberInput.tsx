@@ -1,6 +1,7 @@
-import { forwardRef, useLayoutEffect, useState } from "react";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
 import type { NumberInputProps } from "@mantine/core";
+import type { ChangeEvent, FocusEvent, Ref } from "react";
+import { forwardRef, useLayoutEffect, useState } from "react";
+
 import { TextInput } from "../TextInput";
 
 export const NumberInput = forwardRef(function NumberInput(

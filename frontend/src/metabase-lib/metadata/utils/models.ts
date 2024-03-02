@@ -1,3 +1,10 @@
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
+import type Database from "metabase-lib/metadata/Database";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import { isNative } from "metabase-lib/queries/utils/card";
+import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import type {
   Card,
   DatasetColumn,
@@ -8,13 +15,6 @@ import type {
   StructuredDatasetQuery,
   FieldId,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import type Database from "metabase-lib/metadata/Database";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
-import { isNative } from "metabase-lib/queries/utils/card";
 
 type FieldMetadata = {
   id?: FieldId | FieldReference;
@@ -118,7 +118,7 @@ export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
     return false;
   }
 
-  const isModel = card.dataset || originalCard.dataset;
+  const isModel = card.type === "model" || originalCard.type === "model";
   const isSameCard = card.id === originalCard.id;
   const { query } = card.dataset_query as StructuredDatasetQuery;
   const isSelfReferencing =
@@ -144,7 +144,7 @@ export function checkCanRefreshModelCache(
     return false;
   }
 
-  if (refreshInfo.card_dataset === false) {
+  if (refreshInfo.card_type === "question") {
     return false;
   }
 
@@ -192,7 +192,7 @@ export function getSortedModelFields(
     return columnMetadata;
   }
 
-  const table = model.table();
+  const table = model.legacyQueryTable();
   const tableFields = table?.fields ?? [];
   const tableColumns = tableFields.map(field => field.column());
 

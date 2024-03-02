@@ -4,12 +4,13 @@
    [clojure.test :refer :all]
    [metabase.db.query :as mdb.query]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]))
 
 (defn- verify-same-query
   "Ensure that the formatted native query derived from an mbql query produce the same results."
   [q]
-  (let [{:keys [query]} (qp/compile q)
+  (let [{:keys [query]} (qp.compile/compile q)
         formatted-query (mdb.query/format-sql query)
         native-query    {:database (mt/id)
                          :type     :native

@@ -1,9 +1,10 @@
 import userEvent from "@testing-library/user-event";
+
+import { screen } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
 
 import { setup, FULL_APP_EMBEDDING_URL, EMAIL_URL } from "./setup";
 

@@ -4,8 +4,8 @@ import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
-import type { DatasetColumn } from "metabase-types/api";
 import type Field from "metabase-lib/metadata/Field";
+import type { DatasetColumn } from "metabase-types/api";
 
 import {
   LabelContainer,

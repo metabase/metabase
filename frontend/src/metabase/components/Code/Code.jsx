@@ -1,6 +1,14 @@
 /* eslint "react/prop-types": "warn" */
-import { Fragment } from "react";
 import PropTypes from "prop-types";
+import { Fragment } from "react";
+
+import { Text } from "metabase/ui";
+
+export const BoldCode = ({ children, ...props }) => (
+  <Text fw="bold" color="brand" component="span" {...props}>
+    <code>{children}</code>
+  </Text>
+);
 
 const Code = ({ children, block }) => {
   if (block) {
@@ -21,6 +29,10 @@ const Code = ({ children, block }) => {
   } else {
     return <span className="text-code">{children}</span>;
   }
+};
+
+BoldCode.propTypes = {
+  children: PropTypes.any.isRequired,
 };
 
 Code.propTypes = {

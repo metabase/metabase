@@ -1,4 +1,3 @@
-import type { DatasetColumn } from "metabase-types/api";
 import {
   createFieldReference,
   getBaseDimensionReference,
@@ -9,6 +8,7 @@ import {
   isFieldReference,
   isValidDimensionReference,
 } from "metabase-lib/references";
+import type { DatasetColumn } from "metabase-types/api";
 
 export const getColumnKey = (
   column: Pick<DatasetColumn, "name" | "field_ref">,

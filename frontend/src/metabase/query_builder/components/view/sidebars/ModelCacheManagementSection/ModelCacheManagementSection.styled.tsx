@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
 
-import { Icon } from "metabase/ui";
-
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const Row = styled.div`
   display: flex;

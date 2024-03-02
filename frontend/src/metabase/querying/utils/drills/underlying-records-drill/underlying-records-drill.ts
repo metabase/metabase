@@ -1,4 +1,5 @@
 import { msgid, ngettext } from "ttag";
+
 import { inflect } from "metabase/lib/formatting/strings";
 import type {
   Drill,

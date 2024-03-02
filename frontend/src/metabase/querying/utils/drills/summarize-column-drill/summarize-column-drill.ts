@@ -1,10 +1,11 @@
 import { t } from "ttag";
+
 import type {
   ClickActionBase,
   Drill,
 } from "metabase/visualizations/types/click-actions";
-import type { Dispatch } from "metabase-types/store";
 import type * as Lib from "metabase-lib";
+import type { Dispatch } from "metabase-types/store";
 
 const ACTIONS: Record<Lib.SummarizeColumnDrillThruOperator, ClickActionBase> = {
   sum: {

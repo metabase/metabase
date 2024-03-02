@@ -1,8 +1,9 @@
-import styled from "@emotion/styled";
 import { keyframes } from "@emotion/react";
+import styled from "@emotion/styled";
+
+import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
-import Button from "metabase/core/components/Button";
 
 const expandKeyframes = keyframes`
   50% {
@@ -41,8 +42,7 @@ export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
   width: 2rem;
 
   &:hover {
-    color: ${({ isBookmarked }) =>
-      isBookmarked ? color("brand") : color("text-dark")};
+    color: ${color("brand")};
     background-color: ${color("bg-medium")};
   }
 
@@ -53,5 +53,5 @@ export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
 
 BookmarkButton.defaultProps = {
   onlyIcon: true,
-  iconSize: 20,
+  iconSize: 16,
 };

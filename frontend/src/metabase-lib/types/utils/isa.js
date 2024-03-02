@@ -1,6 +1,5 @@
 import { isa as cljs_isa } from "cljs/metabase.types";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
-
 import {
   TYPE,
   TYPE_HIERARCHIES,

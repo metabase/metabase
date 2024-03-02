@@ -2,6 +2,7 @@ import d3 from "d3";
 
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 import { isLatitude, isLongitude } from "metabase-lib/types/utils/isa";
+
 import type { OptionsType } from "./types";
 
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");

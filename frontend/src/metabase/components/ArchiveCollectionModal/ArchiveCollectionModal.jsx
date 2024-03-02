@@ -1,17 +1,14 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import _ from "underscore";
-
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
-
-import * as Urls from "metabase/lib/urls";
-
 import Collection from "metabase/entities/collections";
+import * as Urls from "metabase/lib/urls";
 
 const mapDispatchToProps = {
   setCollectionArchived: Collection.actions.setArchived,

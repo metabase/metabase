@@ -1,10 +1,11 @@
 import _ from "underscore";
-import { getParameterType } from "./parameter-type";
+
 import {
   getQueryType,
   getSourceConfig,
   getSourceType,
 } from "./parameter-source";
+import { getParameterType } from "./parameter-type";
 
 export const PULSE_PARAM_EMPTY = null;
 export const PULSE_PARAM_USE_DEFAULT = undefined;
@@ -31,7 +32,15 @@ export function getValuePopulatedParameters({
   parameters,
   values = {},
   defaultRequired = false,
+  collectionPreview = false,
 }) {
+  // pinned native question can have default values on parameters, usually we
+  // get them from URL, which is not the case for collection preview. to force
+  // BE to apply default values to those filters, empty array is provided
+  if (collectionPreview) {
+    return [];
+  }
+
   return parameters.map(parameter => ({
     ...parameter,
     value: getParameterValue({
@@ -90,12 +99,22 @@ export function normalizeParameters(parameters) {
     }));
 }
 
+// This distinguishes between empty value (deliberately unset), which is null,
+// and no value, which is undefined. Needed in API requests.
+// TODO reconcile with hasNoValueToShow
 export function isParameterValueEmpty(value) {
   return (
     value === PULSE_PARAM_EMPTY ||
     (Array.isArray(value) && value.length === 0) ||
     value === ""
   );
+}
+
+// This is a UI-bound function used to render filter widget.
+// Should treat undefined and null equally.
+// TODO reconcile with isParameterValueEmpty
+export function parameterHasNoDisplayValue(value) {
+  return !value || value === "" || (Array.isArray(value) && value.length === 0);
 }
 
 export function normalizeParameterValue(type, value) {

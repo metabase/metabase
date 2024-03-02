@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import ColorRange from "metabase/core/components/ColorRange";
+
 import Button from "metabase/core/components/Button";
+import ColorRange from "metabase/core/components/ColorRange";
 
 import type { ColorRangeProps } from "../ColorRange/ColorRange";
 

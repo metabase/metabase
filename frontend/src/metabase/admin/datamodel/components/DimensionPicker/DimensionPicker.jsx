@@ -1,5 +1,6 @@
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+
 import { DimensionListItem } from "./DimensionPicker.styled";
 
 const propTypes = {

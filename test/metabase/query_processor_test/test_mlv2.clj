@@ -67,14 +67,14 @@
 (defn post-processing-middleware
   [_preprocessed-query rff]
   (fn [metadata]
-    {:pre [(map? *original-query*)]}
-    (test-mlv2-metadata *original-query* metadata)
+    (when *original-query*
+      (test-mlv2-metadata *original-query* metadata))
     (rff metadata)))
 
 (defn around-middleware
   "Tests only: save the original legacy MBQL query immediately after normalization to `::original-query`."
   [qp]
-  (fn [query rff context]
+  (fn [query rff]
     ;; there seems to be a issue in Hawk JUnit output if it encounters a test assertion when [[t/*testing-vars*]] is
     ;; empty, which can be the case if the assertion happens inside of a fixture before a test is ran (e.g. queries ran
     ;; as the result of syncing a database happening inside a test fixture); in this case we still want to run our
@@ -84,4 +84,4 @@
         (test-mlv2-conversion query))
       (test-mlv2-conversion query))
     (binding [*original-query* query]
-      (qp query rff context))))
+      (qp query rff))))

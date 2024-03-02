@@ -1,4 +1,5 @@
 import slugg from "slugg";
+
 import type { IndexedEntity } from "metabase-types/api";
 
 export const indexedEntity = (entity: IndexedEntity) =>

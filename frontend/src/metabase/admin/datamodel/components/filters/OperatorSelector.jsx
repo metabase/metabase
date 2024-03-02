@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
+
 import Select, { Option } from "metabase/core/components/Select";
 
 export default class OperatorSelector extends Component {

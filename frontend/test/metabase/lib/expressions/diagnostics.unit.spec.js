@@ -1,8 +1,8 @@
-import { tokenize } from "metabase-lib/expressions/tokenizer";
 import {
   countMatchingParentheses,
   diagnose,
 } from "metabase-lib/expressions/diagnostics";
+import { tokenize } from "metabase-lib/expressions/tokenizer";
 
 describe("metabase-lib/expressions/diagnostics", () => {
   it("should count matching parentheses", () => {

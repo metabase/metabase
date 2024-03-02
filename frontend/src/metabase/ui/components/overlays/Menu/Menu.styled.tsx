@@ -1,5 +1,5 @@
-import { getStylesRef, px, rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
+import { getStylesRef, px, rem } from "@mantine/core";
 
 export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
   Menu: {

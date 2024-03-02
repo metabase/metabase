@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
-
 import {
   createMockImplicitQueryAction,
   createMockQueryAction,

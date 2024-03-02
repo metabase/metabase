@@ -1,11 +1,11 @@
-import { t } from "ttag";
 import type { MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
+import { t } from "ttag";
+
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import { Flex } from "metabase/ui";
-import { DashboardButtonTooltip } from "../DashboardButtonTooltip";
+import { Flex, Tooltip } from "metabase/ui";
 
 export type DashboardEmbedHeaderButtonProps = {
   onClick?: () => void;
@@ -37,7 +37,7 @@ export const DashboardEmbedHeaderButton = forwardRef(
     };
 
     return (
-      <DashboardButtonTooltip label={tooltipLabel}>
+      <Tooltip label={tooltipLabel}>
         <Flex>
           <DashboardHeaderButton
             data-disabled={disabled}
@@ -49,7 +49,7 @@ export const DashboardEmbedHeaderButton = forwardRef(
             hasBackground={hasBackground}
           />
         </Flex>
-      </DashboardButtonTooltip>
+      </Tooltip>
     );
   },
 );

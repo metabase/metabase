@@ -21,7 +21,7 @@
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-test :as pulse-test]
    [metabase.pulse.render.style :as style]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -99,8 +99,8 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (:body mw.util/response-unauthentic) (client/client :get 401 "pulse")))
-  (is (= (:body mw.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
+  (is (= (:body req.util/response-unauthentic) (client/client :get 401 "pulse")))
+  (is (= (:body req.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1046,23 +1046,14 @@
                                           :bcc?    true})
                      (mt/regex-email-bodies #"A Pulse"))))))))))
 
-(deftest pulse-card-query-results-test
-  (testing "A Card saved with `:async?` true should not be ran async for a Pulse"
-    (is (map? (#'api.pulse/pulse-card-query-results
-               {:id            1
-                :dataset_query {:database (mt/id)
-                                :type     :query
-                                :query    {:source-table (mt/id :venues)
-                                           :limit        1}
-                                :async?   true}}))))
+(deftest ^:parallel pulse-card-query-results-test
   (testing "viz-settings saved in the DB for a Card should be loaded"
     (is (some? (get-in (#'api.pulse/pulse-card-query-results
                         {:id            1
                          :dataset_query {:database (mt/id)
                                          :type     :query
                                          :query    {:source-table (mt/id :venues)
-                                                    :limit        1}
-                                         :async?   true}})
+                                                    :limit        1}}})
                        [:data :viz-settings])))))
 
 (deftest form-input-test

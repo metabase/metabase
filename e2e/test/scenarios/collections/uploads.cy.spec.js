@@ -1,3 +1,4 @@
+import { WRITABLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   restore,
   queryWritableDB,
@@ -10,8 +11,6 @@ import {
   setTokenFeatures,
   modal,
 } from "e2e/support/helpers";
-
-import { WRITABLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -65,7 +64,7 @@ describeWithSnowplow(
       queryWritableDB("CREATE SCHEMA IF NOT EXISTS empty_uploads;", "postgres");
 
       cy.request("POST", "/api/collection", {
-        name: `Uploads Collection`,
+        name: "Uploads Collection",
         parent_id: null,
       }).then(({ body: { id: collectionId } }) => {
         cy.wrap(collectionId).as("collectionId");
@@ -113,7 +112,7 @@ describeWithSnowplow(
           enableTracking();
 
           cy.request("POST", "/api/collection", {
-            name: `Uploads Collection`,
+            name: "Uploads Collection",
             parent_id: null,
           }).then(({ body: { id: collectionId } }) => {
             cy.wrap(collectionId).as("collectionId");
@@ -322,7 +321,7 @@ function uploadFile(testFile, valid = true) {
       .click();
     cy.wait("@dataset");
 
-    cy.url().should("include", `/model/`);
+    cy.url().should("include", "/model/");
     cy.findByTestId("TableInteractive-root");
   } else {
     cy.wait("@uploadCSV");
@@ -377,5 +376,5 @@ function enableUploads(dialect) {
     "uploads-table-prefix": dialect === "mysql" ? "upload_" : null,
   };
 
-  cy.request("PUT", `/api/setting`, settings);
+  cy.request("PUT", "/api/setting", settings);
 }

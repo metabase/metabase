@@ -1,3 +1,11 @@
+import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ADMIN_USER_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   setupSMTP,
@@ -7,15 +15,6 @@ import {
   popover,
   visitQuestion,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-import {
-  ADMIN_USER_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 const { admin } = USERS;

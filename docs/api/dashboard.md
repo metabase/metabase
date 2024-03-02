@@ -330,6 +330,8 @@ Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. Th
 
 *  **`name`** nullable value must be a non-blank string.
 
+*  **`width`** nullable enum of fixed, full
+
 *  **`caveats`** nullable string
 
 *  **`embedding_params`** nullable value must be a valid embedding params map.

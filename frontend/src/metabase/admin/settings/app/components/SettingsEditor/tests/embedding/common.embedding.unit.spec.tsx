@@ -1,4 +1,5 @@
 import { screen } from "__support__/ui";
+
 import {
   goToStaticEmbeddingSettings,
   setupEmbedding,

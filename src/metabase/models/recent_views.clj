@@ -3,7 +3,7 @@
   each user."
   (:require
     #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]

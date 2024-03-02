@@ -1,8 +1,11 @@
 import type { HTMLAttributes, ReactNode, Ref, UIEventHandler } from "react";
 import { forwardRef, useContext, useMemo } from "react";
+
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+
 import type { TabContextType } from "../Tab";
 import { TabContext } from "../Tab";
+
 import { TabListContent, TabListRoot } from "./TabList.styled";
 
 export interface TabListProps<T>

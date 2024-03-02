@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { ACCENT_COUNT, color } from "./palette";
 import type { AccentColorOptions, ColorPalette } from "./types";
 
@@ -73,7 +74,7 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
     case "unstable":
       return color("warning", palette);
     case "count":
-      return color("brand", palette);
+      return color("accent0", palette);
     case "sum":
       return color("accent1", palette);
     case "average":

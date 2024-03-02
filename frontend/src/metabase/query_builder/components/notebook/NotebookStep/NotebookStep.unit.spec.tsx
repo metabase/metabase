@@ -1,15 +1,14 @@
-import { renderWithProviders, screen } from "__support__/ui";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-
+import { renderWithProviders, screen } from "__support__/ui";
+import type Question from "metabase-lib/Question";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import type Question from "metabase-lib/Question";
-
-import type { NotebookStep as INotebookStep, NotebookStepType } from "../types";
 import { createMockNotebookStep, DEFAULT_QUESTION } from "../test-utils";
+import type { NotebookStep as INotebookStep, NotebookStepType } from "../types";
+
 import NotebookStep from "./NotebookStep";
 
 type SetupOpts = {

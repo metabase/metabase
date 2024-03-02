@@ -2,18 +2,16 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import { Icon } from "metabase/ui";
-
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-
+import { getMetadata } from "metabase/selectors/metadata";
+import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
+
 import {
   Root,
   ColumnPickerContainer,
@@ -23,8 +21,6 @@ import {
   InfoIconContainer,
 } from "./AggregationPicker.styled";
 
-const DEFAULT_MAX_HEIGHT = 610;
-
 interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
@@ -32,7 +28,6 @@ interface AggregationPickerProps {
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  maxHeight?: number;
   onSelect: (operator: Lib.Aggregable) => void;
   onClose?: () => void;
 }
@@ -65,7 +60,6 @@ export function AggregationPicker({
   stageIndex,
   operators,
   hasExpressionInput = true,
-  maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
   onClose,
 }: AggregationPickerProps) {
@@ -238,7 +232,6 @@ export function AggregationPicker({
           stageIndex={stageIndex}
           columnGroups={columnGroups}
           hasTemporalBucketing
-          maxHeight={maxHeight}
           color="summarize"
           checkIsColumnSelected={checkColumnSelected}
           onSelect={handleColumnSelect}
@@ -252,7 +245,6 @@ export function AggregationPicker({
     <Root className={className} color="summarize">
       <AccordionList
         sections={sections}
-        maxHeight={maxHeight}
         alwaysExpanded={false}
         onChange={handleChange}
         onChangeSection={handleSectionChange}
@@ -260,6 +252,9 @@ export function AggregationPicker({
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
         renderItemExtra={renderItemExtra}
+        // disable scrollbars inside the list
+        style={{ overflow: "visible" }}
+        maxHeight={Infinity}
       />
     </Root>
   );

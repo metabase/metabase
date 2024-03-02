@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { OperatorOption } from "./types";
 
 export const OPERATOR_OPTIONS: OperatorOption[] = [

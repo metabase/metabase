@@ -1,20 +1,17 @@
 import { useCallback, useMemo } from "react";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
 import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
-import type { ColorName } from "metabase/lib/colors/types";
-
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import { StyledAccordionList } from "./QueryColumnPicker.styled";
-
-const DEFAULT_MAX_HEIGHT = 610;
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
@@ -33,6 +30,7 @@ export interface QueryColumnPickerProps {
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
+  "data-testid"?: string;
 }
 
 type Sections = {
@@ -49,11 +47,11 @@ export function QueryColumnPicker({
   hasBinning = false,
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
-  maxHeight = DEFAULT_MAX_HEIGHT,
   color = "brand",
   checkIsColumnSelected,
   onSelect,
   onClose,
+  "data-testid": dataTestId,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
     () =>
@@ -157,7 +155,6 @@ export function QueryColumnPicker({
     <StyledAccordionList
       className={className}
       sections={sections}
-      maxHeight={maxHeight}
       alwaysExpanded={false}
       onChange={handleSelectColumn}
       itemIsSelected={checkIsColumnSelected}
@@ -166,6 +163,10 @@ export function QueryColumnPicker({
       renderItemIcon={renderItemIcon}
       renderItemExtra={renderItemExtra}
       color={color}
+      // disable scrollbars inside the list
+      style={{ overflow: "visible" }}
+      maxHeight={Infinity}
+      data-testid={dataTestId}
       // Compat with E2E tests around MLv1-based components
       // Prefer using a11y role selectors
       itemTestId="dimension-list-item"

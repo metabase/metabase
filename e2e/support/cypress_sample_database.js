@@ -7,4 +7,4 @@
  */
 
 //
-export { default as SAMPLE_DATABASE } from "./cypress_sample_database.json"; // eslint-disable-line import/no-unresolved
+export { default as SAMPLE_DATABASE } from "./cypress_sample_database.json";

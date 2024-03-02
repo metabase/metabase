@@ -1,5 +1,5 @@
-import type { VisualizationSettings } from "metabase-types/api";
 import type { StackOffset } from "metabase/visualizations/shared/components/RowChart/types";
+import type { VisualizationSettings } from "metabase-types/api";
 
 export const getStackOffset = (
   settings: VisualizationSettings,

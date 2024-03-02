@@ -166,7 +166,7 @@
                                                                    :collection_id collection-id
                                                                    :dataset_query (mt/mbql-query venues
                                                                                     {:filter [:> $price 10]})
-                                                                   :dataset       true}]
+                                                                   :type          :model}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-fn collection-id card-id)))))))
 
@@ -284,7 +284,7 @@
 
 (defn- do-with-testing-model
   [{:keys [query pk-ref value-ref]} f]
-  (t2.with-temp/with-temp [Card model {:dataset       true
+  (t2.with-temp/with-temp [Card model {:type          :model
                                        :dataset_query query}]
     (mt/with-model-cleanup [ModelIndex]
       (let [model-index (model-index/create {:model-id   (:id model)
@@ -405,7 +405,7 @@
                        (if (= ref field_ref) (f col) col))
                      cols))]
         (let [query           (mt/native-query {:query "select * from products"})
-              results-meta    (->> (qp/process-userland-query query)
+              results-meta    (->> (qp/process-query (qp/userland-query query))
                                    :data :results_metadata :columns)
               id-field-ref    (:field_ref (by-id results-meta "id"))
               title-field-ref (:field_ref (by-id results-meta "title"))

@@ -1,23 +1,17 @@
+import { useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { useMemo } from "react";
-import Button from "metabase/core/components/Button";
-import EmptyState from "metabase/components/EmptyState";
-
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
+import EmptyState from "metabase/components/EmptyState";
+import Button from "metabase/core/components/Button";
 import { setActionForDashcard } from "metabase/dashboard/actions";
-
 import type {
   ActionDashboardCard,
   Dashboard,
   WritebackAction,
 } from "metabase-types/api";
 
-import {
-  ActionParameterMappingForm,
-  getTargetKey,
-} from "./ActionParameterMapping";
 import {
   ActionSettingsWrapper,
   ParameterMapperContainer,
@@ -27,11 +21,15 @@ import {
   ModalActions,
 } from "./ActionDashcardSettings.styled";
 import {
+  ActionParameterMappingForm,
+  getTargetKey,
+} from "./ActionParameterMapping";
+import { ExplainerText } from "./ExplainerText";
+import {
   getParameterDefaultValue,
   isParameterHidden,
   isParameterRequired,
 } from "./utils";
-import { ExplainerText } from "./ExplainerText";
 
 const mapDispatchToProps = {
   setActionForDashcard,

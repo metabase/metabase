@@ -1,4 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
+
 import Select from "./Select";
 
 export default {

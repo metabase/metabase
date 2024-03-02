@@ -1,13 +1,11 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
-  modal,
   openNativeEditor,
   addPostgresDatabase,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const databaseName = "Sample Database";
 const databaseCopyName = `${databaseName} copy`;
@@ -35,7 +33,7 @@ describe("issue 21597", { tags: "@external" }, () => {
       parseSpecialCharSequences: false,
     });
 
-    cy.findByTestId("select-button").click();
+    cy.findByTestId("variable-type-select").click();
     popover().within(() => {
       cy.findByText("Field Filter").click();
     });
@@ -64,7 +62,7 @@ describe("issue 21597", { tags: "@external" }, () => {
 
     // Try to save the native query
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByPlaceholderText("What is the name of your question?").type("Q");
       cy.findByText("Save").click();
       cy.wait("@saveNativeQuestion");

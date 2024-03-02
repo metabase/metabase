@@ -1,19 +1,16 @@
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
-import S from "metabase/components/List/List.css";
-
-import List from "metabase/components/List";
-import ListItem from "metabase/components/ListItem";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-
+import List from "metabase/components/List";
+import S from "metabase/components/List/List.module.css";
+import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
 import { useSelector } from "metabase/lib/redux";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getDocsUrl } from "metabase/selectors/settings";
-import ReferenceHeader from "../../components/ReferenceHeader";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
+import ReferenceHeader from "../../components/ReferenceHeader";
 import { getMetrics, getError, getLoading } from "../../selectors";
 
 const emptyStateData = {

@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import type { Dashboard } from "metabase-types/api";
 

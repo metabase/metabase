@@ -1,15 +1,15 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
-import cx from "classnames";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+
+import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
-import RunButtonWithTooltip from "./RunButtonWithTooltip";
 
 export default class QueryVisualization extends Component {
   constructor(props, context) {

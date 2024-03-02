@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { t } from "ttag";
 import { Link } from "react-router";
-import { Button, Anchor, Text } from "metabase/ui";
-import { isNotNull } from "metabase/lib/types";
+import { t } from "ttag";
+
+import { getEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
+import { isNotNull } from "metabase/lib/types";
+import { Button, Anchor, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
-import { getEnvVarDocsUrl } from "metabase/admin/settings/utils";
+
 import {
   CardBadge,
   CardDescription,

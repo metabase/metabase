@@ -1,22 +1,19 @@
 import userEvent from "@testing-library/user-event";
+
+import {
+  setupFieldSearchValuesEndpoints,
+  setupFieldValuesEndpoints,
+} from "__support__/server-mocks";
+import { act, renderWithProviders, screen } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import type { FieldValuesResult } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
   PEOPLE,
   PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
-import {
-  act,
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
-import {
-  setupFieldSearchValuesEndpoints,
-  setupFieldValuesEndpoints,
-} from "__support__/server-mocks";
-import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
 import { StringFilterEditor } from "./StringFilterEditor";
 
 interface SetupOpts {
@@ -139,7 +136,6 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("is"));
       userEvent.click(await screen.findByText("Starts with"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Enter some text"), "Ga");
       userEvent.tab();
 

@@ -1,5 +1,12 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
+
+import {
+  setupCollectionsEndpoints,
+  setupRecentViewsEndpoints,
+  setupSearchEndpoints,
+  setupUserRecipientsEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -7,12 +14,9 @@ import {
   waitForLoaderToBeRemoved,
   waitFor,
 } from "__support__/ui";
-import {
-  setupCollectionsEndpoints,
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
+import { checkNotNull } from "metabase/lib/types";
+import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
   createMockCollectionItem,
   createMockModelObject,
@@ -23,9 +27,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import type { CollectionItem, RecentItem } from "metabase-types/api";
-import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import { checkNotNull } from "metabase/lib/types";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Card ABC",

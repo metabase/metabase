@@ -1,18 +1,11 @@
-import { useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import Collections from "metabase/entities/collections";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import Collections from "metabase/entities/collections";
-import { canManageCollectionAuthorityLevel } from "metabase/collections/utils";
-
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
-
-type CollectionsMap = Partial<Record<Collection["id"], Collection>>;
 
 interface OwnProps {
   collectionParentId: Collection["id"];
@@ -20,35 +13,20 @@ interface OwnProps {
 
 interface StateProps {
   isAdmin: boolean;
-  collectionsMap: CollectionsMap;
 }
 
 type FormAuthorityLevelFieldContainerProps = OwnProps & StateProps;
 
 function mapStateToProps(state: State): StateProps {
-  const { collections } = state.entities;
   return {
     isAdmin: getUserIsAdmin(state),
-    collectionsMap: collections || ({} as CollectionsMap),
   };
 }
 
 function FormAuthorityLevelFieldContainer({
-  collectionParentId,
-  collectionsMap,
   isAdmin,
 }: FormAuthorityLevelFieldContainerProps) {
-  const canManageAuthorityLevel = useMemo(
-    () =>
-      isAdmin &&
-      canManageCollectionAuthorityLevel(
-        { parent_id: collectionParentId },
-        collectionsMap,
-      ),
-    [collectionParentId, collectionsMap, isAdmin],
-  );
-
-  if (!canManageAuthorityLevel) {
+  if (!isAdmin) {
     return null;
   }
 

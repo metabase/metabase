@@ -1,10 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   modal,
   openQuestionActions,
   popover,
   restore,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -34,15 +34,15 @@ describe("issue 28599", () => {
       { visitQuestion: true },
     );
 
-    cy.intercept("PUT", `/api/card/*`).as("updateCard");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   it("should not show time granularity footer after question conversion to a model (metabase#28599)", () => {
     cy.findByTestId("timeseries-chrome").within(() => {
-      cy.findByText(`View`).should("be.visible");
-      cy.findByText(`All time`).should("be.visible");
-      cy.findByText(`by`).should("be.visible");
-      cy.findByText(`Year`).should("be.visible");
+      cy.findByText("View").should("be.visible");
+      cy.findByText("All time").should("be.visible");
+      cy.findByText("by").should("be.visible");
+      cy.findByText("Year").should("be.visible");
     });
 
     openQuestionActions();

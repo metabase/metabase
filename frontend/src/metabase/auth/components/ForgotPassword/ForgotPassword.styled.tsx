@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+
+import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
-import Link from "metabase/core/components/Link";
 
 export const InfoBody = styled.div`
   display: flex;

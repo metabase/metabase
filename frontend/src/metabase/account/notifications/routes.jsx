@@ -1,9 +1,10 @@
-import { Route } from "metabase/hoc/Title";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import NotificationsApp from "./containers/NotificationsApp";
+import { Route } from "metabase/hoc/Title";
+
 import HelpModal from "./components/HelpModal";
 import ArchiveAlertModal from "./containers/ArchiveAlertModal";
 import ArchivePulseModal from "./containers/ArchivePulseModal";
+import NotificationsApp from "./containers/NotificationsApp";
 import UnsubscribeAlertModal from "./containers/UnsubscribeAlertModal";
 import UnsubscribePulseModal from "./containers/UnsubscribePulseModal";
 

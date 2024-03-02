@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.query-processor.util :as qp.util]
+   [metabase.shared.dashboards.constants :as dashboards.constants]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
@@ -286,6 +287,21 @@
   [dashboard-template]
   (transduce (map (comp count ancestors)) + (:applies_to dashboard-template)))
 
+(defn- ensure-default-card-sizes
+  "Given a card definition from a template, fill in the card template with default width and height
+  values based on the template display type if those dimensions aren't already present."
+  [card-spec]
+  (update-vals
+    card-spec
+    (fn [{:keys [visualization] :as card-spec}]
+      (let [defaults (get-in dashboards.constants/card-size-defaults [(keyword visualization) :default])]
+        (into defaults card-spec)))))
+
+(defn- set-default-card-dimensions
+  "Update the card template dimensions to align with the default FE dimensions."
+  [dashboard-template]
+  (update dashboard-template :cards #(mapv ensure-default-card-sizes %)))
+
 (defn- make-dashboard-template
   [entity-type {:keys [cards] :as r}]
   (-> (cond-> r
@@ -294,6 +310,7 @@
       (assoc :dashboard-template-name entity-type
              :specificity 0)
       (update :applies_to #(or % entity-type))
+      set-default-card-dimensions
       dashboard-template-validator
       (as-> dashboard-template
             (assoc dashboard-template

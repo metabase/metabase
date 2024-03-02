@@ -1,8 +1,10 @@
 import ReactDOMServer from "react-dom/server";
+
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
 /**
@@ -20,7 +22,7 @@ export function RenderChart(rawSeries, dashcardSettings, colors) {
     getColor,
     formatValue: formatStaticValue,
     measureText: measureTextWidth,
-    fontFamily: "Lato",
+    fontFamily: "Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif",
   };
 
   const props = {

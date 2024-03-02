@@ -1,10 +1,13 @@
 import { jt, t } from "ttag";
-import { Button, Card, Flex, Icon, Stack, Text, Title } from "metabase/ui";
-import Link from "metabase/core/components/Link";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { getDocsUrl } from "metabase/selectors/settings";
+import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
+import { getDocsUrl } from "metabase/selectors/settings";
+import { Button, Card, Flex, Icon, Stack, Text, Title } from "metabase/ui";
+
 import { removeShowEmbedHomepageFlag } from "../../utils";
+
 import { NumberedList } from "./EmbedMinimalHomepage.styled";
 
 type EmbedMinimalHomepageProps = {
@@ -29,6 +32,7 @@ export const EmbedMinimalHomepage = ({
       <Text
         fw="bold"
         color="text-dark"
+        // eslint-disable-next-line no-literal-metabase-strings -- this is only visible to admins
       >{t`Get started with Embedding Metabase in your app`}</Text>
       <Card px={40} py={32} maw={570}>
         <Stack spacing="lg">

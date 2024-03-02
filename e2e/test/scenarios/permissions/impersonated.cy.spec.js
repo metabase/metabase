@@ -1,3 +1,4 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
   assertPermissionTable,
   createTestRoles,
@@ -12,7 +13,6 @@ import {
   runNativeQuery,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 

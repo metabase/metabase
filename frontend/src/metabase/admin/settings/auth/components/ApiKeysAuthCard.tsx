@@ -1,5 +1,6 @@
-import { t } from "ttag";
 import { useEffect, useState } from "react";
+import { t } from "ttag";
+
 import { ApiKeysApi } from "metabase/services";
 
 import { AuthCardBody } from "./AuthCard/AuthCard";

@@ -1,6 +1,6 @@
-import type { ButtonHTMLAttributes, MouseEvent } from "react";
-import { Menu } from "@mantine/core";
 import type { MenuItemProps as MantineMenuItemProps } from "@mantine/core";
+import { Menu } from "@mantine/core";
+import type { ButtonHTMLAttributes, MouseEvent } from "react";
 
 type MenuItemProps = MantineMenuItemProps &
   ButtonHTMLAttributes<HTMLButtonElement>;

@@ -1,7 +1,8 @@
-import type { ParameterValueOrArray } from "metabase-types/api";
-import type { DatasetColumn, RowValue } from "metabase-types/api/dataset";
 import { formatValue } from "metabase/lib/formatting";
 import { isDate } from "metabase-lib/types/utils/isa";
+import type { ParameterValueOrArray } from "metabase-types/api";
+import type { DatasetColumn, RowValue } from "metabase-types/api/dataset";
+
 import { formatDateTimeForParameter } from "./date";
 
 type Value = ParameterValueOrArray | RowValue | undefined;

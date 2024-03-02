@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import FormInput from "metabase/core/components/FormInput";
 import type { Engine } from "metabase-types/api";
 
@@ -15,6 +16,7 @@ const DatabaseNameField = ({ engine }: DatabaseNameFieldProps): JSX.Element => {
       title={t`Display name`}
       placeholder={t`Our ${name}`}
       rightIcon="info"
+      // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
       rightIconTooltip={t`Choose what this data will be called in Metabase.`}
     />
   );

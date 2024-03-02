@@ -3,7 +3,6 @@ import _ from "underscore";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { restore, undoToast, visitDashboard } from "e2e/support/helpers";
-
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;

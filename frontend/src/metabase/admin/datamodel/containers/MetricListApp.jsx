@@ -4,12 +4,11 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Metrics from "metabase/entities/metrics";
 import MetricItem from "metabase/admin/datamodel/components/MetricItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
-
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import Metrics from "metabase/entities/metrics";
 
 class MetricListAppInner extends Component {
   render() {

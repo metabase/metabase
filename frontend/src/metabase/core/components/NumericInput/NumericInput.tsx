@@ -1,5 +1,6 @@
 import type { ChangeEvent, FocusEvent, InputHTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
+
 import Input from "metabase/core/components/Input";
 
 export type NumericInputAttributes = Omit<

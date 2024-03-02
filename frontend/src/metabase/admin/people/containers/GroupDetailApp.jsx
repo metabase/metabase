@@ -1,8 +1,8 @@
 import { Component } from "react";
 import _ from "underscore";
 
-import User from "metabase/entities/users";
 import Group from "metabase/entities/groups";
+import User from "metabase/entities/users";
 
 import GroupDetail from "../components/GroupDetail";
 

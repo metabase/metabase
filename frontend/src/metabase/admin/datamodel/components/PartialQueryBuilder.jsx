@@ -1,20 +1,22 @@
 /* eslint-disable react/prop-types */
+import PropTypes from "prop-types";
 import { Component } from "react";
 import { connect } from "react-redux";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Link from "metabase/core/components/Link";
-import { getMetadata } from "metabase/selectors/metadata";
 import Tables from "metabase/entities/tables";
 import * as Urls from "metabase/lib/urls";
+import { getMetadata } from "metabase/selectors/metadata";
 import Query from "metabase-lib/queries/Query";
 import {
   getSegmentOrMetricQuestion,
   getDefaultSegmentOrMetricQuestion,
 } from "metabase-lib/queries/utils/segments";
+
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
+
 import { GuiQueryEditor } from "./GuiQueryEditor";
 
 class PartialQueryBuilder extends Component {

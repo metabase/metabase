@@ -1,7 +1,8 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 
 import Select, { Option } from "metabase/core/components/Select";
+
 import { SelectPrefixInput } from "./InputWithSelectPrefix.styled";
 
 function splitValue({

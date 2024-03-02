@@ -143,7 +143,8 @@ export function getRequiredToggle() {
 }
 
 export function toggleRequiredParameter() {
-  getRequiredToggle().click();
+  // We need force: true because the actual input is hidden in Mantine
+  getRequiredToggle().click({ force: true });
 }
 
 export function createEmptyTextBox() {
@@ -260,8 +261,12 @@ export function dashboardSaveButton() {
   return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });
 }
 
+export function dashboardParametersDoneButton() {
+  return cy.findByTestId("dashboard-parameter-sidebar").button("Done");
+}
+
 /**
- * @param {Object=} option
+ * @param {Object} option
  * @param {number=} option.id
  * @param {number=} option.col
  * @param {number=} option.row
@@ -358,7 +363,9 @@ export function getLinkCardDetails({
 }
 
 /**
- * @param {Object=} option
+ * @param {Object} option
+ * @param {number=} option.col
+ * @param {number=} option.row
  * @param {string=} option.label
  * @param {number=} option.action_id
  * @param {Array=} option.parameter_mappings
@@ -399,3 +406,60 @@ export const getNextUnsavedDashboardCardId = (() => {
   let id = 0;
   return () => --id;
 })();
+
+const MAX_WIDTH = "1048px";
+export function assertDashboardFixedWidth() {
+  cy.findByTestId("fixed-width-dashboard-header").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-dashboard-tabs").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-filters").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("dashboard-grid").should("have.css", "max-width", MAX_WIDTH);
+}
+
+export function assertDashboardFullWidth() {
+  cy.findByTestId("fixed-width-dashboard-header").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-dashboard-tabs").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-filters").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("dashboard-grid").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+}
+
+export function createDashboardWithTabs({
+  dashcards,
+  tabs,
+  ...dashboardDetails
+}) {
+  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+      ...dashboard,
+      dashcards,
+      tabs,
+    }).then(({ body: dashboard }) => cy.wrap(dashboard));
+  });
+}

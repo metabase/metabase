@@ -1,5 +1,15 @@
 import _ from "underscore";
+
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/Question";
+import {
+  checkCanBeModel,
+  checkCanRefreshModelCache,
+  getModelCacheSchemaName,
+  isAdHocModelQuestion,
+  isAdHocModelQuestionCard,
+  getDatasetMetadataCompletenessPercentage,
+} from "metabase-lib/metadata/utils/models";
 import {
   getMockModelCacheInfo,
   COMMON_DATABASE_FEATURES,
@@ -13,16 +23,6 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Question from "metabase-lib/Question";
-
-import {
-  checkCanBeModel,
-  checkCanRefreshModelCache,
-  getModelCacheSchemaName,
-  isAdHocModelQuestion,
-  isAdHocModelQuestionCard,
-  getDatasetMetadataCompletenessPercentage,
-} from "metabase-lib/metadata/utils/models";
 
 function getTemplateTag(tag = {}) {
   return {

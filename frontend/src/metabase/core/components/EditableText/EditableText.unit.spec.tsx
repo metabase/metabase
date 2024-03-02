@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, render, waitFor } from "__support__/ui";
+
 import type { EditableTextProps } from "./EditableText";
 import EditableText from "./EditableText";
 

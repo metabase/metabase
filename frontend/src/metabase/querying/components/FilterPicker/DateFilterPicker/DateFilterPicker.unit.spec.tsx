@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/lib/types";
+
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithSpecificDateFilter,
@@ -9,6 +11,7 @@ import {
   createQueryWithExcludeDateFilter,
   findDateTimeColumn,
 } from "../test-utils";
+
 import { DateFilterPicker } from "./DateFilterPicker";
 
 const STAGE_INDEX = 0;

@@ -1,8 +1,8 @@
+import type { LocationDescriptor } from "history";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
-import type { LocationDescriptor } from "history";
-
 import { useMount } from "react-use";
+
 import { refreshCurrentUser } from "metabase/redux/user";
 
 import { NotFound } from "./ErrorPages";

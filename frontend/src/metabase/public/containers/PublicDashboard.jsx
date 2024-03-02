@@ -1,23 +1,17 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import { assoc } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import cx from "classnames";
-
 import _ from "underscore";
-import { isWithinIframe } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
-import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
+import * as dashboardActions from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import title from "metabase/hoc/Title";
-
-import { setErrorPage } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
-
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
-
+import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
+import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import {
   getDashboardComplete,
   getCardData,
@@ -27,21 +21,20 @@ import {
   getDraftParameterValues,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
-
-import * as dashboardActions from "metabase/dashboard/actions";
-
+import { isActionDashCard } from "metabase/dashboard/utils";
+import title from "metabase/hoc/Title";
+import { isWithinIframe } from "metabase/lib/dom";
+import { setErrorPage } from "metabase/redux/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+
 import EmbedFrame from "../components/EmbedFrame";
 
-import {
-  DashboardContainer,
-  DashboardGridContainer,
-  Separator,
-} from "./PublicDashboard.styled";
+import { DashboardContainer } from "./PublicDashboard.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -163,8 +156,12 @@ class PublicDashboard extends Component {
     } = this.props;
 
     const buttons = !isWithinIframe()
-      ? getDashboardActions(this, { ...this.props, isPublic: true })
+      ? getDashboardActions({ ...this.props, isPublic: true })
       : [];
+
+    const visibleDashcards = (dashboard?.dashcards ?? []).filter(
+      dashcard => !isActionDashCard(dashcard),
+    );
 
     return (
       <EmbedFrame
@@ -176,11 +173,12 @@ class PublicDashboard extends Component {
         draftParameterValues={draftParameterValues}
         hiddenParameterSlugs={this.getHiddenParameterSlugs()}
         setParameterValue={this.props.setParameterValue}
+        setParameterValueToDefault={setParameterValueToDefault}
+        enableParameterRequiredBehavior
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
         }
-        setParameterValueToDefault={setParameterValueToDefault}
-        enableParameterRequiredBehavior
+        dashboardTabs={<DashboardTabs location={this.props.location} />}
       >
         <LoadingAndErrorWrapper
           className={cx({
@@ -191,18 +189,15 @@ class PublicDashboard extends Component {
         >
           {() => (
             <DashboardContainer>
-              <DashboardTabs location={this.props.location} />
-              <Separator />
-              <DashboardGridContainer>
-                <DashboardGridConnected
-                  {...this.props}
-                  isPublic
-                  className="spread"
-                  mode={PublicMode}
-                  metadata={this.props.metadata}
-                  navigateToNewCardFromDashboard={() => {}}
-                />
-              </DashboardGridContainer>
+              <DashboardGridConnected
+                {...this.props}
+                dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
+                isPublic
+                className="spread"
+                mode={PublicMode}
+                metadata={this.props.metadata}
+                navigateToNewCardFromDashboard={() => {}}
+              />
             </DashboardContainer>
           )}
         </LoadingAndErrorWrapper>

@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
-import { UtilApi } from "metabase/services";
+
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getSetting, getIsPaidPlan } from "metabase/selectors/settings";
+import { getIsPaidPlan } from "metabase/selectors/settings";
+import { UtilApi } from "metabase/services";
+
 import { getUser } from "../../../selectors/user";
 
 export const useHelpLink = (): { visible: boolean; href: string } => {
-  const helpLinkSetting = useSelector(state => getSetting(state, "help-link"));
-  const helpLinkCustomDestinationSetting = useSelector(state =>
-    getSetting(state, "help-link-custom-destination"),
+  const helpLinkSetting = useSetting("help-link");
+  const helpLinkCustomDestinationSetting = useSetting(
+    "help-link-custom-destination",
   );
   const [bugReportDetails, setBugReportDetails] = useState(null);
   const user = useSelector(getUser);
   const isAdmin = user?.is_superuser;
   const isPaidPlan = useSelector(getIsPaidPlan);
-  const version = useSelector(state => getSetting(state, "version"));
+  const version = useSetting("version");
 
   const compactBugReportDetailsForUrl = encodeURIComponent(
     JSON.stringify(bugReportDetails),

@@ -1,3 +1,10 @@
+import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   // describeEE,
@@ -5,14 +12,6 @@ import {
   getDashboardCard,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
-import {
-  ORDERS_BY_YEAR_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { normal } = USERS;
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -109,7 +108,7 @@ describe("audit > auditing", { tags: "@quarantine" }, () => {
   });
 
   describe("See expected info on team member pages", () => {
-    it.skip(`should load the Overview tab (metabase#32244)`, () => {
+    it.skip("should load the Overview tab (metabase#32244)", () => {
       cy.visit("/admin/audit/members/overview");
 
       // We haven't created any new members yet so this should be empty

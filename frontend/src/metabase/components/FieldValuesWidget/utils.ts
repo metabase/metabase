@@ -1,17 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { MetabaseApi } from "metabase/services";
 import { stripId } from "metabase/lib/formatting";
-
-import type { Dashboard, Parameter, FieldValue } from "metabase-types/api";
+import { MetabaseApi } from "metabase/services";
+import type Question from "metabase-lib/Question";
 import type Field from "metabase-lib/metadata/Field";
-
-import {
-  isIdParameter,
-  isNumberParameter,
-  isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
 import {
   canListFieldValues,
   canListParameterValues,
@@ -19,7 +12,12 @@ import {
   canSearchParameterValues,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
-import type Question from "metabase-lib/Question";
+import {
+  isIdParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/parameters/utils/parameter-type";
+import type { Dashboard, Parameter, FieldValue } from "metabase-types/api";
 
 import type { ValuesMode } from "./types";
 

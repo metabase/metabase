@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import ActionButton from "metabase/components/ActionButton";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Button from "metabase/core/components/Button";
-import ActionButton from "metabase/components/ActionButton";
 import NumericInput from "metabase/core/components/NumericInput";
 
 import { normalizeCacheTTL } from "../../utils";

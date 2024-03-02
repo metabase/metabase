@@ -1,4 +1,5 @@
 import { css, keyframes } from "@emotion/react";
+
 import { color } from "metabase/lib/colors";
 
 export const fadingKeyframes = keyframes`

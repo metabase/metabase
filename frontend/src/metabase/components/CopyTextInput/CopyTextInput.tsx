@@ -1,8 +1,9 @@
-import { forwardRef } from "react";
 import type { Ref } from "react";
+import { forwardRef } from "react";
 
-import { TextInput } from "metabase/ui";
 import type { TextInputProps } from "metabase/ui";
+import { TextInput } from "metabase/ui";
+
 import { CopyWidgetButton } from "./CopyTextInput.styled";
 
 const defaultProps = {

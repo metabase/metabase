@@ -73,8 +73,8 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :index-info
-                 :uploads]]
+                 :uploads
+                 :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -847,38 +847,37 @@
                         (StringReader.))]
           (.copyIn copy-manager ^String sql tsvs))))))
 
-(defmethod driver/current-user-table-privileges :postgres
-  [_driver database]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
-    ;; result in a operation not supported error
-    (->> (jdbc/query
-          conn-spec
-          (str/join
-           "\n"
-           ["with table_privileges as ("
-            " select"
-            "   NULL as role,"
-            "   t.schemaname as schema,"
-            "   t.objectname as table,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
-            " from ("
-            "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
-            "   union"
-            "   select schemaname, viewname as objectname from pg_catalog.pg_views"
-            "   union"
-            "   select schemaname, matviewname as objectname from pg_catalog.pg_matviews"
-            " ) t"
-            " where t.schemaname !~ '^pg_'"
-            "   and t.schemaname <> 'information_schema'"
-            "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-            ")"
-            "select t.*"
-            "from table_privileges t"]))
-         (filter #(or (:select %) (:update %) (:delete %) (:update %))))))
+(defmethod sql-jdbc.sync/current-user-table-privileges :postgres
+  [_driver conn-spec & {:as _options}]
+  ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
+  ;; result in a operation not supported error
+  (->> (jdbc/query
+         conn-spec
+         (str/join
+         "\n"
+         ["with table_privileges as ("
+          " select"
+          "   NULL as role,"
+          "   t.schemaname as schema,"
+          "   t.objectname as table,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'update') as update,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'select') as select,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'insert') as insert,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'delete') as delete"
+          " from ("
+          "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
+          "   union"
+          "   select schemaname, viewname as objectname from pg_catalog.pg_views"
+          "   union"
+          "   select schemaname, matviewname as objectname from pg_catalog.pg_matviews"
+          " ) t"
+          " where t.schemaname !~ '^pg_'"
+          "   and t.schemaname <> 'information_schema'"
+          "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'usage')"
+          ")"
+          "select t.*"
+          "from table_privileges t"]))
+       (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

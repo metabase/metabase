@@ -1,16 +1,15 @@
+import {
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import { screen, renderWithProviders } from "__support__/ui";
+import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import type { Collection } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import {
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-
-import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 
 console.warn = jest.fn();
 console.error = jest.fn();

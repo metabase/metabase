@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import type { BoxProps } from "metabase/ui";
-import { Box, Flex, Modal, Tabs } from "metabase/ui";
+
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
+import type { BoxProps } from "metabase/ui";
+import { Box, Flex, Modal, Tabs } from "metabase/ui";
 
 export const TabPanelRoot = styled(Tabs.Panel)`
   overflow-y: auto;

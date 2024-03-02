@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
 import _LoadingSpinner from "metabase/components/LoadingSpinner";
+import { color } from "metabase/lib/colors";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { Icon } from "metabase/ui";
 
 const TRANSITION_DURATION = () => (isReducedMotionPreferred() ? "0" : "0.25s");
 

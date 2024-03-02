@@ -1,13 +1,12 @@
+import * as Tippy from "@tippyjs/react";
+import PropTypes from "prop-types";
 import { useMemo } from "react";
 import * as React from "react";
-import PropTypes from "prop-types";
-import * as Tippy from "@tippyjs/react";
 import * as ReactIs from "react-is";
 
-import { isReactDOMTypeElement } from "metabase-types/guards";
-
-import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReactDOMTypeElement } from "metabase-types/guards";
 
 const TippyComponent = Tippy.default;
 

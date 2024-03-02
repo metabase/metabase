@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
-
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 

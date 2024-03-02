@@ -1,24 +1,23 @@
-import { useState } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { useState } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { capitalize } from "metabase/lib/formatting";
-import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
-
-import * as Urls from "metabase/lib/urls";
-import Modal from "metabase/components/Modal";
-
-import LogoIcon from "metabase/components/LogoIcon";
-import EntityMenu from "metabase/components/EntityMenu";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { useSetting } from "metabase/common/hooks";
+import EntityMenu from "metabase/components/EntityMenu";
+import LogoIcon from "metabase/components/LogoIcon";
+import Modal from "metabase/components/Modal";
+import { color } from "metabase/lib/colors";
+import { capitalize } from "metabase/lib/formatting";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import {
   getApplicationName,
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
+
 import { useHelpLink } from "./useHelpLink";
 
 // generate the proper set of list items for the current user
@@ -31,7 +30,7 @@ export default connect(mapStateToProps)(ProfileLink);
 
 function ProfileLink({ adminItems, onLogout }) {
   const [modalOpen, setModalOpen] = useState(null);
-  const version = useSelector(state => getSetting(state, "version"));
+  const version = useSetting("version");
   const applicationName = useSelector(getApplicationName);
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
@@ -133,7 +132,9 @@ function ProfileLink({ adminItems, onLogout }) {
               className="p2 h5 text-centered text-medium border-top"
             >
               <span className="block">
+                {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
                 <span className="text-bold">Metabase</span>{" "}
+                {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
                 {t`is a Trademark of`} Metabase, Inc
               </span>
               <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>

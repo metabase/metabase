@@ -1,14 +1,13 @@
 import {
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   setupSMTP,
   mockSlackConfigured,
   visitQuestion,
 } from "e2e/support/helpers";
-
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const channels = { slack: mockSlackConfigured, email: setupSMTP };
 

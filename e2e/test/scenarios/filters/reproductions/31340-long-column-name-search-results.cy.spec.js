@@ -1,6 +1,6 @@
-import { popover, restore } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { popover, restore } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 

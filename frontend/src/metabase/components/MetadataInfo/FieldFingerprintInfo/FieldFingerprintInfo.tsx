@@ -1,15 +1,17 @@
 import { t } from "ttag";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import type { DatasetColumn } from "metabase-types/api";
+import type Field from "metabase-lib/metadata/Field";
 import {
   isCategory,
   isDate,
   isID,
   isNumber,
 } from "metabase-lib/types/utils/isa";
-import type Field from "metabase-lib/metadata/Field";
+import type { DatasetColumn } from "metabase-types/api";
+
 import { Table } from "../MetadataInfo.styled";
+
 import CategoryFingerprint from "./CategoryFingerprint";
 
 interface FieldFingerprintInfoProps {

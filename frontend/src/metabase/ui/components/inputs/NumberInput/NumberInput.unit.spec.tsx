@@ -1,7 +1,8 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { NumberInput } from "metabase/ui";
+import { useState } from "react";
+
 import { render, screen } from "__support__/ui";
+import { NumberInput } from "metabase/ui";
 
 interface SetupOpts {
   defaultValue?: number;

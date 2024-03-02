@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
-
 import type { DashboardCard, QuestionDashboardCard } from "metabase-types/api";
 
 import {

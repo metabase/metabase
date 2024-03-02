@@ -124,16 +124,16 @@
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
                                    (let [current-state (t2/select-one-fn :state PersistedInfo :id (:id persisted-info))
-                                         card-info     (t2/select-one [Card :archived :dataset]
+                                         card-info     (t2/select-one [Card :archived :type]
                                                                       :id (:card_id persisted-info))]
                                      (if (or (contains? (persisted-info/prunable-states) current-state)
                                              (:archived card-info)
-                                             (not (:dataset card-info)))
+                                             (not= (:type card-info) :model))
                                        (let [database (-> persisted-info :database_id db-id->db)]
                                          (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
                                          (try
                                            (unpersist! refresher database persisted-info)
-                                           (when (= "deletable" current-state)
+                                           (when-not (= "off" current-state)
                                              (t2/delete! PersistedInfo :id (:id persisted-info)))
                                            (update stats :success inc)
                                            (catch Exception e
@@ -162,21 +162,21 @@
                            ;; 2. if a query is running against the cache, it doesn't get ripped out.
                            [:< :state_change_at
                             (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
-                          [:= :c.dataset false]
+                          [:= :c.type "question"]
                           [:= :c.archived true]]}))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
   (t2/select PersistedInfo
-             {:select    [:p.* :c.dataset :c.archived :c.name]
+             {:select    [:p.* :c.type :c.archived :c.name]
               :from      [[:persisted_info :p]]
               :left-join [[:report_card :c] [:= :c.id :p.card_id]]
               :where     [:and
                           [:= :p.database_id database-id]
                           [:in :p.state (persisted-info/refreshable-states)]
                           [:= :c.archived false]
-                          [:= :c.dataset true]]}))
+                          [:= :c.type "model"]]}))
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as
@@ -378,18 +378,6 @@
            task/job-info
            :triggers
            (m/index-by (comp #(get % "db-id") qc/from-job-data :data))))
-
-;;; TODO -- this is only used in [[metabase.api.card-test]] now
-(defn job-info-for-individual-refresh
-  "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
-  []
-  (some->> refresh-job-key
-           task/job-info
-           :triggers
-           (map (comp qc/from-job-data :data))
-           (filter (comp #{"individual"} #(get % "type")))
-           (map #(get % "persisted-id"))
-           set))
 
 (defn unschedule-persistence-for-database!
   "Stop refreshing tables for a given database. Should only be called when marking the database as not

@@ -1,6 +1,8 @@
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import * as Lib from "metabase-lib";
+
 import {
   OperatorPickerButton,
   OperatorList,

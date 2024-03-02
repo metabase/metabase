@@ -1,4 +1,15 @@
 import _ from "underscore";
+
+import { isActionDashCard } from "metabase/actions/utils";
+import { getExistingDashCards } from "metabase/dashboard/actions/utils";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
+import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import type Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
 import type {
   CardId,
   QuestionDashboardCard,
@@ -9,16 +20,6 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
-import { isActionDashCard } from "metabase/actions/utils";
-import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import {
-  isQuestionDashCard,
-  isVirtualDashCard,
-} from "metabase/dashboard/utils";
-import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Question from "metabase-lib/Question";
 
 export function getAllDashboardCardsWithUnmappedParameters({
   dashboardState,

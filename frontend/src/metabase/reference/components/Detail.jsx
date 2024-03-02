@@ -1,10 +1,11 @@
 /* eslint "react/prop-types": "warn" */
-import { memo } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
-import cx from "classnames";
-import S from "./Detail.css";
+
+import S from "./Detail.module.css";
 
 const Detail = ({
   name,

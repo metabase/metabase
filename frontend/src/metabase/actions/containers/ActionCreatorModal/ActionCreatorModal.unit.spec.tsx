@@ -3,28 +3,27 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+  setupModelActionsEndpoints,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-  setupModelActionsEndpoints,
-} from "__support__/server-mocks";
-
+import { checkNotNull } from "metabase/lib/types";
 import type { Card, WritebackAction } from "metabase-types/api";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import {
   createMockCard,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/lib/types";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import ActionCreatorModal from "./ActionCreatorModal";
 
-const MODEL = createMockCard({ id: 1, dataset: true });
+const MODEL = createMockCard({ id: 1, type: "model" });
 const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;
 const ACTION = createMockQueryAction({ model_id: MODEL.id });
 const ACTION_NOT_FOUND_ID = 999;

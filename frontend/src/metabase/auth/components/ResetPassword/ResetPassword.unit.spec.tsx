@@ -1,6 +1,6 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import { Route } from "react-router";
+
 import {
   setupCurrentUserEndpoint,
   setupPasswordCheckEndpoint,
@@ -9,6 +9,8 @@ import {
   setupResetPasswordEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+
 import { ResetPassword } from "./ResetPassword";
 
 interface SetupOpts {

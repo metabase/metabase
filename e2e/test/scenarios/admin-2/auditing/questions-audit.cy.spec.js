@@ -1,16 +1,17 @@
 import _ from "underscore";
-import {
-  restore,
-  describeEE,
-  visitQuestion,
-  setTokenFeatures,
-} from "e2e/support/helpers";
+
 import {
   ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
   FIRST_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  restore,
+  describeEE,
+  visitQuestion,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 
 describeEE("audit > auditing > questions", () => {
   beforeEach(() => {

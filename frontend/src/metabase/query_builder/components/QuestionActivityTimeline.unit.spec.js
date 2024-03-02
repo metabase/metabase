@@ -1,15 +1,15 @@
 import {
+  setupRevisionsEndpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockUser, createMockUserInfo } from "metabase-types/api/mocks";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
+import { createMockUser, createMockUserInfo } from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
-import {
-  setupRevisionsEndpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
 
 const REVISIONS = [
   {

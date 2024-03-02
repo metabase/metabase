@@ -1,6 +1,6 @@
+import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import registerVisualizations from "metabase/visualizations/register";
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
 
 registerVisualizations();
 

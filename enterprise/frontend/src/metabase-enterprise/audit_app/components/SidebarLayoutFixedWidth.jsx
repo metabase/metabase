@@ -1,8 +1,7 @@
 /* eslint "react/prop-types": "warn" */
-import { cloneElement, Children } from "react";
-import PropTypes from "prop-types";
-
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { cloneElement, Children } from "react";
 
 // SidebarLayoutFixedWidth is similar to SidebarLayout but uses a fixed sidebar
 // width, which is needed for our current Dashboard component to resize correctly

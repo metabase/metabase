@@ -1,32 +1,31 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
+
+import { formatValue } from "metabase/lib/formatting";
+import ChartCaption from "metabase/visualizations/components/ChartCaption";
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
-
-import { formatValue } from "metabase/lib/formatting";
-
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import {
   metricSetting,
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-
-import ChartCaption from "metabase/visualizations/components/ChartCaption";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import FunnelNormal from "../components/FunnelNormal";
+
 import FunnelBar from "../components/FunnelBar";
+import FunnelNormal from "../components/FunnelNormal";
 import LegendHeader from "../components/LegendHeader";
 
 const propTypes = {

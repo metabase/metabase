@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import FieldInfo from "metabase/components/MetadataInfo/FieldInfo";
 import { HoverCard } from "metabase/ui";
 

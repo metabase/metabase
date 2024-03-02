@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-
 import _ from "underscore";
 
 import Select, { Option } from "metabase/core/components/Select";

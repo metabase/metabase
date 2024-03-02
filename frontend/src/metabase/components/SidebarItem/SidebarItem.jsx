@@ -1,10 +1,10 @@
 /* eslint "react/prop-types": "warn" */
-import { memo } from "react";
 import PropTypes from "prop-types";
+import { memo } from "react";
 import { Link } from "react-router";
-import S from "../Sidebar.css";
 
 import LabelIcon from "../LabelIcon";
+import S from "../Sidebar.module.css";
 
 const SidebarItem = ({ name, sidebar, icon, href }) => (
   <li>

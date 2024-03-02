@@ -1,13 +1,14 @@
-import { useMemo, useRef } from "react";
 import type * as React from "react";
+import { useMemo, useRef } from "react";
+
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SelectList from "metabase/components/SelectList";
-
-import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
+import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 
 import type { InputProps } from "../Input";
 import Input from "../Input";
+
 import { OptionsList } from "./AutocompleteInput.styled";
 
 export interface AutocompleteInputProps extends Omit<InputProps, "onChange"> {

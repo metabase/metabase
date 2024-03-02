@@ -2,9 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
+import type { CollectionPermissionsGraph } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import type { CollectionPermissionsGraph } from "metabase-types/api";
 import { setup, defaultPermissionsGraph, defaultCollections } from "./setup";
 
 describe("Admin > CollectionPermissionsPage (enterprise)", () => {

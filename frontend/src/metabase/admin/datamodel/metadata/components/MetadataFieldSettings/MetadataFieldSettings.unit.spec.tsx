@@ -1,6 +1,21 @@
-import { Route } from "react-router";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
+import {
+  setupDatabasesEndpoints,
+  setupFieldValuesEndpoints,
+  setupSearchEndpoints,
+  setupUnauthorizedFieldValuesEndpoints,
+} from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import { TYPE } from "metabase-lib/types/constants";
 import type {
   Database,
   Field,
@@ -26,20 +41,7 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import {
-  setupDatabasesEndpoints,
-  setupFieldValuesEndpoints,
-  setupSearchEndpoints,
-  setupUnauthorizedFieldValuesEndpoints,
-} from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForLoaderToBeRemoved,
-  within,
-} from "__support__/ui";
-import { TYPE } from "metabase-lib/types/constants";
+
 import { getMetadataRoutes } from "../../routes";
 
 const ORDERS_ID_FIELD = createOrdersIdField();

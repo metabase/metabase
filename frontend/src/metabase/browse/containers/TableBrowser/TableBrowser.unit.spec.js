@@ -1,11 +1,14 @@
 import fetchMock from "fetch-mock";
+
 import {
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+
 import { RELOAD_INTERVAL } from "../../constants";
+
 import TableBrowser from "./TableBrowser";
 
 describe("TableBrowser", () => {

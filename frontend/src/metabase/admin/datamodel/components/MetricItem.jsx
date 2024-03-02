@@ -1,7 +1,9 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
 
 import { Icon } from "metabase/ui";
+
 import ObjectActionSelect from "./ObjectActionSelect";
 
 export default class MetricItem extends Component {
@@ -26,6 +28,7 @@ export default class MetricItem extends Component {
           <ObjectActionSelect
             object={metric}
             objectType="metric"
+            objectTypeLocalized={t`Metric`}
             onRetire={onRetire}
           />
         </td>

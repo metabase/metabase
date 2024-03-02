@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { color } from "metabase/lib/colors";
 
 const SPECIAL_GROUP_NAMES = new Map([

@@ -1,4 +1,5 @@
 import type { DatabaseId, GroupId } from "metabase-types/api";
+
 import type { AdvancedPermissionsStoreState } from "./types";
 
 export const getImpersonation =

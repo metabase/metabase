@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { GroupItem } from "../types";
 
 export function getModalTitle(groupItems: GroupItem[]) {

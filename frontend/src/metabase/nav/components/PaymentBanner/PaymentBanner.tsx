@@ -1,10 +1,9 @@
 import { jt, t } from "ttag";
 
-import type { TokenStatus } from "metabase-types/api";
-
 import Banner from "metabase/components/Banner";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
+import type { TokenStatus } from "metabase-types/api";
 
 interface PaymentBannerProps {
   isAdmin: boolean;

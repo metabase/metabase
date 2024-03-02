@@ -1,8 +1,9 @@
 import { useMemo } from "react";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Flex, Text, Icon } from "metabase/ui";
-
 import * as Lib from "metabase-lib";
+
 import type { FilterEditorProps } from "../types";
 
 export function EmptyFilterEditor({

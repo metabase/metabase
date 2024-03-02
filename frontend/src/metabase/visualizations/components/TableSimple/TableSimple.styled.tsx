@@ -1,9 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-
-import { Icon } from "metabase/ui";
+import styled from "@emotion/styled";
 
 import { alpha, color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
 export const Root = styled(TableRoot)`

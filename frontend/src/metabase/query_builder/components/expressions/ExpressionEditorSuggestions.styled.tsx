@@ -1,7 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { alpha, color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { alpha, color } from "metabase/lib/colors";
 
 export const ExpressionPopover = styled(TippyPopover)`
   border-color: ${alpha("accent2", 0.2)};

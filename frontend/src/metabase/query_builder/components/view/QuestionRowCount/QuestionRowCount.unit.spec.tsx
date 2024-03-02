@@ -2,18 +2,20 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
+  setupDatabasesEndpoints,
+  setupUnauthorizedDatabasesEndpoints,
+} from "__support__/server-mocks";
+import {
   fireEvent,
   renderWithProviders,
   screen,
   waitFor,
 } from "__support__/ui";
-import {
-  setupDatabasesEndpoints,
-  setupUnauthorizedDatabasesEndpoints,
-} from "__support__/server-mocks";
-
 import { checkNotNull } from "metabase/lib/types";
-
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockDataset,
@@ -29,11 +31,6 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
-
-import * as Lib from "metabase-lib";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
-import Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import QuestionRowCount from "./QuestionRowCount";
 

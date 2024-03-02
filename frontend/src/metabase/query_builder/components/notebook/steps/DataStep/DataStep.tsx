@@ -1,16 +1,16 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
-
-import type { DatabaseId, TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
-import type { NotebookStepUiComponentProps } from "../../types";
-import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../../FieldsPickerIcon";
+import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
+import type { NotebookStepUiComponentProps } from "../../types";
+
 import { DataStepCell } from "./DataStep.styled";
 
 export const DataStep = ({

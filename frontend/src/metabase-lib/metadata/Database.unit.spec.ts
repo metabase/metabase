@@ -1,8 +1,8 @@
-import type { Database } from "metabase-types/api";
 import { createMockMetadata } from "__support__/metadata";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Database } from "metabase-types/api";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 interface SetupOpts {
   database?: Database;
@@ -195,7 +195,7 @@ describe("Database", () => {
       });
 
       expect(question.databaseId()).toBe(database.id);
-      expect(question.tableId()).toBe(table.id);
+      expect(question.legacyQueryTableId()).toBe(table.id);
     });
   });
 

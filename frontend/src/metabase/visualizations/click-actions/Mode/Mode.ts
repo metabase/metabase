@@ -1,5 +1,6 @@
 import { queryDrill } from "metabase/querying";
 import type Question from "metabase-lib/Question";
+
 import type {
   ClickAction,
   ClickObject,

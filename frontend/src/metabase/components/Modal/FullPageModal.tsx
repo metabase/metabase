@@ -1,10 +1,11 @@
 import { Component } from "react";
 import { Motion, spring } from "react-motion";
-import { getScrollX, getScrollY } from "metabase/lib/dom";
-import SandboxedPortal from "metabase/components/SandboxedPortal";
+
+import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 import type { BaseModalProps } from "metabase/components/Modal/utils";
 import { getModalContent } from "metabase/components/Modal/utils";
-import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
+import SandboxedPortal from "metabase/components/SandboxedPortal";
+import { getScrollX, getScrollY } from "metabase/lib/dom";
 
 export type FullPageModalProps = BaseModalProps & {
   isOpen: boolean;
@@ -42,7 +43,8 @@ export class FullPageModal extends Component<
   }
 
   setTopOfModalToBottomOfNav() {
-    const nav = document.body.querySelector(".Nav");
+    const nav = document.body.querySelector("[data-element-id='navbar-root']");
+
     if (nav) {
       this._modalElement.style.top = nav.getBoundingClientRect().bottom + "px";
     }

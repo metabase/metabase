@@ -4,6 +4,7 @@ import type {
   SearchListQuery,
   SearchResults,
 } from "metabase-types/api";
+
 import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,

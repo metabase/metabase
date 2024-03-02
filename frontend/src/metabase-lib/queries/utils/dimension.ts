@@ -1,12 +1,11 @@
+import Dimension from "metabase-lib/Dimension";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type {
   ConcreteFieldReference,
   VariableTarget,
 } from "metabase-types/api";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-
-import Dimension from "metabase-lib/Dimension";
 
 function getDimension(
   fieldRef: ConcreteFieldReference | VariableTarget,

@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertQueryBuilderRowCount,
   popover,
@@ -10,8 +12,6 @@ import {
   filterFieldPopover,
   filterSelectField,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -573,7 +573,7 @@ describe("scenarios > filters > bulk filtering", () => {
     beforeEach(() => {
       visitQuestionAdhoc(productsQuestion);
       filter();
-      cy.get("body").type(`{ctrl}k`);
+      cy.get("body").type("{ctrl}k");
     });
 
     it("can search for a column", () => {

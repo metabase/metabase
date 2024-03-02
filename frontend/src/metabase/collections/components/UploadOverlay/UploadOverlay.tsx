@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
-import type { Collection } from "metabase-types/api";
 import { Icon } from "metabase/ui";
+import type { Collection } from "metabase-types/api";
+
 import { DragOverlay } from "./UploadOverlay.styled";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

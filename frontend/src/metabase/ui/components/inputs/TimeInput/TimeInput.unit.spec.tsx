@@ -1,7 +1,9 @@
-import { useState } from "react";
-import dayjs from "dayjs";
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
+import { useState } from "react";
+
 import { render, screen } from "__support__/ui";
+
 import { TimeInput } from "./TimeInput";
 
 interface SetupOpts {

@@ -1,8 +1,12 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
+import { createQuery } from "metabase-lib/test-helpers";
 import {
   createSampleDatabase,
   ORDERS,
@@ -10,9 +14,7 @@ import {
   PEOPLE,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/Question";
+
 import { FilterHeader } from "./QuestionFilters";
 
 const metadata = createMockMetadata({

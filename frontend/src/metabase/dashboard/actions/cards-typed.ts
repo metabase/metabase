@@ -1,7 +1,11 @@
-import { createAction, createThunkAction } from "metabase/lib/redux";
 import Questions from "metabase/entities/questions";
+import {
+  DEFAULT_CARD_SIZE,
+  GRID_WIDTH,
+  getPositionForNewDashCard,
+} from "metabase/lib/dashboard_grid";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { getDefaultSize } from "metabase/visualizations";
-
 import type {
   Card,
   CardId,
@@ -12,14 +16,13 @@ import type {
   VirtualCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
-import {
-  DEFAULT_CARD_SIZE,
-  GRID_WIDTH,
-  getPositionForNewDashCard,
-} from "metabase/lib/dashboard_grid";
 
+import {
+  trackCardCreated,
+  trackQuestionReplaced,
+  trackSectionAdded,
+} from "../analytics";
 import type { SectionLayout } from "../sections";
-import { trackCardCreated, trackQuestionReplaced } from "../analytics";
 import { getDashCardById, getDashboardId } from "../selectors";
 import {
   createDashCard,
@@ -27,6 +30,7 @@ import {
   generateTemporaryDashcardId,
   isVirtualDashCard,
 } from "../utils";
+
 import { autoWireParametersToNewCard } from "./auto-wire-parameters/actions";
 import {
   ADD_CARD_TO_DASH,
@@ -129,6 +133,7 @@ export const addSectionToDashboard =
       );
 
     dispatch(_addManyDashCards(sectionDashcards));
+    trackSectionAdded(dashId, sectionLayout.id);
   };
 
 type AddCardToDashboardOpts = NewDashCardOpts & {

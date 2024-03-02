@@ -115,7 +115,7 @@
   from this map returned preferentially to the site-wide value.
 
   This is normally bound automatically in Query Processor context
-  by [[metabase.query-processor.middleware.resolve-database-and-driver]]. You may need to manually bind it in other
+  by [[metabase.query-processor.setup/do-with-database-local-settings]]. You may need to manually bind it in other
   places where you want to use Database-local values.
 
   TODO -- we should probably also bind this in sync contexts e.g. functions in [[metabase.sync]]."

@@ -1,21 +1,18 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import CardPicker from "./CardPicker";
+import { Root } from "./DataPickerView.styled";
+import DataSearch from "./DataSearch";
+import DataTypePicker from "./DataTypePicker";
+import EmptyState from "./EmptyState";
+import RawDataPicker from "./RawDataPicker";
 import { MIN_SEARCH_LENGTH } from "./constants";
-
 import type {
   DataPickerProps,
   DataPickerDataType,
   DataTypeInfoItem,
 } from "./types";
-
-import CardPicker from "./CardPicker";
-import DataTypePicker from "./DataTypePicker";
-import DataSearch from "./DataSearch";
-import RawDataPicker from "./RawDataPicker";
-
-import EmptyState from "./EmptyState";
-import { Root } from "./DataPickerView.styled";
 
 interface DataPickerViewProps extends DataPickerProps {
   dataTypes: DataTypeInfoItem[];

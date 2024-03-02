@@ -1,9 +1,8 @@
 import { useRef } from "react";
-import { t } from "ttag";
 import { useHoverDirty } from "react-use";
+import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
-
 import { color } from "metabase/lib/colors";
 import type Question from "metabase-lib/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/metadata/utils/models";

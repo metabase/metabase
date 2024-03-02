@@ -1,16 +1,38 @@
+import { optionsToHashParams } from "./embed";
 import type {
   CodeSampleParameters,
   EmbeddingDisplayOptions,
-  EmbeddingParameters,
+  EmbeddingParametersValues,
 } from "./types";
-import { optionsToHashParams } from "./embed";
+
+function getIframeQuerySource(displayOptions: EmbeddingDisplayOptions) {
+  return JSON.stringify(
+    optionsToHashParams(
+      removeDefaultValueParameters(displayOptions, {
+        theme: "light",
+        hide_download_button: false,
+      }),
+    ),
+  );
+}
+
+function removeDefaultValueParameters(
+  options: EmbeddingDisplayOptions,
+  defaultValues: Partial<EmbeddingDisplayOptions>,
+): Partial<EmbeddingDisplayOptions> {
+  return Object.fromEntries(
+    Object.entries(options).filter(
+      ([key, value]) =>
+        value !== defaultValues[key as keyof EmbeddingDisplayOptions],
+    ),
+  );
+}
 
 export const node = {
-  getParametersSource: (params: EmbeddingParameters) =>
+  getParametersSource: (params: EmbeddingParametersValues) =>
     `params: ${JSON.stringify(params, null, 2).split("\n").join("\n  ")},`,
 
-  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
-    JSON.stringify(optionsToHashParams(displayOptions)),
+  getIframeQuerySource,
 
   getServerSource: ({
     siteUrl,
@@ -39,15 +61,14 @@ var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
 };
 
 export const python = {
-  getParametersSource: (params: EmbeddingParameters) =>
+  getParametersSource: (params: EmbeddingParametersValues) =>
     `"params": {
     ${Object.entries(params)
       .map(([key, value]) => JSON.stringify(key) + ": " + JSON.stringify(value))
       .join(",\n    ")}
   },`,
 
-  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
-    JSON.stringify(optionsToHashParams(displayOptions)),
+  getIframeQuerySource,
 
   getServerSource: ({
     siteUrl,
@@ -77,7 +98,7 @@ iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
 };
 
 export const ruby = {
-  getParametersSource: (params: EmbeddingParameters) =>
+  getParametersSource: (params: EmbeddingParametersValues) =>
     `:params => {
     ${Object.entries(params)
       .map(
@@ -89,8 +110,7 @@ export const ruby = {
       .join(",\n    ")}
   },`,
 
-  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
-    JSON.stringify(optionsToHashParams(displayOptions)),
+  getIframeQuerySource,
 
   getServerSource: ({
     siteUrl,
@@ -119,13 +139,12 @@ iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
 };
 
 export const clojure = {
-  getParametersSource: (params: EmbeddingParameters) =>
+  getParametersSource: (params: EmbeddingParametersValues) =>
     `:params   {${Object.entries(params)
       .map(([key, value]) => JSON.stringify(key) + " " + JSON.stringify(value))
       .join(",\n              ")}}`,
 
-  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
-    JSON.stringify(optionsToHashParams(displayOptions)),
+  getIframeQuerySource,
 
   getServerSource: ({
     siteUrl,

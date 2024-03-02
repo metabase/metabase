@@ -1,7 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
-import type { UserAttribute } from "metabase-types/api";
+
 import { createAsyncThunk } from "metabase/lib/redux";
 import { GTAPApi } from "metabase/services";
+import type { UserAttribute } from "metabase-types/api";
 
 export const fetchUserAttributes = createAsyncThunk(
   "metabase-enterprise/shared/FETCH_USER_ATTRIBUTES",

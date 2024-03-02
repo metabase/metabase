@@ -1,6 +1,7 @@
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
+
 import {
   Checkbox,
   MultiSelect,
@@ -9,12 +10,13 @@ import {
   TextInput,
   Icon,
 } from "metabase/ui";
-
 import type { FieldValue } from "metabase-types/api";
+
 import { getEffectiveOptions } from "../utils";
+
+import { ColumnGrid } from "./ListValuePicker.styled";
 import { LONG_OPTION_LENGTH, MAX_INLINE_OPTIONS } from "./constants";
 import { searchOptions } from "./utils";
-import { ColumnGrid } from "./ListValuePicker.styled";
 
 interface ListValuePickerProps {
   fieldValues: FieldValue[];

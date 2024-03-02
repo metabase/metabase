@@ -1,11 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+
 import {
   isRootPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 
 import {

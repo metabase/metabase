@@ -10,7 +10,7 @@
     :refer [Card Database PermissionsGroup PersistedInfo Table]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
@@ -157,12 +157,11 @@
     (testing "Queries from cache if not sandboxed"
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temp [Card card {:dataset_query (mt/mbql-query venues)
-                                  :dataset true
+                                  :type :model
                                   :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (str/includes?
-               (:query (qp/compile
-
+               (:query (qp.compile/compile
                         {:database (mt/id)
                          :query {:source-table (str "card__" (u/the-id card))}
                          :type :query}))
@@ -173,11 +172,11 @@
                           :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
          :attributes {"cat" 50}}
         (mt/with-temp [Card card {:dataset_query (mt/mbql-query venues)
-                                  :dataset true
+                                  :type :model
                                   :database_id (mt/id)}]
           (fake-persist-card! card)
           (is (not (str/includes?
-                    (:query (qp/compile
+                    (:query (qp.compile/compile
                              {:database (mt/id)
                               :query {:source-table (str "card__" (u/the-id card))}
                               :type :query}))

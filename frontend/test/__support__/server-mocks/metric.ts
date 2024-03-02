@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { Metric } from "metabase-types/api";
 import { createMockMetric } from "metabase-types/api/mocks";
 

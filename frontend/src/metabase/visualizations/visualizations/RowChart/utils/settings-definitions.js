@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import { getDefaultDimensionLabel } from "metabase/visualizations/lib/settings/graph";
 

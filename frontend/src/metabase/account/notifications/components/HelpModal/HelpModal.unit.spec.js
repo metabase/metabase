@@ -1,5 +1,6 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+
 import HelpModal from "./HelpModal";
 
 function setup({ adminEmail, onClose } = {}) {

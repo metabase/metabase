@@ -1,5 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
+
 import { createMockCollection } from "metabase-types/api/mocks";
+
 import FileUploadStatusLarge from "./FileUploadStatusLarge";
 
 export default {

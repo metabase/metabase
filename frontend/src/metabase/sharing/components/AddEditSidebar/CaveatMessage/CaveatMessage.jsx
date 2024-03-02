@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+
 import { CaveatText } from "./CaveatMessage.styled";
 
 export function CaveatMessage() {

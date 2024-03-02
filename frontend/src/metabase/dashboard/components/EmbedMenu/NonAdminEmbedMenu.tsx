@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
+
+import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton";
 import type { EmbedMenuProps } from "metabase/dashboard/components/EmbedMenu/types";
 import {
   DashboardPublicLinkPopover,
   QuestionPublicLinkPopover,
 } from "metabase/dashboard/components/PublicLinkPopover";
-import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 

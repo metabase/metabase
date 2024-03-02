@@ -1,8 +1,12 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  createDashboardWithTabs,
   dashboardHeader,
   editDashboard,
   getActionCardDetails,
@@ -11,6 +15,7 @@ import {
   getLinkCardDetails,
   getTextCardDetails,
   modal,
+  openStaticEmbeddingModal,
   popover,
   restore,
   saveDashboard,
@@ -18,13 +23,13 @@ import {
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
+  visitIframe,
 } from "e2e/support/helpers";
-
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
   createMockActionParameter,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
@@ -389,7 +394,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         idAlias: "targetDashboardId",
       };
 
-      createDashboardWithTabs({
+      createDashboardWithTabsLocal({
         dashboard,
         tabs,
         dashcards: [
@@ -457,7 +462,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       };
       const tabs = [FIRST_TAB, SECOND_TAB, THIRD_TAB];
 
-      createDashboardWithTabs({ dashboard: TARGET_DASHBOARD, tabs, options });
+      createDashboardWithTabsLocal({
+        dashboard: TARGET_DASHBOARD,
+        tabs,
+        options,
+      });
 
       const TAB_SLUG_MAP = {};
       tabs.forEach(tab => {
@@ -568,7 +577,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         idAlias: "targetDashboardId",
       };
 
-      createDashboardWithTabs({ dashboard: TARGET_DASHBOARD, tabs, options });
+      createDashboardWithTabsLocal({
+        dashboard: TARGET_DASHBOARD,
+        tabs,
+        options,
+      });
 
       const TAB_SLUG_MAP = {};
       tabs.forEach(tab => {
@@ -1237,7 +1250,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         idAlias: "targetDashboardId",
       };
 
-      createDashboardWithTabs({
+      createDashboardWithTabsLocal({
         dashboard,
         tabs,
         dashcards: [
@@ -1430,13 +1443,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(anchor).to.have.attr("target", "_blank");
         });
         getTableCell(COLUMN_INDEX.CREATED_AT)
-          .should("have.text", `Created at: October 2023`)
+          .should("have.text", "Created at: October 2023")
           .click();
       })();
     });
   });
 
-  describe("full app embedding", () => {
+  describe("interactive embedding", () => {
     const questionDetails = QUESTION_LINE_CHART;
 
     beforeEach(() => {
@@ -1710,6 +1723,140 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
     });
   });
+
+  describe("static embedding", () => {
+    it("should navigate to public link URL (metabase#38640)", () => {
+      cy.createDashboard(TARGET_DASHBOARD)
+        .then(({ body: { id: dashboardId } }) => {
+          cy.log("create a public link for this dashboard");
+          cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
+            ({ body: { uuid } }) => {
+              cy.wrap(uuid);
+            },
+          );
+        })
+        .then(uuid => {
+          cy.createQuestionAndDashboard({
+            dashboardDetails: {
+              name: "Dashboard",
+              enable_embedding: true,
+            },
+            questionDetails: QUESTION_LINE_CHART,
+            cardDetails: {
+              // Set custom URL click behavior via API
+              visualization_settings: {
+                click_behavior: {
+                  type: "link",
+                  linkType: "url",
+                  linkTemplate: `http://localhost:4000/public/dashboard/${uuid}`,
+                },
+              },
+            },
+          });
+        })
+        .then(({ body: dashCard }) => {
+          visitDashboard(dashCard.dashboard_id);
+        });
+
+      openStaticEmbeddingModal({
+        activeTab: "parameters",
+        acceptTerms: false,
+      });
+      visitIframe();
+      clickLineChartPoint();
+
+      cy.findByRole("heading", { name: TARGET_DASHBOARD.name }).should(
+        "be.visible",
+      );
+    });
+  });
+
+  it("should navigate to a different tab on the same dashboard when configured (metabase#39319)", () => {
+    const TAB_1 = {
+      id: 1,
+      name: "first-tab",
+    };
+    const TAB_2 = {
+      id: 2,
+      name: "second-tab",
+    };
+    const tabs = [TAB_1, TAB_2];
+    const FILTER_MAPPING_COLUMN = "User ID";
+    const DASHBOARD_TEXT_FILTER = {
+      id: "1",
+      name: "Text filter",
+      slug: "filter-text",
+      type: "string/contains",
+    };
+
+    createDashboardWithTabs({
+      name: TARGET_DASHBOARD.name,
+      tabs,
+      parameters: [{ ...DASHBOARD_TEXT_FILTER }],
+      dashcards: [
+        createMockDashboardCard({
+          id: -1,
+          card_id: ORDERS_QUESTION_ID,
+          size_x: 12,
+          size_y: 6,
+          dashboard_tab_id: TAB_1.id,
+          parameter_mappings: [
+            createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+          ],
+        }),
+        createMockDashboardCard({
+          id: -2,
+          card_id: ORDERS_BY_YEAR_QUESTION_ID,
+          size_x: 12,
+          size_y: 6,
+          dashboard_tab_id: TAB_2.id,
+          parameter_mappings: [
+            createTextFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
+          ],
+        }),
+      ],
+    }).then(dashboard => {
+      cy.wrap(dashboard.id).as("targetDashboardId");
+      dashboard.tabs.forEach(tab => {
+        cy.wrap(tab.id).as(`${tab.name}-id`);
+      });
+      visitDashboard(dashboard.id);
+    });
+
+    const TAB_SLUG_MAP = {};
+    tabs.forEach(tab => {
+      cy.get(`@${tab.name}-id`).then(tabId => {
+        TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
+      });
+    });
+
+    editDashboard();
+
+    getDashboardCard().realHover().icon("click").click();
+    cy.get("aside").findByText(FILTER_MAPPING_COLUMN).click();
+    addDashboardDestination();
+    cy.get("aside")
+      .findByLabelText("Select a dashboard tab")
+      .should("have.value", TAB_1.name)
+      .click();
+    cy.findByRole("listbox").findByText(TAB_2.name).click();
+    cy.get("aside").findByText(DASHBOARD_TEXT_FILTER.name).click();
+    popover().findByText(FILTER_MAPPING_COLUMN).click();
+
+    cy.get("aside").button("Done").click();
+    saveDashboard({ waitMs: 250 });
+
+    // test click behavior routing to same dashboard, different tab
+    getTableCell(1).click();
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal(
+          `?tab=${TAB_SLUG_MAP[TAB_2.name]}&${DASHBOARD_FILTER_TEXT.slug}=${1}`,
+        );
+      });
+    });
+  });
 });
 
 /**
@@ -1915,14 +2062,14 @@ const getCountToDashboardFilterMapping = () => {
   return cy.get("aside").contains(`${COUNT_COLUMN_NAME} updates 1 filter`);
 };
 
-const createDashboardWithTabs = ({
+const createDashboardWithTabsLocal = ({
   dashboard: dashboardDetails,
   tabs,
   dashcards = [],
   options,
 }) => {
   cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-    if (options.wrapId) {
+    if (options?.wrapId) {
       cy.wrap(dashboard.id).as(options.idAlias ?? "dashboardId");
     }
     cy.request("PUT", `/api/dashboard/${dashboard.id}`, {

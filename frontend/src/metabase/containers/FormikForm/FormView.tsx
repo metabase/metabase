@@ -3,7 +3,6 @@ import type * as React from "react";
 import type { CustomFormProps } from "metabase/components/form/FormikCustomForm";
 import CustomForm from "metabase/components/form/FormikCustomForm";
 import StandardForm from "metabase/components/form/FormikStandardForm";
-
 import type { BaseFieldValues } from "metabase-types/forms";
 
 function FormView<Values extends BaseFieldValues>(

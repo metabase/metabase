@@ -1,4 +1,7 @@
 import _ from "underscore";
+
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   editDashboard,
   getDashboardCard,
@@ -8,9 +11,6 @@ import {
   saveDashboard,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 
 const VISUALIZATION_SIZES = {
@@ -254,7 +254,7 @@ describe("scenarios > dashboard card resizing", () => {
   );
 
   it(
-    `should not allow cards to be resized smaller than min height`,
+    "should not allow cards to be resized smaller than min height",
     { requestTimeout: 15000, tags: "@slow" },
     () => {
       const cardIds = [];

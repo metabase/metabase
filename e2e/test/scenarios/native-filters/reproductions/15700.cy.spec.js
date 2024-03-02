@@ -1,7 +1,7 @@
 import { restore, openNativeEditor } from "e2e/support/helpers";
 
-import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "../helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
 const widgetType = "String is not";
 

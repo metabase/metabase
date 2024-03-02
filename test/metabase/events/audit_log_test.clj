@@ -62,9 +62,9 @@
 
 (deftest card-update-event-test
   (testing :card-update
-    (doseq [dataset? [false true]]
-      (testing (if dataset? "Dataset" "Card")
-        (t2.with-temp/with-temp [Card card {:name "My Cool Card" :dataset dataset?}]
+    (doseq [card-type [:question :model]]
+      (testing card-type
+        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
             (is (= {:object card :user-id (mt/user->id :rasta)}
                    (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :rasta)})))
@@ -77,14 +77,14 @@
                                      :description nil
                                      :table_id    nil
                                      :database_id (mt/id)}
-                              dataset? (assoc :model? true))}
+                              (= card-type :model) (assoc :model? true))}
                  (mt/latest-audit-log-entry "card-update" (:id card))))))))))
 
 (deftest card-delete-event-test
   (testing :card-delete
-    (doseq [dataset? [false true]]
-      (testing (if dataset? "Dataset" "Card")
-        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
+    (doseq [card-type [:question :model]]
+      (testing card-type
+        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
             (is (= {:object card :user-id (mt/user->id :rasta)}
                    (events/publish-event! :event/card-delete {:object card :user-id (mt/user->id :rasta)})))
@@ -94,7 +94,7 @@
                   :model    "Card"
                   :model_id (:id card)
                   :details  (cond-> {:name "My Cool Card", :description nil}
-                              dataset? (assoc :model? true))}
+                              (= card-type :model) (assoc :model? true))}
                  (mt/latest-audit-log-entry "card-delete" (:id card))))))))))
 
 (deftest dashboard-create-event-test

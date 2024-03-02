@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
@@ -9,14 +11,10 @@ import {
   dragField,
   leftSidebar,
   main,
-  modal,
   getIframeBody,
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const {
   ORDERS,
@@ -1031,7 +1029,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         cy.findByText("Save").click();
       });
 
-      cy.get("#SaveQuestionModal").within(() => {
+      cy.findByTestId("save-question-modal").within(() => {
         cy.findByText("Save").click();
       });
 
@@ -1115,7 +1113,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       );
 
       cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-      modal().button("Save").click();
+      cy.findByTestId("save-question-modal").findByText("Save").click();
       cy.wait("@createCard");
       cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
       cy.reload();

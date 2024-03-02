@@ -1,4 +1,5 @@
 import { screen } from "__support__/ui";
+
 import type { SearchSidebarSetupOptions } from "./setup";
 import { setup } from "./setup";
 

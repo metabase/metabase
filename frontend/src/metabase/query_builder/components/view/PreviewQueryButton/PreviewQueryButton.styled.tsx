@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const PreviewButton = styled(IconButtonWrapper)`
   margin-top: 1.5rem;

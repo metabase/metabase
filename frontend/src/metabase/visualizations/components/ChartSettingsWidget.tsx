@@ -1,5 +1,5 @@
-import type * as React from "react";
 import cx from "classnames";
+import type * as React from "react";
 
 import {
   Root,

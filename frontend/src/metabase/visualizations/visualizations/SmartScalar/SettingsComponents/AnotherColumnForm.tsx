@@ -1,6 +1,7 @@
 import type { ChangeEvent, FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+
 import {
   Box,
   Flex,
@@ -13,7 +14,9 @@ import type {
   DatasetColumn,
   SmartScalarComparisonAnotherColumn,
 } from "metabase-types/api";
+
 import { COMPARISON_TYPES } from "../constants";
+
 import { DoneButton } from "./SmartScalarSettingsWidgets.styled";
 
 interface AnotherColumnFormProps {
@@ -29,8 +32,9 @@ export function AnotherColumnForm({
   onChange,
   onBack,
 }: AnotherColumnFormProps) {
-  const [label, setLabel] = useState(selectedValue?.label || "");
-  const [column, setColumn] = useState(selectedValue?.column || "");
+  const initialValues = getInitialValues(selectedValue, columns);
+  const [label, setLabel] = useState(initialValues.label);
+  const [column, setColumn] = useState(initialValues.column);
 
   const canSubmit = label.length > 0 && column.length > 0;
 
@@ -92,4 +96,23 @@ export function AnotherColumnForm({
       </Flex>
     </Box>
   );
+}
+
+function getInitialValues(
+  value: SmartScalarComparisonAnotherColumn | undefined,
+  columns: DatasetColumn[],
+) {
+  if (value) {
+    return value;
+  }
+
+  if (columns.length === 1) {
+    const column = columns[0];
+    return {
+      label: column.display_name,
+      column: column.name,
+    };
+  }
+
+  return { label: "", column: "" };
 }

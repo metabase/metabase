@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
-import { MantineProvider } from "@mantine/core";
-import { withEmotionCache } from "@emotion/react";
 import type { EmotionCache } from "@emotion/react";
+import { withEmotionCache } from "@emotion/react";
+import { MantineProvider } from "@mantine/core";
+import type { ReactNode } from "react";
+
 import { getThemeOverrides } from "../../../theme";
 import { DatesProvider } from "../DatesProvider";
 

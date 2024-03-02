@@ -24,7 +24,7 @@
 (comment premium-features/keep-me)
 
 (defsetting application-name
-  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
+  (deferred-tru "Replace the word “Metabase” wherever it appears.")
   :visibility :public
   :export?    true
   :type       :string
@@ -101,7 +101,7 @@
   :export?    true)
 
 (defsetting custom-homepage
-  (deferred-tru "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. To revert to the default Metabase homepage, simply turn off the toggle.")
+  (deferred-tru "Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.")
   :default    false
   :type       :boolean
   :audit      :getter
@@ -116,6 +116,15 @@
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
   :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
+(defsetting dismissed-browse-models-banner
+  (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
+  :user-local :only
+  :export?    false
   :visibility :authenticated
   :type       :boolean
   :default    false
@@ -251,7 +260,7 @@
     :else landing-page))
 
 (defsetting landing-page
-  (deferred-tru "Default page to show people when they log in.")
+  (deferred-tru "Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.")
   :visibility :public
   :export?    true
   :type       :string
@@ -268,7 +277,7 @@
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type       :boolean
-  :default    false
+  :default    true
   :visibility :authenticated
   :audit      :getter)
 
@@ -367,7 +376,7 @@
   :audit      :never)
 
 (defsetting loading-message
-  (deferred-tru "Message to show while a query is running.")
+  (deferred-tru "Choose the message to show while a query is running.")
   :visibility :public
   :export?    true
   :feature    :whitelabel
@@ -376,10 +385,7 @@
   :audit      :getter)
 
 (defsetting application-colors
-  (deferred-tru
-    (str "These are the primary colors used in charts and throughout {0}. "
-         "You might need to refresh your browser to see your changes take effect.")
-    (application-name-for-setting-descriptions))
+  (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.")
   :visibility :public
   :export?    true
   :type       :json
@@ -388,7 +394,7 @@
   :audit      :getter)
 
 (defsetting application-font
-  (deferred-tru "This will replace “Lato” as the font family.")
+  (deferred-tru "Replace “Lato” as the font family.")
   :visibility :public
   :export?    true
   :type       :string
@@ -420,7 +426,7 @@
   (or (:accent3 (application-colors)) "#EF8C8C"))
 
 (defsetting application-logo-url
-  (deferred-tru "For best results, use an SVG file with a transparent background.")
+  (deferred-tru "Upload a file to replace the Metabase logo on the top bar.")
   :visibility :public
   :export?    true
   :type       :string
@@ -429,7 +435,7 @@
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
-  (deferred-tru "The url or image that you want to use as the favicon.")
+  (deferred-tru "Upload a file to use as the favicon.")
   :visibility :public
   :export?    true
   :type       :string
@@ -678,7 +684,8 @@
                       :sso_jwt                        (premium-features/enable-sso-jwt?)
                       :sso_ldap                       (premium-features/enable-sso-ldap?)
                       :sso_saml                       (premium-features/enable-sso-saml?)
-                      :whitelabel                     (premium-features/enable-whitelabeling?)})
+                      :whitelabel                     (premium-features/enable-whitelabeling?)
+                      :llm_autodescription            (premium-features/enable-llm-autodescription?)})
   :doc        false)
 
 (defsetting redirect-all-requests-to-https

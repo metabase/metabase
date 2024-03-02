@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import NumericInput from "metabase/core/components/NumericInput";
-import { Icon } from "metabase/ui";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import NumericInput from "metabase/core/components/NumericInput";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const InputRoot = styled.div`
   display: flex;

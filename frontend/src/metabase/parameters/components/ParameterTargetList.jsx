@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-
 import _ from "underscore";
+
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/ui";
 

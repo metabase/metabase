@@ -1,8 +1,9 @@
 import { t } from "ttag";
+
 import Modal from "metabase/components/Modal";
+import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import ModalContent from "metabase/components/ModalContent";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 

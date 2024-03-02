@@ -172,7 +172,10 @@ module.exports = {
       TemplateLiteral(node) {
         const quasis = node.quasis;
         quasis.forEach(quasi => {
-          if (LITERAL_METABASE_URL_REGEX.exec(quasi.value.raw)) {
+          if (
+            LITERAL_METABASE_URL_REGEX.exec(quasi.value.raw) &&
+            !isGetShowMetabaseLinksSelectorImported
+          ) {
             context.report({
               node,
               message: ERROR_MESSAGE,

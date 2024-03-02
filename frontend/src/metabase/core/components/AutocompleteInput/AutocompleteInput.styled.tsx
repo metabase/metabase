@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import SelectList from "metabase/components/SelectList";
 
 export const OptionsList = styled(SelectList)`

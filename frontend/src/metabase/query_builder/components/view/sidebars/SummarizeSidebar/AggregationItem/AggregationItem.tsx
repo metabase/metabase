@@ -1,6 +1,10 @@
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { useState } from "react";
+
+import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import { AggregationPicker } from "../SummarizeSidebar.styled";
+
 import { AggregationName, RemoveIcon, Root } from "./AggregationItem.styled";
 
 const STAGE_INDEX = -1;
@@ -18,6 +22,7 @@ export function AggregationItem({
   onUpdate,
   onRemove,
 }: AggregationItemProps) {
+  const [isOpened, setIsOpened] = useState(false);
   const { displayName } = Lib.displayInfo(query, STAGE_INDEX, aggregation);
 
   const operators = Lib.selectedAggregationOperators(
@@ -26,18 +31,18 @@ export function AggregationItem({
   );
 
   return (
-    <TippyPopoverWithTrigger
-      renderTrigger={({ onClick }) => (
+    <Popover opened={isOpened} onChange={setIsOpened}>
+      <Popover.Target>
         <Root
           aria-label={displayName}
-          onClick={onClick}
           data-testid="aggregation-item"
+          onClick={() => setIsOpened(!isOpened)}
         >
           <AggregationName>{displayName}</AggregationName>
           <RemoveIcon name="close" onClick={onRemove} />
         </Root>
-      )}
-      popoverContent={({ closePopover }) => (
+      </Popover.Target>
+      <Popover.Dropdown>
         <AggregationPicker
           query={query}
           stageIndex={STAGE_INDEX}
@@ -46,10 +51,10 @@ export function AggregationItem({
           hasExpressionInput={false}
           onSelect={nextAggregation => {
             onUpdate(nextAggregation);
-            closePopover();
+            setIsOpened(false);
           }}
         />
-      )}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 }

@@ -1,13 +1,14 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
-import { connect } from "react-redux";
 import { createSelector } from "@reduxjs/toolkit";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { connect } from "react-redux";
 import _ from "underscore";
 
-import paginationState from "metabase/hoc/PaginationState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import paginationState from "metabase/hoc/PaginationState";
 import { capitalize } from "metabase/lib/formatting";
+
 import entityType from "./EntityType";
 
 const propTypes = {

@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+
 import type { FilterItem } from "./types";
 
 export function getFilterItems(query: Lib.Query): FilterItem[] {
@@ -9,8 +10,4 @@ export function getFilterItems(query: Lib.Query): FilterItem[] {
     const filters = Lib.filters(query, stageIndex);
     return filters.map(filter => ({ filter, stageIndex }));
   });
-}
-
-export function dropStageIfEmpty(query: Lib.Query): Lib.Query {
-  return Lib.dropStageIfEmpty(query, -1);
 }

@@ -1,14 +1,17 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+
 import ChartColorSample from "../ChartColorSample";
-import { getAccentColorGroups } from "./utils";
+
 import {
   TableBody,
   TableHeader,
   TableRoot,
   TableTitle,
 } from "./ChartColorPreview.styled";
+import { getAccentColorGroups } from "./utils";
 
 const PREVIEW_TIMEOUT = 400;
 

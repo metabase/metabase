@@ -2,14 +2,14 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-
 import * as Lib from "metabase-lib";
-import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
+import type { Query } from "metabase-lib/types";
 
-import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
-import { getQuestionSteps } from "../lib/steps";
 import NotebookStep from "../NotebookStep";
+import { getQuestionSteps } from "../lib/steps";
+import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
+
 import { Container } from "./NotebookSteps.styled";
 
 interface NotebookStepsProps {
@@ -22,7 +22,8 @@ interface NotebookStepsProps {
 }
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
-  const isNew = !readOnly && !question.table();
+  const query = question.query();
+  const isNew = !readOnly && !Lib.sourceTableOrCardId(query);
 
   if (isNew) {
     return {
@@ -62,18 +63,21 @@ function NotebookSteps({
     setLastOpenedStep(id);
   }, []);
 
-  const handleStepClose = useCallback((id: INotebookStep["id"]) => {
-    setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
-    setLastOpenedStep(lastOpenedStep =>
-      lastOpenedStep === id ? null : lastOpenedStep,
-    );
-  }, []);
+  const handleStepClose = useCallback(
+    (id: INotebookStep["id"]) => {
+      if (openSteps[id]) {
+        setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
+      }
+      setLastOpenedStep(lastOpenedStep =>
+        lastOpenedStep === id ? null : lastOpenedStep,
+      );
+    },
+    [openSteps],
+  );
 
   const handleQueryChange = useCallback(
     async (query: Query, step: INotebookStep) => {
-      const updatedQuestion = question.setQuery(
-        Lib.dropStageIfEmpty(query, step.stageIndex),
-      );
+      const updatedQuestion = question.setQuery(Lib.dropEmptyStages(query));
       await updateQuestion(updatedQuestion);
 
       // mark the step as "closed" since we can assume

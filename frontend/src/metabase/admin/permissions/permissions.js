@@ -1,21 +1,7 @@
-import { t } from "ttag";
-import { push } from "react-router-redux";
 import { assocIn, merge } from "icepick";
+import { push } from "react-router-redux";
+import { t } from "ttag";
 
-import {
-  PLUGIN_DATA_PERMISSIONS,
-  PLUGIN_ADVANCED_PERMISSIONS,
-} from "metabase/plugins";
-import {
-  createAction,
-  createThunkAction,
-  handleActions,
-  combineReducers,
-} from "metabase/lib/redux";
-import { CollectionsApi, PermissionsApi } from "metabase/services";
-import Group from "metabase/entities/groups";
-import Tables from "metabase/entities/tables";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   inferAndUpdateEntityPermissions,
   updateFieldsPermission,
@@ -25,9 +11,24 @@ import {
   updatePermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import Group from "metabase/entities/groups";
+import Tables from "metabase/entities/tables";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import {
+  createAction,
+  createThunkAction,
+  handleActions,
+  combineReducers,
+} from "metabase/lib/redux";
+import {
+  PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_ADVANCED_PERMISSIONS,
+} from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { isDatabaseEntityId } from "./utils/data-entity-id";
+import { CollectionsApi, PermissionsApi } from "metabase/services";
+
 import { trackPermissionChange } from "./analytics";
+import { isDatabaseEntityId } from "./utils/data-entity-id";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";

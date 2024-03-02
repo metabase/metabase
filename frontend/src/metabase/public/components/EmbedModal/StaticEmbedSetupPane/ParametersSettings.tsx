@@ -1,8 +1,7 @@
-import { t } from "ttag";
 import type { ChangeEvent } from "react";
 import { useMemo } from "react";
-import type { IconName } from "metabase/ui";
-import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
+import { t } from "ttag";
+
 import Select, { Option } from "metabase/core/components/Select";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import type {
@@ -12,10 +11,12 @@ import type {
   EmbedResourceParameter,
   EmbedResourceType,
 } from "metabase/public/lib/types";
+import type { IconName } from "metabase/ui";
+import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
-import type { EmbedResourceParameterWithValue } from "./types";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
+import type { EmbedResourceParameterWithValue } from "./types";
 
 export interface ParametersSettingsProps {
   resourceType: EmbedResourceType;

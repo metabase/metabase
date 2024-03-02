@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
+
 import { alpha, color, lighten } from "metabase/lib/colors";
 import { Flex } from "metabase/ui";
+
 import { NotebookCell } from "../../NotebookCell";
 
 export const TablesNotebookCell = styled(NotebookCell)`

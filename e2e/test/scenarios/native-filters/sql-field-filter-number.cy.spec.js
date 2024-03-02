@@ -1,9 +1,8 @@
 import { restore, openNativeEditor } from "e2e/support/helpers";
 
 import { NUMBER_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
-
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const numericFilters = Object.entries(NUMBER_FILTER_SUBTYPES);
 

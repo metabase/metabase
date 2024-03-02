@@ -1,6 +1,6 @@
 import _ from "underscore";
-import ChartSettingsWidget from "./ChartSettingsWidget";
 
+import ChartSettingsWidget from "./ChartSettingsWidget";
 import {
   ChartSettingsWidgetListHeader,
   ChartSettingsWidgetListDivider,

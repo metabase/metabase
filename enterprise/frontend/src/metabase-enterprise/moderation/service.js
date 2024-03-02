@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ModerationReviewApi } from "metabase/services";
+
 import { MODERATION_STATUS_ICONS } from "./constants";
 
 export { MODERATION_STATUS } from "./constants";
@@ -135,3 +136,10 @@ export function getModerationTimelineEvents(reviews, usersById, currentUser) {
     };
   });
 }
+
+export const getQuestionIcon = card => {
+  return (card.model === "dataset" || card.type === "model") &&
+    card.moderated_status === "verified"
+    ? { icon: "model_with_badge", tooltip: "Verified model" }
+    : null;
+};

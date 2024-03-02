@@ -1,5 +1,6 @@
-import type * as Lib from "metabase-lib";
 import type { Drill } from "metabase/visualizations/types";
+import type * as Lib from "metabase-lib";
+
 import { automaticInsightsDrill } from "./automatic-insights-drill";
 import { columnFilterDrill } from "./column-filter-drill";
 import { distributionDrill } from "./distribution-drill";

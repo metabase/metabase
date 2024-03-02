@@ -1,15 +1,15 @@
-import {
-  restore,
-  visitDashboard,
-  filterWidget,
-  updateDashboardCards,
-} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  restore,
+  visitDashboard,
+  filterWidget,
+  updateDashboardCards,
+} from "e2e/support/helpers";
 
 const { ORDERS } = SAMPLE_DATABASE;
 

@@ -59,7 +59,7 @@
           (fn [^java.sql.Connection conn]
             ;; We have to mock this to make it work with all DBs
             (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
-              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) (mt/db) conn nil nil))
+              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
                    (map :name)
                    sort)))))))
 
@@ -70,7 +70,7 @@
           (mt/db)
           nil
           (fn [^java.sql.Connection conn]
-            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 (mt/db) conn nil nil))
+            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
                  (map :name)
                  sort))))))
 

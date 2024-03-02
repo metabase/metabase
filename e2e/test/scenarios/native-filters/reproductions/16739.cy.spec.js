@@ -1,5 +1,5 @@
-import { restore, visitQuestion } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, visitQuestion } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 

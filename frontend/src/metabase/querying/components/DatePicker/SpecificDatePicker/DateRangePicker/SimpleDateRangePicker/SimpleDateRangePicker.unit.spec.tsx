@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
+
 import { SimpleDateRangePicker } from "./SimpleDateRangePicker";
 
 const START_DATE = new Date(2020, 0, 10);

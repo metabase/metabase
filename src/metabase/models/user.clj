@@ -432,12 +432,18 @@
 
 ;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
 
-;; NB: Settings are also defined where they're used, such as in metabase.events.view-log
+;; NB: Settings are also defined where they're used, such as in [[metabase.events.view-log]]
 
 (defsetting last-acknowledged-version
   (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
   :user-local :only
   :type :string)
+
+(defsetting last-used-native-database-id
+  (deferred-tru "The last database a user has selected for a native query or a native model.")
+  :user-local :only
+  :visibility :authenticated
+  :type :integer)
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 

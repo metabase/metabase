@@ -1,10 +1,10 @@
+import cx from "classnames";
+import PropTypes from "prop-types";
 import type { ReactNode } from "react";
 import { Component } from "react";
-import PropTypes from "prop-types";
-import cx from "classnames";
 
-import type { CommonModalProps } from "./types";
 import { ModalHeader } from "./ModalHeader";
+import type { CommonModalProps } from "./types";
 
 export interface ModalContentProps extends CommonModalProps {
   "data-testid"?: string;

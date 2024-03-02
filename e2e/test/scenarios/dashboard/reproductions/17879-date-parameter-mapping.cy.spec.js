@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   editDashboard,
   popover,
@@ -6,7 +7,6 @@ import {
   showDashboardCardActions,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -124,7 +124,7 @@ function setupDashcardAndDrillToQuestion({
       cy.get("circle").first().click({ force: true });
     });
 
-    cy.url().should("include", `/question`);
+    cy.url().should("include", "/question");
 
     cy.findByTestId("qb-filters-panel").should("have.text", expectedFilterText);
   });

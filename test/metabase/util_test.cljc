@@ -457,3 +457,9 @@
     2 1250.04
     1 1250.0
     0 1250.0))
+
+(deftest conflicting-keys-test
+  (is (= [] (u/conflicting-keys {:a 1 :b 2}
+                                {:b 2 :c 3})))
+  (is (= [:c :e] (u/conflicting-keys {:a 1 :b 2 :c 3 :e nil}
+                                     {:b 2 :c 4 :d 5 :e 6}))))

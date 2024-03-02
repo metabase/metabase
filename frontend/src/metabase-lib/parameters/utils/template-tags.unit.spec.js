@@ -1,9 +1,9 @@
-import { createMockTemplateTag } from "metabase-types/api/mocks";
 import {
   getTemplateTags,
   getTemplateTagParameters,
   remapParameterValuesToTemplateTags,
 } from "metabase-lib/parameters/utils/template-tags";
+import { createMockTemplateTag } from "metabase-types/api/mocks";
 
 describe("parameters/utils/cards", () => {
   describe("getTemplateTags", () => {

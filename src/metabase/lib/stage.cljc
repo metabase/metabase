@@ -346,9 +346,28 @@
     query
     (update query :stages pop)))
 
-(mu/defn drop-stage-if-empty :- ::lib.schema/query
-  "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
+(mu/defn drop-empty-stages :- ::lib.schema/query
+  "Drops all empty stages in the pipeline."
   [query :- ::lib.schema/query]
-  (if-not (has-clauses? query -1)
-    (drop-stage query)
-    query))
+  (update query :stages (fn [stages]
+                          (into []
+                                (keep-indexed (fn [stage-number stage]
+                                                (when (or (zero? stage-number)
+                                                          (has-clauses? query stage-number))
+                                                  stage)))
+                                stages))))
+
+(mu/defn ensure-extra-stage :- [:tuple ::lib.schema/query :int]
+  "Given a query and current stage, returns a tuple of `[query next-stage-number]`.
+
+  If that stage already exists, the query is unchanged. If it does not, a new (MBQL) stage is appended and its index
+  is returned."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [stage-number (lib.util/canonical-stage-index query stage-number)]
+    (if-let [next-number (lib.util/next-stage-number query stage-number)]
+      ;; There is already a next stage, so just return it.
+      [query next-number]
+      ;; Otherwise append a stage and return the new query and updated stage number.
+      (let [query (append-stage query)]
+        [query (lib.util/next-stage-number query stage-number)]))))

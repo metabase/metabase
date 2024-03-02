@@ -1,13 +1,16 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import MetabotWidget from "metabase/metabot/components/MetabotWidget";
+
 import Tooltip from "metabase/core/components/Tooltip/Tooltip";
-import { HomeGreeting } from "../HomeGreeting";
+import { useSelector } from "metabase/lib/redux";
+import MetabotWidget from "metabase/metabot/components/MetabotWidget";
+import { getUserIsAdmin } from "metabase/selectors/user";
+
 import { getHasIllustration } from "../../selectors";
 import { CustomHomePageModal } from "../CustomHomePageModal";
+import { HomeGreeting } from "../HomeGreeting";
+
 import {
   LayoutBody,
   LayoutEditButton,

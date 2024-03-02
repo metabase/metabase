@@ -1,4 +1,5 @@
 import { renderHook } from "@testing-library/react-hooks";
+
 import type { DatePickerValue } from "metabase/querying/components/DatePicker";
 import * as Lib from "metabase-lib";
 import {
@@ -6,6 +7,7 @@ import {
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
+
 import { useDateFilter } from "./use-date-filter";
 
 describe("useDateFilter", () => {

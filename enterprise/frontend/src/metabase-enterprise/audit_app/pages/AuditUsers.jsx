@@ -4,7 +4,6 @@ import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTable from "../containers/AuditTable";
 import AuditTableWithSearch from "../containers/AuditTableWithSearch";
-
 import * as UsersCards from "../lib/cards/users";
 
 const AuditUsers = props => (

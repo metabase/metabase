@@ -1,11 +1,10 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { parseTimestamp } from "metabase/lib/time";
-import type { DatetimeUnit } from "metabase-types/api/query";
 import { isDateWithoutTime } from "metabase-lib/types/utils/isa";
+import type { DatetimeUnit } from "metabase-types/api/query";
+
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -13,7 +12,6 @@ import {
   hasDay,
   hasHour,
 } from "./datetime-utils";
-
 import type { OptionsType } from "./types";
 
 const EN_DASH = `–`;

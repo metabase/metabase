@@ -1,4 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import {
   createMockField,
   createMockNativeDatasetQuery,
@@ -13,10 +17,7 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import type Question from "metabase-lib/Question";
-import type Table from "metabase-lib/metadata/Table";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+
 import { getNativeQueryTable } from "./native-query-table";
 
 const MODEL_ID = 1;

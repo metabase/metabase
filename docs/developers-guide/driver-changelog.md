@@ -6,6 +6,11 @@ title: Driver interface changelog
 
 ## Metabase 0.49.0
 
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/current-user-table-privileges` has been added.
+  JDBC-based drivers can implement this to improve the performance of the default SQL JDBC implementation of
+  `metabase.driver/describe-database`. It needs to be implemented if the database supports the `:table-privileges`
+  feature and the driver is JDBC-based.
+
 - The multimethod `metabase.driver/create-table!` can take an additional optional map with an optional key `primary-key`.
   `metabase.driver/upload-type->database-type` must also be changed, so that if
   `:metabase.upload/auto-incrementing-int-pk` is provided as the `upload-type` argument, the function should return a
@@ -26,16 +31,11 @@ title: Driver interface changelog
   `metabase.driver.sql.query-processor/honey-sql-version` is now deprecated and no longer called. All drivers are
   assumed to use Honey SQL 2.
 
-- The method `metabase.driver.sql-jdbc.sync.interface/active-tables` that we added in 47 has been updated to require
-  an additional argument: `database`.
-  The new function arglist is `[driver database connection schema-inclusion-filters schema-exclusion-filters]`.
-
 - The method `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type` is now deprecated.
   Use `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type-and-value` instead,
   which has access to `value` and therefore provides more flexibility for choosing the right conversion unit.
 
 ## Metabase 0.48.0
-
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
   [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
   want to update your code to use Malli instead.

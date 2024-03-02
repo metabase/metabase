@@ -25,10 +25,10 @@ export type EmbeddingParametersValues = Record<string, string>;
 
 export type EmbeddingDisplayOptions = {
   font: null | string;
-  theme: null | string;
+  theme: "light" | "night" | "transparent";
   bordered: boolean;
   titled: boolean;
-  hide_download_button?: true | null;
+  hide_download_button: boolean | null;
 };
 
 export type CodeSampleParameters = {
@@ -36,17 +36,19 @@ export type CodeSampleParameters = {
   secretKey: string;
   resourceType: EmbedResourceType;
   resourceId: EmbedResource["id"];
-  params: EmbeddingParameters;
+  params: EmbeddingParametersValues;
   displayOptions: EmbeddingDisplayOptions;
 };
 
 export type ClientCodeSampleConfig = {
+  id: string;
   name: string;
   source: string;
   mode: string;
 };
 
 export type ServerCodeSampleConfig = {
+  id: string;
   name: string;
   source: string;
   parametersSource: string;

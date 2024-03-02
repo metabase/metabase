@@ -1,4 +1,8 @@
 import { act, renderHook } from "@testing-library/react-hooks";
+
+import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createOrdersIdField,
@@ -6,11 +10,9 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
-import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import { useBooleanOptionFilter } from "./use-boolean-option-filter";
+
 import type { OptionType } from "./types";
+import { useBooleanOptionFilter } from "./use-boolean-option-filter";
 
 interface CreateFilterCase {
   optionType: OptionType;

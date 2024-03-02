@@ -1,12 +1,18 @@
-import type * as React from "react";
 import userEvent from "@testing-library/user-event";
+import type * as React from "react";
+
+import {
+  setupActionsEndpoints,
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import {
   screen,
   waitFor,
   renderWithProviders,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-
 import {
   createMockDashboard,
   createMockActionDashboardCard,
@@ -17,12 +23,6 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import {
-  setupActionsEndpoints,
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
 import { ActionSidebar } from "./ActionSidebar";
 
 const dashcard = createMockDashboardCard();

@@ -1,13 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import type { DependentMetadataItem, DatasetQuery } from "metabase-types/api";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Question from "metabase-lib/Question";
+
 import Dimension from "metabase-lib/Dimension";
-import type Variable from "metabase-lib/variables/Variable";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+import type Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import type Variable from "metabase-lib/variables/Variable";
+import type { DatasetQuery } from "metabase-types/api";
 
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
@@ -83,13 +84,6 @@ class Query {
    * Variables exposed by this query
    */
   variables(_filter?: (variable: Variable) => boolean): TemplateTagVariable[] {
-    return [];
-  }
-
-  /**
-   * Metadata this query needs to display correctly
-   */
-  dependentMetadata(): DependentMetadataItem[] {
     return [];
   }
 

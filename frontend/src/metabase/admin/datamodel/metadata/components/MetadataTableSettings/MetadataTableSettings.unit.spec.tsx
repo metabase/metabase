@@ -1,13 +1,7 @@
-import { Route } from "react-router";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import type { Database } from "metabase-types/api";
-import {
-  createOrdersTable,
-  createPeopleTable,
-  createReviewsTable,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -18,6 +12,14 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import type { Database } from "metabase-types/api";
+import {
+  createOrdersTable,
+  createPeopleTable,
+  createReviewsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
 import { getMetadataRoutes } from "../../routes";
 
 const ORDERS_TABLE = createOrdersTable();

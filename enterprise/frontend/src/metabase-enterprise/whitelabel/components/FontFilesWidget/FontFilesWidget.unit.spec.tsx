@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { createMockFontFile } from "metabase-types/api/mocks";
+
 import FontFilesWidget from "./FontFilesWidget";
 
 describe("FontFilesWidget", () => {

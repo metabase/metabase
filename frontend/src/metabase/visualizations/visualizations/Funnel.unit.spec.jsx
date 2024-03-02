@@ -1,5 +1,5 @@
 import { render, screen } from "__support__/ui";
-
+import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockColumn,
@@ -8,7 +8,7 @@ import {
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-import registerVisualizations from "metabase/visualizations/register";
+
 import Funnel from "./Funnel";
 
 registerVisualizations();

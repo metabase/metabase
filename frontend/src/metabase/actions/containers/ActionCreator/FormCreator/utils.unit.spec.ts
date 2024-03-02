@@ -1,5 +1,6 @@
 import { getDefaultFieldSettings } from "metabase/actions/utils";
 import type { FieldSettingsMap } from "metabase-types/api";
+
 import { reorderFields } from "./utils";
 
 describe("actions > containers > ActionCreator > FormCreator > utils", () => {

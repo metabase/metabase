@@ -7,7 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
@@ -38,7 +38,7 @@
 
 (defmethod ddl.i/refresh! :postgres
   [driver database definition dataset-query]
-  (let [{:keys [query params]} (qp/compile dataset-query)]
+  (let [{:keys [query params]} (qp.compile/compile dataset-query)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database

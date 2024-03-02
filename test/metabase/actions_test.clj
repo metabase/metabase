@@ -343,7 +343,7 @@
             (is-ex-data
              {:errors
               [{:index 1
-                :error #"Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
+                :error #".*Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
                {:index 3
                 :error #"Sorry, the row you're trying to delete doesn't exist"}]
               :status-code 400}
@@ -543,7 +543,7 @@
                                                            :type "number"
                                                            :display-name "Id"}}})
                                     :type name)]
-                  (mt/with-actions [{card-id :id} {:dataset true
+                  (mt/with-actions [{card-id :id} {:type :model
                                                    :dataset_query (mt/mbql-query categories)}
                                     {action-id :action-id} {:name                   "Query example"
                                                             :type                   :query

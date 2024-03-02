@@ -1,3 +1,6 @@
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
+import { createMockMetric, createMockSegment } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
   createPeopleTable,
@@ -9,9 +12,6 @@ import {
   PEOPLE,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
-import { createMockMetric, createMockSegment } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/lib/types";
 
 const SEGMENT_ID = 1;
 const METRIC_ID = 1;
@@ -68,9 +68,9 @@ const userName = checkNotNull(metadata.field(ORDERS.USER_ID))
 const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
 const metric = checkNotNull(metadata.metric(METRIC_ID)).aggregationClause();
 
-const legacyQuery = checkNotNull(metadata.table(ORDERS_ID))
-  .legacyQuery({ useStructuredQuery: true })
-  .addExpression("foo", 42);
+const legacyQuery = checkNotNull(metadata.table(ORDERS_ID)).legacyQuery({
+  foo: 42,
+});
 
 // shared test cases used in compile, formatter, and syntax tests:
 //
