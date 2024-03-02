@@ -362,9 +362,9 @@ export function createEntity(def) {
     invalidateLists: compose(
       withAction(INVALIDATE_LISTS_ACTION),
       withEntityActionDecorators("invalidateLists"),
-    )(() => (dispatch, getState) => {
+    )(() => async (dispatch, getState) => {
       invalidateRtkListTagById(dispatch);
-      invalidateRtkTagByIds(dispatch, getEntityIds(getState));
+      invalidateRtkTagByIds(dispatch, getEntityIds(getState()));
     }),
 
     // user defined actions should override defaults
