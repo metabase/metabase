@@ -167,42 +167,44 @@
 (defn- boolean-or-int-string? [s]
   (contains? #{"0" "1"} s))
 
+(defn- varchar-255? [s]
+  (<= (count s) 255))
+
 ;; end [[value->type]] helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def ^:private non-inferable-types
+  #{::auto-incrementing-int-pk})
+
+(defn- assert-all-types-checks-present
+  [type->check]
+  (assert (every? type->check (remove non-inferable-types value-types))
+          "Every value-type must be registered in settings->type->check")
+  type->check)
+
+(defn- settings->type->check [{:keys [number-separators] :as _settings}]
+  (assert-all-types-checks-present
+   {::boolean-or-int  boolean-or-int-string?
+    ::boolean         boolean-string?
+    ::offset-datetime offset-datetime-string?
+    ::date            date-string?
+    ::datetime        datetime-string?
+    ::int             (partial re-matches (int-regex number-separators))
+    ::float           (partial re-matches (float-regex number-separators))
+    ::varchar-255     varchar-255?
+    ::text            (constantly true)}))
+
 (defn- value->type
-  "The most-specific possible type for a given value. Possibilities are:
-
-    - `::boolean`
-    - `::int`
-    - `::float`
-    - `::varchar-255`
-    - `::date`
-    - `::datetime`
-    - `::offset-datetime`
-    - `::text` (the catch-all type)
-
-  NB: There are currently the following gotchas:
-    1. ints/floats are assumed to use the separators and decimal points corresponding to the locale defined in the
-       application settings
-    2. 0 and 1 are assumed to be booleans, not ints."
-  [value {:keys [number-separators] :as _settings}]
-  (let [trimmed (str/trim value)]
-    (cond
-      (str/blank? value)                                        nil
-      (boolean-or-int-string? trimmed)                          ::boolean-or-int
-      (boolean-string? trimmed)                                 ::boolean
-      (offset-datetime-string? trimmed)                         ::offset-datetime
-      (datetime-string? trimmed)                                ::datetime
-      (date-string? trimmed)                                    ::date
-      (re-matches (int-regex number-separators) trimmed)        ::int
-      (re-matches (float-regex number-separators) trimmed)      ::float
-      (<= (count trimmed) 255)                                  ::varchar-255
-      :else                                                     ::text)))
+  "Determine the most specific type that could  given value.
+  Numbers are assumed to use separators corresponding to the locale defined in the application settings"
+  [type->check value]
+  (when-not (str/blank? value)
+    (let [trimmed (str/trim value)]
+      (first (filter #(when-let [f (type->check %)] (f trimmed)) value-types)))))
 
 (defn- row->value-types
-  [row settings]
-  (map #(value->type % settings) row))
+  [type->check row]
+  (map (partial value->type type->check) row))
 
 (defn- most-specific-common-ancestor
   "Return the first \"ancestor\" of `base-tag` which is also an \"ancestor\" of `new-tag`.
@@ -242,10 +244,11 @@
 (mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
   "Returns a sequence of types, given the unparsed rows in the CSV file"
   [settings column-count rows]
-  (->> rows
-       (map #(row->value-types % settings))
-       (reduce coalesce-types (repeat column-count nil))
-       (map column-type)))
+  (let [type->check (settings->type->check settings)]
+    (->> rows
+         (map (partial row->value-types type->check))
+         (reduce coalesce-types (repeat column-count nil))
+         (map column-type))))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
