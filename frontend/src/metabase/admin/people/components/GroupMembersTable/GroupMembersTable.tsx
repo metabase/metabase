@@ -15,7 +15,6 @@ import { Tooltip, Text, Icon } from "metabase/ui";
 import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-
 import AddMemberRow from "../AddMemberRow";
 
 const canEditMembership = (group: Group) =>
