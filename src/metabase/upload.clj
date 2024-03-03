@@ -208,8 +208,8 @@
                                                new-tag))))))
 
 (defn- coalesce-types
-  "Given two collections of types tags, find the first-common-ancestor for each pair.
-  If one of the collections is longer, we resolve to its literal value for the remaining length."
+  "Given two collections of type tags, find the most specific common ancestor for each pair.
+  If one of the collections is longer, we return its existing tags for the remaining length."
   [types-a types-b]
   (u/map-all most-specific-common-ancestor types-a types-b))
 
