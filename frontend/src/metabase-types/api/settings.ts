@@ -214,7 +214,7 @@ interface InstanceSettings {
   "enable-nested-queries": boolean;
   "enable-query-caching"?: boolean;
   "query-caching-ttl-ratio": number;
-  "query-caching-min-ttl": number;
+  "query-caching-min-duration": number;
   "enable-password-login": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;

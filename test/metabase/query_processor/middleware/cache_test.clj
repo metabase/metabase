@@ -91,7 +91,7 @@
                           purge-chan (a/chan 10)]
     (mt/with-temporary-setting-values [enable-query-caching  true
                                        query-caching-max-ttl 60
-                                       query-caching-min-ttl 0]
+                                       query-caching-min-duration 0]
       (binding [cache/*backend* (test-backend save-chan purge-chan)
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
@@ -241,18 +241,18 @@
       (is (= :cached (run-query))))))
 
 (deftest min-ttl-test
-  (testing "if the cache takes less than the min TTL to execute, it shouldn't be cached"
+  (testing "if the cache takes less than the min duration to execute, it shouldn't be cached"
     (with-mock-cache [save-chan]
-      (mt/with-temporary-setting-values [query-caching-min-ttl 60]
+      (mt/with-temporary-setting-values [query-caching-min-duration 60]
         (run-query)
         (is (= :metabase.test.util.async/timed-out
                (mt/wait-for-result save-chan)))
         (is (= :not-cached
                (run-query))))))
 
-  (testing "...but if it takes *longer* than the min TTL, it should be cached"
+  (testing "...but if it takes *longer* than the min duration, it should be cached"
     (with-mock-cache [save-chan]
-      (mt/with-temporary-setting-values [query-caching-min-ttl 0.1]
+      (mt/with-temporary-setting-values [query-caching-min-duration 0.1]
         (binding [*query-execution-delay-ms* 120]
           (run-query)
           (mt/wait-for-result save-chan)

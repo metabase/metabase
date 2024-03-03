@@ -159,7 +159,7 @@ email-smtp-username
 start-of-week
 email-smtp-password
 email-smtp-port
-query-caching-min-ttl
+query-caching-min-duration
 email-from-name
 email-from-address
 email-reply-to

@@ -161,7 +161,7 @@ export const createMockSettings = (
   "enable-nested-queries": true,
   "enable-query-caching": undefined,
   "query-caching-ttl-ratio": 10,
-  "query-caching-min-ttl": 60,
+  "query-caching-min-duration": 60,
   "enable-password-login": true,
   "enable-public-sharing": false,
   "enable-xrays": false,

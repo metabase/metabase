@@ -106,7 +106,7 @@
      prometheus-server-port
      query-caching-max-kb
      query-caching-max-ttl
-     query-caching-min-ttl
+     query-caching-min-duration
      query-caching-ttl-ratio
      redirect-all-requests-to-https
      reset-token-ttl-hours

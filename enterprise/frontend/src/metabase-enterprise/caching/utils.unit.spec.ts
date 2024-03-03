@@ -52,7 +52,7 @@ describe("getQuestionsImplicitCacheTTL", () => {
     mockSettings({
       "enable-query-caching": cachingEnabled,
       "query-caching-ttl-ratio": cachingEnabled ? cacheTTLMultiplier : 10,
-      "query-caching-min-ttl": cachingEnabled ? minCacheThreshold : 60,
+      "query-caching-min-duration": cachingEnabled ? minCacheThreshold : 60,
     });
 
     const card = createMockCard({

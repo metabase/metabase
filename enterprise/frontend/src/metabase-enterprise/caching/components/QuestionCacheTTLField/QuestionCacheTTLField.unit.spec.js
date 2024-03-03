@@ -20,7 +20,7 @@ function setup({
   mockSettings({
     "enable-query-caching": true,
     "query-caching-ttl-ratio": cacheTTLMultiplier,
-    "query-caching-min-ttl": minCacheThreshold,
+    "query-caching-min-duration": minCacheThreshold,
   });
 
   const question = {

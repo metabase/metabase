@@ -25,7 +25,7 @@ describe("useTableListQuery", () => {
 
   it("should get a number setting", async () => {
     renderWithProviders(
-      <TestComponent settingName={"query-caching-min-ttl"} />,
+      <TestComponent settingName={"query-caching-min-duration"} />,
     );
     expect(screen.getByText("60")).toBeInTheDocument();
     expect(screen.getByText("number")).toBeInTheDocument();

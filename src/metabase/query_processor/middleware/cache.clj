@@ -57,7 +57,7 @@
 (defn- min-duration-ms
   "Minimum duration it must take a query to complete in order for it to be eligible for caching."
   []
-  (* (public-settings/query-caching-min-ttl) 1000))
+  (* (public-settings/query-caching-min-duration) 1000))
 
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."

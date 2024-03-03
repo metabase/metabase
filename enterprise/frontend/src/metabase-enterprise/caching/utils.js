@@ -33,7 +33,7 @@ export function getQuestionsImplicitCacheTTL(question) {
 
 function checkQuestionWillBeCached(avgQueryDurationInSeconds) {
   const minQueryDurationThresholdSeconds = MetabaseSettings.get(
-    "query-caching-min-ttl",
+    "query-caching-min-duration",
   );
   return avgQueryDurationInSeconds > minQueryDurationThresholdSeconds;
 }

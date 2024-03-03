@@ -569,7 +569,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         type: "boolean",
       },
       {
-        key: "query-caching-min-ttl",
+        key: "query-caching-min-duration",
         display_name: t`Minimum Query Duration`,
         type: "number",
         getHidden: settings => !settings["enable-query-caching"],

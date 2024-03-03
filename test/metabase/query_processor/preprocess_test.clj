@@ -13,7 +13,7 @@
     ;; this test.
     (mt/with-temp-copy-of-db
       (mt/with-temporary-setting-values [enable-query-caching  true
-                                         query-caching-min-ttl 0]
+                                         query-caching-min-duration 0]
         (let [query            (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
                                       :cache-ttl 10)
               run-query        (fn []

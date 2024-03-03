@@ -345,8 +345,7 @@
   :default (* 60.0 60.0 24.0 100.0) ; 100 days
   :audit   :getter)
 
-;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
-(defsetting query-caching-min-ttl
+(defsetting query-caching-min-duration
   (deferred-tru "{0} will cache all saved questions with an average query execution time longer than this many seconds:"
                  (application-name-for-setting-descriptions))
   :type    :double
