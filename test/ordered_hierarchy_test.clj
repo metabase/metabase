@@ -46,13 +46,16 @@
     (is (nil? (ancestors h ::text)))
     (is (= [::text] (vec (ancestors h ::varchar-255))))
     (is (= [::varchar-255 ::text] (vec (ancestors h ::boolean))))
-    (is (= [::float ::varchar-255 ::text] (vec (ancestors h ::int)))))
+    (is (= [::float ::varchar-255 ::text] (vec (ancestors h ::int))))
+    (is (= [::boolean
+            ::int
+            ::float
+            ::varchar-255
+            ::text]
+           (vec (ancestors h ::boolean-or-int)))))
 
   (testing "Non-linear ancestors are listed in breadth-first order"
-    ;; NB - it feels surprising that ::varchar-255 comes before ::float, as it is its parent.
-    ;; This does not seem to be what we want when we are using these "lists" find the most specific common ancestor!
-    ;; Moving to a topological sort would fix this.
-    (is (= [::boolean ::int ::varchar-255 ::float ::text] (vec (ancestors h ::boolean-or-int))))))
+    (is (= [::boolean ::int ::float ::varchar-255 ::text] (vec (ancestors h ::boolean-or-int))))))
 
 (deftest descendants-test
   (testing "Linear descendants are listed in order"
@@ -66,14 +69,12 @@
     (is (= [::varchar-255
             ::offset-datetime
             ::datetime
-            ::float
-            ::boolean
             ::date
+            ::float
             ::int
-            ;; This ordering is unintuitive, as it's reversed according to how they appear as children of ::int
-            ;; Moving to a topological sort would NOT fix this, however.
-            ::boolean-or-int
-            ::auto-incrementing-int-pk]
+            ::auto-incrementing-int-pk
+            ::boolean
+            ::boolean-or-int]
            (vec (descendants h ::text))))))
 
 (deftest tags-test
