@@ -658,7 +658,7 @@
                                      ;; we will instead throw an error when we try to parse as the old type
                                      (not (matching-or-upgradable? old-column-types common-types)))
                                old-column-types
-                               (let [fields (map normed-name->field normed-header)
+                               (let [fields          (map normed-name->field normed-header)
                                      field+new-types (changed-field+new-types fields old-column-types common-types)]
                                  (convert-columns! database table field+new-types)
                                  common-types))
