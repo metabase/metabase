@@ -347,13 +347,14 @@
 (defn- parse-rows
   "Returns a lazy seq of parsed rows, given a sequence of upload types for each column.
   Empty strings are parsed as nil."
-  [col-upload-types rows]
-  (let [settings (upload-parsing/get-settings)
-        parsers  (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
-    (for [row rows]
-      (for [[value parser] (u/map-all vector row parsers)]
-        (when-not (str/blank? value)
-          (parser value))))))
+  ([col-upload-types rows]
+   (parse-rows (upload-parsing/get-settings) col-upload-types rows))
+  ([settings col-upload-types rows]
+   (let [parsers (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
+     (for [row rows]
+       (for [[value parser] (u/map-all vector row parsers)]
+         (when-not (str/blank? value)
+           (parser value)))))))
 
 (defn- remove-indices
   "Removes the elements at the given indices from the collection. Indices is a set."
@@ -594,6 +595,10 @@
        (str/join "\n\n")
        (not-blank)))
 
+(def ^:private allowed-type-upgrades
+  "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values."
+  {::integer #{::float}})
+
 (defn- check-schema
   "Throws an exception if:
     - the CSV file contains duplicate column names
@@ -611,6 +616,27 @@
       (let [error-message (extra-and-missing-error-markdown extra missing)]
         (throw (ex-info error-message {:status-code 422}))))))
 
+(defn- matching-or-upgradable? [old-types common-types]
+  (let [pairs (map vector old-types common-types)]
+    (every? (fn [[old common]]
+              (or (= old common)
+                  (when-let [f (allowed-type-upgrades old)]
+                    (f common))))
+            pairs)))
+
+(defn- changed-field+new-types
+  "Given some fields and old and new types, filter out fields with unchanged types, then pair with the new types."
+  [fields old-types new-types]
+  (let [new-if-changed #(when (not= %1 %2) %2)]
+    (->> (map new-if-changed old-types new-types)
+         (map vector fields)
+         (filter second))))
+
+(defn- convert-columns! [_database _table field+new-types]
+  (doseq [[_field new-type] field+new-types]
+    (let [_column-type (column-type new-type)]
+      ::TODO)))
+
 (defn- append-csv!*
   [database table file]
   (with-open [reader (bom/bom-reader file)]
@@ -623,8 +649,20 @@
                               (driver/create-auto-pk-with-append-csv? driver)
                               (not (contains? normed-name->field auto-pk-column-name)))
           _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
-          col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
-          parsed-rows        (parse-rows col-upload-types rows)]
+          settings           (upload-parsing/get-settings)
+          old-column-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
+          row-column-types   (column-types-from-rows settings (count old-column-types) rows)
+          common-types       (map column-type (coalesce-types old-column-types row-column-types))
+          new-column-types   (if (or (= old-column-types common-types)
+                                     ;; if we cannot coerce all the columns, don't bother coercing any of them
+                                     ;; we will instead throw an error when we try to parse as the old type
+                                     (not (matching-or-upgradable? old-column-types common-types)))
+                               old-column-types
+                               (let [fields (map normed-name->field normed-header)
+                                     field+new-types (changed-field+new-types fields old-column-types common-types)]
+                                 (convert-columns! database table field+new-types)
+                                 common-types))
+          parsed-rows        (parse-rows new-column-types rows)]
       (try
         (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
         (catch Throwable e

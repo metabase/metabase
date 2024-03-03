@@ -1580,35 +1580,6 @@
                         (is (= 1 (count (rows-for-table table)))))
                       (io/delete-file file))))))))))))
 
-(deftest append-type-upgrade-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (with-mysql-local-infile-on-and-off
-     (testing "Append may upgrade integer columns to floats to avoid lossy import BLAH REWORD ME PLZ"
-       ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
-       ;; inserted rows are rolled back
-       (binding [driver/*insert-chunk-rows* 1]
-         (doseq [auto-pk-column? [true false]]
-           (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")
-             (doseq [{:keys [basic specialized]}
-                     [{:basic 5 :specialized 1.4}]
-                     :let [upload-type (#'upload/value->type (str basic) (upload-parsing/get-settings))]]
-               (testing (str "\nTry to upload an invalid value for " ())
-                 (with-upload-table!
-                  [table (create-upload-table!
-                          {:col->upload-type (cond-> (ordered-map/ordered-map
-                                                      :test_column upload-type)
-                                               auto-pk-column?
-                                               (assoc upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk))
-                           :rows             [[(str basic)]]})]
-                  (let [;; The CSV contains 50 basic rows and 1 that is more specialized
-                        csv-rows `["test_column" ~@(repeat 5 (str basic)) ~(str specialized)]
-                        file     (csv-file-with csv-rows (mt/random-name))]
-                    (append-csv! {:file     file
-                                  :table-id (:id table)})
-                    (testing "\nCheck the data was not uploaded into the table"
-                      (is (= 7 (count (rows-for-table table)))))
-                    (io/delete-file file))))))))))))
-
 ;; FIXME: uploading to a varchar-255 column can fail if the text is too long
 ;; We ideally want to change the column type to text if we detect this will happen, but that's difficult
 ;; currently because we don't store the character length of the column. e.g. a varchar(255) column in postgres
@@ -1678,8 +1649,8 @@
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                  [{:upload-type ::upload/int,     :uncoerced "2.1", :fail-msg "'2.1' is not an integer"}
-                   {:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2}
+                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2}
+                   {:upload-type ::upload/int,     :uncoerced "2.1",        :coerced 2.1}
                    {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
                    {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
                    {:upload-type ::upload/boolean, :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
