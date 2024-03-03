@@ -1043,7 +1043,7 @@
                         (let [results (qp/process-query (assoc query :cache-ttl 100))]
                           {:cached?  (boolean (:cached (:cache/details results)))
                            :num-rows (count (mt/rows results))}))]
-        (mt/with-temporary-setting-values [enable-query-caching  true
+        (mt/with-temporary-setting-values [enable-query-caching       true
                                            query-caching-min-duration 0]
           (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
             (mt/with-current-user nil

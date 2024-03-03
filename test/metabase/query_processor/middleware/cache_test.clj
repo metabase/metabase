@@ -89,8 +89,8 @@
 (defn do-with-mock-cache [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
                           purge-chan (a/chan 10)]
-    (mt/with-temporary-setting-values [enable-query-caching  true
-                                       query-caching-max-ttl 60
+    (mt/with-temporary-setting-values [enable-query-caching       true
+                                       query-caching-max-ttl      60
                                        query-caching-min-duration 0]
       (binding [cache/*backend* (test-backend save-chan purge-chan)
                 *save-chan*     save-chan

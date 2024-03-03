@@ -12,7 +12,7 @@
     ;; make a copy of the `test-data` DB so there will be no cache entries from previous test runs possibly affecting
     ;; this test.
     (mt/with-temp-copy-of-db
-      (mt/with-temporary-setting-values [enable-query-caching  true
+      (mt/with-temporary-setting-values [enable-query-caching       true
                                          query-caching-min-duration 0]
         (let [query            (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
                                       :cache-ttl 10)
