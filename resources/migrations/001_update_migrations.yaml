@@ -5598,6 +5598,18 @@ databaseChangeLog:
             sql: >-
               DROP VIEW IF EXISTS v_content;
 
+  - changeSet:
+      id: v50.2024-03-02T17:41:00
+      author: qnkhuat
+      comment: Add metabase_table.properties
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: properties
+                  type: ${text.type}
+                  remarks: Various property for a table
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

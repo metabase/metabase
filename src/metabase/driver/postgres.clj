@@ -36,7 +36,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [next.jdbc :as next.jdbc])
   (:import
    (java.io StringReader)
    (java.sql Connection ResultSet ResultSetMetaData Time Types)
@@ -63,7 +64,8 @@
                               :persist-models           true
                               :table-privileges         true
                               :schemas                  true
-                              :connection-impersonation true}]
+                              :connection-impersonation true
+                              :sync-row-count           true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -852,8 +854,8 @@
   ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
   ;; result in a operation not supported error
   (->> (jdbc/query
-         conn-spec
-         (str/join
+        conn-spec
+        (str/join
          "\n"
          ["with table_privileges as ("
           " select"
@@ -892,3 +894,16 @@
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
   "NONE")
+
+(defmethod driver/schema+table->row-count :postgres
+  [driver database]
+  ;; https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ALL-TABLES-VIEW
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [conn]
+     (into {}
+           (map (fn [{:keys [schemaname relname n_live_tup]}]
+                  [[schemaname relname] n_live_tup]))
+           (next.jdbc/plan conn ["SELECT schemaname, relname, n_live_tup FROM pg_stat_user_tables"])))))

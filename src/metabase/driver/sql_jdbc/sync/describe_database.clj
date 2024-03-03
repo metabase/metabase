@@ -193,6 +193,15 @@
         :else
         nil))
 
+(defn- tables-with-properties [driver database tables]
+  (if (driver/database-supports? driver :sync-row-count database)
+    (let [schema+table->row-count (when (driver/database-supports? driver :sync-row-count database)
+                                    (driver/schema+table->row-count driver database))]
+      (eduction (map (fn [{:keys [schema name] :as table}]
+                       (assoc table :properties {:row-count (get schema+table->row-count [schema name])})))
+                tables))
+    tables))
+
 (mu/defn describe-database
   "Default implementation of [[metabase.driver/describe-database]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver           :- :keyword
@@ -206,15 +215,11 @@
       (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
             has-schema-filter-prop? (some? schema-filter-prop)
             database                (db-or-id-or-spec->database db-or-id-or-spec)
-            default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver conn nil nil))]
-        (if has-schema-filter-prop?
-          ;; TODO: the else of this branch seems uncessary, why do you want to call describe-database on a database that
-          ;; does not exists?
-          (if (some? database)
-            (let [prop-nm                                 (:name schema-filter-prop)
-                  [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
-                                                           prop-nm
-                                                           database)]
-              (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))
-            (default-active-tbl-fn))
-          (default-active-tbl-fn)))))})
+            [inclusion-patterns
+             exclusion-patterns]    (when (and has-schema-filter-prop? (some? database))
+                                      (driver.s/db-details->schema-filter-patterns
+                                       (:name schema-filter-prop)
+                                       database))]
+        (->> (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)
+             (tables-with-properties driver database)
+             (into #{})))))})

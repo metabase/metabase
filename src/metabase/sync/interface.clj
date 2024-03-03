@@ -12,7 +12,10 @@
    [:schema         [:maybe ::lib.schema.common/non-blank-string]]
    [:require-filter {:optional true} :boolean]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   [:description    {:optional true} [:maybe :string]]])
+   [:description    {:optional true} [:maybe :string]]
+   [:properties     {:optional true} [:maybe
+                                      [:map {:closed true}
+                                       [:row-count {:optional true} int?]]]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
