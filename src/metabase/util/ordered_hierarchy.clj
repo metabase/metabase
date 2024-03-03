@@ -2,6 +2,7 @@
 (ns metabase.util.ordered-hierarchy
   (:refer-clojure :exclude [ancestors derive descendants make-hierarchy parents])
   (:require
+   [flatland.ordered.map :refer [ordered-map]]
    [flatland.ordered.set :refer [ordered-set]]))
 
 (defn make-hierarchy
@@ -10,7 +11,11 @@
   !! WARNING !!
   Using [[clojure.core/derive]] with this will corrupt the ordering - you must use the implementation from this ns."
   []
-  (vary-meta (clojure.core/make-hierarchy) assoc ::ordered? true))
+  ^::ordered?
+  {:parents     (ordered-map)
+   :children    (ordered-map)
+   :descendants (ordered-map)
+   :ancestors   (ordered-map)})
 
 (defn ancestors
   "Returns the immediate and indirect parents of tag, as established via derive. Earlier derivations are shown first.
@@ -40,7 +45,7 @@
   [h tag]
   (-> h :children tag))
 
-(defn tags
+(defn tags*
   "An unordered set of all the tags within a given hierarchy. This will work with regular hierarchies too."
   [h]
   (into (set (keys (:parents h))) (keys (:children h))))
@@ -80,7 +85,7 @@
           (let [h  (assoc h
                      :parents (update tp tag #(conj (or % (ordered-set)) parent))
                      :children (update tc parent #(into (ordered-set tag) %)))
-                ts (tags h)]
+                ts (tags* h)]
             (with-meta
              ;; This could be optimized by being selective over which tags are updated, and performing incremental
              ;; updates to the corresponding sets. We're doing it this way purely for simplicity.
@@ -113,3 +118,41 @@
       (contains? ancestors-b tag-a) tag-a
       (contains? ancestors-a tag-b) tag-b
       :else (first-common-tag ancestors-a ancestors-b))))
+
+(defn- toposort-visit [g state n]
+  (let [{:keys [processing processed]} state]
+    (when (contains? processing n)
+      (throw (ex-info "Cycle in graph" {:cause      ::cyclic-graph
+                                        :cycle-node n
+                                        :state      state
+                                        :graph      g})))
+    (if (contains? processed n)
+      state
+      (let [children (get g n)
+            init-state (update state :processing conj n)
+            post-state (reduce (partial toposort-visit g)
+                               init-state
+                               ;; Iterate in reverse as that gives us oldest to newest
+                               (reverse children))]
+        (-> post-state
+            (update :processed conj n)
+            (update :processing disj n))))))
+
+(defn- toposort
+  "Use Trajan's DPS method to return an ordered set of nodes where every node is preceded by all its children, and
+  those children are likewise enumerated in the order they were registered as children of that node."
+  [roots graph]
+  (->> roots
+       (reduce (partial toposort-visit graph)
+               {:processing #{}
+                :processed  (ordered-set)})
+       :processed))
+
+(defn sorted-tags
+  "An ordered set of all tags within the hierarchy, topologically sorted from the leaves up, and following the edges
+  according to the order they were added in."
+  [h]
+  (let [roots (reduce disj
+                      (into (ordered-set) (keys (:children h)))
+                      (keys (:parents h)))]
+    (toposort roots (:children h))))

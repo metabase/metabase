@@ -92,14 +92,21 @@
   "Nodes which can correspond to a concrete database column type."
   (complement #{::boolean-or-int}))
 
+(def ^:private value-types
+  "All type tags which values can be inferred as. An ordered set from most to least specialized."
+  (ordered-hierarchy/sorted-tags h))
+
 (def ^:private column-types
-  "All column types"
-  (into #{} (filter concrete-type?) (ordered-hierarchy/tags h)))
+  "All type tags that correspond to concrete column types. An ordered set from most to least specialized."
+  (into #{} (filter concrete-type?) value-types))
 
 (defn ^:private column-type
-  "Get the most specific concrete type corresponding to the given tag."
-  [tag]
-  (if (concrete-type? tag) tag (recur (first (parents h tag)))))
+  "The most specific column type corresponding to the given value type."
+  [value-type]
+  ;; If we know nothing about the value type, treat it as an arbitrary string.
+  (cond (nil? value-type) ::text
+        (concrete-type? value-type) value-type
+        :else (recur (first (parents h value-type)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; [[value->type]] helpers
@@ -238,11 +245,7 @@
   (->> rows
        (map #(row->value-types % settings))
        (reduce coalesce-types (repeat column-count nil))
-       (map (fn [tag]
-              ;; if there's no values in the column, assume it's a string
-              (if (nil? tag)
-                ::text
-                (column-type tag))))))
+       (map column-type)))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.

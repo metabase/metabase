@@ -75,3 +75,17 @@
             ::boolean-or-int
             ::auto-incrementing-int-pk]
            (vec (descendants h ::text))))))
+
+(deftest tags-test
+  (testing "Tags are returned in a topologically sorted order that also preserves insert order"
+    (is (= [::boolean-or-int
+            ::boolean
+            ::auto-incrementing-int-pk
+            ::int
+            ::float
+            ::date
+            ::datetime
+            ::offset-datetime
+            ::varchar-255
+            ::text]
+           (vec (ordered-hierarchy/sorted-tags h))))))
