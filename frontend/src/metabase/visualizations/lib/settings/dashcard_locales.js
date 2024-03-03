@@ -676,6 +676,14 @@ const TITLE_LOCALES_BN = {
     'en' : 'Total vacant post',
     'bn' : 'মোট শূণ্যপদ'
   },
+  'total.batch.count' : {
+    'en' : 'Total Batches',
+    'bn' : 'মোট ব্যাচ'
+  },
+  'certificate.wise.training.statistics' : {
+    'en' : 'Certificate Configuration Wise Trainings Statistics',
+    'bn' : 'সার্টিফিকেট কনফিগারেশন অনুযায়ী প্রশিক্ষণের পরিসংখ্যান'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
