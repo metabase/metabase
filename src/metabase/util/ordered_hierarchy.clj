@@ -2,7 +2,6 @@
 (ns metabase.util.ordered-hierarchy
   (:refer-clojure :exclude [ancestors derive descendants make-hierarchy parents])
   (:require
-   [flatland.ordered.map :refer [ordered-map]]
    [flatland.ordered.set :refer [ordered-set]]
    [medley.core :as m]))
 
@@ -12,13 +11,8 @@
   !! WARNING !!
   Using [[clojure.core/derive]] with this will corrupt the ordering - you must use the implementation from this ns."
   []
-  ^::ordered?
-  {:parents     (ordered-map)
-   :ancestors   {}
-   :descendants {}
-   ;; additional fields
-   :children    (ordered-map)
-   :sorted-tags (ordered-map)})
+  (-> (clojure.core/make-hierarchy)
+      (with-meta {::ordered? true})))
 
 (defn ancestors
   "Returns the immediate and indirect parents of tag, as established via derive. Earlier derivations are shown first.

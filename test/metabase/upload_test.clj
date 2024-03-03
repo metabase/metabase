@@ -109,7 +109,7 @@
     (t2/select-one :model/Table (:id table))))
 
 (deftest type-detection-and-parse-test
-  (doseq [[string-value  expected-value expected-type seps]
+  (doseq [[string-value expected-value expected-type seps]
           ;; Number-related
           [["0.0"        0              float-type "."]
            ["0.0"        0              float-type ".,"]

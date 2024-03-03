@@ -195,7 +195,7 @@
     ::text            (constantly true)}))
 
 (defn- value->type
-  "Determine the most specific type that could  given value.
+  "Determine the most specific type that is compatible with the given value.
   Numbers are assumed to use separators corresponding to the locale defined in the application settings"
   [type->check value]
   (when-not (str/blank? value)
