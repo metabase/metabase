@@ -46,7 +46,7 @@
                                         :graph      g})))
     (if (contains? processed n)
       state
-      (let [children (get g n)
+      (let [children   (get g n)
             init-state (update state :processing conj n)
             post-state (reduce (partial toposort-visit g)
                                init-state

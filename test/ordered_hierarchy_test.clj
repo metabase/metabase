@@ -46,16 +46,15 @@
     (is (nil? (ancestors h ::text)))
     (is (= [::text] (vec (ancestors h ::varchar-255))))
     (is (= [::varchar-255 ::text] (vec (ancestors h ::boolean))))
-    (is (= [::float ::varchar-255 ::text] (vec (ancestors h ::int))))
+    (is (= [::float ::varchar-255 ::text] (vec (ancestors h ::int)))))
+
+  (testing "Non-linear ancestors are listed in breadth-first order"
     (is (= [::boolean
             ::int
             ::float
             ::varchar-255
             ::text]
-           (vec (ancestors h ::boolean-or-int)))))
-
-  (testing "Non-linear ancestors are listed in breadth-first order"
-    (is (= [::boolean ::int ::float ::varchar-255 ::text] (vec (ancestors h ::boolean-or-int))))))
+           (vec (ancestors h ::boolean-or-int))))))
 
 (deftest descendants-test
   (testing "Linear descendants are listed in order"
