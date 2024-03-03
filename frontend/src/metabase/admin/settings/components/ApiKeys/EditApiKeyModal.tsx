@@ -20,10 +20,6 @@ import type { ApiKey } from "metabase-types/api";
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
-
-
-
-
 const { fontFamilyMonospace } = getThemeOverrides();
 
 type EditModalName = "edit" | "regenerate" | "secretKey";
