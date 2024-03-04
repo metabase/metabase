@@ -1,23 +1,22 @@
 import { useMemo, useState } from "react";
 import { useAsync, useDebounce } from "react-use";
-import { t } from "ttag";
 
-import { MultiSelect, Select } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import { getOptionsWithSearchInput, getAvailableOptions } from "../utils";
+import { SelectValuePicker } from "../SelectValuePicker";
+import { getAvailableOptions, getOptionsWithSearchInput } from "../utils";
 
 import { SEARCH_DEBOUNCE } from "./constants";
-import { shouldSearch, getSearchValues } from "./utils";
+import { getSearchValues, shouldSearch } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
   searchFieldId: FieldId;
   fieldValues: FieldValue[];
   selectedValues: string[];
-  placeholder?: string;
-  isAutoFocus?: boolean;
-  isMultiple?: boolean;
+  placeholder: string;
+  isAutoFocus: boolean;
+  isMultiple: boolean;
   isValueValid: (query: string) => boolean;
   onChange: (newValues: string[]) => void;
 }
@@ -46,10 +45,6 @@ export function SearchValuePicker({
     [fieldValues, selectedValues],
   );
 
-  const handleChange = (value: string | null) => {
-    onChange(value != null ? [value] : []);
-  };
-
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
     if (newSearchValue === "") {
@@ -65,28 +60,15 @@ export function SearchValuePicker({
 
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
-  return isMultiple ? (
-    <MultiSelect
+  return (
+    <SelectValuePicker
       data={getOptionsWithSearchInput(options, searchValue, isValueValid)}
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
-      searchable
-      autoFocus={isAutoFocus}
-      aria-label={t`Filter value`}
+      isAutoFocus={isAutoFocus}
+      isMultiple={isMultiple}
       onChange={onChange}
-      onSearchChange={handleSearchChange}
-    />
-  ) : (
-    <Select
-      data={getOptionsWithSearchInput(options, searchValue, isValueValid)}
-      value={selectedValues[0]}
-      searchValue={searchValue}
-      placeholder={placeholder}
-      searchable
-      autoFocus={isAutoFocus}
-      aria-label={t`Filter value`}
-      onChange={handleChange}
       onSearchChange={handleSearchChange}
     />
   );

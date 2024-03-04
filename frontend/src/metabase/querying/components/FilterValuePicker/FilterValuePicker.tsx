@@ -93,6 +93,7 @@ function FilterValuePicker({
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
         isAutoFocus={isAutoFocus}
+        isMultiple={isMultiple}
         isValueValid={isValueValid}
         onChange={onChange}
       />

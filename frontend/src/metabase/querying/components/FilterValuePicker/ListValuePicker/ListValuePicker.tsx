@@ -2,17 +2,10 @@ import type { ChangeEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Checkbox,
-  MultiSelect,
-  Select,
-  Stack,
-  Text,
-  TextInput,
-  Icon,
-} from "metabase/ui";
+import { Checkbox, Icon, Stack, Text, TextInput } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
+import { SelectValuePicker } from "../SelectValuePicker";
 import { getAvailableOptions, getOptionsWithSearchInput } from "../utils";
 
 import { ColumnGrid } from "./ListValuePicker.styled";
@@ -32,7 +25,7 @@ interface ListValuePickerProps {
 
 export function ListValuePicker(props: ListValuePickerProps) {
   if (!props.isMultiple) {
-    return <SingleSelectPicker {...props} />;
+    return <SelectPicker {...props} />;
   }
 
   if (!props.isCompact) {
@@ -43,7 +36,7 @@ export function ListValuePicker(props: ListValuePickerProps) {
     return <CheckboxGridPicker {...props} />;
   }
 
-  return <MultiSelectPicker {...props} />;
+  return <SelectPicker {...props} />;
 }
 
 function CheckboxListPicker({
@@ -118,57 +111,32 @@ function CheckboxGridPicker({
   );
 }
 
-export function SingleSelectPicker({
+export function SelectPicker({
   fieldValues,
   selectedValues,
   placeholder,
   isAutoFocus,
   isValueValid,
+  isMultiple,
   onChange,
 }: ListValuePickerProps) {
+  const [searchValue, setSearchValue] = useState("");
+
   const options = useMemo(
     () => getAvailableOptions(fieldValues, selectedValues),
     [fieldValues, selectedValues],
   );
 
-  const [searchValue, setSearchValue] = useState("");
-
-  const handleChange = (value: string | null) => {
-    onChange(value != null ? [value] : []);
-  };
-
   return (
-    <Select
-      data={getOptionsWithSearchInput(options, searchValue, isValueValid)}
-      value={selectedValues[0]}
-      searchValue={searchValue}
-      placeholder={placeholder}
-      autoFocus={isAutoFocus}
-      searchable
-      aria-label={t`Filter value`}
-      onChange={handleChange}
-      onSearchChange={setSearchValue}
-    />
-  );
-}
-
-export function MultiSelectPicker({
-  fieldValues,
-  selectedValues,
-  placeholder,
-  isAutoFocus,
-  onChange,
-}: ListValuePickerProps) {
-  const options = getAvailableOptions(fieldValues, selectedValues);
-
-  return (
-    <MultiSelect
-      data={options}
+    <SelectValuePicker
       value={selectedValues}
+      searchValue={searchValue}
+      data={getOptionsWithSearchInput(options, searchValue, isValueValid)}
       placeholder={placeholder}
-      autoFocus={isAutoFocus}
-      aria-label={t`Filter value`}
+      isAutoFocus={isAutoFocus}
+      isMultiple={isMultiple}
       onChange={onChange}
+      onSearchChange={setSearchValue}
     />
   );
 }
