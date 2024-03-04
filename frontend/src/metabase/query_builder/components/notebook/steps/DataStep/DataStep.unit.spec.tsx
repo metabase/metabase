@@ -134,7 +134,7 @@ describe("DataStep", () => {
       await setup();
       userEvent.click(screen.getByLabelText("Pick columns"));
 
-      expect(screen.getByLabelText("Select none")).toBeChecked();
+      expect(await screen.findByLabelText("Select none")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeEnabled();
       expect(screen.getByLabelText("Tax")).toBeChecked();
@@ -146,7 +146,7 @@ describe("DataStep", () => {
       await setup(createMockNotebookStep({ query }));
       userEvent.click(screen.getByLabelText("Pick columns"));
 
-      expect(screen.getByLabelText("Select all")).not.toBeChecked();
+      expect(await screen.findByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeDisabled();
       expect(screen.getByLabelText("Tax")).not.toBeChecked();
@@ -158,7 +158,7 @@ describe("DataStep", () => {
       await setup(createMockNotebookStep({ query }));
       userEvent.click(screen.getByLabelText("Pick columns"));
 
-      expect(screen.getByLabelText("Select all")).not.toBeChecked();
+      expect(await screen.findByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeEnabled();
       expect(screen.getByLabelText("Tax")).not.toBeChecked();
@@ -173,7 +173,7 @@ describe("DataStep", () => {
       const { getNextColumn } = await setup(step);
 
       userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Tax"));
+      userEvent.click(await screen.findByLabelText("Tax"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeTruthy();
@@ -184,7 +184,7 @@ describe("DataStep", () => {
       const { getNextColumn } = await setup();
 
       userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Tax"));
+      userEvent.click(await screen.findByLabelText("Tax"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeFalsy();
@@ -197,7 +197,7 @@ describe("DataStep", () => {
       const { getNextColumn } = await setup(step);
 
       userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Select all"));
+      userEvent.click(await screen.findByLabelText("Select all"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeTruthy();
@@ -208,7 +208,7 @@ describe("DataStep", () => {
       const { getNextQuery } = await setup();
 
       userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Select none"));
+      userEvent.click(await screen.findByLabelText("Select none"));
 
       const nextQuery = getNextQuery();
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
