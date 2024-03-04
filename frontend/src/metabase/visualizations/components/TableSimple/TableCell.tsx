@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useCallback, useMemo, isValidElement } from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import {
@@ -168,7 +169,7 @@ export function TableCell({
 
   const classNames = useMemo(
     () =>
-      cx("fullscreen-normal-text fullscreen-night-text", {
+      cx(DashboardS.fullscreenNormalText, DashboardS.fullscreenNightText, {
         "Table-ID": value != null && isID(column),
         "Table-FK": value != null && isFK(column),
         link: isClickable && isID(column),

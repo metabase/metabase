@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { getIn } from "icepick";
 import { useCallback, useLayoutEffect, useMemo, useState, useRef } from "react";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { isPositiveInteger } from "metabase/lib/number";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 import type { ClickObject } from "metabase-lib";
@@ -219,7 +221,12 @@ function TableSimpleInner({
     <Root className={className}>
       <ContentContainer>
         <TableContainer className="scroll-show scroll-show--hover">
-          <Table className="fullscreen-normal-text fullscreen-night-text">
+          <Table
+            className={cx(
+              DashboardS.fullscreenNormalText,
+              DashboardS.fullscreenNightText,
+            )}
+          >
             <thead ref={headerRef}>
               <tr>{cols.map(renderColumnHeader)}</tr>
             </thead>

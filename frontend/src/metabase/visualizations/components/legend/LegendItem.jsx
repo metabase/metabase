@@ -1,7 +1,9 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import DashboardS from "metabase/css/dashboard.module.css";
 
 import {
   LegendItemDot,
@@ -59,7 +61,12 @@ const LegendItem = ({
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
         <LegendItemDot color={color} />
-        <LegendItemTitle className="fullscreen-normal-text fullscreen-night-text">
+        <LegendItemTitle
+          className={cx(
+            DashboardS.fullscreenNormalText,
+            DashboardS.fullscreenNightText,
+          )}
+        >
           <Ellipsified>{label}</Ellipsified>
         </LegendItemTitle>
       </LegendItemLabel>

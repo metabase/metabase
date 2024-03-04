@@ -1,8 +1,10 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
+import DashboardS from "metabase/css/dashboard.module.css";
 
 import LegendActions from "./LegendActions";
 import {
@@ -41,7 +43,10 @@ const LegendCaption = ({
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
       <LegendLabel
-        className="fullscreen-normal-text fullscreen-night-text"
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+        )}
         onClick={onSelectTitle}
       >
         <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>

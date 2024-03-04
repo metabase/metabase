@@ -14,7 +14,7 @@ export const Variation = styled.div`
   max-width: 100%;
 
   .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
-    .fullscreen-night-text
+    .${DashboardS.fullscreenNightText}
     &,
   .variation-container-tooltip & {
     color: ${props =>
@@ -59,7 +59,7 @@ export const Separator = styled.span`
   color: ${lighten("text-light", 0.25)};
 
   .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
-    .fullscreen-night-text
+    .${DashboardS.fullscreenNightText}
     &,
   .variation-container-tooltip & {
     color: ${lighten("text-medium", 0.15)};
@@ -71,7 +71,7 @@ export const PreviousValueDetails = styled.h4`
   white-space: pre;
 
   .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
-    .fullscreen-night-text
+    .${DashboardS.fullscreenNightText}
     &,
   .variation-container-tooltip & {
     color: ${lighten("text-light", 0.25)};
@@ -82,7 +82,7 @@ export const PreviousValueNumber = styled.span`
   color: ${color("text-light")};
 
   .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
-    .fullscreen-night-text
+    .${DashboardS.fullscreenNightText}
     &,
   .variation-container-tooltip & {
     color: ${lighten("text-medium", 0.45)};

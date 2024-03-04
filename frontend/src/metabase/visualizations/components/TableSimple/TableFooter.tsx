@@ -3,6 +3,7 @@ import type { MouseEvent } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import DashboardS from "metabase/css/dashboard.module.css";
 import { Icon } from "metabase/ui";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
@@ -73,7 +74,8 @@ const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
       <TableFooterRoot
         className={cx(
           className,
-          "fullscreen-normal-text fullscreen-night-text",
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
         )}
         data-testid={dataTestId}
         ref={ref}

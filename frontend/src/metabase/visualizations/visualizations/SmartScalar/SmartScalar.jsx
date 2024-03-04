@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { t, jt } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
@@ -113,7 +115,10 @@ export function SmartScalar({
   return (
     <ScalarWrapper>
       <ScalarContainer
-        className="fullscreen-normal-text fullscreen-night-text"
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+        )}
         data-testid="scalar-container"
         tooltip={fullScalarValue}
         alwaysShowTooltip={fullScalarValue !== displayValue}
@@ -151,7 +156,10 @@ function ScalarPeriod({ lines = 2, period, onClick }) {
   return (
     <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
       <ScalarPeriodContent
-        className="fullscreen-normal-text fullscreen-night-text"
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+        )}
         onClick={onClick}
       >
         <Ellipsified tooltip={period} lines={lines} placement="bottom">
@@ -266,7 +274,12 @@ function PreviousValueComparison({
         </VariationContainerTooltip>
       }
     >
-      <VariationContainer className="fullscreen-normal-text fullscreen-night-text">
+      <VariationContainer
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+        )}
+      >
         <VariationPercent iconSize={ICON_SIZE}>
           {fittedChangeDisplay}
         </VariationPercent>

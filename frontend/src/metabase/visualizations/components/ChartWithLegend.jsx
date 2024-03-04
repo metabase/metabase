@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import DashboardS from "metabase/css/dashboard.module.css";
 
 import styles from "./ChartWithLegend.module.css";
 import LegendHorizontal from "./LegendHorizontal";
@@ -109,7 +110,8 @@ class ChartWithLegend extends Component {
       <div
         className={cx(
           className,
-          "fullscreen-text-small fullscreen-normal-text fullscreen-night-text",
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
           styles.ChartWithLegend,
           styles[type],
           flexChart && styles.flexChart,
