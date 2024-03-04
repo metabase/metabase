@@ -86,10 +86,13 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     }
 
     if (isSelected) {
-      _setJoinFields([...selectedColumns, column]);
+      const newSelectedColumns = [...selectedColumns, column];
+      _setJoinFields(newSelectedColumns);
     } else {
       const columnIndex = selectedColumns.indexOf(column);
-      _setJoinFields([...selectedColumns].splice(columnIndex, 1));
+      const newSelectedColumns = [...selectedColumns];
+      newSelectedColumns.splice(columnIndex, 1);
+      _setJoinFields(newSelectedColumns);
     }
   };
 
