@@ -101,7 +101,7 @@
     ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
     ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
     ;; Now that would be a useful macro!
-    (mdb/get-connection))
+    (.getConnection (mdb/app-db)))
   (shutdown [_]))
 
 (when-not *compile-files*

@@ -39,9 +39,8 @@
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
     ;; using test-migrations to excercise all drivers
     (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
-      (let [{:keys [^javax.sql.DataSource data-source]} (mdb/app-db)
-            get-last-id (fn []
-                          (-> {:connection (.getConnection data-source)}
+      (let [get-last-id (fn []
+                          (-> {:datasource (mdb/app-db)}
                               (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
                               first
                               :id))]
@@ -726,7 +725,8 @@
       (is (= [{:table_name "DATABASECHANGELOGLOCK" :column_name "LOCKED"}] ;; outlier because this is liquibase's table
              (t2/query
               (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
-                      (-> (mdb/get-connection) .getCatalog))))))))
+                      (with-open [conn (-> (mdb/app-db) .getConnection)]
+                        (.getCatalog conn)))))))))
 
 (deftest index-database-changelog-test
   (testing "we should have an unique constraint on databasechangelog.(id,author,filename)"

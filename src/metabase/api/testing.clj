@@ -59,7 +59,7 @@
   [^String snapshot-path]
   (log/infof "Restoring snapshot from %s" snapshot-path)
   (api/check-404 (.exists (java.io.File. snapshot-path)))
-  (with-open [conn (mdb/get-connection)]
+  (with-open [conn (.getConnection (mdb/app-db))]
     (doseq [sql-args [["SET LOCK_TIMEOUT 180000"]
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]

@@ -44,11 +44,9 @@
 (p/import-vars
  [mdb.connection
   quoting-style
-
   db-type
   unique-identifier
-  data-source
-  get-connection]
+  data-source]
 
  [mdb.connection-pool-setup
   recent-activity?]

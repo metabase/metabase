@@ -115,11 +115,6 @@
   ^javax.sql.DataSource []
   (.data-source *application-db*))
 
-(defn get-connection
-  "Return a connection from the app-db. Should be called in [[with-open]]."
-  ^java.sql.Connection []
-  (.getConnection *application-db*))
-
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
 ;; something callers of this function really need to be concerned about

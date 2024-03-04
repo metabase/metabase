@@ -114,7 +114,7 @@
     ;; instead of mocking up a chunk of regular QP pipeline.
     (binding [qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
       (try
-        (with-open [conn (mdb/get-connection)
+        (with-open [conn (.getConnection (mdb/app-db))
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (let [rsmeta   (.getMetaData rs)
