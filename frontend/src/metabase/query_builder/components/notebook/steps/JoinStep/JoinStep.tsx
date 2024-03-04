@@ -37,7 +37,7 @@ export function JoinStep({
   const {
     strategy,
     table,
-    columns,
+    getColumns,
     conditions,
     setStrategy,
     setTable,
@@ -203,7 +203,7 @@ export function JoinStep({
             query={query}
             stageIndex={stageIndex}
             table={table}
-            columns={columns}
+            getColumns={getColumns}
             color={color}
             isStartedFromModel={isStartedFromModel}
             readOnly={readOnly}

@@ -20,7 +20,7 @@ import { PickerButton, ColumnPickerButton } from "./JoinTablePicker.styled";
 interface JoinTablePickerProps {
   query: Lib.Query;
   stageIndex: number;
-  columns?: Lib.ColumnMetadata[];
+  getColumns: () => Lib.ColumnMetadata[];
   table?: Lib.CardMetadata | Lib.TableMetadata;
   isStartedFromModel?: boolean;
   readOnly?: boolean;
@@ -37,7 +37,7 @@ interface JoinTablePickerProps {
 export function JoinTablePicker({
   query,
   stageIndex,
-  columns = [],
+  getColumns,
   table,
   isStartedFromModel,
   readOnly = false,
@@ -92,7 +92,7 @@ export function JoinTablePicker({
           <JoinTableColumnsPicker
             query={query}
             stageIndex={stageIndex}
-            columns={columns}
+            getColumns={getColumns}
             isColumnSelected={isColumnSelected}
             onToggle={onToggleColumn}
             onChange={onChangeColumns}
@@ -124,7 +124,7 @@ export function JoinTablePicker({
 interface JoinTableColumnsPickerProps {
   query: Lib.Query;
   stageIndex: number;
-  columns: Lib.ColumnMetadata[];
+  getColumns: () => Lib.ColumnMetadata[];
   isColumnSelected: (
     column: Lib.ColumnMetadata,
     columnInfo: Lib.ColumnDisplayInfo,
@@ -136,7 +136,7 @@ interface JoinTableColumnsPickerProps {
 function JoinTableColumnsPicker({
   query,
   stageIndex,
-  columns,
+  getColumns,
   isColumnSelected,
   onToggle,
   onChange,
@@ -160,7 +160,7 @@ function JoinTableColumnsPicker({
         <FieldPicker
           query={query}
           stageIndex={stageIndex}
-          columns={columns}
+          columns={getColumns()}
           isColumnSelected={isColumnSelected}
           onToggle={onToggle}
           onSelectAll={() => onChange("all")}
