@@ -7,7 +7,6 @@ import {
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   getEmbedModalSharingPane,
-  mantinePopover,
   modal,
   openEmbedModalFromMenu,
   openPublicLinkPopoverFromMenu,
@@ -298,7 +297,7 @@ describe("embed modal display", () => {
               format: "html",
             });
 
-            mantinePopover().findByText("csv").click();
+            popover().findByText("csv").click();
             cy.findByTestId("copy-button").realClick();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
@@ -306,7 +305,7 @@ describe("embed modal display", () => {
               format: "csv",
             });
 
-            mantinePopover().findByText("xlsx").click();
+            popover().findByText("xlsx").click();
             cy.findByTestId("copy-button").realClick();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
@@ -314,7 +313,7 @@ describe("embed modal display", () => {
               format: "xlsx",
             });
 
-            mantinePopover().findByText("json").click();
+            popover().findByText("json").click();
             cy.findByTestId("copy-button").realClick();
             expectGoodSnowplowEvent({
               event: "public_link_copied",
@@ -330,7 +329,7 @@ describe("embed modal display", () => {
           });
 
           openPublicLinkPopoverFromMenu();
-          mantinePopover().button("Remove public link").click();
+          popover().button("Remove public link").click();
           expectGoodSnowplowEvent({
             event: "public_link_removed",
             artifact: resource,
