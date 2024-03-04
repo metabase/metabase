@@ -4,6 +4,10 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.50.0
+- Added a new driver feature `:sync-row-count` and a new multimethod `metabase.driver/schema+table->row-count`.
+  Implement this multimethod to sync the row count for tables.
+
 ## Metabase 0.49.0
 
 - The multimethod `metabase.driver.sql-jdbc.sync.interface/current-user-table-privileges` has been added.

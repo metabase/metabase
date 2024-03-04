@@ -897,13 +897,17 @@
 
 (defmethod driver/schema+table->row-count :postgres
   [driver database]
-  ;; https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ALL-TABLES-VIEW
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    database
    nil
    (fn [conn]
-     (into {}
-           (map (fn [{:keys [schemaname relname n_live_tup]}]
-                  [[schemaname relname] n_live_tup]))
-           (next.jdbc/plan conn ["SELECT schemaname, relname, n_live_tup FROM pg_stat_user_tables"])))))
+     (try
+      (into {}
+            (map (fn [{:keys [schemaname relname n_live_tup]}]
+                   [[schemaname relname] n_live_tup]))
+            ;; https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ALL-TABLES-VIEW
+            (next.jdbc/plan conn ["SELECT schemaname, relname, n_live_tup FROM pg_stat_user_tables"]))
+      (catch Exception e
+        (log/trace e "Failed to get user stat tables")
+        {})))))
