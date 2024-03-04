@@ -6,6 +6,7 @@
    [cheshire.core :as json]
    [clojure.core.cache :as cache]
    [clojure.java.io :as io]
+   [etaoin.api :as e]
    [hiccup.core :refer [html]]
    [java-time.api :as t]
    [medley.core :as m]
@@ -26,6 +27,7 @@
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
    [metabase.pulse.render.style :as style]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -494,8 +496,43 @@
       (for [row rows]
         [:tr {} row])])))
 
+(defn- render-dashboard-as-pdf
+  "Using a webdriver, render a dashboard as a pdf. Returns nil if it fails."
+  ^File [dashboard-with-data]
+  (try
+    (let [dash-file (doto
+                      (File/createTempFile "dashboard" ".pdf")
+                      .deleteOnExit)]
+      (e/with-firefox-headless {}
+        #_{:clj-kondo/ignore [:unresolved-symbol]}
+        driver
+        (e/go driver "http://localhost:3000/subscriptions_dashboard")
+        (e/js-execute driver
+                      (format "window.render(JSON.stringify(%s))"
+                              (json/generate-string dashboard-with-data)))
+        (e/print-page driver dash-file))
+      dash-file)
+    (catch Exception e
+      (log/warnf "Could not render pdf dashboard. Error: %s" (.getMessage e)))))
+
+(defn- dashboard-with-data
+  "Hydrate a dashboard and evaluate each dashcard in the dashboard."
+  [dashboard-id]
+  (let [{:keys [dashcards] :as dashboard} (t2/hydrate
+                                            (t2/select-one :model/Dashboard dashboard-id)
+                                            [:dashcards
+                                             :card])
+        query-cards (filter :card dashcards)]
+    {:dashboard    dashboard
+     :dashcardData (zipmap
+                     (map :id query-cards)
+                     (map (fn [{{card-id       :id
+                                 dataset-query :dataset_query} :card}]
+                            {card-id (qp/process-query dataset-query)})
+                          query-cards))}))
+
 (defn- render-message-body
-  [notification message-type message-context timezone dashboard parts]
+  [notification message-type message-context timezone {dashboard-id :id :as dashboard} parts]
   (let [rendered-cards  (binding [render/*include-title* true]
                           (mapv #(render-part timezone %) parts))
         icon-name       (case message-type
@@ -505,10 +542,18 @@
         filters         (when dashboard
                           (render-filters notification dashboard))
         message-body    (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards))))
-                               :filters filters
-                               :iconCid (:content-id icon-attachment))
+                                               :filters filters
+                                               :iconCid (:content-id icon-attachment))
+        pdf-export      (render-dashboard-as-pdf (dashboard-with-data dashboard-id))
         attachments     (apply merge (map :attachments rendered-cards))]
-    (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
+    (vec (concat (cond-> [{:type    "text/html; charset=utf-8"
+                           :content (stencil/render-file "metabase/email/pulse" message-body)}]
+                   pdf-export
+                   (conj {:type         :inline
+                          :content-id   (gensym "metabase")
+                          :content-type "application/pdf"
+                          :content      (-> pdf-export .toURI .toURL)
+                          :description  "Dashboard exported as PDF"}))
                  (map make-message-attachment attachments)
                  [icon-attachment]
                  (part-attachments parts)))))
