@@ -54,10 +54,9 @@
 ;; {:perms/native-query-editing :yes}     legacy-mbql-required-perms
 ;;                                            |
 ;;                     no source card  <------+----> has source card
-;;                             |                          ↓
-;;                             |                source-card-read-perms
-;;                             ↓
-;;     {:perms/data-access {table-id :unrestricted}}
+;;                             ↓                          ↓
+;;       {:perms/view-data {table-id :unrestricted}} source-card-read-perms
+;;
 
 (mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
   "Return a sequence of all Table IDs referenced by `query`."
