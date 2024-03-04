@@ -1,14 +1,9 @@
 :global(.PulseEdit .input),
 :global(.PulseEdit .bordered),
 :global(.PulseEdit .border-bottom),
-:global(.PulseEdit .border-row-divider),
-:global(.PulseEdit .AdminSelect) {
+:global(.PulseEdit .border-row-divider) {
   border-width: 2px;
   border-color: var(--color-border);
-}
-
-:global(.PulseEdit .AdminSelect) {
-  padding: 1em;
 }
 
 :global(.PulseEdit .input:focus) {

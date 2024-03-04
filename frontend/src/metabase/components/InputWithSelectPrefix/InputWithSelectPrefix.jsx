@@ -1,7 +1,10 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
 import Select, { Option } from "metabase/core/components/Select";
+import FormS from "metabase/css/components/form.module.css";
+import CS from "metabase/css/core/index.css";
 
 import { SelectPrefixInput } from "./InputWithSelectPrefix.styled";
 
@@ -65,7 +68,15 @@ export default class InputWithSelectPrefix extends Component {
     const { prefixes, defaultPrefix } = this.props;
     const { prefix, rest } = this.state;
     return (
-      <div className="flex align-stretch SettingsInput Form-input p0">
+      <div
+        className={cx(
+          CS.flex,
+          "align-stretch",
+          "SettingsInput",
+          FormS.FormInput,
+          CS.p0,
+        )}
+      >
         <Select
           className="border-right"
           value={prefix || defaultPrefix}
