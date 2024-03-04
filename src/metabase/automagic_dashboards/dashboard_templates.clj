@@ -336,9 +336,6 @@
    [:fn {:error/message "Valid dimension references"}         valid-dimension-references?]
    [:fn {:error/message "Valid card dimension references"}    valid-breakout-dimension-references?]])
 
-(def MySchema
-  [:int {:decode/dashboard-template (constantly 7)}])
-
 (def ^:private dashboard-templates-dir "automagic_dashboards/")
 
 (def ^:private ^{:arglists '([f])} file->entity-type
