@@ -379,7 +379,7 @@
       :fields          (parse-fields v)
       :visibility-type (keyword v)
       :dataset-query   (js->clj v :keywordize-keys true)
-      :dataset         v
+      :type            (keyword v)
       ;; this is not complete, add more stuff as needed.
       v)))
 

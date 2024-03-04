@@ -17,6 +17,7 @@ import {
   ensureDashboardCardHasText,
   toggleFilterWidgetValues,
   resetFilterWidgetToDefault,
+  dashboardParametersDoneButton,
 } from "e2e/support/helpers";
 
 import {
@@ -150,6 +151,14 @@ describe("scenarios > dashboard > filters > text/category", () => {
     cy.findByRole("tooltip").should(
       "contain.text",
       'The "Text" parameter requires a default value but none was provided.',
+    );
+
+    // Can't close sidebar without a default value
+    dashboardParametersDoneButton().should("be.disabled");
+    dashboardParametersDoneButton().realHover();
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      "The parameter requires a default value but none was provided.",
     );
 
     // Updates the filter value

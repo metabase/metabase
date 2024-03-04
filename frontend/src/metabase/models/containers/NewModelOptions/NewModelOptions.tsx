@@ -10,6 +10,7 @@ import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
+import { getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type Database from "metabase-lib/metadata/Database";
 
@@ -32,6 +33,10 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
   );
   const hasNativeWrite = useSelector(() =>
     getHasNativeWrite(props.databases ?? []),
+  );
+
+  const lastUsedDatabaseId = useSelector(state =>
+    getSetting(state, "last-used-native-database-id"),
   );
 
   const collectionId = Urls.extractEntityId(
@@ -82,6 +87,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
                 creationType: "native_question",
                 cardType: "model",
                 collectionId,
+                databaseId: lastUsedDatabaseId || undefined,
               })}
               width={180}
             />

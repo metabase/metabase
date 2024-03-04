@@ -535,21 +535,49 @@
         (mw.session/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
 
-(deftest common-name-test
-  (testing "common_name should be present depending on what is selected"
-    (mt/with-temp [User user {:first_name "John"
-                              :last_name  "Smith"
-                              :email      "john.smith@gmail.com"}]
-      (is (= "John Smith"
-             (:common_name (t2/select-one [User :first_name :last_name] (:id user)))))
-      (is (= "John Smith"
-             (:common_name (t2/select-one User (:id user)))))
-      (is (nil? (:common_name (t2/select-one [User :first_name :email] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [User :email] (:id user)))))))
-  (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
-    (mt/with-temp [User user {:first_name nil
-                              :last_name  nil
-                              :email      "john.smith@gmail.com"}]
-      (is (= "john.smith@gmail.com"
-             (:common_name (t2/select-one [User :email :first_name :last_name] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [User :first_name :last_name] (:id user))))))))
+(deftest last-used-native-database-id-can-be-read-and-set
+  (testing "last-used-native-database-id can be read and set"
+    (mt/with-test-user :rasta
+      (let [initial-value  (user/last-used-native-database-id)
+            existing-db-id (:id (t2/select-one Database))
+            wrong-db-id    -999]
+        (is (nil? initial-value))
+        (user/last-used-native-database-id! existing-db-id)
+        (is (= existing-db-id (user/last-used-native-database-id)))
+        (testing "returns nil if the database doesn't exist"
+          (user/last-used-native-database-id! wrong-db-id)
+          (is (nil? (user/last-used-native-database-id)))))))
+
+  (testing "last-used-native-database-id should be a user-local setting"
+    (is (=? {:user-local :only}
+            (setting/resolve-setting :last-used-native-database-id)))
+    (mt/with-temp [Database {id1 :id} {:name "DB1"}
+                   Database {id2 :id} {:name "DB2"}]
+      (mt/with-test-user :rasta
+        (mt/discard-setting-changes [last-used-native-database-id]
+          (user/last-used-native-database-id! id1)
+          (mt/with-test-user :crowberto
+            (mt/discard-setting-changes [last-used-native-database-id]
+              (user/last-used-native-database-id! id2)
+              (is (= (user/last-used-native-database-id) id2))
+              (mt/with-test-user :rasta
+                (is (= (user/last-used-native-database-id) id1))))))))))
+
+  (deftest common-name-test
+    (testing "common_name should be present depending on what is selected"
+      (mt/with-temp [User user {:first_name "John"
+                                :last_name  "Smith"
+                                :email      "john.smith@gmail.com"}]
+        (is (= "John Smith"
+               (:common_name (t2/select-one [User :first_name :last_name] (:id user)))))
+        (is (= "John Smith"
+               (:common_name (t2/select-one User (:id user)))))
+        (is (nil? (:common_name (t2/select-one [User :first_name :email] (:id user)))))
+        (is (nil? (:common_name (t2/select-one [User :email] (:id user)))))))
+    (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
+      (mt/with-temp [User user {:first_name nil
+                                :last_name  nil
+                                :email      "john.smith@gmail.com"}]
+        (is (= "john.smith@gmail.com"
+               (:common_name (t2/select-one [User :email :first_name :last_name] (:id user)))))
+        (is (nil? (:common_name (t2/select-one [User :first_name :last_name] (:id user))))))))

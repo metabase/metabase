@@ -34,7 +34,7 @@
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
@@ -47,7 +47,8 @@
   (:import
    (java.util UUID)))
 
-(def ^:private ^String metabase-session-cookie          "metabase.SESSION")
+(def ^String metabase-session-cookie
+  "Where the session cookie goes."                      "metabase.SESSION")
 (def ^:private ^String metabase-embedded-session-cookie "metabase.EMBEDDED_SESSION")
 (def ^:private ^String metabase-session-timeout-cookie  "metabase.TIMEOUT")
 (def ^:private ^String anti-csrf-token-header           "x-metabase-anti-csrf-token")
@@ -121,18 +122,18 @@
   (merge
    {:same-site (session-cookie-samesite)
     ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
-    ;; up breaking things
+    ;; up breaking things issue: https://github.com/metabase/metabase/issues/39346
     :path      "/" #_(site-path)}
    ;; If the authentication request request was made over HTTPS (hopefully always except for
    ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-   (when (request.u/https? request)
+   (when (req.util/https? request)
      {:secure true})))
 
 (defmethod default-session-cookie-attributes :full-app-embed
   [_ request]
   (merge
    {:path "/"}
-   (when (request.u/https? request)
+   (when (req.util/https? request)
      ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
      ;; security is provided via anti-CSRF token. Note that most browsers will only accept
      ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
@@ -196,7 +197,7 @@
                         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                         (when (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
-    (when (and (= (session-cookie-samesite) :none) (not (request.u/https? request)))
+    (when (and (= (session-cookie-samesite) :none) (not (req.util/https? request)))
       (log/warn
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "

@@ -6,7 +6,7 @@
    [metabase.models :refer [Card Field PermissionsGroup Table]]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -14,7 +14,7 @@
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
     (mt/with-premium-features #{:sandboxes}
-      (is (= (get mw.util/response-unauthentic :body)
+      (is (= (get req.util/response-unauthentic :body)
              (client/client :get 401 "mt/gtap")))
 
       (is (= "You don't have permissions to do that."

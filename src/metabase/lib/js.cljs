@@ -739,7 +739,7 @@
 
 (defn ^:export available-join-strategies
   "Get available join strategies for the current Database (based on the Database's
-  supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
+  supported [[metabase.driver/features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
   (to-array (lib.core/available-join-strategies a-query stage-number)))
 
@@ -901,7 +901,7 @@
     :metadata/card  #js {:databaseId (:database a-query)
                          :tableId (str "card__" (:id metadata))
                          :cardId (:id metadata)
-                         :isModel (:dataset metadata)}
+                         :isModel (= (keyword (:type metadata)) :model)}
     (do
       (log/warn "Cannot provide picker-info for" (:lib/type metadata))
       nil)))

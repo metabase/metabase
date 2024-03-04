@@ -18,6 +18,9 @@ export const AdminNavbarRoot = styled.nav`
   display: flex;
   align-items: center;
   justify-content: space-between;
+
+  z-index: 4;
+  flex-shrink: 0;
 `;
 
 export const AdminNavbarItems = styled.ul`
