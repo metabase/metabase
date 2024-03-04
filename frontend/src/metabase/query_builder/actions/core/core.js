@@ -3,7 +3,6 @@ import _ from "underscore";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
 import Revision from "metabase/entities/revisions";
