@@ -31,7 +31,9 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
-          const dashCard = cy.contains(".DashCard", "Click Me");
+          const dashCard = cy
+            .findByTestId("dashcard-container")
+            .contains("Click Me");
 
           actionButtonContainer.then(actionButtonElem => {
             dashCard.then(dashCardElem => {
@@ -55,7 +57,9 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
-          const dashCard = cy.contains(".DashCard", "Click Me");
+          const dashCard = cy
+            .findByTestId("dashcard-container")
+            .contains("Click Me");
 
           actionButtonContainer.then(actionButtonElem => {
             dashCard.then(dashCardElem => {

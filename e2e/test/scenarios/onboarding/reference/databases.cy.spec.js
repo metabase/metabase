@@ -91,6 +91,7 @@ describe("scenarios > reference > databases", () => {
 });
 
 function checkReferenceDatabasesOrder() {
+  // TODO: wtf is this selector
   cy.get("[class*=Card]").as("databaseCard").first().should("have.text", "a");
   cy.get("@databaseCard").last().should("have.text", "Sample Database");
 }

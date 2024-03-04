@@ -23,7 +23,7 @@ describe("issue 20393", () => {
     popover().contains("All Options").click();
 
     // map the date parameter to the card
-    cy.get(".DashCard").contains("Select").click();
+    cy.findByTestId("dashcard-container").contains("Select").click();
     popover().contains("CREATED_AT").click();
 
     // save the dashboard

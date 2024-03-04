@@ -58,7 +58,7 @@ describe("scenarios > dashboard > filters > date", () => {
         });
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.findByText(representativeResult);
         });
 
@@ -87,7 +87,7 @@ describe("scenarios > dashboard > filters > date", () => {
     saveDashboard();
 
     // The default value should immediately be applied
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findByText("85.88");
     });
 

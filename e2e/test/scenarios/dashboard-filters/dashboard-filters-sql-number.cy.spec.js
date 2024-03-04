@@ -57,7 +57,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
         addWidgetNumberFilter(value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
 
@@ -78,7 +78,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("Small Marble Hat");
       cy.contains("Rustic Paper Wallet").should("not.exist");
     });
@@ -89,7 +89,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     addWidgetNumberFilter("4.6", { buttonLabel: "Update filter" });
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findByText("Ergonomic Linen Toucan");
       cy.contains("Small Marble Hat").should("not.exist");
     });

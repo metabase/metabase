@@ -115,8 +115,8 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     cy.location("search").should("eq", "?text=Gadget");
-    cy.get(".DashCard").first().should("contain", "0");
-    cy.get(".DashCard").last().should("contain", "4,939");
+    cy.findByTestId("dashcard-container").first().should("contain", "0");
+    cy.findByTestId("dashcard-container").last().should("contain", "4,939");
   });
 
   it("should be able to remove parameter (metabase#17933)", () => {
