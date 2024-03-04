@@ -5,6 +5,7 @@
    [mb.hawk.parallel]
    [metabase.logger :as logger]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [net.cgrand.macrovich :as macros]
    [potemkin :as p])
   (:import
@@ -36,7 +37,7 @@
       (throw (ex-info "Invalid log level" {:level k}))))
 
 (mu/defn ^:private log-level->keyword :- LogLevelKeyword
-  [level :- Level]
+  [level :- (ms/InstanceOfClass Level)]
   (some (fn [[k a-level]]
           (when (= a-level level)
             k))

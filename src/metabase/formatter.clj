@@ -152,7 +152,7 @@
                               (when suffix suffix)))}))
         value))))
 
-(mu/defn format-number :- NumericWrapper
+(mu/defn format-number :- (ms/InstanceOfClass NumericWrapper)
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other
   `pulse.render` namespaces."
   ([n :- number?]

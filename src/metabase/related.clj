@@ -38,7 +38,7 @@
   [form]
   (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
     (into #{}
-          (comp (keep (mr/validator ContextBearingForm))
+          (comp (filter (mr/validator ContextBearingForm))
                 (map #(update % 0 qp.util/normalize-token)))
           (tree-seq sequential? identity form))))
 

@@ -442,8 +442,10 @@
                                                                                         :visualization_settings {}
                                                                                         :result_metadata        nil})
                                                     :series                     []}]})
-                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
+                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
 
+(deftest fetch-dashboard-test-2
+  (testing "GET /api/dashboard/:id"
     (testing "a dashboard that has link cards on it"
       (let [link-card-info-from-resp
             (fn [resp]
@@ -480,8 +482,10 @@
               (perms/revoke-data-perms! (perms-group/all-users) database-id)
               (is (= #{{:restricted true} {:url "https://metabase.com"}}
                      (set (link-card-info-from-resp
-                           (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))
+                           (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))))
 
+(deftest fetch-dashboard-test-3
+  (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard with a param in it"
       (mt/with-temp [Table         {table-id :id} {}
                      Field         {field-id :id display-name :display_name} {:table_id table-id}
@@ -537,7 +541,10 @@
                                                                                            :visualization_settings {}
                                                                                            :result_metadata        nil})
                                                        :series                     []}]})
-                 (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
+                 (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
+
+(deftest fetch-dashboard-test-4
+  (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard from an official collection includes the collection type"
       (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
                      Card          {card-id :id}      {:name "Dashboard Test Card"}

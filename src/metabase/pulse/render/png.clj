@@ -74,7 +74,7 @@
           (.getSubimage image 0 0 content-width (.getHeight image))
           image)))))
 
-(mu/defn render-html-to-png :- :bytes
+(mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
   ^bytes [{:keys [content]} :- formatter/RenderedPulseCard
           width]

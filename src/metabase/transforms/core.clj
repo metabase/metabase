@@ -157,7 +157,7 @@
   (driver/with-driver (-> tableset first table/database :engine)
     (reduce transform-step! (tableset->bindings tableset) (vals steps))))
 
-(mu/defn ^:private resulting-entities :- [SourceEntity]
+(mu/defn ^:private resulting-entities :- [:sequential SourceEntity]
   [bindings           :- Bindings
    {:keys [provides]} :- TransformSpec]
   (map (comp :entity val) (select-keys bindings provides)))

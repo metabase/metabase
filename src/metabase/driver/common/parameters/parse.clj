@@ -6,7 +6,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (metabase.driver.common.parameters Optional Param)))
 
@@ -19,7 +20,10 @@
                                 [:text  :string]]])
 
 (def ^:private ParsedToken
-  [:or :string Param Optional])
+  [:or
+   :string
+   (ms/InstanceOfClass Param)
+   (ms/InstanceOfClass Optional)])
 
 (defn- combine-adjacent-strings
   "Returns any adjacent strings in coll combined together"
@@ -102,7 +106,7 @@
 
 (mu/defn ^:private parse-tokens* :- [:tuple
                                      [:sequential ParsedToken]
-                                     [:sequential StringOrToken]]
+                                     [:maybe [:sequential StringOrToken]]]
   [tokens         :- [:sequential StringOrToken]
    optional-level :- :int
    param-level    :- :int
@@ -159,7 +163,7 @@
             [acc more]
             (recur (conj acc text) more)))))))
 
-(mu/defn parse :- [:sequential [:or :string Param Optional]]
+(mu/defn parse :- [:sequential ParsedToken]
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence
    of non-parameter string fragments (possibly) interposed with `Param` or `Optional` instances.
 
@@ -175,4 +179,4 @@
        (do
          (log/tracef "Tokenized native query ->\n%s" (u/pprint-to-str tokenized))
          (u/prog1 (combine-adjacent-strings (first (parse-tokens* tokenized 0 0 nil)))
-                  (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))
+           (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))

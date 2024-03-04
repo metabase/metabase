@@ -46,6 +46,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate])
@@ -538,7 +539,7 @@
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
-(mu/defn result-metadata-async :- ManyToManyChannel
+(mu/defn result-metadata-async :- (ms/InstanceOfClass ManyToManyChannel)
   "Return a channel of metadata for the passed in `query`. Takes the `original-query` so it can determine if existing
   `metadata` might still be valid. Takes `dataset?` since existing metadata might need to be \"blended\" into the
   fresh metadata to preserve metadata edits from the dataset.

@@ -215,12 +215,12 @@
                                               :margin-bottom :20px})}
                    content]}))
 
-(mu/defn render-pulse-card-to-png :- :bytes
+(mu/defn render-pulse-card-to-png :- bytes?
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
   ^bytes [timezone-id :- [:maybe :string] pulse-card result width]
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
 
-(mu/defn png-from-render-info :- :bytes
+(mu/defn png-from-render-info :- bytes?
   "Create a PNG file (as a byte array) from rendering info."
   ^bytes [rendered-info :- formatter/RenderedPulseCard width]
   (png/render-html-to-png rendered-info width))
