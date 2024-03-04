@@ -14,7 +14,7 @@ export const RESET = "metabase/dashboard/RESET";
 export const reset = createAction(RESET);
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
-export const setEditingDashboard = createAction<Dashboard | false>(
+export const setEditingDashboard = createAction<Dashboard | null>(
   SET_EDITING_DASHBOARD,
 );
 

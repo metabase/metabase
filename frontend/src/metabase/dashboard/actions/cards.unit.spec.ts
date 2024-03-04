@@ -158,7 +158,7 @@ function setup({
     dashboards: {
       [dashboard.id]: { ...dashboard, dashcards: dashcards.map(dc => dc.id) },
     },
-    isEditing: DASHBOARD,
+    editingDashboard: DASHBOARD,
     dashcards: _.indexBy(dashcards, "id"),
   });
 

@@ -92,7 +92,7 @@ function DataFieldPopover({
   updateQuery,
 }: DataFieldPopoverProps) {
   return (
-    <Popover>
+    <Popover position="bottom-start">
       <Popover.Target>
         <Tooltip label={t`Pick columns`}>
           <DataStepIconButton
