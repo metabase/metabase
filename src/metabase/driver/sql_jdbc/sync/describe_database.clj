@@ -195,8 +195,7 @@
 
 (defn- tables-with-properties [driver database tables]
   (if (driver/database-supports? driver :sync-row-count database)
-    (let [schema+table->row-count (when (driver/database-supports? driver :sync-row-count database)
-                                    (driver/schema+table->row-count driver database))]
+    (let [schema+table->row-count (driver/schema+table->row-count driver database)]
       (eduction (map (fn [{:keys [schema name] :as table}]
                        (assoc table :properties {:row-count (get schema+table->row-count [schema name])})))
                 tables))

@@ -235,7 +235,7 @@
                    {:fields [$name $bird_id->birds.name]}))))))))
 
 (defn- default-table-result [table-name]
-  {:name table-name, :schema "public", :description nil})
+  {:name table-name :schema "public" :description nil :properties {:row-count 0}})
 
 (deftest materialized-views-test
   (mt/test-driver :postgres
@@ -247,8 +247,8 @@
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (= {:tables #{(default-table-result "test_mview")}}
+        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
+          (is (= {:tables #{(update-in (default-table-result "test_mview") [:properties :row-count] (constantly 1))}}
                  (driver/describe-database :postgres database))))))))
 
 (deftest foreign-tables-test

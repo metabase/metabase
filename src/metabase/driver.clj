@@ -976,7 +976,7 @@
   :hierarchy #'hierarchy)
 
 (defmulti schema+table->row-count
-  "Returns a map of [schema, table name] -> the estimated row count of all tables in the current database.
+  "Returns a map of [schema, table name] -> the estimated row count, for each table in the current database.
   This should be fast and leverage system tables like `pg_stat_user_tables` in Postgres."
   {:added "0.50.0" :arglists '([driver database])}
   dispatch-on-initialized-driver

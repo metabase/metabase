@@ -904,10 +904,10 @@
    (fn [conn]
      (try
       (into {}
-            (map (fn [{:keys [schemaname relname n_live_tup]}]
-                   [[schemaname relname] n_live_tup]))
+            (map (fn [{:keys [schema table row_count]}]
+                   [[schema table] row_count]))
             ;; https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ALL-TABLES-VIEW
-            (next.jdbc/plan conn ["SELECT schemaname, relname, n_live_tup FROM pg_stat_user_tables"]))
+            (next.jdbc/plan conn ["SELECT schemaname as schema, relname as table, n_live_tup as row_count FROM pg_stat_user_tables"]))
       (catch Exception e
         (log/trace e "Failed to get user stat tables")
         {})))))
