@@ -462,32 +462,13 @@ export const fetchCardData = createThunkAction(
           ? CardApi.query
           : DashboardApi.cardQuery;
 
-        let parametersWithRecentlyUsedValues = datasetQuery.parameters;
-
-        if (!shouldUseCardQueryEndpoint) {
-          const localDashboardParameters = getLocalDashboardParametersById(
-            dashcard.dashboard_id,
-          );
-
-          parametersWithRecentlyUsedValues = datasetQuery.parameters.map(
-            parameter => {
-              return parameter.value
-                ? parameter
-                : {
-                    ...parameter,
-                    value: localDashboardParameters[parameter.id],
-                  };
-            },
-          );
-        }
-
         const requestBody = shouldUseCardQueryEndpoint
           ? { cardId: card.id, ignore_cache: ignoreCache }
           : {
               dashboardId: dashcard.dashboard_id,
               dashcardId: dashcard.id,
               cardId: card.id,
-              parameters: parametersWithRecentlyUsedValues,
+              parameters: datasetQuery.parameters,
               ignore_cache: ignoreCache,
               dashboard_id: dashcard.dashboard_id,
             };
