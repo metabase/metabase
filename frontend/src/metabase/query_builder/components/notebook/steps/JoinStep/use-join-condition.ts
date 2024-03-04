@@ -6,8 +6,6 @@ import * as Lib from "metabase-lib";
 export function useJoinCondition(
   query: Lib.Query,
   stageIndex: number,
-  table: Lib.Joinable,
-  join?: Lib.Join,
   condition?: Lib.JoinCondition,
 ) {
   const previousCondition = usePrevious(condition);
@@ -42,30 +40,6 @@ export function useJoinCondition(
   const operators = useMemo(
     () => Lib.joinConditionOperators(query, stageIndex),
     [query, stageIndex],
-  );
-
-  const lhsColumns = useMemo(
-    () =>
-      Lib.joinConditionLHSColumns(
-        query,
-        stageIndex,
-        join || table,
-        lhsColumn,
-        rhsColumn,
-      ),
-    [query, stageIndex, join, table, lhsColumn, rhsColumn],
-  );
-
-  const rhsColumns = useMemo(
-    () =>
-      Lib.joinConditionRHSColumns(
-        query,
-        stageIndex,
-        join || table,
-        lhsColumn,
-        rhsColumn,
-      ),
-    [query, stageIndex, join, table, lhsColumn, rhsColumn],
   );
 
   const setOperator = (operator: Lib.JoinConditionOperator) => {
@@ -151,8 +125,6 @@ export function useJoinCondition(
     rhsColumn,
     operator,
     operators,
-    lhsColumns,
-    rhsColumns,
     setOperator,
     setLHSColumn,
     setRHSColumn,

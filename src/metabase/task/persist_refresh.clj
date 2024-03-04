@@ -133,7 +133,7 @@
                                          (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
                                          (try
                                            (unpersist! refresher database persisted-info)
-                                           (when (= "deletable" current-state)
+                                           (when-not (= "off" current-state)
                                              (t2/delete! PersistedInfo :id (:id persisted-info)))
                                            (update stats :success inc)
                                            (catch Exception e
@@ -378,18 +378,6 @@
            task/job-info
            :triggers
            (m/index-by (comp #(get % "db-id") qc/from-job-data :data))))
-
-;;; TODO -- this is only used in [[metabase.api.card-test]] now
-(defn job-info-for-individual-refresh
-  "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
-  []
-  (some->> refresh-job-key
-           task/job-info
-           :triggers
-           (map (comp qc/from-job-data :data))
-           (filter (comp #{"individual"} #(get % "type")))
-           (map #(get % "persisted-id"))
-           set))
 
 (defn unschedule-persistence-for-database!
   "Stop refreshing tables for a given database. Should only be called when marking the database as not

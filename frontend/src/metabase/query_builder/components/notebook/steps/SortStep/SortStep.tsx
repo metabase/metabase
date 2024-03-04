@@ -60,7 +60,7 @@ function SortStep({
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}
-      renderPopover={({ item: orderBy, index }) => (
+      renderPopover={({ item: orderBy, index, onClose }) => (
         <SortPopover
           query={query}
           stageIndex={stageIndex}
@@ -68,10 +68,10 @@ function SortStep({
           orderByIndex={index}
           onAddOrderBy={handleAddOrderBy}
           onUpdateOrderByColumn={handleUpdateOrderByColumn}
+          onClose={onClose}
         />
       )}
       onRemove={handleRemoveOrderBy}
-      withLegacyPopover
     />
   );
 }
@@ -86,7 +86,7 @@ interface SortPopoverProps {
     orderBy: Lib.OrderByClause,
     column: Lib.ColumnMetadata,
   ) => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const SortPopover = ({

@@ -1,0 +1,26 @@
+:global(.no-decoration),
+.no-decoration {
+  text-decoration: none;
+}
+
+:global(.link) {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--color-brand);
+}
+
+:global(.link:hover) {
+  text-decoration: underline;
+}
+
+:global(.link:focus) {
+  outline: 2px solid var(--color-focus);
+}
+
+:global(.link:focus:not(:focus-visible)) {
+  outline: none;
+}
+
+:global(.link--wrappable) {
+  word-break: break-all;
+}

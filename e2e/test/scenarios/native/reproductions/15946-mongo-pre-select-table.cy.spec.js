@@ -16,7 +16,7 @@ describe("issue 15946", { tags: "@mongo" }, () => {
   });
 
   it("converting a question to the native query should pre-select a table (metabase#15946)", () => {
-    cy.get(".QueryBuilder .Icon-sql").click();
+    cy.findByTestId("query-builder-root").icon("sql").click();
 
     cy.get(".Modal")
       .findByText("Convert this question to a native query")

@@ -65,6 +65,7 @@ const setup = async ({
   const question = checkNotNull(metadata.question(card.id));
   const query = question.legacyQuery({ useStructuredQuery: true });
   const DatasetQueryEditor = await importDatasetQueryEditor();
+  const onSetDatabaseId = jest.fn();
 
   const { rerender } = renderWithProviders(
     <DatasetQueryEditor
@@ -74,6 +75,7 @@ const setup = async ({
       question={question}
       readOnly={readOnly}
       onResizeStop={_.noop}
+      onSetDatabaseId={onSetDatabaseId}
     />,
   );
 
@@ -147,6 +149,7 @@ describe("DatasetQueryEditor", () => {
       isActive: true,
     });
     const DatasetQueryEditor = await importDatasetQueryEditor();
+    const onSetDatabaseId = jest.fn();
 
     expect(
       screen.getByTestId("native-query-editor-sidebar"),
@@ -160,6 +163,7 @@ describe("DatasetQueryEditor", () => {
         question={question}
         readOnly={false}
         onResizeStop={_.noop}
+        onSetDatabaseId={onSetDatabaseId}
       />,
     );
 

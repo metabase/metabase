@@ -490,7 +490,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     filterWidget().contains("Relative Date").click();
     popover().within(() => {
-      cy.findByText("Today").click();
+      cy.findByText("Past 7 days").click();
     });
 
     // Loader in the 2nd tab
@@ -561,7 +561,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Ensure the tab name has reverted to the long name after the drag has completed
-    cy.findByRole("button", { name: longName });
+    cy.findByRole("button", { name: longName }).should("be.visible");
 
     saveDashboard();
 

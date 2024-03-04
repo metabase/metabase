@@ -662,3 +662,10 @@
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
   (-> database :details :role))
+
+(defmethod driver/incorporate-ssh-tunnel-details :snowflake
+  [_driver {:keys [account host port] :as db-details}]
+  (let [details (cond-> db-details
+                  (not host) (assoc :host (str account ".snowflakecomputing.com"))
+                  (not port) (assoc :port 443))]
+    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))

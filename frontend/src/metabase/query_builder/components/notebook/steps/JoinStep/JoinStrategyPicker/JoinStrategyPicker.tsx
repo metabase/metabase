@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SelectList from "metabase/components/SelectList";
 import type { IconName } from "metabase/ui";
+import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { JoinStrategyIcon } from "./JoinStrategyPicker.styled";
@@ -33,6 +33,8 @@ export function JoinStrategyPicker({
     [query, stageIndex],
   );
 
+  const [isOpened, setIsOpened] = useState(false);
+
   const currentStrategyInfo = Lib.displayInfo(
     query,
     stageIndex,
@@ -41,11 +43,10 @@ export function JoinStrategyPicker({
   const currentStrategyIcon = JOIN_ICON[currentStrategyInfo.shortName];
 
   return (
-    <TippyPopoverWithTrigger
-      disabled={readOnly}
-      renderTrigger={({ onClick }) => (
+    <Popover opened={isOpened} onChange={setIsOpened}>
+      <Popover.Target>
         <IconButtonWrapper
-          onClick={onClick}
+          onClick={() => setIsOpened(!isOpened)}
           disabled={readOnly}
           aria-label={t`Change join type`}
         >
@@ -55,8 +56,8 @@ export function JoinStrategyPicker({
             size={32}
           />
         </IconButtonWrapper>
-      )}
-      popoverContent={({ closePopover }) => (
+      </Popover.Target>
+      <Popover.Dropdown>
         <SelectList className="p1">
           {items.map(item => (
             <SelectList.Item
@@ -67,13 +68,13 @@ export function JoinStrategyPicker({
               isSelected={currentStrategyInfo.shortName === item.shortName}
               onSelect={() => {
                 onChange(item.strategy);
-                closePopover();
+                setIsOpened(false);
               }}
             />
           ))}
         </SelectList>
-      )}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 

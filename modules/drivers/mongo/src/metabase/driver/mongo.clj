@@ -23,8 +23,8 @@
    [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
   (:import
-   (org.bson.types ObjectId)
-   (com.mongodb.client MongoClient MongoDatabase)))
+   (com.mongodb.client MongoClient MongoDatabase)
+   (org.bson.types ObjectId)))
 
 (set! *warn-on-reflection* true)
 
@@ -270,14 +270,6 @@
                               :test/jvm-timezone-setting       false
                               :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
-
-;; We say Mongo supports foreign keys so that the front end can use implicit
-;; joins. In reality, Mongo doesn't support foreign keys.
-;; Only define an implementation for `:foreign-keys` if none exists already.
-;; In test extensions we define an alternate implementation, and we don't want
-;; to stomp over that if it was loaded already.
-(when-not (get (methods driver/supports?) [:mongo :foreign-keys])
-  (defmethod driver/supports? [:mongo :foreign-keys] [_ _] true))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 

@@ -8,8 +8,6 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
 import { Box, Divider, Stack, Anchor, Button } from "metabase/ui";
 
-const { ModerationStatusIcon } = PLUGIN_MODERATION;
-
 const isBoxPropValid = (propName: PropertyKey) => {
   return (
     propName !== "isActive" &&
@@ -85,7 +83,7 @@ export const ResultNameSection = styled(Stack)`
   overflow: hidden;
 `;
 
-export const ModerationIcon = styled(ModerationStatusIcon)`
+export const ModerationIcon = styled(PLUGIN_MODERATION.ModerationStatusIcon)`
   overflow: unset;
 `;
 

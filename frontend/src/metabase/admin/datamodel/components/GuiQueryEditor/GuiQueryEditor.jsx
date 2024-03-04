@@ -51,7 +51,7 @@ export class GuiQueryEditor extends Component {
 
   renderAdd(text, onClick, targetRefName) {
     const className =
-      "AddButton text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
+      "text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
     if (onClick) {
       return (
         <a className={className} onClick={onClick}>
@@ -212,7 +212,7 @@ export class GuiQueryEditor extends Component {
     } else {
       // TODO: move this into AggregationWidget?
       return (
-        <div className="Query-section Query-section-aggregation disabled">
+        <div className="Query-section disabled">
           <a className="QueryOption p1 flex align-center">{t`Raw data`}</a>
         </div>
       );
