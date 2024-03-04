@@ -1,4 +1,4 @@
-import { restore, focusNativeEditor } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 
 const questionDetails = {
   name: "REVIEWS SQL",
@@ -17,14 +17,15 @@ describe("issue 35344", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
     // make sure normal undo still works
-    focusNativeEditor().type("--");
-    expect(focusNativeEditor().findByText("--")).to.exist;
+    cy.findByTestId("native-query-editor").type("--");
+    expect(cy.findByTestId("native-query-editor").findByText("--")).to.exist;
 
-    focusNativeEditor().type("{meta}z");
-    focusNativeEditor().findByText("--").should("not.exist");
+    cy.findByTestId("native-query-editor").type("{meta}z");
+    cy.findByTestId("native-query-editor").findByText("--").should("not.exist");
 
     // more undoing does not change to empty editor
-    focusNativeEditor().type("{meta}z");
-    expect(focusNativeEditor().findByText("select")).to.exist;
+    cy.findByTestId("native-query-editor").type("{meta}z");
+    expect(cy.findByTestId("native-query-editor").findByText("select")).to
+      .exist;
   });
 });
