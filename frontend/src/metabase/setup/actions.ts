@@ -44,8 +44,9 @@ export const goToNextStep = createAsyncThunk(
   },
 );
 
+export const LOAD_USER_DEFAULTS = "metabase/setup/LOAD_USER_DEFAULTS";
 export const loadUserDefaults = createAsyncThunk(
-  "metabase/setup/LOAD_USER_DEFAULTS",
+  LOAD_USER_DEFAULTS,
   async (): Promise<UserInfo | undefined> => {
     const token = getUserToken();
     if (token) {
@@ -55,11 +56,12 @@ export const loadUserDefaults = createAsyncThunk(
   },
 );
 
+export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
 export const loadLocaleDefaults = createAsyncThunk<
   Locale | undefined,
   void,
   ThunkConfig
->("metabase/setup/LOAD_LOCALE_DEFAULTS", async (_, { getState }) => {
+>(LOAD_LOCALE_DEFAULTS, async (_, { getState }) => {
   const data = getAvailableLocales(getState());
   const locale = getDefaultLocale(getLocales(data));
   if (locale) {
@@ -68,29 +70,32 @@ export const loadLocaleDefaults = createAsyncThunk<
   return locale;
 });
 
+export const LOAD_DEFAULTS = "metabase/setup/LOAD_DEFAULTS";
 export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
-  "metabase/setup/LOAD_DEFAULTS",
+  LOAD_DEFAULTS,
   (_, { dispatch }) => {
     dispatch(loadUserDefaults());
     dispatch(loadLocaleDefaults());
   },
 );
 
-export const selectStep = createAction<SetupStep>(
-  "metabase/setup/SUBMIT_WELCOME_STEP",
-);
+export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
+export const selectStep = createAction<SetupStep>(SELECT_STEP);
 
+export const UPDATE_LOCALE = "metabase/setup/UPDATE_LOCALE";
 export const updateLocale = createAsyncThunk(
-  "metabase/setup/UPDATE_LOCALE",
+  UPDATE_LOCALE,
   async (locale: Locale) => {
     await loadLocalization(locale.code);
   },
 );
 
-export const submitLanguage = createAction("metabase/setup/SUBMIT_LANGUAGE");
+export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
+export const submitLanguage = createAction(SUBMIT_LANGUAGE);
 
+export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
-  "metabase/setup/SUBMIT_USER_INFO",
+  SUBMIT_USER_INVITE,
   async (user: UserInfo, { dispatch, getState, rejectWithValue }) => {
     const token = getSetupToken(getState());
     const invite = getInvite(getState());
@@ -137,8 +142,9 @@ export const submitLicenseToken = createAsyncThunk(
   },
 );
 
+export const UPDATE_DATABASE_ENGINE = "metabase/setup/UPDATE_DATABASE_ENGINE";
 export const updateDatabaseEngine = createAsyncThunk(
-  "metabase/setup/UPDATE_DATABASE_ENGINE",
+  UPDATE_DATABASE_ENGINE,
   (engine?: string) => {
     if (engine) {
       trackDatabaseSelected(engine);
@@ -146,12 +152,13 @@ export const updateDatabaseEngine = createAsyncThunk(
   },
 );
 
+export const SUBMIT_DATABASE = "metabase/setup/SUBMIT_DATABASE";
 export const submitDatabase = createAsyncThunk<
   DatabaseData,
   DatabaseData,
   ThunkConfig
 >(
-  "metabase/setup/SUBMIT_DATABASE",
+  SUBMIT_DATABASE,
   async (database: DatabaseData, { dispatch, rejectWithValue }) => {
     try {
       const result = await MetabaseApi.db_validate({ details: database });
@@ -201,8 +208,9 @@ export const updateTracking = createAsyncThunk(
 
 const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
 
+export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
 export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
-  "metabase/setup/COMPLETE_SETUP",
+  SUBMIT_SETUP,
   async (_, { getState, dispatch, rejectWithValue }) => {
     const database = getDatabase(getState());
     const licenseToken = getState().setup.licenseToken;
