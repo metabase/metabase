@@ -50,6 +50,7 @@ export function FilterWidgetTypeSelect({
         placeholder={t`Select…`}
         data={optionsOrDefault}
         data-testid="filter-widget-type-select"
+        disabled={optionsOrDefault.length === 1}
       />
 
       {!hasOptions && (
