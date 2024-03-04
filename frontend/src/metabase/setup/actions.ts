@@ -27,7 +27,6 @@ import {
   getNextStep,
   getSetupToken,
   getDatabase,
-  getIsTrackingAllowed,
 } from "./selectors";
 import type { SetupStep } from "./types";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
@@ -130,25 +129,10 @@ export const submitUsageReason = createAsyncThunk(
   },
 );
 
-const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
-
 export const submitLicenseToken = createAsyncThunk(
   "metabase/setup/SUBMIT_LICENSE_TOKEN",
-  async (licenseToken: string | null, { dispatch, rejectWithValue }) => {
+  (licenseToken: string | null, { dispatch }) => {
     trackLicenseTokenStepSubmitted(Boolean(licenseToken));
-    try {
-      if (licenseToken) {
-        await dispatch(
-          updateSetting({
-            key: "premium-embedding-token",
-            value: licenseToken,
-          }),
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      return rejectWithValue(INVALID_TOKEN_ERROR);
-    }
     dispatch(goToNextStep());
   },
 );
@@ -199,17 +183,7 @@ export const skipDatabase = createAsyncThunk(
 
 export const updateTracking = createAsyncThunk(
   "metabase/setup/UPDATE_TRACKING",
-  (isTrackingAllowed: boolean) => {
-    trackTrackingChanged(isTrackingAllowed);
-  },
-);
-
-export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
-  "metabase/setup/COMPLETE_SETUP",
-  async (_, { getState, dispatch, rejectWithValue }) => {
-    const database = getDatabase(getState());
-    const isTrackingAllowed = getIsTrackingAllowed(getState());
-
+  async (isTrackingAllowed: boolean, { dispatch, rejectWithValue }) => {
     try {
       await dispatch(
         updateSetting({
@@ -217,13 +191,41 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
           value: isTrackingAllowed,
         }),
       );
+      trackTrackingChanged(isTrackingAllowed);
       MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
 
+const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
+
+export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
+  "metabase/setup/COMPLETE_SETUP",
+  async (_, { getState, dispatch, rejectWithValue }) => {
+    const database = getDatabase(getState());
+    const licenseToken = getState().setup.licenseToken;
+
+    try {
       if (database) {
         await dispatch(createDatabase(database));
       }
     } catch (error) {
       return rejectWithValue(error);
+    }
+
+    try {
+      if (licenseToken) {
+        await dispatch(
+          updateSetting({
+            key: "premium-embedding-token",
+            value: licenseToken,
+          }),
+        );
+      }
+    } catch (err) {
+      return rejectWithValue(INVALID_TOKEN_ERROR);
     }
 
     dispatch(goToNextStep());

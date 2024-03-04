@@ -34,11 +34,16 @@ export const DataUsageStep = ({
   const dispatch = useDispatch();
 
   const handleTrackingChange = async (isTrackingAllowed: boolean) => {
-    await dispatch(updateTracking(isTrackingAllowed)).unwrap();
+    try {
+      await dispatch(updateTracking(isTrackingAllowed)).unwrap();
+    } catch (error) {
+      setErrorMessage(getSubmitError(error));
+    }
   };
 
   const handleStepSubmit = async () => {
     try {
+      await dispatch(updateTracking(isTrackingAllowed)).unwrap();
       await dispatch(submitSetup()).unwrap();
     } catch (error) {
       setErrorMessage(getSubmitError(error));
