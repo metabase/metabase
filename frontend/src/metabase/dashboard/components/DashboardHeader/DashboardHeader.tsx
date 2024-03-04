@@ -67,6 +67,7 @@ import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMe
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
+  SectionMenuItem,
 } from "./DashboardHeader.styled";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import { SectionLayoutPreview } from "./SectionLayoutPreview";
@@ -413,19 +414,17 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             </span>
           </Menu.Target>
           <Menu.Dropdown>
-            {layoutOptions.map(layout => (
-              <Tooltip
-                key={layout.id}
-                label={<SectionLayoutPreview layout={layout} />}
-                position="left"
-              >
-                <span>
-                  <Menu.Item onClick={() => onAddSection(layout)} fw="bold">
-                    {layout.label}
-                  </Menu.Item>
-                </span>
-              </Tooltip>
-            ))}
+            <Flex direction="column" align="center" gap="md" p="sm">
+              {layoutOptions.map(layout => (
+                <SectionMenuItem
+                  key={layout.id}
+                  onClick={() => onAddSection(layout)}
+                  aria-label={layout.label}
+                >
+                  <SectionLayoutPreview layout={layout} />
+                </SectionMenuItem>
+              ))}
+            </Flex>
           </Menu.Dropdown>
         </Menu>,
       );
