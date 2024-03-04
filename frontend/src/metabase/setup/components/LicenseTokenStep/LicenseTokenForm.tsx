@@ -25,6 +25,7 @@ export const LicenseTokenForm = ({
   const submit = async () => {
     setStatus("loading");
     try {
+      // TODO: make a new endpoint that's not using /setup
       const response = await SetupApi.validate_token({ token });
       if (response.valid) {
         setStatus("success");

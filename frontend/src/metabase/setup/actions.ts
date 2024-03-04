@@ -136,12 +136,14 @@ export const submitLicenseToken = createAsyncThunk(
   async (licenseToken: string | null, { dispatch, rejectWithValue }) => {
     trackLicenseTokenStepSubmitted(Boolean(licenseToken));
     try {
-      await dispatch(
-        updateSetting({
-          key: "premium-embedding-token",
-          value: licenseToken,
-        }),
-      );
+      if (licenseToken) {
+        await dispatch(
+          updateSetting({
+            key: "premium-embedding-token",
+            value: licenseToken,
+          }),
+        );
+      }
     } catch (err) {
       console.error(err);
       return rejectWithValue(INVALID_TOKEN_ERROR);

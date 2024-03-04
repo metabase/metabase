@@ -209,7 +209,7 @@ describe("setup (EE, no token)", () => {
       );
     });
 
-    it("should pass the token to the setup endpoint", async () => {
+    it("should pass the token to the settings endpoint", async () => {
       await setupForLicenseStep();
 
       setupForTokenCheckEndpoint({ valid: true });
@@ -218,14 +218,15 @@ describe("setup (EE, no token)", () => {
         screen.getByRole("textbox", { name: "Token" }),
         sampleToken,
       );
-
       screen.getByRole("button", { name: "Activate" }).click();
+      await screen.findByRole("button", { name: "Finish" });
 
-      (await screen.findByRole("button", { name: "Finish" })).click();
+      const tokenSaveCall = fetchMock.lastCall(
+        "path:/api/setting/premium-embedding-token",
+      );
 
-      const setupCall = fetchMock.lastCall(`path:/api/setup`);
-      expect(await setupCall?.request?.json()).toMatchObject({
-        license_token: sampleToken,
+      expect(await tokenSaveCall?.request?.json()).toMatchObject({
+        value: sampleToken,
       });
     });
   });

@@ -355,11 +355,7 @@
 (api/defendpoint GET "/token-check"
   "Check if the token is valid, only available before the initial setup as it's an unauthenticated endpoint"
   [token]
-  (if (setup/has-user-setup)
-    (throw (ex-info
-            (tru "This endpoint can only be used before the initial setup.")
-            {:status-code 403}))
-    (let [status (premium-features/fetch-token-status token)]
-      {:valid (:valid status)})))
+  (let [status (premium-features/fetch-token-status token)]
+    {:valid (:valid status)}))
 
 (api/define-routes)
