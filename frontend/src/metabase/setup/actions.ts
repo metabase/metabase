@@ -135,9 +135,9 @@ export const submitUsageReason = createAsyncThunk(
 
 export const submitLicenseToken = createAsyncThunk(
   "metabase/setup/SUBMIT_LICENSE_TOKEN",
-  (licenseToken: string | null, { dispatch }) => {
+  (token: string | null, { dispatch }) => {
     dispatch(goToNextStep());
-    trackLicenseTokenStepSubmitted(Boolean(licenseToken));
+    trackLicenseTokenStepSubmitted(Boolean(token));
   },
 );
 
@@ -174,22 +174,24 @@ export const submitDatabase = createAsyncThunk<
 
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
-  "metabase/setup/SUBMIT_USER_INVITE",
+  SUBMIT_USER_INVITE,
   (_: InviteInfo, { dispatch }) => {
     dispatch(goToNextStep());
   },
 );
 
+export const SKIP_DATABASE = "metabase/setup/SKIP_DATABASE";
 export const skipDatabase = createAsyncThunk(
-  "metabase/setup/SKIP_DATABASE",
+  SKIP_DATABASE,
   (engine: string | undefined, { dispatch }) => {
     trackAddDataLaterClicked(engine);
     dispatch(goToNextStep());
   },
 );
 
+export const UPDATE_TRACKING = "metabase/setup/UPDATE_TRACKING";
 export const updateTracking = createAsyncThunk(
-  "metabase/setup/UPDATE_TRACKING",
+  UPDATE_TRACKING,
   async (isTrackingAllowed: boolean, { dispatch, rejectWithValue }) => {
     try {
       await dispatch(
