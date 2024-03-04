@@ -73,8 +73,9 @@ export const FieldPicker = ({
         />
       </ToggleItem>
       {items.map((item, index) => (
-        <ColumnItem key={item.columnInfo.longDisplayName}>
+        <ColumnItem key={index}>
           <CheckBox
+            label={item.columnInfo.displayName}
             checked={item.isSelected}
             disabled={item.isSelected && isDisabledDeselection}
             onChange={event =>
