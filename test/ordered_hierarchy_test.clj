@@ -89,3 +89,10 @@
             ::varchar-255
             ::text]
            (vec (ordered-hierarchy/sorted-tags h))))))
+
+(deftest first-common-ancestor-test
+  (testing "The first-common-ancestor is the first tag in the lineage of tag-a that is also in the lineage of tag-b"
+    (is (= ::boolean-or-int (ordered-hierarchy/first-common-ancestor h ::boolean-or-int nil)))
+    (is (= ::boolean-or-int (ordered-hierarchy/first-common-ancestor h ::boolean-or-int ::boolean-or-int)))
+    (is (= ::boolean (ordered-hierarchy/first-common-ancestor h ::boolean-or-int ::boolean)))
+    (is (= ::varchar-255 (ordered-hierarchy/first-common-ancestor h ::boolean ::int)))))

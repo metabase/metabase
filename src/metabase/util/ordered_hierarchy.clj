@@ -106,17 +106,19 @@
           (with-meta {::ordered? true})))))
 
 (defn- first-common-tag
-  "Given two ordered sets corresponding to ancestor in a hierarchy, return the first ancestor of tag-a which is also an
-  ancestor of tag-b.
+  "Given two ordered sets corresponding to ancestors of two tags in a hierarchy, return the first ancestor of tag-a
+  which is also an ancestor of tag-b.
   Returns nil if there is no such intersection."
   [ancestors-a ancestors-b]
   ;; I suspect this is not commutative, so this ordering is important - we care more about being close to tag-a.
   (some ancestors-b ancestors-a))
 
 (defn first-common-ancestor
-  "Given two tags, return the first \"ancestor\" of the first tag which is also an \"ancestor\" of tag-b.
-  We use a more relaxed definition of \"ancestor\" here than usual, which includes the tag itself.
-  Returns nil if there is no common ancestor."
+  "Given two tags, return the first tag in the ancestral lineage of tag-a that's also in the ancestral lineage of tag-b.
+  Returns nil if there is no common ancestor.
+
+  NOTE: It's possible that this node is also always a Least Common Ancestor, but I'm not sure.
+        If it does it would be worth renaming this method to use standard terminology."
   [h tag-a tag-b]
   (let [ancestors-a (ancestors h tag-a)
         ancestors-b (ancestors h tag-b)]

@@ -32,7 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.ordered-hierarchy :as ordered-hierarchy :refer [derive make-hierarchy parents]]
+   [metabase.util.ordered-hierarchy :as ordered-hierarchy :refer [derive make-hierarchy]]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -76,6 +76,9 @@
 ;; </code></pre>
 
 (def ^:private h
+  "This hierarchy defines a relationship between value types and their specializations.
+  We use an [[metabase.util.ordered-hierarchy]] for its topological sorting, which simplify writing efficient and
+  consistent implementations for of our type inference, parsing, and relaxation."
   (-> (make-hierarchy)
       (derive ::boolean-or-int ::boolean)
       (derive ::boolean-or-int ::int)
@@ -88,9 +91,9 @@
       (derive ::float ::varchar-255)
       (derive ::varchar-255 ::text)))
 
-(def ^:private concrete-type?
-  "Nodes which can correspond to a concrete database column type."
-  (complement #{::boolean-or-int}))
+(def ^:private abstract->concrete
+  "Not all value types do not correspond to concrete database column types."
+  {::boolean-or-int ::boolean})
 
 (def ^:private value-types
   "All type tags which values can be inferred as. An ordered set from most to least specialized."
@@ -98,15 +101,14 @@
 
 (def ^:private column-types
   "All type tags that correspond to concrete column types. An ordered set from most to least specialized."
-  (into #{} (filter concrete-type?) value-types))
+  (into #{} (remove abstract->concrete) value-types))
 
 (defn ^:private column-type
   "The most specific column type corresponding to the given value type."
   [value-type]
-  ;; If we know nothing about the value type, treat it as an arbitrary string.
-  (cond (nil? value-type) ::text
-        (concrete-type? value-type) value-type
-        :else (recur (first (parents h value-type)))))
+  (or (abstract->concrete value-type value-type)
+      ;; If we know nothing about the value type, treat it as an arbitrary string.
+      ::text))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; [[value->type]] helpers
@@ -200,21 +202,23 @@
   [type->check value]
   (when-not (str/blank? value)
     (let [trimmed (str/trim value)]
-      (first (filter #(when-let [f (type->check %)] (f trimmed)) value-types)))))
+      (->> (remove non-inferable-types value-types)
+           (filter #((type->check %) trimmed))
+           first))))
 
 (defn- row->value-types
   [type->check row]
   (map (partial value->type type->check) row))
 
 (defn- most-specific-common-ancestor
-  "Return the first \"ancestor\" of `base-tag` which is also an \"ancestor\" of `new-tag`.
+  "Return the first \"ancestor\" of `base-type` which is also an \"ancestor\" of `new-type`.
   We use a more relaxed definition of \"ancestor\" here than usual, which includes the tag itself."
-  [base-tag new-tag]
-  (when (or base-tag new-tag)
-    (or (ordered-hierarchy/first-common-ancestor h base-tag new-tag)
+  [base-type new-type]
+  (when (or base-type new-type)
+    (or (ordered-hierarchy/first-common-ancestor h base-type new-type)
         (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}"
-                                               base-tag
-                                               new-tag))))))
+                                               base-type
+                                               new-type))))))
 
 (defn- coalesce-types
   "Given two collections of type tags, find the most specific common ancestor for each pair.
