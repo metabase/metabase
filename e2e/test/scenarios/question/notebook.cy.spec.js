@@ -444,9 +444,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     cy.findByTestId("fields-picker").click();
-    popover().within(() => {
-      cy.findAllByLabelText("More info").first().realHover();
-    });
+    popover().findAllByLabelText("More info").first().realHover();
 
     hovercard().contains("This is a unique ID");
   });
