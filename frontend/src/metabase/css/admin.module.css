@@ -177,7 +177,3 @@
 :global(.AdminTable tbody tr:first-child td) {
   padding-top: var(--margin-1);
 }
-
-:global(.ColumnSortHelper) {
-  box-shadow: 0 7px 20px var(--color-shadow);
-}
