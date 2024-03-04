@@ -47,6 +47,13 @@ export function getDashboardDrillType(clicked) {
   return null;
 }
 
+export function getDashboardDrillTab(clicked) {
+  const clickBehavior = getClickBehavior(clicked);
+  const { tabId } = getClickBehaviorData(clicked, clickBehavior);
+
+  return tabId;
+}
+
 export function getDashboardDrillParameters(clicked) {
   const clickBehavior = getClickBehavior(clicked);
   const { data, parameterMapping, extraData } = getClickBehaviorData(
@@ -141,10 +148,10 @@ function getClickBehavior(clicked) {
 
 function getClickBehaviorData(clicked, clickBehavior) {
   const data = getDataFromClicked(clicked);
-  const { type, linkType, parameterMapping, targetId } = clickBehavior;
+  const { type, linkType, parameterMapping, tabId, targetId } = clickBehavior;
   const { extraData } = clicked || {};
 
-  return { type, linkType, data, extraData, parameterMapping, targetId };
+  return { type, linkType, data, extraData, parameterMapping, tabId, targetId };
 }
 
 function getParameterIdValuePairs(

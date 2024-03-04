@@ -83,3 +83,17 @@ export const moveOpenedCollectionTo = newParent => {
   // Make sure modal closed
   modal().should("not.exist");
 };
+
+export function pickEntity({ path, select }) {
+  if (path) {
+    cy.findByTestId("nested-item-picker").within(() => {
+      for (const [index, name] of path.entries()) {
+        cy.findByTestId(`item-picker-level-${index}`).findByText(name).click();
+      }
+    });
+  }
+
+  if (select) {
+    cy.findByTestId("entity-picker-modal").button("Select").click();
+  }
+}

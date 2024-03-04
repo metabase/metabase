@@ -17,6 +17,7 @@ import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
   trackLicenseTokenStepSubmitted,
+  trackTrackingChanged,
   trackUsageReasonSelected,
 } from "./analytics";
 import {
@@ -132,20 +133,20 @@ const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check 
 
 export const submitLicenseToken = createAsyncThunk(
   "metabase/setup/SUBMIT_LICENSE_TOKEN",
-  async (token: string | null, { dispatch, rejectWithValue }) => {
-    dispatch(goToNextStep());
-    trackLicenseTokenStepSubmitted(Boolean(token));
+  async (licenseToken: string | null, { dispatch, rejectWithValue }) => {
+    trackLicenseTokenStepSubmitted(Boolean(licenseToken));
     try {
       await dispatch(
         updateSetting({
           key: "premium-embedding-token",
-          value: token,
+          value: licenseToken,
         }),
       );
     } catch (err) {
       console.error(err);
       return rejectWithValue(INVALID_TOKEN_ERROR);
     }
+    dispatch(goToNextStep());
   },
 );
 
@@ -203,6 +204,8 @@ export const updateTracking = createAsyncThunk(
           value: isTrackingAllowed,
         }),
       );
+      trackTrackingChanged(isTrackingAllowed);
+      MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
     } catch (error) {
       return rejectWithValue(error);
     }

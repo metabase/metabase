@@ -6,8 +6,6 @@ import * as Lib from "metabase-lib";
 export function useJoinCondition(
   query: Lib.Query,
   stageIndex: number,
-  table: Lib.Joinable,
-  join?: Lib.Join,
   condition?: Lib.JoinCondition,
 ) {
   const previousCondition = usePrevious(condition);

@@ -22,12 +22,12 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
   const dispatch = useDispatch();
 
   const handleValidSubmit = async (token: string | null) => {
+    await dispatch(submitLicenseToken(token));
     dispatch(
       addUndo({
         message: t`Your license is activated`,
       }),
     );
-    await dispatch(submitLicenseToken(token));
   };
 
   const skipStep = async () => {
@@ -56,7 +56,11 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
         color={color("text-light")}
       >{t`Unlock access to your paid features before starting`}</Text>
 
-      <LicenseTokenForm onValidSubmit={handleValidSubmit} onSkip={skipStep} />
+      <LicenseTokenForm
+        onValidSubmit={handleValidSubmit}
+        onSkip={skipStep}
+        initialValue={storeToken ?? ""}
+      />
     </ActiveStep>
   );
 };

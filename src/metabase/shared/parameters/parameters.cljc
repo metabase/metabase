@@ -104,7 +104,7 @@
   [_ value locale]
   ;; Test value against a series of regexes (similar to those in metabase/parameters/utils/mbql.js) to determine
   ;; the appropriate formatting, since it is not encoded in the parameter type.
-  ;; TODO: this is a partial implementation that only handles simple dates
+  ;; TODO: this is incomplete, and only handles simple dates https://github.com/metabase/metabase/issues/39385
   (condp (fn [re value] (->> (re-find re value) second)) value
     #"^(this[a-z]+)$"          :>> #(formatted-value :date/relative % locale)
     #"^~?([0-9-T:]+)~?$"       :>> #(formatted-value :date/single % locale)

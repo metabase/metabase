@@ -25,7 +25,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
@@ -519,7 +519,7 @@
     (user/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
-      (let [{session-uuid :id, :as session} (api.session/create-session! :password user (request.u/device-info request))
+      (let [{session-uuid :id, :as session} (api.session/create-session! :password user (req.util/device-info request))
             response                        {:success    true
                                              :session_id (str session-uuid)}]
         (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))

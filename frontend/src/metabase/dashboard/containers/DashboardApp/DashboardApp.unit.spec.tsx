@@ -114,7 +114,7 @@ async function setup({ dashboard }: Options = {}) {
   };
 }
 
-describe("DashboardApp", function () {
+describe("DashboardApp", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });

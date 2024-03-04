@@ -129,7 +129,7 @@ export const updateDashboardAndCards = createThunkAction(
         duration_milliseconds,
       });
 
-      dispatch(setEditingDashboard(false));
+      dispatch(setEditingDashboard(null));
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       await dispatch(

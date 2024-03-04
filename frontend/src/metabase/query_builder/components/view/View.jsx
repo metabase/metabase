@@ -265,8 +265,19 @@ class View extends Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const { question, mode, parameters, isLiveResizable, setParameterValue } =
-      this.props;
+    const {
+      question,
+      mode,
+      parameters,
+      isLiveResizable,
+      setParameterValue,
+      queryBuilderMode,
+    } = this.props;
+
+    if (queryBuilderMode === "notebook") {
+      // we need to render main only in view mode
+      return;
+    }
 
     const queryMode = mode && mode.queryMode();
     const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -295,7 +306,11 @@ class View extends Component {
             mode={queryMode}
           />
         </StyledDebouncedFrame>
-        <TimeseriesChrome {...this.props} className="flex-no-shrink" />
+        <TimeseriesChrome
+          question={this.props.question}
+          updateQuestion={this.props.updateQuestion}
+          className="flex-no-shrink"
+        />
         <ViewFooter {...this.props} className="flex-no-shrink" />
       </QueryBuilderMain>
     );
