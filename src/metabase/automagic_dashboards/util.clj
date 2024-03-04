@@ -4,12 +4,12 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analyze.classifiers :as classifiers]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.sync.analyze.classify :as classify]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -92,7 +92,7 @@
            (update field :base_type keyword)
            (update field :semantic_type keyword)
            (mi/instance Field field)
-           (classify/run-classifiers field {}))))
+           (classifiers/run-classifiers field {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warn (str (trs "Cannot resolve Field {0} in automagic analysis context" field-id-or-name-or-clause)
                     \newline
