@@ -27,6 +27,7 @@ import {
   getNextStep,
   getSetupToken,
   getDatabase,
+  getIsTrackingAllowed,
 } from "./selectors";
 import type { SetupStep } from "./types";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
@@ -198,19 +199,8 @@ export const skipDatabase = createAsyncThunk(
 
 export const updateTracking = createAsyncThunk(
   "metabase/setup/UPDATE_TRACKING",
-  async (isTrackingAllowed: boolean, { dispatch, rejectWithValue }) => {
-    try {
-      await dispatch(
-        updateSetting({
-          key: "anon-tracking-enabled",
-          value: isTrackingAllowed,
-        }),
-      );
-      trackTrackingChanged(isTrackingAllowed);
-      MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
-    } catch (error) {
-      return rejectWithValue(error);
-    }
+  (isTrackingAllowed: boolean) => {
+    trackTrackingChanged(isTrackingAllowed);
   },
 );
 
@@ -218,8 +208,17 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
   "metabase/setup/COMPLETE_SETUP",
   async (_, { getState, dispatch, rejectWithValue }) => {
     const database = getDatabase(getState());
+    const isTrackingAllowed = getIsTrackingAllowed(getState());
 
     try {
+      await dispatch(
+        updateSetting({
+          key: "anon-tracking-enabled",
+          value: isTrackingAllowed,
+        }),
+      );
+      MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
+
       if (database) {
         await dispatch(createDatabase(database));
       }

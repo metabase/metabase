@@ -33,8 +33,8 @@ export const DataUsageStep = ({
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
-  const handleTrackingChange = (isTrackingAllowed: boolean) => {
-    dispatch(updateTracking(isTrackingAllowed));
+  const handleTrackingChange = async (isTrackingAllowed: boolean) => {
+    await dispatch(updateTracking(isTrackingAllowed)).unwrap();
   };
 
   const handleStepSubmit = async () => {
