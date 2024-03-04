@@ -133,7 +133,10 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessage: (_state: State) => t`Doing science...`,
+  getLoadingMessage: (_state: State) => ({
+    initial: t`Doing science...`,
+    slow: t`Talking to the database...`,
+  }),
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",

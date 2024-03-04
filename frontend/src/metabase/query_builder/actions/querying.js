@@ -148,8 +148,8 @@ const loadStartUIControls = createThunkAction(
   () => (dispatch, getState) => {
     const loadingMessage = getWhiteLabeledLoadingMessage(getState());
     const title = {
-      onceQueryIsRun: loadingMessage,
-      ifQueryTakesLong: t`Still Here...`,
+      onceQueryIsRun: loadingMessage.initial,
+      ifQueryTakesLong: loadingMessage.slow,
     };
 
     dispatch(setDocumentTitle(title.onceQueryIsRun));
