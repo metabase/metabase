@@ -7,7 +7,7 @@
    [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -44,10 +44,10 @@
   (testing "AUTHENTICATION"
     ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
     ;; authentication test on every single individual endpoint
-    (is (= (get mw.util/response-unauthentic :body)
+    (is (= (get req.util/response-unauthentic :body)
            (client/client :get 401 "metric")))
 
-    (is (= (get mw.util/response-unauthentic :body)
+    (is (= (get req.util/response-unauthentic :body)
            (client/client :put 401 "metric/13")))))
 
 (deftest create-test
@@ -401,7 +401,7 @@
                                                 :table_id (mt/id :users)}
                              Metric {id-2 :id} {:name       "Metric B"
                                                 :definition (:query (mt/mbql-query venues
-                                                                      {:aggregation [[:sum $category_id->categories.name]]
+                                                                      {:aggregation [[:sum $category_id->categories.id]]
                                                                        :filter      [:and
                                                                                      [:= $price 4]
                                                                                      [:segment segment-id]]}))
@@ -416,7 +416,7 @@
                {:name                   "Metric B"
                 :id                     id-2
                 :creator                {}
-                :definition_description "Venues, Sum of Category → Name, Filtered by Price is equal to 4 and Segment"}]
+                :definition_description "Venues, Sum of Category → ID, Filtered by Price is equal to 4 and Segment"}]
               (filter (fn [{metric-id :id}]
                         (contains? #{id-1 id-2 id-3} metric-id))
                       (mt/user-http-request :rasta :get 200 "metric/")))))))

@@ -17,7 +17,6 @@ import {
   leftSidebar,
 } from "e2e/support/helpers";
 
-
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
     restore();
@@ -146,7 +145,7 @@ describe("scenarios > visualizations > table", () => {
     });
 
     // Click anywhere else to close the popover which is blocking the Visualize button
-    cy.get(".QueryBuilder").click(0, 0);
+    cy.findByTestId("query-builder-root").click(0, 0);
 
     visualize();
 
@@ -311,7 +310,7 @@ describe("scenarios > visualizations > table", () => {
 describe("scenarios > visualizations > table > conditional formatting", () => {
   beforeEach(() => {
     resetTestTable({ type: "postgres", table: "many_data_types" });
-    restore(`postgres-writable`);
+    restore("postgres-writable");
     cy.signInAsAdmin();
     resyncDatabase({
       dbId: WRITABLE_DB_ID,

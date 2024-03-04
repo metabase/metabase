@@ -130,14 +130,14 @@
               (map (fn [[stage-number stage]]
                      (mbql.u/replace stage
                        [:field
-                        (opts :guard (complement (some-fn :base-type :effective-type)))
+                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
                         (field-id :guard (every-pred number? pos?))]
                        (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
                                            (select-keys [:base-type :effective-type]))]
                          ;; Fallback if metadata is missing
                          [:field (merge found-ref opts) field-id])
                        [:expression
-                        (opts :guard (complement (some-fn :base-type :effective-type)))
+                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
                         expression-name]
                        (let [found-ref (try
                                          (m/remove-vals

@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
@@ -51,7 +52,7 @@ function EmbeddingOption({
 }
 
 export const StaticEmbeddingOptionCard = () => {
-  const enabled = useSelector(state => getSetting(state, "enable-embedding"));
+  const enabled = useSetting("enable-embedding");
   const upgradeUrl = useSelector(state =>
     getUpgradeUrl(state, { utm_media: "embed-settings" }),
   );
@@ -91,7 +92,7 @@ export const InteractiveEmbeddingOptionCard = () => {
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
   );
-  const enabled = useSelector(state => getSetting(state, "enable-embedding"));
+  const enabled = useSetting("enable-embedding");
   const quickStartUrl = useSelector(state =>
     getDocsUrlForVersion(
       getSetting(state, "version"),

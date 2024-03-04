@@ -135,16 +135,6 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(mi/define-simple-hydration-method fields
-  :fields
-  "Return the Fields belonging to a single `table`."
-  [{:keys [id]}]
-  (t2/select Field
-    :table_id        id
-    :active          true
-    :visibility_type [:not= "retired"]
-    {:order-by field-order-rule}))
-
 (mi/define-simple-hydration-method ^{:arglists '([table])} field-values
   :field_values
   "Return the FieldValues for all Fields belonging to a single `table`."
@@ -201,6 +191,12 @@
         :visibility_type [:not= "retired"]
         {:order-by       field-order-rule}))
     tables))
+
+(mi/define-batched-hydration-method fields
+  :fields
+  "Efficiently hydrate the Fields for a collection of `tables`"
+  [tables]
+  (with-fields tables))
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 

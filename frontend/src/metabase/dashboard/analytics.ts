@@ -97,3 +97,10 @@ export const trackTabDuplicated = (dashboardId: DashboardId) => {
     dashboard_id: dashboardId,
   });
 };
+
+export const trackFilterRequired = (dashboardId: DashboardId) => {
+  trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
+    event: "dashboard_filter_required",
+    dashboard_id: dashboardId,
+  });
+};

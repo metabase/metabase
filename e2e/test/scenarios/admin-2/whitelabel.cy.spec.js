@@ -38,8 +38,7 @@ describeEE("formatting > whitelabel", () => {
       // Helps scroll the page up in order to see "Saved" notification
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Application Name").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved");
+      undoToast().findByText("Changes saved").should("be.visible");
       cy.findByDisplayValue(COMPANY_NAME);
       cy.log("Company name has been updated!");
     });
@@ -114,7 +113,7 @@ describeEE("formatting > whitelabel", () => {
         },
         { force: true },
       );
-      undoToast().findByText("Saved");
+      undoToast().findByText("Changes saved").should("be.visible");
       cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
         base64Url => {
           const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
@@ -161,6 +160,8 @@ describeEE("formatting > whitelabel", () => {
       cy.findByRole("main")
         .findByText("Show links and references to Metabase")
         .click();
+
+      undoToast().findByText("Changes saved").should("be.visible");
 
       cy.visit("/");
       cy.findByAltText("Metabot").should("not.exist");

@@ -10,7 +10,6 @@ import {
   getDashboardCard,
 } from "e2e/support/helpers";
 
-
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > nested questions", () => {

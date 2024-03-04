@@ -1,4 +1,3 @@
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -37,7 +36,7 @@ describe("issue 18573", () => {
     });
   });
 
-  it(`for the remapped columns, it should preserve renamed column name in exports for xlsx (metabase#18573)`, () => {
+  it("for the remapped columns, it should preserve renamed column name in exports for xlsx (metabase#18573)", () => {
     visitQuestionAdhoc(questionDetails);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

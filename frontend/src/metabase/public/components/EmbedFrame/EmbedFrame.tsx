@@ -34,7 +34,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import "./EmbedFrame.css";
+import "./EmbedFrame.module.css";
 import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   ActionButtonsContainer,
@@ -160,7 +160,7 @@ function EmbedFrame({
 
   const hasParameters = Array.isArray(parameters) && parameters.length > 0;
   const visibleParameters = hasParameters
-    ? getVisibleParameters(parameters, hiddenParameterSlugs)
+    ? getVisibleParameters(parameters, hideParameters)
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 

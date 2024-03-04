@@ -31,7 +31,7 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]
+                              :type :model}]
           (let [bot-message (format
                              "You should do ```SELECT COUNT(*) FROM %s``` to do that."
                              (metabot-util/normalize-name (:name orders-model)))
@@ -60,7 +60,7 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]
+                              :type :model}]
           (let [bot-message "IDK what to do here"
                 q           "How many orders do I have?"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
@@ -81,7 +81,7 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]
+                              :type :model}]
           (let [bot-model-selection (format "The best model is %s" (:id orders-model))
                 bot-sql-response    (format "you should do ```SELECT COUNT(*) FROM %s``` to do that."
                                             (metabot-util/normalize-name (:name orders-model)))
@@ -111,7 +111,7 @@
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:source-table (mt/id :orders)}}
-                               :dataset false}]
+                               :type :question}]
           (let [bot-message "Your prompt needs more details..."
                 q           "A not useful prompt"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
@@ -132,7 +132,7 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]
+                              :type :model}]
           (let [bot-message (format
                              "Part 1 is %s but part 2 doesn't return SQL."
                              (:id orders-model))
@@ -156,7 +156,7 @@
                    {:database (mt/id)
                     :type     :query
                     :query    {:source-table (mt/id :orders)}}
-                   :dataset true}]
+                   :type :model}]
           (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
                                                                            (throw (ex-info
                                                                                    "Too many requests"
@@ -176,7 +176,7 @@
                    {:database (mt/id)
                     :type     :query
                     :query    {:source-table (mt/id :orders)}}
-                   :dataset true}]
+                   :type :model}]
           (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
                                                                            (throw (ex-info
                                                                                    "Unauthorized"
@@ -195,7 +195,7 @@
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:source-table (mt/id :orders)}}
-                               :dataset true}]
+                               :type :model}]
           (let [error-code    "context_length_exceeded"
                 error-message (str/join " "
                                         ["This model's maximum context length is 8192 tokens."
@@ -224,7 +224,7 @@
                                            {:database (mt/id)
                                             :type     :query
                                             :query    {:source-table (mt/id :orders)}}
-                                           :dataset true}]
+                                           :type :model}]
           (let [bot-message "SELECT COUNT(*) FROM ORDERS;"
                 q           "How many orders do I have?"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)

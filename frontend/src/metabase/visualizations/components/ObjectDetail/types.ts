@@ -1,5 +1,6 @@
 import type Question from "metabase-lib/Question";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import type Table from "metabase-lib/metadata/Table";
 import type {
   Card,
@@ -24,6 +25,7 @@ export type OnVisualizationClickType =
 export interface ObjectDetailProps {
   data: DatasetData;
   question?: Question;
+  metadata?: Metadata;
   card?: Card;
   dashcard?: QuestionDashboardCard;
   isObjectDetail?: boolean; // whether this should be shown in a modal

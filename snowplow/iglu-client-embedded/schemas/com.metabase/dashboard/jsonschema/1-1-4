@@ -30,7 +30,8 @@
         "dashboard_card_duplicated",
         "dashboard_card_replaced",
         "dashboard_section_added",
-        "dashboard_width_toggled"
+        "dashboard_width_toggled",
+        "dashboard_filter_required"
       ],
       "maxLength": 1024
     },

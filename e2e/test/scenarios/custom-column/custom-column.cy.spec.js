@@ -1,4 +1,3 @@
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -476,6 +475,23 @@ describe("scenarios > question > custom column", () => {
     cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
   });
 
+  it("should handle using `case()` with boolean expressions (metabase#38944)", () => {
+    const expression = 'case(isempty([Discount]), "true", "false")';
+    openOrdersTable({ mode: "notebook" });
+
+    addCustomColumn();
+
+    popover().within(() => {
+      enterCustomColumnDetails({
+        formula: expression,
+        name: "Discount is empty",
+      });
+
+      cy.findByRole("button", { name: "Done" }).should("be.disabled");
+      cy.findByText("Invalid expression");
+    });
+  });
+
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
     const CC_NAME = "CE with case";
 
@@ -547,7 +563,7 @@ describe("scenarios > question > custom column", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({
-      formula: `isnull([Discount])`,
+      formula: "isnull([Discount])",
       name: "No discount",
     });
     cy.button("Done").click();
@@ -596,7 +612,7 @@ describe("scenarios > question > custom column", () => {
     addCustomColumn();
 
     enterCustomColumnDetails({
-      formula: `case([Discount] > 0, [Created At], [Product → Created At])`,
+      formula: "case([Discount] > 0, [Created At], [Product → Created At])",
       name: "MiscDate",
     });
     popover().button("Done").click();

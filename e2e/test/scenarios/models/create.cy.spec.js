@@ -1,7 +1,6 @@
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { modal, popover, restore, visitCollection } from "e2e/support/helpers";
 
-
 const modelName = "A name";
 
 describe("scenarios > models > create", () => {
@@ -52,8 +51,11 @@ describe("scenarios > models > create", () => {
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.contains("button", "Save").click();
     });
-    modal().within(() => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText(/Which collection should this go in/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 
@@ -71,8 +73,11 @@ describe("scenarios > models > create", () => {
       cy.contains("button", "Save").click();
     });
 
-    modal().within(() => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText(/Which collection should this go in/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 });

@@ -8,11 +8,14 @@
 
 import _ from "underscore";
 
-// eslint-disable-next-line import/no-unresolved
 import SAMPLE_INSTANCE_DATA from "./cypress_sample_instance_data.json";
 
 export const ORDERS_QUESTION_ID = _.findWhere(SAMPLE_INSTANCE_DATA.questions, {
   name: "Orders",
+}).id;
+
+export const ORDERS_MODEL_ID = _.findWhere(SAMPLE_INSTANCE_DATA.questions, {
+  name: "Orders Model",
 }).id;
 
 export const ORDERS_COUNT_QUESTION_ID = _.findWhere(

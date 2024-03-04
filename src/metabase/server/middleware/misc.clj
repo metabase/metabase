@@ -5,7 +5,7 @@
    [metabase.async.streaming-response]
    [metabase.db :as mdb]
    [metabase.public-settings :as public-settings]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
@@ -27,7 +27,7 @@
   [handler]
   (fn [request respond raise]
     (handler request
-             (if-not (request.u/api-call? request)
+             (if-not (req.util/api-call? request)
                respond
                (comp respond add-content-type*))
              raise)))

@@ -12,7 +12,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :as table]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.upload-test :as upload-test]
@@ -27,9 +27,9 @@
 ;; authentication test on every single individual endpoint
 
 (deftest unauthenticated-test
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :get 401 "table")))
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :get 401 (format "table/%d" (mt/id :users))))))
 
 (defn- db-details []
@@ -892,7 +892,8 @@
                                   (mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :latitude)]]
           (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues)) custom-field-order)
           (is (= custom-field-order
-                 (->> (table/fields (t2/select-one Table :id (mt/id :venues)))
+                 (->> (t2/hydrate (t2/select-one Table :id (mt/id :venues)) :fields)
+                      :fields
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))

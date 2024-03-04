@@ -1,34 +1,65 @@
-import Link from "metabase/core/components/Link";
-import Search from "metabase/entities/search";
+import { useMemo } from "react";
+import { t, c, msgid } from "ttag";
+
 import { color } from "metabase/lib/colors";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Box, Group, Icon, Text, Title } from "metabase/ui";
+import { Box, Icon, Title, Button, Flex } from "metabase/ui";
 import type {
   Card,
-  CollectionEssentials,
   SearchResult,
+  CollectionEssentials,
 } from "metabase-types/api";
 
-import { getCollectionName, sortModels } from "../utils";
+import { trackModelClick } from "../analytics";
+import { getCollectionName, sortModels, getIcon } from "../utils";
 
 import {
+  CollectionCollapse,
+  CollectionExpandCollapseContainer,
   CollectionHeaderContainer,
-  CollectionHeaderGroup,
-  CollectionHeaderLink,
+  CollectionHeaderToggleContainer,
+  CollectionSummary,
+  FixedSizeIcon,
   ModelCard,
+  ModelCardLink,
   MultilineEllipsified,
+  HoverUnderlineLink,
 } from "./BrowseModels.styled";
-import { LastEdited } from "./LastEdited";
+
+const MAX_COLLAPSED_MODELS = 6;
 
 export const ModelGroup = ({
   models,
   localeCode,
+  expanded,
+  showAll,
+  toggleExpanded,
+  toggleShowAll,
 }: {
   models: SearchResult[];
   localeCode: string | undefined;
+  expanded: boolean;
+  showAll: boolean;
+  toggleExpanded: () => void;
+  toggleShowAll: () => void;
 }) => {
-  const sortedModels = models.sort((a, b) => sortModels(a, b, localeCode));
+  const { sortedModels, aboveFoldModelsCount } = useMemo(() => {
+    const sortedModels = [...models].sort((a, b) =>
+      sortModels(a, b, localeCode),
+    );
+
+    const aboveFoldModelsCount =
+      models.length >= MAX_COLLAPSED_MODELS
+        ? MAX_COLLAPSED_MODELS
+        : models.length;
+
+    return { sortedModels, aboveFoldModelsCount };
+  }, [models, localeCode]);
+
+  const visibleModels = useMemo(() => {
+    return showAll ? sortedModels : sortedModels.slice(0, MAX_COLLAPSED_MODELS);
+  }, [sortedModels, showAll]);
+
   const collection = models[0].collection;
 
   /** This id is used by aria-labelledby */
@@ -38,17 +69,110 @@ export const ModelGroup = ({
     <>
       <CollectionHeader
         collection={collection}
-        key={collectionHtmlId}
-        id={collectionHtmlId}
+        onClick={toggleExpanded}
+        expanded={expanded}
+        modelsCount={models.length}
       />
-      {sortedModels.map(model => (
-        <ModelCell
-          model={model}
-          collectionHtmlId={collectionHtmlId}
-          key={`model-${model.id}`}
+      <CollectionCollapse in={expanded} transitionDuration={0}>
+        {visibleModels.map(model => (
+          <ModelCell
+            model={model}
+            collectionHtmlId={collectionHtmlId}
+            key={`model-${model.id}`}
+          />
+        ))}
+        <ShowMoreFooter
+          hasMoreModels={models.length > MAX_COLLAPSED_MODELS}
+          shownModelsCount={aboveFoldModelsCount}
+          allModelsCount={models.length}
+          showAll={showAll}
+          onClick={toggleShowAll}
         />
-      ))}
+      </CollectionCollapse>
     </>
+  );
+};
+
+const CollectionHeader = ({
+  collection,
+  onClick,
+  expanded,
+  modelsCount,
+}: {
+  collection: CollectionEssentials;
+  onClick: () => void;
+  expanded: boolean;
+  modelsCount: number;
+}) => {
+  const icon = getIcon({ ...collection, model: "collection" });
+  const collectionHtmlId = `collection-${collection.id}`;
+
+  return (
+    <CollectionHeaderContainer
+      id={collectionHtmlId}
+      role="heading"
+      onClick={onClick}
+    >
+      <CollectionHeaderToggleContainer>
+        <FixedSizeIcon
+          aria-label={
+            expanded
+              ? t`collapse ${getCollectionName(collection)}`
+              : t`expand ${getCollectionName(collection)}`
+          }
+          name={expanded ? "chevrondown" : "chevronright"}
+        />
+      </CollectionHeaderToggleContainer>
+      <Flex pt="1.5rem" pb="0.75rem" w="100%">
+        <Flex>
+          <FixedSizeIcon {...icon} />
+          <Title size="1rem" lh="1rem" ml=".25rem" mr="1rem" color="inherit">
+            {getCollectionName(collection)}
+          </Title>
+        </Flex>
+        <CollectionSummary>
+          <HoverUnderlineLink
+            to={Urls.collection(collection)}
+            onClick={e => e.stopPropagation() /* prevent collapse */}
+          >
+            {c("{0} is the number of models in a collection").ngettext(
+              msgid`${modelsCount} model`,
+              `${modelsCount} models`,
+              modelsCount,
+            )}
+          </HoverUnderlineLink>
+        </CollectionSummary>
+      </Flex>
+    </CollectionHeaderContainer>
+  );
+};
+
+const ShowMoreFooter = ({
+  hasMoreModels,
+  shownModelsCount,
+  allModelsCount,
+  onClick,
+  showAll,
+}: {
+  hasMoreModels: boolean;
+  shownModelsCount: number;
+  allModelsCount: number;
+  showAll: boolean;
+  onClick: () => void;
+}) => {
+  if (!hasMoreModels) {
+    return null;
+  }
+
+  return (
+    <CollectionExpandCollapseContainer>
+      {!showAll && `${shownModelsCount} of ${allModelsCount}`}
+      <Button variant="subtle" lh="inherit" p="0" onClick={onClick}>
+        {showAll
+          ? c("For a button that collapses a list of models").t`Show less`
+          : c("For a button that expands a list of models").t`Show all`}
+      </Button>
+    </CollectionExpandCollapseContainer>
   );
 };
 
@@ -60,61 +184,28 @@ interface ModelCellProps {
 const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
   const headingId = `heading-for-model-${model.id}`;
 
-  const lastEditorFullName =
-    model.last_editor_common_name ?? model.creator_common_name;
-  const timestamp = model.last_edited_at ?? model.created_at ?? "";
+  const icon = getIcon(model);
 
   return (
-    <Link
+    <ModelCardLink
       aria-labelledby={`${collectionHtmlId} ${headingId}`}
       key={model.id}
       to={Urls.model(model as unknown as Partial<Card>)}
+      onClick={() => trackModelClick(model.id)}
     >
       <ModelCard>
         <Box mb="auto">
-          <Icon name="model" size={20} color={color("brand")} />
+          <Icon {...icon} size={20} color={color("brand")} />
         </Box>
         <Title mb=".25rem" size="1rem">
           <MultilineEllipsified tooltipMaxWidth="20rem" id={headingId}>
             {model.name}
           </MultilineEllipsified>
         </Title>
-        <LastEdited editorFullName={lastEditorFullName} timestamp={timestamp} />
+        <MultilineEllipsified tooltipMaxWidth="20rem">
+          {model.description}
+        </MultilineEllipsified>
       </ModelCard>
-    </Link>
-  );
-};
-
-const CollectionHeader = ({
-  collection,
-  id,
-}: {
-  collection: CollectionEssentials;
-  id: string;
-}) => {
-  const dispatch = useDispatch();
-  const wrappable = { ...collection, model: "collection" };
-  const wrappedCollection = Search.wrapEntity(wrappable, dispatch);
-  const icon = wrappedCollection.getIcon();
-
-  return (
-    <CollectionHeaderContainer
-      id={id}
-      role="heading"
-      pt={"1rem"}
-      mr="1rem"
-      align="center"
-    >
-      <CollectionHeaderGroup grow noWrap>
-        <CollectionHeaderLink to={Urls.collection(collection)}>
-          <Group spacing=".25rem">
-            <Icon {...icon} />
-            <Text weight="bold" color="text-dark">
-              {getCollectionName(collection)}
-            </Text>
-          </Group>
-        </CollectionHeaderLink>
-      </CollectionHeaderGroup>
-    </CollectionHeaderContainer>
+    </ModelCardLink>
   );
 };

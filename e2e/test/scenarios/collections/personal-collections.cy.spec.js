@@ -1,4 +1,3 @@
-
 import { USERS } from "e2e/support/cypress_data";
 import {
   NO_DATA_PERSONAL_COLLECTION_ID,
@@ -182,6 +181,11 @@ describe("personal collections", () => {
 
 function addNewCollection(name) {
   openNewCollectionItemFlowFor("collection");
-  cy.findByLabelText("Name").type(name, { delay: 0 });
-  cy.button("Create").click();
+  cy.findByPlaceholderText("My new fantastic collection").type(name, {
+    delay: 0,
+  });
+
+  cy.findByTestId("new-collection-modal").then(modal => {
+    cy.findByText("Create").click();
+  });
 }

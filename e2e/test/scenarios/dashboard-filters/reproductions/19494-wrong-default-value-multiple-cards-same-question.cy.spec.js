@@ -12,7 +12,6 @@ import {
   undoToast,
 } from "e2e/support/helpers";
 
-
 const filter1 = {
   name: "Card 1 Filter",
   slug: "card1_filter",

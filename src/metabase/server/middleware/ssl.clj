@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.public-settings :as public-settings]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [ring.util.request :as req]
    [ring.util.response :as response]))
 
@@ -45,7 +45,7 @@
 
       (and
        (public-settings/redirect-all-requests-to-https)
-       (not (request.u/https? request)))
+       (not (req.util/https? request)))
       (respond (ssl-redirect-response request))
 
       :else (handler request respond raise))))

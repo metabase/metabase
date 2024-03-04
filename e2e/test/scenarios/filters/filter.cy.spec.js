@@ -1,4 +1,3 @@
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -384,7 +383,7 @@ describe("scenarios > question > filter", () => {
 
     cy.button("Done").should("not.be.disabled").click();
 
-    cy.get(".QueryBuilder .Icon-add").click();
+    cy.findByTestId("query-builder-root").icon("add").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
@@ -826,7 +825,9 @@ describe("scenarios > question > filter", () => {
     cy.get(".line").should("have.length", 3);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.button("Save").click();
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save").click();
+    });
     cy.button("Not now").click();
     assertOnLegendLabels();
     cy.get(".line").should("have.length", 3);
@@ -1016,7 +1017,7 @@ describe("scenarios > question > filter", () => {
 
       popover().contains("Custom Expression").click();
       popover().within(() => {
-        enterCustomColumnDetails({ formula: `boolean = true` });
+        enterCustomColumnDetails({ formula: "boolean = true" });
         cy.get("@formula").blur();
 
         cy.button("Done").click();

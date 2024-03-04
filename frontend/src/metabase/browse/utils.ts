@@ -6,9 +6,18 @@ import {
   coerceCollectionId,
   isInstanceAnalyticsCollection,
   isRootCollection,
+  isValidCollectionId,
 } from "metabase/collections/utils";
+import { entityForObject } from "metabase/lib/schema";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import type { CollectionEssentials, SearchResult } from "metabase-types/api";
+import type { IconName } from "metabase/ui";
+import type {
+  CollectionEssentials,
+  SearchResult,
+  CollectionId,
+} from "metabase-types/api";
+
+import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "./constants";
 
 export const getCollectionName = (collection: CollectionEssentials) => {
   if (isRootCollection(collection)) {
@@ -135,4 +144,54 @@ export const filterModels = (
         : acc,
     unfilteredModels,
   );
+};
+
+type CollectionPrefs = Partial<Record<CollectionId, ModelVisibilityPrefs>>;
+
+type ModelVisibilityPrefs = {
+  expanded: boolean;
+  showAll: boolean;
+};
+
+const isRecordWithCollectionIdKeys = (
+  prefs: unknown,
+): prefs is Record<CollectionId, any> =>
+  !!prefs &&
+  typeof prefs === "object" &&
+  !Array.isArray(prefs) &&
+  Object.keys(prefs).every(isValidCollectionId);
+
+const isValidModelVisibilityPrefs = (
+  value: unknown,
+): value is ModelVisibilityPrefs =>
+  typeof value === "object" &&
+  value !== null &&
+  Object.keys(value).includes("expanded") &&
+  Object.keys(value).includes("showAll") &&
+  Object.values(value).every(_.isBoolean);
+
+const isValidCollectionPrefs = (prefs: unknown): prefs is CollectionPrefs =>
+  isRecordWithCollectionIdKeys(prefs) &&
+  Object.values(prefs).every(isValidModelVisibilityPrefs);
+
+export const getCollectionViewPreferences = (): CollectionPrefs => {
+  try {
+    const collectionPrefs = JSON.parse(
+      localStorage.getItem(BROWSE_MODELS_LOCALSTORAGE_KEY) ?? "{}",
+    );
+
+    if (isValidCollectionPrefs(collectionPrefs)) {
+      return collectionPrefs;
+    }
+
+    return {};
+  } catch (err) {
+    console.error(err);
+    return {};
+  }
+};
+
+export const getIcon = (item: unknown): { name: IconName; color: string } => {
+  const entity = entityForObject(item);
+  return entity?.objectSelectors?.getIcon?.(item) || { name: "folder" };
 };

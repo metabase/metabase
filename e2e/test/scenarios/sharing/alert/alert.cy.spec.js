@@ -9,7 +9,6 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
-
 const channels = { slack: mockSlackConfigured, email: setupSMTP };
 
 describe("scenarios > alert", () => {

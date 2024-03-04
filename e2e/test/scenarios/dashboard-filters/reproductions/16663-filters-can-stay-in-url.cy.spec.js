@@ -5,7 +5,6 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {

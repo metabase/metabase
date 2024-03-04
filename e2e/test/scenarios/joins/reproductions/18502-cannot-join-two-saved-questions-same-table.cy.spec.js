@@ -6,7 +6,6 @@ import {
   selectSavedQuestionsToJoin,
 } from "e2e/support/helpers";
 
-
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const question1 = getQuestionDetails("18502#1", PEOPLE.CREATED_AT);

@@ -8,7 +8,6 @@ import {
   restore,
 } from "e2e/support/helpers";
 
-
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const TEST_QUERY = {

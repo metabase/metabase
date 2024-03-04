@@ -125,7 +125,7 @@
                  (->> (mt/user-http-request :rasta :get 200 "collection")
                       (filter (fn [{collection-name :name}]
                                 (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
-                                    (str/includes? collection-name "Personal Collection"))))
+                                    (some-> collection-name (str/includes? "Personal Collection")))))
                       (map :name)))))))))
 
 (deftest list-collections-personal-only-test
@@ -283,6 +283,28 @@
             (let [response (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)]
               (is (= expected-lucky-tree
                      (collection-tree-view ids response))))))))))
+
+(deftest collection-tree-here-and-below-test
+  (testing "Tree should properly indicate contents"
+    (with-collection-hierarchy [a b]
+      (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
+        (t2.with-temp/with-temp [Card _ {:name "Personal Card"
+                                         :collection_preview false
+                                         :collection_id (:id personal-collection)}
+                                 Card _ {:name "Personal Model"
+                                         :type :model
+                                         :collection_preview false
+                                         :collection_id (:id personal-collection)}
+                                 Card _ {:name "A Card"
+                                         :collection_preview false
+                                         :collection_id (:id a)}
+                                 Card _ {:name "B Model"
+                                         :type :model
+                                         :collection_preview false
+                                         :collection_id (:id b)}]
+          (is (=? [{:here ["card"] :below ["dataset"] :children [{:here ["dataset"]}]}
+                   {:here ["card" "dataset"]}]
+                  (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
 
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
@@ -626,6 +648,7 @@
                                                                         :most_recent         true}]
         (is (= (mt/obj->json->obj
                 [{:id                  card-id
+                  :location            nil
                   :name                (:name card)
                   :collection_position nil
                   :collection_preview  true
@@ -656,7 +679,7 @@
     (testing "Database id is returned for items in which dataset is true"
       (t2.with-temp/with-temp [Collection collection      {}
                                User       _               {:first_name "x" :last_name "x" :email "zzzz@example.com"}
-                               Card       {card-id-1 :id} {:dataset       true
+                               Card       {card-id-1 :id} {:type          :model
                                                            :collection_id (u/the-id collection)}
                                Card       {card-id-2 :id} {:collection_id (u/the-id collection)}]
         (is (= #{{:id card-id-1 :database_id (mt/id)}
@@ -737,6 +760,29 @@
                           (mt/boolean-ids-and-timestamps
                            (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items")
                                                         :models "dashboard" :models "card")))))))))))
+
+(deftest collection-items-logical-ui-location
+  (testing "GET /api/collection/:id/items"
+    (testing "Includes a logical ui location"
+      (letfn [(path [& cs] (apply collection/location-path (map :id cs)))]
+        (t2.with-temp/with-temp [Collection c1 {:name "C1"}
+                                 Collection c2 {:name "C2"
+                                                :location (path c1)}
+                                 Collection c3 {:name "C3"
+                                                :location (path c1 c2)}
+                                 Collection c4 {:name "C4"
+                                                :location (path c1 c2 c3)}]
+          (perms/revoke-collection-permissions! (perms-group/all-users) c1)
+          (perms/revoke-collection-permissions! (perms-group/all-users) c2)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) c3)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) c4)
+          ;; user can see c3 and c4
+          (let [response (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id c3)))]
+            (is (= 1 (:total response)))
+            (let [{:keys [location effective_location]} (-> response :data first)]
+             (is (= (path c1 c2 c3) location))
+             (testing "the unreadable collections are removed from the `ui-logical-path`"
+               (is (= (path c3) effective_location))))))))))
 
 (deftest collection-items-archived-parameter-test
   (testing "GET /api/collection/:id/items"
@@ -906,7 +952,7 @@
                                                                :location (format "/%d/" collection-id)
                                                                :authority_level "official"}
                                Card       _                   {:name "card" :collection_id collection-id}
-                               Card       _                   {:name "dataset" :dataset true :collection_id collection-id}
+                               Card       _                   {:name "dataset" :type :model :collection_id collection-id}
                                Dashboard  _                   {:name "dash" :collection_id collection-id}]
         (let [items (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
                                                  :models ["dashboard" "card" "collection"]))]

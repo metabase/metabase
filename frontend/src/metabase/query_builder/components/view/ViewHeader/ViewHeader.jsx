@@ -117,7 +117,7 @@ export function ViewTitleHeader(props) {
 
   const { isNative } = Lib.queryDisplayInfo(query);
   const isSaved = question.isSaved();
-  const isDataset = question.isDataset();
+  const isModel = question.type() === "model";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
 
   const onQueryChange = useCallback(
@@ -148,7 +148,7 @@ export function ViewTitleHeader(props) {
         <ViewTitleHeaderRightSide
           {...props}
           isSaved={isSaved}
-          isDataset={isDataset}
+          isModel={isModel}
           isNative={isNative}
           isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
@@ -220,7 +220,8 @@ function SavedQuestionLeftSide(props) {
   const [showSubHeader, setShowSubHeader] = useState(true);
 
   const hasLastEditInfo = question.lastEditInfo() != null;
-  const isDataset = question.isDataset();
+  const type = question.type();
+  const isModel = type === "model";
 
   const onHeaderChange = useCallback(
     name => {
@@ -231,7 +232,8 @@ function SavedQuestionLeftSide(props) {
     [question, onSave],
   );
 
-  const renderDataSource = QuestionDataSource.shouldRender(props) && !isDataset;
+  const renderDataSource =
+    QuestionDataSource.shouldRender(props) && type === "question";
   const renderLastEdit = hasLastEditInfo && isAdditionalInfoVisible;
 
   useEffect(() => {
@@ -249,11 +251,11 @@ function SavedQuestionLeftSide(props) {
       showSubHeader={showSubHeader}
     >
       <ViewHeaderMainLeftContentContainer>
-        <SavedQuestionHeaderButtonContainer isDataset={isDataset}>
+        <SavedQuestionHeaderButtonContainer isModel={isModel}>
           <HeadBreadcrumbs
             divider={<HeaderDivider>/</HeaderDivider>}
             parts={[
-              ...(isAdditionalInfoVisible && isDataset
+              ...(isAdditionalInfoVisible && isModel
                 ? [
                     <DatasetCollectionBadge
                       key="collection"
@@ -273,7 +275,7 @@ function SavedQuestionLeftSide(props) {
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          {QuestionDataSource.shouldRender(props) && !isDataset && (
+          {QuestionDataSource.shouldRender(props) && !isModel && (
             <StyledQuestionDataSource
               question={question}
               isObjectDetail={isObjectDetail}
@@ -366,7 +368,7 @@ ViewTitleHeaderRightSide.propTypes = {
   question: PropTypes.object.isRequired,
   result: PropTypes.object,
   queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
-  isDataset: PropTypes.bool,
+  isModel: PropTypes.bool,
   isSaved: PropTypes.bool,
   isNative: PropTypes.bool,
   isRunnable: PropTypes.bool,
@@ -405,7 +407,7 @@ function ViewTitleHeaderRightSide(props) {
     isBookmarked,
     toggleBookmark,
     isSaved,
-    isDataset,
+    isModel,
     isRunnable,
     isRunning,
     isNativeEditorOpen,
@@ -438,8 +440,8 @@ function ViewTitleHeaderRightSide(props) {
 
   // Models can't be saved. But changing anything about the model will prompt the user
   // to save it as a new question (based on that model). In other words, at this point
-  // the `dataset` field is set to false.
-  const hasSaveButton = !isDataset && !!isDirty && isActionListVisible;
+  // the `type` field is set to "question".
+  const hasSaveButton = !isModel && !!isDirty && isActionListVisible;
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =
@@ -458,11 +460,12 @@ function ViewTitleHeaderRightSide(props) {
     [isRunning],
   );
 
-  const isSaveDisabled = !question.canRun() || !isEditable;
+  const canRun = question.canRun();
+  const isSaveDisabled = !canRun || !isEditable;
   const disabledSaveTooltip = getDisabledSaveTooltip(
-    question,
     isEditable,
     requiredTemplateTags,
+    canRun,
   );
 
   return (
@@ -553,11 +556,7 @@ function ViewTitleHeaderRightSide(props) {
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
 
-function getDisabledSaveTooltip(
-  question,
-  isEditable,
-  requiredTemplateTags = [],
-) {
+function getDisabledSaveTooltip(isEditable, requiredTemplateTags = [], canRun) {
   if (!isEditable) {
     return t`You don't have permission to save this question.`;
   }
@@ -566,7 +565,7 @@ function getDisabledSaveTooltip(
     tag => tag.required && !tag.default,
   );
 
-  if (!question.canRun()) {
+  if (!canRun) {
     return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
   }
 

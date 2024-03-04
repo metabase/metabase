@@ -8,7 +8,6 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DETAILS_PERMISSION_INDEX = 4;
 

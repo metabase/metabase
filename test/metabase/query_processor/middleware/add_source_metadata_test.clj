@@ -96,6 +96,7 @@
                                 [{:name          "avg"
                                   :display_name  "Average of ID"
                                   :base_type     :type/Float
+                                  :semantic_type :type/PK
                                   :settings      nil
                                   :field_ref     [:aggregation 0]}])})
            (add-source-metadata
@@ -118,11 +119,12 @@
                                   :breakout     [$price]}
                 :source-metadata (concat
                                   (venues-source-metadata :price)
-                                  [{:name         "some_generated_name"
-                                    :display_name "My Cool Ag"
-                                    :base_type    :type/Float
-                                    :settings     nil
-                                    :field_ref    [:aggregation 0]}])})
+                                  [{:name          "some_generated_name"
+                                    :display_name  "My Cool Ag"
+                                    :base_type     :type/Float
+                                    :semantic_type :type/PK
+                                    :settings      nil
+                                    :field_ref     [:aggregation 0]}])})
              (add-source-metadata
               (lib.tu.macros/mbql-query venues
                 {:source-query {:source-table $$venues
@@ -133,11 +135,12 @@
 
 (deftest ^:parallel named-aggregations-name-only-test
   (testing "w/ `:name` only"
-    (is (= [{:name         "some_generated_name"
-             :display_name "Average of ID"
-             :base_type    :type/Float
-             :settings     nil
-             :field_ref    [:aggregation 0]}]
+    (is (= [{:name          "some_generated_name"
+             :display_name  "Average of ID"
+             :base_type     :type/Float
+             :semantic_type :type/PK
+             :settings      nil
+             :field_ref     [:aggregation 0]}]
            (source-metadata
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
@@ -146,11 +149,12 @@
 
 (deftest ^:parallel named-aggregations-display-name-only-test
   (testing "w/ `:display-name` only"
-    (is (= [{:name         "avg"
-             :display_name "My Cool Ag"
-             :base_type    :type/Float
-             :settings     nil
-             :field_ref    [:aggregation 0]}]
+    (is (= [{:name          "avg"
+             :display_name  "My Cool Ag"
+             :base_type     :type/Float
+             :semantic_type :type/PK
+             :settings      nil
+             :field_ref     [:aggregation 0]}]
            (source-metadata
             (add-source-metadata
              (lib.tu.macros/mbql-query venues

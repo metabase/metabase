@@ -227,25 +227,25 @@
   [card]
   (cond
     ;; This is a model
-    (:dataset card) (assoc card :entity_type :entity/GenericTable)
+    (= (:type card) :model) (assoc card :entity_type :entity/GenericTable)
     ;; This is a query based on a query. Eventually we will want to change this as it suffers from the same sourcing
     ;; problems as other cards -- The x-ray is not done on the card, but on its source.
-    (nested-query? card) (-> card
-                             source-question
-                             (assoc :entity_type :entity/GenericTable))
-    (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
-    :else                (->> card table-id (t2/select-one Table :id))))
+    (nested-query? card)    (-> card
+                                source-question
+                                (assoc :entity_type :entity/GenericTable))
+    (native-query? card)    (-> card (assoc :entity_type :entity/GenericTable))
+    :else                   (->> card table-id (t2/select-one Table :id))))
 
 (defmethod ->root Card
   [card]
-  (let [{:keys [dataset] :as source} (source card)]
+  (let [source (source card)]
     {:entity                     card
      :source                     source
      :database                   (:database_id card)
      :query-filter               (get-in card [:dataset_query :query :filter])
      :full-name                  (tru "\"{0}\"" (:name card))
      :short-name                 (names/source-name {:source source})
-     :url                        (format "%s%s/%s" public-endpoint (if dataset "model" "question") (u/the-id card))
+     :url                        (format "%s%s/%s" public-endpoint (name (:type source :question)) (u/the-id card))
      :dashboard-templates-prefix [(if (table-like? card)
                                     "table"
                                     "question")]}))

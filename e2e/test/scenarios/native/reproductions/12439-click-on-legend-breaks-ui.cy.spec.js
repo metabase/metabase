@@ -1,7 +1,6 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { restore, visitQuestionAdhoc, sidebar } from "e2e/support/helpers";
 
-
 const nativeQuery = `
 SELECT "PRODUCTS__via__PRODUCT_ID"."CATEGORY" AS "CATEGORY",
        date_trunc('month', "ORDERS"."CREATED_AT") AS "CREATED_AT",

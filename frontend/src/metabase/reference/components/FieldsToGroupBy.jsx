@@ -2,15 +2,15 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 
-import L from "metabase/components/List/List.css";
+import L from "metabase/components/List/List.module.css";
 import { fetchTableMetadata } from "metabase/redux/metadata";
-import D from "metabase/reference/components/Detail.css";
+import D from "metabase/reference/components/Detail.module.css";
 import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { getQuestionUrl } from "../utils";
 
-import S from "./UsefulQuestions.css";
+import S from "./UsefulQuestions.module.css";
 
 const mapDispatchToProps = {
   fetchTableMetadata,

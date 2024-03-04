@@ -8,7 +8,6 @@ import {
   queryBuilderMain,
 } from "e2e/support/helpers";
 
-
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
@@ -69,8 +68,8 @@ describe("issue 18061", () => {
           },
         );
 
-        cy.wrap(`/question/${card_id}`).as(`questionUrl`);
-        cy.wrap(`/dashboard/${dashboard_id}`).as(`dashboardUrl`);
+        cy.wrap(`/question/${card_id}`).as("questionUrl");
+        cy.wrap(`/dashboard/${dashboard_id}`).as("dashboardUrl");
 
         cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
         cy.intercept(

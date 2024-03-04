@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-const fs = require("fs");
 const { spawn } = require("child_process");
-const os = require("os");
-const path = require("path");
+const fs = require("fs");
 
 const http = require("http");
+const os = require("os");
+const path = require("path");
 
 const CypressBackend = {
   createServer(port = 4000) {

@@ -1,4 +1,3 @@
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -299,7 +298,7 @@ describe("scenarios > visualizations > bar chart", () => {
           type: "native",
           native: {
             query:
-              `SELECT products.category AS "x", COUNT(*) AS "m1", AVG(orders.discount) AS "m2" ` +
+              'SELECT products.category AS "x", COUNT(*) AS "m1", AVG(orders.discount) AS "m2" ' +
               "FROM orders " +
               "JOIN products ON orders.product_id = products.id " +
               "GROUP BY products.category",

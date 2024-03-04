@@ -1,4 +1,3 @@
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -202,7 +201,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.get(`.sub._0`).find("circle").should("have.length", 2);
+    cy.get(".sub._0").find("circle").should("have.length", 2);
   });
 
   it("should show the trend line", () => {

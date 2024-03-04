@@ -12,7 +12,6 @@ import {
   resyncDatabase,
 } from "e2e/support/helpers";
 
-
 const { PEOPLE } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > chained filter", () => {

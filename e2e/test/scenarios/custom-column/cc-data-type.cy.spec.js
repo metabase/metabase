@@ -10,7 +10,6 @@ import {
   getNotebookStep,
 } from "e2e/support/helpers";
 
-
 const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column > data type", () => {

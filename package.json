@@ -12,7 +12,7 @@
   "dependencies": {
     "@dnd-kit/core": "^6.0.8",
     "@dnd-kit/modifiers": "^6.0.1",
-    "@dnd-kit/sortable": "^7.0.2",
+    "@dnd-kit/sortable": "^8.0.0",
     "@emotion/cache": "^11.10.5",
     "@emotion/is-prop-valid": "^1.1.1",
     "@emotion/react": "^11.10.5",
@@ -23,6 +23,7 @@
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^1.9.3",
     "@snowplow/browser-tracker": "^3.1.6",
+    "@tanstack/react-virtual": "^3.1.2",
     "@tippyjs/react": "^4.2.6",
     "@visx/axis": "1.8.0",
     "@visx/clip-path": "^2.1.0",
@@ -67,11 +68,13 @@
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
     "lodash.debounce": "^4.0.8",
+    "lodash.orderby": "^4.6.0",
     "moment-timezone": "^0.5.38",
     "mustache": "^2.3.2",
     "normalizr": "^3.0.2",
     "number-to-locale-string": "^1.0.1",
     "password-generator": "^2.0.1",
+    "postcss-discard-comments": "^6.0.1",
     "prop-types": "^15.5.7",
     "re-reselect": "^4.0.1",
     "react": "~16.14.0",
@@ -180,7 +183,9 @@
     "@types/leaflet": "^1.7.5",
     "@types/leaflet-draw": "^0.4.14",
     "@types/leaflet.heat": "^0.2.1",
+    "@types/lodash.clonedeep": "^4.5.9",
     "@types/lodash.debounce": "^4.0.9",
+    "@types/lodash.orderby": "^4.6.9",
     "@types/mustache": "^4.1.2",
     "@types/postcss-import": "^12.0.1",
     "@types/postcss-url": "^8.0.2",
@@ -220,7 +225,7 @@
     "chromatic": "^10.2.0",
     "concurrently": "^7.6.0",
     "cross-fetch": "^3.1.5",
-    "css-loader": "1.0.1",
+    "css-loader": "^6.10.0",
     "cy-verify-downloads": "^0.1.12",
     "cypress": "13.6.1",
     "cypress-multi-reporters": "^1.6.4",
@@ -340,14 +345,14 @@
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml && yarn type-check",
     "lint-docs-links": "yarn && ./bin/verify-doc-links",
     "lint-eslint": "yarn build:cljs && yarn lint-eslint-pure",
-    "lint-eslint-pure": "eslint --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 --report-unused-disable-directives enterprise/frontend/src frontend/src frontend/test e2e/test",
+    "lint-eslint-pure": "eslint --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 --report-unused-disable-directives enterprise/frontend frontend e2e",
     "lint-prettier": "yarn && yarn lint-prettier-pure",
-    "lint-prettier-pure": "prettier '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}' --check",
+    "lint-prettier-pure": "prettier --check '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prepare": "husky install",
-    "prettier": "prettier --write '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}'",
+    "prettier": "prettier --write '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
     "remove-webpack-cache": "rm -rf ./node_modules/.cache",
     "storybook": "yarn build:cljs && start-storybook -p 6006",
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
@@ -375,10 +380,10 @@
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done"
   },
   "lint-staged": {
-    "+(enterprise|frontend)/**/*.css": [
+    "+(frontend|enterprise/frontend|e2e)/**/*.css": [
       "prettier --write"
     ],
-    "+(enterprise|frontend)/**/*.{js,jsx,ts,tsx}": [
+    "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
       "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
       "prettier --write",
       "node ./bin/verify-doc-links"
@@ -387,8 +392,7 @@
       "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
       "prettier --write"
     ],
-    "e2e/test/scenarios/*/{*.js,!(helpers|shared)/*.js}": [
-      "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
+    "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
       "node e2e/validate-e2e-test-files.js"
     ],
     "**/*.{clj,cljc,cljs,bb}": [

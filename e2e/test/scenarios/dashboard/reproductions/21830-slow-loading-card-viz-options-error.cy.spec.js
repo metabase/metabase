@@ -6,7 +6,6 @@ import {
   showDashboardCardActions,
 } from "e2e/support/helpers";
 
-
 describe("issue 21830", () => {
   beforeEach(() => {
     restore();

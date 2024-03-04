@@ -9,7 +9,6 @@ import {
   popover,
 } from "e2e/support/helpers";
 
-
 describeEE("scenarios > premium > content verification", () => {
   beforeEach(() => {
     restore();
@@ -171,7 +170,7 @@ describeEE("scenarios > premium > content verification", () => {
 
         questionInfoButton().click();
         cy.findByTestId("sidebar-right")
-          .findAllByText(`A moderator verified this`)
+          .findAllByText("A moderator verified this")
           .should("have.length", 2);
 
         cy.findByPlaceholderText("Search…").type("orders{enter}");

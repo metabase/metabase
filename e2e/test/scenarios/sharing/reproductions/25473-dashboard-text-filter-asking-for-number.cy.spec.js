@@ -6,7 +6,6 @@ import {
   visitPublicDashboard,
 } from "e2e/support/helpers";
 
-
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 const ccName = "CC Reviewer";

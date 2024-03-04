@@ -6,7 +6,6 @@ import {
   startNewQuestion,
 } from "e2e/support/helpers";
 
-
 const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS } =
   SAMPLE_DATABASE;
 

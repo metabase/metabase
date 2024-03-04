@@ -13,7 +13,6 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-
 describeEE("database prompt banner", () => {
   beforeEach(() => {
     restore();

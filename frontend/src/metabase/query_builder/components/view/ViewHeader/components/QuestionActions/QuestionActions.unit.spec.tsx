@@ -87,7 +87,7 @@ describe("QuestionActions", () => {
   it("should allow to edit the model only with write permissions", async () => {
     setup({
       card: createMockCard({
-        dataset: true,
+        type: "model",
         can_write: true,
       }),
     });
@@ -102,7 +102,7 @@ describe("QuestionActions", () => {
   it("should not allow to edit the model without write permissions", async () => {
     setup({
       card: createMockCard({
-        dataset: true,
+        type: "model",
         can_write: false,
       }),
     });
@@ -117,7 +117,7 @@ describe("QuestionActions", () => {
   it("should not render the menu when there are no menu items", () => {
     setup({
       card: createMockCard({
-        dataset: true,
+        type: "model",
         can_write: false,
       }),
       databases: [],

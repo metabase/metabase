@@ -8,7 +8,6 @@ import {
   queryBuilderMain,
 } from "e2e/support/helpers";
 
-
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const JOINED_QUESTION_NAME = "15578";

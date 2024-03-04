@@ -124,7 +124,7 @@ function setupDashcardAndDrillToQuestion({
       cy.get("circle").first().click({ force: true });
     });
 
-    cy.url().should("include", `/question`);
+    cy.url().should("include", "/question");
 
     cy.findByTestId("qb-filters-panel").should("have.text", expectedFilterText);
   });

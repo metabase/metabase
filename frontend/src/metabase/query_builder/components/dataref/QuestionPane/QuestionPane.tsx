@@ -10,6 +10,7 @@ import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import type { IconName } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
@@ -38,6 +39,20 @@ interface QuestionPaneProps {
   collection: Collection | null;
 }
 
+const getIcon = (question: Question): IconName => {
+  const type = question.type();
+
+  if (type === "question") {
+    return "table";
+  }
+
+  if (type === "model") {
+    return "model";
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
+};
+
 const QuestionPane = ({
   onItemClick,
   question,
@@ -49,7 +64,7 @@ const QuestionPane = ({
   return (
     <SidebarContent
       title={question.displayName() || undefined}
-      icon={question.isDataset() ? "model" : "table"}
+      icon={getIcon(question)}
       onBack={onBack}
       onClose={onClose}
     >

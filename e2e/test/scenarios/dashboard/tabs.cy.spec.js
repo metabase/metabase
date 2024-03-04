@@ -1,4 +1,3 @@
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -99,7 +98,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
     dashboardCards().within(() => {
       cy.findByText("Orders").should("not.exist");
-      cy.findByText(`There's nothing here, yet.`).should("be.visible");
+      cy.findByText("There's nothing here, yet.").should("be.visible");
     });
 
     // Add card to second tab
@@ -491,7 +490,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     filterWidget().contains("Relative Date").click();
     popover().within(() => {
-      cy.findByText("Today").click();
+      cy.findByText("Past 7 days").click();
     });
 
     // Loader in the 2nd tab
@@ -562,7 +561,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Ensure the tab name has reverted to the long name after the drag has completed
-    cy.findByRole("button", { name: longName });
+    cy.findByRole("button", { name: longName }).should("be.visible");
 
     saveDashboard();
 

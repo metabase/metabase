@@ -8,7 +8,7 @@ import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import { ConnectedAddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Questions from "metabase/entities/questions";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
@@ -40,8 +40,12 @@ const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
 };
 
-const mapStateToProps = (state: State) => ({
+const mapStateToProps = (state: State, props: QueryModalsProps) => ({
   questionWithParameters: getQuestionWithParameters(state) as Question,
+  initialCollectionId: Collections.selectors.getInitialCollectionId(
+    state,
+    props,
+  ),
 });
 
 type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
@@ -129,7 +133,8 @@ class QueryModals extends Component<QueryModalsProps> {
               }}
               onCreate={async question => {
                 await this.props.onCreate(question);
-                if (question.isDataset()) {
+                const type = question.type();
+                if (type === "model") {
                   onCloseModal();
                   setQueryBuilderMode("view");
                 } else {
@@ -153,23 +158,21 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.ADD_TO_DASHBOARD_SAVE:
         return (
-          <Modal onClose={onCloseModal}>
-            <SaveQuestionModal
-              question={this.props.question}
-              originalQuestion={this.props.originalQuestion}
-              initialCollectionId={this.props.initialCollectionId}
-              onSave={async question => {
-                await this.props.onSave(question);
-                onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-              }}
-              onCreate={async question => {
-                await this.props.onCreate(question);
-                onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-              }}
-              onClose={onCloseModal}
-              multiStep
-            />
-          </Modal>
+          <SaveQuestionModal
+            question={this.props.question}
+            originalQuestion={this.props.originalQuestion}
+            initialCollectionId={this.props.initialCollectionId}
+            onSave={async question => {
+              await this.props.onSave(question);
+              onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
+            }}
+            onCreate={async question => {
+              await this.props.onCreate(question);
+              onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
+            }}
+            onClose={onCloseModal}
+            multiStep
+          />
         );
       case MODAL_TYPES.ADD_TO_DASHBOARD:
         return (
@@ -192,43 +195,39 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT:
         return (
-          <Modal onClose={onCloseModal}>
-            <SaveQuestionModal
-              question={this.props.question}
-              originalQuestion={this.props.originalQuestion}
-              onSave={async question => {
-                await this.props.onSave(question);
-                this.showAlertsAfterQuestionSaved();
-              }}
-              onCreate={async question => {
-                await this.props.onCreate(question);
-                this.showAlertsAfterQuestionSaved();
-              }}
-              onClose={onCloseModal}
-              multiStep
-              initialCollectionId={this.props.initialCollectionId}
-            />
-          </Modal>
+          <SaveQuestionModal
+            question={this.props.question}
+            originalQuestion={this.props.originalQuestion}
+            onSave={async question => {
+              await this.props.onSave(question);
+              this.showAlertsAfterQuestionSaved();
+            }}
+            onCreate={async question => {
+              await this.props.onCreate(question);
+              this.showAlertsAfterQuestionSaved();
+            }}
+            onClose={onCloseModal}
+            multiStep
+            initialCollectionId={this.props.initialCollectionId}
+          />
         );
       case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
         return (
-          <Modal onClose={onCloseModal}>
-            <SaveQuestionModal
-              question={this.props.question}
-              originalQuestion={this.props.originalQuestion}
-              onSave={async question => {
-                await this.props.onSave(question);
-                onOpenModal(MODAL_TYPES.EMBED);
-              }}
-              onCreate={async question => {
-                await this.props.onCreate(question);
-                onOpenModal(MODAL_TYPES.EMBED);
-              }}
-              onClose={onCloseModal}
-              multiStep
-              initialCollectionId={this.props.initialCollectionId}
-            />
-          </Modal>
+          <SaveQuestionModal
+            question={this.props.question}
+            originalQuestion={this.props.originalQuestion}
+            onSave={async question => {
+              await this.props.onSave(question);
+              onCloseModal();
+            }}
+            onCreate={async question => {
+              await this.props.onCreate(question);
+              onCloseModal();
+            }}
+            onClose={onCloseModal}
+            multiStep
+            initialCollectionId={this.props.initialCollectionId}
+          />
         );
       case MODAL_TYPES.FILTERS:
         return (
@@ -253,8 +252,8 @@ class QueryModals extends Component<QueryModalsProps> {
                     notify: {
                       message: (
                         <QuestionMoveToast
-                          isModel={question.isDataset()}
                           collectionId={collection.id || ROOT_COLLECTION.id}
+                          question={question}
                         />
                       ),
                       undo: false,

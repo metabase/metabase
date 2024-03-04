@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
+import type { ApiKey } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 
 const GROUPS = [
@@ -17,42 +18,46 @@ const GROUPS = [
   createMockGroup({ id: 5, name: "flamingos" }),
 ];
 
-async function setup() {
-  setupGroupsEndpoint(GROUPS);
-  setupApiKeyEndpoints([
-    {
-      name: "Development API Key",
+const testApiKeys: ApiKey[] = [
+  {
+    name: "Development API Key",
+    id: 1,
+    group: {
       id: 1,
-      group: {
-        id: 1,
-        name: "All Users",
-      },
-      creator_id: 1,
-      masked_key: "asdfasdfa",
-      created_at: "2010-08-10",
-      updated_at: "2010-08-10",
-      updated_by: {
-        common_name: "John Doe",
-        id: 10,
-      },
+      name: "All Users",
     },
-    {
-      name: "Production API Key",
+    creator_id: 1,
+    masked_key: "asdfasdfa",
+    created_at: "2010-08-10",
+    updated_at: "2010-08-10",
+    updated_by: {
+      common_name: "John Doe",
+      id: 10,
+    },
+  },
+  {
+    name: "Production API Key",
+    id: 2,
+    group: {
       id: 2,
-      group: {
-        id: 2,
-        name: "Administrators",
-      },
-      creator_id: 1,
-      masked_key: "asdfasdfa",
-      created_at: "2010-08-10",
-      updated_at: "2010-08-10",
-      updated_by: {
-        common_name: "Jane Doe",
-        id: 10,
-      },
+      name: "Administrators",
     },
-  ]);
+    creator_id: 1,
+    masked_key: "asdfasdfa",
+    created_at: "2010-08-10",
+    updated_at: "2010-08-10",
+    updated_by: {
+      common_name: "Jane Doe",
+      id: 10,
+    },
+  },
+];
+
+async function setup(
+  { apiKeys }: { apiKeys?: ApiKey[] } = { apiKeys: undefined },
+) {
+  setupGroupsEndpoint(GROUPS);
+  setupApiKeyEndpoints(apiKeys ?? testApiKeys);
   renderWithProviders(<ManageApiKeys />);
   await waitFor(() => {
     expect(
@@ -64,6 +69,17 @@ describe("ManageApiKeys", () => {
   it("should render the component", async () => {
     await setup();
     expect(screen.getByText("Manage API Keys")).toBeInTheDocument();
+  });
+  it("should render component empty state", async () => {
+    await setup({ apiKeys: [] });
+    expect(screen.getByText("Manage API Keys")).toBeInTheDocument();
+    expect(screen.getByText("No API keys here yet")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You can create an API key to make API calls programatically.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Create API Key")).toHaveLength(2);
   });
   it("should load API keys from api", async () => {
     await setup();

@@ -47,11 +47,13 @@ export const CustomHomePageModal = ({
           <Box ml="0.5rem" mr="2.5rem">
             <Text
               span
+              c="white"
               fw={700}
             >{t`This dashboard has been set as your homepage.`}</Text>
             <br />
             <Text
               span
+              c="white"
             >{t`You can change this in Admin > Settings > General.`}</Text>
           </Box>
         ),

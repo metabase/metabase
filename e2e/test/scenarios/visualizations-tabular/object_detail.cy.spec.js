@@ -1,4 +1,3 @@
-
 import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -406,7 +405,7 @@ function changeSorting(columnName, direction) {
   );
 });
 
-describe(`Object Detail > public`, () => {
+describe("Object Detail > public", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

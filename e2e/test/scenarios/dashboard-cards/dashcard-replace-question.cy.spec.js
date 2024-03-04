@@ -116,7 +116,7 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     cy.signInAsAdmin();
     enableTracking();
 
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
       ({ body: { id: mappedQuestionId } }) => {

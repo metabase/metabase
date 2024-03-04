@@ -1,4 +1,3 @@
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -457,7 +456,7 @@ describe("scenarios > question > settings", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
-      cy.get(".ModalContent").contains("button", "Save").click();
+      cy.findByTestId("save-question-modal").contains("button", "Save").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Yes please!").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -490,7 +489,7 @@ function refreshResultsInHeader() {
 
 function getSidebarColumns() {
   return cy
-    .findByRole("list", { name: "chart-settings-table-columns" })
+    .findByTestId("chart-settings-table-columns")
     .scrollIntoView()
     .should("be.visible")
     .findAllByRole("listitem");
