@@ -5,6 +5,7 @@ import type {
 import { getSize, rem } from "@mantine/core";
 
 import {
+  getSelectDropdownOverrides,
   getSelectInputOverrides,
   getSelectItemsOverrides,
 } from "../Select/Select.styled";
@@ -34,6 +35,7 @@ export const getMultiSelectOverrides =
         { invalid }: MultiSelectStylesParams,
         { size = "md" },
       ) => ({
+        ...getSelectDropdownOverrides(),
         ...getSelectInputOverrides(theme, size),
         ...getSelectItemsOverrides(theme, size),
         values: {
