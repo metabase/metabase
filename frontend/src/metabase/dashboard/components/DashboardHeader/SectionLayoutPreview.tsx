@@ -5,8 +5,8 @@ import type { SectionLayout } from "metabase/dashboard/sections";
 import { Box, Flex } from "metabase/ui";
 import type { DashboardCardLayoutAttrs } from "metabase-types/api";
 
-const WIDTH = 115;
-const SPACING = 4;
+const WIDTH = 96;
+const SPACING = 3;
 const CELL_WIDTH = 1;
 const CELL_HEIGHT = 3;
 
