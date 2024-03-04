@@ -4,5 +4,6 @@ export type SetupStep =
   | "user_info"
   | "usage_question"
   | "db_connection"
+  | "license_token"
   | "data_usage"
   | "completed";

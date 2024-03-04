@@ -220,8 +220,13 @@ export const DashboardApi = {
   ),
 };
 
+export const SearchApi = {
+  list: GET("/api/search"),
+};
+
 export const CollectionsApi = {
   list: GET("/api/collection"),
+  listItems: GET("/api/collection/:collectionId/items"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
   // Temporary route for getting things not in a collection
@@ -486,6 +491,7 @@ export const SetupApi = {
   validate_db: POST("/api/setup/validate"),
   admin_checklist: GET("/api/setup/admin_checklist"),
   user_defaults: GET("/api/setup/user_defaults"),
+  validate_token: GET("/api/setup/token-check"),
 };
 
 export const UserApi = {

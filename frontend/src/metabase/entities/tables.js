@@ -14,6 +14,7 @@ import {
   createThunkAction,
   withAction,
   withCachedDataAndRequestState,
+  withForceReload,
   withNormalize,
 } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -81,6 +82,13 @@ const Tables = createEntity({
     // loads `query_metadata` for a single table
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
+      withForceReload((state, { id }) => {
+        // if there is a virtual table without fields,
+        // it might be due to a question with a long-running request that hasn't finished yet.
+        // in this case we should reload the metadata until we get the fields
+        const table = Tables.selectors.getObject(state, { entityId: id });
+        return table?.fields?.length === 0;
+      }),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],

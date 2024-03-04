@@ -14,12 +14,13 @@ import type {
   CardId,
   QuestionDashboardCard,
   DashboardId,
-  DashboardParameterMapping,
   DashCardId,
   ParameterId,
   ParameterTarget,
 } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
+
+import type { SetMultipleDashCardAttributesOpts } from "../core";
 
 export function getAllDashboardCardsWithUnmappedParameters({
   dashboardState,
@@ -80,13 +81,6 @@ export function getMatchingParameterOption(
   );
 }
 
-export type DashCardAttribute = {
-  id: DashCardId;
-  attributes: {
-    parameter_mappings: DashboardParameterMapping[];
-  };
-};
-
 export function getAutoWiredMappingsForDashcards(
   sourceDashcard: QuestionDashboardCard,
   targetDashcards: QuestionDashboardCard[],
@@ -94,12 +88,12 @@ export function getAutoWiredMappingsForDashcards(
   target: ParameterTarget,
   metadata: Metadata,
   questions: Record<CardId, Question>,
-): DashCardAttribute[] {
+): SetMultipleDashCardAttributesOpts {
   if (targetDashcards.length === 0) {
     return [];
   }
 
-  const targetDashcardMappings: DashCardAttribute[] = [];
+  const targetDashcardMappings: SetMultipleDashCardAttributesOpts = [];
 
   for (const targetDashcard of targetDashcards) {
     const selectedMappingOption: {

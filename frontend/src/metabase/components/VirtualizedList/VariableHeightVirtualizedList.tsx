@@ -1,5 +1,6 @@
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 import { useRef } from "react";
+import { useMount } from "react-use";
 
 import { Box } from "metabase/ui";
 
@@ -13,10 +14,12 @@ export function VirtualizedList({
   children,
   Wrapper = Box,
   estimatedItemSize = 32,
+  scrollTo,
 }: {
   children: React.ReactNode[];
   Wrapper?: React.JSXElementConstructor<any>;
   estimatedItemSize?: number;
+  scrollTo?: number;
 }) {
   const parentRef = useRef(null);
 
@@ -27,6 +30,15 @@ export function VirtualizedList({
   });
 
   const items = virtualizer.getVirtualItems();
+
+  useMount(() => {
+    if (scrollTo && scrollTo < children.length) {
+      // we need to wait for dynamic measurements to be taken before scrolling
+      window.requestAnimationFrame(() => {
+        virtualizer.scrollToIndex(scrollTo, { align: "center" });
+      });
+    }
+  });
 
   return (
     <div
