@@ -414,13 +414,13 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             </span>
           </Menu.Target>
           <Menu.Dropdown miw="100px">
-            <Flex direction="column" align="center" gap="md" p="sm">
+            <Flex direction="column" align="center" gap="md" p="12px">
               {layoutOptions.map(layout => (
                 <SectionMenuItem
                   key={layout.id}
                   onClick={() => onAddSection(layout)}
                   aria-label={layout.label}
-                  p="md"
+                  p="14px"
                 >
                   <SectionLayoutPreview layout={layout} />
                 </SectionMenuItem>
