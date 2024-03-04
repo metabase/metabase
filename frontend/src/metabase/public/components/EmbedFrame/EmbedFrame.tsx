@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { Location } from "history";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import { useMount } from "react-use";
@@ -170,6 +170,17 @@ function EmbedFrame({
     theme !== "transparent" && // https://github.com/metabase/metabase/pull/38766#discussion_r1491549200
     isParametersWidgetContainersSticky(visibleParameters.length);
 
+  const valuePopulatedParameters = useMemo(
+    () =>
+      getValuePopulatedParameters({
+        parameters,
+        values: _.isEmpty(draftParameterValues)
+          ? parameterValues
+          : draftParameterValues,
+      }),
+    [parameters, parameterValues, draftParameterValues],
+  );
+
   return (
     <Root
       hasScroll={hasFrameScroll}
@@ -223,12 +234,7 @@ function EmbedFrame({
               <SyncedParametersList
                 question={question}
                 dashboard={dashboard}
-                parameters={getValuePopulatedParameters({
-                  parameters,
-                  values: _.isEmpty(draftParameterValues)
-                    ? parameterValues
-                    : draftParameterValues,
-                })}
+                parameters={valuePopulatedParameters}
                 setParameterValue={setParameterValue}
                 hideParameters={hideParameters}
                 setParameterValueToDefault={setParameterValueToDefault}
