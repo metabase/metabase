@@ -93,9 +93,8 @@ export const updateLocale = createAsyncThunk(
 export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
 export const submitLanguage = createAction(SUBMIT_LANGUAGE);
 
-export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
-  SUBMIT_USER_INVITE,
+  "metabase/setup/SUBMIT_USER_INFO",
   async (user: UserInfo, { dispatch, getState, rejectWithValue }) => {
     const token = getSetupToken(getState());
     const invite = getInvite(getState());
@@ -137,8 +136,8 @@ export const submitUsageReason = createAsyncThunk(
 export const submitLicenseToken = createAsyncThunk(
   "metabase/setup/SUBMIT_LICENSE_TOKEN",
   (licenseToken: string | null, { dispatch }) => {
-    trackLicenseTokenStepSubmitted(Boolean(licenseToken));
     dispatch(goToNextStep());
+    trackLicenseTokenStepSubmitted(Boolean(licenseToken));
   },
 );
 
@@ -173,6 +172,7 @@ export const submitDatabase = createAsyncThunk<
   },
 );
 
+export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_INVITE",
   (_: InviteInfo, { dispatch }) => {
@@ -206,6 +206,7 @@ export const updateTracking = createAsyncThunk(
   },
 );
 
+// TODO: fix. need better error message (nabbed this from admin settings). We've already validated the token at this point, but in theory _something_ could error.
 const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
 
 export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";

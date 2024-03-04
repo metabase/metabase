@@ -22,16 +22,16 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
   const dispatch = useDispatch();
 
   const handleValidSubmit = async (token: string | null) => {
-    await dispatch(submitLicenseToken(token));
     dispatch(
       addUndo({
         message: t`Your license is activated`,
       }),
     );
+    dispatch(submitLicenseToken(token));
   };
 
-  const skipStep = async () => {
-    await dispatch(submitLicenseToken(null));
+  const skipStep = () => {
+    dispatch(submitLicenseToken(null));
   };
 
   if (!isStepActive) {

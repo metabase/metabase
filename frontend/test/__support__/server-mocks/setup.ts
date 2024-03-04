@@ -6,7 +6,7 @@ export function setupErrorSetupEndpoints() {
   fetchMock.post("path:/api/setup", 400);
 }
 
-export function setupErrorTracking() {
+export function setupErrorTrackingEndpoints() {
   fetchMock.put("path:/api/setting/anon-tracking-enabled", 400);
   fetchMock.get("path:/api/setting", 200);
   fetchMock.get("path:/api/session/properties", 200);

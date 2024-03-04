@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupErrorTracking } from "__support__/server-mocks";
+import { setupErrorTrackingEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { SetupStep } from "metabase/setup/types";
 import {
@@ -21,7 +21,7 @@ const setup = ({ step = "data_usage" }: SetupOpts = {}) => {
     }),
   });
 
-  setupErrorTracking();
+  setupErrorTrackingEndpoints();
   renderWithProviders(<DataUsageStep stepLabel={0} />, {
     storeInitialState: state,
   });
