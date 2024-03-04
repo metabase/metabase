@@ -30,9 +30,9 @@
                                   (assoc query :middleware {:skip-results-metadata? true
                                                             :process-viz-settings?  true
                                                             :js-int-to-string?      false})
-                                  (merge (cond-> {:executed-by               pulse-creator-id
-                                                  :context                   :pulse
-                                                  :card-id                   card-id}
+                                  (merge (cond-> {:executed-by pulse-creator-id
+                                                  :context     :pulse
+                                                  :card-id     card-id}
                                            (= card-type :model)
                                            (assoc :metadata/model-metadata metadata))
                                          options)))))
