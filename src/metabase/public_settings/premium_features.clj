@@ -249,7 +249,7 @@
         (cached-logger (premium-embedding-token) e)
         #{}))))
 
-(defn- has-any-features?
+(defn has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
   (boolean (seq (*token-features*))))
