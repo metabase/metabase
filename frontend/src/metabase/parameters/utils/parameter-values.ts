@@ -8,7 +8,7 @@ import type {
 } from "metabase-types/api";
 
 export function getParameterValueFromQueryParams(
-  parameter: FieldFilterUiParameter,
+  parameter: Parameter,
   queryParams: Record<string, string | string[] | undefined>,
 ) {
   queryParams = queryParams || {};
@@ -26,8 +26,9 @@ export function getParameterValueFromQueryParams(
   return normalizeParameterValueForWidget(parsedValue, parameter);
 }
 
-function parseParameterValue(value: any, parameter: FieldFilterUiParameter) {
-  const { fields } = parameter;
+function parseParameterValue(value: any, parameter: Parameter) {
+  // TODO this casting should be removed as we tidy up Parameter types
+  const { fields } = parameter as FieldFilterUiParameter;
   if (Array.isArray(fields) && fields.length > 0) {
     return parseParameterValueForFields(value, fields);
   }
@@ -97,7 +98,7 @@ function normalizeParameterValueForWidget(
 }
 
 export function getParameterValuesByIdFromQueryParams(
-  parameters: FieldFilterUiParameter[],
+  parameters: Parameter[],
   queryParams: Record<string, string | string[] | undefined>,
 ) {
   return Object.fromEntries(
