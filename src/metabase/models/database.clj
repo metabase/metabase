@@ -323,7 +323,7 @@
       driver.u/default-sensitive-fields))
 
 (defn- redact-db-details [db]
-  (if (not (mi/can-write? db))
+  (if-not (mi/can-write? db)
     (u/assoc-existing db :details protected-db-details)
     (m/update-existing db :details (fn [details]
                                      (reduce
