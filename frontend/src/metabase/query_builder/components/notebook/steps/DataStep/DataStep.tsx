@@ -2,16 +2,15 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
-import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../../FieldsPickerIcon";
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
 
-import { DataStepCell } from "./DataStep.styled";
+import { DataStepCell, DataStepIconButton } from "./DataStep.styled";
 
 export const DataStep = ({
   query,
@@ -55,15 +54,15 @@ export const DataStep = ({
         inactive={!table}
         right={
           canSelectTableColumns && (
-            <DataFieldsPicker
+            <DataFieldPopover
               query={query}
               stageIndex={stageIndex}
               updateQuery={updateQuery}
             />
           )
         }
-        containerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
-        rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
+        containerStyle={{ padding: 0 }}
+        rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
         <DataSourceSelector
@@ -81,36 +80,67 @@ export const DataStep = ({
   );
 };
 
-interface DataFieldsPickerProps {
+interface DataFieldPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   updateQuery: (query: Lib.Query) => Promise<void>;
 }
 
-export const DataFieldsPicker = ({
+function DataFieldPopover({
   query,
   stageIndex,
   updateQuery,
-}: DataFieldsPickerProps) => {
+}: DataFieldPopoverProps) {
+  return (
+    <Popover position="bottom-start">
+      <Popover.Target>
+        <Tooltip label={t`Pick columns`}>
+          <DataStepIconButton
+            aria-label={t`Pick columns`}
+            data-testid="fields-picker"
+          >
+            <Icon name="chevrondown" />
+          </DataStepIconButton>
+        </Tooltip>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <DataFieldPicker
+          query={query}
+          stageIndex={stageIndex}
+          updateQuery={updateQuery}
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
+interface DataFieldPickerProps {
+  query: Lib.Query;
+  stageIndex: number;
+  updateQuery: (query: Lib.Query) => Promise<void>;
+}
+
+function DataFieldPicker({
+  query,
+  stageIndex,
+  updateQuery,
+}: DataFieldPickerProps) {
   const columns = useMemo(
     () => Lib.fieldableColumns(query, stageIndex),
     [query, stageIndex],
   );
 
-  const handleToggle = (changedIndex: number, isSelected: boolean) => {
-    const nextColumns = columns.filter((_, currentIndex) => {
-      if (currentIndex === changedIndex) {
-        return isSelected;
-      }
-      const column = columns[currentIndex];
-      return Lib.displayInfo(query, stageIndex, column).selected;
-    });
-    const nextQuery = Lib.withFields(query, stageIndex, nextColumns);
+  const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
+    const nextQuery = isSelected
+      ? Lib.addField(query, stageIndex, column)
+      : Lib.removeField(query, stageIndex, column);
     updateQuery(nextQuery);
   };
 
-  const checkColumnSelected = (column: Lib.ColumnMetadata) =>
-    !!Lib.displayInfo(query, stageIndex, column).selected;
+  const isColumnSelected = (column: Lib.ColumnMetadata) => {
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    return Boolean(columnInfo.selected);
+  };
 
   const handleSelectAll = () => {
     const nextQuery = Lib.withFields(query, stageIndex, []);
@@ -123,19 +153,14 @@ export const DataFieldsPicker = ({
   };
 
   return (
-    <PopoverWithTrigger
-      triggerStyle={FIELDS_PICKER_STYLES.trigger}
-      triggerElement={FieldsPickerIcon}
-    >
-      <FieldPicker
-        query={query}
-        stageIndex={stageIndex}
-        columns={columns}
-        isColumnSelected={checkColumnSelected}
-        onToggle={handleToggle}
-        onSelectAll={handleSelectAll}
-        onSelectNone={handleSelectNone}
-      />
-    </PopoverWithTrigger>
+    <FieldPicker
+      query={query}
+      stageIndex={stageIndex}
+      columns={columns}
+      isColumnSelected={isColumnSelected}
+      onToggle={handleToggle}
+      onSelectAll={handleSelectAll}
+      onSelectNone={handleSelectNone}
+    />
   );
-};
+}
