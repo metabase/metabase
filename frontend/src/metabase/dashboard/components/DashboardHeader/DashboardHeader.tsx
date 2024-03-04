@@ -420,7 +420,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
                   key={layout.id}
                   onClick={() => onAddSection(layout)}
                   aria-label={layout.label}
-                  maw="98px"
+                  p="md"
                 >
                   <SectionLayoutPreview layout={layout} />
                 </SectionMenuItem>
