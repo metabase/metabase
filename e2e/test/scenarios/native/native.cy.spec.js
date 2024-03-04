@@ -46,7 +46,10 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").click();
     });
     cy.findByTestId("save-question-modal").within(() => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+      cy.findByLabelText(/Which collection should this go in/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 
@@ -459,12 +462,12 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
     "shows format query button only for sql queries",
     { tags: "@mongo" },
     () => {
-      const MONGO_DB_NAME = "QA Mongo4";
+      const MONGO_DB_NAME = "QA Mongo";
 
       cy.intercept("POST", "/api/card").as("createQuestion");
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      restore("mongo-4");
+      restore("mongo-5");
       cy.signInAsNormalUser();
 
       openNativeEditor({ newMenuItemTitle: "Native query" });

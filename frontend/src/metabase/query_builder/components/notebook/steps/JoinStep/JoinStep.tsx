@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text, Icon } from "metabase/ui";
@@ -7,7 +7,6 @@ import * as Lib from "metabase-lib";
 import { NotebookCellAdd, NotebookCellItem } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
 
-import type { JoinConditionColumnPickerRef } from "./JoinConditionColumnPicker";
 import { JoinConditionColumnPicker } from "./JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "./JoinConditionOperatorPicker";
 import {
@@ -280,20 +279,40 @@ function JoinCondition({
     rhsColumn,
     operator,
     operators,
-    lhsColumns,
-    rhsColumns,
     setOperator,
     setLHSColumn,
     setRHSColumn,
-  } = useJoinCondition(query, stageIndex, table, join, condition);
+  } = useJoinCondition(query, stageIndex, condition);
 
-  const rhsColumnPicker = useRef<JoinConditionColumnPickerRef>(null);
+  const getLhsColumnGroup = () => {
+    const lhsColumns = Lib.joinConditionLHSColumns(
+      query,
+      stageIndex,
+      join || table,
+      lhsColumn,
+      rhsColumn,
+    );
 
-  const lhsColumnGroup = Lib.groupColumns(lhsColumns);
-  const rhsColumnGroup = Lib.groupColumns(rhsColumns);
+    return Lib.groupColumns(lhsColumns);
+  };
+
+  const getRhsColumnGroup = () => {
+    const rhsColumns = Lib.joinConditionRHSColumns(
+      query,
+      stageIndex,
+      join || table,
+      lhsColumn,
+      rhsColumn,
+    );
+
+    return Lib.groupColumns(rhsColumns);
+  };
 
   const isNewCondition = !condition;
   const isComplete = Boolean(lhsColumn && rhsColumn && operator);
+
+  const [isLHSPickerOpened, setIsLHSPickerOpened] = useState(isNewCondition);
+  const [isRHSPickerOpened, setIsRHSPickerOpened] = useState(false);
 
   const handleOperatorChange = (operator: Lib.JoinConditionOperator) => {
     const nextCondition = setOperator(operator);
@@ -307,7 +326,7 @@ function JoinCondition({
     if (nextCondition) {
       onChange(nextCondition);
     } else if (!rhsColumn) {
-      rhsColumnPicker.current?.open?.();
+      setIsRHSPickerOpened(true);
     }
     onChangeLHSColumn(lhsColumn);
   };
@@ -327,13 +346,15 @@ function JoinCondition({
             query={query}
             stageIndex={stageIndex}
             column={lhsColumn}
-            columnGroups={lhsColumnGroup}
+            getColumnGroups={getLhsColumnGroup}
             isNewCondition={isNewCondition}
             label={t`Left column`}
-            isInitiallyVisible={isNewCondition}
+            isOpened={isLHSPickerOpened}
             withDefaultBucketing={!rhsColumn}
             readOnly={readOnly}
             onSelect={handleLHSColumnChange}
+            onOpenedChange={setIsLHSPickerOpened}
+            data-testid="lhs-column-picker"
           />
         </Box>
         <JoinConditionOperatorPicker
@@ -350,14 +371,16 @@ function JoinCondition({
             query={query}
             stageIndex={stageIndex}
             column={rhsColumn}
-            columnGroups={rhsColumnGroup}
+            getColumnGroups={getRhsColumnGroup}
             table={table}
             isNewCondition={isNewCondition}
             label={t`Right column`}
+            isOpened={isRHSPickerOpened}
             withDefaultBucketing={!lhsColumn}
             readOnly={readOnly}
-            popoverRef={rhsColumnPicker}
             onSelect={handleRHSColumnChange}
+            onOpenedChange={setIsRHSPickerOpened}
+            data-testid="rhs-column-picker"
           />
         </Box>
       </Flex>

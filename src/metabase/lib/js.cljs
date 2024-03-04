@@ -16,6 +16,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
@@ -738,7 +739,7 @@
 
 (defn ^:export available-join-strategies
   "Get available join strategies for the current Database (based on the Database's
-  supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
+  supported [[metabase.driver/features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
   (to-array (lib.core/available-join-strategies a-query stage-number)))
 
@@ -900,7 +901,7 @@
     :metadata/card  #js {:databaseId (:database a-query)
                          :tableId (str "card__" (:id metadata))
                          :cardId (:id metadata)
-                         :isModel (:dataset metadata)}
+                         :isModel (= (keyword (:type metadata)) :model)}
     (do
       (log/warn "Cannot provide picker-info for" (:lib/type metadata))
       nil)))
@@ -1221,6 +1222,28 @@
                  (and (vector? legacy-expr)
                       (#{:aggregation-options :value} (first legacy-expr)))
                  (get 1))))))
+
+(defn ^:export diagnose-expression
+  "Checks `legacy-expression` for type errors and, if `expression-mode` is \"expression\" and
+  `expression-position` is provided, for cyclic references with other expressions.
+
+  - `expr` is a legacy MBQL expression created using the custom column editor in the FE.
+  - `expression-mode` specifies what type of thing `expr` is: an \"expression\" (custom column),
+    an \"aggregation\" expression, or a \"filter\" condition.
+  - `expression-position` is only defined when editing an existing custom column, and in that case
+    it is the index of that expression in (expressions query stage-number).
+
+  The function returns nil, if the expression is valid, otherwise it returns an i18n message
+  describing the problem."
+  [a-query stage-number expression-mode legacy-expression expression-position]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (let [expr (js->clj legacy-expression :keywordize-keys true)
+          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
+      (-> (lib.expression/diagnose-expression a-query stage-number
+                                              (keyword expression-mode)
+                                              (lib.convert/->pMBQL expr)
+                                              expression-position)
+          clj->js))))
 
 (defn ^:export field-values-search-info
   "Info about whether the column in question has FieldValues associated with it for purposes of powering a search

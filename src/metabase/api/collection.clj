@@ -180,7 +180,10 @@
   ```
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
-  subtree (below)."
+  subtree (below).
+
+  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
+  some point in the future."
   [exclude-archived exclude-other-user-collections namespace shallow collection-id]
   {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
@@ -196,11 +199,11 @@
                                          :permissions-set                @api/*current-user-permissions-set*})]
     (if shallow
       (shallow-tree-from-collection-id collections)
-      (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                          (update acc (if dataset :dataset :card) conj collection_id))
+      (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
+                                          (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
                                         {:dataset #{}
                                          :card    #{}}
-                                        (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                        (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
                                                                     :where           [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
@@ -211,7 +214,14 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
+  #{"card"       ; SavedQuestion
+    "dataset"    ; Model. TODO : update this
+    "collection"
+    "dashboard"
+    "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
+    "snippet"
+    "no_models"
+    "timeline"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -394,7 +404,7 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :dataset dataset?]]}
+                   [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
       (cond-> dataset?
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
@@ -521,6 +531,7 @@
                       :description
                       :entity_id
                       :personal_owner_id
+                      :location
                       [(h2x/literal "collection") :model]
                       :authority_level])
       ;; the nil indicates that collections are never pinned.
@@ -537,16 +548,20 @@
               ;; when fetching root collection, we might have personal collection
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
-    (for [row rows]
-      ;; Go through this rigamarole instead of hydration because we
-      ;; don't get models back from ulterior over-query
-      ;; Previous examination with logging to DB says that there's no N+1 query for this.
-      ;; However, this was only tested on H2 and Postgres
-      (-> row
-          (assoc :can_write (mi/can-write? Collection (:id row)))
-          (dissoc :collection_position :display :moderated_status :icon
-                  :collection_preview :dataset_query :table_id :query_type :is_upload)
-          update-personal-collection))))
+      (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
+                                  @api/*current-user-permissions-set*)]
+        (for [row rows]
+          ;; Go through this rigamarole instead of hydration because we
+          ;; don't get models back from ulterior over-query
+          ;; Previous examination with logging to DB says that there's no N+1 query for this.
+          ;; However, this was only tested on H2 and Postgres
+          (-> row
+              (assoc :can_write (mi/can-write? Collection (:id row)))
+              (assoc :effective_location
+                      (collection/effective-location-path (:location row) visible-collection-ids))
+              (dissoc :collection_position :display :moderated_status :icon
+                      :collection_preview :dataset_query :table_id :query_type :is_upload)
+              update-personal-collection)))))
 
 (mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -605,7 +620,7 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
-   :model :collection_position :authority_level [:personal_owner_id :integer]
+   :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
    ;; for determining whether a model is based on a csv-uploaded table

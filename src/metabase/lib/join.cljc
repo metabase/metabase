@@ -37,7 +37,7 @@
   (= (lib.dispatch/dispatch-value x) :mbql/join))
 
 (def ^:private Joinable
-  [:or lib.metadata/TableMetadata lib.metadata/CardMetadata])
+  [:or lib.metadata/TableMetadata ::lib.schema.metadata/card])
 
 (def ^:private JoinOrJoinable
   [:or
@@ -568,7 +568,7 @@
 
 (mu/defn available-join-strategies :- [:sequential ::lib.schema.join/strategy.option]
   "Get available join strategies for the current Database (based on the Database's
-  supported [[metabase.driver/driver-features]]) as raw keywords like `:left-join`."
+  supported [[metabase.driver/features]]) as raw keywords like `:left-join`."
   ([query]
    (available-join-strategies query -1))
 

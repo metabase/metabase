@@ -34,7 +34,10 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
-import { trackAutoApplyFiltersDisabled } from "../analytics";
+import {
+  trackAutoApplyFiltersDisabled,
+  trackFilterRequired,
+} from "../analytics";
 import {
   getAutoApplyFiltersToastId,
   getDashboard,
@@ -297,6 +300,13 @@ export const setParameterRequired = createThunkAction(
         ...parameter,
         required,
       }));
+    }
+
+    if (required) {
+      const dashboardId = getDashboardId(getState());
+      if (dashboardId) {
+        trackFilterRequired(dashboardId);
+      }
     }
   },
 );

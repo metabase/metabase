@@ -21,7 +21,7 @@
    (case model
      "card"      [Card
                   :id :name :collection_id :description :display
-                  :dataset_query :dataset :archived
+                  :dataset_query :type :archived
                   :collection.authority_level]
      "dashboard" [Dashboard
                   :id :name :collection_id :description
@@ -129,7 +129,7 @@
                     (not (or (:archived model-object)
                              (= (:visibility_type model-object) :hidden))))]
            (cond-> (assoc view-log :model_object model-object)
-             (:dataset model-object) (assoc :model "dataset")))
+             (= (keyword (:type model-object)) :model) (assoc :model "dataset")))
          (take 5))))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
@@ -209,7 +209,7 @@
                                         (not (or (:archived model-object)
                                                  (= (:visibility_type model-object) :hidden))))]
                          (cond-> (assoc view-log :model_object model-object)
-                           (:dataset model-object) (assoc :model "dataset")))
+                           (= (keyword (:type model-object)) :model) (assoc :model "dataset")))
         scored-views (score-items filtered-views)]
     (->> scored-views
          (sort-by :score)

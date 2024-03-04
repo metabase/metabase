@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { useListApiKeyQuery } from "metabase/api";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -23,18 +23,12 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
   return (
     <Stack mt="xl" align="center" justify="center" spacing="sm">
       <Title>{t`No API keys here yet`}</Title>
-      <Text color="text-medium">{t`You can create an API key to make API calls programatically.`}</Text>
-      <Text color="text.1">{jt`You can ${(
-        <Button
-          key="create-key-button"
-          variant="subtle"
-          onClick={onCreate}
-          p="0"
-          m="0"
-        >
-          {t`create an api key`}
-        </Button>
-      )} to make API calls programatically.`}</Text>
+      <Text color="text.1" mb="md">
+        {t`You can create an API key to make API calls programatically.`}
+      </Text>
+      <Button key="create-key-button" variant="filled" onClick={onCreate}>
+        {t`Create API Key`}
+      </Button>
     </Stack>
   );
 }

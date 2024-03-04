@@ -8,7 +8,7 @@ import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import { ConnectedAddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Questions from "metabase/entities/questions";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
@@ -40,8 +40,12 @@ const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
 };
 
-const mapStateToProps = (state: State) => ({
+const mapStateToProps = (state: State, props: QueryModalsProps) => ({
   questionWithParameters: getQuestionWithParameters(state) as Question,
+  initialCollectionId: Collections.selectors.getInitialCollectionId(
+    state,
+    props,
+  ),
 });
 
 type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
@@ -214,11 +218,11 @@ class QueryModals extends Component<QueryModalsProps> {
             originalQuestion={this.props.originalQuestion}
             onSave={async question => {
               await this.props.onSave(question);
-              onOpenModal(MODAL_TYPES.EMBED);
+              onCloseModal();
             }}
             onCreate={async question => {
               await this.props.onCreate(question);
-              onOpenModal(MODAL_TYPES.EMBED);
+              onCloseModal();
             }}
             onClose={onCloseModal}
             multiStep

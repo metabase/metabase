@@ -1,3 +1,9 @@
+export type EditApiKeyInput = {
+  id: number;
+  group_id: string;
+  name: string;
+};
+
 export type ApiKey = {
   name: string;
   id: number;
@@ -37,7 +43,7 @@ export type RegenerateApiKeyResponse = {
 };
 
 export interface Log {
-  timestamp: number;
+  timestamp: string;
   process_uuid: string;
   fqns: string;
   msg: string;

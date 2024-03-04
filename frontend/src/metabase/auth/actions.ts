@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
-import { deleteSession } from "metabase/lib/auth";
+import { deleteSession, initiateSLO } from "metabase/lib/auth";
 import { reload, isSmallScreen } from "metabase/lib/dom";
 import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -99,14 +99,32 @@ export const loginGoogle = createAsyncThunk(
 export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createAsyncThunk(
   LOGOUT,
-  async (redirectUrl: string | undefined, { dispatch, rejectWithValue }) => {
+  async (
+    redirectUrl: string | undefined,
+    { dispatch, rejectWithValue, getState },
+  ) => {
     try {
-      await deleteSession();
-      dispatch(clearCurrentUser());
-      await dispatch(refreshLocale()).unwrap();
-      trackLogout();
-      dispatch(push(Urls.login(redirectUrl)));
-      reload(); // clears redux state and browser caches
+      const state = getState();
+      const user = getUser(state);
+
+      if (user?.sso_source === "saml") {
+        const { "saml-logout-url": samlLogoutUrl } = await initiateSLO();
+
+        dispatch(clearCurrentUser());
+        await dispatch(refreshLocale()).unwrap();
+        trackLogout();
+
+        if (samlLogoutUrl) {
+          window.location.href = samlLogoutUrl;
+        }
+      } else {
+        await deleteSession();
+        dispatch(clearCurrentUser());
+        await dispatch(refreshLocale()).unwrap();
+        trackLogout();
+        dispatch(push(Urls.login()));
+        reload(); // clears redux state and browser caches
+      }
     } catch (error) {
       return rejectWithValue(error);
     }

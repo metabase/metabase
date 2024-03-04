@@ -17,7 +17,7 @@
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.database
     :as database
@@ -141,11 +141,10 @@
                      (log/error e (tru "Error determining whether Database supports nested queries")))))
                (t2/select-pks-set Database))))
 
-(defn- source-query-cards
-  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either
-  `dataset` or `card`, pass in the `question-type` of `:dataset` or `:card`"
-  [question-type & {:keys [additional-constraints xform], :or {xform identity}}]
-  {:pre [(#{:card :dataset} question-type)]}
+(mu/defn ^:private source-query-cards
+  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
+  [card-type :- ::card/type
+   & {:keys [additional-constraints xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial mi/do-after-select Card))
@@ -167,7 +166,7 @@
                                  :where    (into [:and
                                                   [:not= :result_metadata nil]
                                                   [:= :archived false]
-                                                  [:= :dataset (= question-type :dataset)]
+                                                  [:= :type (u/qualified-name card-type)]
                                                   [:in :database_id ids-of-dbs-that-support-source-queries]
                                                   (collection/visible-collection-ids->honeysql-filter-clause
                                                    (collection/permissions-set->visible-collection-ids
@@ -175,34 +174,37 @@
                                                  additional-constraints)
                                  :order-by [[:%lower.name :asc]]}))))
 
-(defn- source-query-cards-exist?
+(mu/defn ^:private source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  [question-type]
-  (seq (source-query-cards question-type :xform (take 1))))
+  [card-type :- ::card/type]
+  (seq (source-query-cards card-type :xform (take 1))))
 
-(defn- cards-virtual-tables
+(mu/defn ^:private cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [question-type & {:keys [include-fields?]}]
-  (for [card (source-query-cards question-type)]
+  [card-type :- ::card/type
+   & {:keys [include-fields?]}]
+  (for [card (source-query-cards card-type)]
     (api.table/card->virtual-table card :include-fields? include-fields?)))
 
-(defn- saved-cards-virtual-db-metadata [question-type & {:keys [include-tables? include-fields?]}]
+(mu/defn ^:private saved-cards-virtual-db-metadata
+  [card-type :- ::card/type
+   & {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}
-      include-tables? (assoc :tables (cards-virtual-tables question-type
+      include-tables? (assoc :tables (cards-virtual-tables card-type
                                                            :include-fields? include-fields?)))))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-saved-questions-virtual-database [dbs & options]
-  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :card options)]
+  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :question options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
-      (and (source-query-cards-exist? :card) virtual-db-metadata) (concat [virtual-db-metadata]))))
+      (and (source-query-cards-exist? :question) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- filter-databases-by-data-model-perms
   "Filters the provided list of databases by data model perms, returning only the databases for which the current user
@@ -368,7 +370,7 @@
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
-  [:question :dataset :metric :segment])
+  [:question :dataset :metric :segment]) ; TODO -- rename `:dataset` to `:model`?
 
 (def ^:private always-false-hsql-expr
   "A Honey SQL expression that is never true.
@@ -388,15 +390,15 @@
    :from   [:report_card]
    :where  [:and
             [:= :database_id db-id]
-            [:= :dataset false]]})
+            [:= :type "question"]]})
 
 (defmethod database-usage-query :dataset
-  [_ db-id _table-ids]
+  [_model db-id _table-ids]
   {:select [[:%count.* :dataset]]
    :from   [:report_card]
    :where  [:and
             [:= :database_id db-id]
-            [:= :dataset true]]})
+            [:= :type "model"]]})
 
 (defmethod database-usage-query :metric
   [_ _db-id table-ids]
@@ -440,13 +442,17 @@
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
-  (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
+  (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive?]
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (t2/hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+               (t2/hydrate [:tables [:fields
+                                     :has_field_values
+                                     [:target :has_field_values]]
+                            :segments
+                            :metrics]))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -519,7 +525,7 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (t2/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
+    (t2/select [Card :id :type :database_id :name :collection_id [:collection.name :collection_name]]
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
@@ -541,8 +547,11 @@
                              (and (empty? search-id) (not-empty search-name))
                              [:like [:lower :report_card.name] (str "%" search-name "%")])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
-                :order-by [[:dataset :desc]         ; prioritize models
-                           [:report_card.id :desc]] ; then most recently created
+                ;; prioritize models. This relies of `model` coming before `question` alphabetically, and Tamas pointed
+                ;; out this is a little brittle. He's right -- once we put v2 Metrics in then we can replace this with a
+                ;; fancy `CASE` expression or something so we can sort things exactly how we like.
+                :order-by [[:type :asc]
+                           [:report_card.id :desc]] ; sort by most recently created after sorting by type
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
@@ -650,7 +659,7 @@
   (try
     (->> (autocomplete-cards id query)
          (filter mi/can-read?)
-         (map #(select-keys % [:id :name :dataset :collection_name])))
+         (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e
       (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
 
@@ -1134,7 +1143,7 @@
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
-    (->> (cards-virtual-tables :card)
+    (->> (cards-virtual-tables :question)
          (map :schema)
          distinct
          (sort-by u/lower-case-en))))
@@ -1144,7 +1153,7 @@
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
-    (->> (cards-virtual-tables :dataset)
+    (->> (cards-virtual-tables :model)
          (map :schema)
          distinct
          (sort-by u/lower-case-en))))
@@ -1206,7 +1215,7 @@
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
-          :card
+          :question
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
@@ -1218,7 +1227,7 @@
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
-          :dataset
+          :model
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])

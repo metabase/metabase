@@ -78,7 +78,7 @@
 (deftest template-tag-generation-test
   (testing "Generating template tags produces correct types for running process-query (#31252)"
     (t2.with-temp/with-temp
-      [Card {card-id :id} {:dataset       true
+      [Card {card-id :id} {:type          :model
                            :dataset_query (mt/native-query {:query "select * from checkins"})}]
       (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
             tt  (lib-native/extract-template-tags q)
@@ -360,7 +360,7 @@
         (is (= [200]
                (mt/first-row (qp/process-query query))))))))
 
-(deftest date-parameter-for-native-query-with-nested-mbql-query-test
+(deftest ^:parallel date-parameter-for-native-query-with-nested-mbql-query-test
   (testing "Should be able to have a native query with a nested MBQL query and a date parameter (#21246)"
     (mt/dataset test-data
       (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/mbql-query products)}]

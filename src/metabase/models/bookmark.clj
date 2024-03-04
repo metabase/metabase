@@ -4,7 +4,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -44,7 +44,7 @@
    [:item_id                          ms/PositiveInt]
    [:name                             ms/NonBlankString]
    [:authority_level {:optional true} [:maybe :string]]
-   [:dataset         {:optional true} [:maybe :boolean]]
+   [:card_type       {:optional true} [:maybe [:ref ::card/type]]]
    [:description     {:optional true} [:maybe :string]]
    [:display         {:optional true} [:maybe :string]]])
 
@@ -58,9 +58,11 @@
                             (not= (:type result) "collection")
                             (dissoc :collection.description :collection.name))
         normalized-result (zipmap (map unqualify-key (keys result)) (vals result))
-        id-str            (str (:type normalized-result) "-" (:item_id normalized-result))]
+        id-str            (str (:type normalized-result) "-" (:item_id normalized-result))
+        normalized-result (cond-> normalized-result
+                            (:card_type normalized-result) (update :card_type keyword))]
     (-> normalized-result
-        (select-keys [:item_id :type :name :dataset :description :display
+        (select-keys [:item_id :type :name :card_type :description :display
                       :authority_level])
         (assoc :id id-str))))
 
@@ -101,7 +103,7 @@
                      [:bookmark.type              :type]
                      [:bookmark.item_id           :item_id]
                      [:card.name                  (mdb.u/qualify Card :name)]
-                     [:card.dataset               (mdb.u/qualify Card :dataset)]
+                     [:card.type                  (mdb.u/qualify Card :card_type)]
                      [:card.display               (mdb.u/qualify Card :display)]
                      [:card.description           (mdb.u/qualify Card :description)]
                      [:card.archived              (mdb.u/qualify Card :archived)]

@@ -102,10 +102,12 @@
                                              (when schedules
                                                (sync.schedules/schedule-map->cron-strings schedules)))))))
 
-(defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking?]}]
+(defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking? license-token]}]
   ;; set a couple preferences
   (public-settings/site-name! site-name)
   (public-settings/admin-email! email)
+  (when (not (premium-features/premium-embedding-token))
+    (premium-features/premium-embedding-token! license-token))
   (when site-locale
     (public-settings/site-locale! site-locale))
   ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
@@ -125,8 +127,10 @@
          {invited_first_name :first_name,
           invited_last_name  :last_name,
           invited_email      :email}                    :invite
+          license_token                                 :license_token
          {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
   {token              SetupToken
+   license_token      [:maybe ms/NonBlankString]
    site_name          ms/NonBlankString
    site_locale        [:maybe ms/ValidLocale]
    first_name         [:maybe ms/NonBlankString]
@@ -156,7 +160,7 @@
                                                        {:email email, :first_name first_name})
                   (setup-set-settings!
                    request
-                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
+                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking, :license-token license_token})
                   (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
@@ -237,7 +241,7 @@
                 :pulse         (t2/exists? Pulse)
                 :hidden-table  (t2/exists? Table, :visibility_type [:not= nil])
                 :collection    (t2/exists? Collection)
-                :model         (t2/exists? Card :dataset true)}})
+                :model         (t2/exists? Card :type :model)}})
 
 (defn- get-connected-tasks
   [{:keys [configured counts exists] :as _info}]
@@ -347,5 +351,15 @@
     (api/check-404 config-token)
     (api/check-403 (= token config-token))
     (dissoc defaults :token)))
+
+(api/defendpoint GET "/token-check"
+  "Check if the token is valid, only available before the initial setup as it's an unauthenticated endpoint"
+  [token]
+  (if (setup/has-user-setup)
+    (throw (ex-info
+            (tru "This endpoint can only be used before the initial setup.")
+            {:status-code 403}))
+    (let [status (premium-features/fetch-token-status token)]
+      {:valid (:valid status)})))
 
 (api/define-routes)

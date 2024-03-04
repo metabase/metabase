@@ -1,0 +1,40 @@
+:global(.Grid) {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+:global(.Grid-cell) {
+  flex: 1;
+}
+
+:global(.Grid--1of2 > .Grid-cell) {
+  flex: 0 0 50%;
+}
+
+@media (--breakpoint-min-sm) {
+  :global(.small-Grid--1of2 > .Grid-cell) {
+    flex: 0 0 50%;
+  }
+}
+
+@media (--breakpoint-min-md) {
+  :global(.md-Grid--1of2 > .Grid-cell) {
+    flex: 0 0 50%;
+  }
+}
+
+@media (--breakpoint-min-lg) {
+  :global(.large-Grid--1of2 > .Grid-cell) {
+    flex: 0 0 50%;
+  }
+}
+
+:global(.Grid--gutters) {
+  margin: -1em 0 1em -1em;
+}
+:global(.Grid--gutters > .Grid-cell) {
+  padding: 1em 0 0 1em;
+}

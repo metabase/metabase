@@ -392,7 +392,8 @@ describe(
 
                 cy.get(".Modal").within(() => {
                   cy.findByText("Create a new dashboard").click();
-                  cy.findByTestId("select-button").findByText(
+                  cy.findByLabelText(/Which collection/).should(
+                    "contain.text",
                     personalCollection,
                   );
                   cy.findByLabelText("Name").type("Foo", { delay: 0 });

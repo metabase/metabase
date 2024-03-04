@@ -71,7 +71,6 @@
   environ/environ                           {:mvn/version "1.2.0"}              ; env vars/Java properties abstraction
   hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.14.1"}             ; Clojure/Script library used for prularizing words
-  info.sunng/ring-jetty9-adapter            {:mvn/version "0.22.3"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   clj-commons/clj-yaml                      {:mvn/version "1.0.27"}             ; Clojure wrapper for YAML library SnakeYAML
   io.github.camsaul/toucan2                 {:mvn/version "1.0.537"}
@@ -89,8 +88,9 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.4"               ; EE SAML integration.
-                                             :exclusions [org.bouncycastle/bcpkix-jdk15on
+  metabase/saml20-clj                       {:mvn/version "2.2.7.170"
+                                             :exclusions [                      ; EE SAML integration TODO: bump version when we release the library
+                                                          org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
@@ -108,7 +108,7 @@
                                              :exclusions  [org.slf4j/slf4j-api
                                                            junit/junit]}
   net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20230409"} ; Java implementation of the JQ json query language
-  org.apache.commons/commons-compress       {:mvn/version "1.25.0"}             ; compression utils
+  org.apache.commons/commons-compress       {:mvn/version "1.26.0"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.14.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.22.0"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.22.0"}             ; add compatibility with log4j 1.2
@@ -151,7 +151,8 @@
   org.clojure/tools.namespace               {:mvn/version "1.4.4"}
   org.clojure/tools.reader                  {:mvn/version "1.3.7"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.17"}            ; web server
+  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.20"}            ; web server
+  org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.20"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.5"}             ; JavaScript engine
   org.jsoup/jsoup                           {:mvn/version "1.17.2"}             ; required by hickory
@@ -160,7 +161,7 @@
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.7.1"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.2"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
   org.slf4j/slf4j-api                       {:mvn/version "2.0.9"}              ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -171,7 +172,10 @@
   prismatic/schema                          {:mvn/version "1.4.1"}              ; Data schema declaration and validation library
   redux/redux                               {:mvn/version "0.1.4"}              ; Utility functions for building and composing transducers
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
-  ring/ring-core                            {:mvn/version "1.10.0"}             ; web server (Jetty wrapper)
+  ring/ring-core                            {:mvn/version "1.11.0"}             ; HTTP abstraction
+  ring/ring-jetty-adapter                   {:mvn/version "1.11.0"              ; Jetty adapter
+                                             :exclusions [org.eclipse.jetty/jetty-server
+                                                          org.eclipse.jetty.websocket/websocket-jetty-server]}
   ring/ring-json                            {:mvn/version "0.5.1"}              ; Ring middleware for reading/writing JSON automatically
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure

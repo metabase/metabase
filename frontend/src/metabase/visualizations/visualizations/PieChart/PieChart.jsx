@@ -29,7 +29,7 @@ import {
 import ChartWithLegend from "../../components/ChartWithLegend";
 
 import { PieArc } from "./PieArc";
-import styles from "./PieChart.css";
+import styles from "./PieChart.module.css";
 import { getTooltipModel } from "./utils";
 
 const SIDE_PADDING = 24;

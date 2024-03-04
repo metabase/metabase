@@ -63,12 +63,17 @@ function NotebookSteps({
     setLastOpenedStep(id);
   }, []);
 
-  const handleStepClose = useCallback((id: INotebookStep["id"]) => {
-    setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
-    setLastOpenedStep(lastOpenedStep =>
-      lastOpenedStep === id ? null : lastOpenedStep,
-    );
-  }, []);
+  const handleStepClose = useCallback(
+    (id: INotebookStep["id"]) => {
+      if (openSteps[id]) {
+        setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
+      }
+      setLastOpenedStep(lastOpenedStep =>
+        lastOpenedStep === id ? null : lastOpenedStep,
+      );
+    },
+    [openSteps],
+  );
 
   const handleQueryChange = useCallback(
     async (query: Query, step: INotebookStep) => {

@@ -1,11 +1,14 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { Motion, spring } from "react-motion";
+import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
+import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
 import * as Lib from "metabase-lib";
@@ -228,7 +231,9 @@ class View extends Component {
       isDirty,
       isNativeEditorOpen,
       setParameterValueToDefault,
+      onSetDatabaseId,
     } = this.props;
+
     const legacyQuery = question.legacyQuery();
 
     // Normally, when users open native models,
@@ -253,14 +258,26 @@ class View extends Component {
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
           setParameterValueToDefault={setParameterValueToDefault}
+          onSetDatabaseId={onSetDatabaseId}
         />
       </NativeQueryEditorContainer>
     );
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const { question, mode, parameters, isLiveResizable, setParameterValue } =
-      this.props;
+    const {
+      question,
+      mode,
+      parameters,
+      isLiveResizable,
+      setParameterValue,
+      queryBuilderMode,
+    } = this.props;
+
+    if (queryBuilderMode === "notebook") {
+      // we need to render main only in view mode
+      return;
+    }
 
     const queryMode = mode && mode.queryMode();
     const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -289,7 +306,11 @@ class View extends Component {
             mode={queryMode}
           />
         </StyledDebouncedFrame>
-        <TimeseriesChrome {...this.props} className="flex-no-shrink" />
+        <TimeseriesChrome
+          question={this.props.question}
+          updateQuestion={this.props.updateQuestion}
+          className="flex-no-shrink"
+        />
         <ViewFooter {...this.props} className="flex-no-shrink" />
       </QueryBuilderMain>
     );
@@ -352,7 +373,10 @@ class View extends Component {
 
     return (
       <div className="full-height">
-        <QueryBuilderViewRoot className="QueryBuilder">
+        <QueryBuilderViewRoot
+          className="QueryBuilder"
+          data-testid="query-builder-root"
+        >
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {!isNative && (
@@ -397,4 +421,11 @@ class View extends Component {
   }
 }
 
-export default ExplicitSize({ refreshMode: "debounceLeading" })(View);
+const mapDispatchToProps = dispatch => ({
+  onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
+});
+
+export default _.compose(
+  ExplicitSize({ refreshMode: "debounceLeading" }),
+  connect(null, mapDispatchToProps),
+)(View);

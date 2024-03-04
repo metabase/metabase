@@ -439,7 +439,7 @@
 
 (defn- flow-field-metadata
   "Merge information about fields from `source-metadata` into the returned `cols`."
-  [source-metadata cols dataset?]
+  [source-metadata cols model?]
   (let [by-key (m/index-by (comp qp.util/field-ref->key :field_ref) source-metadata)]
     (for [{:keys [field_ref source] :as col} cols]
      ;; aggregation fields are not from the source-metadata and their field_ref
@@ -450,7 +450,7 @@
                                               (get by-key (qp.util/field-ref->key field_ref)))]
         (merge-source-metadata-col source-metadata-for-field
                                    (merge col
-                                          (when dataset?
+                                          (when model?
                                             (select-keys source-metadata-for-field qp.util/preserved-keys))))
         col))))
 
@@ -466,14 +466,14 @@
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
-  [{:keys [source-metadata source-query :source-query/dataset? fields], :as inner-query}, results]
+  [{:keys [source-metadata source-query :source-query/model? fields], :as inner-query}, results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
       (and (empty? cols) source-query)
       (cols-for-source-query inner-query results)
 
       source-query
-      (flow-field-metadata (cols-for-source-query inner-query results) cols dataset?)
+      (flow-field-metadata (cols-for-source-query inner-query results) cols model?)
 
       (every? #(mbql.u/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
@@ -608,7 +608,7 @@
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [{query-type :type, :as query
-    {:keys [:metadata/dataset-metadata :alias/escaped->original]} :info} rff]
+    {:keys [:metadata/model-metadata :alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
     (if (and (= query-type :query)
              ;; we should have type metadata eiter in the query fields
@@ -619,14 +619,14 @@
                     (seq escaped->original) ;; if we replaced aliases, restore them
                     (escape-join-aliases/restore-aliases escaped->original))]
         (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-               (seq dataset-metadata)
-               (update :cols qp.util/combine-metadata dataset-metadata))))
+               (seq model-metadata)
+               (update :cols qp.util/combine-metadata model-metadata))))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
       (let [metadata (cond-> (update metadata :cols annotate-native-cols)
                        ;; annotate-native-cols ensures that column refs are present which we need to match metadata
-                       (seq dataset-metadata)
-                       (update :cols qp.util/combine-metadata dataset-metadata)
+                       (seq model-metadata)
+                       (update :cols qp.util/combine-metadata model-metadata)
                        ;; but we want those column refs removed since they have type info which we don't know yet
                        :always
                        (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
