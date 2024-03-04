@@ -193,7 +193,7 @@
         :else
         nil))
 
-(defn- tables-with-properties [driver database tables]
+(defn- add-table-properties [driver database tables]
   (if (driver/database-supports? driver :sync-row-count database)
     (let [schema+table->row-count (driver/schema+table->row-count driver database)]
       (eduction (map (fn [{:keys [schema name] :as table}]
@@ -220,5 +220,5 @@
                                        (:name schema-filter-prop)
                                        database))]
         (->> (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)
-             (tables-with-properties driver database)
+             (add-table-properties driver database)
              (into #{})))))})

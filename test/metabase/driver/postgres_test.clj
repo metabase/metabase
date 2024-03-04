@@ -234,8 +234,23 @@
                  (mt/run-mbql-query people
                    {:fields [$name $bird_id->birds.name]}))))))))
 
-(defn- default-table-result [table-name]
-  {:name table-name :schema "public" :description nil :properties {:row-count 0}})
+(defn- default-table-result
+  ([table-name]
+   (default-table-result table-name {}))
+  ([table-name opts]
+   (merge
+    {:name table-name :schema "public" :description nil
+     ;; row-count are estimated, so the value can't be know for sure "during" test without
+     ;;; VACUUM-ing. So for tests that doesn't concern the exact value of row-count, use schema instead
+     :properties {:row-count (mt/malli=? [:maybe :int])}}
+    opts)))
+
+(defn- describe-database->tables
+  "Returns a seq of tables sorted by name from calling [[driver/describe-database]]."
+  [& args]
+  (->> (apply driver/describe-database args)
+      :tables
+      (sort-by :name)))
 
 (deftest materialized-views-test
   (mt/test-driver :postgres
@@ -248,8 +263,8 @@
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (= {:tables #{(update-in (default-table-result "test_mview") [:properties :row-count] (constantly 1))}}
-                 (driver/describe-database :postgres database))))))))
+          (is (=? [(default-table-result "test_mview" {:properties {:row-count (mt/malli=? int?)}})]
+                  (describe-database->tables :postgres database))))))))
 
 (deftest foreign-tables-test
   (mt/test-driver :postgres
@@ -280,8 +295,9 @@
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
-          (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
-                 (driver/describe-database :postgres database))))))))
+          (is (=? [(default-table-result "foreign_table" {:properties {:row-count (mt/malli=? nil?)}})
+                   (default-table-result "local_table" {:properties {:row-count (mt/malli=? int?)}})]
+                  (describe-database->tables :postgres database))))))))
 
 (deftest recreated-views-test
   (mt/test-driver :postgres
@@ -346,8 +362,9 @@
                 ;; now sync the DB
                 (sync!)
                 ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
-                (is (= {:tables (set (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"]))}
-                       (driver/describe-database :postgres database)))))
+                (is (=? (map #(default-table-result % {:properties {:row-count (mt/malli=? int?)}})
+                             ["part_vals" "part_vals_0" "part_vals_1"])
+                        (describe-database->tables :postgres database)))))
             (log/warn
              (u/format-color
               'yellow
@@ -1312,5 +1329,13 @@
                                  :base-type  :type/Text}]
                                [["Los Angeles"]
                                 ["Las Vegas"]]]
-        (is (= {:row-count 2}
-               (t2/select-one-fn :properties :model/Table (mt/id :city))))))))
+        (sql-jdbc.execute/do-with-connection-with-options
+         :postgres
+         (mt/db)
+         nil
+         (fn [conn]
+           ;; row count are estimated so we VACUUM so the statistic table is updated before syncing
+           (next.jdbc/execute! conn ["VACUUM;"])
+           (sync/sync-database! (mt/db) {:scan :schema})
+           (is (= {:row-count 2}
+                  (t2/select-one-fn :properties :model/Table (mt/id :city))))))))))
