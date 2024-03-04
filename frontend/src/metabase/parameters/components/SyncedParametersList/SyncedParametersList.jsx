@@ -46,8 +46,8 @@ export function SyncedParametersList({
   enableParameterRequiredBehavior,
 }) {
   useSyncedQueryString(
-    () => getParameterValuesBySlug(parameters, undefined, dashboard.id),
-    [dashboard.id, parameters],
+    () => getParameterValuesBySlug(parameters),
+    [parameters],
   );
 
   return (
