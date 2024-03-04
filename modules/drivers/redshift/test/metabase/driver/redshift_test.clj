@@ -236,7 +236,7 @@
              qual-tbl-nm
              qual-view-nm)
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
-            (sync/sync-database! database)
+            (sync/sync-database! database {:scan :schema})
             (is (contains?
                  (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
                  view-nm))
@@ -270,7 +270,7 @@
                   "CASE WHEN shop_status = 'open' THEN 11387.133 END AS case_when_numeric_inc_nulls "
                   "FROM test_data) WITH NO SCHEMA BINDING;")
              qual-view-nm)
-            (sync/sync-database! database)
+            (sync/sync-database! database {:scan :schema})
             (is (contains?
                  (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
                  view-nm))
