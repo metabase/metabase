@@ -554,16 +554,14 @@
     (mt/with-temp [Database {id1 :id} {:name "DB1"}
                    Database {id2 :id} {:name "DB2"}]
       (mt/with-test-user :rasta
-        (let [old-db-id (user/last-used-native-database-id)]
+        (mt/discard-setting-changes [last-used-native-database-id]
           (user/last-used-native-database-id! id1)
           (mt/with-test-user :crowberto
-            (let [old-db-id (user/last-used-native-database-id)]
+            (mt/discard-setting-changes [last-used-native-database-id]
               (user/last-used-native-database-id! id2)
               (is (= (user/last-used-native-database-id) id2))
               (mt/with-test-user :rasta
-                (is (= (user/last-used-native-database-id) id1)))
-              (user/last-used-native-database-id! old-db-id)))
-          (user/last-used-native-database-id! old-db-id))))))
+                (is (= (user/last-used-native-database-id) id1))))))))))
 
   (deftest common-name-test
     (testing "common_name should be present depending on what is selected"
