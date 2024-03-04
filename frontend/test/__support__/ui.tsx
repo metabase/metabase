@@ -14,6 +14,7 @@ import _ from "underscore";
 
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
+import { Api } from "metabase/redux/api";
 import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -77,10 +78,14 @@ export function renderWithProviders(
     reducers = { ...reducers, ...customReducers };
   }
 
+  const storeMiddleware = _.compact([
+    Api.middleware,
+    history && routerMiddleware(history),
+  ]);
   const store = getStore(
     reducers,
     initialState,
-    history ? [routerMiddleware(history)] : [],
+    storeMiddleware,
   ) as unknown as Store<State>;
 
   const wrapper = (props: any) => (
