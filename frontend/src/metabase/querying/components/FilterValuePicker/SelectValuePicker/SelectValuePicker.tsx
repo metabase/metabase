@@ -29,6 +29,7 @@ export function SelectValuePicker({
       searchValue={searchValue}
       placeholder={placeholder}
       autoFocus={isAutoFocus}
+      searchable
       onChange={onChange}
       onSearchChange={onSearchChange}
     />
@@ -39,6 +40,7 @@ export function SelectValuePicker({
       searchValue={searchValue}
       placeholder={placeholder}
       autoFocus={isAutoFocus}
+      searchable
       onChange={value => onChange(value != null ? [value] : [])}
       onSearchChange={onSearchChange}
     />
