@@ -45,7 +45,7 @@
     {:items (for [item items]
               {:model    (:model item)
                :model_id (:model_id item)
-               :strategy (assoc (:config items) :type (:strategy item))})}))
+               :strategy (assoc (:config item) :type (:strategy item))})}))
 
 (api/defendpoint PUT "/"
   "Store cache configuration."
