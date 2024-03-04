@@ -131,7 +131,11 @@ function JoinTableColumnsPicker({
   onChange,
 }: JoinTableColumnsPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const handleToggle = (changedIndex: number, isSelected: boolean) => {
+  const handleToggle = (
+    _column: Lib.ColumnMetadata,
+    isSelected: boolean,
+    changedIndex: number,
+  ) => {
     const nextColumns = columns.filter((_, currentIndex) =>
       currentIndex === changedIndex
         ? isSelected

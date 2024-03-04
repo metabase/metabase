@@ -21,7 +21,11 @@ interface FieldPickerProps {
     column: Lib.ColumnMetadata,
     columnInfo: Lib.ColumnDisplayInfo,
   ) => boolean;
-  onToggle: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
+  onToggle: (
+    column: Lib.ColumnMetadata,
+    isSelected: boolean,
+    columnIndex: number,
+  ) => void;
   onSelectAll: () => void;
   onSelectNone: () => void;
 }
@@ -81,7 +85,9 @@ export const FieldPicker = ({
             <Checkbox
               checked={item.isSelected}
               disabled={item.isSelected && isDisabledDeselection}
-              onChange={event => onToggle(item.column, event.target.checked)}
+              onChange={event =>
+                onToggle(item.column, event.target.checked, index)
+              }
             />
 
             <ItemIcon name={getColumnIcon(item.column)} size={18} />
