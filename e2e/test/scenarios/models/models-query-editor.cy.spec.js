@@ -114,7 +114,7 @@ describe("scenarios > models query editor", () => {
 
       // FE chooses the scalar visualization to display count of rows for regular questions
       cy.get(".TableInteractive");
-      cy.get(".ScalarValue").should("not.exist");
+      cy.findByTestId("scalar-value").should("not.exist");
     });
   });
 

@@ -36,7 +36,7 @@ describe("scenarios > question > snippets", () => {
 
     // Run the query and check the value
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.get(".ScalarValue").contains("stuff");
+    cy.findByTestId("scalar-value").contains("stuff");
   });
 
   it("should let you edit snippet", () => {
@@ -77,7 +77,7 @@ describe("scenarios > question > snippets", () => {
 
     // Run the query and check the new value
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.get(".ScalarValue").contains("2");
+    cy.findByTestId("scalar-value").contains("2");
   });
 
   it("should update the snippet and apply it to the current query (metabase#15387)", () => {

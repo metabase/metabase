@@ -423,5 +423,5 @@ function checkFilterLabelAndValue(label, value) {
 }
 
 function checkScalarResult(result) {
-  cy.get(".ScalarValue").invoke("text").should("eq", result);
+  cy.findByTestId("scalar-value").invoke("text").should("eq", result);
 }

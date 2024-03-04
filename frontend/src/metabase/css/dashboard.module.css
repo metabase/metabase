@@ -209,7 +209,7 @@
   font-size: 12px;
 }
 
-:global(.ScalarValue) {
+.ScalarValue {
   font-weight: 700;
   white-space: pre;
 }

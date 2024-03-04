@@ -134,7 +134,7 @@ describe("scenarios > question > null", () => {
           cy.log("P0 regression in v0.37.1!");
           cy.findByTestId("loading-spinner").should("not.exist");
           cy.findByText("13801_Q1");
-          cy.get(".ScalarValue").should("contain", "0");
+          cy.findByTestId("scalar-value").should("contain", "0");
           cy.findByText("13801_Q2");
         });
       });

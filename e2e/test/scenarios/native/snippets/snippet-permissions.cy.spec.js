@@ -64,7 +64,7 @@ describeEE("scenarios > question > snippets (EE)", () => {
       cy.findByText("{{snippet: one}}");
 
       cy.icon("play").first().click();
-      cy.get(".ScalarValue").contains(1);
+      cy.findByTestId("scalar-value").contains(1);
     });
   });
 

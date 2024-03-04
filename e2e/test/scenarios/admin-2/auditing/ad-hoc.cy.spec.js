@@ -18,7 +18,7 @@ describeEE("audit > ad-hoc", () => {
       cy.icon("play").first().click();
 
       // make sure results rendered before moving forward
-      cy.get(".ScalarValue").contains("123");
+      cy.findByTestId("scalar-value").contains("123");
 
       // Sign in as admin to be able to access audit logs in tests
       cy.signInAsAdmin();

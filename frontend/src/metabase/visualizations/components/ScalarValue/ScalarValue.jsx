@@ -2,12 +2,15 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
+import DashboardS from "metabase/css/dashboard.module.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 
 import {
   ScalarRoot,
@@ -50,7 +53,7 @@ const ScalarValue = ({
 
   return (
     <ScalarValueWrapper
-      className="ScalarValue"
+      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValueOverride)}
       fontSize={fontSize}
       data-testid="scalar-value"
     >

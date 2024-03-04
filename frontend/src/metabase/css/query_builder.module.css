@@ -329,6 +329,6 @@
 }
 
 /* need to do this ugliness to override the locally scoped font size from Scalar.css */
-.QueryBuilder :global(.ScalarValue) {
+.QueryBuilder .ScalarValueOverride {
   font-size: 5em;
 }
