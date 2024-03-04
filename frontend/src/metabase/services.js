@@ -183,8 +183,6 @@ export const CardApi = {
 };
 
 export const DashboardApi = {
-  parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
-  parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
   cardQuery: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
@@ -514,19 +512,9 @@ export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
 
-export function setPublicDashboardEndpoints() {
-  setDashboardEndpoints("/api/public");
-}
-
 export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
     setCardEndpoints("/api/embed/card/:token", { token });
-  }
-}
-
-export function setEmbedDashboardEndpoints() {
-  if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints("/api/embed");
   }
 }
 
@@ -557,18 +545,6 @@ function setCardEndpoints(prefix, params) {
   MetabaseApi.field_remapping = GET_with(
     prefix + "/field/:fieldId/remapping/:remappedFieldId",
     params,
-  );
-}
-
-// TODO: we should either make the public and embed endpoints their
-// own endpoint defitions & just call them OR set some kind of state
-// in redux and use getState to fetch the current endpoint pathname
-function setDashboardEndpoints(prefix) {
-  DashboardApi.parameterValues = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/values`,
-  );
-  DashboardApi.parameterSearch = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
   );
 }
 

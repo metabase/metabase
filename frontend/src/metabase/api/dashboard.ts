@@ -1,4 +1,5 @@
 import Dashboards from "metabase/entities/dashboards";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import type {
   Dashboard,
   DashboardId,
@@ -9,6 +10,18 @@ import type {
 
 import { Api } from "./api";
 import { providesList, DASHBOARD_TAG } from "./tags";
+
+let dashboardEndpointsPrefix = "/api";
+
+export function setPublicDashboardEndpoints() {
+  dashboardEndpointsPrefix = "/api/public";
+}
+
+export function setEmbedDashboardEndpoints() {
+  if (!IS_EMBED_PREVIEW) {
+    dashboardEndpointsPrefix = "/api/embed";
+  }
+}
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -93,14 +106,14 @@ export const dashboardApi = Api.injectEndpoints({
       DashboardParameterValuesRequestInput
     >({
       query: ({ dashId, paramId }) =>
-        `/api/dashboard/${dashId}/params/${paramId}/values`,
+        `${dashboardEndpointsPrefix}/dashboard/${dashId}/params/${paramId}/values`,
     }),
     dashboardParameterSearch: builder.query<
       { values: any; has_more_values: any },
       DashboardParameterValuesRequestInput
     >({
       query: ({ dashId, paramId, query }) =>
-        `/api/dashboard/${dashId}/params/${paramId}/search/${query}`,
+        `${dashboardEndpointsPrefix}/dashboard/${dashId}/params/${paramId}/search/${query}`,
     }),
     validFilterFields: builder.query<
       Record<FieldId, FieldId[]>,
@@ -117,8 +130,6 @@ export const dashboardApi = Api.injectEndpoints({
     listEmbeddable: builder.query<any, any>({
       query: () => "/api/dashboard/embeddable",
     }),
-    // TODO + make stateful (see setDashboardEndpoints) - parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
-    // TODO + make stateful (see setDashboardEndpoints) - parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
     // TODO cardQuery: POST( "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",),
     // TODO cardQueryPivot: POST( "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",),
     // TODO / not in use - exportCardQuery: POST( "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",),

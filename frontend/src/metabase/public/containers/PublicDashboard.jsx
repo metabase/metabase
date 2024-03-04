@@ -6,6 +6,10 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import {
+  setPublicDashboardEndpoints,
+  setEmbedDashboardEndpoints,
+} from "metabase/api/dashboard";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import * as dashboardActions from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
@@ -26,10 +30,6 @@ import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  setPublicDashboardEndpoints,
-  setEmbedDashboardEndpoints,
-} from "metabase/services";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
 import EmbedFrame from "../components/EmbedFrame";
