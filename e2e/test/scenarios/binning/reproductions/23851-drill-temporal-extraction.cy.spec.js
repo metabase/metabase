@@ -41,8 +41,8 @@ describe("issue 23851", () => {
 
     cy.wait("@dataset");
 
-    cy.findByTestId("qb-filters-panel").should(
-      "contain.text",
+    cy.findByTestId("filter-pill").should(
+      "have.text",
       "Created At: Day of week is equal to 6",
     );
     cy.icon("notebook").click();
