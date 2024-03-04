@@ -257,7 +257,8 @@
     (qp.store/cached card-id
                      (query-perms/required-perms (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
                                                  :throw-exceptions? true))
-    {:perms/data-access (zipmap (sandbox->table-ids sandbox) (repeat :unrestricted))}))
+    {:perms/view-data :unrestricted
+     :perms/create-queries (zipmap (sandbox->table-ids sandbox) (repeat :query-builder))}))
 
 (defn- sandboxes->required-perms [sandboxes]
   (apply m/deep-merge (map sandbox->required-perms sandboxes)))
