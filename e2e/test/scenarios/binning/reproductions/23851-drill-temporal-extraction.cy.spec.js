@@ -12,7 +12,7 @@ const CREATED_AT_BREAKOUT = [
   },
 ];
 
-describe("issue 23851", function () {
+describe("issue 23851", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
