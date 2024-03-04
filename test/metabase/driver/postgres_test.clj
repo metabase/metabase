@@ -1305,12 +1305,12 @@
     (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))
 
 (deftest sync-row-count-test
-  (mt/with-driver :postgres
+  (mt/test-driver :postgres
     (testing "Can sync row count"
-     (mt/with-temp-test-data ["city"
-                              [{:field-name "name"
-                                :base-type  :type/Text}]
-                              [["Los Angeles"]
-                               ["Las Vegas"]]]
-       (is (= {:row-count 2}
-              (t2/select-one-fn :properties :model/Table (mt/id :city))))))))
+      (mt/with-temp-test-data ["city"
+                               [{:field-name "name"
+                                 :base-type  :type/Text}]
+                               [["Los Angeles"]
+                                ["Las Vegas"]]]
+        (is (= {:row-count 2}
+               (t2/select-one-fn :properties :model/Table (mt/id :city))))))))
