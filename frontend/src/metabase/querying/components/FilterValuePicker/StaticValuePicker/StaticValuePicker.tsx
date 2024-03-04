@@ -6,9 +6,9 @@ import { MultiSelect, TextInput } from "metabase/ui";
 
 interface StaticValuePickerProps {
   selectedValues: string[];
-  placeholder?: string;
-  isAutoFocus?: boolean;
-  isMultiple?: boolean;
+  placeholder: string;
+  isAutoFocus: boolean;
+  isMultiple: boolean;
   isValueValid: (query: string) => boolean;
   onChange: (newValues: string[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;

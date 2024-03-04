@@ -77,6 +77,10 @@ async function setupStringPicker({
   return { onChange, onFocus, onBlur };
 }
 
+function setupMultipleStringPicker(opts: SetupOpts<string>) {
+  return setupStringPicker({ ...opts, isMultiple: true });
+}
+
 async function setupNumberPicker({
   query,
   stageIndex,
@@ -113,6 +117,10 @@ async function setupNumberPicker({
   return { onChange, onFocus, onBlur };
 }
 
+function setupMultipleNumberPicker(opts: SetupOpts<number>) {
+  return setupNumberPicker({ ...opts, isMultiple: true });
+}
+
 describe("StringFilterValuePicker", () => {
   const query = createQuery();
   const stageIndex = 0;
@@ -131,7 +139,7 @@ describe("StringFilterValuePicker", () => {
     const column = findColumn("PRODUCTS", "CATEGORY");
 
     it("should allow to pick a list value", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -145,7 +153,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to search the list of values", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -162,7 +170,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to update selected values", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -179,7 +187,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle values that do not exist in the list", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -201,7 +209,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle field values remapping", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -229,7 +237,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle empty field values", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange, onFocus, onBlur } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -254,7 +262,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should ignore null field values", async () => {
-      await setupStringPicker({
+      await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -274,7 +282,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle more field values", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -310,7 +318,7 @@ describe("StringFilterValuePicker", () => {
     const column = findColumn("PEOPLE", "EMAIL");
 
     it("should allow to search for a value", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -331,7 +339,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to update selected values", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -356,7 +364,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle field values remapping", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -377,7 +385,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow free-form input without waiting for search results", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -397,7 +405,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should not be able to create duplicates with free-form input", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -416,7 +424,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should not allow to create a value when there is the exact match in search results", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -440,7 +448,7 @@ describe("StringFilterValuePicker", () => {
     const column = findColumn("PEOPLE", "PASSWORD");
 
     it("should allow to add a value", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange, onFocus, onBlur } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -456,7 +464,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to add multiple values", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange, onFocus, onBlur } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -472,7 +480,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should not allow to add empty values", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange, onFocus, onBlur } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -490,7 +498,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should not allow to add whitespace", async () => {
-      const { onChange, onFocus, onBlur } = await setupStringPicker({
+      const { onChange, onFocus, onBlur } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -507,7 +515,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to remove a value when there are multiple values", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -520,7 +528,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to remove the last value", async () => {
-      const { onChange } = await setupStringPicker({
+      const { onChange } = await setupMultipleStringPicker({
         query,
         stageIndex,
         column,
@@ -552,7 +560,7 @@ describe("NumberFilterValuePicker", () => {
     const column = findColumn("ORDERS", "QUANTITY");
 
     it("should allow to pick a list value", async () => {
-      const { onChange } = await setupNumberPicker({
+      const { onChange } = await setupMultipleNumberPicker({
         query,
         stageIndex,
         column,
@@ -569,7 +577,7 @@ describe("NumberFilterValuePicker", () => {
     });
 
     it("should handle field values remapping", async () => {
-      const { onChange } = await setupNumberPicker({
+      const { onChange } = await setupMultipleNumberPicker({
         query,
         stageIndex,
         column,
@@ -601,7 +609,7 @@ describe("NumberFilterValuePicker", () => {
     const column = findColumn("PEOPLE", "PASSWORD");
 
     it("should allow to add a value", async () => {
-      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+      const { onChange, onFocus, onBlur } = await setupMultipleNumberPicker({
         query,
         stageIndex,
         column,
@@ -618,7 +626,7 @@ describe("NumberFilterValuePicker", () => {
     });
 
     it("should not allow to add empty values", async () => {
-      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+      const { onChange, onFocus, onBlur } = await setupMultipleNumberPicker({
         query,
         stageIndex,
         column,
@@ -636,7 +644,7 @@ describe("NumberFilterValuePicker", () => {
     });
 
     it("should not allow to add invalid values", async () => {
-      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+      const { onChange, onFocus, onBlur } = await setupMultipleNumberPicker({
         query,
         stageIndex,
         column,
@@ -653,7 +661,7 @@ describe("NumberFilterValuePicker", () => {
     });
 
     it("should not allow to add whitespace", async () => {
-      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+      const { onChange, onFocus, onBlur } = await setupMultipleNumberPicker({
         query,
         stageIndex,
         column,

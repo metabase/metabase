@@ -105,6 +105,7 @@ function FilterValuePicker({
       selectedValues={selectedValues}
       placeholder={placeholder}
       isAutoFocus={isAutoFocus}
+      isMultiple={isMultiple}
       isValueValid={isValueValid}
       onChange={onChange}
       onFocus={onFocus}

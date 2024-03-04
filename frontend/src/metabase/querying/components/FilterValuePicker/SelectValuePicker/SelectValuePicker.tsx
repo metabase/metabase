@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { SelectItem } from "metabase/ui";
 import { MultiSelect, Select } from "metabase/ui";
 
@@ -30,6 +32,7 @@ export function SelectValuePicker({
       placeholder={placeholder}
       autoFocus={isAutoFocus}
       searchable
+      aria-label={t`Filter value`}
       onChange={onChange}
       onSearchChange={onSearchChange}
     />
@@ -41,6 +44,7 @@ export function SelectValuePicker({
       placeholder={placeholder}
       autoFocus={isAutoFocus}
       searchable
+      aria-label={t`Filter value`}
       onChange={value => onChange(value != null ? [value] : [])}
       onSearchChange={onSearchChange}
     />
