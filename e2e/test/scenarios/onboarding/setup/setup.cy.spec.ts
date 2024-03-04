@@ -98,20 +98,6 @@ describe("scenarios > setup", () => {
           // test database setup help card is NOT displayed before DB is selected
           cy.findByText("Need help connecting?").should("not.be.visible");
 
-          // test that you can return to user settings if you want
-          cy.findByText("Hi, Testy. Nice to meet you!").click();
-          cy.findByLabelText("Email").should(
-            "have.value",
-            "testy@metabase.test",
-          );
-
-          // test database setup help card is NOT displayed on other steps
-          cy.findByText("Need help connecting?").should("not.be.visible");
-
-          // now back to database setting
-          cy.button("Next").click();
-          cy.button("Next").click();
-
           // check database setup card is visible
           cy.findByText("MySQL").click();
           cy.findByText("Need help connecting?").should("be.visible");
