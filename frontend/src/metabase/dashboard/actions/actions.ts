@@ -19,12 +19,14 @@ import { getDashboardType } from "../utils";
 import { setDashCardAttributes } from "./core";
 import { closeSidebar, setSidebar } from "./ui";
 
+type EditableActionButtonAttrs = Pick<
+  ActionDashboardCard,
+  "card_id" | "action" | "parameter_mappings" | "visualization_settings"
+>;
+
 export function updateButtonActionMapping(
   dashCardId: number,
-  attributes: Pick<
-    ActionDashboardCard,
-    "card_id" | "action" | "parameter_mappings" | "visualization_settings"
-  >,
+  attributes: EditableActionButtonAttrs,
 ) {
   return (dispatch: Dispatch) => {
     dispatch(
