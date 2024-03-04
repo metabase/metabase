@@ -5,8 +5,8 @@ import type { SectionLayout } from "metabase/dashboard/sections";
 import { Box, Flex } from "metabase/ui";
 import type { DashboardCardLayoutAttrs } from "metabase-types/api";
 
-const WIDTH = 96;
-const SPACING = 3;
+const WIDTH = 98;
+const SPACING = 2.5;
 const CELL_WIDTH = 1;
 const CELL_HEIGHT = 3;
 
@@ -33,7 +33,7 @@ export function SectionLayoutPreview({ layout }: SectionLayoutPreviewProps) {
   }, [layoutItems]);
 
   return (
-    <Flex align="center" justify="center" py="xs">
+    <Flex align="center" justify="center">
       <Box pos="relative" w={`${WIDTH}px`} h={`${height}px`}>
         {layoutItems.map(item => (
           <PreviewCard
