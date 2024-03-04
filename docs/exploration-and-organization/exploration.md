@@ -18,6 +18,14 @@ To view the [models](../data-modeling/models.md) and databases you have access t
 
 To view the [data reference](./data-model-reference.md) section, click on the **Databases** tab, then click on **Learn about our data** in the upper right. You can also hover over individual tables and click on the book icon.
 
+### Only show verified models
+
+{% include plans-blockquote.html feature="Only show verified models" %}
+
+![Only show verified models](./images/only-verified-models.png)
+
+One nice-to-have pro feature is that you can filter for verified models by toggling the **Only show verified models** option.
+
 ## Exploring collections
 
 [Collections][collections] in Metabase are a lot like folders. They're where Metabase keeps all your team's dashboards and charts.
