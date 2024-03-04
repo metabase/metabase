@@ -15,8 +15,8 @@ import {
   SET_DASHBOARD_ATTRIBUTES,
   ADD_CARD_TO_DASH,
   ADD_MANY_CARDS_TO_DASH,
-  CREATE_PUBLIC_LINK,
-  DELETE_PUBLIC_LINK,
+  createPublicLink,
+  deletePublicLink,
   UPDATE_EMBEDDING_PARAMS,
   UPDATE_ENABLE_EMBEDDING,
   SET_DASHCARD_ATTRIBUTES,
@@ -135,11 +135,11 @@ const dashboards = handleActions(
         },
       };
     },
-    [CREATE_PUBLIC_LINK]: {
+    [createPublicLink.fulfilled]: {
       next: (state, { payload }) =>
         assocIn(state, [payload.id, "public_uuid"], payload.uuid),
     },
-    [DELETE_PUBLIC_LINK]: {
+    [deletePublicLink.fulfilled]: {
       next: (state, { payload }) =>
         assocIn(state, [payload.id, "public_uuid"], null),
     },
