@@ -6,7 +6,7 @@ import { DefaultParameterValueWidget } from "metabase/query_builder/components/t
 import { Icon, TextInput } from "metabase/ui";
 import type { Parameter, TemplateTag } from "metabase-types/api";
 
-import { isPlainInput } from "./core";
+import { shouldUseNew } from "./core";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
@@ -16,6 +16,7 @@ interface ParameterValuePickerProps {
   placeholder?: string;
 }
 
+// TODO must change value when type is changed
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
   const { tag, parameter, initialValue, onValueChange, placeholder } = props;
 
@@ -23,7 +24,7 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
     return null;
   }
 
-  if (isPlainInput(parameter)) {
+  if (shouldUseNew(parameter)) {
     return (
       <PlainValueInput
         initialValue={initialValue}

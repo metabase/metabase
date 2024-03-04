@@ -9,7 +9,7 @@ import {
 } from "metabase-lib/parameters/utils/parameter-type";
 import type { Parameter } from "metabase-types/api";
 
-export function isPlainInput(parameter: Parameter) {
+export function shouldUseNew(parameter: Parameter) {
   // TODO this is a way to distinguish a field selector from the others
   // isFieldFilterParameter or similar should be used here
   const hasFields = Boolean((parameter as any).fields);
