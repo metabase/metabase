@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore } from "e2e/support/helpers";
+import { popover, queryBuilderMain, restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -44,9 +44,7 @@ describe("issue 30312", () => {
       cy.button("Add filter").should("be.enabled").click();
     });
 
-    cy.findByTestId("qb-filters-panel").should(
-      "contain.text",
-      "Count is equal to 10",
-    );
+    cy.findByTestId("filter-pill").should("have.text", "Count is equal to 10");
+    queryBuilderMain().findByText("No results!").should("be.visible");
   });
 });
