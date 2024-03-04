@@ -4,6 +4,12 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.50.0
+
+- `/api/metric`
+
+   The `/api/metric` endpoints has been renamed to `/api/legacy-metric` to reflect that fact it will not be used for the new version of metrics. The new version uses the `/api/card` endpoints.
+
 ## Metabase 0.49.0
 - `POST /api/card` and `PUT /api/card/:id`
 

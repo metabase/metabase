@@ -1,5 +1,5 @@
 (ns metabase.api.metric-test
-  "Tests for /api/metric endpoints."
+  "Tests for /api/legacy-metric endpoints."
   (:require
    [clojure.test :refer :all]
    [metabase.http-client :as client]
@@ -51,7 +51,7 @@
            (client/client :put 401 "metric/13")))))
 
 (deftest create-test
-  (testing "POST /api/metric"
+  (testing "POST /api/legacy-metric"
     (testing "test security. Requires superuser perms"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request
@@ -105,7 +105,7 @@
                                                                                         :query    {:filter ["abc"]}}})))))))
 
 (deftest update-test
-  (testing "PUT /api/metric"
+  (testing "PUT /api/legacy-metric"
     (testing "test security. Requires superuser perms"
       (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
@@ -178,7 +178,7 @@
       (is (= false (t2/select-one-fn :archived Metric :id id))))))
 
 (deftest delete-test
-  (testing "DELETE /api/metric/:id"
+  (testing "DELETE /api/legacy-metric/:id"
     (testing "test security. Requires superuser perms"
       (t2.with-temp/with-temp [Metric {:keys [id]} {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
@@ -217,7 +217,7 @@
                  (dissoc :query_description)))))))
 
 (deftest fetch-metric-test
-  (testing "GET /api/metric/:id"
+  (testing "GET /api/legacy-metric/:id"
     (testing "test security. Requires perms for the Table it references"
       (mt/with-temp [Database db {}
                      Table    table  {:db_id (u/the-id db)}
@@ -240,7 +240,7 @@
                  (dissoc :query_description)))))))
 
 (deftest metric-revisions-test
-  (testing "GET /api/metric/:id/revisions"
+  (testing "GET /api/legacy-metric/:id/revisions"
     (testing "test security. Requires read perms for Table it references"
       (mt/with-temp [Database db {}
                      Table    table  {:db_id (u/the-id db)}
@@ -291,7 +291,7 @@
                (dissoc revision :timestamp :id)))))))
 
 (deftest revert-metric-test
-  (testing "POST /api/metric/:id/revert"
+  (testing "POST /api/legacy-metric/:id/revert"
     (testing "test security. Requires superuser perms"
       (t2.with-temp/with-temp [Metric {:keys [id]} {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
@@ -392,7 +392,7 @@
                (dissoc revision :timestamp :id)))))))
 
 (deftest list-metrics-test
-  (testing "GET /api/metric/"
+  (testing "GET /api/legacy-metric/"
     (t2.with-temp/with-temp [Segment {segment-id :id} {:name       "Segment"
                                                        :table_id   (mt/id :checkins)
                                                        :definition (:query (mt/mbql-query checkins
