@@ -28,7 +28,11 @@ export function isPlainInput(parameter: Parameter) {
   // sidebar.
   // Although we did show a popup previously values_query_type in ('list', 'search'),
   // it was still a single value
-  if (parameter.type === "category") {
+  if (
+    parameter.type === "category" &&
+    (parameter.values_query_type == null ||
+      parameter.values_query_type === "none")
+  ) {
     return true;
   }
 
