@@ -183,7 +183,7 @@ site-url
 site-name
 ```
 
-But you can set any of the Admin settings with the config file. Check out the list of [environment variable](./environment-variables.md) to see what you can configure.
+But you can set any of the Admin settings with the config file. Check out the list of [environment variables](./environment-variables.md) to see what you can configure.
 
 ## Loading a new Metabase from a config file
 
