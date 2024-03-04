@@ -178,23 +178,20 @@
 (def ^:private non-inferable-types
   #{::auto-incrementing-int-pk})
 
-(defn- assert-all-types-checks-present
-  [type->check]
-  (assert (every? type->check (remove non-inferable-types value-types))
-          "Every value-type must be registered in settings->type->check")
-  type->check)
+(def ^:private type->check-schema
+  (into [:map] (map #(vector % :fn) (remove non-inferable-types value-types))))
 
-(defn- settings->type->check [{:keys [number-separators] :as _settings}]
-  (assert-all-types-checks-present
-   {::boolean-or-int  boolean-or-int-string?
-    ::boolean         boolean-string?
-    ::offset-datetime offset-datetime-string?
-    ::date            date-string?
-    ::datetime        datetime-string?
-    ::int             (partial re-matches (int-regex number-separators))
-    ::float           (partial re-matches (float-regex number-separators))
-    ::varchar-255     varchar-255?
-    ::text            (constantly true)}))
+(mu/defn ^:private settings->type->check :- type->check-schema
+  [{:keys [number-separators] :as _settings}]
+  {::boolean-or-int  boolean-or-int-string?
+   ::boolean         boolean-string?
+   ::offset-datetime offset-datetime-string?
+   ::date            date-string?
+   ::datetime        datetime-string?
+   ::int             (partial re-matches (int-regex number-separators))
+   ::float           (partial re-matches (float-regex number-separators))
+   ::varchar-255     varchar-255?
+   ::text            (constantly true)})
 
 (defn- value->type
   "Determine the most specific type that is compatible with the given value.
