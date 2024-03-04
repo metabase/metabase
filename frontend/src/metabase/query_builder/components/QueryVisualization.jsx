@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -11,85 +11,67 @@ import { VisualizationError } from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
 
-export default class QueryVisualization extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {};
-  }
+export default function QueryVisualization(props) {
+  const {
+    className,
+    question,
+    isRunning,
+    isObjectDetail,
+    isResultDirty,
+    isNativeEditorOpen,
+    result,
+    loadingMessage,
+    maxTableRows = HARD_ROW_LIMIT,
+  } = props;
 
-  static defaultProps = {
-    // NOTE: this should be more dynamic from the backend, it's set based on the query lang
-    maxTableRows: HARD_ROW_LIMIT,
-  };
+  const [warnings, setWarnings] = useState([]);
 
-  runQuery = () => {
-    const { isResultDirty } = this.props;
-    // ignore the cache if we're hitting "Refresh" (which we only show if isResultDirty = false)
-    this.props.runQuestionQuery({ ignoreCache: !isResultDirty });
-  };
-
-  handleUpdateWarnings = warnings => {
-    this.setState({ warnings });
-  };
-
-  render() {
-    const {
-      className,
-      question,
-      isRunning,
-      isObjectDetail,
-      isResultDirty,
-      isNativeEditorOpen,
-      result,
-      loadingMessage,
-    } = this.props;
-
-    return (
-      <div className={cx(className, "relative stacking-context full-height")}>
-        {isRunning ? (
-          <VisualizationRunningState
-            className="spread z2"
-            loadingMessage={loadingMessage}
-          />
-        ) : null}
-        <VisualizationDirtyState
-          {...this.props}
-          hidden={!isResultDirty || isRunning || isNativeEditorOpen}
+  return (
+    <div className={cx(className, "relative stacking-context full-height")}>
+      {isRunning ? (
+        <VisualizationRunningState
           className="spread z2"
+          loadingMessage={loadingMessage}
         />
-        {!isObjectDetail && (
-          <Warnings
-            warnings={this.state.warnings}
-            className="absolute top right mt2 mr2 z2"
-            size={18}
+      ) : null}
+      <VisualizationDirtyState
+        {...props}
+        hidden={!isResultDirty || isRunning || isNativeEditorOpen}
+        className="spread z2"
+      />
+      {!isObjectDetail && (
+        <Warnings
+          warnings={warnings}
+          className="absolute top right mt2 mr2 z2"
+          size={18}
+        />
+      )}
+      <div
+        className={cx("spread Visualization z1", {
+          "Visualization--loading": isRunning,
+        })}
+      >
+        {result?.error ? (
+          <VisualizationError
+            className="spread"
+            error={result.error}
+            via={result.via}
+            question={question}
+            duration={result.duration}
           />
-        )}
-        <div
-          className={cx("spread Visualization z1", {
-            "Visualization--loading": isRunning,
-          })}
-        >
-          {result?.error ? (
-            <VisualizationError
-              className="spread"
-              error={result.error}
-              via={result.via}
-              question={question}
-              duration={result.duration}
-            />
-          ) : result?.data ? (
-            <VisualizationResult
-              {...this.props}
-              className="spread"
-              onUpdateWarnings={this.handleUpdateWarnings}
-            />
-          ) : !isRunning ? (
-            <VisualizationEmptyState className="spread" />
-          ) : null}
-        </div>
+        ) : result?.data ? (
+          <VisualizationResult
+            {...props}
+            maxTableRows={maxTableRows}
+            className="spread"
+            onUpdateWarnings={setWarnings}
+          />
+        ) : !isRunning ? (
+          <VisualizationEmptyState className="spread" />
+        ) : null}
       </div>
-    );
-  }
+    </div>
+  );
 }
 
 export const VisualizationEmptyState = ({ className }) => (
