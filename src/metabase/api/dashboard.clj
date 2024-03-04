@@ -428,7 +428,7 @@
     (api/check-superuser)))
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
-;; be setting `:archived` to `true` via the `PUT` endpoint instead
+;; be setting `:archived` to `true` via the `PUT` endpoint instead (#39387)
 (api/defendpoint DELETE "/:id"
   "Delete a Dashboard.
 
@@ -446,7 +446,6 @@
   (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
 
-;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn ^:private check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
@@ -455,10 +454,10 @@
     ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
     ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues
     ;; if there happen to be a lot of parameters
-    (let [card-ids              (into #{}
-                                      (comp (map :card-id)
-                                            (remove nil?))
-                                      parameter-mappings)]
+    (let [card-ids (into #{}
+                         (comp (map :card-id)
+                               (remove nil?))
+                         parameter-mappings)]
       (when (seq card-ids)
         (let [card-id->query        (t2/select-pk->fn :dataset_query Card :id [:in card-ids])
               field-ids             (set (for [{:keys [target card-id]} parameter-mappings
@@ -1182,7 +1181,7 @@
               :constraints   nil
               ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
               ;; specify this all over the codebase any time we want to do a query with an export format. Maybe this
-              ;; should be the default if `export-format` isn't `:api`?
+              ;; should be the default if `export-format` isn't `:api`? (#39398)
               :middleware    {:process-viz-settings?  true
                               :skip-results-metadata? true
                               :ignore-cached-results? true

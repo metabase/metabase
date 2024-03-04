@@ -537,7 +537,7 @@
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
 ;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT
-;;        /api/card/:id) instead of deleted.  Should we remove this?
+;;        /api/card/:id) instead of deleted.  Should we remove this? (#39387)
 (api/defendpoint DELETE "/:id"
   "Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.)"
   [id]
@@ -642,7 +642,7 @@
   ;;
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
-  ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
+  ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard. (#39429)
   (qp.card/process-query-for-card
    card-id :api
    :parameters   parameters

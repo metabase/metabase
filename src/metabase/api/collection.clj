@@ -183,7 +183,7 @@
   subtree (below).
 
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
-  some point in the future."
+  some point in the future. (#39344)"
   [exclude-archived exclude-other-user-collections namespace shallow collection-id]
   {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
@@ -215,7 +215,7 @@
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
   #{"card"       ; SavedQuestion
-    "dataset"    ; Model. TODO : update this
+    "dataset"    ; Model. TODO : update this (#39344)
     "collection"
     "dashboard"
     "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
@@ -269,7 +269,7 @@
   {:arglists '([model collection options])}
   (fn [model _ _] (keyword model)))
 
-;;; TODO -- in Postgres and H2 at least I think we could just do `true` or `false` here... not sure about MySQL.
+;;; TODO -- in Postgres and H2 at least I think we could just do `true` or `false` here... not sure about MySQL. (#39351)
 
 (def ^:private always-true-hsql-expr
   "A Honey SQL expression that is always true.
@@ -915,7 +915,7 @@
 ;; TODO - I'm not 100% sure it makes sense that moving a Collection requires a special call to `move-collection!`,
 ;; while archiving is handled automatically as part of the `pre-update` logic when you change a Collection's
 ;; `archived` value. They are both recursive operations; couldn't we just have moving happen automatically when you
-;; change a `:location` as well?
+;; change a `:location` as well? (#39370)
 (defn- move-collection-if-needed!
   "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do
   appropriate permissions checks and move it (and its descendants)."
@@ -1032,7 +1032,7 @@
   (mc/decoder PermissionsGraph (mtx/string-transformer)))
 
 (defn- decode-graph [permission-graph]
-  ;; TODO: should use a coercer for this?
+  ;; TODO: should use a coercer for this? (#39379)
   (graph-decoder permission-graph))
 
 (api/defendpoint PUT "/graph"

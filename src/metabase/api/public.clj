@@ -586,7 +586,6 @@
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
-;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash
 (api/defendpoint GET "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
@@ -656,8 +655,8 @@
 
 ;; TODO - why don't we just make these routes have a bit of middleware that includes the
 ;; `validation/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
-;; every single endpoint definition here? Wouldn't that be 100x better?!
+;; every single endpoint definition here? Wouldn't that be 100x better?! (#39332)
 ;;
 ;; TODO - also a smart person would probably just parse the UUIDs automatically in middleware as appropriate for
-;;`/dashboard` vs `/card`
+;;`/dashboard` vs `/card` (#39332)
 (api/define-routes)

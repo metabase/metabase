@@ -249,7 +249,7 @@
                 :user_id          user_id
                 :is_group_manager is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
-    ;; let the frontend add it as appropriate
+    ;; let the frontend add it as appropriate (#39410)
     (perms-group/members {:id group_id})))
 
 (api/defendpoint PUT "/membership/:id"
@@ -310,7 +310,7 @@
   [:as {body :body}]
   {body [:map]}
   (api/check-superuser)
-  ;; TODO remove api.permission-graph/converted-json->graph call
+;; TODO remove api.permission-graph/converted-json->graph call (#39420)
   (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/execution-permissions-graph body)]
     (when (= graph :clojure.spec.alpha/invalid)
       (throw (ex-info (tru "Invalid execution permission graph: {0}"
