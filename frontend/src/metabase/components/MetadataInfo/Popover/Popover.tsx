@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
@@ -18,7 +19,7 @@ export type PopoverProps = Pick<
   "children" | "position" | "disabled"
 > & {
   delay?: [number, number];
-  content: React.ReactNode;
+  content: ReactNode;
 };
 
 export function Popover({
