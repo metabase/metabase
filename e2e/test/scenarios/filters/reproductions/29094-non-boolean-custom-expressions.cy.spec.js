@@ -6,7 +6,7 @@ import {
   startNewQuestion,
 } from "e2e/support/helpers";
 
-describe("issue 29094", function () {
+describe("issue 29094", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
