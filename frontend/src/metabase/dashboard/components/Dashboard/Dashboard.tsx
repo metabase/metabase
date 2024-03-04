@@ -464,6 +464,8 @@ function DashboardInner(props: DashboardProps) {
       parameters={getValuePopulatedParameters({
         parameters,
         values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+        // @ts-expect-error convert frontend/src/metabase-lib/parameters/utils/parameter-values.js to TS
+        dashboardId: dashboard?.id,
       })}
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}

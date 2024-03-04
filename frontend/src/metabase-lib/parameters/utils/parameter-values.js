@@ -18,10 +18,11 @@ export function getParameterValue({
   parameter,
   values = {},
   defaultRequired = false,
+  recentlyUsedValue = null,
 }) {
   const value = values?.[parameter.id];
   const useDefault = defaultRequired && parameter.required;
-  return value ?? (useDefault ? parameter.default : null);
+  return value ?? (useDefault ? parameter.default : recentlyUsedValue ?? null);
 }
 
 /**
@@ -33,6 +34,7 @@ export function getValuePopulatedParameters({
   values = {},
   defaultRequired = false,
   collectionPreview = false,
+  dashboardId = null,
 }) {
   // pinned native question can have default values on parameters, usually we
   // get them from URL, which is not the case for collection preview. to force
@@ -41,14 +43,24 @@ export function getValuePopulatedParameters({
     return [];
   }
 
-  return parameters.map(parameter => ({
-    ...parameter,
-    value: getParameterValue({
-      parameter,
-      values,
-      defaultRequired,
-    }),
-  }));
+  let localDashboardParameters = {};
+  if (dashboardId) {
+    localDashboardParameters = getLocalDashboardParametersById(dashboardId);
+  }
+
+  return parameters.map(parameter => {
+    const recentlyUsedValue = localDashboardParameters[parameter.id];
+
+    return {
+      ...parameter,
+      value: getParameterValue({
+        parameter,
+        values,
+        defaultRequired,
+        recentlyUsedValue,
+      }),
+    };
+  });
 }
 
 export function getDefaultValuePopulatedParameters(
@@ -138,17 +150,7 @@ export function getParameterValuesBySlug(
   parameters = parameters ?? [];
   parameterValuesById = parameterValuesById ?? {};
 
-  let localDashboardParameters = {};
-  if (dashboardId) {
-    const localParametersStringified = window.localStorage.getItem(
-      "dashboardParameters",
-    );
-    const localParameters = localParametersStringified
-      ? JSON.parse(localParametersStringified)
-      : {};
-
-    localDashboardParameters = localParameters[dashboardId] ?? {};
-  }
+  const localDashboardParameters = getLocalDashboardParametersById(dashboardId);
 
   return Object.fromEntries(
     parameters.map(parameter => [
@@ -159,5 +161,46 @@ export function getParameterValuesBySlug(
         localDashboardParameters[parameter.id] ??
         null,
     ]),
+  );
+}
+
+export function getLocalDashboardParametersById(dashboardId) {
+  if (!dashboardId) {
+    return {};
+  }
+
+  const localParametersStringified = window.localStorage.getItem(
+    "dashboardParameters",
+  );
+  const localParameters = localParametersStringified
+    ? JSON.parse(localParametersStringified)
+    : {};
+
+  return localParameters[dashboardId] ?? {};
+}
+
+export function setLocalDashboardParameterValue(
+  dashboardId,
+  parameterId,
+  value,
+) {
+  if (!dashboardId) {
+    return;
+  }
+
+  const localParametersStringified = window.localStorage.getItem(
+    "dashboardParameters",
+  );
+  const localParameters = localParametersStringified
+    ? JSON.parse(localParametersStringified)
+    : {};
+
+  const localDashboardParameters = localParameters[dashboardId] ?? {};
+  localDashboardParameters[parameterId] = value;
+  localParameters[dashboardId] = localDashboardParameters;
+
+  window.localStorage.setItem(
+    "dashboardParameters",
+    JSON.stringify(localParameters),
   );
 }

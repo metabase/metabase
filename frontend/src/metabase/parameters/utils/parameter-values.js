@@ -1,7 +1,12 @@
 import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
 
-export function getParameterValueFromQueryParams(parameter, queryParams) {
+export function getParameterValueFromQueryParams(
+  parameter,
+  queryParams,
+  recentlyUsedParameters,
+) {
   queryParams = queryParams || {};
+  recentlyUsedParameters = recentlyUsedParameters || {};
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
@@ -10,11 +15,12 @@ export function getParameterValueFromQueryParams(parameter, queryParams) {
     return null;
   } else if (maybeParameterValue == null) {
     // try to use the default if the parameter is not present in the query params
-    return parameter.default ?? null;
-  } else {
-    const parsedValue = parseParameterValue(maybeParameterValue, parameter);
-    return normalizeParameterValueForWidget(parsedValue, parameter);
+    // then try to use recently used parameter
+    return parameter.default ?? recentlyUsedParameters[parameter.id] ?? null;
   }
+
+  const parsedValue = parseParameterValue(maybeParameterValue, parameter);
+  return normalizeParameterValueForWidget(parsedValue, parameter);
 }
 
 export function parseParameterValue(value, parameter) {
@@ -83,11 +89,19 @@ function normalizeParameterValueForWidget(value, parameter) {
   return value;
 }
 
-export function getParameterValuesByIdFromQueryParams(parameters, queryParams) {
+export function getParameterValuesByIdFromQueryParams(
+  parameters,
+  queryParams,
+  recentlyUsedParameters,
+) {
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.id,
-      getParameterValueFromQueryParams(parameter, queryParams),
+      getParameterValueFromQueryParams(
+        parameter,
+        queryParams,
+        recentlyUsedParameters,
+      ),
     ]),
   );
 }

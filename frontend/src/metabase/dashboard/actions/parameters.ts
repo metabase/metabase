@@ -17,6 +17,7 @@ import { addUndo, dismissUndo } from "metabase/redux/undo";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
+  setLocalDashboardParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
@@ -237,25 +238,7 @@ export const setParameterValue = createThunkAction(
     const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
     const dashboardId = getDashboardId(getState());
 
-    const localParametersStringified = window.localStorage.getItem(
-      "dashboardParameters",
-    );
-    const localParameters = localParametersStringified
-      ? JSON.parse(localParametersStringified)
-      : {};
-    const localDashboardParameters =
-      (dashboardId && localParameters[dashboardId]) ?? {};
-
-    localDashboardParameters[parameterId] = value;
-
-    if (dashboardId) {
-      localParameters[dashboardId] = localDashboardParameters;
-    }
-
-    window.localStorage.setItem(
-      "dashboardParameters",
-      JSON.stringify(localParameters),
-    );
+    setLocalDashboardParameterValue(dashboardId, parameterId, value);
 
     return {
       id: parameterId,
