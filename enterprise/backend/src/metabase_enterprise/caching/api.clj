@@ -9,26 +9,23 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- assert-valid-model [model model-id]
+(defn- assert-valid-models [model ids]
   (if (= model "root")
-    (when-not (zero? model-id)
+    (when-not (zero? (first ids))
       (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
-                                                                                  :model_id    model-id})))
+                                                                                  :model_id    (first ids)})))
     (api/check-404 (t2/select-one (case model
                                     "database"  :model/Database
                                     "dashboard" :model/Dashboard
                                     "question"  :model/Card)
-                                  :id model-id))))
+                                  :id [:in ids]))))
 
 (api/defendpoint GET "/"
   "Return cache configuration."
   [:as {{:strs [model collection]
          :or   {model "root"}}
         :query-params}]
-  {model      [:set {:decode/string (fn [x] (cond (set? x)    x
-                                                  (vector? x) (set x)
-                                                  (some? x)   #{x}))}
-               [:enum "root" "database" "dashboard" "question"]]
+  {model      (ms/QuerySetOf [:enum "root" "database" "dashboard" "question"])
    collection [:maybe ms/PositiveInt]}
   (validation/check-has-application-permission :setting)
   (let [items (t2/select :model/CacheConfig
@@ -78,7 +75,7 @@
                           [:aggregation [:enum "max" "count"]]
                           [:schedule u.cron/CronScheduleString]]]]]}
   (validation/check-has-application-permission :setting)
-  (assert-valid-model model model_id)
+  (assert-valid-models model [model_id])
   (let [data {:model    model
               :model_id model_id
               :strategy (:type strategy)
@@ -89,10 +86,10 @@
 (api/defendpoint DELETE "/"
   [:as {{:keys [model model_id]} :body}]
   {model    [:enum "root" "database" "dashboard" "question"]
-   model_id ms/PositiveInt}
+   model_id (ms/QueryVectorOf ms/PositiveInt)}
   (validation/check-has-application-permission :setting)
-  (assert-valid-model model model_id)
-  (t2/delete! :model/CacheConfig :model model :model_id model_id)
+  (assert-valid-models model model_id)
+  (t2/delete! :model/CacheConfig :model model :model_id [:in model_id])
   nil)
 
 (api/define-routes +auth)

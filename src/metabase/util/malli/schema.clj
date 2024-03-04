@@ -368,3 +368,15 @@
   (mu/with-api-error-message
    [:re u/uuid-regex]
    (deferred-tru "value must be a valid UUID.")))
+
+(defn QueryVectorOf
+  "Helper for creating a schema that coerces single-value to a vector."
+  [schema]
+  [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} schema])
+
+(defn QuerySetOf
+  "Helper for creating a schema that coerces single-value to a set."
+  [schema]
+  [:set {:decode/string (fn [x] (cond (set? x)    x
+                                      (vector? x) (set x)
+                                      (some? x)   #{x}))} schema])
