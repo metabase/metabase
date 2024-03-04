@@ -11,7 +11,7 @@ On some paid, self-hosted plans, Metabase supports initialization on launch from
 - The current directory (the directory where the running Metabase JAR is located).
 - The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
 
-The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file).
+The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**), Metabase will update the database entry based on the data in the config file.
 
 The config file settings are not treated as a hardcoded source of truth (like [environment variables](./environment-variables.md) are). Settings set by environment variables cannot be changed, even in the Admin settings in the application itself.
 
@@ -183,7 +183,7 @@ site-url
 site-name
 ```
 
-But you can set any of the Admin settings with the config file. Check out the list of [environment variable](./config-file.md) to see what you can configure.
+But you can set any of the Admin settings with the config file. Check out the list of [environment variable](./environment-variables.md) to see what you can configure.
 
 ## Loading a new Metabase from a config file
 
