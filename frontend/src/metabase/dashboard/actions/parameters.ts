@@ -235,6 +235,27 @@ export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId: ParameterId, value: any) => (_dispatch, getState) => {
     const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+    const dashboardId = getDashboardId(getState());
+
+    const localParametersStringified = window.localStorage.getItem(
+      "dashboardParameters",
+    );
+    const localParameters = localParametersStringified
+      ? JSON.parse(localParametersStringified)
+      : {};
+    const localDashboardParameters =
+      (dashboardId && localParameters[dashboardId]) ?? {};
+
+    localDashboardParameters[parameterId] = value;
+
+    if (dashboardId) {
+      localParameters[dashboardId] = localDashboardParameters;
+    }
+
+    window.localStorage.setItem(
+      "dashboardParameters",
+      JSON.stringify(localParameters),
+    );
 
     return {
       id: parameterId,

@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import { useMemo } from "react";
 
 import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
 import ParametersList from "metabase/parameters/components/ParametersList";
@@ -46,14 +47,36 @@ export function SyncedParametersList({
   enableParameterRequiredBehavior,
 }) {
   useSyncedQueryString(
-    () => getParameterValuesBySlug(parameters),
-    [parameters],
+    () => getParameterValuesBySlug(parameters, undefined, dashboard.id),
+    [dashboard.id, parameters],
   );
+
+  const localParametersStringified = window.localStorage.getItem(
+    "dashboardParameters",
+  );
+
+  const parametersWithLocalValues = useMemo(() => {
+    const localParameters = localParametersStringified
+      ? JSON.parse(localParametersStringified)
+      : {};
+
+    const localDashboardParameters = localParameters[dashboard.id] ?? {};
+
+    return parameters.map(parameter => {
+      return parameter.value
+        ? parameter
+        : {
+            ...parameter,
+            // if there is recently used value, use it
+            value: localDashboardParameters[parameter.id] ?? null,
+          };
+    });
+  }, [dashboard.id, localParametersStringified, parameters]);
 
   return (
     <ParametersList
       className={className}
-      parameters={parameters}
+      parameters={parametersWithLocalValues}
       question={question}
       dashboard={dashboard}
       editingParameter={editingParameter}

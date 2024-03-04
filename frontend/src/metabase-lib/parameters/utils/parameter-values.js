@@ -130,13 +130,34 @@ export function normalizeParameterValue(type, value) {
   }
 }
 
-export function getParameterValuesBySlug(parameters, parameterValuesById) {
+export function getParameterValuesBySlug(
+  parameters,
+  parameterValuesById,
+  dashboardId,
+) {
   parameters = parameters ?? [];
   parameterValuesById = parameterValuesById ?? {};
+
+  let localDashboardParameters = {};
+  if (dashboardId) {
+    const localParametersStringified = window.localStorage.getItem(
+      "dashboardParameters",
+    );
+    const localParameters = localParametersStringified
+      ? JSON.parse(localParametersStringified)
+      : {};
+
+    localDashboardParameters = localParameters[dashboardId] ?? {};
+  }
+
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.slug,
-      parameter.value ?? parameterValuesById[parameter.id] ?? null,
+      parameter.value ??
+        parameterValuesById[parameter.id] ??
+        // use recently used parameter only when there is no default
+        localDashboardParameters[parameter.id] ??
+        null,
     ]),
   );
 }

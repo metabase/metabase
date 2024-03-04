@@ -187,8 +187,13 @@ function DashCardInner({
   const hasError = !!error;
 
   const parameterValuesBySlug = useMemo(
-    () => getParameterValuesBySlug(dashboard.parameters, parameterValues),
-    [dashboard.parameters, parameterValues],
+    () =>
+      getParameterValuesBySlug(
+        dashboard.parameters,
+        parameterValues,
+        dashboard.id,
+      ),
+    [dashboard.id, dashboard.parameters, parameterValues],
   );
 
   const gridSize = useMemo(
