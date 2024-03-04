@@ -448,6 +448,23 @@
             (when-let [id (setting/get-value-of-type :integer :last-used-native-database-id)]
               (when (t2/exists? :model/Database :id id) id))))
 
+(defsetting dismissed-custom-dashboard-toast
+  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
+(defsetting dismissed-browse-models-banner
+  (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 
 (defmethod audit-log/model-details :model/User
