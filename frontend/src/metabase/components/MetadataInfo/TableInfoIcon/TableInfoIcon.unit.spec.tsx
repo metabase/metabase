@@ -13,7 +13,7 @@ type SetupOpts = {
 function setup({ table }: SetupOpts) {
   const state = createMockState({
     entities: createMockEntitiesState({
-      tables: table ? [table] : [],
+      tables: [table],
     }),
   });
 
