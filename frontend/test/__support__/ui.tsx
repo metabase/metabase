@@ -12,9 +12,9 @@ import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
-import { Api } from "metabase/redux/api";
 import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
