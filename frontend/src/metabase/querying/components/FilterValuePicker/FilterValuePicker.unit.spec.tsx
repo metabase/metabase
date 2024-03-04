@@ -31,7 +31,8 @@ interface SetupOpts<T> {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: T[];
-  compact?: boolean;
+  isCompact?: boolean;
+  isMultiple?: boolean;
   fieldValues?: FieldValuesResult;
   searchValues?: Record<string, FieldValuesResult>;
 }
@@ -41,7 +42,8 @@ async function setupStringPicker({
   stageIndex,
   column,
   values,
-  compact,
+  isCompact = false,
+  isMultiple = false,
   fieldValues,
   searchValues = {},
 }: SetupOpts<string>) {
@@ -62,7 +64,8 @@ async function setupStringPicker({
       stageIndex={stageIndex}
       column={column}
       values={values}
-      compact={compact}
+      isCompact={isCompact}
+      isMultiple={isMultiple}
       onChange={onChange}
       onFocus={onFocus}
       onBlur={onBlur}
@@ -79,7 +82,8 @@ async function setupNumberPicker({
   stageIndex,
   column,
   values,
-  compact,
+  isCompact,
+  isMultiple,
   fieldValues,
 }: SetupOpts<number>) {
   const onChange = jest.fn();
@@ -96,7 +100,8 @@ async function setupNumberPicker({
       stageIndex={stageIndex}
       column={column}
       values={values}
-      compact={compact}
+      isCompact={isCompact}
+      isMultiple={isMultiple}
       onChange={onChange}
       onFocus={onFocus}
       onBlur={onBlur}
