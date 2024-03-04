@@ -540,7 +540,7 @@
     (mt/with-test-user :rasta
       (let [initial-value  (user/last-used-native-database-id)
             existing-db-id (:id (t2/select-one Database))
-            wrong-db-id    999]
+            wrong-db-id    -999]
         (is (nil? initial-value))
         (user/last-used-native-database-id! existing-db-id)
         (is (= existing-db-id (user/last-used-native-database-id)))
