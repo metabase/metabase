@@ -71,7 +71,7 @@ const editDatabasePermission = async () => {
   await delay(0);
 };
 
-describe("DatabasesPermissionsPage", function () {
+describe("DatabasesPermissionsPage", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });

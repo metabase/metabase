@@ -443,7 +443,10 @@
   (deferred-tru "The last database a user has selected for a native query or a native model.")
   :user-local :only
   :visibility :authenticated
-  :type :integer)
+  :type :integer
+  :getter (fn []
+            (when-let [id (setting/get-value-of-type :integer :last-used-native-database-id)]
+              (when (t2/exists? :model/Database :id id) id))))
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 

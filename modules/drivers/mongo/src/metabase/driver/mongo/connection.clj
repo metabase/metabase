@@ -10,7 +10,7 @@
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
-   (com.mongodb ConnectionString MongoClientSettings MongoClientSettings$Builder)
+   (com.mongodb ConnectionString MongoClientSettings MongoClientSettings$Builder MongoCredential)
    (com.mongodb.connection SslSettings$Builder)))
 
 (set! *warn-on-reflection* true)
@@ -20,11 +20,8 @@
   nil)
 
 (defn db-details->connection-string
-  "Generate connection string from database details.
-
-   - `?authSource` is always prestent because we are using `dbname`.
-   - We let the user override options we are passing in by means of `additional-options`."
-  [{:keys [use-conn-uri conn-uri host port user authdb pass dbname additional-options use-srv ssl] :as _db-details}]
+  "Generate connection string from database details."
+  [{:keys [use-conn-uri conn-uri host port dbname additional-options use-srv ssl] :as _db-details}]
   ;; Connection string docs:
   ;; http://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-core/com/mongodb/ConnectionString.html
   (if use-conn-uri
@@ -32,14 +29,12 @@
     (str
      (if use-srv "mongodb+srv" "mongodb")
      "://"
-     (when (seq user) (str user (when (seq pass) (str ":" pass)) "@"))
+     ;; credentials are added into MongoClientSettings in [[db-details->mongo-client-settings]]
      host
      (when (and (not use-srv) (some? port)) (str ":" port))
      "/"
      dbname
-     "?authSource=" (if (empty? authdb) "admin" authdb)
-     "&appName=" config/mb-app-id-string
-     "&connectTimeoutMS=" (driver.u/db-connection-timeout-ms)
+     "?connectTimeoutMS=" (driver.u/db-connection-timeout-ms)
      "&serverSelectionTimeoutMS=" (driver.u/db-connection-timeout-ms)
      (when ssl "&ssl=true")
      (when (seq additional-options) (str "&" additional-options)))))
@@ -65,17 +60,27 @@
 
 (defn db-details->mongo-client-settings
   "Generate `MongoClientSettings` from `db-details`. `ConnectionString` is generated and applied to
-   `MongoClientSettings$Builder` first. Then ssl context is udated in the `builder` object.
+   `MongoClientSettings$Builder` first. Then credentials are set and ssl context is updated in the `builder` object.
    Afterwards, `MongoClientSettings` are built using `.build`."
   ^MongoClientSettings
-  [{:keys [use-conn-uri ssl] :as db-details}]
+  [{:keys [authdb user pass use-conn-uri ssl] :as db-details}]
   (let [connection-string (-> db-details
                               db-details->connection-string
                               ConnectionString.)
         builder (com.mongodb.MongoClientSettings/builder)]
+    (.applicationName builder config/mb-app-id-string)
     (.applyConnectionString builder connection-string)
-    (when (and ssl (not use-conn-uri))
-      (maybe-add-ssl-context-to-builder! builder db-details))
+    (when-not use-conn-uri
+      ;; NOTE: authSource connection parameter is the second argument of `createCredential`. We currently set it only
+      ;;       when some credentials are used (ie. user is not empty), previously we did that in all cases. I've
+      ;;       manually verified that's not necessary.
+      (when (seq user)
+        (.credential builder
+                     (MongoCredential/createCredential user
+                                                       (or (not-empty authdb) "admin")
+                                                       (char-array pass))))
+      (when ssl
+        (maybe-add-ssl-context-to-builder! builder db-details)))
     (.build builder)))
 
 (defn do-with-mongo-client
