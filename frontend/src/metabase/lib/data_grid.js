@@ -356,7 +356,7 @@ function formatValuesInTree(
     value: formatter(value),
     rawValue: value,
     children: formatValuesInTree(children, formatters, columns),
-    clicked: { value, column },
+    clicked: { data: [{ value, col: column }] },
   }));
 }
 
