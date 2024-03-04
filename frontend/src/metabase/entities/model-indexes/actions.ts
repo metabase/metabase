@@ -56,7 +56,7 @@ export const updateModelIndexes =
       await Promise.all(
         indexIdsToRemove.map(indexId =>
           dispatch(
-            ModelIndexes.api.endpoints.deleteModelIndex.initiate(indexId),
+            modelIndexesApi.endpoints.deleteModelIndex.initiate(indexId),
           ),
         ),
       );

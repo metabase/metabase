@@ -17,7 +17,6 @@ import type { State } from "metabase-types/store";
 
 import AddMemberRow from "../AddMemberRow";
 
-
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell;
 
