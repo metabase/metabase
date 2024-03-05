@@ -3,6 +3,7 @@
     {
       "name": "Querying Components",
       "label": ".Team/QueryingComponents",
+      "projectUrl": "https://github.com/orgs/metabase/projects/50/views/1",
       "members": [
         "ranquild",
         "uladzimirdev",
@@ -15,16 +16,12 @@
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
-      "members": [
-        "WiNloSt",
-        "deniskaber",
-        "oisincoveney",
-        "npretto"
-      ]
+      "members": ["WiNloSt", "deniskaber", "oisincoveney", "npretto"]
     },
     {
       "name": "BEC",
       "label": ".Team/BackendComponents",
+      "projectUrl": "https://github.com/orgs/metabase/projects/50/views/1",
       "members": [
         "tsmacdonald",
         "qnkhuat",
@@ -36,13 +33,7 @@
     {
       "name": "Query Processor",
       "label": ".Team/QueryProcessor",
-      "members": [
-        "camsaul",
-        "snoe",
-        "bshepherdson",
-        "metamben",
-        "lbrdnk"
-      ]
+      "members": ["camsaul", "snoe", "bshepherdson", "metamben", "lbrdnk"]
     },
     {
       "name": "Admin Webapp",
