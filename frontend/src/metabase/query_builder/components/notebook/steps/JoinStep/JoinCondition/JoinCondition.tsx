@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 
-import { maybeSyncTemporalBucket } from "metabase/query_builder/components/notebook/steps/JoinStep/utils";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
 import { JoinConditionRemoveButton } from "../JoinConditionRemoveButton";
+import { maybeSyncTemporalBucket } from "../utils";
 
 import { JoinConditionRoot } from "./JoinCondition.styled";
 

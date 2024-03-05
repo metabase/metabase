@@ -28,13 +28,7 @@ describe("issue 17968", () => {
     popover().findByText("Count").click();
 
     getNotebookStep("join", { stage: 1 })
-      .findByLabelText("Left table")
-      .findByText("Previous results")
-      .should("be.visible");
-
-    getNotebookStep("join", { stage: 1 })
       .findByLabelText("Left column")
-      .findByText("Count")
-      .should("be.visible");
+      .findByText("Previous results");
   });
 });

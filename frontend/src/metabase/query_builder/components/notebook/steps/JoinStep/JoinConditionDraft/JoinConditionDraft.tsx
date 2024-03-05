@@ -40,37 +40,38 @@ export function JoinConditionDraft({
   const [isLhsOpened, setIsLhsOpened] = useState(true);
   const [isRhsOpened, setIsRhsOpened] = useState(false);
 
-  const createCondition = (
-    lhsColumn: Lib.ColumnMetadata,
-    rhsColumn: Lib.ColumnMetadata,
-  ) =>
-    Lib.joinConditionClause(query, stageIndex, operator, lhsColumn, rhsColumn);
-
-  const syncTemporalBucket = (
-    condition: Lib.JoinCondition,
-    newColumn: Lib.ColumnMetadata,
-    oldColumn: Lib.ColumnMetadata,
-  ) =>
-    maybeSyncTemporalBucket(query, stageIndex, condition, newColumn, oldColumn);
-
-  const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
-    if (rhsColumn) {
-      const newCondition = createCondition(newLhsColumn, rhsColumn);
-      onChange(syncTemporalBucket(newCondition, newLhsColumn, rhsColumn));
-    } else {
-      setLhsColumn(newLhsColumn);
-      setIsRhsOpened(true);
-      onLhsColumnChange?.(newLhsColumn);
+  const handleColumnChange = (
+    lhsColumn: Lib.ColumnMetadata | undefined,
+    rhsColumn: Lib.ColumnMetadata | undefined,
+  ) => {
+    if (lhsColumn != null && rhsColumn != null) {
+      const newCondition = maybeSyncTemporalBucket(
+        query,
+        stageIndex,
+        Lib.joinConditionClause(
+          query,
+          stageIndex,
+          operator,
+          lhsColumn,
+          rhsColumn,
+        ),
+        lhsColumn,
+        rhsColumn,
+      );
+      onChange(newCondition);
     }
   };
 
+  const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
+    setLhsColumn(newLhsColumn);
+    setIsRhsOpened(true);
+    onLhsColumnChange?.(newLhsColumn);
+    handleColumnChange(newLhsColumn, rhsColumn);
+  };
+
   const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
-    if (lhsColumn) {
-      const newCondition = createCondition(lhsColumn, newRhsColumn);
-      onChange(syncTemporalBucket(newCondition, newRhsColumn, lhsColumn));
-    } else {
-      setRhsColumn(newRhsColumn);
-    }
+    setRhsColumn(newRhsColumn);
+    handleColumnChange(lhsColumn, newRhsColumn);
   };
 
   return (

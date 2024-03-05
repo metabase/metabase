@@ -4,10 +4,10 @@ export function maybeSyncTemporalBucket(
   query: Lib.Query,
   stageIndex: number,
   condition: Lib.JoinCondition,
-  newColumn: Lib.ColumnMetadata,
-  oldColumn: Lib.ColumnMetadata,
+  column1: Lib.ColumnMetadata,
+  column2: Lib.ColumnMetadata,
 ) {
-  const bucket = Lib.temporalBucket(newColumn) ?? Lib.temporalBucket(oldColumn);
+  const bucket = Lib.temporalBucket(column1) ?? Lib.temporalBucket(column2);
   if (bucket) {
     return Lib.joinConditionUpdateTemporalBucketing(
       query,
