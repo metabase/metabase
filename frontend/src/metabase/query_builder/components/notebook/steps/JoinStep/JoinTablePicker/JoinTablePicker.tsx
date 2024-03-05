@@ -16,7 +16,7 @@ interface JoinTablePickerProps {
   table: Lib.CardMetadata | Lib.TableMetadata | undefined;
   color: string;
   isReadOnly: boolean;
-  onChangeTable: (joinable: Lib.Joinable) => void;
+  onChange: (joinable: Lib.Joinable) => void;
 }
 
 export function JoinTablePicker({
@@ -25,7 +25,7 @@ export function JoinTablePicker({
   table,
   isReadOnly,
   color,
-  onChangeTable,
+  onChange,
 }: JoinTablePickerProps) {
   const databaseId = useMemo(() => {
     return Lib.databaseID(query);
@@ -44,7 +44,7 @@ export function JoinTablePicker({
   const isDisabled = table != null || isReadOnly;
 
   const handleTableChange = async (tableId: TableId) => {
-    onChangeTable(Lib.tableOrCardMetadata(query, tableId));
+    onChange(Lib.tableOrCardMetadata(query, tableId));
   };
 
   return (

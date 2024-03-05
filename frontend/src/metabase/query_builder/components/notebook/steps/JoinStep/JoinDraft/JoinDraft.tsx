@@ -15,14 +15,14 @@ interface JoinDraftProps {
   query: Lib.Query;
   stageIndex: number;
   color: string;
-  readOnly: boolean;
+  isReadOnly: boolean;
 }
 
 export function JoinDraft({
   query,
   stageIndex,
   color,
-  readOnly,
+  isReadOnly,
 }: JoinDraftProps) {
   const [strategy, setStrategy] = useState(() =>
     getDefaultJoinStrategy(query, stageIndex),
@@ -45,7 +45,7 @@ export function JoinDraft({
             query={query}
             stageIndex={stageIndex}
             strategy={strategy}
-            readOnly={readOnly}
+            isReadOnly={isReadOnly}
             onChange={setStrategy}
           />
           <JoinTablePicker
@@ -53,8 +53,8 @@ export function JoinDraft({
             stageIndex={stageIndex}
             table={table}
             color={color}
-            readOnly={readOnly}
-            onChangeTable={setTable}
+            isReadOnly={isReadOnly}
+            onChange={setTable}
           />
         </Flex>
       </JoinNotebookCell>

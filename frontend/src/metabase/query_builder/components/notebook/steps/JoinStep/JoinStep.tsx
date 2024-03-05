@@ -13,7 +13,7 @@ export function JoinStep({
       query={query}
       stageIndex={stageIndex}
       color={color}
-      readOnly={readOnly}
+      isReadOnly={readOnly}
     />
   );
 }
