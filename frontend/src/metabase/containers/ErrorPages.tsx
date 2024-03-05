@@ -1,9 +1,24 @@
 /* eslint-disable react/prop-types */
-import { t } from "ttag";
-import { useAsync } from "react-use";
 import { useState } from "react";
+import { useAsync } from "react-use";
+import { t } from "ttag";
+
+import NoResults from "assets/img/no_results.svg";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import EmptyState from "metabase/components/EmptyState";
+import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
+import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
+import Link from "metabase/core/components/Link";
+import {
+  Form,
+  FormCheckbox,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
 import { color } from "metabase/lib/colors";
+import { b64url_to_utf8 } from "metabase/lib/encoding";
 import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   UtilApi,
   CardApi,
@@ -11,8 +26,6 @@ import {
   CollectionsApi,
   MetabaseApi,
 } from "metabase/services";
-
-import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
 import {
   Button,
   Center,
@@ -24,20 +37,7 @@ import {
   Modal,
   Flex,
 } from "metabase/ui";
-import EmptyState from "metabase/components/EmptyState";
-import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 
-import NoResults from "assets/img/no_results.svg";
-import { b64url_to_utf8 } from "metabase/lib/encoding";
-import Link from "metabase/core/components/Link";
-import {
-  Form,
-  FormCheckbox,
-  FormProvider,
-  FormSubmitButton,
-} from "metabase/forms";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
 export const GenericError = ({
