@@ -84,6 +84,7 @@ export const createMockActionDashboardCard = (
   opts?: Partial<ActionDashboardCard>,
 ): ActionDashboardCard => ({
   ...createMockDashboardCard(),
+  action_id: 1,
   action: undefined,
   card: createMockCard({ display: "action" }),
   visualization_settings: {

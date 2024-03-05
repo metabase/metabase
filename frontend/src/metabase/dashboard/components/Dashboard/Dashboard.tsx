@@ -5,7 +5,10 @@ import type { Route } from "react-router";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
-import type { NewDashCardOpts } from "metabase/dashboard/actions";
+import type {
+  NewDashCardOpts,
+  SetDashboardAttributesOpts,
+} from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import type {
@@ -136,11 +139,8 @@ interface DashboardProps {
   archiveDashboard: (id: DashboardId) => Promise<void>;
 
   onRefreshPeriodChange: (period: number | null) => void;
-  setEditingDashboard: (dashboard: IDashboard | boolean) => void;
-  setDashboardAttributes: (opts: {
-    id: DashboardId;
-    attributes: Partial<IDashboard>;
-  }) => void;
+  setEditingDashboard: (dashboard: IDashboard | null) => void;
+  setDashboardAttributes: (opts: SetDashboardAttributesOpts) => void;
   setSharing: (isSharing: boolean) => void;
   toggleSidebar: (sidebarName: DashboardSidebarName) => void;
   closeSidebar: () => void;
@@ -297,7 +297,7 @@ function DashboardInner(props: DashboardProps) {
   );
 
   const handleSetEditing = useCallback(
-    (dashboard: IDashboard | boolean) => {
+    (dashboard: IDashboard | null) => {
       onRefreshPeriodChange(null);
       setEditingDashboard(dashboard);
     },

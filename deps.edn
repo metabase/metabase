@@ -169,7 +169,6 @@
   potemkin/potemkin                         {:mvn/version "0.4.7"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
-  prismatic/schema                          {:mvn/version "1.4.1"}              ; Data schema declaration and validation library
   redux/redux                               {:mvn/version "0.1.4"}              ; Utility functions for building and composing transducers
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
   ring/ring-core                            {:mvn/version "1.11.0"}             ; HTTP abstraction

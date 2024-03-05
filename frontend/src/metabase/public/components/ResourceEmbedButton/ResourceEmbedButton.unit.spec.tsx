@@ -6,7 +6,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { DashboardEmbedHeaderButton } from "./DashboardEmbedHeaderButton";
+import { ResourceEmbedButton } from "./ResourceEmbedButton";
 
 const setup = ({
   isPublicSharingEnabled = true,
@@ -19,7 +19,7 @@ const setup = ({
 } = {}) => {
   const onClick = jest.fn();
   renderWithProviders(
-    <DashboardEmbedHeaderButton
+    <ResourceEmbedButton
       onClick={onClick}
       disabled={disabled}
       tooltip={tooltip}
@@ -35,7 +35,7 @@ const setup = ({
   return { onClick };
 };
 
-describe("DashboardEmbedHeaderButton", () => {
+describe("ResourceEmbedButton", () => {
   it('should render "Sharing" label when public sharing is enabled', () => {
     setup({ isPublicSharingEnabled: true });
     userEvent.hover(screen.getByLabelText("share icon"));
@@ -56,15 +56,15 @@ describe("DashboardEmbedHeaderButton", () => {
 
   it("should be disabled when disabled=true", () => {
     const { onClick } = setup({ disabled: true });
-    userEvent.click(screen.getByTestId("dashboard-embed-button"));
+    userEvent.click(screen.getByTestId("resource-embed-button"));
 
-    expect(screen.getByTestId("dashboard-embed-button")).toBeDisabled();
+    expect(screen.getByTestId("resource-embed-button")).toBeDisabled();
     expect(onClick).not.toHaveBeenCalled();
   });
 
   it("should call onClick when the button is clicked", () => {
     const { onClick } = setup();
-    userEvent.click(screen.getByTestId("dashboard-embed-button"));
+    userEvent.click(screen.getByTestId("resource-embed-button"));
     expect(onClick).toHaveBeenCalled();
   });
 });

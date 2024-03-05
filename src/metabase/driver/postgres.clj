@@ -494,7 +494,8 @@
       (pg-conversion identifier :numeric)
 
       (lib.field/json-field? stored-field)
-      (if (::sql.qp/forced-alias opts)
+      (if (or (::sql.qp/forced-alias opts)
+              (= (::add/source-table opts) ::add/source))
         (keyword (::add/source-alias opts))
         (walk/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)

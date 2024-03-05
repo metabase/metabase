@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 
 import { FieldPanel } from "./FieldPanel";
@@ -114,6 +114,22 @@ describe("QueryColumnPicker", () => {
     userEvent.click(orderGroup);
     expect(firstColumn).toBeChecked();
     expect(firstColumn).toBeEnabled();
+  });
+
+  it("should not allow to remove custom columns", () => {
+    const query = Lib.expression(
+      createQuery(),
+      -1,
+      "Custom",
+      Lib.expressionClause("+", [1, 2]),
+    );
+    setup({ query });
+    const [orderGroup] = screen.getAllByRole("checkbox");
+    const customColumn = screen.getByRole("checkbox", { name: "Custom" });
+    expect(orderGroup).toBeChecked();
+    expect(orderGroup).toBeDisabled();
+    expect(customColumn).toBeChecked();
+    expect(customColumn).toBeDisabled();
   });
 
   it("should allow to search for columns", () => {

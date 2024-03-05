@@ -76,7 +76,6 @@
                          :clj  'Throwable)
                       ~'_)))
 
-;; TODO -- maybe renaming this to `adoto` or `doto<>` or something would be a little clearer.
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.
@@ -158,7 +157,7 @@
   conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."
   ^String [s]
   (when s
-    #?(:clj  (.toLowerCase (str s) (Locale/US))
+    #?(:clj  (.toLowerCase (str s) Locale/US)
        :cljs (.toLowerCase (str s)))))
 
 (defn upper-case-en
@@ -168,7 +167,7 @@
   `en-US` locale."
   ^String [s]
   (when s
-    #?(:clj  (.toUpperCase (str s) (Locale/US))
+    #?(:clj  (.toUpperCase (str s) Locale/US)
        :cljs (.toUpperCase (str s)))))
 
 (defn capitalize-en
@@ -430,9 +429,8 @@
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
   Otherwise, throws an Exception.
 
-  Provided as a convenience to allow model-layer functions to easily accept either an object or raw ID, and to assert
+  Provided to allow model-layer functions to easily accept either an object or raw ID, and to assert
   that you have a valid ID."
-  ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
   ^Integer [object-or-id]
   (or (id object-or-id)
       (throw (error (tru "Not something with an ID: {0}" (pr-str object-or-id))))))

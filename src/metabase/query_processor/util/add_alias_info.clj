@@ -238,8 +238,13 @@
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
                                   id-or-name))]
-          (or (m/find-first (fn [[_ expression-name :as _expression-clause]]
+          (or ;; Expressions by exact name.
+              (m/find-first (fn [[_ expression-name :as _expression-clause]]
                               (= expression-name field-name))
+                            (filter (partial mbql.u/is-clause? :expression) all-exports))
+              ;; Expressions whose ::desired-alias matches the name we're searching for.
+              (m/find-first (fn [[_expression _expression-name {::keys [desired-alias]} :as _expression-clause]]
+                              (= desired-alias field-name))
                             (filter (partial mbql.u/is-clause? :expression) all-exports))
               (m/find-first (fn [[_ _ opts :as _aggregation-options-clause]]
                               (= (::source-alias opts) field-name))
@@ -316,6 +321,11 @@
                        (qp.store/->legacy-metadata field)))
     (:name field)))
 
+(defn- field-requires-original-field-name
+  "JSON extraction fields need to be named with their outer `field-name`, not use any existing `::desired-alias`."
+  [field-clause]
+  (boolean (some-> field-clause field-instance :nfc-path)))
+
 (defn- field-name
   "*Actual* name of a `:field` from the database or source query (for Field literals)."
   [_inner-query [_ id-or-name :as field-clause]]
@@ -330,6 +340,7 @@
   it around instead of recalculating it a bunch of times."
   [inner-query field-clause]
   {:field-name              (field-name inner-query field-clause)
+   :override-alias?         (field-requires-original-field-name field-clause)
    :join-is-this-level?     (field-is-from-join-in-this-level? inner-query field-clause)
    :alias-from-join         (field-alias-in-join-at-this-level inner-query field-clause)
    :alias-from-source-query (field-alias-in-source-query inner-query field-clause)})
@@ -360,10 +371,13 @@
   "Determine the appropriate `::desired-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
   [_inner-query
-   [_ _id-or-name {:keys [join-alias]} :as _field-clause]
-   {:keys [field-name alias-from-join alias-from-source-query]}]
+   [_ _id-or-name {:keys [join-alias] ::keys [desired-alias]} :as _field-clause]
+   {:keys [field-name alias-from-join alias-from-source-query override-alias?]}]
   (cond
     join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
+    ;; JSON fields and similar have to be aliased by the outer field name.
+    override-alias?         field-name
+    desired-alias           desired-alias
     alias-from-source-query alias-from-source-query
     :else                   field-name))
 
