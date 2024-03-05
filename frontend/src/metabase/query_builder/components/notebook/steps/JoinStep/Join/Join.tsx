@@ -8,6 +8,7 @@ import { NotebookCellAdd, NotebookCellItem } from "../../../NotebookCell";
 import { JoinCondition } from "../JoinCondition";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
+import { JoinTableColumnPicker } from "../JoinTableColumnPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
 import { JoinConditionCell, JoinCell } from "./Join.styled";
@@ -18,7 +19,8 @@ interface JoinProps {
   join: Lib.Join;
   color: string;
   isReadOnly: boolean;
-  onChange: (join: Lib.Join) => void;
+  onJoinChange: (newJoin: Lib.Join) => void;
+  onQueryChange: (newQuery: Lib.Query) => void;
 }
 
 export function Join({
@@ -27,7 +29,8 @@ export function Join({
   join,
   color,
   isReadOnly,
-  onChange,
+  onJoinChange,
+  onQueryChange,
 }: JoinProps) {
   const strategy = useMemo(() => Lib.joinStrategy(join), [join]);
   const table = useMemo(() => Lib.joinedThing(query, join), [query, join]);
@@ -41,13 +44,13 @@ export function Join({
 
   const handleStrategyChange = (newStrategy: Lib.JoinStrategy) => {
     const newJoin = Lib.withJoinStrategy(join, newStrategy);
-    onChange(newJoin);
+    onJoinChange(newJoin);
   };
 
   const handleAddCondition = (newCondition: Lib.JoinCondition) => {
     const newConditions = [...conditions, newCondition];
     const newJoin = Lib.withJoinConditions(join, newConditions);
-    onChange(newJoin);
+    onJoinChange(newJoin);
     setIsAddingNewCondition(false);
   };
 
@@ -58,14 +61,14 @@ export function Join({
     const newConditions = [...conditions];
     newConditions[conditionIndex] = newCondition;
     const newJoin = Lib.withJoinConditions(join, newConditions);
-    onChange(newJoin);
+    onJoinChange(newJoin);
   };
 
   const handleRemoveCondition = (conditionIndex: number) => {
     const newConditions = [...conditions];
     newConditions.splice(conditionIndex, 1);
     const newJoin = Lib.withJoinConditions(join, newConditions);
-    onChange(newJoin);
+    onJoinChange(newJoin);
   };
 
   return (
@@ -88,6 +91,14 @@ export function Join({
             table={table}
             color={color}
             isReadOnly={isReadOnly}
+            columnPicker={
+              <JoinTableColumnPicker
+                query={query}
+                stageIndex={stageIndex}
+                join={join}
+                onChange={onQueryChange}
+              />
+            }
           />
         </Flex>
       </JoinCell>

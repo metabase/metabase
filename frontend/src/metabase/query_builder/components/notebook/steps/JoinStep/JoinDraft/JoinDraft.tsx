@@ -31,6 +31,7 @@ export function JoinDraft({
     getDefaultJoinStrategy(query, stageIndex),
   );
   const [table, setTable] = useState<Lib.Joinable>();
+  const [_fields, setFields] = useState<Lib.JoinFields>("all");
   const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
 
   const lhsDisplayName = useMemo(
@@ -49,6 +50,7 @@ export function JoinDraft({
       onChange(newJoin);
     } else {
       setTable(newTable);
+      setFields("all");
     }
   };
 
@@ -79,6 +81,7 @@ export function JoinDraft({
             table={table}
             color={color}
             isReadOnly={isReadOnly}
+            columnPicker={<div />}
             onChange={handleTableChange}
           />
         </Flex>
