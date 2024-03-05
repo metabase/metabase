@@ -21,21 +21,28 @@ describe("getWhiteLabeledLoadingMessage (EE with token)", () => {
   it("should return 'Doing science...' when loading-message is set to 'doing-science'", () => {
     const { getState } = setup({ loadingMessage: "doing-science" });
 
-    expect(getWhiteLabeledLoadingMessage(getState())).toBe("Doing science...");
+    expect(getWhiteLabeledLoadingMessage(getState())).toEqual({
+      initial: "Doing science...",
+      slow: "Talking to the database...",
+    });
   });
 
   it("should return 'Loading results...' when loading-message is set to 'loading-results'", () => {
     const { getState } = setup({ loadingMessage: "loading-results" });
 
-    expect(getWhiteLabeledLoadingMessage(getState())).toBe(
-      "Loading results...",
-    );
+    expect(getWhiteLabeledLoadingMessage(getState())).toEqual({
+      initial: "Loading results...",
+      slow: "Talking to the database...",
+    });
   });
 
   it("should return 'Running query...' when loading-message is set to 'running-query'", () => {
     const { getState } = setup({ loadingMessage: "running-query" });
 
-    expect(getWhiteLabeledLoadingMessage(getState())).toBe("Running query...");
+    expect(getWhiteLabeledLoadingMessage(getState())).toEqual({
+      initial: "Running query...",
+      slow: "Talking to the database...",
+    });
   });
 });
 
