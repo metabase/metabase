@@ -362,8 +362,7 @@
                 ;; now sync the DB
                 (sync!)
                 ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
-                (is (=? (map #(default-table-result % {:properties {:row-count (mt/malli=? int?)}})
-                             ["part_vals" "part_vals_0" "part_vals_1"])
+                (is (=? (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"])
                         (describe-database->tables :postgres database)))))
             (log/warn
              (u/format-color
