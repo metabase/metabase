@@ -10,11 +10,3 @@ export function getDefaultJoinStrategy(
   );
   return defaultStrategy ?? strategies[0];
 }
-
-export function getDefaultJoinConditionOperator(
-  query: Lib.Query,
-  stageIndex: number,
-): Lib.JoinConditionOperator {
-  const operators = Lib.joinConditionOperators(query, stageIndex);
-  return operators[0];
-}

@@ -13,10 +13,7 @@ import {
   JoinConditionNotebookCell,
   JoinNotebookCell,
 } from "./JoinDraft.styled";
-import {
-  getDefaultJoinStrategy,
-  getDefaultJoinConditionOperator,
-} from "./utils";
+import { getDefaultJoinStrategy } from "./utils";
 
 interface JoinDraftProps {
   query: Lib.Query;
@@ -37,42 +34,18 @@ export function JoinDraft({
     getDefaultJoinStrategy(query, stageIndex),
   );
   const [joinable, setJoinable] = useState<Lib.Joinable>();
-  const [operator, setOperator] = useState(() =>
-    getDefaultJoinConditionOperator(query, stageIndex),
-  );
   const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
-  const [rhsColumn, setRhsColumn] = useState<Lib.ColumnMetadata>();
 
   const lhsDisplayName = useMemo(
-    () => Lib.joinLHSDisplayName(query, stageIndex, joinable),
-    [query, stageIndex, joinable],
+    () => Lib.joinLHSDisplayName(query, stageIndex, joinable, lhsColumn),
+    [query, stageIndex, joinable, lhsColumn],
   );
 
-  const handleColumnChange = (
-    lhsColumn: Lib.ColumnMetadata | undefined,
-    rhsColumn: Lib.ColumnMetadata | undefined,
-  ) => {
-    if (joinable != null && lhsColumn != null && rhsColumn != null) {
-      const condition = Lib.joinConditionClause(
-        query,
-        stageIndex,
-        operator,
-        lhsColumn,
-        rhsColumn,
-      );
-      const join = Lib.joinClause(joinable, [condition]);
-      onChange(join);
+  const handleConditionChange = (newCondition: Lib.JoinCondition) => {
+    if (joinable) {
+      const newJoin = Lib.joinClause(joinable, [newCondition]);
+      onChange(newJoin);
     }
-  };
-
-  const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
-    setLhsColumn(newLhsColumn);
-    handleColumnChange(newLhsColumn, rhsColumn);
-  };
-
-  const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
-    setRhsColumn(newRhsColumn);
-    handleColumnChange(lhsColumn, newRhsColumn);
   };
 
   return (
@@ -109,13 +82,9 @@ export function JoinDraft({
               query={query}
               stageIndex={stageIndex}
               joinable={joinable}
-              operator={operator}
-              lhsColumn={lhsColumn}
-              rhsColumn={rhsColumn}
               isReadOnly={isReadOnly}
-              onOperatorChange={setOperator}
-              onLhsColumnChange={handleLhsColumnChange}
-              onRhsColumnChange={handleRhsColumnChange}
+              onChange={handleConditionChange}
+              onLhsColumnChange={setLhsColumn}
             />
           </JoinConditionNotebookCell>
         </>
