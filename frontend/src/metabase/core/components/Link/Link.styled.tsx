@@ -8,13 +8,13 @@ import { color as metabaseColor } from "metabase/lib/colors";
 
 import type { LinkProps } from "./types";
 
-const isLinkPropValid = (propName: PropertyKey) => {
+const isLinkPropValid = (propName: string) => {
   return isPropValid(propName) || propName === "activeClassName";
 };
 
 export const LinkRoot = styled(Link, {
   shouldForwardProp: isLinkPropValid,
-})<LinkProps>`
+}) <LinkProps>`
   opacity: ${props => (props.disabled ? "0.4" : "")};
   pointer-events: ${props => (props.disabled ? "none" : "")};
   transition: opacity 0.3s linear;
