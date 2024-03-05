@@ -36,6 +36,10 @@ const setupEnterprise = (opts?: SetupOpts) => {
 const sampleToken = "a".repeat(64);
 
 describe("setup (EE, no token)", () => {
+  beforeEach(() => {
+    fetchMock.reset();
+  });
+
   it("default step order should be correct, with the commercial step in place", async () => {
     await setupEnterprise();
     skipWelcomeScreen();
@@ -211,15 +215,19 @@ describe("setup (EE, no token)", () => {
 
     it("should pass the token to the settings endpoint", async () => {
       await setupForLicenseStep();
-
       setupForTokenCheckEndpoint({ valid: true });
+      fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
 
       userEvent.paste(
         screen.getByRole("textbox", { name: "Token" }),
         sampleToken,
       );
       screen.getByRole("button", { name: "Activate" }).click();
-      await screen.findByRole("button", { name: "Finish" });
+      const finishButton = await screen.findByRole("button", {
+        name: "Finish",
+      });
+      finishButton.click();
+      await waitFor(() => expect(finishButton).not.toBeInTheDocument());
 
       const tokenSaveCall = fetchMock.lastCall(
         "path:/api/setting/premium-embedding-token",
