@@ -16,7 +16,7 @@ interface JoinStrategyPickerProps {
   query: Lib.Query;
   stageIndex: number;
   strategy: Lib.JoinStrategy;
-  readOnly: boolean;
+  isReadOnly: boolean;
   onChange: (newStrategy: Lib.JoinStrategy) => void;
 }
 
@@ -24,7 +24,7 @@ export function JoinStrategyPicker({
   query,
   stageIndex,
   strategy,
-  readOnly,
+  isReadOnly,
   onChange,
 }: JoinStrategyPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -43,7 +43,7 @@ export function JoinStrategyPicker({
     <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
         <IconButtonWrapper
-          disabled={readOnly}
+          disabled={isReadOnly}
           aria-label={t`Change join type`}
           onClick={() => setIsOpened(!isOpened)}
         >

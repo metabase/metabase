@@ -15,7 +15,7 @@ interface JoinTablePickerProps {
   stageIndex: number;
   table: Lib.CardMetadata | Lib.TableMetadata | undefined;
   color: string;
-  readOnly: boolean;
+  isReadOnly: boolean;
   onChangeTable: (joinable: Lib.Joinable) => void;
 }
 
@@ -23,7 +23,7 @@ export function JoinTablePicker({
   query,
   stageIndex,
   table,
-  readOnly,
+  isReadOnly,
   color,
   onChangeTable,
 }: JoinTablePickerProps) {
@@ -41,7 +41,7 @@ export function JoinTablePicker({
 
   const tableId = pickerInfo?.tableId ?? pickerInfo?.cardId;
   const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
-  const isDisabled = table != null || readOnly;
+  const isDisabled = table != null || isReadOnly;
 
   const handleTableChange = async (tableId: TableId) => {
     onChangeTable(Lib.tableOrCardMetadata(query, tableId));
@@ -50,7 +50,7 @@ export function JoinTablePicker({
   return (
     <NotebookCellItem
       inactive={!table}
-      readOnly={readOnly}
+      readOnly={isReadOnly}
       disabled={isDisabled}
       color={color}
       aria-label={t`Right table`}
