@@ -69,6 +69,7 @@ function convertActionToQuestionCard(
     can_write: true,
     public_uuid: null,
     collection_id: null,
+    collection_position: null,
     result_metadata: [],
     cache_ttl: null,
     last_query_start: null,
