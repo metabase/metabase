@@ -7,6 +7,7 @@ import * as Lib from "metabase-lib";
 import { NotebookCellItem } from "../../../NotebookCell";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
+import { JoinTableColumnDraftPicker } from "../JoinTableColumnDraftPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
 import { JoinConditionCell, JoinCell } from "./JoinDraft.styled";
@@ -89,7 +90,15 @@ export function JoinDraft({
             table={table}
             color={color}
             isReadOnly={isReadOnly}
-            columnPicker={<div />}
+            columnPicker={
+              <JoinTableColumnDraftPicker
+                query={query}
+                stageIndex={stageIndex}
+                tableColumns={tableColumns}
+                selectedColumns={selectedColumns}
+                onChange={setSelectedColumns}
+              />
+            }
             onChange={handleTableChange}
           />
         </Flex>
