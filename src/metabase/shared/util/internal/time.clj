@@ -271,14 +271,15 @@
   If unit is not supported, returns nil."
   [t unit]
   (case unit
-    :day-of-week (t/format "EEEE" t)
-    :month-of-year (t/format "MMM" t)
-    :minute-of-hour (t/format "m" t)
-    :hour-of-day (t/format "h a" t)
-    :day-of-month (t/format "d" t)
-    :day-of-year (t/format "D" t)
-    :week-of-year (t/format "w" t)
-    :quarter-of-year (t/format "'Q'Q" t)))
+    :day-of-week     (t/format "EEEE" t)
+    :month-of-year   (t/format "MMM" t)
+    :minute-of-hour  (t/format "m" t)
+    :hour-of-day     (t/format "h a" t)
+    :day-of-month    (t/format "d" t)
+    :day-of-year     (t/format "D" t)
+    :week-of-year    (t/format "w" t)
+    :quarter-of-year (t/format "'Q'Q" t)
+    nil))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
