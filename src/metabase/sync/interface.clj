@@ -15,7 +15,7 @@
    [:description    {:optional true} [:maybe :string]]
    [:properties     {:optional true} [:maybe
                                       [:map {:closed true}
-                                       [:row-count {:optional true} [:maybe int?]]]]]])
+                                       [:estimated-row-count {:optional true} [:maybe int?]]]]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."

@@ -549,8 +549,8 @@
     ;; Does the driver support column(s) support storing index info
     :index-info
 
-    ;; Does the driver support sync row count of a table
-    :sync-row-count})
+    ;; Does the driver support sync the estimated row count of a table
+    :sync-estimated-row-count})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -975,11 +975,11 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti schema+table->row-count
+(defmulti schema+table->estimated-row-count
   "Returns a map of [schema, table name] -> the estimated row count, for each table in the current database.
   This should be fast and leverage system tables like `pg_stat_user_tables` in Postgres."
   {:added "0.50.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod schema+table->row-count ::driver [_ _] {})
+(defmethod schema+table->estimated-row-count ::driver [_ _] {})

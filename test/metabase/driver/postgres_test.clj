@@ -240,9 +240,9 @@
   ([table-name opts]
    (merge
     {:name table-name :schema "public" :description nil
-     ;; row-count are estimated, so the value can't be know for sure "during" test without
-     ;;; VACUUM-ing. So for tests that doesn't concern the exact value of row-count, use schema instead
-     :properties {:row-count (mt/malli=? [:maybe :int])}}
+     ;; estimated-row-count is estimated, so the value can't be known for sure "during" test without
+     ;; VACUUM-ing. So for tests that don't concern the exact value of estimated-row-count, use schema instead
+     :properties {:estimated-row-count (mt/malli=? [:maybe :int])}}
     opts)))
 
 (defn- describe-database->tables
@@ -263,7 +263,7 @@
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (=? [(default-table-result "test_mview" {:properties {:row-count (mt/malli=? int?)}})]
+          (is (=? [(default-table-result "test_mview" {:properties {:estimated-row-count (mt/malli=? int?)}})]
                   (describe-database->tables :postgres database))))))))
 
 (deftest foreign-tables-test
@@ -295,8 +295,8 @@
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
-          (is (=? [(default-table-result "foreign_table" {:properties {:row-count (mt/malli=? nil?)}})
-                   (default-table-result "local_table" {:properties {:row-count (mt/malli=? int?)}})]
+          (is (=? [(default-table-result "foreign_table" {:properties {:estimated-row-count (mt/malli=? nil?)}})
+                   (default-table-result "local_table" {:properties {:estimated-row-count (mt/malli=? int?)}})]
                   (describe-database->tables :postgres database))))))))
 
 (deftest recreated-views-test
@@ -1320,7 +1320,7 @@
     (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
     (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))
 
-(deftest sync-row-count-test
+(deftest sync-estimated-row-count-test
   (mt/test-driver :postgres
     (testing "Can sync row count"
       (mt/with-temp-test-data ["city"
@@ -1333,8 +1333,8 @@
          (mt/db)
          nil
          (fn [conn]
-           ;; row count are estimated so we VACUUM so the statistic table is updated before syncing
+           ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
            (next.jdbc/execute! conn ["VACUUM;"])
            (sync/sync-database! (mt/db) {:scan :schema})
-           (is (= {:row-count 2}
+           (is (= {:estimated-row-count 2}
                   (t2/select-one-fn :properties :model/Table (mt/id :city))))))))))

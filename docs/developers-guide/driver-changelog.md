@@ -5,7 +5,7 @@ title: Driver interface changelog
 # Driver Interface Changelog
 
 ## Metabase 0.50.0
-- Added a new driver feature `:sync-row-count` and a new multimethod `metabase.driver/schema+table->row-count`.
+- Added a new driver feature `:sync-estimated-row-count` and a new multimethod `metabase.driver/schema+table->estimated-row-count`.
   Implement this multimethod to sync the estimated table's row count.
 
 ## Metabase 0.49.0

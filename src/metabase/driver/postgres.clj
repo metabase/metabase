@@ -65,7 +65,7 @@
                               :table-privileges         true
                               :schemas                  true
                               :connection-impersonation true
-                              :sync-row-count           true}]
+                              :sync-estimated-row-count true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -895,7 +895,7 @@
   [_ _]
   "NONE")
 
-(defmethod driver/schema+table->row-count :postgres
+(defmethod driver/schema+table->estimated-row-count :postgres
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
