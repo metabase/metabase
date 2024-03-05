@@ -77,7 +77,7 @@ interface JoinColumnTargetProps {
   onClick: () => void;
 }
 
-const JoinColumnTarget = forwardRef(function ColumnNotebookCellItem(
+const JoinColumnTarget = forwardRef(function JoinColumnTarget(
   {
     query,
     stageIndex,
