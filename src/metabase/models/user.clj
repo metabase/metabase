@@ -97,8 +97,6 @@
      (contains? allowed-user-types user-type)))
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
-  (def user user)
-  (def setup? (setup/has-user-setup))
   (when (and sso_source (not (setup/has-user-setup)))
     ;; Only allow SSO users to be provisioned if the setup flow has been completed and an admin has been created
     (throw (Exception. (trs "Instance has not been initialized"))))
