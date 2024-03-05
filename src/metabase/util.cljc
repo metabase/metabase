@@ -887,3 +887,24 @@
   "Given two maps, are any keys on which they disagree? We only consider keys that are present in both."
   [m1 m2]
   (boolean (some identity (conflicting-keys m1 m2))))
+
+(defn- map-all*
+  [f colls]
+  (lazy-seq
+   (if (some seq colls)
+     (cons (apply f (map first colls))
+           (map-all* f (map rest colls)))
+     ())))
+
+(defn map-all
+  "Similar to [[clojure.core/map]], but instead of short-circuiting it continues until the end of the longest
+  collection, using nil for collection(s) that have already been exhausted."
+  ([f coll] (map f coll))
+  ([f c1 c2]
+   (lazy-seq
+    (let [s1 (seq c1) s2 (seq c2)]
+      (when (or s1 s2)
+        (cons (f (first s1) (first s2))
+              (map-all f (rest s1) (rest s2)))))))
+  ([f c1 c2 & colls]
+   (map-all* f (list* c1 c2 colls))))
