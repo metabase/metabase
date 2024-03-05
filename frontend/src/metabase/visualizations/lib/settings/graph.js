@@ -284,7 +284,7 @@ export const STACKABLE_SETTINGS = {
       );
 
       return isStackingValueValid(
-        series.card.display,
+        series[0].card.display,
         settings,
         seriesDisplays,
       );
