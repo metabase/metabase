@@ -102,55 +102,54 @@ export function Join({
           />
         </Flex>
       </JoinCell>
-      {table && (
-        <>
-          <Box mt="1.5rem">
-            <Text color="brand" weight="bold">{t`on`}</Text>
-          </Box>
-          <JoinConditionCell color={color}>
-            {conditions.map((condition, conditionIndex) => {
-              const isLast = conditionIndex === conditions.length - 1;
+      <Box mt="1.5rem">
+        <Text color="brand" weight="bold">{t`on`}</Text>
+      </Box>
+      <JoinConditionCell color={color}>
+        {conditions.map((condition, index) => {
+          const testId = `join-condition-${index}`;
+          const isLast = index === conditions.length - 1;
 
-              return (
-                <Flex key={conditionIndex} align="center" gap="sm">
-                  <JoinCondition
-                    key={conditionIndex}
-                    query={query}
-                    stageIndex={stageIndex}
-                    join={join}
-                    condition={condition}
-                    isReadOnly={isReadOnly}
-                    isRemovable={conditions.length > 1}
-                    onChange={newCondition =>
-                      handleUpdateCondition(newCondition, conditionIndex)
-                    }
-                    onRemove={() => handleRemoveCondition(conditionIndex)}
-                  />
-                  {!isLast && <Text color="text-dark">{t`and`}</Text>}
-                  {isLast && !isReadOnly && !isAddingNewCondition && (
-                    <NotebookCellAdd
-                      color={color}
-                      onClick={() => setIsAddingNewCondition(true)}
-                      aria-label={t`Add condition`}
-                    />
-                  )}
-                </Flex>
-              );
-            })}
-            {isAddingNewCondition && (
-              <JoinConditionDraft
+          return (
+            <Flex key={index} align="center" gap="sm" data-testid={testId}>
+              <JoinCondition
+                key={index}
                 query={query}
                 stageIndex={stageIndex}
-                table={table}
+                join={join}
+                condition={condition}
                 isReadOnly={isReadOnly}
-                isRemovable={true}
-                onChange={handleAddCondition}
-                onRemove={() => setIsAddingNewCondition(false)}
+                isRemovable={conditions.length > 1}
+                onChange={newCondition =>
+                  handleUpdateCondition(newCondition, index)
+                }
+                onRemove={() => handleRemoveCondition(index)}
               />
-            )}
-          </JoinConditionCell>
-        </>
-      )}
+              {!isLast && <Text color="text-dark">{t`and`}</Text>}
+              {isLast && !isReadOnly && !isAddingNewCondition && (
+                <NotebookCellAdd
+                  color={color}
+                  onClick={() => setIsAddingNewCondition(true)}
+                  aria-label={t`Add condition`}
+                />
+              )}
+            </Flex>
+          );
+        })}
+        {isAddingNewCondition && (
+          <Flex data-testid="new-join-condition">
+            <JoinConditionDraft
+              query={query}
+              stageIndex={stageIndex}
+              table={table}
+              isReadOnly={isReadOnly}
+              isRemovable={true}
+              onChange={handleAddCondition}
+              onRemove={() => setIsAddingNewCondition(false)}
+            />
+          </Flex>
+        )}
+      </JoinConditionCell>
     </Flex>
   );
 }

@@ -108,7 +108,7 @@ export function JoinDraft({
           <Box mt="1.5rem">
             <Text color="brand" weight="bold">{t`on`}</Text>
           </Box>
-          <JoinConditionCell color={color}>
+          <JoinConditionCell color={color} data-testid="new-join-condition">
             <JoinConditionDraft
               query={query}
               stageIndex={stageIndex}

@@ -22,6 +22,7 @@ interface JoinConditionColumnPickerProps {
   isReadOnly: boolean;
   onChange: (column: Lib.ColumnMetadata) => void;
   onOpenChange: (isOpened: boolean) => void;
+  "data-testid"?: string;
 }
 
 export function JoinConditionColumnPicker({
@@ -35,6 +36,7 @@ export function JoinConditionColumnPicker({
   isReadOnly,
   onChange,
   onOpenChange,
+  "data-testid": testId,
 }: JoinConditionColumnPickerProps) {
   return (
     <Popover opened={isOpened} position="bottom-start" onChange={onOpenChange}>
@@ -60,6 +62,7 @@ export function JoinConditionColumnPicker({
           isLhsColumn={isLhsColumn}
           onChange={onChange}
           onClose={() => onOpenChange(false)}
+          data-testid={testId}
         />
       </Popover.Dropdown>
     </Popover>

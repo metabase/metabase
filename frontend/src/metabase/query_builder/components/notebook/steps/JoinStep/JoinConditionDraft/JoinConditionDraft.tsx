@@ -82,6 +82,7 @@ export function JoinConditionDraft({
             isReadOnly={isReadOnly}
             onChange={handleLhsColumnChange}
             onOpenChange={setIsLhsOpened}
+            data-testid="lhs-column-picker"
           />
         </Box>
         <JoinConditionOperatorPicker
@@ -104,6 +105,7 @@ export function JoinConditionDraft({
             isReadOnly={isReadOnly}
             onChange={handleRhsColumnChange}
             onOpenChange={setIsRhsOpened}
+            data-testid="rhs-column-picker"
           />
         </Box>
       </Flex>
