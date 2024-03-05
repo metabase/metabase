@@ -187,24 +187,6 @@
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
-(api/defendpoint POST "/validate"
-  "Validate that we can connect to a database given a set of details."
-  [:as {{{:keys [engine details]} :details, token :token} :body}]
-  {token  SetupToken
-   engine api.database/DBEngineString}
-  (when (setup/has-user-setup)
-    (throw (ex-info (tru "Instance already initialized")
-                    {:status-code 400})))
-  (let [engine       (keyword engine)
-        error-or-nil (api.database/test-database-connection engine details)]
-    (when error-or-nil
-      (snowplow/track-event! ::snowplow/database-connection-failed
-                             nil
-                             {:database engine, :source :setup})
-      {:status 400
-       :body   error-or-nil})))
-
-
 ;;; Admin Checklist
 
 (def ^:private ChecklistState

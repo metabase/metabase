@@ -440,42 +440,6 @@
              (is (= setup-token
                     (setup/setup-token))))))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            POST /api/setup/validate                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- api-validate [expected-status-code request-body]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
-    (client/client :post expected-status-code "setup/validate" request-body)))
-
-(deftest validate-setup-test
-  (testing "POST /api/setup/validate"
-    (testing "Should validate token"
-      (mt/with-temporary-setting-values [has-user-setup false]
-        (is (=? {:errors {:token "Token does not match the setup token."}}
-                (api-validate 400 {})))
-        (is (=? {:errors {:token "Token does not match the setup token."}}
-                (api-validate 400 {:token "foobar"}))))
-      ;; make sure we have a valid setup token
-      (setup/create-token!)
-      (is (=? {:errors {:engine "value must be a valid database engine."}}
-              (api-validate 400 {:token (setup/setup-token)}))))
-
-    (mt/with-temporary-setting-values [has-user-setup false]
-      (testing "should validate that database connection works"
-        (is (= {:errors  {:db "check your connection string"},
-                :message "Database cannot be found."}
-               (api-validate 400 {:token   (setup/setup-token)
-                                  :details {:engine  "h2"
-                                            :details {:db "file:///tmp/fake.db"}}}))))
-
-      (testing "should return 204 no content if everything is valid"
-        (is (= nil
-               (api-validate 204 {:token   (setup/setup-token)
-                                  :details {:engine  "h2"
-                                            :details (:details (mt/db))}})))))))
-
 (deftest disallow-h2-validation-test
   (testing "POST /api/setup/validate"
     (mt/with-temporary-setting-values [has-user-setup false]
