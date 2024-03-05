@@ -91,7 +91,7 @@ interface Options {
   wrapId?: boolean;
   /**
    * Alias a question id in order to use it later with `cy.get("@" + alias).
-   * Defaults to "questionid".
+   * Defaults to "questionId".
    */
   idAlias?: string;
   /**
@@ -151,7 +151,7 @@ Cypress.Commands.add(
   },
 );
 
-function question(
+const question = (
   {
     name = "test question",
     description,
@@ -172,7 +172,7 @@ function question(
     idAlias = "questionId",
     interceptAlias = "cardQuery",
   }: Options = {},
-) {
+) => {
   return cy
     .request("POST", "/api/card", {
       name,
@@ -220,9 +220,9 @@ function question(
         }
       }
     });
-}
+};
 
-function logAction(
+const logAction = (
   /**
    * A title used to log the Cypress action/request that follows it.
    */
@@ -231,9 +231,9 @@ function logAction(
    * Optional question name.
    */
   questionName?: string,
-) {
+) => {
   const fullTitle = `${title}: ${questionName}`;
   const message = questionName ? fullTitle : title;
 
   cy.log(message);
-}
+};
