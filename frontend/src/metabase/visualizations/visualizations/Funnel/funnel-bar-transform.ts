@@ -32,6 +32,7 @@ export const funnelToBarTransform: TransformSeries = (
           "stackable.stack_type": "stacked" as const,
           "graph.dimensions": [settings["funnel.dimension"]],
           "graph.metrics": [settings["funnel.metric"]],
+          "graph.y_axis.auto_split": false,
         },
       },
       data: {
