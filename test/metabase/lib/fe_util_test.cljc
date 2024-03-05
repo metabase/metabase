@@ -197,11 +197,10 @@
     (testing "Expandable temporal units"
       (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
                                 (#'lib.fe-util/maybe-expand-temporal-expression (update-temporal-unit expr unit)))
-        :hour "2024-05-13T16:00" "2024-05-13T16:59"
+        :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
         :week "2024-05-12" "2024-05-18"
         :month "2024-05-01" "2024-05-31"
-        ;; TODO: `metabase.shared.util.internal.time-common/to-range` not yet implemented for `:quarter`.
-        #_#_#_:quarter "2024-04-01" "2024-06-31"
+        :quarter "2024-04-01" "2024-06-30"
         :year  "2024-01-01" "2024-12-31")
       (testing "Non-expandable temporal units"
         (are [unit] (let [expr (update-temporal-unit expr unit)]

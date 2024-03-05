@@ -13,9 +13,8 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
-   [metabase.shared.formatting.internal.date-builder :as shared.formatting.internal.builder]
+   [metabase.shared.formatting.date :as fmt.date]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.internal.time-common :as shared.ut.common]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -54,10 +53,10 @@
    This functionality is backend approach to \"smaller solution\"."
   [[_operator options column-arg dt-arg :as _expression-clause]]
   (let [temporal-unit (:temporal-unit (lib.options/options column-arg))
-        interval (shared.ut.common/to-range (shared.ut/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
-        format' (cond-> [:year "-" :month-dd "-" :day-of-month-dd]
-                 (contains? expandable-time-units temporal-unit) (into ["T" :hour-24-dd ":" :minute-dd]))
-        formatter (shared.formatting.internal.builder/->formatter format')]
+        interval (shared.ut/to-range (shared.ut/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
+        formatter (if (contains? expandable-time-units temporal-unit)
+                    fmt.date/datetime->iso-string
+                    fmt.date/date->iso-string)]
     (into [:between options column-arg] (map formatter) interval)))
 
 (defn- maybe-expand-temporal-expression
