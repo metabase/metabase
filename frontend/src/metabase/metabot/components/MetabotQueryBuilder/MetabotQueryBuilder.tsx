@@ -28,7 +28,10 @@ import {
 } from "./MetabotQueryBuilder.styled";
 
 interface StateProps {
-  loadingMessage: string;
+  loadingMessage: {
+    initial: string;
+    slow: string;
+  };
   queryStatus: MetabotQueryStatus;
   queryResults: [Dataset] | null;
   queryError: unknown;
@@ -82,7 +85,10 @@ const QueryIdleState = () => {
 };
 
 interface QueryRunningStateProps {
-  loadingMessage: string;
+  loadingMessage: {
+    initial: string;
+    slow: string;
+  };
 }
 
 const QueryRunningState = ({ loadingMessage }: QueryRunningStateProps) => {
