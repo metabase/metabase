@@ -116,19 +116,26 @@
 (def ^:private CardColumns
   [:maybe [:sequential {:min 1} CardColumnMetadata]])
 
-(mu/defn ^:private card-metadata-columns :- CardColumns
+(def ^:private ^:dynamic *card-metadata-columns-card-ids*
+  #{})
+
+(mu/defn card-metadata-columns :- CardColumns
+  "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card                  :- Card]
-  (when-let [result-metadata (or (:fields card)
-                                 (:result-metadata card)
-                                 (infer-returned-columns metadata-providerable (:dataset-query card)))]
-    ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
-    ;; contains` :columns` as well.
-    (when-let [cols (not-empty (cond
-                                 (map? result-metadata)        (:columns result-metadata)
-                                 (sequential? result-metadata) result-metadata))]
-      (mapv (partial ->card-metadata-column metadata-providerable card)
-            cols))))
+  ;; avoid inifinte recursion for Cards that have circular references between one another.
+  (when-not (contains? *card-metadata-columns-card-ids* (:id card))
+    (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
+      (when-let [result-metadata (or (:fields card)
+                                     (:result-metadata card)
+                                     (infer-returned-columns metadata-providerable (:dataset-query card)))]
+        ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
+        ;; contains` :columns` as well.
+        (when-let [cols (not-empty (cond
+                                     (map? result-metadata)        (:columns result-metadata)
+                                     (sequential? result-metadata) result-metadata))]
+          (mapv (partial ->card-metadata-column metadata-providerable card)
+                cols))))))
 
 (mu/defn saved-question-metadata :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."

@@ -23,8 +23,8 @@
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.fetch-source-query
-    :as fetch-source-query]
+   [metabase.query-processor.middleware.fetch-source-query-legacy
+    :as fetch-source-query-legacy]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -144,7 +144,7 @@
 
 (defn- card-gtap->source
   [{card-id :card_id :as gtap}]
-  (update-in (fetch-source-query/card-id->source-query-and-metadata card-id)
+  (update-in (fetch-source-query-legacy/card-id->source-query-and-metadata card-id)
              [:source-query :parameters]
              concat
              (gtap->parameters gtap)))

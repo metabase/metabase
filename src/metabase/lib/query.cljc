@@ -97,8 +97,10 @@
 (mu/defn ^:private query-from-existing :- ::lib.schema/query
   [metadata-providerable :- lib.metadata/MetadataProviderable
    query                 :- lib.util/LegacyOrPMBQLQuery]
-  (let [query (lib.convert/->pMBQL query)]
-    (query-with-stages metadata-providerable (:stages query))))
+  (merge
+   (dissoc query [:query :native])
+   (let [pmbql-query (lib.convert/->pMBQL query)]
+     (query-with-stages metadata-providerable (:stages pmbql-query)))))
 
 (defmulti ^:private query-method
   "Implementation for [[query]]."
