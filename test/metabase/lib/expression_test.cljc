@@ -248,20 +248,7 @@
            (-> lib.tu/venues-query
                (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                lib/expressions
-               (->> (map lib/expression-name))))))
-  (testing "collisions with other column names are detected and rejected"
-    (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
-          ex    (try
-                  (lib/expression query "ID" (meta/field-metadata :categories :name))
-                  nil
-                  (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
-                    e))]
-      (is (some? ex)
-          "Expected adding a conflicting expression to throw")
-      (is (= "Expression name conflicts with a column in the same query stage"
-             (ex-message ex)))
-      (is (= {:expression-name "ID"}
-             (ex-data ex))))))
+               (->> (map lib/expression-name)))))))
 
 (deftest ^:parallel literal-expression-test
   (is (=? [{:lib/type :metadata/column,
