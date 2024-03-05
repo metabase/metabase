@@ -12,19 +12,28 @@ describe("getWhiteLabeledLoadingMessage (OSS)", () => {
   it("should return 'Doing science...' when loading-message is set to 'doing-science'", () => {
     const { getState } = setup({ loadingMessage: "doing-science" });
 
-    expect(getWhiteLabeledLoadingMessage(getState())).toBe("Doing science...");
+    expect(getWhiteLabeledLoadingMessage(getState())).toEqual({
+      initial: "Doing science...",
+      slow: "Talking to the database...",
+    });
   });
 
   it("should return 'Doing science...' when loading-message is set to 'loading-results'", () => {
     const { getState } = setup({ loadingMessage: "loading-results" });
 
-    expect(getWhiteLabeledLoadingMessage(getState())).toBe("Doing science...");
+    expect(getWhiteLabeledLoadingMessage(getState())).toEqual({
+      initial: "Doing science...",
+      slow: "Talking to the database...",
+    });
   });
 
   it("should return 'Doing science...' when loading-message is set to 'running-query'", () => {
     const { getState } = setup({ loadingMessage: "running-query" });
 
-    expect(getWhiteLabeledLoadingMessage(getState())).toBe("Doing science...");
+    expect(getWhiteLabeledLoadingMessage(getState())).toEqual({
+      initial: "Doing science...",
+      slow: "Talking to the database...",
+    });
   });
 });
 
