@@ -112,7 +112,7 @@ Cypress.Commands.add(
     }
 
     logAction("Create a native question", name);
-    question("native", questionDetails, options);
+    return question("native", questionDetails, options);
   },
 );
 
