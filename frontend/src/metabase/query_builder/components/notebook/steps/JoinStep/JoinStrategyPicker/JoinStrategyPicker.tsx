@@ -16,7 +16,7 @@ interface JoinStrategyPickerProps {
   query: Lib.Query;
   stageIndex: number;
   strategy: Lib.JoinStrategy;
-  readOnly?: boolean;
+  readOnly: boolean;
   onChange: (newStrategy: Lib.JoinStrategy) => void;
 }
 
@@ -24,7 +24,7 @@ export function JoinStrategyPicker({
   query,
   stageIndex,
   strategy,
-  readOnly = false,
+  readOnly,
   onChange,
 }: JoinStrategyPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
