@@ -209,6 +209,16 @@
            (filter #((type->check %) trimmed))
            first))))
 
+(defn- relax-type
+  "Given an existing column type, and a value to insert into it, relax the type until it can parse the value."
+  [type->check current-type value]
+  (cond (nil? value) current-type
+        (nil? current-type) (value->type type->check value)
+        :else (let [trimmed (str/trim value)]
+                (->> (cons current-type (ancestors h current-type))
+                     (filter #((type->check %) trimmed))
+                     first))))
+
 (defn- row->value-types
   [type->check row]
   (map (partial value->type type->check) row))
@@ -616,13 +626,10 @@
       (let [error-message (extra-and-missing-error-markdown extra missing)]
         (throw (ex-info error-message {:status-code 422}))))))
 
-(defn- matching-or-upgradable? [old-types common-types]
-  (let [pairs (map vector old-types common-types)]
-    (every? (fn [[old common]]
-              (or (= old common)
-                  (when-let [f (allowed-type-upgrades old)]
-                    (f common))))
-            pairs)))
+(defn- matching-or-upgradable? [current-type relaxed-type]
+  (or (= current-type relaxed-type)
+      (when-let [f (allowed-type-upgrades current-type)]
+        (f relax-type))))
 
 (defn- changed-field+new-types
   "Given some fields and old and new types, filter out fields with unchanged types, then pair with the new types."
@@ -651,17 +658,22 @@
           _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
           settings           (upload-parsing/get-settings)
           old-column-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
-          row-column-types   (column-types-from-rows settings (count old-column-types) rows)
-          common-types       (map column-type (coalesce-types old-column-types row-column-types))
-          new-column-types   (if (or (= old-column-types common-types)
-                                     ;; if we cannot coerce all the columns, don't bother coercing any of them
-                                     ;; we will instead throw an error when we try to parse as the old type
-                                     (not (matching-or-upgradable? old-column-types common-types)))
-                               old-column-types
-                               (let [fields          (map normed-name->field normed-header)
-                                     field+new-types (changed-field+new-types fields old-column-types common-types)]
-                                 (convert-columns! database table field+new-types)
-                                 common-types))
+          ;; in the happy, and most common, case all the values will match the existing types
+          ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
+          ;; we can come back and optimize this to an optimistic-with-fallback approach later.
+          type->value->type  (partial relax-type (settings->type->check settings))
+          relaxed-types      (->> (sample-rows rows)
+                                  (reduce #(u/map-all type->value->type %1 %2) old-column-types)
+                                  (map column-type))
+          new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types relaxed-types)
+          _                  (when (and (not= old-column-types new-column-types)
+                                        ;; if we cannot coerce all the columns, don't bother coercing any of them
+                                        ;; we will instead throw an error when we try to parse as the old type
+                                        (= relaxed-types new-column-types))
+                               (let [fields (map normed-name->field normed-header)]
+                                 (->> (changed-field+new-types fields old-column-types relaxed-types)
+                                      (convert-columns! database table))))
+          ;; this will fail if any of our required relaxations were rejected.
           parsed-rows        (parse-rows new-column-types rows)]
       (try
         (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
