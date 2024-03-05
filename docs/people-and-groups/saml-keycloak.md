@@ -35,7 +35,10 @@ For more information, check out our guide for [authenticating with SAML](./authe
 7. Configure the service provider (Metabase) from **Configure** > **Realm Settings**.
     - From **Endpoints**, select “SAML 2.0 Identity Provider Metadata”.
     - An XML file will open in a new tab.
-8. From the XML file, note the following:
+8. Configure the Single Logout service (if you intend to use Single Logout)
+    1. in **Clients** > **Valid post logout redirect URIs** put your server's uri (this usually matches **Valid redirect URIs**)
+    2. in **Clients** > **Advanced** > **Logout Service POST Binding URL** put your server URI appended with `/auth/sso/handle_slo`
+9. From the XML file, note the following:
     1. The URL that appears right after the following string:
     ```
     md:SingleSignOnServiceBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location=
