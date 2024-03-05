@@ -324,7 +324,7 @@
         [:= :visibility_type nil]])
 
 (defn db->sync-tables
-  "Return all the Tables that should go through the sync processes for `database-or-id`."
+  "Returns all the Tables that have their metadata sync'd `database-or-id`."
   [database-or-id]
   (t2/select :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}))
 
