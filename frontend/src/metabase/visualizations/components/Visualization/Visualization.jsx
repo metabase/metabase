@@ -343,7 +343,7 @@ class Visualization extends PureComponent {
       onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
-    const small = width < 330;
+    const small = width < 150;
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
