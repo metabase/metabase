@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { Icon } from "metabase/ui";
 
 import { RemoveButton } from "./JoinConditionRemoveButton.styled";
@@ -12,7 +14,11 @@ export function JoinConditionRemoveButton({
   onClick,
 }: JoinConditionRemoveButtonProps) {
   return (
-    <RemoveButton isConditionComplete={isConditionComplete} onClick={onClick}>
+    <RemoveButton
+      isConditionComplete={isConditionComplete}
+      aria-label={t`Remove condition`}
+      onClick={onClick}
+    >
       {<Icon name="close" size={16} />}
     </RemoveButton>
   );

@@ -107,7 +107,7 @@ export function JoinCondition({
           onOpenChange={setIsRhsOpened}
         />
       </Flex>
-      {isRemovable && (
+      {!isReadOnly && isRemovable && (
         <JoinConditionRemoveButton
           isConditionComplete={true}
           onClick={onRemove}

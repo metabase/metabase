@@ -107,7 +107,7 @@ export function JoinConditionDraft({
           />
         </Box>
       </Flex>
-      {isRemovable && (
+      {!isReadOnly && isRemovable && (
         <JoinConditionRemoveButton
           isConditionComplete={false}
           onClick={onRemove}

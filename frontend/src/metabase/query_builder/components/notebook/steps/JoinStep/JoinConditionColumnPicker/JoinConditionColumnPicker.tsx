@@ -60,7 +60,6 @@ export function JoinConditionColumnPicker({
           isLhsColumn={isLhsColumn}
           onChange={onChange}
           onClose={() => onOpenChange(false)}
-          data-testid={isLhsColumn ? "lhs-column-picker" : "rhs-column-picker"}
         />
       </Popover.Dropdown>
     </Popover>
@@ -168,6 +167,7 @@ function JoinColumnDropdown({
       checkIsColumnSelected={checkColumnSelected}
       onSelect={onChange}
       onClose={onClose}
+      data-testid={isLhsColumn ? "lhs-column-picker" : "rhs-column-picker"}
     />
   );
 }
