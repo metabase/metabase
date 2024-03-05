@@ -72,7 +72,7 @@
                                  1234                                              ; int
                                  1594067133360                                     ; long
                                  "2007-12-03T10:15:30.00Z"                         ; string
-                                 (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 (java.time.ZoneOffset/UTC))]))))))))))
+                                 (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 java.time.ZoneOffset/UTC)]))))))))))
 
 (deftest ^:parallel disambiguate-test
   (testing "We should correctly disambiguate multiple competing multimethods (DateTime and FK in this case)"

@@ -4,11 +4,11 @@
    [buddy.core.nonce :as nonce]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.request.util :as req.util]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
-(s/defn ^:private random-anti-csrf-token :- #"^[0-9a-f]{32}$"
+(mu/defn ^:private random-anti-csrf-token :- [:re {:error/message "valid anti-CSRF token"} #"^[0-9a-f]{32}$"]
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
@@ -23,7 +23,7 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(t2/define-before-update :model/Session [_]
+(t2/define-before-update :model/Session [_model]
   (throw (RuntimeException. "You cannot update a Session.")))
 
 (t2/define-before-insert :model/Session
