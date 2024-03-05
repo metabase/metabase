@@ -12,7 +12,7 @@ import { WidthBound, Dropdown, Target } from "./Popover.styled";
 
 // When switching to another hover target in the same delay group,
 // we don't close immediately but delay by a short amount to avoid flicker.
-export const POPOVER_CLOSE_DELAY = 10;
+export const POPOVER_CLOSE_DELAY = 20;
 
 export type PopoverProps = Pick<
   HoverCardProps,
