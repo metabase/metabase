@@ -84,18 +84,17 @@ const setup = ({ vizType }) => {
       expect(within(userColumList).getByLabelText("State")).not.toBeChecked();
     });
 
-    it("should allow you to show and hide columns", () => {
+    it("should allow you to show and hide columns", async () => {
       setup({ vizType });
-      userEvent.click(screen.getByTestId("Tax-hide-button"));
+      userEvent.click(await screen.findByTestId("Tax-hide-button"));
 
-      expect(screen.getByRole("listitem", { name: "Tax" })).toHaveAttribute(
-        "data-enabled",
-        "false",
-      );
+      expect(
+        await screen.findByRole("listitem", { name: "Tax" }),
+      ).toHaveAttribute("data-enabled", "false");
 
-      userEvent.click(screen.getByTestId("Tax-show-button"));
+      userEvent.click(await screen.findByTestId("Tax-show-button"));
       //If we can see the hide button, then we know it's been added back in.
-      expect(screen.getByTestId("Tax-hide-button")).toBeInTheDocument();
+      expect(await screen.findByTestId("Tax-hide-button")).toBeInTheDocument();
     });
 
     it("should allow you to update a column name", async () => {
