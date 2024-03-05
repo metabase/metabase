@@ -155,8 +155,7 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (= (data-perms/database-permission-for-user *current-user-id* :perms/native-query-editing database-id)
-      :yes)))
+   (data-perms/user-has-permission-for-database? *current-user-id* :perms/native-query-editing :yes database-id)))
 
 (defn check-current-user-has-adhoc-native-query-perms
   "Check that the current user (if bound) has adhoc native query permissions to run `query`, or throw an

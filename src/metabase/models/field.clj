@@ -147,12 +147,12 @@
 
 (defmethod mi/can-read? :model/Field
   ([instance]
-   (= :unrestricted
-      (data-perms/table-permission-for-user
-       api/*current-user-id*
-       :perms/data-access
-       (field->db-id instance)
-       (:table_id instance))))
+   (data-perms/user-has-permission-for-table?
+    api/*current-user-id*
+    :perms/data-access
+    :unrestricted
+    (field->db-id instance)
+    (:table_id instance)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 

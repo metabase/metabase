@@ -207,14 +207,14 @@
     ;; Check native query access if required
     (when (= (:perms/native-query-editing required-perms) :yes)
       (or (= (:perms/native-query-editing gtap-perms) :yes)
-          (= (data-perms/database-permission-for-user api/*current-user-id* :perms/native-query-editing db-id) :yes)
+          (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/native-query-editing :yes db-id)
           (throw (perms-exception {db-id {:perms/native-query-editing :yes}}))))
     ;; Check for unrestricted data access to any tables referenced by the query
     (when-let [table-ids (:perms/data-access required-perms)]
       (doseq [[table-id _] table-ids]
         (or
          (= (get-in gtap-perms [:perms/data-access table-id]) :unrestricted)
-         (= (data-perms/table-permission-for-user api/*current-user-id* :perms/data-access db-id table-id) :unrestricted)
+         (data-perms/user-has-permission-for-table? api/*current-user-id* :perms/data-access :unrestricted db-id table-id)
          (throw (perms-exception {db-id {:perms/data-access {table-id :unrestricted}}})))))
     true
     (catch clojure.lang.ExceptionInfo e

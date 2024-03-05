@@ -91,10 +91,15 @@
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [dbs :- [:maybe [:sequential :map]]]
   (for [db dbs]
-    (assoc db :native_permissions (if (= (data-perms/database-permission-for-user api/*current-user-id* :perms/native-query-editing (u/the-id db))
-                                         :yes)
-                                    :write
-                                    :none))))
+    (assoc db
+           :native_permissions
+           (if (data-perms/user-has-permission-for-database?
+                api/*current-user-id*
+                :perms/native-query-editing
+                :yes
+                (u/the-id db))
+             :write
+             :none))))
 
 (defn- card-database-supports-nested-queries? [{{database-id :database, :as database} :dataset_query, :as _card}]
   (when database-id

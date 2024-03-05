@@ -228,7 +228,9 @@
                                          :group-by [:pgm.user_id]}
                                         mdb.query/query
                                         (mapv :user_id)))
-        user-ids (filter #(= :yes (data-perms/database-permission-for-user % :perms/manage-database database-id)) user-ids-with-monitoring)]
+        user-ids (filter
+                  #(data-perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
+                  user-ids-with-monitoring)]
     (into
       []
       (distinct)

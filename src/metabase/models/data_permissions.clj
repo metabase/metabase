@@ -75,6 +75,15 @@
   [perm-type]
   (-> Permissions perm-type :values first))
 
+(mu/defn at-least-as-permissive?
+  "Returns true if value1 is at least as permissive as value2 for the given permission type."
+  [perm-type :- PermissionType
+   value1    :- PermissionValue
+   value2    :- PermissionValue]
+  (let [^PersistentVector values (-> Permissions perm-type :values)]
+    (<= (.indexOf values value1)
+        (.indexOf values value2))))
+
 (def ^:private model-by-perm-type
   "A map from permission types directly to model identifiers (or `nil`)."
   (update-vals Permissions :model))
@@ -194,6 +203,14 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
+(mu/defn user-has-permission-for-database? :- :boolean
+  "Returns a Boolean indicating whether the user has the specified permission value for the given database ID and table ID,
+   or a more permissive value."
+  [user-id perm-type perm-value database-id]
+  (at-least-as-permissive? perm-type
+                           (database-permission-for-user user-id perm-type database-id)
+                           perm-value))
+
 (def ^:dynamic *additional-table-permissions*
   "See the `with-additional-table-permission` macro below."
   {})
@@ -241,7 +258,7 @@
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type database-id table-id]
   (when (not= :model/Table (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
+    (throw (ex-info (tru "Permission type {0} is a database-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
@@ -253,6 +270,14 @@
       (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
                                                                             perm-type)))
           (least-permissive-value perm-type)))))
+
+(mu/defn user-has-permission-for-table? :- :boolean
+  "Returns a Boolean indicating whether the user has the specified permission value for the given database ID and table ID,
+   or a more permissive value."
+  [user-id perm-type perm-value database-id table-id]
+  (at-least-as-permissive? perm-type
+                           (table-permission-for-user user-id perm-type database-id table-id)
+                           perm-value))
 
 (defn- most-restrictive-per-group
   "Given a perm-type and a collection of maps that look like `{:group-id 1 :value :permission-value}`, returns a set
@@ -288,7 +313,6 @@
                             (map #(select-keys % [:group-id :value]))))]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
-
 
 (mu/defn full-db-permission-for-user :- PermissionValue
   "Returns the effective *db-level* permission value for a given user, permission type, and database ID. If the user
@@ -332,6 +356,14 @@
                            (into #{}))]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
+
+(mu/defn user-has-permission-for-schema? :- :boolean
+  "Returns a Boolean indicating whether the user has the specified permission value for the given database ID and schema,
+   or a more permissive value."
+  [user-id perm-type perm-value database-id schema]
+  (at-least-as-permissive? perm-type
+                           (schema-permission-for-user user-id perm-type database-id schema)
+                           perm-value))
 
 (mu/defn most-permissive-database-permission-for-user :- PermissionValue
   "Similar to checking _partial_ permissions with permissions paths - what is the *most permissive* permission the
