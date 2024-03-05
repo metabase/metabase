@@ -17,7 +17,7 @@ interface JoinStrategyPickerProps {
   stageIndex: number;
   strategy: Lib.JoinStrategy;
   readOnly?: boolean;
-  onChange: (strategy: Lib.JoinStrategy) => void;
+  onChange: (newStrategy: Lib.JoinStrategy) => void;
 }
 
 export function JoinStrategyPicker({
@@ -29,21 +29,15 @@ export function JoinStrategyPicker({
 }: JoinStrategyPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
 
-  const items = useMemo(
-    () =>
-      Lib.availableJoinStrategies(query, stageIndex).map(strategy => ({
-        strategy,
-        strategyInfo: Lib.displayInfo(query, stageIndex, strategy),
-      })),
-    [query, stageIndex],
-  );
-
   const strategyInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, strategy),
     [query, stageIndex, strategy],
   );
 
-  const strategyIcon = JOIN_ICON[strategyInfo.shortName];
+  const handleChange = (newStrategy: Lib.JoinStrategy) => {
+    onChange(newStrategy);
+    setIsOpened(false);
+  };
 
   return (
     <Popover opened={isOpened} onChange={setIsOpened}>
@@ -54,32 +48,59 @@ export function JoinStrategyPicker({
           onClick={() => setIsOpened(!isOpened)}
         >
           <JoinStrategyIcon
-            name={strategyIcon}
+            name={JOIN_ICON[strategyInfo.shortName]}
             tooltip={t`Change join type`}
             size={32}
           />
         </IconButtonWrapper>
       </Popover.Target>
       <Popover.Dropdown>
-        <JoinStrategyList>
-          {items.map((item, index) => (
-            <SelectList.Item
-              id={index}
-              key={index}
-              name={JOIN_NAME[item.strategyInfo.shortName]}
-              icon={{ name: JOIN_ICON[item.strategyInfo.shortName], size: 24 }}
-              isSelected={
-                strategyInfo.shortName === item.strategyInfo.shortName
-              }
-              onSelect={() => {
-                onChange(item.strategy);
-                setIsOpened(false);
-              }}
-            />
-          ))}
-        </JoinStrategyList>
+        <JoinStrategyDropdown
+          query={query}
+          stageIndex={stageIndex}
+          strategyInfo={strategyInfo}
+          onChange={handleChange}
+        />
       </Popover.Dropdown>
     </Popover>
+  );
+}
+
+interface JoinStrategyDropdownProps {
+  query: Lib.Query;
+  stageIndex: number;
+  strategyInfo: Lib.JoinStrategyDisplayInfo;
+  onChange: (strategy: Lib.JoinStrategy) => void;
+}
+
+function JoinStrategyDropdown({
+  query,
+  stageIndex,
+  strategyInfo,
+  onChange,
+}: JoinStrategyDropdownProps) {
+  const items = useMemo(
+    () =>
+      Lib.availableJoinStrategies(query, stageIndex).map(strategy => ({
+        strategy,
+        strategyInfo: Lib.displayInfo(query, stageIndex, strategy),
+      })),
+    [query, stageIndex],
+  );
+
+  return (
+    <JoinStrategyList>
+      {items.map((item, index) => (
+        <SelectList.Item
+          id={index}
+          key={index}
+          name={JOIN_NAME[item.strategyInfo.shortName]}
+          icon={{ name: JOIN_ICON[item.strategyInfo.shortName], size: 24 }}
+          isSelected={strategyInfo.shortName === item.strategyInfo.shortName}
+          onSelect={() => onChange(item.strategy)}
+        />
+      ))}
+    </JoinStrategyList>
   );
 }
 
