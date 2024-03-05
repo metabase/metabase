@@ -607,7 +607,7 @@
 
 (def ^:private allowed-type-upgrades
   "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values."
-  {::integer #{::float}})
+  {::int #{::float}})
 
 (defn- check-schema
   "Throws an exception if:
@@ -629,20 +629,23 @@
 (defn- matching-or-upgradable? [current-type relaxed-type]
   (or (= current-type relaxed-type)
       (when-let [f (allowed-type-upgrades current-type)]
-        (f relax-type))))
+        (f relaxed-type))))
 
-(defn- changed-field+new-types
+(defn- changed-field->new-type
   "Given some fields and old and new types, filter out fields with unchanged types, then pair with the new types."
   [fields old-types new-types]
   (let [new-if-changed #(when (not= %1 %2) %2)]
     (->> (map new-if-changed old-types new-types)
          (map vector fields)
-         (filter second))))
+         (filter second)
+         (into {}))))
 
-(defn- convert-columns! [_database _table field+new-types]
-  (doseq [[_field new-type] field+new-types]
-    (let [_column-type (column-type new-type)]
-      ::TODO)))
+(defn- alter-columns! [driver database table field->new-type]
+  (driver/alter-columns! driver (:id database) (table-identifier table)
+                         (m/map-kv (fn [field column-type]
+                                     [(keyword (:name field))
+                                      (driver/upload-type->database-type driver column-type)])
+                                   field->new-type)))
 
 (defn- append-csv!*
   [database table file]
@@ -671,8 +674,8 @@
                                         ;; we will instead throw an error when we try to parse as the old type
                                         (= relaxed-types new-column-types))
                                (let [fields (map normed-name->field normed-header)]
-                                 (->> (changed-field+new-types fields old-column-types relaxed-types)
-                                      (convert-columns! database table))))
+                                 (->> (changed-field->new-type fields old-column-types relaxed-types)
+                                      (alter-columns! driver database table))))
           ;; this will fail if any of our required relaxations were rejected.
           parsed-rows        (parse-rows new-column-types rows)]
       (try
@@ -684,7 +687,7 @@
         (driver/add-columns! driver
                              (:id database)
                              (table-identifier table)
-                             {auto-pk-column-keyword (conj (driver/upload-type->database-type driver ::auto-incrementing-int-pk))}
+                             {auto-pk-column-keyword (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}
                              :primary-key [auto-pk-column-keyword]))
       (scan-and-sync-table! database table)
       (when create-auto-pk?
