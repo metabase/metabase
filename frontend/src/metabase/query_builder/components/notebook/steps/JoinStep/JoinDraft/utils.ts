@@ -10,3 +10,16 @@ export function getDefaultJoinStrategy(
   );
   return defaultStrategy ?? strategies[0];
 }
+
+export function getJoinFields(
+  tableColumns: Lib.ColumnMetadata[],
+  selectedColumns: Lib.ColumnMetadata[],
+): Lib.JoinFields {
+  if (tableColumns.length === selectedColumns.length) {
+    return "all";
+  } else if (selectedColumns.length === 0) {
+    return "none";
+  } else {
+    return selectedColumns;
+  }
+}

@@ -10,7 +10,7 @@ import { JoinStrategyPicker } from "../JoinStrategyPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
 import { JoinConditionCell, JoinCell } from "./JoinDraft.styled";
-import { getDefaultJoinStrategy } from "./utils";
+import { getDefaultJoinStrategy, getJoinFields } from "./utils";
 
 interface JoinDraftProps {
   query: Lib.Query;
@@ -31,7 +31,10 @@ export function JoinDraft({
     getDefaultJoinStrategy(query, stageIndex),
   );
   const [table, setTable] = useState<Lib.Joinable>();
-  const [fields, setFields] = useState<Lib.JoinFields>("all");
+  const [tableColumns, setTableColumns] = useState<Lib.ColumnMetadata[]>([]);
+  const [selectedColumns, setSelectedColumns] = useState<Lib.ColumnMetadata[]>(
+    [],
+  );
   const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
 
   const lhsDisplayName = useMemo(
@@ -49,8 +52,10 @@ export function JoinDraft({
       const newJoin = Lib.joinClause(newTable, newConditions);
       onJoinChange(newJoin);
     } else {
+      const newColumns = Lib.joinableColumns(query, stageIndex, newTable);
       setTable(newTable);
-      setFields("all");
+      setTableColumns(newColumns);
+      setSelectedColumns(newColumns);
     }
   };
 
@@ -58,7 +63,7 @@ export function JoinDraft({
     if (table) {
       const newJoin = Lib.withJoinFields(
         Lib.joinClause(table, [newCondition]),
-        fields,
+        getJoinFields(tableColumns, selectedColumns),
       );
       onJoinChange(newJoin);
     }
