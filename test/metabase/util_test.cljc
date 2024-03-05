@@ -472,7 +472,9 @@
 
 (deftest map-all-test
   (let [join (fn [& crumbs] (str/join ":" crumbs))]
-    (testing "map-all works with 2-arity"
+    (testing "map-all with 1 collection is just map"
+      (is (= ["0" "1" "2" "3" "4"] (u/map-all join (range 5)))))
+    (testing "map-all works with 3 collections"
       (is (= ["0:0" "1:1" "2:2" "3:" "4:"] (u/map-all join (range 5) (range 3)))))
     (testing "map-all works with higher arity"
       (is (= ["0:0:0" "1:1:1" "2:2:2" "3::3" "::4"] (u/map-all join (range 4) (range 3) (range 5)))))))
