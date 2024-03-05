@@ -684,6 +684,10 @@ const TITLE_LOCALES_BN = {
     'en' : 'Certificate Configuration Wise Trainings Statistics',
     'bn' : 'সার্টিফিকেট কনফিগারেশন অনুযায়ী প্রশিক্ষণের পরিসংখ্যান'
   },
+  'total.trainee.count.based.on.obtaining.certificate' : {
+    'en' : 'Statistics Of Trainees Based On Certificate Attainment',
+    'bn' : 'সার্টিফিকেট অর্জন ভিত্তিক প্রশিক্ষণার্থীর পরিসংখ্যান'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
