@@ -325,6 +325,28 @@ describe("scenarios > visualizations > table", () => {
       expect(isScrollableHorizontally($popover[0])).to.be.false;
     });
   });
+
+  it(
+    "should show the slow loading text when the query is taking too long",
+    { tags: ["@slow"] },
+    () => {
+      openOrdersTable({ mode: "notebook" });
+
+      cy.intercept("POST", "/api/dataset", req => {
+        req.on("response", res => {
+          res.setDelay(6000);
+        });
+      });
+
+      cy.button("Visualize").click();
+
+      cy.findByTestId("query-builder-main").findByText("Doing science...");
+      cy.findByTestId("query-builder-main").findByText(
+        "Talking to the database...",
+        { timeout: 6000 },
+      );
+    },
+  );
 });
 
 describe("scenarios > visualizations > table > conditional formatting", () => {
