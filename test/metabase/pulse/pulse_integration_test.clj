@@ -205,7 +205,7 @@
   [s]
   (let [parts (str/split s #"\.")
         ext (last parts)]
-    (str (u/slugify (str/join "." (butlast parts))) ext)))
+    (str (u/slugify (str/join "." (butlast parts))) "." ext)))
 
 (deftest apply-formatting-in-csv-dashboard-test
   (testing "An exported dashboard should preserve the formatting specified in the column metadata (#36320)"
