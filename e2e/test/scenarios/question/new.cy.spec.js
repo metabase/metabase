@@ -196,9 +196,7 @@ describe("scenarios > question > new", () => {
         cy.findByLabelText("People").findByLabelText("More info").realHover();
       });
 
-      hovercard().within(() => {
-        cy.findByText("Orders").click();
-      });
+      hovercard().findByText("Orders").click();
 
       cy.url().should("include", "question#");
     });
