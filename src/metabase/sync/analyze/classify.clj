@@ -38,7 +38,7 @@
 ;;; |                                         CLASSIFYING INDIVIDUAL FIELDS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn updateable-columns
+(defn- updateable-columns
   "Columns of Field or Table that classifiers are allowed to be set."
   [model]
   (case model
