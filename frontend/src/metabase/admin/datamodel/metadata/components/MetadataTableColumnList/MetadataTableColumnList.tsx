@@ -189,10 +189,16 @@ const SortableColumn = ({
   idFields,
   selectedSchemaId,
 }: SortableColumnProps) => {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({
-      id,
-    });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id,
+  });
 
   const dragHandle = (
     <Grabber style={{ width: 10 }} {...attributes} {...listeners} />
@@ -204,6 +210,8 @@ const SortableColumn = ({
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
+        position: "relative",
+        zIndex: isDragging ? 100 : 1,
       }}
     >
       <MetadataTableColumn
