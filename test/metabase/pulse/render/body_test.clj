@@ -496,22 +496,30 @@
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-                            :viz-settings {}}))))
+                            :viz-settings {}})))))
+
+(deftest render-waterfall-test-2
   (testing "Render a waterfall graph with bigdec, bigint values for the x and y axis"
     (is (has-inline-image?
          (render-waterfall {:cols         default-columns
                             :rows         [[10.0M 1M] [5.0 10N] [2.50 20N] [1.25M 30]]
-                            :viz-settings {}}))))
+                            :viz-settings {}})))))
+
+(deftest render-waterfall-test-3
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-waterfall {:cols         default-columns
                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
-                            :viz-settings {}}))))
+                            :viz-settings {}})))))
+
+(deftest render-waterfall-test-4
   (testing "Check to make sure we allow nil values for the x-axis"
     (is (has-inline-image?
          (render-waterfall {:cols         default-columns
                             :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
-                            :viz-settings {}}))))
+                            :viz-settings {}})))))
+
+(deftest render-waterfall-test-5
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
          (render-waterfall {:cols         default-columns
@@ -529,11 +537,18 @@
     (is (has-inline-image?
          (render-combo {:cols         default-multi-columns
                         :rows         [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]
-                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}}))))
+                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}})))))
+
+(deftest render-combo-test-2
   (testing "Render a combo graph with multiple x axes"
     (is (has-inline-image?
-         (render-combo-multi-x {:cols         default-multi-columns
-                                :rows         [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
+         (render-combo-multi-x {:cols default-multi-columns
+                                :rows [[10.0 "Bob" 123 123124]
+                                       [5.0 "Dobbs" 12 23423]
+                                       [2.50 "Robbs" 1337 234234]
+                                       [1.25 "Mobbs" -22 1234123]]})))))
+
+(deftest render-combo-test-3
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
          (render-combo {:cols         default-multi-columns
@@ -549,13 +564,17 @@
          (render-funnel
           {:cols         default-columns
            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-           :viz-settings {}}))))
+           :viz-settings {}})))))
+
+(deftest render-funnel-test-2
   (testing "Test that we can render a funnel with extraneous columns and also weird strings stuck in places"
     (is (has-inline-image?
          (render-funnel
           {:cols         default-multi-columns
            :rows         [[10.0 1 2 2] [5.0 10 "11.1" 1] ["2.50" 20 1337 0] [1.25 30 -2 "-2"]]
-           :viz-settings {}}))))
+           :viz-settings {}})))))
+
+(deftest render-funnel-test-3
   (testing "Test that we can have some nil values stuck everywhere"
     (is (has-inline-image?
          (render-funnel

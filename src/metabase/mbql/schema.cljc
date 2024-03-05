@@ -1300,7 +1300,7 @@
   "Valid values of the `:strategy` key in a join map."
   #{:left-join :right-join :inner-join :full-join})
 
-(def ^:private JoinStrategy
+(def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
   driver supports `:full-join` before generating a Join clause using that strategy."

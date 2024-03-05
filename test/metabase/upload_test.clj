@@ -109,7 +109,7 @@
     (t2/select-one :model/Table (:id table))))
 
 (deftest type-detection-and-parse-test
-  (doseq [[string-value  expected-value expected-type seps]
+  (doseq [[string-value expected-value expected-type seps]
           ;; Number-related
           [["0.0"        0              float-type "."]
            ["0.0"        0              float-type ".,"]
@@ -226,11 +226,12 @@
            [" 2022-01-01T01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01t01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01 01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]]]
-    (let [settings   {:number-separators (or seps ".,")}
-          value-type (#'upload/value->type string-value settings)
+    (let [settings    {:number-separators (or seps ".,")}
+          type->check (#'upload/settings->type->check settings)
+          value-type  (#'upload/value->type type->check string-value)
           ;; get the type of the column, if it were filled with only that value
-          col-type   (first (upload/column-types-from-rows settings 1 [[string-value]]))
-          parser     (upload-parsing/upload-type->parser col-type settings)]
+          col-type    (first (upload/column-types-from-rows settings 1 [[string-value]]))
+          parser      (upload-parsing/upload-type->parser col-type settings)]
       (testing (format "\"%s\" is a %s" string-value type)
         (is (= expected-type
                value-type)))
@@ -267,7 +268,7 @@
            [datetime-type    text-type        text-type]
            [offset-dt-type   text-type        text-type]
            [vchar-type       text-type        text-type]]]
-    (is (= expected (#'upload/lowest-common-ancestor type-a type-b))
+    (is (= expected (#'upload/most-specific-common-ancestor type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
 (defn csv-file-with
@@ -1664,3 +1665,27 @@
                           (re-pattern (str "^" fail-msg "$"))
                           (append!)))))
                 (io/delete-file file)))))))))
+
+(defn- first-non-abstract-first-parent [value-type]
+  (cond (nil? value-type) nil
+
+        (#'upload/abstract->concrete value-type)
+        (recur (first (parents @#'upload/h value-type)))
+
+        :else value-type))
+
+(deftest column-type-test
+  (let [column-type #'upload/column-type]
+    (testing "Unknown value types are treated as text"
+      (is (= ::upload/text (column-type nil))))
+    (testing "Non-abstract value types resolve to themselves"
+      (let [ts @#'upload/column-types]
+        (is (= (zipmap ts ts)
+               (zipmap (map column-type ts) ts)))))
+    (testing "Abstract values are resolved using an explicit map, which is consistent with the hierarchy"
+      (doseq [[value-type expected-column-type] @#'upload/abstract->concrete]
+        (is (= expected-column-type (column-type value-type)))
+        ;; Strictly speaking we only require that there is a route from each abstract node to its column type which only
+        ;; traverses through abstract nodes, but it's much simpler to enforce this convention. This consistency also
+        ;; keeps the graph easier to reason about and may save us from future foot guns.
+        (is (= expected-column-type (first-non-abstract-first-parent value-type)))))))
