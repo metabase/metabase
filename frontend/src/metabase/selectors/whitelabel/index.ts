@@ -2,7 +2,16 @@ import { PLUGIN_SELECTORS } from "metabase/plugins";
 import type { State } from "metabase-types/store";
 
 export function getWhiteLabeledLoadingMessage(state: State) {
-  return PLUGIN_SELECTORS.getLoadingMessage(state);
+  const message = PLUGIN_SELECTORS.getLoadingMessage(state);
+
+  if (typeof message === "string") {
+    return {
+      initial: message,
+      slow: message,
+    };
+  }
+
+  return message;
 }
 
 export function getIsWhiteLabeling(state: State) {
