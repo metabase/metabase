@@ -42,9 +42,7 @@
    [metabase.util.password :as u.password]
    [ring.util.response :as response]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline])
-  (:import
-   (java.util UUID)))
+   [toucan2.pipeline :as t2.pipeline]))
 
 (def ^String metabase-session-cookie
   "Where the session cookie goes."                      "metabase.SESSION")

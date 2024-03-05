@@ -55,7 +55,7 @@
    [toucan2.core :as t2])
   (:import
    (java.net URI URISyntaxException)
-   (java.util Base64 UUID)))
+   (java.util Base64)))
 
 (set! *warn-on-reflection* true)
 

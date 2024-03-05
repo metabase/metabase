@@ -29,8 +29,7 @@
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
-   (com.unboundid.util LDAPSDKException)
-   (java.util UUID)))
+   (com.unboundid.util LDAPSDKException)))
 
 (set! *warn-on-reflection* true)
 
