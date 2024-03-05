@@ -48,7 +48,7 @@
 
 (deftest ^:parallel default-select-test
   (is (= ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]
-         (->> {:from [[[::sql.qp/sql-source-query "SELECT *"]
+         (->> {:from [[{::sql.qp/sql-source-query ["SELECT *"]}
                        [(h2x/identifier :table-alias "source")]]]}
               (#'sql.qp/add-default-select :redshift)
               (sql.qp/format-honeysql :redshift)))))

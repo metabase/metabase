@@ -47,6 +47,7 @@
      [FULL JOIN]
      [GROUP BY]
      [ORDER BY]
+     WITH
      SELECT
      FROM
      LIMIT

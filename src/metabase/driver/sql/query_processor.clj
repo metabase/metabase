@@ -47,29 +47,28 @@
   - Removing the semicolon(s).
   - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
     comments were preceding semicolon.
-  - Wrapping the result in parens.
 
   This implementation does not handle few cases cases properly. 100% correct comment and semicolon removal would
   probably require _parsing_ sql string and not just a regular expression replacement. Link to the discussion:
   https://github.com/metabase/metabase/pull/30677
 
+  - Wrapping the result in parens is handled by honeysql with their custom clauses.
+
   For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"
   [sql]
-  (str "("
-       (-> sql
-           (str/replace #";([\s;]*(--.*\n?)*)*$" "")
-           str/trimr
-           (as-> trimmed
-                 ;; Query could potentially end with a comment.
-                 (if (re-find #"--.*$" trimmed)
-                   (str trimmed "\n")
-                   trimmed)))
-       ")"))
+  (-> sql
+      (str/replace #";([\s;]*(--.*\n?)*)*$" "")
+      str/trimr
+      (as-> trimmed
+        ;; Query could potentially end with a comment.
+        (if (re-find #"--.*$" trimmed)
+          (str trimmed "\n")
+          trimmed))))
 
-(defn- format-sql-source-query [_fn [sql params]]
+(defn- format-sql-source-query [_clause [sql params]]
   (into [(make-nestable-sql sql)] params))
 
-(sql/register-fn! ::sql-source-query #'format-sql-source-query)
+(sql/register-clause! ::sql-source-query #'format-sql-source-query :select)
 
 (defn sql-source-query
   "Wrap clause in `::sql-source-query`. Does additional validation."
@@ -84,7 +83,7 @@
                          (.getCanonicalName (class params)))
                     {:type  qp.error-type/invalid-query
                      :query params})))
-  [::sql-source-query sql params])
+  {::sql-source-query [sql params]})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -1412,28 +1411,32 @@
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
   source queries are aliased as `source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
-                         source-metadata :source-metadata}]
-
+                         source-metadata :source-metadata :as _x}]
   (let [field-aliases (mapv (fn [{[_ ref-name] :field_ref}]
-                                (some-> ref-name keyword))
-                              source-metadata)]
-      (assoc honeysql-form
-             :from [[(cond
-                       persisted
-                       (sql-source-query persisted nil)
+                              ref-name)
+                            source-metadata)
+        table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
+        table-alias-and-columns (cond-> [source-query-alias]
+                                  (and
+                                    (seq field-aliases)
+                                    (distinct? field-aliases)
+                                    (every? some? field-aliases))
+                                  (conj {:columns (mapv #(h2x/identifier :field %) field-aliases)}))]
+    (merge
+      honeysql-form
+      (cond
+        persisted
+        {:with [[table-alias-and-columns (sql-source-query persisted nil)]]
+         :select [(h2x/identifier :field-alias (keyword source-query-alias "*"))]
+         :from [[table-alias]]}
 
-                       native
-                       (sql-source-query native params)
+        native
+        {:with [[table-alias-and-columns (sql-source-query native params)]]
+         :select [:source.*]
+         :from [[table-alias]]}
 
-                       :else
-                       (apply-clauses driver {} source-query))
-                     (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))]
-                       (cond-> [table-alias]
-                         (and
-                           (seq field-aliases)
-                           (distinct? field-aliases)
-                           (every? some? field-aliases))
-                         (conj {:columns field-aliases})))]])))
+        :else
+        {:from [[(apply-clauses driver {} source-query) [table-alias]]]}))))
 
 (defn- apply-clauses
   "Like [[apply-top-level-clauses]], but handles `source-query` as well, which needs to be handled in a special way
