@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { maybeSyncTemporalUnit } from "metabase/query_builder/components/notebook/steps/JoinStep/utils";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -38,37 +39,33 @@ export function JoinCondition({
     [query, stageIndex, condition],
   );
 
+  const getCondition = (
+    operator: Lib.JoinConditionOperator,
+    lhsColumn: Lib.ColumnMetadata,
+    rhsColumn: Lib.ColumnMetadata,
+  ) =>
+    Lib.joinConditionClause(query, stageIndex, operator, lhsColumn, rhsColumn);
+
+  const getConditionWithBucket = (
+    condition: Lib.JoinCondition,
+    lhsColumn: Lib.ColumnMetadata,
+    rhsColumn: Lib.ColumnMetadata,
+  ) =>
+    maybeSyncTemporalUnit(query, stageIndex, condition, lhsColumn, rhsColumn);
+
   const handleOperatorChange = (newOperator: Lib.JoinConditionOperator) => {
-    const newCondition = Lib.joinConditionClause(
-      query,
-      stageIndex,
-      newOperator,
-      lhsColumn,
-      rhsColumn,
-    );
+    const newCondition = getCondition(newOperator, lhsColumn, rhsColumn);
     onChange(newCondition);
   };
 
   const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
-    const newCondition = Lib.joinConditionClause(
-      query,
-      stageIndex,
-      operator,
-      newLhsColumn,
-      rhsColumn,
-    );
-    onChange(newCondition);
+    const newCondition = getCondition(operator, newLhsColumn, rhsColumn);
+    onChange(getConditionWithBucket(newCondition, newLhsColumn, rhsColumn));
   };
 
   const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
-    const newCondition = Lib.joinConditionClause(
-      query,
-      stageIndex,
-      operator,
-      lhsColumn,
-      newRhsColumn,
-    );
-    onChange(newCondition);
+    const newCondition = getCondition(operator, lhsColumn, newRhsColumn);
+    onChange(getConditionWithBucket(newCondition, lhsColumn, newRhsColumn));
   };
 
   return (
