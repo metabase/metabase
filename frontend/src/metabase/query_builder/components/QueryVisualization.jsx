@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useState } from "react";
+import { useTimeout } from "react-use";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -10,6 +11,8 @@ import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
+
+const SLOW_MESSAGE_TIMEOUT = 4000;
 
 export default function QueryVisualization(props) {
   const {
@@ -80,22 +83,25 @@ export const VisualizationEmptyState = ({ className }) => (
   </div>
 );
 
-export const VisualizationRunningState = ({
-  className = "",
-  loadingMessage,
-}) => (
-  <div
-    className={cx(
-      className,
-      "Loading flex flex-column layout-centered text-brand",
-    )}
-  >
-    <LoadingSpinner />
-    <h2 className="Loading-message text-brand text-uppercase my3">
-      {loadingMessage}
-    </h2>
-  </div>
-);
+export function VisualizationRunningState({ className = "", loadingMessage }) {
+  const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
+
+  const message = isSlow() ? t`Talking to the database...` : loadingMessage;
+
+  return (
+    <div
+      className={cx(
+        className,
+        "Loading flex flex-column layout-centered text-brand",
+      )}
+    >
+      <LoadingSpinner />
+      <h2 className="Loading-message text-brand text-uppercase my3">
+        {message}
+      </h2>
+    </div>
+  );
+}
 
 export const VisualizationDirtyState = ({
   className,
