@@ -94,6 +94,7 @@ export function JoinDraft({
               stageIndex={stageIndex}
               table={table}
               isReadOnly={isReadOnly}
+              isRemovable={false}
               onChange={handleConditionChange}
               onLhsColumnChange={setLhsColumn}
             />

@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
+import { JoinConditionRemoveButton } from "../JoinConditionRemoveButton";
 
 import { JoinConditionRoot } from "./JoinConditionDraft.styled";
 import { getDefaultJoinConditionOperator } from "./utils";
@@ -14,7 +15,9 @@ interface JoinConditionDraftProps {
   stageIndex: number;
   table: Lib.Joinable;
   isReadOnly: boolean;
+  isRemovable: boolean;
   onChange: (newCondition: Lib.JoinCondition) => void;
+  onRemove?: () => void;
   onLhsColumnChange?: (newLhsColumn: Lib.ColumnMetadata) => void;
 }
 
@@ -23,7 +26,9 @@ export function JoinConditionDraft({
   stageIndex,
   table,
   isReadOnly,
+  isRemovable,
   onChange,
+  onRemove,
   onLhsColumnChange,
 }: JoinConditionDraftProps) {
   const [operator, setOperator] = useState(() =>
@@ -94,6 +99,9 @@ export function JoinConditionDraft({
           />
         </Box>
       </Flex>
+      {isRemovable && (
+        <JoinConditionRemoveButton isComplete={false} onClick={onRemove} />
+      )}
     </JoinConditionRoot>
   );
 }

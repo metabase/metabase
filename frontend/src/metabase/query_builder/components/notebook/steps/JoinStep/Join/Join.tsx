@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text } from "metabase/ui";
@@ -32,6 +32,7 @@ export function Join({
   const strategy = useMemo(() => Lib.joinStrategy(join), [join]);
   const table = useMemo(() => Lib.joinedThing(query, join), [query, join]);
   const conditions = useMemo(() => Lib.joinConditions(join), [join]);
+  const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
 
   const lhsDisplayName = useMemo(
     () => Lib.joinLHSDisplayName(query, stageIndex, join),
@@ -55,6 +56,13 @@ export function Join({
   ) => {
     const newConditions = [...conditions];
     newConditions[conditionIndex] = newCondition;
+    const newJoin = Lib.withJoinConditions(join, newConditions);
+    onChange(newJoin);
+  };
+
+  const handleRemoveCondition = (conditionIndex: number) => {
+    const newConditions = [...conditions];
+    newConditions.splice(conditionIndex, 1);
     const newJoin = Lib.withJoinConditions(join, newConditions);
     onChange(newJoin);
   };
@@ -96,18 +104,24 @@ export function Join({
                 join={join}
                 condition={condition}
                 isReadOnly={isReadOnly}
+                isRemovable={conditions.length > 1}
                 onChange={newCondition =>
                   handleUpdateCondition(newCondition, conditionIndex)
                 }
+                onRemove={() => handleRemoveCondition(conditionIndex)}
               />
             ))}
-            <JoinConditionDraft
-              query={query}
-              stageIndex={stageIndex}
-              table={table}
-              isReadOnly={isReadOnly}
-              onChange={handleAddCondition}
-            />
+            {isAddingNewCondition && (
+              <JoinConditionDraft
+                query={query}
+                stageIndex={stageIndex}
+                table={table}
+                isReadOnly={isReadOnly}
+                isRemovable={true}
+                onChange={handleAddCondition}
+                onRemove={() => setIsAddingNewCondition(false)}
+              />
+            )}
           </JoinConditionCell>
         </>
       )}
