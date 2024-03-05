@@ -78,7 +78,7 @@ If you don't want to structure your database privileges yet:
 
 ```sql
 -- Create a database user named "metabase".
-CREATE USER metabase WITH PASSWORD "your_password";
+CREATE USER metabase WITH PASSWORD 'your_password';
 
 -- Give the user read and write privileges to anything in the database.
 GRANT ALL PRIVILEGES ON "database" TO metabase;
