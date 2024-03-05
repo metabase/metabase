@@ -33,11 +33,7 @@
    :perms/manage-table-metadata
    :yes
    db-id
-   schema-name)
-  (= :yes (data-perms/schema-permission-for-user api/*current-user-id*
-                                                 :perms/manage-table-metadata
-                                                 db-id
-                                                 schema-name)))
+   schema-name))
 
 (defenterprise current-user-can-write-db?
   "Enterprise version. Returns a boolean whether the current user can write the given db"
