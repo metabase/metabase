@@ -1,6 +1,7 @@
 import { useSensor, PointerSensor } from "@dnd-kit/core";
 import { useCallback } from "react";
 
+import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import type { IconProps } from "metabase/ui";
 
@@ -23,13 +24,7 @@ interface SortableColumnFunctions<T> {
 }
 interface ChartSettingOrderedItemsProps<T extends SortableItem>
   extends SortableColumnFunctions<T> {
-  onSortEnd: ({
-    id,
-    newIndex,
-  }: {
-    id: number | string;
-    newIndex: number;
-  }) => void;
+  onSortEnd: ({ id, newIndex }: DragEndEvent) => void;
   items: T[];
   getId: (item: T) => string | number;
 }

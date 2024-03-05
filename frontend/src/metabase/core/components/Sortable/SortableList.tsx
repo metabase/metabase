@@ -15,6 +15,7 @@ type ItemId = number | string;
 export type DragEndEvent = {
   id: ItemId;
   newIndex: number;
+  itemIds: ItemId[];
 };
 
 interface RenderItemProps<T> {
@@ -27,19 +28,7 @@ interface useSortableListProps<T> {
   getId: (item: T) => ItemId;
   renderItem: ({ item, id, isDragOverlay }: RenderItemProps<T>) => JSX.Element;
   onSortStart?: (event: DragStartEvent) => void;
-<<<<<<< HEAD
   onSortEnd?: ({ id, newIndex }: DragEndEvent) => void;
-=======
-  onSortEnd?: ({
-    id,
-    newIndex,
-    itemIds,
-  }: {
-    id: ItemId;
-    newIndex: number;
-    itemIds?: ItemId[];
-  }) => void;
->>>>>>> 7a9d725894 (Metadata Table columns use Sortable List)
   sensors?: SensorDescriptor<any>[];
   modifiers?: Modifier[];
   useDragOverlay?: boolean;
