@@ -188,6 +188,24 @@ export function setLocalDashboardParameterValue(
   safeSetItem("dashboardParameters", JSON.stringify(localParameters));
 }
 
+export function unsetLocalDashboardParameterValue(dashboardId, parameterId) {
+  if (!dashboardId) {
+    return;
+  }
+
+  const localParametersStringified = safeGetItem("dashboardParameters");
+  const localParameters = localParametersStringified
+    ? JSON.parse(localParametersStringified)
+    : {};
+
+  const localDashboardParameters = localParameters[dashboardId] ?? {};
+  delete localDashboardParameters[parameterId];
+
+  localParameters[dashboardId] = localDashboardParameters;
+
+  safeSetItem("dashboardParameters", JSON.stringify(localParameters));
+}
+
 function safeGetItem(key) {
   try {
     return localStorage.getItem(key);

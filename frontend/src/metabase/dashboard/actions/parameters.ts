@@ -18,6 +18,7 @@ import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
   setLocalDashboardParameterValue,
+  unsetLocalDashboardParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
@@ -144,6 +145,10 @@ export const removeParameter = createThunkAction(
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );
+
+    const dashboardId = getDashboardId(getState());
+    unsetLocalDashboardParameterValue(dashboardId, parameterId);
+
     return { id: parameterId };
   },
 );
@@ -162,6 +167,9 @@ export const setParameterMapping = createThunkAction(
       dispatch(closeAutoWireParameterToast());
 
       const dashcard = getDashCardById(getState(), dashcardId);
+
+      const dashboardId = getDashboardId(getState());
+      unsetLocalDashboardParameterValue(dashboardId, parameterId);
 
       if (target !== null && isQuestionDashCard(dashcard)) {
         dispatch(
@@ -215,6 +223,7 @@ export const setParameterName = createThunkAction(
     updateParameter(dispatch, getState, parameterId, parameter =>
       setParamName(parameter, name),
     );
+
     return { id: parameterId, name };
   },
 );
@@ -227,6 +236,10 @@ export const setParameterFilteringParameters = createThunkAction(
         ...parameter,
         filteringParameters,
       }));
+
+      const dashboardId = getDashboardId(getState());
+      unsetLocalDashboardParameterValue(dashboardId, parameterId);
+
       return { id: parameterId, filteringParameters };
     },
 );
@@ -324,6 +337,10 @@ export const setParameterIsMultiSelect = createThunkAction(
       ...parameter,
       isMultiSelect: isMultiSelect,
     }));
+
+    const dashboardId = getDashboardId(getState());
+    unsetLocalDashboardParameterValue(dashboardId, parameterId);
+
     return { id: parameterId, isMultiSelect };
   },
 );
@@ -338,6 +355,10 @@ export const setParameterQueryType = createThunkAction(
         ...parameter,
         values_query_type: queryType,
       }));
+
+      const dashboardId = getDashboardId(getState());
+      unsetLocalDashboardParameterValue(dashboardId, parameterId);
+
       return { id: parameterId, queryType };
     },
 );
@@ -352,6 +373,10 @@ export const setParameterSourceType = createThunkAction(
         ...parameter,
         values_source_type: sourceType,
       }));
+
+      const dashboardId = getDashboardId(getState());
+      unsetLocalDashboardParameterValue(dashboardId, parameterId);
+
       return { id: parameterId, sourceType };
     },
 );
