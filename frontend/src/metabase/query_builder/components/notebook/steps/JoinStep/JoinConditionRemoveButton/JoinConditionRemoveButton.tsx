@@ -3,16 +3,16 @@ import { Icon } from "metabase/ui";
 import { RemoveButton } from "./JoinConditionRemoveButton.styled";
 
 interface JoinConditionRemoveButtonProps {
-  isComplete: boolean;
+  isConditionComplete: boolean;
   onClick?: () => void;
 }
 
 export function JoinConditionRemoveButton({
-  isComplete,
+  isConditionComplete,
   onClick,
 }: JoinConditionRemoveButtonProps) {
   return (
-    <RemoveButton isComplete={isComplete} onClick={onClick}>
+    <RemoveButton isConditionComplete={isConditionComplete} onClick={onClick}>
       {<Icon name="close" size={16} />}
     </RemoveButton>
   );

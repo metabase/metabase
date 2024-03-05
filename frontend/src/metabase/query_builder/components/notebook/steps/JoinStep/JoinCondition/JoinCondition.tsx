@@ -86,6 +86,7 @@ export function JoinCondition({
           stageIndex={stageIndex}
           operator={operator}
           isReadOnly={isReadOnly}
+          isConditionComplete={true}
           onChange={handleOperatorChange}
         />
         <JoinConditionColumnPicker
@@ -100,7 +101,10 @@ export function JoinCondition({
         />
       </Flex>
       {isRemovable && (
-        <JoinConditionRemoveButton isComplete={true} onClick={onRemove} />
+        <JoinConditionRemoveButton
+          isConditionComplete={true}
+          onClick={onRemove}
+        />
       )}
     </JoinConditionRoot>
   );

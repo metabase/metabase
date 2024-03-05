@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { alpha, color, lighten } from "metabase/lib/colors";
 
 interface RemoveButtonProps {
-  isComplete: boolean;
+  isConditionComplete: boolean;
 }
 
 export const RemoveButton = styled.button<RemoveButtonProps>`
@@ -16,11 +16,12 @@ export const RemoveButton = styled.button<RemoveButtonProps>`
   border-left: 1px solid ${alpha(color("white"), 0.25)};
   transition: background-color 300ms linear;
 
-  color: ${props => (props.isComplete ? color("white") : color("brand"))};
+  color: ${props =>
+    props.isConditionComplete ? color("white") : color("brand")};
 
   &:hover,
   &:focus {
     background-color: ${props =>
-      props.isComplete ? lighten("brand", 0.1) : alpha("brand", 0.2)};
+      props.isConditionComplete ? lighten("brand", 0.1) : alpha("brand", 0.2)};
   }
 `;

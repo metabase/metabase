@@ -101,7 +101,7 @@ export function Join({
               const isLast = conditionIndex === conditions.length - 1;
 
               return (
-                <Flex key={conditionIndex} mr="6px" align="center" gap="8px">
+                <Flex key={conditionIndex} align="center" gap="sm">
                   <JoinCondition
                     key={conditionIndex}
                     query={query}
@@ -115,7 +115,7 @@ export function Join({
                     }
                     onRemove={() => handleRemoveCondition(conditionIndex)}
                   />
-                  {isLast && <Text color="text-dark">{t`and`}</Text>}
+                  {!isLast && <Text color="text-dark">{t`and`}</Text>}
                   {isLast && !isReadOnly && !isAddingNewCondition && (
                     <NotebookCellAdd
                       color={color}

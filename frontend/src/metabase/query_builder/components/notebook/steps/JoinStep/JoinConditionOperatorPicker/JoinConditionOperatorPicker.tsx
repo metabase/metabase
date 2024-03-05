@@ -15,6 +15,7 @@ interface JoinConditionOperatorPickerProps {
   stageIndex: number;
   operator: Lib.JoinConditionOperator;
   isReadOnly: boolean;
+  isConditionComplete: boolean;
   onChange: (operator: Lib.JoinConditionOperator) => void;
 }
 
@@ -23,6 +24,7 @@ export function JoinConditionOperatorPicker({
   stageIndex,
   operator,
   isReadOnly,
+  isConditionComplete,
   onChange,
 }: JoinConditionOperatorPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -42,7 +44,7 @@ export function JoinConditionOperatorPicker({
       <Popover.Target>
         <OperatorPickerButton
           isOpened={isOpened}
-          isConditionComplete={false}
+          isConditionComplete={isConditionComplete}
           disabled={isReadOnly}
           aria-label={t`Change operator`}
           onClick={() => setIsOpened(!isOpened)}

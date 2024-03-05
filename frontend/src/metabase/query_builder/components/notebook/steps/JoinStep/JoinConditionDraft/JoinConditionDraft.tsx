@@ -84,6 +84,7 @@ export function JoinConditionDraft({
           stageIndex={stageIndex}
           operator={operator}
           isReadOnly={isReadOnly}
+          isConditionComplete={false}
           onChange={setOperator}
         />
         <Box mr={!rhsColumn ? "4px" : undefined}>
@@ -100,7 +101,10 @@ export function JoinConditionDraft({
         </Box>
       </Flex>
       {isRemovable && (
-        <JoinConditionRemoveButton isComplete={false} onClick={onRemove} />
+        <JoinConditionRemoveButton
+          isConditionComplete={false}
+          onClick={onRemove}
+        />
       )}
     </JoinConditionRoot>
   );
