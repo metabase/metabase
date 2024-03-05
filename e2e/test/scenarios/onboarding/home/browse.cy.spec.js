@@ -3,7 +3,7 @@ import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   setTokenFeatures,
-  describeWithSnowplow,
+  describeWithSnowplowEE,
   expectGoodSnowplowEvent,
   resetSnowplow,
   expectNoBadSnowplowEvents,
@@ -12,7 +12,7 @@ import {
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describeWithSnowplow("scenarios > browse data", () => {
+describeWithSnowplowEE("scenarios > browse data", () => {
   beforeEach(() => {
     resetSnowplow();
     restore();
