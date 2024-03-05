@@ -36,6 +36,8 @@ export function JoinConditionDraft({
   );
   const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
   const [rhsColumn, setRhsColumn] = useState<Lib.ColumnMetadata>();
+  const [isLhsOpened, setIsLhsOpened] = useState(true);
+  const [isRhsOpened, setIsRhsOpened] = useState(false);
 
   const handleColumnChange = (
     lhsColumn: Lib.ColumnMetadata | undefined,
@@ -55,6 +57,7 @@ export function JoinConditionDraft({
 
   const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
     setLhsColumn(newLhsColumn);
+    setIsRhsOpened(true);
     onLhsColumnChange?.(newLhsColumn);
     handleColumnChange(newLhsColumn, rhsColumn);
   };
@@ -66,17 +69,19 @@ export function JoinConditionDraft({
 
   return (
     <JoinConditionRoot>
-      <Flex align="center" gap="4px" mih="47px" p="4px">
-        <Box ml={!lhsColumn ? "4px" : undefined}>
+      <Flex align="center" gap="xs" mih="47px" p="xs">
+        <Box ml={!lhsColumn ? "xs" : undefined}>
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
             joinable={table}
             lhsColumn={lhsColumn}
             rhsColumn={rhsColumn}
+            isOpened={isLhsOpened}
             isLhsColumn={true}
             isReadOnly={isReadOnly}
             onChange={handleLhsColumnChange}
+            onOpenChange={setIsLhsOpened}
           />
         </Box>
         <JoinConditionOperatorPicker
@@ -87,16 +92,18 @@ export function JoinConditionDraft({
           isConditionComplete={false}
           onChange={setOperator}
         />
-        <Box mr={!rhsColumn ? "4px" : undefined}>
+        <Box mr={!rhsColumn ? "xs" : undefined}>
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
             joinable={table}
             lhsColumn={lhsColumn}
             rhsColumn={rhsColumn}
+            isOpened={isRhsOpened}
             isLhsColumn={false}
             isReadOnly={isReadOnly}
             onChange={handleRhsColumnChange}
+            onOpenChange={setIsRhsOpened}
           />
         </Box>
       </Flex>

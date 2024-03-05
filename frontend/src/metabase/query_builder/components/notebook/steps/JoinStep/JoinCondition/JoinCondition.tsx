@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -30,6 +30,9 @@ export function JoinCondition({
   onChange,
   onRemove,
 }: JoinConditionProps) {
+  const [isLhsOpened, setIsLhsOpened] = useState(false);
+  const [isRhsOpened, setIsRhsOpened] = useState(false);
+
   const { operator, lhsColumn, rhsColumn } = useMemo(
     () => Lib.joinConditionParts(query, stageIndex, condition),
     [query, stageIndex, condition],
@@ -77,9 +80,11 @@ export function JoinCondition({
           joinable={join}
           lhsColumn={lhsColumn}
           rhsColumn={rhsColumn}
+          isOpened={isLhsOpened}
           isLhsColumn={true}
           isReadOnly={isReadOnly}
           onChange={handleLhsColumnChange}
+          onOpenChange={setIsLhsOpened}
         />
         <JoinConditionOperatorPicker
           query={query}
@@ -95,9 +100,11 @@ export function JoinCondition({
           joinable={join}
           lhsColumn={lhsColumn}
           rhsColumn={rhsColumn}
+          isOpened={isRhsOpened}
           isLhsColumn={false}
           isReadOnly={isReadOnly}
           onChange={handleRhsColumnChange}
+          onOpenChange={setIsRhsOpened}
         />
       </Flex>
       {isRemovable && (

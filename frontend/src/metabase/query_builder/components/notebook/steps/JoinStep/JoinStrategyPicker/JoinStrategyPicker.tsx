@@ -40,7 +40,7 @@ export function JoinStrategyPicker({
   };
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
       <Popover.Target>
         <IconButtonWrapper
           disabled={isReadOnly}

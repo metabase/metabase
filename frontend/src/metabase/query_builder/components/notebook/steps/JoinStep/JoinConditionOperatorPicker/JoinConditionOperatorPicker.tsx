@@ -40,7 +40,7 @@ export function JoinConditionOperatorPicker({
   };
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
       <Popover.Target>
         <OperatorPickerButton
           isOpened={isOpened}

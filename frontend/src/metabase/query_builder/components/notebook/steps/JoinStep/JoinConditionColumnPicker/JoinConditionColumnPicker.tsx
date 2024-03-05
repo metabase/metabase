@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import type { ColumnListItem } from "metabase/common/components/QueryColumnPicker";
@@ -17,9 +17,11 @@ interface JoinConditionColumnPickerProps {
   joinable: Lib.Join | Lib.Joinable;
   lhsColumn: Lib.ColumnMetadata | undefined;
   rhsColumn: Lib.ColumnMetadata | undefined;
+  isOpened: boolean;
   isLhsColumn: boolean;
   isReadOnly: boolean;
   onChange: (column: Lib.ColumnMetadata) => void;
+  onOpenChange: (isOpened: boolean) => void;
 }
 
 export function JoinConditionColumnPicker({
@@ -28,14 +30,14 @@ export function JoinConditionColumnPicker({
   joinable,
   lhsColumn,
   rhsColumn,
+  isOpened,
   isLhsColumn,
   isReadOnly,
   onChange,
+  onOpenChange,
 }: JoinConditionColumnPickerProps) {
-  const [isOpened, setIsOpened] = useState(false);
-
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover opened={isOpened} position="bottom-start" onChange={onOpenChange}>
       <Popover.Target>
         <JoinColumnTarget
           query={query}
@@ -45,7 +47,7 @@ export function JoinConditionColumnPicker({
           isLhsColumn={isLhsColumn}
           isOpened={isOpened}
           isReadOnly={isReadOnly}
-          onClick={() => setIsOpened(!isOpened)}
+          onClick={() => onOpenChange(!isOpened)}
         />
       </Popover.Target>
       <Popover.Dropdown>
@@ -57,7 +59,7 @@ export function JoinConditionColumnPicker({
           rhsColumn={rhsColumn}
           isLhsColumn={isLhsColumn}
           onChange={onChange}
-          onClose={() => setIsOpened(false)}
+          onClose={() => onOpenChange(false)}
         />
       </Popover.Dropdown>
     </Popover>
