@@ -16,7 +16,7 @@ const isBoxPropValid = (propName: string) => {
   );
 };
 
-export const ResultTitle = styled(Anchor) <
+export const ResultTitle = styled(Anchor)<
   AnchorProps & AnchorHTMLAttributes<HTMLAnchorElement>
 >`
   line-height: unset;
@@ -36,14 +36,14 @@ export const ResultTitle = styled(Anchor) <
 
 export const SearchResultContainer = styled(Box, {
   shouldForwardProp: isBoxPropValid,
-}) <
+})<
   BoxProps &
-  HTMLAttributes<HTMLButtonElement> & {
-    isActive?: boolean;
-    isSelected?: boolean;
-    component?: string;
-    ref?: RefObject<HTMLButtonElement> | null;
-  }
+    HTMLAttributes<HTMLButtonElement> & {
+      isActive?: boolean;
+      isSelected?: boolean;
+      component?: string;
+      ref?: RefObject<HTMLButtonElement> | null;
+    }
 >`
   display: grid;
   grid-template-columns: auto 1fr auto auto;
@@ -87,17 +87,17 @@ export const ModerationIcon = styled(PLUGIN_MODERATION.ModerationStatusIcon)`
   overflow: unset;
 `;
 
-export const LoadingSection = styled(Box) <BoxProps>`
+export const LoadingSection = styled(Box)<BoxProps>`
   grid-row: 1 / span 1;
   grid-column: 3;
 `;
 
-export const XRaySection = styled(Box) <BoxProps>`
+export const XRaySection = styled(Box)<BoxProps>`
   grid-row: 1 / span 1;
   grid-column: 4;
 `;
 
-export const XRayButton = styled(Button) <
+export const XRayButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >`
   width: 2rem;
