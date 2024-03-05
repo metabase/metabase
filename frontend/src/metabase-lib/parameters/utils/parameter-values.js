@@ -159,9 +159,7 @@ export function getLocalDashboardParametersById(dashboardId) {
     return {};
   }
 
-  const localParametersStringified = window.localStorage.getItem(
-    "dashboardParameters",
-  );
+  const localParametersStringified = safeGetItem("dashboardParameters");
   const localParameters = localParametersStringified
     ? JSON.parse(localParametersStringified)
     : {};
@@ -178,9 +176,7 @@ export function setLocalDashboardParameterValue(
     return;
   }
 
-  const localParametersStringified = window.localStorage.getItem(
-    "dashboardParameters",
-  );
+  const localParametersStringified = safeGetItem("dashboardParameters");
   const localParameters = localParametersStringified
     ? JSON.parse(localParametersStringified)
     : {};
@@ -189,8 +185,24 @@ export function setLocalDashboardParameterValue(
   localDashboardParameters[parameterId] = value;
   localParameters[dashboardId] = localDashboardParameters;
 
-  window.localStorage.setItem(
-    "dashboardParameters",
-    JSON.stringify(localParameters),
-  );
+  safeSetItem("dashboardParameters", JSON.stringify(localParameters));
+}
+
+function safeGetItem(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    // temp solution for PoC only
+    alert("Error reading from localStorage: " + e.message);
+    return null;
+  }
+}
+
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    // temp solution for PoC only
+    alert("Error writing to localStorage: " + e.message);
+  }
 }
