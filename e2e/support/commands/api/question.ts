@@ -50,7 +50,7 @@ type QuestionDetails = {
    * Used on the frontend to determine whether the question is pinned or not.
    */
   collection_position?: Card["collection_position"];
-  embedding_params?: Card["embedding_params"]; // TODO: make its presence depend on type only for models
+  embedding_params?: Card["embedding_params"];
   /**
    * Defaults to false.
    */
