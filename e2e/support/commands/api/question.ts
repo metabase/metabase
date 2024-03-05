@@ -73,7 +73,7 @@ type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
   native: NativeQuery;
 };
 
-interface Options {
+type Options = {
   /**
    * Whether to visit the question in order to load its metadata.
    * Defaults to false.
@@ -99,7 +99,7 @@ interface Options {
    * Defaults to "cardQuery".
    */
   interceptAlias?: string;
-}
+};
 
 Cypress.Commands.add("archiveQuestion", (id: Card["id"]) => {
   cy.log(`Archiving a question with id: ${id}`);
