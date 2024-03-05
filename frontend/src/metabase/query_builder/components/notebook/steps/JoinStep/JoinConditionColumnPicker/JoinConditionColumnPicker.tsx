@@ -108,12 +108,22 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
     >
       <Text
         display="block"
+        size={11}
+        lh={1}
+        color="white"
+        align="left"
+        weight={400}
+      >
+        {t`Previous results`}
+      </Text>
+      <Text
+        display="block"
         color={columnInfo ? "white" : "brand"}
         align="left"
         weight={700}
         lh={1}
       >
-        {columnInfo?.displayName || t`Pick a column…`}
+        {columnInfo?.displayName ?? t`Pick a column…`}
       </Text>
     </JoinCellItem>
   );
