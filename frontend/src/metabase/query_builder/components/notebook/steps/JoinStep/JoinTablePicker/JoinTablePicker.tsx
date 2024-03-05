@@ -13,7 +13,7 @@ import { PickerButton } from "./JoinTablePicker.styled";
 interface JoinTablePickerProps {
   query: Lib.Query;
   stageIndex: number;
-  table: Lib.CardMetadata | Lib.TableMetadata | undefined;
+  joinable: Lib.Joinable | undefined;
   color: string;
   isReadOnly: boolean;
   onChange: (joinable: Lib.Joinable) => void;
@@ -22,7 +22,7 @@ interface JoinTablePickerProps {
 export function JoinTablePicker({
   query,
   stageIndex,
-  table,
+  joinable,
   isReadOnly,
   color,
   onChange,
@@ -31,17 +31,17 @@ export function JoinTablePicker({
     return Lib.databaseID(query);
   }, [query]);
 
-  const tableInfo = useMemo(() => {
-    return table ? Lib.displayInfo(query, stageIndex, table) : null;
-  }, [query, stageIndex, table]);
+  const joinableInfo = useMemo(() => {
+    return joinable ? Lib.displayInfo(query, stageIndex, joinable) : null;
+  }, [query, stageIndex, joinable]);
 
   const pickerInfo = useMemo(() => {
-    return table ? Lib.pickerInfo(query, table) : null;
-  }, [query, table]);
+    return joinable ? Lib.pickerInfo(query, joinable) : null;
+  }, [query, joinable]);
 
   const tableId = pickerInfo?.tableId ?? pickerInfo?.cardId;
   const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
-  const isDisabled = table != null || isReadOnly;
+  const isDisabled = joinable != null || isReadOnly;
 
   const handleTableChange = async (tableId: TableId) => {
     onChange(Lib.tableOrCardMetadata(query, tableId));
@@ -49,7 +49,7 @@ export function JoinTablePicker({
 
   return (
     <NotebookCellItem
-      inactive={!table}
+      inactive={!joinable}
       readOnly={isReadOnly}
       disabled={isDisabled}
       color={color}
@@ -58,14 +58,14 @@ export function JoinTablePicker({
       <DataSourceSelector
         hasTableSearch
         canChangeDatabase={false}
-        isInitiallyOpen={!table}
+        isInitiallyOpen={!joinable}
         tableFilter={tableFilter}
         selectedDatabaseId={databaseId}
         selectedTableId={tableId}
         setSourceTableFn={handleTableChange}
         triggerElement={
           <PickerButton disabled={isDisabled}>
-            {tableInfo?.displayName || t`Pick data…`}
+            {joinableInfo?.displayName || t`Pick data…`}
           </PickerButton>
         }
       />

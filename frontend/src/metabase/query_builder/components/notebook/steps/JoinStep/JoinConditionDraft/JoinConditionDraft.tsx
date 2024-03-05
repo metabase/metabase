@@ -1,62 +1,36 @@
-import { useState } from "react";
-
 import { Box, Flex } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
 
 import { JoinConditionRoot } from "./JoinConditionDraft.styled";
-import { getDefaultJoinConditionOperator } from "./utils";
 
 interface JoinConditionDraftProps {
   query: Lib.Query;
   stageIndex: number;
   joinable: Lib.Joinable;
+  operator: Lib.JoinConditionOperator;
+  lhsColumn: Lib.ColumnMetadata | undefined;
+  rhsColumn: Lib.ColumnMetadata | undefined;
   isReadOnly: boolean;
-  onChange: (condition: Lib.JoinCondition) => void;
+  onOperatorChange: (operator: Lib.JoinConditionOperator) => void;
+  onLhsColumnChange: (lhsColumn: Lib.ColumnMetadata) => void;
+  onRhsColumnChange: (lhsColumn: Lib.ColumnMetadata) => void;
 }
 
 export function JoinConditionDraft({
   query,
   stageIndex,
   joinable,
+  operator,
+  lhsColumn,
+  rhsColumn,
   isReadOnly,
-  onChange,
+  onOperatorChange,
+  onLhsColumnChange,
+  onRhsColumnChange,
 }: JoinConditionDraftProps) {
-  const [operator, setOperator] = useState(() =>
-    getDefaultJoinConditionOperator(query, stageIndex),
-  );
-  const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
-  const [rhsColumn, setRhsColumn] = useState<Lib.ColumnMetadata>();
-
-  const handleColumnChange = (
-    lhsColumn: Lib.ColumnMetadata | undefined,
-    rhsColumn: Lib.ColumnMetadata | undefined,
-  ) => {
-    if (lhsColumn != null && rhsColumn != null) {
-      onChange(
-        Lib.joinConditionClause(
-          query,
-          stageIndex,
-          operator,
-          lhsColumn,
-          rhsColumn,
-        ),
-      );
-    }
-  };
-
-  const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
-    setLhsColumn(newLhsColumn);
-    handleColumnChange(newLhsColumn, rhsColumn);
-  };
-
-  const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
-    setRhsColumn(newRhsColumn);
-    handleColumnChange(lhsColumn, newRhsColumn);
-  };
-
   return (
     <JoinConditionRoot>
       <Flex align="center" gap="4px" mih="47px" p="4px">
@@ -69,7 +43,7 @@ export function JoinConditionDraft({
             rhsColumn={rhsColumn}
             isLhsColumn={true}
             isReadOnly={isReadOnly}
-            onChange={handleLhsColumnChange}
+            onChange={onLhsColumnChange}
           />
         </Box>
         <JoinConditionOperatorPicker
@@ -77,7 +51,7 @@ export function JoinConditionDraft({
           stageIndex={stageIndex}
           operator={operator}
           isReadOnly={isReadOnly}
-          onChange={setOperator}
+          onChange={onOperatorChange}
         />
         <Box mr={!rhsColumn ? "4px" : undefined}>
           <JoinConditionColumnPicker
@@ -88,7 +62,7 @@ export function JoinConditionDraft({
             rhsColumn={rhsColumn}
             isLhsColumn={false}
             isReadOnly={isReadOnly}
-            onChange={handleRhsColumnChange}
+            onChange={onRhsColumnChange}
           />
         </Box>
       </Flex>
