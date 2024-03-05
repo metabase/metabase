@@ -2,12 +2,12 @@ import styled from "@emotion/styled";
 
 import { NotebookCell } from "../../../NotebookCell";
 
-export const JoinNotebookCell = styled(NotebookCell)`
+export const JoinCell = styled(NotebookCell)`
   flex: 1;
   align-self: start;
 `;
 
-export const JoinConditionNotebookCell = styled(NotebookCell)`
+export const JoinConditionCell = styled(NotebookCell)`
   flex: 1;
   flex-direction: column;
   align-items: start;

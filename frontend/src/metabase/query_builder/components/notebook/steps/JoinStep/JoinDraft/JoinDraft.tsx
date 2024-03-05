@@ -9,10 +9,7 @@ import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
-import {
-  JoinConditionNotebookCell,
-  JoinNotebookCell,
-} from "./JoinDraft.styled";
+import { JoinConditionCell, JoinCell } from "./JoinDraft.styled";
 import { getDefaultJoinStrategy } from "./utils";
 
 interface JoinDraftProps {
@@ -50,7 +47,7 @@ export function JoinDraft({
 
   return (
     <Flex miw="100%" gap="1rem">
-      <JoinNotebookCell color={color}>
+      <JoinCell color={color}>
         <Flex direction="row" gap={6}>
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {lhsDisplayName}
@@ -71,13 +68,13 @@ export function JoinDraft({
             onChange={setJoinable}
           />
         </Flex>
-      </JoinNotebookCell>
+      </JoinCell>
       {joinable && (
         <>
           <Box mt="1.5rem">
             <Text color="brand" weight="bold">{t`on`}</Text>
           </Box>
-          <JoinConditionNotebookCell color={color}>
+          <JoinConditionCell color={color}>
             <JoinConditionDraft
               query={query}
               stageIndex={stageIndex}
@@ -86,7 +83,7 @@ export function JoinDraft({
               onChange={handleConditionChange}
               onLhsColumnChange={setLhsColumn}
             />
-          </JoinConditionNotebookCell>
+          </JoinConditionCell>
         </>
       )}
     </Flex>
