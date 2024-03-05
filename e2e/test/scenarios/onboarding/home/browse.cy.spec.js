@@ -3,6 +3,7 @@ import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   setTokenFeatures,
+  describeWithSnowplow,
   describeWithSnowplowEE,
   expectGoodSnowplowEvent,
   resetSnowplow,
@@ -12,7 +13,7 @@ import {
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describeWithSnowplowEE("scenarios > browse data", () => {
+describeWithSnowplow("scenarios > browse data", () => {
   beforeEach(() => {
     resetSnowplow();
     restore();
@@ -86,6 +87,9 @@ describeWithSnowplowEE("scenarios > browse data", () => {
       "not.exist",
     );
   });
+});
+
+describeWithSnowplowEE("scenarios > browse data (EE)", () => {
   it("/browse/models allows models to be filtered, on an enterprise instance", () => {
     const toggle = () =>
       cy.findByRole("switch", { name: /Only show verified models/ });
