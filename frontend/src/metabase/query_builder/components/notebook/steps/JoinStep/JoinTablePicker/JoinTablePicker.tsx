@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { DATA_BUCKET } from "metabase/containers/DataPicker/constants";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -21,6 +22,7 @@ interface JoinTablePickerProps {
   table: Lib.Joinable | undefined;
   color: string;
   isReadOnly: boolean;
+  isModelDataSource: boolean;
   columnPicker: ReactNode;
   onChange?: (table: Lib.Joinable) => void;
 }
@@ -29,8 +31,9 @@ export function JoinTablePicker({
   query,
   stageIndex,
   table,
-  isReadOnly,
   color,
+  isReadOnly,
+  isModelDataSource,
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
@@ -75,6 +78,10 @@ export function JoinTablePicker({
         tableFilter={tableFilter}
         selectedDatabaseId={databaseId}
         selectedTableId={tableId}
+        selectedDataBucketId={getSelectedDataBucketId(
+          pickerInfo,
+          isModelDataSource,
+        )}
         setSourceTableFn={handleTableChange}
         triggerElement={
           <TablePickerButton disabled={isDisabled}>
@@ -116,3 +123,16 @@ const RIGHT_CONTAINER_STYLE = {
   height: 37,
   padding: 0,
 };
+
+function getSelectedDataBucketId(
+  pickerInfo: Lib.PickerInfo | null,
+  isModelDataSource: boolean,
+) {
+  if (pickerInfo?.tableId != null) {
+    return undefined;
+  }
+  if (isModelDataSource) {
+    return DATA_BUCKET.DATASETS;
+  }
+  return undefined;
+}

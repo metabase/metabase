@@ -18,6 +18,7 @@ interface JoinDraftProps {
   stageIndex: number;
   color: string;
   isReadOnly: boolean;
+  isModelDataSource: boolean;
   onJoinChange: (join: Lib.Join) => void;
 }
 
@@ -26,6 +27,7 @@ export function JoinDraft({
   stageIndex,
   color,
   isReadOnly,
+  isModelDataSource,
   onJoinChange,
 }: JoinDraftProps) {
   const [strategy, setStrategy] = useState(() =>
@@ -90,6 +92,7 @@ export function JoinDraft({
             table={table}
             color={color}
             isReadOnly={isReadOnly}
+            isModelDataSource={isModelDataSource}
             columnPicker={
               <JoinTableColumnDraftPicker
                 query={query}

@@ -19,6 +19,7 @@ interface JoinProps {
   join: Lib.Join;
   color: string;
   isReadOnly: boolean;
+  isModelDataSource: boolean;
   onJoinChange: (newJoin: Lib.Join) => void;
   onQueryChange: (newQuery: Lib.Query) => void;
 }
@@ -91,6 +92,7 @@ export function Join({
             table={table}
             color={color}
             isReadOnly={isReadOnly}
+            isModelDataSource={isModelDataSource}
             columnPicker={
               <JoinTableColumnPicker
                 query={query}

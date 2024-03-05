@@ -11,6 +11,7 @@ export function JoinStep({
   query,
   stageIndex,
   step: { itemIndex },
+  sourceQuestion,
   color,
   readOnly: isReadOnly = false,
   updateQuery,
@@ -19,7 +20,9 @@ export function JoinStep({
     () => Lib.joins(query, stageIndex),
     [query, stageIndex],
   );
+
   const join = itemIndex != null ? joins[itemIndex] : undefined;
+  const isModelDataSource = sourceQuestion?.type() === "model";
 
   const handleAddJoin = (newJoin: Lib.Join) => {
     const newQuery = Lib.join(query, stageIndex, newJoin);
@@ -40,6 +43,7 @@ export function JoinStep({
       join={join}
       color={color}
       isReadOnly={isReadOnly}
+      isModelDataSource={isModelDataSource}
       onJoinChange={handleUpdateJoin}
       onQueryChange={updateQuery}
     />
@@ -49,6 +53,7 @@ export function JoinStep({
       stageIndex={stageIndex}
       color={color}
       isReadOnly={isReadOnly}
+      isModelDataSource={isModelDataSource}
       onJoinChange={handleAddJoin}
     />
   );
