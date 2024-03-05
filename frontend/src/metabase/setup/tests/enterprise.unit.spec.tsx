@@ -216,7 +216,6 @@ describe("setup (EE, no token)", () => {
     it("should pass the token to the settings endpoint", async () => {
       await setupForLicenseStep();
       setupForTokenCheckEndpoint({ valid: true });
-      fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
 
       userEvent.paste(
         screen.getByRole("textbox", { name: "Token" }),

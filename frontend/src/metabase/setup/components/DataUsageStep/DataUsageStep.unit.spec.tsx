@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { setupErrorTrackingEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { SetupStep } from "metabase/setup/types";
 import {
@@ -21,7 +21,10 @@ const setup = ({ step = "data_usage" }: SetupOpts = {}) => {
     }),
   });
 
-  setupErrorTrackingEndpoints();
+  fetchMock.put("path:/api/setting/anon-tracking-enabled", 400);
+  fetchMock.get("path:/api/setting", 200);
+  fetchMock.get("path:/api/session/properties", 200);
+
   renderWithProviders(<DataUsageStep stepLabel={0} />, {
     storeInitialState: state,
   });

@@ -6,12 +6,6 @@ export function setupErrorSetupEndpoints() {
   fetchMock.post("path:/api/setup", 400);
 }
 
-export function setupErrorTrackingEndpoints() {
-  fetchMock.put("path:/api/setting/anon-tracking-enabled", 400);
-  fetchMock.get("path:/api/setting", 200);
-  fetchMock.get("path:/api/session/properties", 200);
-}
-
 export function setupAdminCheckListEndpoint(items: SetupCheckListItem[]) {
   fetchMock.get("path:/api/setup/admin_checklist", items);
 }
@@ -22,6 +16,4 @@ export function setupForTokenCheckEndpoint(response: { valid: boolean }) {
     "path:/api/setting/premium-embedding-token",
     response.valid ? 204 : 400,
   );
-  fetchMock.get("path:/api/setting", 200);
-  fetchMock.get("path:/api/session/properties", 200);
 }
