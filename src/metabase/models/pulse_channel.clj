@@ -11,8 +11,8 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 ;; ## Static Definitions
@@ -222,7 +222,7 @@
 
 ;; ## Persistence Functions
 
-(s/defn retrieve-scheduled-channels
+(mu/defn retrieve-scheduled-channels
   "Fetch all `PulseChannels` that are scheduled to run at a given time described by `hour`, `weekday`, `monthday`, and
   `monthweek`.
 
@@ -237,10 +237,10 @@
   *  `daily` scheduled channels are included if the `hour` matches.
   *  `weekly` scheduled channels are included if the `weekday` & `hour` match.
   *  `monthly` scheduled channels are included if the `monthday`, `monthweek`, `weekday`, & `hour` all match."
-  [hour      :- (s/maybe s/Int)
-   weekday   :- (s/maybe (s/pred day-of-week?))
-   monthday  :-  (s/enum :first :last :mid :other)
-   monthweek :- (s/enum :first :last :other)]
+  [hour      :- [:maybe :int]
+   weekday   :- [:maybe [:fn {:error/message "valid day of week"} day-of-week?]]
+   monthday  :- [:enum :first :last :mid :other]
+   monthweek :- [:enum :first :last :other]]
   (let [schedule-frame              (cond
                                       (= :mid monthday)    "mid"
                                       (= :first monthweek) "first"

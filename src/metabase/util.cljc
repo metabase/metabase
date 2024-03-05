@@ -157,7 +157,7 @@
   conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."
   ^String [s]
   (when s
-    #?(:clj  (.toLowerCase (str s) (Locale/US))
+    #?(:clj  (.toLowerCase (str s) Locale/US)
        :cljs (.toLowerCase (str s)))))
 
 (defn upper-case-en
@@ -167,7 +167,7 @@
   `en-US` locale."
   ^String [s]
   (when s
-    #?(:clj  (.toUpperCase (str s) (Locale/US))
+    #?(:clj  (.toUpperCase (str s) Locale/US)
        :cljs (.toUpperCase (str s)))))
 
 (defn capitalize-en
