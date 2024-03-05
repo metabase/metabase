@@ -1,13 +1,13 @@
 import * as Lib from "metabase-lib";
 
-export function maybeSyncTemporalUnit(
+export function maybeSyncTemporalBucket(
   query: Lib.Query,
   stageIndex: number,
   condition: Lib.JoinCondition,
-  lhsColumn: Lib.ColumnMetadata,
-  rhsColumn: Lib.ColumnMetadata,
+  newColumn: Lib.ColumnMetadata,
+  oldColumn: Lib.ColumnMetadata,
 ) {
-  const bucket = Lib.temporalBucket(lhsColumn) ?? Lib.temporalBucket(rhsColumn);
+  const bucket = Lib.temporalBucket(newColumn) ?? Lib.temporalBucket(oldColumn);
   if (bucket) {
     return Lib.joinConditionUpdateTemporalBucketing(
       query,

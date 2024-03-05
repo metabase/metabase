@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { maybeSyncTemporalUnit } from "metabase/query_builder/components/notebook/steps/JoinStep/utils";
+import { maybeSyncTemporalBucket } from "metabase/query_builder/components/notebook/steps/JoinStep/utils";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -39,33 +39,33 @@ export function JoinCondition({
     [query, stageIndex, condition],
   );
 
-  const getCondition = (
+  const createCondition = (
     operator: Lib.JoinConditionOperator,
     lhsColumn: Lib.ColumnMetadata,
     rhsColumn: Lib.ColumnMetadata,
   ) =>
     Lib.joinConditionClause(query, stageIndex, operator, lhsColumn, rhsColumn);
 
-  const getConditionWithBucket = (
+  const syncTemporalBucket = (
     condition: Lib.JoinCondition,
-    lhsColumn: Lib.ColumnMetadata,
-    rhsColumn: Lib.ColumnMetadata,
+    newColumn: Lib.ColumnMetadata,
+    oldColumn: Lib.ColumnMetadata,
   ) =>
-    maybeSyncTemporalUnit(query, stageIndex, condition, lhsColumn, rhsColumn);
+    maybeSyncTemporalBucket(query, stageIndex, condition, newColumn, oldColumn);
 
   const handleOperatorChange = (newOperator: Lib.JoinConditionOperator) => {
-    const newCondition = getCondition(newOperator, lhsColumn, rhsColumn);
+    const newCondition = createCondition(newOperator, lhsColumn, rhsColumn);
     onChange(newCondition);
   };
 
   const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
-    const newCondition = getCondition(operator, newLhsColumn, rhsColumn);
-    onChange(getConditionWithBucket(newCondition, newLhsColumn, rhsColumn));
+    const newCondition = createCondition(operator, newLhsColumn, rhsColumn);
+    onChange(syncTemporalBucket(newCondition, newLhsColumn, rhsColumn));
   };
 
   const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
-    const newCondition = getCondition(operator, lhsColumn, newRhsColumn);
-    onChange(getConditionWithBucket(newCondition, lhsColumn, newRhsColumn));
+    const newCondition = createCondition(operator, lhsColumn, newRhsColumn);
+    onChange(syncTemporalBucket(newCondition, newRhsColumn, lhsColumn));
   };
 
   return (
