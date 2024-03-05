@@ -92,7 +92,7 @@
       (derive ::varchar-255 ::text)))
 
 (def ^:private abstract->concrete
-  "Not all value types do not correspond to concrete database column types."
+  "Not all value types correspond to database types. For those that don't, this maps to their concrete ancestor."
   {::boolean-or-int ::boolean})
 
 (def ^:private value-types
