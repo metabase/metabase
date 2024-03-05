@@ -327,7 +327,7 @@ export class UnconnectedDataSelector extends Component {
       await this.hydrateActiveStep();
     }
 
-    if (this.props.selectedDataBucketId === DATA_BUCKET.DATASETS) {
+    if (this.props.selectedDataBucketId === DATA_BUCKET.MODELS) {
       this.showSavedQuestionPicker();
     }
 
@@ -435,7 +435,7 @@ export class UnconnectedDataSelector extends Component {
     const { steps } = this.props;
     if (
       this.isSavedQuestionSelected() ||
-      this.state.selectedDataBucketId === DATA_BUCKET.DATASETS ||
+      this.state.selectedDataBucketId === DATA_BUCKET.MODELS ||
       this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
     ) {
       await this.switchToStep(DATABASE_STEP);
@@ -767,7 +767,7 @@ export class UnconnectedDataSelector extends Component {
   handleSavedQuestionPickerClose = () => {
     const { selectedDataBucketId } = this.state;
     if (
-      selectedDataBucketId === DATA_BUCKET.DATASETS ||
+      selectedDataBucketId === DATA_BUCKET.MODELS ||
       this.hasUsableDatasets()
     ) {
       this.previousStep();
@@ -890,7 +890,7 @@ export class UnconnectedDataSelector extends Component {
     if (activeStep === DATA_BUCKET_STEP) {
       return t`Search for some data…`;
     }
-    if (selectedDataBucketId === DATA_BUCKET.DATASETS) {
+    if (selectedDataBucketId === DATA_BUCKET.MODELS) {
       return t`Search for a model…`;
     }
     return isSavedQuestionPickerShown
@@ -910,7 +910,7 @@ export class UnconnectedDataSelector extends Component {
       return ["card", "dataset", "table"];
     }
     return {
-      [DATA_BUCKET.DATASETS]: ["dataset"],
+      [DATA_BUCKET.MODELS]: ["dataset"],
       [DATA_BUCKET.RAW_DATA]: ["table"],
       [DATA_BUCKET.SAVED_QUESTIONS]: ["card"],
     }[selectedDataBucketId];
@@ -935,8 +935,7 @@ export class UnconnectedDataSelector extends Component {
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
 
     const isPickerOpen =
-      isSavedQuestionPickerShown ||
-      selectedDataBucketId === DATA_BUCKET.DATASETS;
+      isSavedQuestionPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
 
     if (this.isLoadingDatasets()) {
       return <LoadingAndErrorWrapper loading />;
@@ -973,7 +972,7 @@ export class UnconnectedDataSelector extends Component {
                   selectedTable.schema &&
                   getSchemaName(selectedTable.schema.id)
                 }
-                isDatasets={selectedDataBucketId === DATA_BUCKET.DATASETS}
+                isDatasets={selectedDataBucketId === DATA_BUCKET.MODELS}
                 tableId={selectedTable?.id}
                 databaseId={currentDatabaseId}
                 onSelect={this.handleSavedQuestionSelect}
