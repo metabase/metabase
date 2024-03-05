@@ -55,16 +55,16 @@ describe("issue 11994", () => {
       { database: SAMPLE_DB_ID, query: QUERY, display: "combo" },
       { wrapId: true, idAlias: "comboQuestionId" },
     );
-    removeUserMembership(NORMAL_USER_ID, [DATA_GROUP_ID, COLLECTION_GROUP_ID]);
+    removeUserMemberships(NORMAL_USER_ID, [DATA_GROUP_ID, COLLECTION_GROUP_ID]);
     cy.updateCollectionGraph({
       [ALL_USERS_GROUP]: { root: "read" },
     });
-    // cy.signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it.only("does not show raw data toggle for pivot questions (metabase#11994)", () => {
     // TODO: refactor visitQuestion to accept alias or id.
-    cy.get("@pivotQuestionId").then(pivotQuestionId => {
+    cy.get<number>("@pivotQuestionId").then(pivotQuestionId => {
       visitQuestion(pivotQuestionId);
     });
   });
@@ -72,10 +72,10 @@ describe("issue 11994", () => {
   it("does not offer to save combo question viewed in raw mode (metabase#11994)", () => {});
 });
 
-function removeUserMembership(userId: UserId, groupIds: GroupId[]) {
-  cy.request("GET", "/api/permissions/membership").then(
+function removeUserMemberships(userId: UserId, groupIds: GroupId[]) {
+  cy.request<Memberships>("GET", "/api/permissions/membership").then(
     ({ body: memberships }) => {
-      Object.values(memberships as Memberships)
+      Object.values(memberships)
         .flat()
         .filter(membership => {
           return (
