@@ -46,12 +46,12 @@
 (defmethod mi/can-read? :model/Metric
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (= :yes
-        (data-perms/table-permission-for-user
-         api/*current-user-id*
-         :perms/manage-table-metadata
-         (:db_id table)
-         (u/the-id table)))))
+     (data-perms/user-has-permission-for-table?
+      api/*current-user-id*
+      :perms/manage-table-metadata
+      :yes
+      (:db_id table)
+      (u/the-id table))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 

@@ -15,17 +15,25 @@
   "Enterprise version. Returns a boolean whether the current user can write the given field."
   :feature :advanced-permissions
   [instance]
-  (= :yes (data-perms/table-permission-for-user
-           api/*current-user-id*
-           :perms/manage-table-metadata
-           (or (get-in instance [:table :db_id])
-               (database/table-id->database-id (:table_id instance)))
-           (:table_id instance))))
+  (let [db-id (or (get-in instance [:table :db_id])
+                  (database/table-id->database-id (:table_id instance)))]
+    (data-perms/user-has-permission-for-table?
+     api/*current-user-id*
+     :perms/manage-table-metadata
+     :yes
+     db-id
+     (:table_id instance))))
 
 (defenterprise current-user-can-read-schema?
   "Enterprise version. Returns a boolean whether the current user can read the given schema"
   :feature :advanced-permissions
   [db-id schema-name]
+  (data-perms/user-has-permission-for-schema?
+   api/*current-user-id*
+   :perms/manage-table-metadata
+   :yes
+   db-id
+   schema-name)
   (= :yes (data-perms/schema-permission-for-user api/*current-user-id*
                                                  :perms/manage-table-metadata
                                                  db-id
@@ -35,19 +43,22 @@
   "Enterprise version. Returns a boolean whether the current user can write the given db"
   :feature :advanced-permissions
   [db-id]
-  (= :yes (data-perms/database-permission-for-user api/*current-user-id*
-                                                   :perms/manage-database
-                                                   db-id)))
+  (data-perms/user-has-permission-for-database?
+   api/*current-user-id*
+   :perms/manage-database
+   :yes
+   db-id))
 
 (defenterprise current-user-can-write-table?
   "Enterprise version."
   :feature :advanced-permissions
   [table]
-  (= :yes (data-perms/table-permission-for-user
-           api/*current-user-id*
-           :perms/manage-table-metadata
-           (:db_id table)
-           (:id table))))
+  (data-perms/user-has-permission-for-table?
+   api/*current-user-id*
+   :perms/manage-table-metadata
+   :yes
+   (:db_id table)
+   (:id table)))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
@@ -88,8 +99,12 @@
     :else
     (filter
      (fn [{table-id :id db-id :db_id}]
-       (= (data-perms/table-permission-for-user api/*current-user-id* :perms/manage-table-metadata db-id table-id)
-          :yes))
+       (data-perms/user-has-permission-for-table?
+        api/*current-user-id*
+        :perms/manage-table-metadata
+        :yes
+        db-id
+        table-id))
      tables)))
 
 (defn filter-schema-by-data-model-perms
@@ -106,8 +121,12 @@
     :else
     (filter
      (fn [{db-id :db_id schema :schema}]
-       (= (data-perms/schema-permission-for-user api/*current-user-id* :perms/manage-table-metadata db-id schema)
-          :yes))
+       (data-perms/user-has-permission-for-schema?
+        api/*current-user-id*
+        :perms/manage-table-metadata
+        :yes
+        db-id
+        schema))
      schema)))
 
 (defn filter-databases-by-data-model-perms
