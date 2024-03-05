@@ -1,34 +1,6 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import type { Card, DatasetQuery } from "metabase-types/api";
 
-Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
-  const { name, query } = questionDetails;
-
-  throwIfNotPresent(query);
-
-  logAction("Create a QB question", name);
-  return question("query", questionDetails, customOptions);
-});
-
-Cypress.Commands.add("archiveQuestion", id => {
-  cy.log(`Archiving a question with id: ${id}`);
-  return cy.request("PUT", `/api/card/${id}`, {
-    archived: true,
-  });
-});
-
-Cypress.Commands.add(
-  "createNativeQuestion",
-  (questionDetails, customOptions) => {
-    const { name, native } = questionDetails;
-
-    throwIfNotPresent(native);
-
-    logAction("Create a native question", name);
-    question("native", questionDetails, customOptions);
-  },
-);
-
 type QueryType = "query" | "native";
 
 interface QuestionDetails {
@@ -96,6 +68,34 @@ interface Options {
    */
   interceptAlias?: string;
 }
+
+Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
+  const { name, query } = questionDetails;
+
+  throwIfNotPresent(query);
+
+  logAction("Create a QB question", name);
+  return question("query", questionDetails, customOptions);
+});
+
+Cypress.Commands.add("archiveQuestion", id => {
+  cy.log(`Archiving a question with id: ${id}`);
+  return cy.request("PUT", `/api/card/${id}`, {
+    archived: true,
+  });
+});
+
+Cypress.Commands.add(
+  "createNativeQuestion",
+  (questionDetails, customOptions) => {
+    const { name, native } = questionDetails;
+
+    throwIfNotPresent(native);
+
+    logAction("Create a native question", name);
+    question("native", questionDetails, customOptions);
+  },
+);
 
 function question(
   queryType: QueryType,
