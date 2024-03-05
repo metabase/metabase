@@ -93,6 +93,14 @@ interface Options {
   interceptAlias?: string;
 }
 
+Cypress.Commands.add("archiveQuestion", (id: Card["id"]) => {
+  cy.log(`Archiving a question with id: ${id}`);
+
+  return cy.request("PUT", `/api/card/${id}`, {
+    archived: true,
+  });
+});
+
 Cypress.Commands.add(
   "createQuestion",
   (questionDetails: StructuredQuestionDetails, options: Options) => {
@@ -113,14 +121,6 @@ Cypress.Commands.add(
     );
   },
 );
-
-Cypress.Commands.add("archiveQuestion", (id: Card["id"]) => {
-  cy.log(`Archiving a question with id: ${id}`);
-
-  return cy.request("PUT", `/api/card/${id}`, {
-    archived: true,
-  });
-});
 
 Cypress.Commands.add(
   "createNativeQuestion",
