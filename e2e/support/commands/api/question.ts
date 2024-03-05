@@ -72,7 +72,9 @@ interface Options {
 Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
   const { name, query } = questionDetails;
 
-  throwIfNotPresent(query);
+  if (!query) {
+    throw new Error('"query" attribute missing in questionDetails');
+  }
 
   logAction("Create a QB question", name);
   return question("query", questionDetails, customOptions);
@@ -90,7 +92,9 @@ Cypress.Commands.add(
   (questionDetails, customOptions) => {
     const { name, native } = questionDetails;
 
-    throwIfNotPresent(native);
+    if (!native) {
+      throw new Error('"native" attribute missing in questionDetails');
+    }
 
     logAction("Create a native question", name);
     question("native", questionDetails, customOptions);
@@ -173,12 +177,6 @@ function question(
         }
       }
     });
-}
-
-function throwIfNotPresent(param) {
-  if (!param) {
-    throw new Error('Wrong key! Expected "query" or "native".');
-  }
 }
 
 /**
