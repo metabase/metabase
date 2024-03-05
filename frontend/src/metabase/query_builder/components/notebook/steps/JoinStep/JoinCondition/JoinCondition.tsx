@@ -73,7 +73,7 @@ export function JoinCondition({
 
   return (
     <JoinConditionRoot>
-      <Flex align="center" gap="4px" mih="47px" p="4px">
+      <Flex align="center" gap="xs" mih="47px" p="xs">
         <JoinConditionColumnPicker
           query={query}
           stageIndex={stageIndex}
