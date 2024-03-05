@@ -3,7 +3,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { DATA_BUCKET } from "metabase/containers/DataPicker/constants";
+import { useSelector } from "metabase/lib/redux";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Table from "metabase-lib/metadata/Table";
@@ -37,9 +39,16 @@ export function JoinTablePicker({
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
+  const metadata = useSelector(getMetadata);
+
   const databaseId = useMemo(() => {
     return Lib.databaseID(query);
   }, [query]);
+
+  const databases = useMemo(() => {
+    const database = metadata.database(databaseId);
+    return [database, metadata.savedQuestionsDatabase()].filter(Boolean);
+  }, [databaseId, metadata]);
 
   const tableInfo = useMemo(() => {
     return table ? Lib.displayInfo(query, stageIndex, table) : null;
@@ -75,13 +84,14 @@ export function JoinTablePicker({
         hasTableSearch
         canChangeDatabase={false}
         isInitiallyOpen={!table}
-        tableFilter={tableFilter}
+        databases={databases}
         selectedDatabaseId={databaseId}
         selectedTableId={tableId}
         selectedDataBucketId={getSelectedDataBucketId(
           pickerInfo,
           isModelDataSource,
         )}
+        tableFilter={tableFilter}
         setSourceTableFn={handleTableChange}
         triggerElement={
           <TablePickerButton disabled={isDisabled}>
