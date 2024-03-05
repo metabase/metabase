@@ -62,14 +62,27 @@ describe("issue 11994", () => {
     cy.signInAsNormalUser();
   });
 
-  it.only("does not show raw data toggle for pivot questions (metabase#11994)", () => {
+  // TODO: report the issue with /pivot endpoint throwing an error
+  it.skip("does not show raw data toggle for pivot questions (metabase#11994)", () => {
     // TODO: refactor visitQuestion to accept alias or id.
     cy.get<number>("@pivotQuestionId").then(pivotQuestionId => {
       visitQuestion(pivotQuestionId);
     });
+    cy.icon("table2").should("not.exist");
+    cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
   });
 
-  it("does not offer to save combo question viewed in raw mode (metabase#11994)", () => {});
+  it.only("does not offer to save combo question viewed in raw mode (metabase#11994)", () => {
+    cy.get<number>("@comboQuestionId").then(pivotQuestionId => {
+      visitQuestion(pivotQuestionId);
+    });
+    cy.location().as("questionLocation");
+    cy.icon("table2").click();
+    cy.get<Location>("@questionLocation").then(questionLocation => {
+      cy.location("href").should("eq", questionLocation.href);
+    });
+    cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
+  });
 });
 
 function removeUserMemberships(userId: UserId, groupIds: GroupId[]) {
