@@ -24,7 +24,7 @@
        (map (fn [spec]
               [(:name spec) (-> spec
                                 (#'de.specs/add-to-hiearchy!)
-                                (#'de.specs/domain-entity-spec-parser))]))
+                                (#'de.specs/coerce-to-domain-entity-spec))]))
        (into {})))
 
 (defmacro with-test-domain-entity-specs

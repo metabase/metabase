@@ -1,6 +1,16 @@
+import type Field from "metabase-lib/metadata/Field";
+import type { FieldFilterUiParameter } from "metabase-lib/parameters/types";
 import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
+import type {
+  Parameter,
+  ParameterValue,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
-export function getParameterValueFromQueryParams(parameter, queryParams) {
+export function getParameterValueFromQueryParams(
+  parameter: Parameter,
+  queryParams: Record<string, string | string[] | undefined>,
+) {
   queryParams = queryParams || {};
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
@@ -11,14 +21,14 @@ export function getParameterValueFromQueryParams(parameter, queryParams) {
   } else if (maybeParameterValue == null) {
     // try to use the default if the parameter is not present in the query params
     return parameter.default ?? null;
-  } else {
-    const parsedValue = parseParameterValue(maybeParameterValue, parameter);
-    return normalizeParameterValueForWidget(parsedValue, parameter);
   }
+  const parsedValue = parseParameterValue(maybeParameterValue, parameter);
+  return normalizeParameterValueForWidget(parsedValue, parameter);
 }
 
-export function parseParameterValue(value, parameter) {
-  const { fields } = parameter;
+function parseParameterValue(value: any, parameter: Parameter) {
+  // TODO this casting should be removed as we tidy up Parameter types
+  const { fields } = parameter as FieldFilterUiParameter;
   if (Array.isArray(fields) && fields.length > 0) {
     return parseParameterValueForFields(value, fields);
   }
@@ -31,33 +41,34 @@ export function parseParameterValue(value, parameter) {
   return value;
 }
 
-function parseParameterValueForNumber(value) {
+function parseParameterValueForNumber(value: string | string[]) {
   if (Array.isArray(value)) {
     return value.map(number => parseFloat(number));
   }
 
   // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
-  const valueSplitByCommas = value
-    .split(",")
-    .filter(item => item.trim() !== "");
+  const splitValues = value.split(",").filter(item => item.trim() !== "");
 
-  if (valueSplitByCommas.length === 0) {
+  if (splitValues.length === 0) {
     return;
   }
 
-  const isCommaSeparatedListOfNumbers =
-    valueSplitByCommas.length > 1 &&
-    valueSplitByCommas.every(item => !isNaN(parseFloat(item)));
+  const isNumberList =
+    splitValues.length > 1 &&
+    splitValues.every(item => !isNaN(parseFloat(item)));
 
-  if (isCommaSeparatedListOfNumbers) {
+  if (isNumberList) {
     // "1, 2,    3" will be tranformed into "1,2,3" for later use
-    return valueSplitByCommas.map(item => parseFloat(item)).join(",");
+    return splitValues.map(item => parseFloat(item)).join(",");
   }
 
   return parseFloat(value);
 }
 
-function parseParameterValueForFields(value, fields) {
+function parseParameterValueForFields(
+  value: string | string[],
+  fields: Field[],
+): ParameterValueOrArray | boolean {
   if (Array.isArray(value)) {
     return value.map(v => parseParameterValueForFields(v, fields));
   }
@@ -74,7 +85,10 @@ function parseParameterValueForFields(value, fields) {
   return value;
 }
 
-function normalizeParameterValueForWidget(value, parameter) {
+function normalizeParameterValueForWidget(
+  value: ParameterValue,
+  parameter: Parameter,
+) {
   const fieldType = getParameterType(parameter);
   if (fieldType !== "date" && !Array.isArray(value)) {
     return [value];
@@ -83,7 +97,10 @@ function normalizeParameterValueForWidget(value, parameter) {
   return value;
 }
 
-export function getParameterValuesByIdFromQueryParams(parameters, queryParams) {
+export function getParameterValuesByIdFromQueryParams(
+  parameters: Parameter[],
+  queryParams: Record<string, string | string[] | undefined>,
+) {
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.id,

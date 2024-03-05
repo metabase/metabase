@@ -20,6 +20,7 @@ import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
+  cancelEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
@@ -67,6 +68,7 @@ import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMe
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
+  SectionMenuItem,
 } from "./DashboardHeader.styled";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import { SectionLayoutPreview } from "./SectionLayoutPreview";
@@ -279,7 +281,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const onCancel = () => {
     onRevert();
-    onDoneEditing();
+    dispatch(cancelEditingDashboard());
   };
 
   const saveAsPDF = async () => {
@@ -412,20 +414,19 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
               </Tooltip>
             </span>
           </Menu.Target>
-          <Menu.Dropdown>
-            {layoutOptions.map(layout => (
-              <Tooltip
-                key={layout.id}
-                label={<SectionLayoutPreview layout={layout} />}
-                position="left"
-              >
-                <span>
-                  <Menu.Item onClick={() => onAddSection(layout)} fw="bold">
-                    {layout.label}
-                  </Menu.Item>
-                </span>
-              </Tooltip>
-            ))}
+          <Menu.Dropdown miw="100px">
+            <Flex direction="column" align="center" gap="md" p="12px">
+              {layoutOptions.map(layout => (
+                <SectionMenuItem
+                  key={layout.id}
+                  onClick={() => onAddSection(layout)}
+                  aria-label={layout.label}
+                  p="14px"
+                >
+                  <SectionLayoutPreview layout={layout} />
+                </SectionMenuItem>
+              ))}
+            </Flex>
           </Menu.Dropdown>
         </Menu>,
       );
