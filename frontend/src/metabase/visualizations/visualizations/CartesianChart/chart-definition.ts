@@ -46,7 +46,7 @@ export const getCartesianChartDefinition = (
     placeholderSeries: [
       {
         card: {
-          display: "line",
+          display: props.identifier,
           visualization_settings: {
             "graph.metrics": ["x"],
             "graph.dimensions": ["y"],
