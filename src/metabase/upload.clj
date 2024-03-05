@@ -100,7 +100,7 @@
   (ordered-hierarchy/sorted-tags h))
 
 (def ^:private column-types
-  "All type tags that correspond to concrete column types. An ordered set from most to least specialized."
+  "All type tags that correspond to concrete column types."
   (into #{} (remove abstract->concrete) value-types))
 
 (defn ^:private column-type
