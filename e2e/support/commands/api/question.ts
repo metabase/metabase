@@ -1,4 +1,5 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import type { Card, DatasetQuery } from "metabase-types/api";
 
 Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
   const { name, query } = questionDetails;
@@ -28,6 +29,46 @@ Cypress.Commands.add(
   },
 );
 
+type QueryType = "query" | "native";
+
+interface QuestionDetails {
+  /**
+   * Defaults to "test question"
+   */
+  name?: Card["name"];
+  description?: Card["description"];
+  /**
+   * Entity type.
+   * Defaults to "question"
+   */
+  type?: Card["type"];
+  native: any; // TODO: make its presence depend on type
+  query: any; // TODO: make its presence depend on type
+  /**
+   * Defaults to SAMPLE_DB_ID
+   */
+  database?: DatasetQuery["database"];
+  /**
+   * Defaults to "table"
+   */
+  display?: Card["display"];
+  parameters?: Card["parameters"];
+  visualization_settings?: Card["visualization_settings"];
+  /**
+   * Parent collection in which to store this question.
+   */
+  collection_id?: Card["collection_id"];
+  /**
+   * Used on the frontend to determine whether the question is pinned or not.
+   */
+  collection_position?: Card["collection_position"];
+  embedding_params?: Card["embedding_params"]; // TODO: make its presence depend on type - only for models
+  /**
+   * Defaults to false
+   */
+  enable_embedding?: Card["enable_embedding"];
+}
+
 /**
  *
  * @param {("query"|"native")} queryType
@@ -52,7 +93,7 @@ Cypress.Commands.add(
  * @param {string} customOptions.interceptAlias - We need distinctive endpoint aliases for cases where we have multiple questions or nested questions.
  */
 function question(
-  queryType,
+  queryType: QueryType,
   {
     name = "test question",
     description,
