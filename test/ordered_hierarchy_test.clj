@@ -19,14 +19,6 @@
       (ordered-hierarchy/derive ::offset-datetime ::varchar-255)
       (ordered-hierarchy/derive ::varchar-255 ::text)))
 
-(-> (ordered-hierarchy/make-hierarchy)
-    (ordered-hierarchy/derive ::boolean-or-int ::boolean)
-    (ordered-hierarchy/derive ::boolean-or-int ::int)
-    (ordered-hierarchy/derive ::auto-incrementing-int-pk ::int)
-    (ordered-hierarchy/derive ::varchar-255 ::text)
-    :children
-    ::int)
-
 (deftest parents-test
   (testing "Parents are listed according to the order that this tag was derived from each of them"
     (is (nil? (parents h ::text)))
