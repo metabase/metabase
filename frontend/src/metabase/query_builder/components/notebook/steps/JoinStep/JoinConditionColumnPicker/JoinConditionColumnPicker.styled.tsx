@@ -31,9 +31,9 @@ const hasColumnStyle = (isOpen = false) => css`
 `;
 
 export const JoinCellItem = styled.button<{
-  hasColumnSelected: boolean;
+  isColumnSelected: boolean;
   isOpen?: boolean;
-  readOnly?: boolean;
+  isReadOnly?: boolean;
 }>`
   display: flex;
   flex-direction: column;
@@ -41,11 +41,11 @@ export const JoinCellItem = styled.button<{
   gap: 2px;
 
   ${props =>
-    props.hasColumnSelected
+    props.isColumnSelected
       ? hasColumnStyle(props.isOpen)
       : noColumnStyle(props.isOpen)};
 
-  cursor: ${props => (props.readOnly ? "default" : "pointer")};
+  cursor: ${props => (props.isReadOnly ? "default" : "pointer")};
   transition: background 300ms linear, border 300ms linear, color 300ms linear;
 `;
 

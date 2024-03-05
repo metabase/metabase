@@ -22,7 +22,6 @@ interface JoinConditionColumnPickerProps {
   isReadOnly: boolean;
   onChange: (column: Lib.ColumnMetadata) => void;
   onOpenChange: (isOpened: boolean) => void;
-  "data-testid"?: string;
 }
 
 export function JoinConditionColumnPicker({
@@ -36,7 +35,6 @@ export function JoinConditionColumnPicker({
   isReadOnly,
   onChange,
   onOpenChange,
-  "data-testid": testId,
 }: JoinConditionColumnPickerProps) {
   return (
     <Popover opened={isOpened} position="bottom-start" onChange={onOpenChange}>
@@ -62,7 +60,7 @@ export function JoinConditionColumnPicker({
           isLhsColumn={isLhsColumn}
           onChange={onChange}
           onClose={() => onOpenChange(false)}
-          data-testid={testId}
+          data-testid={isLhsColumn ? "lhs-column-picker" : "rhs-column-picker"}
         />
       </Popover.Dropdown>
     </Popover>
@@ -103,10 +101,11 @@ const JoinColumnTarget = forwardRef(function ColumnNotebookCellItem(
     <JoinCellItem
       ref={ref}
       isOpen={isOpened}
-      hasColumnSelected={column != null}
+      isColumnSelected={column != null}
+      isReadOnly={isReadOnly}
       disabled={isReadOnly}
-      readOnly={isReadOnly}
       onClick={onClick}
+      aria-label={isLhsColumn ? t`Left column` : t`Right column`}
     >
       <Text
         display="block"
