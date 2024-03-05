@@ -22,6 +22,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
+   [metabase.util.redaction :as redaction]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -347,29 +348,36 @@
   Also remove settings that the User doesn't have read perms for."
   [db json-generator]
   (next-method
-   (let [db (if (not (mi/can-write? db))
-              (dissoc db :details)
-              (update db :details (fn [details]
-                                    (reduce
-                                     #(m/update-existing %1 %2 (constantly protected-password))
-                                     details
-                                     (sensitive-fields-for-db db)))))]
-     (update db :settings (fn [settings]
-                            (when (map? settings)
-                              (m/filter-keys
-                               (fn [setting-name]
-                                 (try
-                                  (setting/can-read-setting? setting-name
-                                                             (setting/current-user-readable-visibilities))
-                                  (catch Throwable e
-                                    ;; there is an known issue with exception is ignored when render API response (#32822)
-                                    ;; If you see this error, you probably need to define a setting for `setting-name`.
-                                    ;; But ideally, we should resovle the above issue, and remove this try/catch
-                                    (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
-                                    ;; let's be conservative and hide it by defaults, if you want to see it,
-                                    ;; you need to define it :)
-                                    false)))
-                               settings)))))
+   (redaction/with-warnings-at-most-once :database
+    (let [db (if (not (mi/can-write? db))
+               (do (redaction/log "Fully redacting database details during json encoding.")
+                   (dissoc db :details))
+               (do (redaction/log "Redacting sensitive fields within database details during json encoding.")
+                   (update db :details (fn [details]
+                                         (reduce
+                                          #(m/update-existing %1 %2 (constantly protected-password))
+                                          details
+                                          (sensitive-fields-for-db db))))))]
+      (update db :settings
+              (fn [settings]
+                (when (map? settings)
+                  (u/prog1
+                   (m/filter-keys
+                    (fn [setting-name]
+                      (try
+                        (setting/can-read-setting? setting-name
+                                                   (setting/current-user-readable-visibilities))
+                        (catch Throwable e
+                          ;; there is an known issue with exception is ignored when render API response (#32822)
+                          ;; If you see this error, you probably need to define a setting for `setting-name`.
+                          ;; But ideally, we should resovle the above issue, and remove this try/catch
+                          (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
+                          ;; let's be conservative and hide it by defaults, if you want to see it,
+                          ;; you need to define it :)
+                          false)))
+                    settings)
+                    (when (not= <> settings)
+                      (redaction/log "Redacting non-user-readable database settings during json encoding."))))))))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
