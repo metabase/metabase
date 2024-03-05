@@ -1,19 +1,19 @@
+import { useClickOutside } from "@mantine/hooks";
 import type { ChangeEvent, KeyboardEvent } from "react";
 import { useState } from "react";
 import _ from "underscore";
 
+import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
+import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
+import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget";
+import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
+import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
 import { Icon, Popover, TextInput } from "metabase/ui";
+import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type { Parameter, ParameterType, TemplateTag } from "metabase-types/api";
 
 import { shouldShowPlainInput } from "./core";
-import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
-import { formatParameterValue } from "metabase/parameters/utils/formatting";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
-import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
-import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
-import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget";
-import { useClickOutside } from "@mantine/hooks";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
@@ -32,7 +32,7 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
     return null;
   }
 
-  console.log("param", parameter);
+  // console.log("param", parameter);
 
   if (shouldShowPlainInput(parameter)) {
     return (
@@ -208,7 +208,6 @@ function OwnDatePicker(props: {
               )}
               onClose={() => setIsOpen(false)}
               setValue={onValueChange}
-              hideTimeSelectors
             />
           ) : (
             "<none>"
@@ -222,14 +221,18 @@ function OwnDatePicker(props: {
 function getInitialDateValue(value: any, parameterType: ParameterType) {
   if (value == null) {
     if (parameterType === "date/single") {
-      return new Date().toISOString().slice(0, 10);
+      return getIsoDate();
     }
 
     if (parameterType === "date/range") {
-      const now = new Date().toISOString().slice(0, 10);
+      const now = getIsoDate();
       return `${now}~${now}`;
     }
   }
 
   return value;
+}
+
+function getIsoDate() {
+  return new Date().toISOString().slice(0, 10);
 }

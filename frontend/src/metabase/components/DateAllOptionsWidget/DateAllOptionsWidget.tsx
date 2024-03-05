@@ -17,7 +17,6 @@ interface DateAllOptionsWidgetProps {
   required?: boolean;
   onClose: () => void;
   disableOperatorSelection?: boolean;
-  hideTimeSelectors?: boolean;
 }
 
 export const DateAllOptionsWidget = ({
@@ -28,7 +27,6 @@ export const DateAllOptionsWidget = ({
   defaultValue,
   initialValue,
   required = false,
-  hideTimeSelectors = false,
 }: DateAllOptionsWidgetProps) => {
   const [filter, setFilter] = useState(
     initialValue != null
@@ -51,7 +49,6 @@ export const DateAllOptionsWidget = ({
         onCommit={commitAndClose}
         hideEmptinessOperators
         disableOperatorSelection={disableOperatorSelection}
-        hideTimeSelectors={hideTimeSelectors}
         supportsExpressions
       >
         <UpdateFilterButton
