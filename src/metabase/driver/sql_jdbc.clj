@@ -167,11 +167,21 @@
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
   (let [primary-key-column (first primary-key)
         sql (first (sql/format {:alter-table (keyword table-name)
-                                :add-column (map (fn [[name type-and-constraints]]
-                                                   (cond-> (vec (cons name type-and-constraints))
-                                                     (= primary-key-column name)
+                                :add-column (map (fn [[column-name type-and-constraints]]
+                                                   (cond-> (vec (cons column-name type-and-constraints))
+                                                     (= primary-key-column column-name)
                                                      (conj :primary-key)))
                                                  column-definitions)}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
+    (qp.writeback/execute-write-sql! db-id sql)))
+
+(defmethod driver/alter-columns! :sql-jdbc
+  [driver db-id table-name column-definitions]
+  (let [sql (first (sql/format {:alter-table  (keyword table-name)
+                                :alter-column (map (fn [[column-name type-and-constraints]]
+                                                     (vec (cons column-name type-and-constraints)))
+                                                   column-definitions)}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
