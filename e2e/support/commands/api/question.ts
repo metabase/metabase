@@ -179,12 +179,16 @@ function question(
     });
 }
 
-/**
- *
- * @param {string} title - A title used to log the Cypress action/request that follows it.
- * @param {string} [questionName] - Optional question name.
- */
-function logAction(title, questionName) {
+function logAction(
+  /**
+   * A title used to log the Cypress action/request that follows it.
+   */
+  title: string,
+  /**
+   * Optional question name.
+   */
+  questionName?: string,
+) {
   const fullTitle = `${title}: ${questionName}`;
   const message = questionName ? fullTitle : title;
 
