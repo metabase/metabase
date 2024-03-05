@@ -38,7 +38,21 @@ export function JoinDraft({
     [query, stageIndex, table, lhsColumn],
   );
 
-  const handleConditionAdd = (newCondition: Lib.JoinCondition) => {
+  const handleTableChange = (newTable: Lib.Joinable) => {
+    const newConditions = Lib.suggestedJoinConditions(
+      query,
+      stageIndex,
+      newTable,
+    );
+    if (newConditions.length > 0) {
+      const newJoin = Lib.joinClause(newTable, newConditions);
+      onChange(newJoin);
+    } else {
+      setTable(newTable);
+    }
+  };
+
+  const handleConditionChange = (newCondition: Lib.JoinCondition) => {
     if (table) {
       const newJoin = Lib.joinClause(table, [newCondition]);
       onChange(newJoin);
@@ -65,7 +79,7 @@ export function JoinDraft({
             table={table}
             color={color}
             isReadOnly={isReadOnly}
-            onChange={setTable}
+            onChange={handleTableChange}
           />
         </Flex>
       </JoinCell>
@@ -80,7 +94,7 @@ export function JoinDraft({
               stageIndex={stageIndex}
               table={table}
               isReadOnly={isReadOnly}
-              onChange={handleConditionAdd}
+              onChange={handleConditionChange}
               onLhsColumnChange={setLhsColumn}
             />
           </JoinConditionCell>

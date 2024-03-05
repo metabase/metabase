@@ -1,28 +1,54 @@
+import { useMemo } from "react";
+
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
 
+import { Join } from "./Join";
 import { JoinDraft } from "./JoinDraft";
 
 export function JoinStep({
   query,
   stageIndex,
+  step: { itemIndex },
   color,
-  readOnly = false,
+  readOnly: isReadOnly = false,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const handleAdd = (join: Lib.Join) => {
-    const newQuery = Lib.join(query, stageIndex, join);
+  const joins = useMemo(
+    () => Lib.joins(query, stageIndex),
+    [query, stageIndex],
+  );
+  const join = itemIndex != null ? joins[itemIndex] : undefined;
+
+  const handleAddJoin = (newJoin: Lib.Join) => {
+    const newQuery = Lib.join(query, stageIndex, newJoin);
     updateQuery(newQuery);
   };
 
-  return (
+  const handleUpdateJoin = (newJoin: Lib.Join) => {
+    if (join) {
+      const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
+      updateQuery(newQuery);
+    }
+  };
+
+  return join ? (
+    <Join
+      query={query}
+      stageIndex={stageIndex}
+      join={join}
+      color={color}
+      isReadOnly={isReadOnly}
+      onChange={handleUpdateJoin}
+    />
+  ) : (
     <JoinDraft
       query={query}
       stageIndex={stageIndex}
       color={color}
-      isReadOnly={readOnly}
-      onChange={handleAdd}
+      isReadOnly={isReadOnly}
+      onChange={handleAddJoin}
     />
   );
 }
