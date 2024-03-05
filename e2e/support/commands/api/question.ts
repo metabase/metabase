@@ -14,11 +14,11 @@ declare global {
       ): Cypress.Chainable<Cypress.Response<Card>>;
       createQuestion(
         questionDetails: StructuredQuestionDetails,
-        options: Options,
+        options?: Options,
       ): Cypress.Chainable<Cypress.Response<Card>>;
       createNativeQuestion(
         questionDetails: NativeQuestionDetails,
-        options: Options,
+        options?: Options,
       ): Cypress.Chainable<Cypress.Response<Card>>;
     }
   }
@@ -111,7 +111,7 @@ Cypress.Commands.add("archiveQuestion", (id: Card["id"]) => {
 
 Cypress.Commands.add(
   "createQuestion",
-  (questionDetails: StructuredQuestionDetails, options: Options) => {
+  (questionDetails: StructuredQuestionDetails, options?: Options) => {
     const { database = SAMPLE_DB_ID, name, query } = questionDetails;
 
     if (!query) {
@@ -132,7 +132,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "createNativeQuestion",
-  (questionDetails: NativeQuestionDetails, options: Options) => {
+  (questionDetails: NativeQuestionDetails, options?: Options) => {
     const { database = SAMPLE_DB_ID, name, native } = questionDetails;
 
     if (!native) {
