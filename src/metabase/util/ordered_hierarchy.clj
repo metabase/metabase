@@ -117,8 +117,9 @@
   "Given two tags, return the first tag in the ancestral lineage of tag-a that's also in the ancestral lineage of tag-b.
   Returns nil if there is no common ancestor.
 
-  NOTE: It's possible that this node is also always a Least Common Ancestor, but I'm not sure.
-        If it does it would be worth renaming this method to use standard terminology."
+  NOTE: this is very similar to the notion of a Least Common Ancestor in a graph, but I'm not sure that its result
+        will always satisfy that property. We also want to emphasize the way it relates to the total ordering, hence
+        using different terminology."
   [h tag-a tag-b]
   (let [ancestors-a (ancestors h tag-a)
         ancestors-b (ancestors h tag-b)]
