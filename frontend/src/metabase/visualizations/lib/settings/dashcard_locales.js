@@ -685,8 +685,8 @@ const TITLE_LOCALES_BN = {
     'bn' : 'সার্টিফিকেট কনফিগারেশন অনুযায়ী প্রশিক্ষণের পরিসংখ্যান'
   },
   'total.trainee.count.based.on.obtaining.certificate' : {
-    'en' : 'Statistics Of Trainees Based On Certificate Attainment',
-    'bn' : 'সার্টিফিকেট অর্জন ভিত্তিক প্রশিক্ষণার্থীর পরিসংখ্যান'
+    'en' : 'Trainee Statistics Based on Attainment of Certificate of Completed Training',
+    'bn' : 'সম্পন্ন প্রশিক্ষণ সমূহের সার্টিফিকেট অর্জন ভিত্তিক প্রশিক্ষণার্থীর পরিসংখ্যান'
   },
 }
 
