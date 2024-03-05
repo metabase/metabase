@@ -59,7 +59,7 @@ export class DateQuarterYearWidget extends Component<Props, State> {
     const { quarter, year } = this.state;
     return (
       <div className="py2">
-        <div className="flex flex-column align-center px1">
+        <div className="flex flex-column align-center py1">
           <YearPicker
             value={year}
             onChange={year => this.setState({ year: year })}

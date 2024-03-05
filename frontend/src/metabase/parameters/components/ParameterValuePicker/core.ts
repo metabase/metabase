@@ -1,15 +1,11 @@
-// import {
-//   getNumberParameterArity,
-//   getStringParameterArity,
-// } from "metabase-lib/parameters/utils/operators";
 import {
   getParameterSubType,
+  isDateParameter,
   isNumberParameter,
-  // isStringParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
 import type { Parameter } from "metabase-types/api";
 
-export function shouldUseNew(parameter: Parameter) {
+export function shouldShowPlainInput(parameter: Parameter) {
   // TODO this is a way to distinguish a field selector from the others
   // isFieldFilterParameter or similar should be used here
   const hasFields = Boolean((parameter as any).fields);
@@ -37,20 +33,10 @@ export function shouldUseNew(parameter: Parameter) {
   }
 
   return false;
+}
 
-  // if (
-  //   isStringParameter(parameter) &&
-  //   getStringParameterArity(parameter) === 1
-  // ) {
-  //   return true;
-  // }
-
-  // if (
-  //   isNumberParameter(parameter) &&
-  //   getNumberParameterArity(parameter) === 1
-  // ) {
-  //   return true;
-  // }
-
-  // return false;
+export function shouldShowDatePicker(parameter: Parameter) {
+  return (
+    isDateParameter(parameter) && getParameterSubType(parameter) === "single"
+  );
 }
