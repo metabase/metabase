@@ -58,7 +58,6 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
         key={`sortable-${id}`}
         disabled={isDragDisabled}
         draggingStyle={{ opacity: 0.5 }}
-        role="listitem"
       >
         <ColumnItem
           title={getItemName(item)}
