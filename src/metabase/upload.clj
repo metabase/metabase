@@ -172,6 +172,10 @@
 (defn- varchar-255? [s]
   (<= (count s) 255))
 
+(defn- regex-matcher [regex]
+  (fn [s]
+    (boolean (re-matches regex s))))
+
 ;; end [[value->type]] helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -180,7 +184,8 @@
 
 (def ^:private type->check-schema
   "Every inferable value-type needs to have a detection function registered."
-  (into [:map] (map #(vector % :fn) (remove non-inferable-types value-types))))
+  (into [:map] (map #(vector % [:=> [:cat :string] :boolean])
+                    (remove non-inferable-types value-types))))
 
 (mu/defn ^:private settings->type->check :- type->check-schema
   [{:keys [number-separators] :as _settings}]
@@ -189,8 +194,8 @@
    ::offset-datetime offset-datetime-string?
    ::date            date-string?
    ::datetime        datetime-string?
-   ::int             (partial re-matches (int-regex number-separators))
-   ::float           (partial re-matches (float-regex number-separators))
+   ::int             (regex-matcher (int-regex number-separators))
+   ::float           (regex-matcher (float-regex number-separators))
    ::varchar-255     varchar-255?
    ::text            (constantly true)})
 
