@@ -157,7 +157,7 @@ type DateRelativeWidgetProps = {
   onClose: () => void;
 };
 
-class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
+export class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
   constructor(props: DateRelativeWidgetProps) {
     super(props);
   }
@@ -185,6 +185,3 @@ class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
     );
   }
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateRelativeWidget;

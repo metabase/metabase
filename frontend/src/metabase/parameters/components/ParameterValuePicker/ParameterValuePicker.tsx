@@ -1,12 +1,18 @@
 import type { ChangeEvent, KeyboardEvent } from "react";
-import { useState } from "react";
+import { /*useEffect,*/ useState } from "react";
 import _ from "underscore";
 
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
-import { Icon, TextInput } from "metabase/ui";
+import { Icon, Popover, TextInput } from "metabase/ui";
 import type { Parameter, TemplateTag } from "metabase-types/api";
 
-import { shouldUseNew } from "./core";
+import { /*shouldShowDatePicker,*/ shouldShowPlainInput } from "./core";
+import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
+import { formatParameterValue } from "metabase/parameters/utils/formatting";
+import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
+import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
+import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
+import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
@@ -24,7 +30,9 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
     return null;
   }
 
-  if (shouldUseNew(parameter)) {
+  console.log("param", parameter);
+
+  if (shouldShowPlainInput(parameter)) {
     return (
       <PlainValueInput
         initialValue={initialValue}
@@ -34,16 +42,31 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
     );
   }
 
+  const formatted =
+    formatParameterValue(initialValue, parameter) ?? "<placeholder>";
+
+  // if (shouldShowDatePicker(parameter)) {
+  //   return "DATE";
+  // }
+
   // The fallback
   return (
-    <DefaultParameterValueWidget
-      parameter={getAmendedParameter(tag, parameter)}
-      value={initialValue}
-      setValue={onValueChange}
-      isEditing
-      commitImmediately
-      mimicMantine
-    />
+    <>
+      {isDateParameter(parameter) && (
+        <OwnDatePicker value={initialValue} parameter={parameter} />
+      )}
+
+      <div style={{ outline: "2px solid lime;" }}>{formatted}</div>
+
+      <DefaultParameterValueWidget
+        parameter={getAmendedParameter(tag, parameter)}
+        value={initialValue}
+        setValue={onValueChange}
+        isEditing
+        commitImmediately
+        mimicMantine
+      />
+    </>
   );
 }
 
@@ -123,4 +146,56 @@ function getAmendedParameter(tag: TemplateTag, parameter: Parameter) {
   // We want to remove "default" and "required" so that it
   // doesn't show up in the default value input icon
   return _.omit(amended, "default", "required");
+}
+
+function OwnDatePicker(props: { value: any; parameter: Parameter }) {
+  const { value, parameter } = props;
+  const formatted = formatParameterValue(value, parameter) ?? "<placeholder>";
+
+  const DateWidget = {
+    // "date/single": DateAllOptionsWidget,
+    // "date/range": DateAllOptionsWidget,
+    "date/relative": DateRelativeWidget,
+    "date/month-year": DateMonthYearWidget,
+    "date/quarter-year": DateQuarterYearWidget,
+    "date/all-options": DateAllOptionsWidget,
+  }[parameter.type];
+
+  return (
+    <Popover>
+      <Popover.Target>
+        <div>
+          {formatted}
+          <TextInput
+            value={value}
+            // disabled
+            readOnly
+            // onChange={handleChange}
+            // onKeyUp={handleKeyup}
+            placeholder="Select a default value..."
+            // rightSection={
+            //   value ? (
+            //     // TODO value must be null
+            //     <Icon cursor="pointer" name="close" onClick={() => commit("")} />
+            //   ) : null
+            // }
+          />
+        </div>
+      </Popover.Target>
+
+      <Popover.Dropdown>
+        {DateWidget ? (
+          <DateWidget value={value} onClose={() => {}} setValue={() => {}} />
+        ) : (
+          "<none>"
+        )}
+        {/* <DateAllOptionsWidget
+          disableOperatorSelection
+          value={value}
+          onClose={() => {}}
+          setValue={() => {}}
+        /> */}
+      </Popover.Dropdown>
+    </Popover>
+  );
 }

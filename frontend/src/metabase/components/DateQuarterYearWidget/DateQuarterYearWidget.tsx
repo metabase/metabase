@@ -21,7 +21,7 @@ type State = {
   year: number;
 };
 
-class DateQuarterYearWidget extends Component<Props, State> {
+export class DateQuarterYearWidget extends Component<Props, State> {
   state: State = {
     quarter: null,
     year: moment().year(),
@@ -94,6 +94,3 @@ const Quarter = ({ quarter, selected, onClick }: QuarterProps) => (
     {moment().quarter(quarter).format(QUARTER_FORMAT_STRING)}
   </QuarterRoot>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateQuarterYearWidget;
