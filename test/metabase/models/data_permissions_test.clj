@@ -17,6 +17,18 @@
       :block           [:perms/data-access #{:block}]
       nil              [:perms/data-access #{}])))
 
+(deftest ^:parallel at-least-as-permissive?-test
+  (testing "at-least-as-permissive? correctly compares permission values"
+   (is (data-perms/at-least-as-permissive? :perms/data-access :unrestricted :unrestricted))
+   (is (data-perms/at-least-as-permissive? :perms/data-access :unrestricted :no-self-service))
+   (is (data-perms/at-least-as-permissive? :perms/data-access :unrestricted :block))
+   (is (not (data-perms/at-least-as-permissive? :perms/data-access :no-self-service :unrestricted)))
+   (is (data-perms/at-least-as-permissive? :perms/data-access :no-self-service :no-self-service))
+   (is (data-perms/at-least-as-permissive? :perms/data-access :no-self-service :block))
+   (is (not (data-perms/at-least-as-permissive? :perms/data-access :block :unrestricted)))
+   (is (not (data-perms/at-least-as-permissive? :perms/data-access :block :no-self-service)))
+   (is (data-perms/at-least-as-permissive? :perms/data-access :block :block))))
+
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
                  :model/Database         {database-id :id} {}]
