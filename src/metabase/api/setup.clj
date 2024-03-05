@@ -337,6 +337,7 @@
 (api/defendpoint GET "/token-check"
   "Check if the token is valid, only available before the initial setup as it's an unauthenticated endpoint"
   [token]
+  (api/check-superuser)
   (let [status (premium-features/fetch-token-status token)]
     {:valid (:valid status)}))
 
