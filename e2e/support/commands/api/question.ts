@@ -12,6 +12,14 @@ declare global {
       archiveQuestion(
         id: Card["id"],
       ): Cypress.Chainable<Cypress.Response<Card>>;
+      createQuestion(
+        questionDetails: StructuredQuestionDetails,
+        options: Options,
+      ): Cypress.Chainable<Cypress.Response<Card>>;
+      createNativeQuestion(
+        questionDetails: NativeQuestionDetails,
+        options: Options,
+      ): Cypress.Chainable<Cypress.Response<Card>>;
     }
   }
 }
