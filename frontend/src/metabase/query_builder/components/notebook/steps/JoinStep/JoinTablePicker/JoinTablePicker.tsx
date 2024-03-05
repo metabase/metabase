@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { DATA_BUCKET } from "metabase/containers/DataPicker/constants";
-import { useSelector } from "metabase/lib/redux";
+import Tables from "metabase/entities/tables";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon, Popover, Tooltip } from "metabase/ui";
@@ -40,6 +41,7 @@ export function JoinTablePicker({
   onChange,
 }: JoinTablePickerProps) {
   const metadata = useSelector(getMetadata);
+  const dispatch = useDispatch();
 
   const databaseId = useMemo(() => {
     return Lib.databaseID(query);
@@ -63,6 +65,7 @@ export function JoinTablePicker({
   const isDisabled = table != null || isReadOnly;
 
   const handleTableChange = async (tableId: TableId) => {
+    await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
     onChange?.(Lib.tableOrCardMetadata(query, tableId));
   };
 

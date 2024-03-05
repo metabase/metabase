@@ -30,6 +30,7 @@ export function Join({
   join,
   color,
   isReadOnly,
+  isModelDataSource,
   onJoinChange,
   onQueryChange,
 }: JoinProps) {
