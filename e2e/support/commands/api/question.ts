@@ -80,19 +80,23 @@ type QuestionDetails<Type extends QueryType> = Type extends "native"
   ? NativeQuestionDetails
   : StructuredQuestionDetails;
 
-Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
-  const { name, query } = questionDetails;
+Cypress.Commands.add(
+  "createQuestion",
+  (questionDetails: StructuredQuestionDetails, options: Options) => {
+    const { name, query } = questionDetails;
 
-  if (!query) {
-    throw new Error('"query" attribute missing in questionDetails');
-  }
+    if (!query) {
+      throw new Error('"query" attribute missing in questionDetails');
+    }
 
-  logAction("Create a QB question", name);
-  return question("query", questionDetails, customOptions);
-});
+    logAction("Create a QB question", name);
+    return question("query", questionDetails, options);
+  },
+);
 
-Cypress.Commands.add("archiveQuestion", id => {
+Cypress.Commands.add("archiveQuestion", (id: Card["id"]) => {
   cy.log(`Archiving a question with id: ${id}`);
+
   return cy.request("PUT", `/api/card/${id}`, {
     archived: true,
   });
@@ -100,7 +104,7 @@ Cypress.Commands.add("archiveQuestion", id => {
 
 Cypress.Commands.add(
   "createNativeQuestion",
-  (questionDetails, customOptions) => {
+  (questionDetails: NativeQuestionDetails, options: Options) => {
     const { name, native } = questionDetails;
 
     if (!native) {
@@ -108,7 +112,7 @@ Cypress.Commands.add(
     }
 
     logAction("Create a native question", name);
-    question("native", questionDetails, customOptions);
+    question("native", questionDetails, options);
   },
 );
 
