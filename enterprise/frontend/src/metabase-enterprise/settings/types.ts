@@ -15,7 +15,6 @@ export interface EnterpriseSettings extends Settings {
   "landing-page"?: string;
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
-  "other-sso-enabled?": boolean | null;
   /**
    * @deprecated
    */

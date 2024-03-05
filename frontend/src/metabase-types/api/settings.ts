@@ -268,6 +268,7 @@ interface PublicSettings {
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
+  "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
   "report-timezone-long": string;
