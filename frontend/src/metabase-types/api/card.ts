@@ -28,7 +28,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   /* Indicates whether static embedding for this card has been published */
   enable_embedding: boolean;
-  embedding_params?: EmbeddingParameters | null;
+  embedding_params: EmbeddingParameters | null;
   can_write: boolean;
   initially_published_at: string | null;
 

@@ -37,6 +37,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   based_on_upload: null,
   archived: false,
   enable_embedding: false,
+  embedding_params: null,
   initially_published_at: null,
   ...opts,
 });
