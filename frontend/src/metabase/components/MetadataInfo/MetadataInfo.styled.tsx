@@ -34,6 +34,7 @@ export const Description = styled.div`
   white-space: pre-line;
   max-height: 200px;
   overflow: auto;
+  margin-bottom: 0.5em;
 `;
 
 export const EmptyDescription = styled(Description)`
