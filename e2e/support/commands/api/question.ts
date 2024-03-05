@@ -1,10 +1,13 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type { Card, DatasetQuery, NativeQuery } from "metabase-types/api";
+import type {
+  Card,
+  DatasetQuery,
+  NativeQuery,
+  StructuredQuery,
+} from "metabase-types/api";
 
-type QueryType = "query" | "native";
-
-type BaseQuestionDetails = {
+type QuestionDetails = {
+  dataset_query: DatasetQuery;
   /**
    * Defaults to "test question".
    */
@@ -15,10 +18,6 @@ type BaseQuestionDetails = {
    * Defaults to "question".
    */
   type?: Card["type"];
-  /**
-   * Defaults to SAMPLE_DB_ID.
-   */
-  database?: DatasetQuery["database"];
   /**
    * Defaults to "table".
    */
@@ -38,6 +37,22 @@ type BaseQuestionDetails = {
    * Defaults to false.
    */
   enable_embedding?: Card["enable_embedding"];
+};
+
+type StructuredQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
+  /**
+   * Defaults to SAMPLE_DB_ID.
+   */
+  database?: DatasetQuery["database"];
+  query: StructuredQuery;
+};
+
+type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
+  /**
+   * Defaults to SAMPLE_DB_ID.
+   */
+  database?: DatasetQuery["database"];
+  native: NativeQuery;
 };
 
 interface Options {
@@ -68,29 +83,24 @@ interface Options {
   interceptAlias?: string;
 }
 
-type StructuredQuestionDetails = BaseQuestionDetails & {
-  query: StructuredQuery;
-};
-
-type NativeQuestionDetails = BaseQuestionDetails & {
-  native: NativeQuery;
-};
-
-type QuestionDetails<Type extends QueryType> = Type extends "native"
-  ? NativeQuestionDetails
-  : StructuredQuestionDetails;
-
 Cypress.Commands.add(
   "createQuestion",
   (questionDetails: StructuredQuestionDetails, options: Options) => {
-    const { name, query } = questionDetails;
+    const { database = SAMPLE_DB_ID, name, query } = questionDetails;
 
     if (!query) {
       throw new Error('"query" attribute missing in questionDetails');
     }
 
     logAction("Create a QB question", name);
-    return question("query", questionDetails, options);
+
+    return question(
+      {
+        ...questionDetails,
+        dataset_query: { type: "query", query, database },
+      },
+      options,
+    );
   },
 );
 
@@ -105,24 +115,30 @@ Cypress.Commands.add("archiveQuestion", (id: Card["id"]) => {
 Cypress.Commands.add(
   "createNativeQuestion",
   (questionDetails: NativeQuestionDetails, options: Options) => {
-    const { name, native } = questionDetails;
+    const { database = SAMPLE_DB_ID, name, native } = questionDetails;
 
     if (!native) {
       throw new Error('"native" attribute missing in questionDetails');
     }
 
     logAction("Create a native question", name);
-    return question("native", questionDetails, options);
+
+    return question(
+      {
+        ...questionDetails,
+        dataset_query: { type: "native", native, database },
+      },
+      options,
+    );
   },
 );
 
-function question<Type extends QueryType>(
-  queryType: Type,
+function question(
   {
     name = "test question",
     description,
+    dataset_query,
     type = "question",
-    database = SAMPLE_DB_ID,
     display = "table",
     parameters,
     visualization_settings = {},
@@ -130,8 +146,7 @@ function question<Type extends QueryType>(
     collection_position,
     embedding_params,
     enable_embedding = false,
-    ...rest
-  }: QuestionDetails<Type>,
+  }: QuestionDetails,
   {
     loadMetadata = false,
     visitQuestion = false,
@@ -144,11 +159,7 @@ function question<Type extends QueryType>(
     .request("POST", "/api/card", {
       name,
       description,
-      dataset_query: {
-        type: queryType,
-        [queryType]: queryType === "native" ? rest.native : rest.query,
-        database,
-      },
+      dataset_query,
       display,
       parameters,
       visualization_settings,
