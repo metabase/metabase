@@ -1,12 +1,12 @@
 import type { ChangeEvent, KeyboardEvent } from "react";
-import { /*useEffect,*/ useRef, useState } from "react";
+import { useState } from "react";
 import _ from "underscore";
 
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
 import { Icon, Popover, TextInput } from "metabase/ui";
-import type { Parameter, TemplateTag } from "metabase-types/api";
+import type { Parameter, ParameterType, TemplateTag } from "metabase-types/api";
 
-import { /*shouldShowDatePicker,*/ shouldShowPlainInput } from "./core";
+import { shouldShowPlainInput } from "./core";
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
@@ -23,6 +23,7 @@ interface ParameterValuePickerProps {
   placeholder?: string;
 }
 
+// TODO make controlled outside
 // TODO must change value when type is changed
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
   const { tag, parameter, initialValue, onValueChange, placeholder } = props;
@@ -43,30 +44,26 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
     );
   }
 
-  // if (shouldShowDatePicker(parameter)) {
-  //   return "DATE";
-  // }
+  if (isDateParameter(parameter)) {
+    return (
+      <OwnDatePicker
+        value={initialValue}
+        parameter={parameter}
+        onValueChange={onValueChange}
+      />
+    );
+  }
 
   // The fallback
   return (
-    <>
-      {isDateParameter(parameter) && (
-        <OwnDatePicker
-          value={initialValue}
-          parameter={parameter}
-          onValueChange={onValueChange}
-        />
-      )}
-
-      <DefaultParameterValueWidget
-        parameter={getAmendedParameter(tag, parameter)}
-        value={initialValue}
-        setValue={onValueChange}
-        isEditing
-        commitImmediately
-        mimicMantine
-      />
-    </>
+    <DefaultParameterValueWidget
+      parameter={getAmendedParameter(tag, parameter)}
+      value={initialValue}
+      setValue={onValueChange}
+      isEditing
+      commitImmediately
+      mimicMantine
+    />
   );
 }
 
@@ -76,9 +73,9 @@ interface PlainValueInputProps {
   placeholder?: string;
 }
 
+// TODO value must change when changing filter types
 function PlainValueInput(props: PlainValueInputProps) {
   const { initialValue, onValueChange, placeholder } = props;
-  // TODO must change when changing filter types
   const [value, setValue] = useState(initialValue);
 
   const commit = (newValue: any) => {
@@ -148,6 +145,9 @@ function getAmendedParameter(tag: TemplateTag, parameter: Parameter) {
   return _.omit(amended, "default", "required");
 }
 
+// TODO value should reset when changing types
+// TODO popover z-index (select inside dropdown)
+// TODO placholder "Select default value..." isn't showing
 function OwnDatePicker(props: {
   value: any;
   parameter: Parameter;
@@ -158,11 +158,12 @@ function OwnDatePicker(props: {
   const formatted = formatParameterValue(value, parameter);
 
   const DateWidget = {
-    // "date/single": DateAllOptionsWidget,
-    // "date/range": DateAllOptionsWidget,
     "date/relative": DateRelativeWidget,
     "date/month-year": DateMonthYearWidget,
     "date/quarter-year": DateQuarterYearWidget,
+    // pickers
+    "date/single": DateAllOptionsWidget,
+    "date/range": DateAllOptionsWidget,
     "date/all-options": DateAllOptionsWidget,
   }[parameter.type];
 
@@ -201,8 +202,13 @@ function OwnDatePicker(props: {
           {DateWidget ? (
             <DateWidget
               value={value}
+              initialValue={getInitialDateValue(
+                value,
+                parameter.type as ParameterType,
+              )}
               onClose={() => setIsOpen(false)}
               setValue={onValueChange}
+              hideTimeSelectors
             />
           ) : (
             "<none>"
@@ -211,4 +217,19 @@ function OwnDatePicker(props: {
       </Popover.Dropdown>
     </Popover>
   );
+}
+
+function getInitialDateValue(value: any, parameterType: ParameterType) {
+  if (value == null) {
+    if (parameterType === "date/single") {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    if (parameterType === "date/range") {
+      const now = new Date().toISOString().slice(0, 10);
+      return `${now}~${now}`;
+    }
+  }
+
+  return value;
 }
