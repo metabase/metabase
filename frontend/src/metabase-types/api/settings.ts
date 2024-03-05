@@ -268,7 +268,6 @@ interface PublicSettings {
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
-  "other-sso-enabled?": boolean | null;
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
   "report-timezone-short": string;
