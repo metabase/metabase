@@ -13,7 +13,9 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
+   [metabase.shared.formatting.internal.date-builder :as shared.formatting.internal.builder]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.internal.time-common :as shared.ut.common]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -25,6 +27,45 @@
    [:options ::lib.schema.common/options]
    [:args [:sequential :any]]])
 
+(def ^:private expandable-time-units #{:hour})
+
+(def ^:private expandable-date-units #{:week :month :quarter :year})
+
+(def ^:private expandable-temporal-units
+  (into expandable-time-units expandable-date-units))
+
+(defn- expandable-temporal-expression?
+  [[operator _options & [maybe-clause-arg :as args]]]
+  (boolean (and (= := operator)
+                (= 2 (count args))
+                (lib.util/clause? maybe-clause-arg)
+                (contains? expandable-temporal-units
+                           (:temporal-unit (lib.options/options maybe-clause-arg))))))
+
+(defn- expand-temporal-expression
+  "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
+
+   Current filter picker implementation is unable to handle expression parts of expressions of a form
+   `[:= {...} [:field {:temporal-unit :week} 11] \"2024-05-12\"]` -- expresions that check for equality of a column
+   with `:temporal-unit` set to value other than `:day` or `:minute` to some date time value.
+
+   To mitigate that expressions are converted to `:between` form which is handled correctly by filter picker. For more
+   info on the issue see the comment [https://github.com/metabase/metabase/issues/12496#issuecomment-1629317661].
+   This functionality is backend approach to \"smaller solution\"."
+  [[_operator options column-arg dt-arg :as _expression-clause]]
+  (let [temporal-unit (:temporal-unit (lib.options/options column-arg))
+        interval (shared.ut.common/to-range (shared.ut/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
+        format' (cond-> [:year "-" :month-dd "-" :day-of-month-dd]
+                 (contains? expandable-time-units temporal-unit) (into ["T" :hour-24-dd ":" :minute-dd]))
+        formatter (shared.formatting.internal.builder/->formatter format')]
+    (into [:between options column-arg] (map formatter) interval)))
+
+(defn- maybe-expand-temporal-expression
+  [expression-clause]
+  (if (expandable-temporal-expression? expression-clause)
+    (expand-temporal-expression expression-clause)
+    expression-clause))
+
 (mu/defn expression-parts :- ExpressionParts
   "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
   ([query expression-clause]
@@ -33,7 +74,7 @@
   ([query :- ::lib.schema/query
     stage-number :- :int
     expression-clause :- ::lib.schema.expression/expression]
-   (let [[op options & args] expression-clause
+   (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
          ->maybe-col #(when (lib.util/ref-clause? %)
                         (lib.filter/add-column-operators
                           (lib.field/extend-column-metadata-from-ref
