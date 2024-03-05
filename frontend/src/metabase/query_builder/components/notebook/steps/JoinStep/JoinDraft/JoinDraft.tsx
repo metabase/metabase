@@ -17,7 +17,7 @@ interface JoinDraftProps {
   stageIndex: number;
   color: string;
   isReadOnly: boolean;
-  onChange: (join: Lib.Join) => void;
+  onJoinChange: (join: Lib.Join) => void;
 }
 
 export function JoinDraft({
@@ -25,7 +25,7 @@ export function JoinDraft({
   stageIndex,
   color,
   isReadOnly,
-  onChange,
+  onJoinChange,
 }: JoinDraftProps) {
   const [strategy, setStrategy] = useState(() =>
     getDefaultJoinStrategy(query, stageIndex),
@@ -47,7 +47,7 @@ export function JoinDraft({
     );
     if (newConditions.length > 0) {
       const newJoin = Lib.joinClause(newTable, newConditions);
-      onChange(newJoin);
+      onJoinChange(newJoin);
     } else {
       setTable(newTable);
       setFields("all");
@@ -60,7 +60,7 @@ export function JoinDraft({
         Lib.joinClause(table, [newCondition]),
         fields,
       );
-      onChange(newJoin);
+      onJoinChange(newJoin);
     }
   };
 

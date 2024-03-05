@@ -40,7 +40,8 @@ export function JoinStep({
       join={join}
       color={color}
       isReadOnly={isReadOnly}
-      onChange={handleUpdateJoin}
+      onJoinChange={handleUpdateJoin}
+      onQueryChange={updateQuery}
     />
   ) : (
     <JoinDraft
@@ -48,7 +49,7 @@ export function JoinStep({
       stageIndex={stageIndex}
       color={color}
       isReadOnly={isReadOnly}
-      onChange={handleAddJoin}
+      onJoinChange={handleAddJoin}
     />
   );
 }
