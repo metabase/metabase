@@ -37,7 +37,7 @@ export function JoinStep({
   const {
     strategy,
     table,
-    columns,
+    getColumns,
     conditions,
     setStrategy,
     setTable,
@@ -45,6 +45,7 @@ export function JoinStep({
     updateCondition,
     removeCondition,
     isColumnSelected,
+    toggleSelectedColumn,
     setSelectedColumns,
   } = useJoin(query, stageIndex, join);
 
@@ -82,6 +83,16 @@ export function JoinStep({
     }
     if (!hasConditions) {
       setIsAddingNewCondition(true);
+    }
+  };
+
+  const handleSelectedColumnToggle = (
+    column: Lib.ColumnMetadata,
+    isSelected: boolean,
+  ) => {
+    const nextQuery = toggleSelectedColumn(column, isSelected);
+    if (nextQuery) {
+      updateQuery(nextQuery);
     }
   };
 
@@ -192,13 +203,14 @@ export function JoinStep({
             query={query}
             stageIndex={stageIndex}
             table={table}
-            columns={columns}
+            getColumns={getColumns}
             color={color}
             isStartedFromModel={isStartedFromModel}
             readOnly={readOnly}
             isColumnSelected={isColumnSelected}
             onChangeTable={handleTableChange}
-            onChangeFields={handleSelectedColumnsChange}
+            onToggleColumn={handleSelectedColumnToggle}
+            onChangeColumns={handleSelectedColumnsChange}
           />
         </Flex>
       </TablesNotebookCell>
