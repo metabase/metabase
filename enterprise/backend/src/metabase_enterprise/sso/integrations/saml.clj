@@ -49,7 +49,6 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
@@ -85,7 +84,7 @@
                                                    (group-names->ids group-names)
                                                    (all-mapped-group-ids)))))
 
-(mu/defn ^:private fetch-or-create-user! :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
+(mu/defn ^:private fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)

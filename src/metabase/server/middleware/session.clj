@@ -39,7 +39,6 @@
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [ring.util.response :as response]
    [toucan2.core :as t2]
@@ -184,7 +183,7 @@
    {session-uuid :id
     session-type :type
     anti-csrf-token :anti_csrf_token} :- [:map [:id [:or
-                                                     (ms/InstanceOfClass UUID)
+                                                     uuid?
                                                      [:re u/uuid-regex]]]]
    request-time]
   (let [cookie-options (merge

@@ -8,7 +8,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private random-anti-csrf-token :- #"^[0-9a-f]{32}$"
+(mu/defn ^:private random-anti-csrf-token :- [:re {:error/message "valid anti-CSRF token"} #"^[0-9a-f]{32}$"]
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
