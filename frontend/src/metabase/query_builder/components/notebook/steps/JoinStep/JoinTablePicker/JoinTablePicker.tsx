@@ -20,27 +20,32 @@ import { PickerButton, ColumnPickerButton } from "./JoinTablePicker.styled";
 interface JoinTablePickerProps {
   query: Lib.Query;
   stageIndex: number;
-  columns?: Lib.ColumnMetadata[];
+  getColumns: () => Lib.ColumnMetadata[];
   table?: Lib.CardMetadata | Lib.TableMetadata;
   isStartedFromModel?: boolean;
   readOnly?: boolean;
   color: string;
-  isColumnSelected: (column: Lib.ColumnMetadata) => boolean;
+  isColumnSelected: (
+    column: Lib.ColumnMetadata,
+    columnInfo: Lib.ColumnDisplayInfo,
+  ) => boolean;
   onChangeTable: (joinable: Lib.Joinable) => void;
-  onChangeFields: (columns: Lib.JoinFields) => void;
+  onToggleColumn: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
+  onChangeColumns: (columns: Lib.JoinFields) => void;
 }
 
 export function JoinTablePicker({
   query,
   stageIndex,
-  columns = [],
+  getColumns,
   table,
   isStartedFromModel,
   readOnly = false,
   color,
   isColumnSelected,
   onChangeTable,
-  onChangeFields,
+  onToggleColumn,
+  onChangeColumns,
 }: JoinTablePickerProps) {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
@@ -87,9 +92,10 @@ export function JoinTablePicker({
           <JoinTableColumnsPicker
             query={query}
             stageIndex={stageIndex}
-            columns={columns}
+            getColumns={getColumns}
             isColumnSelected={isColumnSelected}
-            onChange={onChangeFields}
+            onToggle={onToggleColumn}
+            onChange={onChangeColumns}
           />
         ) : null
       }
@@ -118,35 +124,24 @@ export function JoinTablePicker({
 interface JoinTableColumnsPickerProps {
   query: Lib.Query;
   stageIndex: number;
-  columns: Lib.ColumnMetadata[];
-  isColumnSelected: (column: Lib.ColumnMetadata) => boolean;
+  getColumns: () => Lib.ColumnMetadata[];
+  isColumnSelected: (
+    column: Lib.ColumnMetadata,
+    columnInfo: Lib.ColumnDisplayInfo,
+  ) => boolean;
+  onToggle: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
   onChange: (columns: Lib.JoinFields) => void;
 }
 
 function JoinTableColumnsPicker({
   query,
   stageIndex,
-  columns,
+  getColumns,
   isColumnSelected,
+  onToggle,
   onChange,
 }: JoinTableColumnsPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const handleToggle = (changedIndex: number, isSelected: boolean) => {
-    const nextColumns = columns.filter((_, currentIndex) =>
-      currentIndex === changedIndex
-        ? isSelected
-        : isColumnSelected(columns[currentIndex]),
-    );
-    onChange(nextColumns);
-  };
-
-  const handleSelectAll = () => {
-    onChange("all");
-  };
-
-  const handleSelectNone = () => {
-    onChange("none");
-  };
 
   return (
     <Popover opened={isOpened} onChange={setIsOpened}>
@@ -165,11 +160,11 @@ function JoinTableColumnsPicker({
         <FieldPicker
           query={query}
           stageIndex={stageIndex}
-          columns={columns}
+          columns={getColumns()}
           isColumnSelected={isColumnSelected}
-          onToggle={handleToggle}
-          onSelectAll={handleSelectAll}
-          onSelectNone={handleSelectNone}
+          onToggle={onToggle}
+          onSelectAll={() => onChange("all")}
+          onSelectNone={() => onChange("none")}
           data-testid="join-columns-picker"
         />
       </Popover.Dropdown>

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useMemo } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { usePrevious } from "react-use";
 
 import * as Lib from "metabase-lib";
@@ -16,24 +16,13 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   const [conditions, _setConditions] = useState<Lib.JoinCondition[]>(
     join ? Lib.joinConditions(join) : [],
   );
-
   // This state is only used until a join is created
-  // After that, we use `displayInfo(query, stageIndex, column).selected` to determine if a column is selected
-  // We use "all" instead of `joinableColumns(query, stageIndex, table)`
-  // to avoid race-conditions when the table metadata is not yet loaded
-  const [selectedColumns, _setSelectedColumns] = useState<Lib.JoinFields>(
-    join ? [] : "all",
+  const [joinableColumns, _setJoinableColumns] = useState<Lib.ColumnMetadata[]>(
+    [],
   );
-
-  const columns = useMemo(() => {
-    if (join) {
-      return Lib.joinableColumns(query, stageIndex, join);
-    }
-    if (table) {
-      return Lib.joinableColumns(query, stageIndex, table);
-    }
-    return [];
-  }, [query, stageIndex, join, table]);
+  const [selectedColumns, _setSelectedColumns] = useState<Lib.ColumnMetadata[]>(
+    [],
+  );
 
   useEffect(() => {
     if (join && previousJoin !== join) {
@@ -41,44 +30,66 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
       _setTable(Lib.joinedThing(query, join));
       _setConditions(Lib.joinConditions(join));
     }
-
-    // Reset selected columns once a join is created,
-    // because we can now use `displayInfo(query, stageIndex, column).selected`
-    if (!previousJoin && join) {
-      _setSelectedColumns([]);
-    }
   }, [query, previousQuery, stageIndex, join, previousJoin]);
 
-  const isColumnSelected = (column: Lib.ColumnMetadata) => {
-    if (join) {
-      return !!Lib.displayInfo(query, stageIndex, column).selected;
-    }
-    if (selectedColumns === "all") {
-      return true;
-    }
-    if (selectedColumns === "none") {
-      return false;
-    }
-    return selectedColumns.some(selectedColumn => column === selectedColumn);
+  const getColumns = () => {
+    return join
+      ? Lib.joinableColumns(query, stageIndex, join)
+      : joinableColumns;
   };
 
-  const setSelectedColumns = (nextSelectedColumns: Lib.JoinFields) => {
-    if (join) {
-      const nextJoin = Lib.withJoinFields(join, nextSelectedColumns);
-      const nextQuery = Lib.replaceClause(query, stageIndex, join, nextJoin);
-      return nextQuery;
-    }
-
-    // Table should be in place, it's a check for TypeScript
-    if (!table) {
-      return;
-    }
-
-    if (nextSelectedColumns === "all") {
-      const columns = Lib.joinableColumns(query, stageIndex, table);
-      _setSelectedColumns(columns);
+  const getTableJoinFields = (
+    joinableColumns: Lib.ColumnMetadata[],
+    selectedColumns: Lib.ColumnMetadata[],
+  ): Lib.JoinFields => {
+    if (joinableColumns.length === selectedColumns.length) {
+      return "all";
+    } else if (selectedColumns.length === 0) {
+      return "none";
     } else {
-      _setSelectedColumns(nextSelectedColumns);
+      return selectedColumns;
+    }
+  };
+
+  const isColumnSelected = (
+    column: Lib.ColumnMetadata,
+    columnInfo: Lib.ColumnDisplayInfo,
+  ) => {
+    return join
+      ? Boolean(columnInfo.selected)
+      : selectedColumns.includes(column);
+  };
+
+  const toggleSelectedColumn = (
+    column: Lib.ColumnMetadata,
+    isSelected: boolean,
+  ) => {
+    if (join) {
+      return isSelected
+        ? Lib.addField(query, stageIndex, column)
+        : Lib.removeField(query, stageIndex, column);
+    }
+
+    const newSelectedColumns = [...selectedColumns];
+    if (isSelected) {
+      newSelectedColumns.push(column);
+    } else {
+      const columnIndex = selectedColumns.indexOf(column);
+      newSelectedColumns.splice(columnIndex, 1);
+    }
+    _setSelectedColumns(newSelectedColumns);
+  };
+
+  const setSelectedColumns = (nextColumns: Lib.JoinFields) => {
+    if (join) {
+      const nextJoin = Lib.withJoinFields(join, nextColumns);
+      return Lib.replaceClause(query, stageIndex, join, nextJoin);
+    } else if (nextColumns === "all") {
+      _setSelectedColumns(joinableColumns);
+    } else if (nextColumns === "none") {
+      _setSelectedColumns([]);
+    } else {
+      _setSelectedColumns(nextColumns);
     }
   };
 
@@ -115,8 +126,10 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
         return { nextQuery, hasConditions: true };
       }
 
+      const nextColumns = Lib.joinableColumns(query, stageIndex, nextTable);
       _setTable(nextTable);
-      _setSelectedColumns("all");
+      _setJoinableColumns(nextColumns);
+      _setSelectedColumns(nextColumns);
       _setConditions([]);
 
       // With a new table and no suggested condition,
@@ -140,13 +153,23 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
         const nextJoin = Lib.withJoinConditions(join, nextConditions);
         return Lib.replaceClause(query, stageIndex, join, nextJoin);
       } else if (table) {
+        const joinFields = getTableJoinFields(joinableColumns, selectedColumns);
         let nextJoin = Lib.joinClause(table, nextConditions);
-        nextJoin = Lib.withJoinFields(nextJoin, selectedColumns);
+        nextJoin = Lib.withJoinFields(nextJoin, joinFields);
         nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
         return Lib.join(query, stageIndex, nextJoin);
       }
     },
-    [query, stageIndex, join, table, strategy, selectedColumns, conditions],
+    [
+      query,
+      stageIndex,
+      join,
+      table,
+      joinableColumns,
+      selectedColumns,
+      strategy,
+      conditions,
+    ],
   );
 
   const updateCondition = useCallback(
@@ -179,7 +202,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   return {
     strategy,
     table,
-    columns,
+    getColumns,
     conditions,
     setStrategy,
     setTable,
@@ -187,6 +210,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     updateCondition,
     removeCondition,
     isColumnSelected,
+    toggleSelectedColumn,
     setSelectedColumns,
   };
 }

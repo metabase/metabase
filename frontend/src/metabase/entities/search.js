@@ -1,8 +1,8 @@
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { GET } from "metabase/lib/api";
 import { createEntity } from "metabase/lib/entities";
 import { entityForObject } from "metabase/lib/schema";
 import { ObjectUnionSchema } from "metabase/schema";
+import { CollectionsApi, SearchApi } from "metabase/services";
 
 import Actions from "./actions";
 import Bookmarks from "./bookmarks";
@@ -15,15 +15,12 @@ import Segments from "./segments";
 import SnippetCollections from "./snippet-collections";
 import Snippets from "./snippets";
 
-const searchList = GET("/api/search");
-const collectionList = GET("/api/collection/:collection/items");
-
 export default createEntity({
   name: "search",
   path: "/api/search",
 
   api: {
-    list: async (query = {}) => {
+    list: async (query = {}, queryOptions = {}) => {
       if (query.collection) {
         const {
           collection,
@@ -44,17 +41,20 @@ export default createEntity({
           );
         }
 
-        const { data, ...rest } = await collectionList({
-          collection,
-          archived,
-          models,
-          namespace,
-          pinned_state,
-          limit,
-          offset,
-          sort_column,
-          sort_direction,
-        });
+        const { data, ...rest } = await CollectionsApi.listItems(
+          {
+            collectionId: collection,
+            archived,
+            models,
+            namespace,
+            pinned_state,
+            limit,
+            offset,
+            sort_column,
+            sort_direction,
+          },
+          queryOptions,
+        );
 
         return {
           ...rest,
@@ -67,7 +67,7 @@ export default createEntity({
             : [],
         };
       } else {
-        const { data, ...rest } = await searchList(query);
+        const { data, ...rest } = await SearchApi.list(query, queryOptions);
 
         return {
           ...rest,

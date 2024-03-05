@@ -48,3 +48,7 @@
     ;; Is this form of dimension specification actually used anywhere?
     (is (= ["ABC"] (#'dashboard-templates/collect-dimensions "[[ABC]]")))
     (is (= ["ABC"] (#'dashboard-templates/collect-dimensions {:metric [:foo "[[ABC]]"]})))))
+
+(deftest ^:parallel validate-specs-test
+  ;; just make sure nothing barfs
+  (is (doall (#'dashboard-templates/all-dashboard-templates))))

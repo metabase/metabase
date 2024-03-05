@@ -29,13 +29,12 @@
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
-   (com.unboundid.util LDAPSDKException)
-   (java.util UUID)))
+   (com.unboundid.util LDAPSDKException)))
 
 (set! *warn-on-reflection* true)
 
 (mu/defn ^:private record-login-history!
-  [session-id  :- (ms/InstanceOfClass UUID)
+  [session-id  :- uuid?
    user-id     :- ms/PositiveInt
    device-info :- req.util/DeviceInfo]
   (t2/insert! LoginHistory (merge {:user_id    user-id
@@ -58,7 +57,7 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    [:id   (ms/InstanceOfClass UUID)]
+    [:id   uuid?]
     [:type [:enum :normal :full-app-embed]]]])
 
 (mu/defmethod create-session! :sso :- SessionSchema
@@ -104,7 +103,7 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(mu/defn ^:private ldap-login :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
+(mu/defn ^:private ldap-login :- [:maybe [:map [:id uuid?]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- req.util/DeviceInfo]
@@ -127,7 +126,7 @@
       (catch LDAPSDKException e
         (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
 
-(mu/defn ^:private email-login :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
+(mu/defn ^:private email-login :- [:maybe [:map [:id uuid?]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]

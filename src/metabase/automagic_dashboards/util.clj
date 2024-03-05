@@ -15,10 +15,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [ring.util.codec :as codec]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (defn field-isa?
@@ -61,7 +58,7 @@
   [table]
   (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
 
-(s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankString su/IntGreaterThanZero))
+(mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ms/PositiveInt]]
   "Extract field ID from a given field reference form."
   [clause]
   (mbql.u/match-one clause [:field id _] id))

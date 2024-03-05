@@ -1,45 +1,22 @@
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel", "expectSectionsToHaveLabelsInOrder"] }] */
 
-import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import type { UsageReason } from "metabase-types/api";
+import { screen } from "__support__/ui";
+
 import {
-  createMockSettingsState,
-  createMockSetupState,
-  createMockState,
-} from "metabase-types/store/mocks";
+  clickNextStep,
+  expectSectionsToHaveLabelsInOrder,
+  expectSectionToHaveLabel,
+  getSection,
+  selectUsageReason,
+  setup,
+  skipLanguageStep,
+  skipWelcomeScreen,
+  submitUserInfoStep,
+} from "./setup";
 
-import { Setup } from "./components/Setup";
-import type { SetupStep } from "./types";
-
-async function setup({ step = "welcome" }: { step?: SetupStep } = {}) {
-  localStorage.clear();
-  jest.clearAllMocks();
-
-  const state = createMockState({
-    setup: createMockSetupState({
-      step,
-    }),
-    settings: createMockSettingsState({
-      "available-locales": [["en", "English"]],
-    }),
-  });
-
-  fetchMock.post("path:/api/util/password_check", { valid: true });
-  fetchMock.post("path:/api/setup", {});
-
-  renderWithProviders(<Setup />, { storeInitialState: state });
-
-  // there is some async stuff going on with the locale loading
-  await screen.findByText("Let's get started");
-
-  return;
-}
-
-describe("setup", () => {
+describe("setup (OSS)", () => {
   it("default step order should be correct", async () => {
     await setup();
     skipWelcomeScreen();
@@ -204,67 +181,3 @@ describe("setup", () => {
     });
   });
 });
-
-const getSection = (name: string) => screen.getByRole("listitem", { name });
-
-const clickNextStep = () =>
-  userEvent.click(screen.getByRole("button", { name: "Next" }));
-
-const skipWelcomeScreen = () =>
-  userEvent.click(screen.getByText("Let's get started"));
-
-const skipLanguageStep = () => clickNextStep();
-
-const submitUserInfoStep = async ({
-  firstName = "John",
-  lastName = "Smith",
-  email = "john@example.org",
-  companyName = "Acme",
-  password = "Monkeyabc123",
-} = {}) => {
-  userEvent.type(screen.getByLabelText("First name"), firstName);
-  userEvent.type(screen.getByLabelText("Last name"), lastName);
-  userEvent.type(screen.getByLabelText("Email"), email);
-  userEvent.type(screen.getByLabelText("Company or team name"), companyName);
-  userEvent.type(screen.getByLabelText("Create a password"), password);
-  userEvent.type(screen.getByLabelText("Confirm your password"), password);
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled(),
-  );
-  clickNextStep();
-  // formik+yup validation is async, we need to wait for the submit to finish
-  await waitFor(() =>
-    expect(
-      screen.queryByText("What should we call you?"),
-    ).not.toBeInTheDocument(),
-  );
-};
-
-const selectUsageReason = (usageReason: UsageReason) => {
-  const label = {
-    "self-service-analytics": "Self-service analytics for my own company",
-    embedding: "Embedding analytics into my application",
-    both: "A bit of both",
-    "not-sure": "Not sure yet",
-  }[usageReason];
-
-  userEvent.click(screen.getByLabelText(label));
-};
-
-const expectSectionToHaveLabel = (sectionName: string, label: string) => {
-  const section = getSection(sectionName);
-
-  expect(within(section).getByText(label)).toBeInTheDocument();
-};
-
-const expectSectionsToHaveLabelsInOrder = ({
-  from = 0,
-}: {
-  from?: number;
-} = {}): void => {
-  screen.getAllByRole("listitem").forEach((section, index) => {
-    if (index >= from) {
-      expect(within(section).getByText(`${index + 1}`)).toBeInTheDocument();
-    }
-  });
-};

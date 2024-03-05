@@ -99,7 +99,8 @@
                                             :model "collection"
                                             ;; TODO the default-collection data for this doesn't make sense:
                                             :collection (assoc default-collection :id true :name true)
-                                            :updated_at false))
+                                            :updated_at false
+                                            :can_write true))
 
 (def ^:private action-model-params {:name "ActionModel", :type :model})
 
@@ -418,15 +419,16 @@
           (mt/with-temp [PermissionsGroup           group {}
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (perms/grant-collection-read-permissions! group (u/the-id collection))
-            (is (= (sorted-results
-                    (reverse ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
-                     (into
-                      (default-results-with-collection)
-                      (map #(merge default-search-row % (table-search-results))
-                           [{:name "metric test2 metric", :description "Lookin' for a blueberry",
-                             :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
-                            {:name "segment test2 segment", :description "Lookin' for a blueberry",
-                             :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))))
+            (is (= (->> (default-results-with-collection)
+                        (map #(if (= "collection" (:model %)) (merge % {:can_write false}) %))
+                        (concat (map #(merge default-search-row % (table-search-results))
+                                     [{:name "metric test2 metric", :description "Lookin' for a blueberry",
+                                       :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
+                                      {:name "segment test2 segment", :description "Lookin' for a blueberry",
+                                       :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))
+                        ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
+                        reverse
+                        sorted-results)
                    (search-request-data :rasta :q "test"))))))))
 
   (testing (str "Users with root collection permissions should be able to search root collection data long with "
@@ -438,13 +440,13 @@
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (perms/grant-collection-read-permissions! group collection)
-            (is (ordered-subset? (sorted-results
-                                  (reverse
-                                   (into
-                                    (default-results-with-collection)
-                                    (for [row  (default-search-results)
-                                          :when (not= "collection" (:model row))]
-                                      (update row :name #(str/replace % "test" "test2"))))))
+            (is (ordered-subset? (->> (default-results-with-collection)
+                                      (map #(if (= "collection" (:model %)) (merge % {:can_write false}) %))
+                                      (concat (for [row  (default-search-results)
+                                                    :when (not= "collection" (:model row))]
+                                                (update row :name #(str/replace % "test" "test2"))))
+                                      reverse
+                                      sorted-results)
                                  (search-request-data :rasta :q "test"))))))))
 
   (testing "Users with access to multiple collections should see results from all collections they have access to"
@@ -469,15 +471,15 @@
           (mt/with-temp [PermissionsGroup           group {}
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
             (perms/grant-collection-read-permissions! group (u/the-id coll-1))
-            (is (= (sorted-results
-                    (reverse
-                     (into
-                      (default-results-with-collection)
-                      (map #(merge default-search-row % (table-search-results))
-                           [{:name "metric test2 metric" :description "Lookin' for a blueberry"
-                             :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
-                            {:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
-                             :creator_id true :creator_common_name "Rasta Toucan"}]))))
+            (is (= (->> (default-results-with-collection)
+                        (map #(if (= "collection" (:model %)) (merge % {:can_write false}) %))
+                        (concat (map #(merge default-search-row % (table-search-results))
+                                     [{:name "metric test2 metric" :description "Lookin' for a blueberry"
+                                       :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
+                                      {:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
+                                       :creator_id true :creator_common_name "Rasta Toucan"}]))
+                        reverse
+                        sorted-results)
                    (search-request-data :rasta :q "test"))))))))
 
   (testing "Metrics on tables for which the user does not have access to should not show up in results"
