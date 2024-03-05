@@ -179,6 +179,7 @@
   #{::auto-incrementing-int-pk})
 
 (def ^:private type->check-schema
+  "Every inferable value-type needs to have a detection function registered."
   (into [:map] (map #(vector % :fn) (remove non-inferable-types value-types))))
 
 (mu/defn ^:private settings->type->check :- type->check-schema
