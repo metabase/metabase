@@ -74,7 +74,7 @@ const config = (module.exports = {
   // output to "dist"
   output: {
     path: BUILD_PATH + "/app/dist",
-    filename: "[name].[contenthash].js",
+    filename: devMode ? "[name].bundle.js" : "[name].[contenthash].js",
     publicPath: "app/dist/",
     hashFunction: "sha256",
   },
@@ -300,21 +300,8 @@ if (WEBPACK_BUNDLE === "hot") {
       "Access-Control-Allow-Origin": "*",
     },
     // tweak stats to make the output in the console more legible
-    // TODO - once we update webpack to v4+ we can just use `errors-warnings` preset
     devMiddleware: {
-      stats: {
-        assets: false,
-        cached: false,
-        cachedAssets: false,
-        chunks: false,
-        chunkModules: false,
-        chunkOrigins: false,
-        modules: false,
-        color: true,
-        hash: false,
-        warnings: true,
-        errorDetails: false,
-      },
+      stats: "errors-warnings",
       writeToDisk: true,
     },
     // if webpack doesn't reload UI after code change in development
