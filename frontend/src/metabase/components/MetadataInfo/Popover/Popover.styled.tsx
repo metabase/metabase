@@ -13,7 +13,7 @@ export const Dropdown = styled(HoverCard.Dropdown)`
 
 export const Target = styled.div`
   position: absolute;
-  width: 100%;
+  width: calc(100% + 20px);
   left: -10px;
   right: -10px;
   top: -10px;
