@@ -19,12 +19,13 @@
 (defmacro with-warnings-at-most-once
   "Ensure that we log the given class of redaction warnings at most once."
   [category & body]
-  ;; Suppress warnings if we are not within a scope,
   `(if-let [emitted-warnings# @*emitted-warnings*]
      (binding [*in-silent-scope* (get emitted-warnings# ~category)]
        (u/prog1 ~@body
          (swap! *emitted-warnings* assoc ~category true)))
-     ~@body))
+     ;; Always log warnings if we are not within a scope, e.g. in the REPL.
+     (binding [*in-silent-scope* false]
+       ~@body)))
 
 (defmacro log
   "Log a message only the first time it happens in a given request. This is a macro preserve the original context."
