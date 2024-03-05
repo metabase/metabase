@@ -50,19 +50,19 @@
 
 (defn- case-expression
   "Creates a case expression with a condition for each value of the unit."
-  [expression unit n]
+  [expression-fn unit n]
   (lib.expression/case
     (for [raw-value (range 1 (inc n))]
-      [(lib.filter/= expression raw-value) (shared.ut/format-unit raw-value unit)])
+      [(lib.filter/= (expression-fn) raw-value) (shared.ut/format-unit raw-value unit)])
     ""))
 
 (defn- extraction-expression [column tag]
   (case tag
     :hour-of-day     (lib.expression/get-hour column)
     :day-of-month    (lib.expression/get-day column)
-    :day-of-week     (case-expression (lib.expression/get-day-of-week column) tag 7)
-    :month-of-year   (case-expression (lib.expression/get-month column) tag 12)
-    :quarter-of-year (case-expression (lib.expression/get-quarter column) tag 4)
+    :day-of-week     (case-expression #(lib.expression/get-day-of-week column) tag 7)
+    :month-of-year   (case-expression #(lib.expression/get-month column) tag 12)
+    :quarter-of-year (case-expression #(lib.expression/get-quarter column) tag 4)
     :year            (lib.expression/get-year column)))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-extract
