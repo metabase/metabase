@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { NotebookCellItem } from "../../../NotebookCell";
+import { NotebookCellAdd, NotebookCellItem } from "../../../NotebookCell";
 import { JoinCondition } from "../JoinCondition";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
@@ -48,6 +48,7 @@ export function Join({
     const newConditions = [...conditions, newCondition];
     const newJoin = Lib.withJoinConditions(join, newConditions);
     onChange(newJoin);
+    setIsAddingNewCondition(false);
   };
 
   const handleUpdateCondition = (
@@ -96,21 +97,35 @@ export function Join({
             <Text color="brand" weight="bold">{t`on`}</Text>
           </Box>
           <JoinConditionCell color={color}>
-            {conditions.map((condition, conditionIndex) => (
-              <JoinCondition
-                key={conditionIndex}
-                query={query}
-                stageIndex={stageIndex}
-                join={join}
-                condition={condition}
-                isReadOnly={isReadOnly}
-                isRemovable={conditions.length > 1}
-                onChange={newCondition =>
-                  handleUpdateCondition(newCondition, conditionIndex)
-                }
-                onRemove={() => handleRemoveCondition(conditionIndex)}
-              />
-            ))}
+            {conditions.map((condition, conditionIndex) => {
+              const isLast = conditionIndex === conditions.length - 1;
+
+              return (
+                <Flex key={conditionIndex} mr="6px" align="center" gap="8px">
+                  <JoinCondition
+                    key={conditionIndex}
+                    query={query}
+                    stageIndex={stageIndex}
+                    join={join}
+                    condition={condition}
+                    isReadOnly={isReadOnly}
+                    isRemovable={conditions.length > 1}
+                    onChange={newCondition =>
+                      handleUpdateCondition(newCondition, conditionIndex)
+                    }
+                    onRemove={() => handleRemoveCondition(conditionIndex)}
+                  />
+                  {isLast && <Text color="text-dark">{t`and`}</Text>}
+                  {isLast && !isReadOnly && !isAddingNewCondition && (
+                    <NotebookCellAdd
+                      color={color}
+                      onClick={() => setIsAddingNewCondition(true)}
+                      aria-label={t`Add condition`}
+                    />
+                  )}
+                </Flex>
+              );
+            })}
             {isAddingNewCondition && (
               <JoinConditionDraft
                 query={query}
