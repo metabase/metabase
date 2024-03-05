@@ -6,6 +6,16 @@ import type {
   StructuredQuery,
 } from "metabase-types/api";
 
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      archiveQuestion(
+        id: Card["id"],
+      ): Cypress.Chainable<Cypress.Response<Card>>;
+    }
+  }
+}
+
 type QuestionDetails = {
   dataset_query: DatasetQuery;
   /**
