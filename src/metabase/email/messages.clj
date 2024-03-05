@@ -510,6 +510,9 @@
         (e/js-execute driver
                       (format "window.render(JSON.stringify(%s))"
                               (json/generate-string dashboard-with-data)))
+        ;; We should check for element visibility here, but for now we can
+        ;; just wait a second and let everything render.
+        (e/wait driver 1)
         (e/print-page driver dash-file))
       dash-file)
     (catch Exception e
