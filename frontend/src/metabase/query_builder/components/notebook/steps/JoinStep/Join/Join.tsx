@@ -5,6 +5,7 @@ import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../../NotebookCell";
+import { JoinCondition } from "../JoinCondition";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
@@ -42,8 +43,19 @@ export function Join({
     onChange(newJoin);
   };
 
-  const handleConditionAdd = (newCondition: Lib.JoinCondition) => {
-    const newJoin = Lib.withJoinConditions(join, [...conditions, newCondition]);
+  const handleAddCondition = (newCondition: Lib.JoinCondition) => {
+    const newConditions = [...conditions, newCondition];
+    const newJoin = Lib.withJoinConditions(join, newConditions);
+    onChange(newJoin);
+  };
+
+  const handleUpdateCondition = (
+    newCondition: Lib.JoinCondition,
+    conditionIndex: number,
+  ) => {
+    const newConditions = [...conditions];
+    newConditions[conditionIndex] = newCondition;
+    const newJoin = Lib.withJoinConditions(join, newConditions);
     onChange(newJoin);
   };
 
@@ -76,12 +88,25 @@ export function Join({
             <Text color="brand" weight="bold">{t`on`}</Text>
           </Box>
           <JoinConditionCell color={color}>
+            {conditions.map((condition, conditionIndex) => (
+              <JoinCondition
+                key={conditionIndex}
+                query={query}
+                stageIndex={stageIndex}
+                join={join}
+                condition={condition}
+                isReadOnly={isReadOnly}
+                onChange={newCondition =>
+                  handleUpdateCondition(newCondition, conditionIndex)
+                }
+              />
+            ))}
             <JoinConditionDraft
               query={query}
               stageIndex={stageIndex}
               table={table}
               isReadOnly={isReadOnly}
-              onChange={handleConditionAdd}
+              onChange={handleAddCondition}
             />
           </JoinConditionCell>
         </>
