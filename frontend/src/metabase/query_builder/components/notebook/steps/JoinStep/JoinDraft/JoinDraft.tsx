@@ -31,7 +31,7 @@ export function JoinDraft({
     getDefaultJoinStrategy(query, stageIndex),
   );
   const [table, setTable] = useState<Lib.Joinable>();
-  const [_fields, setFields] = useState<Lib.JoinFields>("all");
+  const [fields, setFields] = useState<Lib.JoinFields>("all");
   const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
 
   const lhsDisplayName = useMemo(
@@ -56,7 +56,10 @@ export function JoinDraft({
 
   const handleConditionChange = (newCondition: Lib.JoinCondition) => {
     if (table) {
-      const newJoin = Lib.joinClause(table, [newCondition]);
+      const newJoin = Lib.withJoinFields(
+        Lib.joinClause(table, [newCondition]),
+        fields,
+      );
       onChange(newJoin);
     }
   };
