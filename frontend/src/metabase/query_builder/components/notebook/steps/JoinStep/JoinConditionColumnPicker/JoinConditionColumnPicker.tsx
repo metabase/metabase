@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { forwardRef, useCallback, useMemo } from "react";
+import { forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
 import type { ColumnListItem } from "metabase/common/components/QueryColumnPicker";
@@ -154,10 +154,6 @@ function JoinColumnDropdown({
     return Lib.groupColumns(columns);
   }, [query, stageIndex, joinable, lhsColumn, rhsColumn, isLhsColumn]);
 
-  const checkColumnSelected = useCallback((item: ColumnListItem) => {
-    return Boolean(item.selected);
-  }, []);
-
   return (
     <JoinColumnPicker
       query={query}
@@ -170,4 +166,8 @@ function JoinColumnDropdown({
       data-testid={isLhsColumn ? "lhs-column-picker" : "rhs-column-picker"}
     />
   );
+}
+
+function checkColumnSelected(item: ColumnListItem) {
+  return Boolean(item.selected);
 }
