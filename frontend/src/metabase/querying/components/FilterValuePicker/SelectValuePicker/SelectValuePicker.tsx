@@ -44,6 +44,7 @@ export function SelectValuePicker({
       placeholder={placeholder}
       autoFocus={isAutoFocus}
       searchable
+      clearable
       aria-label={t`Filter value`}
       onChange={value => onChange(value != null ? [value] : [])}
       onSearchChange={onSearchChange}

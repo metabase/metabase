@@ -77,6 +77,10 @@ async function setupStringPicker({
   return { onChange, onFocus, onBlur };
 }
 
+function setupSingleStringPicker(opts: SetupOpts<string>) {
+  return setupStringPicker({ ...opts, isMultiple: true });
+}
+
 function setupMultipleStringPicker(opts: SetupOpts<string>) {
   return setupStringPicker({ ...opts, isMultiple: true });
 }
@@ -138,179 +142,197 @@ describe("StringFilterValuePicker", () => {
   describe("list values", () => {
     const column = findColumn("PRODUCTS", "CATEGORY");
 
-    it("should allow to pick a list value", async () => {
-      const { onChange } = await setupMultipleStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: [],
-        fieldValues: PRODUCT_CATEGORY_VALUES,
-      });
-
-      userEvent.click(screen.getByText("Widget"));
-
-      expect(onChange).toHaveBeenCalledWith(["Widget"]);
-    });
-
-    it("should allow to search the list of values", async () => {
-      const { onChange } = await setupMultipleStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: [],
-        fieldValues: PRODUCT_CATEGORY_VALUES,
-      });
-
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "G");
-      expect(screen.getByText("Gadget")).toBeInTheDocument();
-      expect(screen.queryByText("Doohickey")).not.toBeInTheDocument();
-
-      userEvent.click(screen.getByText("Gadget"));
-      expect(onChange).toHaveBeenCalledWith(["Gadget"]);
-    });
-
-    it("should allow to update selected values", async () => {
-      const { onChange } = await setupMultipleStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: ["Gadget"],
-        fieldValues: PRODUCT_CATEGORY_VALUES,
-      });
-      expect(screen.getByRole("checkbox", { name: "Gadget" })).toBeChecked();
-      expect(
-        screen.getByRole("checkbox", { name: "Widget" }),
-      ).not.toBeChecked();
-
-      userEvent.click(screen.getByText("Widget"));
-      expect(onChange).toHaveBeenCalledWith(["Gadget", "Widget"]);
-    });
-
-    it("should handle values that do not exist in the list", async () => {
-      const { onChange } = await setupMultipleStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: ["Test"],
-        fieldValues: PRODUCT_CATEGORY_VALUES,
-      });
-      expect(screen.getByRole("checkbox", { name: "Test" })).toBeChecked();
-      expect(
-        screen.getByRole("checkbox", { name: "Gadget" }),
-      ).not.toBeChecked();
-
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "T");
-      expect(screen.getByText("Test")).toBeInTheDocument();
-      expect(screen.getByText("Gadget")).toBeInTheDocument();
-      expect(screen.queryByText("Gizmo")).not.toBeInTheDocument();
-
-      userEvent.click(screen.getByText("Gadget"));
-      expect(onChange).toHaveBeenCalledWith(["Test", "Gadget"]);
-    });
-
-    it("should handle field values remapping", async () => {
-      const { onChange } = await setupMultipleStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: ["t"],
-        fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
-          values: [
-            ["t", "To-do"],
-            ["p", "In-progress"],
-            ["c", "Completed"],
-          ],
-        }),
-      });
-      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
-      expect(
-        screen.getByRole("checkbox", { name: "In-progress" }),
-      ).not.toBeChecked();
-
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "in");
-      expect(screen.getByText("In-progress")).toBeInTheDocument();
-      expect(screen.queryByText("Completed")).not.toBeInTheDocument();
-
-      userEvent.click(screen.getByText("In-progress"));
-      expect(onChange).toHaveBeenCalledWith(["t", "p"]);
-    });
-
-    it("should handle empty field values", async () => {
-      const { onChange, onFocus, onBlur } = await setupMultipleStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: [],
-        fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
+    describe("single value", () => {
+      it("should allow to pick a list value", async () => {
+        const { onChange } = await setupSingleStringPicker({
+          query,
+          stageIndex,
+          column,
           values: [],
-        }),
+          fieldValues: PRODUCT_CATEGORY_VALUES,
+        });
+
+        userEvent.click(screen.getByText("Widget"));
+
+        expect(onChange).toHaveBeenCalledWith(["Widget"]);
       });
-
-      const input = screen.getByLabelText("Filter value");
-      expect(input).toBeInTheDocument();
-      expect(
-        screen.queryByPlaceholderText("Search the list"),
-      ).not.toBeInTheDocument();
-
-      userEvent.type(input, "Test");
-      userEvent.tab();
-      expect(onFocus).toHaveBeenCalled();
-      expect(onChange).toHaveBeenLastCalledWith(["Test"]);
-      expect(onBlur).toHaveBeenCalled();
     });
 
-    it("should ignore null field values", async () => {
-      await setupMultipleStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: [],
-        fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
-          values: [[null], ["Widget"]],
-        }),
+    describe("multiple values", () => {
+      it("should allow to pick a list value", async () => {
+        const { onChange } = await setupMultipleStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: [],
+          fieldValues: PRODUCT_CATEGORY_VALUES,
+        });
+
+        userEvent.click(screen.getByText("Widget"));
+
+        expect(onChange).toHaveBeenCalledWith(["Widget"]);
       });
 
-      expect(
-        screen.getByRole("checkbox", { name: "Widget" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("checkbox", { name: "null" }),
-      ).not.toBeInTheDocument();
-    });
+      it("should allow to search the list of values", async () => {
+        const { onChange } = await setupMultipleStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: [],
+          fieldValues: PRODUCT_CATEGORY_VALUES,
+        });
 
-    it("should handle more field values", async () => {
-      const { onChange } = await setupMultipleStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: [],
-        fieldValues: createMockFieldValues({
-          field_id: PRODUCTS.CATEGORY,
-          values: [["Gadget"], ["Widget"]],
-          has_more_values: true,
-        }),
-        searchValues: {
-          g: createMockFieldValues({
+        userEvent.type(screen.getByPlaceholderText("Search the list"), "G");
+        expect(screen.getByText("Gadget")).toBeInTheDocument();
+        expect(screen.queryByText("Doohickey")).not.toBeInTheDocument();
+
+        userEvent.click(screen.getByText("Gadget"));
+        expect(onChange).toHaveBeenCalledWith(["Gadget"]);
+      });
+
+      it("should allow to update selected values", async () => {
+        const { onChange } = await setupMultipleStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: ["Gadget"],
+          fieldValues: PRODUCT_CATEGORY_VALUES,
+        });
+        expect(screen.getByRole("checkbox", { name: "Gadget" })).toBeChecked();
+        expect(
+          screen.getByRole("checkbox", { name: "Widget" }),
+        ).not.toBeChecked();
+
+        userEvent.click(screen.getByText("Widget"));
+        expect(onChange).toHaveBeenCalledWith(["Gadget", "Widget"]);
+      });
+
+      it("should handle values that do not exist in the list", async () => {
+        const { onChange } = await setupMultipleStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: ["Test"],
+          fieldValues: PRODUCT_CATEGORY_VALUES,
+        });
+        expect(screen.getByRole("checkbox", { name: "Test" })).toBeChecked();
+        expect(
+          screen.getByRole("checkbox", { name: "Gadget" }),
+        ).not.toBeChecked();
+
+        userEvent.type(screen.getByPlaceholderText("Search the list"), "T");
+        expect(screen.getByText("Test")).toBeInTheDocument();
+        expect(screen.getByText("Gadget")).toBeInTheDocument();
+        expect(screen.queryByText("Gizmo")).not.toBeInTheDocument();
+
+        userEvent.click(screen.getByText("Gadget"));
+        expect(onChange).toHaveBeenCalledWith(["Test", "Gadget"]);
+      });
+
+      it("should handle field values remapping", async () => {
+        const { onChange } = await setupMultipleStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: ["t"],
+          fieldValues: createMockFieldValues({
             field_id: PRODUCTS.CATEGORY,
-            values: [["Gadget"], ["Gizmo"]],
-            has_more_values: false,
+            values: [
+              ["t", "To-do"],
+              ["p", "In-progress"],
+              ["c", "Completed"],
+            ],
           }),
-        },
+        });
+        expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
+        expect(
+          screen.getByRole("checkbox", { name: "In-progress" }),
+        ).not.toBeChecked();
+
+        userEvent.type(screen.getByPlaceholderText("Search the list"), "in");
+        expect(screen.getByText("In-progress")).toBeInTheDocument();
+        expect(screen.queryByText("Completed")).not.toBeInTheDocument();
+
+        userEvent.click(screen.getByText("In-progress"));
+        expect(onChange).toHaveBeenCalledWith(["t", "p"]);
       });
 
-      const input = screen.getByPlaceholderText("Search by Category");
-      expect(input).toBeInTheDocument();
-      expect(
-        screen.queryByPlaceholderText("Search the list"),
-      ).not.toBeInTheDocument();
+      it("should handle empty field values", async () => {
+        const { onChange, onFocus, onBlur } = await setupMultipleStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: [],
+          fieldValues: createMockFieldValues({
+            field_id: PRODUCTS.CATEGORY,
+            values: [],
+          }),
+        });
 
-      userEvent.type(input, "g");
-      act(() => jest.advanceTimersByTime(1000));
-      userEvent.click(await screen.findByText("Gizmo"));
-      expect(onChange).toHaveBeenLastCalledWith(["Gizmo"]);
+        const input = screen.getByLabelText("Filter value");
+        expect(input).toBeInTheDocument();
+        expect(
+          screen.queryByPlaceholderText("Search the list"),
+        ).not.toBeInTheDocument();
+
+        userEvent.type(input, "Test");
+        userEvent.tab();
+        expect(onFocus).toHaveBeenCalled();
+        expect(onChange).toHaveBeenLastCalledWith(["Test"]);
+        expect(onBlur).toHaveBeenCalled();
+      });
+
+      it("should ignore null field values", async () => {
+        await setupMultipleStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: [],
+          fieldValues: createMockFieldValues({
+            field_id: PRODUCTS.CATEGORY,
+            values: [[null], ["Widget"]],
+          }),
+        });
+
+        expect(
+          screen.getByRole("checkbox", { name: "Widget" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("checkbox", { name: "null" }),
+        ).not.toBeInTheDocument();
+      });
+
+      it("should handle more field values", async () => {
+        const { onChange } = await setupMultipleStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: [],
+          fieldValues: createMockFieldValues({
+            field_id: PRODUCTS.CATEGORY,
+            values: [["Gadget"], ["Widget"]],
+            has_more_values: true,
+          }),
+          searchValues: {
+            g: createMockFieldValues({
+              field_id: PRODUCTS.CATEGORY,
+              values: [["Gadget"], ["Gizmo"]],
+              has_more_values: false,
+            }),
+          },
+        });
+
+        const input = screen.getByPlaceholderText("Search by Category");
+        expect(input).toBeInTheDocument();
+        expect(
+          screen.queryByPlaceholderText("Search the list"),
+        ).not.toBeInTheDocument();
+
+        userEvent.type(input, "g");
+        act(() => jest.advanceTimersByTime(1000));
+        userEvent.click(await screen.findByText("Gizmo"));
+        expect(onChange).toHaveBeenLastCalledWith(["Gizmo"]);
+      });
     });
   });
 
