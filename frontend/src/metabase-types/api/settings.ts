@@ -259,9 +259,9 @@ interface PublicSettings {
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
-  "hide-embed-branding?": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
+  "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
   "is-metabot-enabled": boolean;
   "ldap-configured?": boolean;
@@ -270,10 +270,10 @@ interface PublicSettings {
   "map-tile-server-url": string;
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
-  "report-timezone-short": string;
   "report-timezone-long": string;
-  "setup-token": string | null;
+  "report-timezone-short": string;
   "session-cookies": boolean | null;
+  "setup-token": string | null;
   "show-lighthouse-illustration": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
