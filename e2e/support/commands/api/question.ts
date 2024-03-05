@@ -1,9 +1,10 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import type { Card, DatasetQuery } from "metabase-types/api";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { Card, DatasetQuery, NativeQuery } from "metabase-types/api";
 
 type QueryType = "query" | "native";
 
-interface QuestionDetails {
+type BaseQuestionDetails = {
   /**
    * Defaults to "test question".
    */
@@ -14,8 +15,6 @@ interface QuestionDetails {
    * Defaults to "question".
    */
   type?: Card["type"];
-  native: any; // TODO: make its presence depend on type
-  query: any; // TODO: make its presence depend on type
   /**
    * Defaults to SAMPLE_DB_ID.
    */
@@ -39,7 +38,7 @@ interface QuestionDetails {
    * Defaults to false.
    */
   enable_embedding?: Card["enable_embedding"];
-}
+};
 
 interface Options {
   /**
@@ -68,6 +67,18 @@ interface Options {
    */
   interceptAlias?: string;
 }
+
+type StructuredQuestionDetails = BaseQuestionDetails & {
+  query: StructuredQuery;
+};
+
+type NativeQuestionDetails = BaseQuestionDetails & {
+  native: NativeQuery;
+};
+
+type QuestionDetails<Type extends QueryType> = Type extends "native"
+  ? NativeQuestionDetails
+  : StructuredQuestionDetails;
 
 Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
   const { name, query } = questionDetails;
@@ -101,14 +112,12 @@ Cypress.Commands.add(
   },
 );
 
-function question(
-  queryType: QueryType,
+function question<Type extends QueryType>(
+  queryType: Type,
   {
     name = "test question",
     description,
     type = "question",
-    native,
-    query,
     database = SAMPLE_DB_ID,
     display = "table",
     parameters,
@@ -117,7 +126,8 @@ function question(
     collection_position,
     embedding_params,
     enable_embedding = false,
-  }: QuestionDetails,
+    ...rest
+  }: QuestionDetails<Type>,
   {
     loadMetadata = false,
     visitQuestion = false,
@@ -132,7 +142,7 @@ function question(
       description,
       dataset_query: {
         type: queryType,
-        [queryType]: queryType === "native" ? native : query,
+        [queryType]: queryType === "native" ? rest.native : rest.query,
         database,
       },
       display,
