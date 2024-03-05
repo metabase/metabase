@@ -1,4 +1,16 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import type { GroupPermissions, Impersonation } from "metabase-types/api";
+
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      updatePermissionsGraph(
+        groupsPermissionsObject?: GroupPermissions,
+        impersonations?: Impersonation[],
+      ): void;
+    }
+  }
+}
 
 const { COLLECTION_GROUP } = USER_GROUPS;
 
@@ -29,11 +41,8 @@ Cypress.Commands.add(
         const payload = {
           groups: UPDATED_GROUPS,
           revision,
+          impersonations,
         };
-
-        if (impersonations != null) {
-          payload.impersonations = impersonations;
-        }
 
         cy.log("Update/save permissions");
         cy.request("PUT", "/api/permissions/graph", payload);
