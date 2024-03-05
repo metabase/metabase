@@ -13,9 +13,9 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(def ^:private column-extract-temporal-units
-  #?(:clj  @#'lib.drill-thru.column-extract/column-extract-temporal-units
-     :cljs ((fn [] lib.drill-thru.column-extract/column-extract-temporal-units))))
+(defn- column-extract-temporal-units []
+  #?(:clj  (#'lib.drill-thru.column-extract/column-extract-temporal-units)
+     :cljs (lib.drill-thru.column-extract/column-extract-temporal-units)))
 
 (deftest ^:parallel column-extract-availability-test
   (testing "column-extract is avaiable for column clicks on temporal columns"
@@ -32,7 +32,7 @@
     :query-type  :unaggregated
     :column-name "CREATED_AT"
     :expected    {:type        :drill-thru/column-extract
-                  :extractions column-extract-temporal-units}}))
+                  :extractions (column-extract-temporal-units)}}))
 
 (defn- case-extraction
   "Returns `=?` friendly value for a `:case`-based extraction, eg. `:day-of-week`.
@@ -52,7 +52,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  column-extract-temporal-units
+                       :extractions  (column-extract-temporal-units)
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -70,7 +70,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  column-extract-temporal-units
+                       :extractions  (column-extract-temporal-units)
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -88,7 +88,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  column-extract-temporal-units
+                       :extractions  (column-extract-temporal-units)
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -105,7 +105,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  column-extract-temporal-units
+                       :extractions  (column-extract-temporal-units)
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -121,7 +121,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  column-extract-temporal-units
+                       :extractions  (column-extract-temporal-units)
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -137,7 +137,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  column-extract-temporal-units
+                       :extractions  (column-extract-temporal-units)
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -157,7 +157,7 @@
          :drill-type     :drill-thru/column-extract
          :custom-query   query
          :expected       {:type         :drill-thru/column-extract
-                          :extractions  column-extract-temporal-units
+                          :extractions  (column-extract-temporal-units)
                           :query        query
                           :stage-number -1}
          :drill-args     ["day-of-month"]
@@ -180,7 +180,7 @@
          :drill-type     :drill-thru/column-extract
          :custom-query   query
          :expected       {:type         :drill-thru/column-extract
-                          :extractions  column-extract-temporal-units
+                          :extractions  (column-extract-temporal-units)
                           :query        (lib/append-stage query)
                           :stage-number -1}
          :drill-args     ["day-of-month"]
@@ -200,7 +200,7 @@
             :column-name    "CREATED_AT"
             :drill-type     :drill-thru/column-extract
             :expected       {:type         :drill-thru/column-extract
-                             :extractions  column-extract-temporal-units
+                             :extractions  (column-extract-temporal-units)
                              ;; Query unchanged
                              :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                              :stage-number -1}

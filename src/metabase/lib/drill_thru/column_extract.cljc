@@ -23,7 +23,7 @@
    [metabase.shared.util.time :as shared.ut]
    [metabase.util.malli :as mu]))
 
-(def ^:private column-extract-temporal-units
+(defn- column-extract-temporal-units []
   (vec (for [unit [:hour-of-day :day-of-month :day-of-week :month-of-year :quarter-of-year :year]]
          {:key          unit
           :display-name (lib.temporal-bucket/describe-temporal-unit unit)})))
@@ -41,7 +41,7 @@
     (merge {:lib/type     :metabase.lib.drill-thru/drill-thru
             :type         :drill-thru/column-extract
             :display-name (i18n/tru "Extract day, month…")
-            :extractions  column-extract-temporal-units}
+            :extractions  (column-extract-temporal-units)}
            (lib.drill-thru.column-filter/prepare-query-for-drill-addition query stage-number column column-ref))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-extract
