@@ -68,18 +68,14 @@
   font-size: 14px;
 }
 
-.icons {
-  flex-direction: row;
-  align-items: center;
-  display: flex;
-}
-
 .leftIcons {
   composes: mr2 from "style";
   align-self: flex-start;
   flex-shrink: 0;
   display: flex;
-  composes: icons;
+  flex-direction: row;
+  align-items: center;
+  display: flex;
 }
 .itemIcons {
   composes: leftIcons;
