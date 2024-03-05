@@ -12,16 +12,16 @@ import { getDefaultJoinConditionOperator } from "./utils";
 interface JoinConditionDraftProps {
   query: Lib.Query;
   stageIndex: number;
-  joinable: Lib.Joinable;
+  table: Lib.Joinable;
   isReadOnly: boolean;
   onChange: (newCondition: Lib.JoinCondition) => void;
-  onLhsColumnChange: (newLhsColumn: Lib.ColumnMetadata) => void;
+  onLhsColumnChange?: (newLhsColumn: Lib.ColumnMetadata) => void;
 }
 
 export function JoinConditionDraft({
   query,
   stageIndex,
-  joinable,
+  table,
   isReadOnly,
   onChange,
   onLhsColumnChange,
@@ -50,7 +50,7 @@ export function JoinConditionDraft({
 
   const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
     setLhsColumn(newLhsColumn);
-    onLhsColumnChange(newLhsColumn);
+    onLhsColumnChange?.(newLhsColumn);
     handleColumnChange(newLhsColumn, rhsColumn);
   };
 
@@ -66,7 +66,7 @@ export function JoinConditionDraft({
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
-            joinable={joinable}
+            joinable={table}
             lhsColumn={lhsColumn}
             rhsColumn={rhsColumn}
             isLhsColumn={true}
@@ -85,7 +85,7 @@ export function JoinConditionDraft({
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
-            joinable={joinable}
+            joinable={table}
             lhsColumn={lhsColumn}
             rhsColumn={rhsColumn}
             isLhsColumn={false}

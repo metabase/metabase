@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text } from "metabase/ui";
@@ -9,40 +9,42 @@ import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
-import { JoinConditionCell, JoinCell } from "./JoinDraft.styled";
-import { getDefaultJoinStrategy } from "./utils";
+import { JoinConditionCell, JoinCell } from "./Join.styled";
 
-interface JoinDraftProps {
+interface JoinProps {
   query: Lib.Query;
   stageIndex: number;
+  join: Lib.Join;
   color: string;
   isReadOnly: boolean;
   onChange: (join: Lib.Join) => void;
 }
 
-export function JoinDraft({
+export function Join({
   query,
   stageIndex,
+  join,
   color,
   isReadOnly,
   onChange,
-}: JoinDraftProps) {
-  const [strategy, setStrategy] = useState(() =>
-    getDefaultJoinStrategy(query, stageIndex),
-  );
-  const [table, setTable] = useState<Lib.Joinable>();
-  const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
+}: JoinProps) {
+  const strategy = useMemo(() => Lib.joinStrategy(join), [join]);
+  const table = useMemo(() => Lib.joinedThing(query, join), [query, join]);
+  const conditions = useMemo(() => Lib.joinConditions(join), [join]);
 
   const lhsDisplayName = useMemo(
-    () => Lib.joinLHSDisplayName(query, stageIndex, table, lhsColumn),
-    [query, stageIndex, table, lhsColumn],
+    () => Lib.joinLHSDisplayName(query, stageIndex, join),
+    [query, stageIndex, join],
   );
 
+  const handleStrategyChange = (newStrategy: Lib.JoinStrategy) => {
+    const newJoin = Lib.withJoinStrategy(join, newStrategy);
+    onChange(newJoin);
+  };
+
   const handleConditionAdd = (newCondition: Lib.JoinCondition) => {
-    if (table) {
-      const newJoin = Lib.joinClause(table, [newCondition]);
-      onChange(newJoin);
-    }
+    const newJoin = Lib.withJoinConditions(join, [...conditions, newCondition]);
+    onChange(newJoin);
   };
 
   return (
@@ -57,7 +59,7 @@ export function JoinDraft({
             stageIndex={stageIndex}
             strategy={strategy}
             isReadOnly={isReadOnly}
-            onChange={setStrategy}
+            onChange={handleStrategyChange}
           />
           <JoinTablePicker
             query={query}
@@ -65,7 +67,6 @@ export function JoinDraft({
             table={table}
             color={color}
             isReadOnly={isReadOnly}
-            onChange={setTable}
           />
         </Flex>
       </JoinCell>
@@ -81,7 +82,6 @@ export function JoinDraft({
               table={table}
               isReadOnly={isReadOnly}
               onChange={handleConditionAdd}
-              onLhsColumnChange={setLhsColumn}
             />
           </JoinConditionCell>
         </>
