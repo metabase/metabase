@@ -30,7 +30,7 @@ Here are the privileges Metabase must have in order to store its application dat
 - `SELECT`
 - `UPDATE`
 
-### Example Metabase application database, user, and role creation
+### Example Metabase application database, user, and role
 
 ```sql
 -- Create a database for Metabase to store its application data
@@ -47,14 +47,14 @@ CREATE ROLE applicationrole WITH LOGIN;
 -- and tables in that database
 GRANT CREATE, CONNECT ON DATABASE metabaseappdb TO applicationrole;
 
--- Allow Metabase to create and manage tables in the default public schema
+-- Allow the role to create and manage tables in the default public schema
 GRANT CREATE ON SCHEMA public to applicationrole;
 
 -- Grant the role to the user you'll use for your Metabase connection
 GRANT applicationrole TO metabase;
 ```
 
-With your database, user, and role set up, you could then start Metabase using the following [environment variables](../configuring-metabase/environment-variables.md) (in this case, when running the JAR):
+With your database, user, and role set up, you could then start Metabase using the following [environment variables](../configuring-metabase/environment-variables.md) (in this case, when running the JAR).
 
 ```sh
 export MB_DB_TYPE=postgres
