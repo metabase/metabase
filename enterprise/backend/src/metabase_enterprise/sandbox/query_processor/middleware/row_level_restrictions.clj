@@ -23,6 +23,7 @@
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy
     :as fetch-source-query-legacy]
    [metabase.query-processor.middleware.permissions :as qp.perms]
