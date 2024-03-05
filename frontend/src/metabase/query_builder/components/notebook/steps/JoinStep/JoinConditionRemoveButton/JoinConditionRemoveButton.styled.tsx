@@ -14,7 +14,6 @@ export const RemoveButton = styled.button<RemoveButtonProps>`
   cursor: pointer;
   border-radius: 0 8px 8px 0;
   border-left: 1px solid ${alpha(color("white"), 0.25)};
-  transition: background-color 300ms linear;
 
   color: ${props =>
     props.isConditionComplete ? color("white") : color("brand")};
