@@ -6,6 +6,19 @@ import EntityMenuItem from "metabase/components/EntityMenuItem";
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import { Popover } from "metabase/ui";
 
+const checkForDelay = async () => {
+  const before = performance.now();
+  const sleep = 1000;
+  const threshold = 200;
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  const after = performance.now();
+  if (after - before > sleep + threshold) {
+    console.warn("checkForDelay: Delay detected");
+  } else {
+    console.warn("checkForDelay: No delay detected");
+  }
+};
+
 /**
  * @deprecated: use Menu from "metabase/ui"
  */
@@ -43,6 +56,10 @@ class EntityMenu extends Component {
     this.setState({ menuItemContent });
   };
 
+  componentDidMount = async () => {
+    await checkForDelay();
+  };
+
   render() {
     const {
       items,
@@ -59,11 +76,15 @@ class EntityMenu extends Component {
       tooltipPlacement,
     } = this.props;
     const { open, menuItemContent } = this.state;
+
     return (
       <Popover
         opened={open}
         className={cx(className, open ? openClassNames : closedClassNames)}
-        transitionProps={{ transition: "fade" }}
+        transitionProps={{
+          duration: 300,
+          transition: "fade",
+        }}
         onChange={() => this.toggleMenu()}
         position="bottom-end"
       >
@@ -87,7 +108,12 @@ class EntityMenu extends Component {
         </Popover.Target>
         <Popover.Dropdown>
           {menuItemContent || (
-            <ol className="p1" style={{ minWidth: minWidth ?? 184 }}>
+            <ol
+              className="p1"
+              style={{
+                minWidth: minWidth ?? 184,
+              }}
+            >
               {items.map(item => {
                 if (!item) {
                   return null;
