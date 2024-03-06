@@ -111,10 +111,12 @@ function DateComponentRouter(props: {
 
     case "date/single":
     case "date/range":
-    case "date/all-options":
       return (
         <DateAllOptionsWidget disableOperatorSelection {...componentProps} />
       );
+
+    case "date/all-options":
+      return <DateAllOptionsWidget {...componentProps} />;
   }
 
   // should never happen
