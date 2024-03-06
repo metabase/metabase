@@ -214,11 +214,14 @@
     (let [; dataset tables need at least one field other than the ID column, so just add a dummy field
           name-field-def {:field-name "dummy", :base-type :type/Text}]
       (mt/with-temp-test-data
-        [["continent_1" [name-field-def]
+        [["continent_1"
+          [name-field-def]
           []]
-         ["continent_2" [name-field-def]
+         ["continent_2"
+          [name-field-def]
           []]
-         ["country" [name-field-def {:field-name "continent_id", :base-type :type/Integer}]
+         ["country"
+          [name-field-def {:field-name "continent_id", :base-type :type/Integer}]
           []]]
         (let [db            (mt/db)
               get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
