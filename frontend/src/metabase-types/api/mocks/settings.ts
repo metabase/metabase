@@ -214,6 +214,7 @@ export const createMockSettings = (
   "slack-files-channel": null,
   "slack-token": null,
   "slack-token-valid?": false,
+  "start-of-week": "sunday",
   "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),
   "token-status": null,

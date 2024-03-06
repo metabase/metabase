@@ -20,6 +20,7 @@ import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
+  cancelEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
@@ -280,7 +281,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const onCancel = () => {
     onRevert();
-    onDoneEditing();
+    dispatch(cancelEditingDashboard());
   };
 
   const saveAsPDF = async () => {

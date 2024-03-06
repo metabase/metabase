@@ -166,6 +166,17 @@
                                                 :user_id          (mt/user->id :rasta)}]
           (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse)))))))))
 
+(defn- strip-timestamp
+  "Remove the timestamp portion of attachment filenames.
+  This is useful for creating stable filename keys in tests.
+  For example, see `run-pulse-and-return-attached-csv-data` below.
+
+  Eg. test_card_2024-03-05T22:30:24.077306Z.csv -> test_card.csv"
+  [fname]
+  (let [ext (last (str/split fname #"\."))
+        name-parts (butlast (str/split fname #"_"))]
+    (format "%s.%s" (str/join "_" name-parts) ext)))
+
 (defn- run-pulse-and-return-attached-csv-data
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
   attachment name -> column name -> column data"
@@ -175,16 +186,26 @@
       (mt/with-test-user nil
         (metabase.pulse/send-pulse! pulse)))
     (->>
-      (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
-      (keep
-        (fn [{:keys [type content-type file-name content]}]
-          (when (and
-                  (= :attachment type)
-                  (= "text/csv" content-type))
-            [file-name
-             (let [[h & r] (csv/read-csv (slurp content))]
-               (zipmap h (apply mapv vector r)))])))
-      (into {}))))
+     (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
+     (keep
+      (fn [{:keys [type content-type file-name content]}]
+        (when (and
+               (= :attachment type)
+               (= "text/csv" content-type))
+          [(strip-timestamp file-name)
+           (let [[h & r] (csv/read-csv (slurp content))]
+             (zipmap h (apply mapv vector r)))])))
+     (into {}))))
+
+(defn- slugify-fname
+  "Slugify a filename while preserving the extension.
+  Useful for writing tests that require a stable filename as a key.
+
+  Eg. Some File Name.csv -> some_file_name.csv"
+  [s]
+  (let [parts (str/split s #"\.")
+        ext (last parts)]
+    (str (u/slugify (str/join "." (butlast parts))) "." ext)))
 
 (deftest apply-formatting-in-csv-dashboard-test
   (testing "An exported dashboard should preserve the formatting specified in the column metadata (#36320)"
@@ -198,7 +219,7 @@
                                                                 :card_id      question-card-id}
                      Pulse {pulse-id :id
                             :as      pulse} {:name         "Test Pulse"
-                                             :dashboard_id dash-id}
+                            :dashboard_id dash-id}
                      PulseCard _ {:pulse_id          pulse-id
                                   :card_id           base-card-id
                                   :dashboard_card_id base-dash-card-id}
@@ -215,11 +236,11 @@
                                               :user_id          (mt/user->id :rasta)}]
         (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
           (testing "The base model has no special formatting"
-            (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))
+            (is (all-float? (get-in parsed-data [(slugify-fname "Base question - no special metadata.csv") "Tax Rate"]))))
           (testing "The model with metadata formats the Tax Rate column with the user-defined semantic type"
-            (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))
+            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Model with percent semantic type.csv") "Tax Rate"]))))
           (testing "The query based on the model uses the model's semantic typ information for formatting"
-            (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
+            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Query based on model.csv") "Tax Rate"])))))))))
 
 (deftest apply-formatting-in-csv-no-dashboard-test
   (testing "Exported cards should preserve the formatting specified in their column metadata (#36320)"
@@ -235,7 +256,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
-            (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
+            (is (all-float? (get-in parsed-data [(slugify-fname "Base question - no special metadata.csv") "Tax Rate"]))))))
       (testing "The attached data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"}
@@ -247,7 +268,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
-            (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
+            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Model with percent semantic type.csv") "Tax Rate"]))))))
       (testing "The attached data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"}
@@ -259,7 +280,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
-            (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
+            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Query based on model.csv") "Tax Rate"])))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Consistent Date Formatting ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -371,7 +392,7 @@
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
         (let [attached-data     (run-pulse-and-return-attached-csv-data pulse)
-              get-res           #(-> attached-data (get %)
+              get-res           #(-> attached-data (get (slugify-fname %))
                                      (update-vals first)
                                      (dissoc "X"))
               native-results    (get-res "NATIVE.csv")
@@ -545,21 +566,21 @@
                                               (when (and
                                                       (= :attachment type)
                                                       (= "text/csv" content-type))
-                                                [file-name
+                                                [(strip-timestamp file-name)
                                                  (first (csv/read-csv (slurp content)))])))
                                           (into {})))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= ["THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"]
-                     (attachment-name->cols (format "%s.csv" base-card-name)))))
+                     (attachment-name->cols (slugify-fname (format "%s.csv" base-card-name))))))
             (testing "A question derived from another question does not bring forward any renames"
               (is (= ["ID" "Tax" "Total" "Discount ($)" "Quantity" "Tax Rate"]
-                     (attachment-name->cols (format "%s.csv" model-card-name)))))
+                     (attachment-name->cols (slugify-fname (format "%s.csv" model-card-name))))))
             (testing "A model with custom metadata shows the renamed metadata columns"
               (is (= ["ID" "Tax" "Grand Total" "Amount of Discount ($)" "N" "Tax Rate"]
-                     (attachment-name->cols (format "%s.csv" meta-model-card-name)))))
+                     (attachment-name->cols (slugify-fname (format "%s.csv" meta-model-card-name))))))
             (testing "A question based on a model retains the curated metadata column names but overrides these with any existing visualization_settings"
               (is (= ["IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"]
-                     (attachment-name->cols (format "%s.csv" question-card-name)))))))))))
+                     (attachment-name->cols (slugify-fname (format "%s.csv" question-card-name))))))))))))
 
 (defn- run-pulse-and-return-scalars
   "Simulate sending the pulse email, get the html body of the response and return the scalar value of the card."
