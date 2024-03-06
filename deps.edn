@@ -225,6 +225,8 @@
   {:extra-deps
    {com.clojure-goes-fast/clj-async-profiler
                                  {:mvn/version "1.1.1"}                     ; Enables local profiling and heat map generation
+    com.clojure-goes-fast/clj-memory-meter
+                                 {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2023.12.15"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
@@ -255,10 +257,12 @@
                  "-Dmb.test.env.setting=ABCDEFG"
                  "-Duser.timezone=UTC"
                  "-Dfile.encoding=UTF-8"
-                 ;; Allow clojure goes fast tooling to work
-                 "-Djdk.attach.allowAttachSelf"
                  "-Duser.language=en"
                  "-Duser.country=US"
+                 ;; Allow clojure goes fast tooling to work
+                 "-Djdk.attach.allowAttachSelf"
+                 ;; This will suppress the warning about dynamically loaded agents (like clj-memory-meter)
+                 "-XX:+EnableDynamicAgentLoading"
                  ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
                  "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.selector.BasicContextSelector"
                  "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/log4j2-factory"
