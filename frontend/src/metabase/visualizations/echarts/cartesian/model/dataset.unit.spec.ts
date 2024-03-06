@@ -30,9 +30,11 @@ import {
   sortDataset,
 } from "./dataset";
 import type {
+  ChartDataset,
   DataKey,
   LegacySeriesSettingsObjectKey,
   SeriesModel,
+  XAxisModel,
 } from "./types";
 
 const createMockSeriesModel = (
@@ -58,6 +60,12 @@ const createMockComputedVisualizationSettings = (
 };
 
 describe("dataset transform functions", () => {
+  const xAxisModel: XAxisModel = {
+    axisType: "category",
+    isHistogram: false,
+    formatter: value => String(value),
+  };
+
   describe("sumMetric", () => {
     it("should return the sum when both arguments are numbers", () => {
       expect(sumMetric(3, 7)).toBe(10);
@@ -267,9 +275,9 @@ describe("dataset transform functions", () => {
 
   describe("replaceValues", () => {
     it("should replace missing values with zeros according to the replacer function", () => {
-      const dataset: Record<DataKey, RowValue>[] = [
-        { key1: null, key2: 2 },
-        { key1: 3, key2: null },
+      const dataset: ChartDataset = [
+        { [X_AXIS_DATA_KEY]: 1, key1: null, key2: 2 },
+        { [X_AXIS_DATA_KEY]: 2, key1: 3, key2: null },
       ];
       const replacer = (dataKey: string, value: RowValue) => {
         if (dataKey === "key1") {
@@ -281,8 +289,8 @@ describe("dataset transform functions", () => {
       const result = replaceValues(dataset, replacer);
 
       expect(result).toEqual([
-        { key1: null, key2: 2 },
-        { key1: 3, key2: 0 },
+        { [X_AXIS_DATA_KEY]: 1, key1: null, key2: 2 },
+        { [X_AXIS_DATA_KEY]: 2, key1: 3, key2: 0 },
       ]);
     });
   });
@@ -313,6 +321,7 @@ describe("dataset transform functions", () => {
     it("should populate dataset with min numeric values for positive and negative stack totals", () => {
       const result = applyVisualizationSettingsDataTransformations(
         originalDataset,
+        xAxisModel,
         seriesModels,
         createMockComputedVisualizationSettings({
           "stackable.stack_type": "stacked",
@@ -344,6 +353,7 @@ describe("dataset transform functions", () => {
     it("should return an array of normalized datasets", () => {
       const result = applyVisualizationSettingsDataTransformations(
         originalDataset,
+        xAxisModel,
         seriesModels,
         createMockComputedVisualizationSettings({
           "stackable.stack_type": "normalized",
@@ -376,6 +386,7 @@ describe("dataset transform functions", () => {
 
       const result = applyVisualizationSettingsDataTransformations(
         dataset,
+        xAxisModel,
         seriesModels,
         createMockComputedVisualizationSettings({
           series: (key: LegacySeriesSettingsObjectKey) => ({
@@ -398,6 +409,7 @@ describe("dataset transform functions", () => {
     it("should work on empty datasets", () => {
       const result = applyVisualizationSettingsDataTransformations(
         [],
+        xAxisModel,
         seriesModels,
         createMockVisualizationSettings({
           series: (key: LegacySeriesSettingsObjectKey) => ({
@@ -449,9 +461,7 @@ describe("dataset transform functions", () => {
 
   describe("getTransformedDataset", () => {
     const seriesKey = "value";
-    // const dimensionKey = "date";
     const seriesModels = [createMockSeriesModel("value", 0)];
-    // const dimensionModel = createMockDimensionModel("date", 1);
 
     it("should sort time-series datasets", () => {
       const dataset = [
@@ -485,6 +495,7 @@ describe("dataset transform functions", () => {
       expect(() =>
         applyVisualizationSettingsDataTransformations(
           [],
+          xAxisModel,
           seriesModels,
           createMockComputedVisualizationSettings(),
         ),
