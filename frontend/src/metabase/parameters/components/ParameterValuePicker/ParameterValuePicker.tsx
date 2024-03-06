@@ -33,8 +33,6 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
     return null;
   }
 
-  // console.log("param", parameter);
-
   if (shouldShowPlainInput(parameter)) {
     return (
       <PlainValueInput

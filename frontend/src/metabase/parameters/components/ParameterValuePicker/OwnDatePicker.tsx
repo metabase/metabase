@@ -8,7 +8,11 @@ import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget
 import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import { Popover } from "metabase/ui";
-import type { Parameter, ParameterType } from "metabase-types/api";
+import type {
+  DateParameterType,
+  Parameter,
+  ParameterType,
+} from "metabase-types/api";
 
 import {
   TextInputIcon,
@@ -23,6 +27,7 @@ export function OwnDatePicker(props: {
   const { value, parameter, onValueChange } = props;
   const [isOpen, setIsOpen] = useState(false);
   const formatted = formatParameterValue(value, parameter);
+  const parameterType = parameter.type as DateParameterType; // TODO fix types in Parameter
 
   const openPopover = () => setIsOpen(true);
   const closePopover = () => setIsOpen(false);
@@ -48,10 +53,10 @@ export function OwnDatePicker(props: {
     : { style: { pointerEvents: "none" } };
 
   // TODO this should be removed as soon as we reconcile all dropdowns and make them use Mantine
-  const Z_INDEX = 2;
+  const zIndex = hasInnerPopovers(parameterType) ? 3 : undefined;
 
   return (
-    <Popover opened={isOpen} zIndex={Z_INDEX}>
+    <Popover opened={isOpen} zIndex={zIndex}>
       <Popover.Target>
         <TextInputTrirgger
           ref={setTriggerRef}
@@ -67,7 +72,7 @@ export function OwnDatePicker(props: {
       <Popover.Dropdown>
         <div ref={dropdownRef}>
           <DateComponentRouter
-            type={parameter.type as ParameterType}
+            type={parameterType}
             value={value}
             onClose={closePopover}
             setValue={onValueChange}
@@ -79,7 +84,7 @@ export function OwnDatePicker(props: {
 }
 
 function DateComponentRouter(props: {
-  type: ParameterType;
+  type: DateParameterType;
   value: string;
   setValue: (value: string | null) => void;
   onClose: () => void;
@@ -107,11 +112,19 @@ function DateComponentRouter(props: {
     case "date/single":
     case "date/range":
     case "date/all-options":
-      return <DateAllOptionsWidget {...componentProps} />;
+      return (
+        <DateAllOptionsWidget disableOperatorSelection {...componentProps} />
+      );
   }
 
-  // TODO should never happen
+  // should never happen
   return null;
+}
+
+function hasInnerPopovers(type: DateParameterType) {
+  return ["date/relative", "date/month-year", "date/quarter-year"].includes(
+    type,
+  );
 }
 
 // TODO this should be in the Lib or somewhere else
