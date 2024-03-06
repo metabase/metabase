@@ -13,7 +13,7 @@ describe("issue 30680", () => {
       .findByText("Use a native query")
       .click();
 
-    cy.get(".ace_editor").type("select * from orders ");
+    cy.get(".ace_editor").type("select * from orders ", { delay: 50 });
     runNativeQuery();
 
     cy.findByTestId("editor-tabs-metadata-name").click();
