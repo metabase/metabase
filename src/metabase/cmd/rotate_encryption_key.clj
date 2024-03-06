@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [metabase.db :as mdb]
-   [metabase.db.env :as mdb.env]
    [metabase.models :refer [Database Secret Setting]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.util.encryption :as encryption]
@@ -16,7 +15,7 @@
   (when-not (mdb/db-is-set-up?)
     (log/warnf "Database not found. Metabase will create a new database at %s and proceeed encrypting." "2")
     (mdb/setup-db!))
-  (log/infof "%s: %s | %s" (trs "Connected to") mdb.env/db-type (mdb.env/db-file))
+  (log/infof "%s: %s | %s" (trs "Connected to") (mdb/db-type) (mdb/db-file))
   (let [make-encrypt-fn  (fn [maybe-encrypt-fn]
                            (if to-key
                              (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))

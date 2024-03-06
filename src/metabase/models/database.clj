@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]

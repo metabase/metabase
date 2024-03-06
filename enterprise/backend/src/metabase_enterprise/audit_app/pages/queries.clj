@@ -3,7 +3,7 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
-   [metabase.db :as mdb
+   [metabase.db :as mdb]
    [metabase.models.permissions :as perms]))
 
 ;; List of all failing questions

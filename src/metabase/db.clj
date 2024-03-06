@@ -11,6 +11,7 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.db.env :as mdb.env]
    [metabase.db.setup :as mdb.setup]
    [metabase.db.spec :as mdb.spec]
    [potemkin :as p]))
@@ -30,6 +31,9 @@
 
  [mdb.connection-pool-setup
   recent-activity?]
+
+ [mdb.env
+  db-file]
 
  [mdb.setup
   migrate!]
