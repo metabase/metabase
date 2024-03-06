@@ -38,23 +38,8 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
-(defn make-nestable-sql
-  "Do best effort edit to the `sql`, to make it nestable in subselect.
-
-  That requires:
-
-  - Removal of traling comments (after the semicolon).
-  - Removing the semicolon(s).
-  - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
-    comments were preceding semicolon.
-
-  This implementation does not handle few cases cases properly. 100% correct comment and semicolon removal would
-  probably require _parsing_ sql string and not just a regular expression replacement. Link to the discussion:
-  https://github.com/metabase/metabase/pull/30677
-
-  - Wrapping the result in parens is handled by honeysql with their custom clauses.
-
-  For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"
+(defn make-nestable-sql*
+  "See [[make-nestable-sql]] but does not wrap in result in parens."
   [sql]
   (-> sql
       (str/replace #";([\s;]*(--.*\n?)*)*$" "")
@@ -65,8 +50,26 @@
           (str trimmed "\n")
           trimmed))))
 
+(defn make-nestable-sql
+  "Do best effort edit to the `sql`, to make it nestable in subselect.
+
+  That requires:
+
+  - Removal of traling comments (after the semicolon).
+  - Removing the semicolon(s).
+  - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
+    comments were preceding semicolon.
+  - Wrapping the result in parens.
+
+  This implementation does not handle few cases cases properly. 100% correct comment and semicolon removal would
+  probably require _parsing_ sql string and not just a regular expression replacement. Link to the discussion:
+  https://github.com/metabase/metabase/pull/30677
+
+  For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"  [sql]
+  (str "(" (make-nestable-sql* sql) ")"))
+
 (defn- format-sql-source-query [_clause [sql params]]
-  (into [(make-nestable-sql sql)] params))
+  (into [(make-nestable-sql* sql)] params))
 
 (sql/register-clause! ::sql-source-query #'format-sql-source-query :select)
 
@@ -1416,28 +1419,30 @@
                               ref-name)
                             source-metadata)
         table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
+        needs-columns? (and
+                         (seq field-aliases)
+                         (> (count field-aliases) 1)
+                         (distinct? field-aliases)
+                         (every? some? field-aliases)
+                         (every? string? field-aliases))
         table-alias-and-columns (cond-> [source-query-alias]
-                                  (and
-                                    (seq field-aliases)
-                                    (distinct? field-aliases)
-                                    (every? some? field-aliases)
-                                    (every? string? field-aliases))
-                                  (conj {:columns (mapv #(h2x/identifier :field %) field-aliases)}))]
+                                  needs-columns?
+                                  (conj {:columns (mapv #(h2x/identifier :field %) field-aliases)}))
+        source-clause (cond
+                        persisted
+                        (sql-source-query persisted nil)
+
+                        native
+                        (sql-source-query native params)
+
+                        :else
+                        (apply-clauses driver {} source-query))]
     (merge
       honeysql-form
-      (cond
-        persisted
-        {:with [[table-alias-and-columns (sql-source-query persisted nil)]]
-         :select [(h2x/identifier :field-alias (keyword source-query-alias "*"))]
+      (if needs-columns?
+        {:with [[table-alias-and-columns source-clause]]
          :from [[table-alias]]}
-
-        native
-        {:with [[table-alias-and-columns (sql-source-query native params)]]
-         :select [:source.*]
-         :from [[table-alias]]}
-
-        :else
-        {:from [[(apply-clauses driver {} source-query) [table-alias]]]}))))
+        {:from [[source-clause [table-alias]]]}))))
 
 (defn- apply-clauses
   "Like [[apply-top-level-clauses]], but handles `source-query` as well, which needs to be handled in a special way
