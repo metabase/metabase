@@ -74,7 +74,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
 function openDateFilterPicker(isFilterRequired) {
   const selector = isFilterRequired
-    ? cy.findByText("Select a default value…")
+    ? cy.findByPlaceholderText("Select a default value…")
     : cy.get("fieldset");
 
   return selector.click();
