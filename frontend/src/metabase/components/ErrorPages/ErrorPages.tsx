@@ -7,7 +7,7 @@ import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-import { ReportableError } from "./ErrorDiagnosticModal";
+import { ErrorDiagnosticModalTrigger } from "./ErrorDiagnosticModal";
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
 export const GenericError = ({
@@ -28,7 +28,7 @@ export const GenericError = ({
       }
     />
     <ErrorDetails className="pt2" details={details} centered />
-    <ReportableError />
+    <ErrorDiagnosticModalTrigger />
   </ErrorPageRoot>
 );
 
@@ -85,6 +85,6 @@ export const SmallGenericError = ({
       color={color("text-light")}
       tooltip={message}
     />
-    <ReportableError />
+    <ErrorDiagnosticModalTrigger />
   </ErrorPageRoot>
 );

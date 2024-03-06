@@ -1,4 +1,5 @@
 import { useAsync } from "react-use";
+import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -31,11 +32,13 @@ export const useErrorInfo = (
 
     const entityInfoRequest = getEntityDetails({ entity, id });
     const bugReportDetailsRequest = isAdmin
-      ? UtilApi.bug_report_details()
+      ? UtilApi.bug_report_details().catch(nullOnCatch)
       : Promise.resolve(null);
 
-    const sessionPropertiesRequest = SessionApi.properties();
-    const logsRequest: any = isAdmin ? UtilApi.logs() : Promise.resolve(null);
+    const sessionPropertiesRequest = SessionApi.properties().catch(nullOnCatch);
+    const logsRequest: any = isAdmin
+      ? UtilApi.logs().catch(nullOnCatch)
+      : Promise.resolve(null);
 
     /* eslint-disable no-console */
     // @ts-expect-error I'm sorry
@@ -54,7 +57,7 @@ export const useErrorInfo = (
     const queryData =
       entity === "question" &&
       entityInfo?.dataset_query &&
-      (await MetabaseApi.dataset(entityInfo.dataset_query));
+      (await MetabaseApi.dataset(entityInfo.dataset_query).catch(nullOnCatch));
 
     const filteredLogs = logs?.slice?.(0, 100);
     const backendErrors = logs?.filter?.((log: any) => log.level === "ERROR");
@@ -65,21 +68,41 @@ export const useErrorInfo = (
         log?.msg?.includes?.(` userID: ${currentUser.id} `),
     );
 
+    const { engines, ...sessionPropertiesWithoutEngines } = sessionProperties;
+
     const payload: ErrorPayload = {
       url: location,
       entityInfo,
       entityName: entity,
+      localizedEntityName: getLocalizedEntityName(entity),
       ...(queryData ? { queryData } : undefined),
       logs: filteredLogs,
       frontendErrors,
       backendErrors,
       userLogs,
       instanceInfo: {
-        sessionProperties,
+        sessionProperties: sessionPropertiesWithoutEngines,
         bugReportDetails,
       },
     };
 
     return payload;
   }, [enabled]);
+};
+
+const nullOnCatch = () => null;
+
+const getLocalizedEntityName = (entityName?: ReportableEntityName) => {
+  switch (entityName) {
+    case "question":
+      return t`question`;
+    case "model":
+      return t`model`;
+    case "dashboard":
+      return t`dashboard`;
+    case "collection":
+      return t`collection`;
+    default:
+      return entityName;
+  }
 };

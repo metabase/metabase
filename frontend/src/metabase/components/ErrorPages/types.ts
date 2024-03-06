@@ -20,6 +20,7 @@ export type ErrorPayload = Partial<{
   userLogs: Log[];
   logs: Log[];
   entityName: ReportableEntityName;
+  localizedEntityName: string;
   entityInfo: Card | Dashboard | Collection;
   queryData: DatasetData;
   instanceInfo: {

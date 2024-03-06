@@ -12,6 +12,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { capitalize } from "metabase/lib/formatting";
 import {
   Button,
   Center,
@@ -130,48 +131,43 @@ export const ErrorDiagnosticModal = ({
       >
         <Form>
           <Text>
-            {t`Select the information you would like to include in the diagnostic file`}
+            {t`Select the info you want to include in the diagnostic JSON file.`}
           </Text>
           <Stack spacing="md" p="lg">
-            {!!errorInfo.entityName && (
-              <>
-                <FormCheckbox
-                  name="entityInfo"
-                  label={t`Include ${errorInfo.entityName} data`}
-                />
-                {canIncludeQueryData && (
-                  <FormCheckbox
-                    name="queryData"
-                    label={t`Include query data`}
-                  />
-                )}
-              </>
+            {!!errorInfo.localizedEntityName && (
+              <FormCheckbox
+                name="entityInfo"
+                label={t`${capitalize(errorInfo.localizedEntityName)} data`}
+              />
+            )}
+            {canIncludeQueryData && (
+              <FormCheckbox name="queryData" label={t`Query data`} />
             )}
             <FormCheckbox
               name="frontendErrors"
-              label={t`Include browser error messages`}
+              label={t`Browser error messages`}
             />
             {!!errorInfo?.logs && (
               <Stack>
                 <FormCheckbox
                   name="backendErrors"
-                  label={t`Include all server error messages`}
+                  label={t`All server error messages`}
                 />
                 <FormCheckbox name="logs" label={t`Include all server logs`} />
                 <FormCheckbox
                   name="userLogs"
-                  label={t`Include server logs from the current user only`}
+                  label={t`Server logs from the current user only`}
                 />
               </Stack>
             )}
             <FormCheckbox
               name="instanceInfo"
               // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
-              label={t`Information about your Metabase instance`}
+              label={t`Metabase version and settings`}
             />
           </Stack>
           <Alert variant="warning">
-            {t`This diagnostic information may contain sensitive data. Make sure to review the file before sharing it.`}
+            {t`Review the downloaded file before sharing it, as the diagnostic info may contain sensitive data.`}
           </Alert>
           <Flex gap="sm" justify="flex-end" mt="lg">
             <Button onClick={onClose}>{t`Cancel`}</Button>

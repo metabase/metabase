@@ -35,11 +35,11 @@ export const getEntityDetails = ({ entity, id }: any) => {
           return Promise.resolve("unable to decode ad-hoc question");
         }
       }
-      return CardApi.get({ cardId: id });
+      return CardApi.get({ cardId: id }).catch(nullOnCatch);
     case "dashboard":
-      return DashboardApi.get({ id });
+      return DashboardApi.get({ id }).catch(nullOnCatch);
     case "collection":
-      return CollectionsApi.get({ id });
+      return CollectionsApi.get({ id }).catch(nullOnCatch);
     default:
       return Promise.resolve(null);
   }
@@ -48,3 +48,5 @@ export const getEntityDetails = ({ entity, id }: any) => {
 export const hasQueryData = (
   entityName?: ReportableEntityName | null,
 ): boolean => !!entityName && ["question", "model"].includes(entityName);
+
+const nullOnCatch = () => null;
