@@ -231,7 +231,7 @@
           ;; 2. drop the FK relationship in the database with SQL
           (t2/query-one db "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
           (sync/sync-database! db {:scan :schema})
-          ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database.
+          ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database (metabase#39687)
           #_(testing "after dropping the FK relationship, country's continent_id is targeting nothing"
               (is (nil? (get-fk-target))))
           ;; 3. add back the FK relationship but targeting continent_2
