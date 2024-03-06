@@ -59,8 +59,8 @@
 }
 
 .guideLeftPadded::before {
-  /*FIXME: not sure how to share this with other components
-     because we can't use composes here apparently. any workarounds?*/
+  /* FIXME: not sure how to share this with other components
+     because we can't use composes here apparently. any workarounds? */
   content: "";
   display: block;
   flex: 0.3;

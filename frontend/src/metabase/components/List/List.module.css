@@ -89,6 +89,7 @@
   align-items: center;
   display: flex;
 }
+
 .leftIcons {
   composes: mr2 from "style";
   align-self: flex-start;
@@ -96,9 +97,11 @@
   display: flex;
   composes: icons;
 }
+
 .rightIcons {
   composes: icons;
 }
+
 .itemIcons {
   composes: leftIcons;
   padding-top: 4px;
@@ -127,9 +130,11 @@
 .item .icon {
   visibility: hidden;
 }
+
 .item:hover .icon {
   visibility: visible;
 }
+
 .icon:hover {
   color: var(--color-brand);
 }
@@ -141,10 +146,12 @@
   visibility: visible !important;
   margin-left: 10px;
 }
+
 .item:hover .itemCheckbox,
 .item.selected .itemCheckbox {
   display: inline;
 }
+
 .item.selected .itemCheckbox {
   color: var(--color-brand);
 }
@@ -155,6 +162,7 @@
   visibility: visible !important;
   position: relative;
 }
+
 .item:hover .itemIcon,
 .item.selected .itemIcon {
   display: none;

@@ -31,18 +31,23 @@ h1 {
 :global(.h1) {
   font-size: 2em;
 }
+
 :global(.h2) {
   font-size: 1.5em;
 }
+
 :global(.h3) {
   font-size: 1.17em;
 }
+
 :global(.h4) {
   font-size: 1.12em;
 }
+
 :global(.h5) {
   font-size: 0.83em;
 }
+
 :global(.h6) {
   font-size: 0.75em;
 }
@@ -51,18 +56,23 @@ h1 {
   :global(.sm-h1) {
     font-size: 2em;
   }
+
   :global(.sm-h2) {
     font-size: 1.5em;
   }
+
   :global(.sm-h3) {
     font-size: 1.17em;
   }
+
   :global(.sm-h4) {
     font-size: 1.12em;
   }
+
   :global(.sm-h5) {
     font-size: 0.83em;
   }
+
   :global(.sm-h6) {
     font-size: 0.75em;
   }
@@ -72,18 +82,23 @@ h1 {
   :global(.md-h1) {
     font-size: 2em;
   }
+
   :global(.md-h2) {
     font-size: 1.5em;
   }
+
   :global(.md-h3) {
     font-size: 1.17em;
   }
+
   :global(.md-h4) {
     font-size: 1.12em;
   }
+
   :global(.md-h5) {
     font-size: 0.83em;
   }
+
   :global(.md-h6) {
     font-size: 0.75em;
   }
@@ -93,18 +108,23 @@ h1 {
   :global(.lg-h1) {
     font-size: 2em;
   }
+
   :global(.lg-h2) {
     font-size: 1.5em;
   }
+
   :global(.lg-h3) {
     font-size: 1.17em;
   }
+
   :global(.lg-h4) {
     font-size: 1.12em;
   }
+
   :global(.lg-h5) {
     font-size: 0.83em;
   }
+
   :global(.lg-h6) {
     font-size: 0.75em;
   }
