@@ -125,7 +125,9 @@ export function DashCardVisualization({
   onUpdateVisualizationSettings,
 }: DashCardVisualizationProps) {
   const question = useMemo(() => {
-    return new Question(dashcard.card, metadata);
+    return dashcard.card.dataset_query
+      ? new Question(dashcard.card, metadata)
+      : null;
   }, [dashcard.card, metadata]);
 
   const renderVisualizationOverlay = useCallback(() => {
@@ -183,8 +185,11 @@ export function DashCardVisualization({
   ]);
 
   const renderActionButtons = useCallback(() => {
-    const mainSeries = series[0] as unknown as Dataset;
+    if (!question) {
+      return null;
+    }
 
+    const mainSeries = series[0] as unknown as Dataset;
     const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
       question,
       result: mainSeries,
