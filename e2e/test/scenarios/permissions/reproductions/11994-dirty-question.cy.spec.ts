@@ -71,7 +71,6 @@ describe("issue 11994", () => {
   });
 
   it("does not show raw data toggle for pivot questions (metabase#11994)", () => {
-    // TODO: refactor visitQuestion to accept alias or id.
     cy.get<CardId>("@pivotQuestionId").then(questionId => {
       visitQuestion(questionId);
     });
