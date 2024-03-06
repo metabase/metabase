@@ -35,13 +35,18 @@ export const settings = createReducer(
   },
 );
 
+type RequiredUserSettings = {
+  [K in keyof UserSettings]-?: UserSettings[K];
+};
+
+type UserSettingsMap = {
+  [K in keyof RequiredUserSettings]: { key: K; value: RequiredUserSettings[K] };
+}[keyof RequiredUserSettings];
+
 export const UPDATE_USER_SETTING = "metabase/settings/UPDATE_USER_SETTING";
 export const updateUserSetting = createThunkAction(
   UPDATE_USER_SETTING,
-  function <K extends keyof UserSettings>(setting: {
-    key: K;
-    value: UserSettings[K];
-  }) {
+  function (setting: UserSettingsMap) {
     return async function (dispatch) {
       try {
         await SettingsApi.put(setting);
