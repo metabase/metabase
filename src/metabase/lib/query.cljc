@@ -84,21 +84,13 @@
     :database     database-id
     :stages       stages}))
 
-(mu/defn query-with-stage
-  "Create a query from a specific stage."
-  ([metadata-providerable stage]
-   (query-with-stages metadata-providerable [stage]))
-
-  ([database-id           :- ::lib.schema.id/database
-    metadata-providerable :- lib.metadata/MetadataProviderable
-    stage]
-   (query-with-stages database-id metadata-providerable [stage])))
-
 (mu/defn ^:private query-from-existing :- ::lib.schema/query
+  "Create a pMBQL query from either an existing pMBQL query (attaching metadata provider as needed), or from a legacy MBQL
+  query (converting it to pMBQL)."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    query                 :- lib.util/LegacyOrPMBQLQuery]
   (merge
-   (dissoc query [:query :native])
+   (dissoc query :query :native :type)
    (let [pmbql-query (lib.convert/->pMBQL query)]
      (query-with-stages metadata-providerable (:stages pmbql-query)))))
 

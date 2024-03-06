@@ -176,3 +176,12 @@
              :info         {:card-id 1000}}
             (lib.query/query meta/metadata-provider (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
                                                            :info {:card-id 1000}))))))
+
+(deftest ^:parallel convert-from-legacy-remove-type-test
+  (testing "legacy keys like :type and :query should get removed"
+    (is (= {:database     74001
+            :lib/type     :mbql/query
+            :lib/metadata meta/metadata-provider
+            :stages       [{:lib/type :mbql.stage/mbql, :source-table 74040}]}
+           (lib.query/query meta/metadata-provider
+             {:database 74001, :type :query, :query {:source-table 74040}})))))

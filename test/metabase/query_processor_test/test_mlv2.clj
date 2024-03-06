@@ -57,8 +57,9 @@
          pMBQL
          (^:once fn* []
           (testing "Legacy MBQL queries should round trip to pMBQL and back"
-            (is (= query
-                   (-> pMBQL lib.convert/->legacy-MBQL))))
+            (when-not (:lib/type query)
+              (is (= query
+                     (-> pMBQL lib.convert/->legacy-MBQL)))))
           (testing "converted pMBQL query should validate against the pMBQL schema"
             (is (not (me/humanize (mr/explain ::lib.schema/query pMBQL))))))))))))
 

@@ -1,47 +1,71 @@
 (ns metabase.query-processor.middleware.normalize-query
   "Middleware that converts a query into a normalized, canonical form."
   (:require
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(set! *warn-on-reflection* true)
+(mu/defn ^:private query-type :- [:enum #_pMBQL :mbql/query #_legacy :query :native #_audit :internal]
+  "Query type from a not-yet-normalized query map."
+  [query]
+  (keyword (some #(get query %) [:lib/type "lib/type" :type "type"])))
 
-(mu/defn ^:private normalize-audit-app-query :- [:map
-                                                 [:type [:= :internal]]]
-  [query :- :map]
+(defmulti ^:private normalize*
+  {:arglists '([query])}
+  query-type)
+
+(defn- normalize-legacy-query [query]
+  (->> query
+       ;; normalize using legacy normalization code
+       mbql.normalize/normalize
+       ;; now convert to a pMBQL query and attach metadata provider
+       (lib/query (qp.store/metadata-provider))))
+
+(defmethod normalize* :query  [query] (normalize-legacy-query query))
+(defmethod normalize* :native [query] (normalize-legacy-query query))
+
+;;; normalize a pMBQL query
+(defmethod normalize* :mbql/query
+  [query]
+  (let [query (lib/normalize query)]
+    ;; attach the metatdata provider if needed.
+    (cond->> query
+      (not (:lib/metadata query)) (lib/query (qp.store/metadata-provider)))))
+
+;;; normalize an audit app query
+(defmethod normalize* :internal
+  [query]
   (-> query
       (update-keys keyword)
       (update :type keyword)))
 
-(mu/defn normalize-preprocessing-middleware :- :map
+(defmethod normalize* :default
+  [query]
+  (throw (ex-info (i18n/tru "Invalid query, missing query :type or :lib/type")
+                  {:query query, :type qp.error-type/invalid-query})))
+
+(mu/defn normalize-preprocessing-middleware :- [:and
+                                                [:map
+                                                 [:database ::lib.schema.id/database]
+                                                 [:lib/type {:optional true} [:= :mbql/query]]
+                                                 [:type     {:optional true} [:= :internal]]]
+                                                [:fn
+                                                 {:error/message "valid pMBQL query or :internal audit query"}
+                                                 (some-fn :lib/type :type)]]
   "Preprocessing middleware. Normalize a query, meaning do things like convert keys and MBQL clause tags to kebab-case
-  keywords. Convert MLv2 pMBQL queries to legacy (temporary, until the QP is updated to process MLv2 directly)."
+  keywords. Convert query to pMBQL if needed."
   [query :- :map]
   (try
-    (let [query-type (keyword (some #(get query %) [:lib/type "lib/type" :type "type"]))
-          normalized (case query-type
-                       :mbql/query      ; pMBQL pipeline query
-                       (lib.convert/->legacy-MBQL (lib/normalize query))
-
-                       (:query :native)
-                       (mbql.normalize/normalize query)
-
-                       :internal
-                       (normalize-audit-app-query query)
-
-                       #_else
-                       (throw (ex-info (i18n/tru "Invalid query, missing query :type or :lib/type")
-                                       {:query query, :type qp.error-type/invalid-query})))]
-      (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str normalized))
-      normalized)
+    (u/prog1 (normalize* query)
+      (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str <>)))
     (catch Throwable e
-      (throw (ex-info (format "Error normalizing query: %s" (.getMessage e))
+      (throw (ex-info (format "Error normalizing query: %s" (ex-message e))
                       {:type  qp.error-type/qp
                        :query query}
                       e)))))

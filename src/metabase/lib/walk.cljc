@@ -64,18 +64,29 @@
 
     (f query path-type path stage-or-join)
 
-  for each `stage-or-join` in the query. `path-type` is either `:lib.walk/join` or `:lib.walk/stage`; `query` is the
-  entire query and `path` is the absolute path to the current `stage-or-join`. The results of `f`, the updated stage
-  or join, are spliced into the query at `path` if `f` returns something; `nil` values are ignored and the query will
-  not be unchanged (this is useful for walking the query for validation purposes).
+  for each `stage-or-join` in the query, including recursive ones inside joins. `path-type` is either `:lib.walk/join`
+  or `:lib.walk/stage`; `query` is the entire query and `path` is the absolute path to the current `stage-or-join`.
+  The results of `f`, the updated stage or join, are spliced into the query at `path` if `f` returns something; `nil`
+  values are ignored and the query will not be unchanged (this is useful for walking the query for validation
+  purposes).
+
+    ;; add default limit to all stages
+    (defn add-default-limit [query]
+      (walk
+       query
+       (fn [_query path-type _path stage-or-join]
+         (when (= path-type :lib.walk/stage)
+           (merge {:limit 1000} stage-or-join)))))
 
   To return a value right away, wrap it in [[reduced]], and subsequent walk calls will be skipped:
 
-    (walk
-     query
-     (fn [_query _path-type _path stage-or-join]
-       (when (some-condition? stage-or-join)
-         (reduced true))))"
+    ;; check whether any stage of a query has a `:source-card`
+    (defn query-has-source-card? [query]
+      (true? (walk
+              query
+              (fn [_query _path-type _path stage-or-join]
+                (when (:source-card stage-or-join)
+                  (reduced true))))))"
   [query f]
   (unreduced
    (walk-query

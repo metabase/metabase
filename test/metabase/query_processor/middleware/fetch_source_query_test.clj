@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
   (:require
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -21,8 +20,8 @@
 
 (defn- resolve-source-cards [query]
   (letfn [(thunk []
-            ;; handle old tests written with legacy queries. Convert legacy query to pMBQL and then convert results
-            ;; back.
+            ;; Handle old tests written with legacy queries. Convert legacy query to pMBQL and then convert results
+            ;; back. That way we don't need to update all the tests immediately and can do so at our leisure.
             (let [mlv2-query (lib.query/query (qp.store/metadata-provider) query)
                   resolved   (fetch-source-query/resolve-source-cards mlv2-query)]
               (cond-> resolved
@@ -186,7 +185,7 @@
                                          :query    {:source-table "card__1"
                                                     :limit        1}
                                          :database lib.schema.id/saved-questions-virtual-database-id})]
-          (is (=? {:dataset true ; TODO -- remove the `:dataset` key
+          (is (=? {:dataset true        ; TODO -- remove the `:dataset` key
                    :rows    1
                    :model   true}
                   (-> results :data (update :rows count)))))))))
