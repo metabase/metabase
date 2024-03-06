@@ -89,6 +89,9 @@
     [:result_metadata _ _]
     (deferred-tru "edited the metadata")
 
+    [:width nil _]
+    (deferred-tru "changed the width setting to {0}" (name v2))
+
     [:width _ _]
     (deferred-tru "changed the width setting from {0} to {1}" (name v1) (name v2))
 
