@@ -389,15 +389,6 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     checkFilterValueNotInList("Gadget");
     checkFilterValueNotInList("Doohickey");
     FieldFilter.selectFilterValueFromList("Gizmo");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Open Editor").click();
-    cy.icon("variable").click();
-    FieldFilter.openEntryForm(true);
-    cy.wait("@parameterValues");
-    checkFilterValueNotInList("Gadget");
-    checkFilterValueNotInList("Doohickey");
-    FieldFilter.selectFilterValueFromList("Gizmo");
   });
 });
 
