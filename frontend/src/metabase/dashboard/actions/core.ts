@@ -6,6 +6,7 @@ import type {
   DashboardCard,
   DashboardId,
 } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 export const initialize = createAction(INITIALIZE);
@@ -17,6 +18,13 @@ export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 export const setEditingDashboard = createAction<Dashboard | null>(
   SET_EDITING_DASHBOARD,
 );
+
+export const CANCEL_EDITING_DASHBOARD =
+  "metabase/dashboard/CANCEL_EDITING_DASHBOARD";
+export const cancelEditingDashboard = () => (dispatch: Dispatch) => {
+  dispatch(setEditingDashboard(null));
+  dispatch({ type: CANCEL_EDITING_DASHBOARD });
+};
 
 export type SetDashboardAttributesOpts = {
   id: DashboardId;

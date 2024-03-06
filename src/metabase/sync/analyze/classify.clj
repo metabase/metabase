@@ -38,9 +38,12 @@
 ;;; |                                         CLASSIFYING INDIVIDUAL FIELDS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private values-that-can-be-set
-  "Columns of Field that classifiers are allowed to set."
-  #{:semantic_type :preview_display :has_field_values :entity_type})
+(defn- updateable-columns
+  "Columns of Field or Table that classifiers are allowed to be set."
+  [model]
+  (case model
+   :model/Field #{:semantic_type :preview_display :has_field_values}
+   :model/Table #{:entity_type}))
 
 (def ^:private FieldOrTableInstance
   [:or
@@ -59,15 +62,12 @@
                          values-to-set)))
     ;; Check that we're not trying to set anything that we're not allowed to
     (doseq [k (keys values-to-set)]
-      (when-not (contains? values-that-can-be-set k)
+      (when-not (contains? (updateable-columns (mi/model original-model)) k)
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
     ;; cool, now we should be ok to update the model
     (when values-to-set
-      (t2/update! (if (mi/instance-of? :model/Field original-model)
-                    :model/Field
-                    :model/Table)
-          (u/the-id original-model)
-        values-to-set)
+      (t2/update! (mi/model original-model) (u/the-id original-model)
+                  values-to-set)
       true)))
 
 
