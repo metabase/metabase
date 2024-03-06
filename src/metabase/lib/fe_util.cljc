@@ -34,12 +34,13 @@
   (into expandable-time-units expandable-date-units))
 
 (defn- expandable-temporal-expression?
-  [[operator _options & [maybe-clause-arg :as args]]]
+  [[operator _options & [maybe-clause-arg other-arg :as args]]]
   (boolean (and (= := operator)
                 (= 2 (count args))
                 (lib.util/clause? maybe-clause-arg)
                 (contains? expandable-temporal-units
-                           (:temporal-unit (lib.options/options maybe-clause-arg))))))
+                           (:temporal-unit (lib.options/options maybe-clause-arg)))
+                (shared.ut/timestamp-coercible? other-arg))))
 
 (defn- expand-temporal-expression
   "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.

@@ -34,11 +34,18 @@
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))
 
+(defn ^:export timestamp-coercible?
+  "Check whether value is coercible to timestamp. Condition resembles [[coerce-to-timestamp]]."
+  [value]
+  (or (internal/datetime? value)
+      (string? value)
+      (number? value)))
+
 (defn ^:export coerce-to-timestamp
   "Parses a timestamp value into a date object. This can be a straightforward Unix timestamp or ISO format string.
   But the `:unit` field can be used to alter the parsing to, for example, treat the input number as a day-of-week or
   day-of-month number.
-  Returns Moments in JS and OffsetDateTimes in Java."
+  Returns Moments in JS and OffsetDateTimes in Java for coercible values. Exception is thrown otherwise."
   ([value] (coerce-to-timestamp value {}))
   ([value options]
    (let [options (prep-options options)
@@ -50,7 +57,10 @@
                      (re-matches #".*(Z|[+-]\d\d:?\d\d)$" value)) (internal/parse-with-zone value)
                 ;; Then we fall back to two multimethods for coercing strings and number to timestamps per the :unit.
                 (string? value)                                   (common/string->timestamp value options)
-                :else                                             (common/number->timestamp value options))]
+                (number? value)                                   (common/number->timestamp value options)
+                :else                                             (throw (ex-info (str "Value is not timestamp coercible.")
+                                                                                  {:value value
+                                                                                   :options options})))]
      (if (:local options)
        (internal/localize base)
        base))))
