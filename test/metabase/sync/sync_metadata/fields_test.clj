@@ -267,21 +267,6 @@
                   :fk-target-exists? true}
                  (state))))))))
 
-(t2/with-call-count [call-count]
-  (mt/with-temp-test-data
-    [["continent_1"
-      [{:field-name "name", :base-type :type/Text}]
-      []]
-     ["continent_2"
-      [{:field-name "name", :base-type :type/Text}]
-      []]
-     ["country"
-      [{:field-name "name", :base-type :type/Text}
-       {:field-name "continent_id", :base-type :type/Integer}]
-      []]]
-    (mt/db))
-  (is (= 1 (call-count))))
-
 (deftest case-sensitive-conflict-test
   (testing "Two columns with same lower-case name can be synced (#17387)"
     (one-off-dbs/with-blank-db
