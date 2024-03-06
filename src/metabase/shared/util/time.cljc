@@ -45,25 +45,23 @@
   "Parses a timestamp value into a date object. This can be a straightforward Unix timestamp or ISO format string.
   But the `:unit` field can be used to alter the parsing to, for example, treat the input number as a day-of-week or
   day-of-month number.
-  Returns Moments in JS and OffsetDateTimes in Java for coercible values. Exception is thrown otherwise."
+  Returns Moments in JS and OffsetDateTimes in Java for coercible values, otherwise nil."
   ([value] (coerce-to-timestamp value {}))
   ([value options]
-   (let [options (prep-options options)
-         base (cond
-                ;; Just return an already-parsed value. (Moment in CLJS, DateTime classes in CLJ.)
-                (internal/datetime? value)                        (internal/normalize value)
-                ;; If there's a timezone offset, or Z for Zulu/UTC time, parse it directly.
-                (and (string? value)
-                     (re-matches #".*(Z|[+-]\d\d:?\d\d)$" value)) (internal/parse-with-zone value)
-                ;; Then we fall back to two multimethods for coercing strings and number to timestamps per the :unit.
-                (string? value)                                   (common/string->timestamp value options)
-                (number? value)                                   (common/number->timestamp value options)
-                :else                                             (throw (ex-info (str "Value is not timestamp coercible.")
-                                                                                  {:value value
-                                                                                   :options options})))]
-     (if (:local options)
-       (internal/localize base)
-       base))))
+   (when (timestamp-coercible? value)
+     (let [options (prep-options options)
+           base (cond
+                  ;; Just return an already-parsed value. (Moment in CLJS, DateTime classes in CLJ.)
+                  (internal/datetime? value)                        (internal/normalize value)
+                  ;; If there's a timezone offset, or Z for Zulu/UTC time, parse it directly.
+                  (and (string? value)
+                       (re-matches #".*(Z|[+-]\d\d:?\d\d)$" value)) (internal/parse-with-zone value)
+                  ;; Then we fall back to two multimethods for coercing strings and number to timestamps per the :unit.
+                  (string? value)                                   (common/string->timestamp value options)
+                  (number? value)                                   (common/number->timestamp value options))]
+       (if (:local options)
+         (internal/localize base)
+         base)))))
 
 (defn ^:export coerce-to-time
   "Parses a standalone time, or the time portion of a timestamp.
