@@ -15,6 +15,7 @@ interface JoinConditionColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
   joinable: Lib.Join | Lib.Joinable;
+  tableName: string | undefined;
   lhsColumn: Lib.ColumnMetadata | undefined;
   rhsColumn: Lib.ColumnMetadata | undefined;
   isOpened: boolean;
@@ -28,6 +29,7 @@ export function JoinConditionColumnPicker({
   query,
   stageIndex,
   joinable,
+  tableName,
   lhsColumn,
   rhsColumn,
   isOpened,
@@ -42,6 +44,7 @@ export function JoinConditionColumnPicker({
         <JoinColumnTarget
           query={query}
           stageIndex={stageIndex}
+          tableName={tableName}
           lhsColumn={lhsColumn}
           rhsColumn={rhsColumn}
           isLhsColumn={isLhsColumn}
@@ -69,6 +72,7 @@ export function JoinConditionColumnPicker({
 interface JoinColumnTargetProps {
   query: Lib.Query;
   stageIndex: number;
+  tableName: string | undefined;
   lhsColumn: Lib.ColumnMetadata | undefined;
   rhsColumn: Lib.ColumnMetadata | undefined;
   isLhsColumn: boolean;
@@ -81,6 +85,7 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
   {
     query,
     stageIndex,
+    tableName,
     lhsColumn,
     rhsColumn,
     isLhsColumn,
@@ -106,16 +111,18 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
       onClick={onClick}
       aria-label={isLhsColumn ? t`Left column` : t`Right column`}
     >
-      <Text
-        display="block"
-        size={11}
-        lh={1}
-        color="white"
-        align="left"
-        weight={400}
-      >
-        {t`Previous results`}
-      </Text>
+      {tableName != null && (
+        <Text
+          display="block"
+          size={11}
+          lh={1}
+          color="white"
+          align="left"
+          weight={400}
+        >
+          {tableName}
+        </Text>
+      )}
       <Text
         display="block"
         color={columnInfo ? "white" : "brand"}

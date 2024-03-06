@@ -21,8 +21,8 @@ import {
 
 interface JoinTablePickerProps {
   query: Lib.Query;
-  stageIndex: number;
   table: Lib.Joinable | undefined;
+  tableName: string | undefined;
   color: string;
   isReadOnly: boolean;
   isModelDataSource: boolean;
@@ -32,8 +32,8 @@ interface JoinTablePickerProps {
 
 export function JoinTablePicker({
   query,
-  stageIndex,
   table,
+  tableName,
   color,
   isReadOnly,
   isModelDataSource,
@@ -51,10 +51,6 @@ export function JoinTablePicker({
     const database = metadata.database(databaseId);
     return [database, metadata.savedQuestionsDatabase()].filter(Boolean);
   }, [databaseId, metadata]);
-
-  const tableInfo = useMemo(() => {
-    return table ? Lib.displayInfo(query, stageIndex, table) : null;
-  }, [query, stageIndex, table]);
 
   const pickerInfo = useMemo(() => {
     return table ? Lib.pickerInfo(query, table) : null;
@@ -98,7 +94,7 @@ export function JoinTablePicker({
         setSourceTableFn={handleTableChange}
         triggerElement={
           <TablePickerButton disabled={isDisabled}>
-            {tableInfo?.displayName || t`Pick data…`}
+            {tableName || t`Pick data…`}
           </TablePickerButton>
         }
       />

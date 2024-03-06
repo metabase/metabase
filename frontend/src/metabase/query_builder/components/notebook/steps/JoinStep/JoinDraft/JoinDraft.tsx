@@ -40,9 +40,15 @@ export function JoinDraft({
   );
   const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
 
-  const lhsDisplayName = useMemo(
+  const lhsTableName = useMemo(
     () => Lib.joinLHSDisplayName(query, stageIndex, table, lhsColumn),
     [query, stageIndex, table, lhsColumn],
+  );
+
+  const rhsTableName = useMemo(
+    () =>
+      table ? Lib.displayInfo(query, stageIndex, table).displayName : undefined,
+    [query, stageIndex, table],
   );
 
   const handleTableChange = (newTable: Lib.Joinable) => {
@@ -77,7 +83,7 @@ export function JoinDraft({
       <JoinCell color={color}>
         <Flex direction="row" gap={6}>
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
-            {lhsDisplayName}
+            {lhsTableName}
           </NotebookCellItem>
           <JoinStrategyPicker
             query={query}
@@ -88,8 +94,8 @@ export function JoinDraft({
           />
           <JoinTablePicker
             query={query}
-            stageIndex={stageIndex}
             table={table}
+            tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
             isModelDataSource={isModelDataSource}
@@ -116,6 +122,8 @@ export function JoinDraft({
               query={query}
               stageIndex={stageIndex}
               table={table}
+              lhsTableName={lhsTableName}
+              rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}
               isRemovable={false}
               onChange={handleConditionChange}

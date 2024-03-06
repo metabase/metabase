@@ -15,6 +15,8 @@ interface JoinConditionDraftProps {
   query: Lib.Query;
   stageIndex: number;
   table: Lib.Joinable;
+  lhsTableName: string;
+  rhsTableName: string | undefined;
   isReadOnly: boolean;
   isRemovable: boolean;
   onChange: (newCondition: Lib.JoinCondition) => void;
@@ -26,6 +28,8 @@ export function JoinConditionDraft({
   query,
   stageIndex,
   table,
+  lhsTableName,
+  rhsTableName,
   isReadOnly,
   isRemovable,
   onChange,
@@ -82,6 +86,7 @@ export function JoinConditionDraft({
             query={query}
             stageIndex={stageIndex}
             joinable={table}
+            tableName={lhsTableName}
             lhsColumn={lhsColumn}
             rhsColumn={rhsColumn}
             isOpened={isLhsOpened}
@@ -104,6 +109,7 @@ export function JoinConditionDraft({
             query={query}
             stageIndex={stageIndex}
             joinable={table}
+            tableName={rhsTableName}
             lhsColumn={lhsColumn}
             rhsColumn={rhsColumn}
             isOpened={isRhsOpened}

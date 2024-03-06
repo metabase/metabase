@@ -39,9 +39,14 @@ export function Join({
   const conditions = useMemo(() => Lib.joinConditions(join), [join]);
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
 
-  const lhsDisplayName = useMemo(
+  const lhsTableName = useMemo(
     () => Lib.joinLHSDisplayName(query, stageIndex, join),
     [query, stageIndex, join],
+  );
+
+  const rhsTableName = useMemo(
+    () => Lib.displayInfo(query, stageIndex, table).displayName,
+    [query, stageIndex, table],
   );
 
   const handleStrategyChange = (newStrategy: Lib.JoinStrategy) => {
@@ -78,7 +83,7 @@ export function Join({
       <JoinCell color={color}>
         <Flex direction="row" gap={6}>
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
-            {lhsDisplayName}
+            {lhsTableName}
           </NotebookCellItem>
           <JoinStrategyPicker
             query={query}
@@ -89,8 +94,8 @@ export function Join({
           />
           <JoinTablePicker
             query={query}
-            stageIndex={stageIndex}
             table={table}
+            tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
             isModelDataSource={isModelDataSource}
@@ -121,6 +126,8 @@ export function Join({
                 stageIndex={stageIndex}
                 join={join}
                 condition={condition}
+                lhsTableName={lhsTableName}
+                rhsTableName={rhsTableName}
                 isReadOnly={isReadOnly}
                 isRemovable={conditions.length > 1}
                 onChange={newCondition =>
@@ -145,6 +152,8 @@ export function Join({
               query={query}
               stageIndex={stageIndex}
               table={table}
+              lhsTableName={lhsTableName}
+              rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}
               isRemovable={true}
               onChange={handleAddCondition}
