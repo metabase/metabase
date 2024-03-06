@@ -16,6 +16,31 @@
   :setter     :none
   :audit      :never)
 
+(def ^:private max-users-not-enabled -1)
+
+(defsetting max-users
+  "The maximum number of users allowed in this instance. At this time, only used in airgapped instances.
+   If this is set to a negative number, there is no limit."
+  :visibility :internal
+  :type       :integer
+  :export?    false
+  :default    max-users-not-enabled
+  :audit      :never)
+
+(defn- user-count []
+  (t2/count :model/User {:where
+                         [:and
+                          [:not= :id config/internal-mb-user-id]
+                          [:not= :type "api-key"]]}))
+
+(defn check-max-users!
+  "Checks that, when enabled, we never insert more than max-users number of users. See also [[max-users]]"
+  []
+  (when (and (pos? (max-users)) ;; max-users is enabled
+             (> (max-users) (user-count)))
+    (throw (ex-info (tru "Cannot add user; max-users limit reached.")
+                    {:max-users (max-users) :user-count (user-count)}))))
+
 (defn token-match?
   "Function for checking if the supplied string matches our setup token.
    Returns boolean `true` if supplied token matches the setup token, `false` otherwise."
