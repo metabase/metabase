@@ -326,23 +326,29 @@ export class UnconnectedDataSelector extends Component {
 
   async componentDidMount() {
     const { activeStep } = this.state;
-    const sourceId = this.props.selectedTableId;
+    const {
+      fetchFields,
+      fetchQuestion,
+      selectedDataBucketId,
+      selectedQuestion,
+      selectedTableId: sourceId,
+    } = this.props;
 
     if (!this.isLoadingDatasets() && !activeStep) {
       await this.hydrateActiveStep();
     }
 
-    if (this.props.selectedDataBucketId === DATA_BUCKET.MODELS) {
+    if (selectedDataBucketId === DATA_BUCKET.MODELS) {
       this.showSavedEntityPicker({ entityType: "model" });
     }
 
     if (sourceId) {
-      await this.props.fetchFields(sourceId);
+      await fetchFields(sourceId);
       if (this.isSavedEntitySelected()) {
-        this.props.fetchQuestion(sourceId);
+        fetchQuestion(sourceId);
 
         this.showSavedEntityPicker({
-          entityType: this.props.selectedQuestion?.type(),
+          entityType: selectedQuestion?.type(),
         });
       }
     }
