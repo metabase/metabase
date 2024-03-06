@@ -121,7 +121,6 @@ export function Join({
           return (
             <Flex key={index} align="center" gap="sm" data-testid={testId}>
               <JoinCondition
-                key={index}
                 query={query}
                 stageIndex={stageIndex}
                 join={join}
