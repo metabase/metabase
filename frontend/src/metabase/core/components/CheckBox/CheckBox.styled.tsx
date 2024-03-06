@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import type {
   CheckBoxContainerProps,
   CheckBoxIconContainerProps,
@@ -66,7 +66,7 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
     ${props => color(props.checked ? props.checkedColor : props.uncheckedColor)};
   border-radius: 0.25rem;
   background-color: ${props =>
-    color(props.checked ? props.checkedColor : "bg-white")};
+    color(props.checked ? props.checkedColor : "white")};
 `;
 
 export const CheckBoxLabel = styled.span<CheckBoxLabelProps>`

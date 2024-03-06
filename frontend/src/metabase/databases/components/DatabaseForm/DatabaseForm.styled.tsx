@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button/Button";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const LinkFooter = styled.div`
   margin-top: 1rem;

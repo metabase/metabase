@@ -4,7 +4,7 @@ import { css } from "@emotion/react";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 import { ViewTitleHeader } from "./ViewHeader";
@@ -12,7 +12,7 @@ import { ViewTitleHeader } from "./ViewHeader";
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
   height: 100%;
   position: relative;
 `;
@@ -51,7 +51,7 @@ export const BorderedViewTitleHeader = styled(ViewTitleHeader)`
 
 export const QueryBuilderViewHeaderContainer = styled.div`
   flex-shrink: 0;
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
   position: relative;
   z-index: 3;
 `;

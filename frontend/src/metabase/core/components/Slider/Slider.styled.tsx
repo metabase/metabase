@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const THUMB_SIZE = "1.2rem";

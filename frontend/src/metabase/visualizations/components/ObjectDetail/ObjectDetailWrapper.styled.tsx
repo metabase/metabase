@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Modal from "metabase/components/Modal";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
 
 import TableFooter from "../TableSimple/TableFooter";

@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const ActionHeader = styled.div`
   display: flex;
@@ -77,7 +77,7 @@ export const ActionRunButtonContainer = styled.div`
 `;
 
 export const ActionRunButton = styled(Button)`
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
   color: ${color("text-dark")};
 `;
 

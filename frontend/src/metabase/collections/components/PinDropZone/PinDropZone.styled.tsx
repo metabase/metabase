@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export type PinDropTargetProps = {
   variant: "pin" | "unpin";

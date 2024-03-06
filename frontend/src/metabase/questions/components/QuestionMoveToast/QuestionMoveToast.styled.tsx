@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 
 import { Icon } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import Collections from "metabase/entities/collections";
 
 export const ToastRoot = styled.div`

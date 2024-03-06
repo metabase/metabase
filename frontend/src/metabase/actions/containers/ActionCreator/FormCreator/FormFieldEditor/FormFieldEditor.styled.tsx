@@ -5,12 +5,12 @@ import Radio from "metabase/core/components/Radio";
 import { Icon } from "metabase/ui";
 
 import { space } from "metabase/styled-components/theme";
-import { color, darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/ui/utils/colors";
 
 const DRAG_HANDLE_SIZE = 12;
 
 export const FormFieldContainer = styled.div`
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
   border: 1px solid ${color("border")};
   border-radius: ${space(1)};
   overflow: hidden;

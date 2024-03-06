@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import EditBar from "metabase/components/EditBar";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
 export const TabHintToastContainer = styled.div<{ isVisible: boolean }>`
@@ -48,8 +48,8 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   ${props =>
     props.isSelected &&
     css`
-      color: ${color("text-white")};
-      background-color: ${color("brand")};
+      color: ${props.theme.fn.themeColor("text-white")};
+      background-color: ${props.theme.fn.themeColor("brand")};
     `}
 
   .Icon {
@@ -88,7 +88,7 @@ export const Root = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
   height: calc(100vh - ${EDIT_BAR_HEIGHT});
 `;
 
@@ -108,7 +108,7 @@ export const QueryEditorContainer = styled.div<{ isResizable: boolean }>`
     props.isResizable &&
     css`
       margin-bottom: 1rem;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid ${props.theme.fn.themeColor("border")};
     `}
 `;
 

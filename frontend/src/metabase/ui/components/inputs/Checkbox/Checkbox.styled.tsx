@@ -1,4 +1,4 @@
-import { getStylesRef, getSize, rem } from "@mantine/core";
+import { getSize, getStylesRef, rem } from "@mantine/core";
 import type {
   CheckboxStylesParams,
   MantineTheme,

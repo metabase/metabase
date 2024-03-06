@@ -1,5 +1,7 @@
+import type { Theme } from "@emotion/react";
 import type { MantineTheme } from "@mantine/core";
-import { color } from "metabase/lib/colors";
+import * as colors from "metabase/lib/colors";
+import type { ColorPalette } from "metabase/lib/colors/types";
 
 type ColorShades = MantineTheme["colors"]["dark"];
 
@@ -48,7 +50,50 @@ export function getThemeColors(): Record<string, ColorShades> {
       ORIGINAL_COLORS.map(name => [name, getColorShades("transparent")]),
     ),
     ...Object.fromEntries(
-      CUSTOM_COLORS.map(name => [name, getColorShades(color(name))]),
+      CUSTOM_COLORS.map(name => [name, getColorShades(colors.color(name))]),
     ),
   };
+}
+
+type ThemeColorFunction<T = string> = ({ theme }: { theme: Theme }) => T;
+
+export function color(colorName: keyof ColorPalette): ThemeColorFunction;
+export function color(color: string): ThemeColorFunction;
+export function color(color: any): ThemeColorFunction {
+  return ({ theme }) => theme.fn?.themeColor(color);
+}
+
+export function alpha(
+  colorName: keyof ColorPalette,
+  value: number,
+): ThemeColorFunction;
+export function alpha(color: string, value: number): ThemeColorFunction;
+export function alpha(color: any, value: number): ThemeColorFunction {
+  return ({ theme }) => colors.alpha(theme.fn?.themeColor(color), value);
+}
+
+export function lighten(
+  colorName: keyof ColorPalette,
+  value?: number,
+): ThemeColorFunction;
+export function lighten(color: string, value?: number): ThemeColorFunction;
+export function lighten(color: any, value?: number): ThemeColorFunction {
+  return ({ theme }) => colors.lighten(theme.fn?.themeColor(color), value);
+}
+
+export function darken(
+  colorName: keyof ColorPalette,
+  value?: number,
+): ThemeColorFunction;
+export function darken(color: string, value?: number): ThemeColorFunction;
+export function darken(color: any, value?: number): ThemeColorFunction {
+  return ({ theme }) => colors.darken(theme.fn?.themeColor(color), value);
+}
+
+export function hueRotate(
+  colorName: keyof ColorPalette,
+): ThemeColorFunction<number>;
+export function hueRotate(color: string): ThemeColorFunction<number>;
+export function hueRotate(color: any): ThemeColorFunction<number> {
+  return ({ theme }) => colors.hueRotate(theme.fn?.themeColor(color));
 }

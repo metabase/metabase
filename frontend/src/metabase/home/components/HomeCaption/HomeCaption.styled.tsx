@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { breakpointMinExtraLarge } from "metabase/styled-components/theme";
 
 export interface CaptionProps {

@@ -2,13 +2,14 @@ import type * as React from "react";
 import { memo, useEffect, useState } from "react";
 import { Provider } from "react-redux";
 import styled from "@emotion/styled";
+import type { MantineThemeOverride } from "@mantine/core";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 import { getStore } from "metabase/store";
 import reducers from "metabase/reducers-main";
-import { alpha, color } from "metabase/lib/colors";
-import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { getAceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 import { setOptions } from "metabase/redux/embed";
+import { color, alpha } from "metabase/ui/utils/colors";
 
 import { SdkEmotionCacheProvider } from "./SdkEmotionCacheProvider";
 import { EmbeddingContext } from "./context";
@@ -21,9 +22,11 @@ import { useInitData } from "./hooks";
 const MetabaseProviderInternal = ({
   children,
   config,
+  theme,
 }: {
   children: React.ReactNode;
   config: SDKConfigType;
+  theme: MantineThemeOverride;
 }): JSX.Element => {
   const store = getStore(reducers);
 
@@ -52,7 +55,7 @@ const MetabaseProviderInternal = ({
     >
       <Provider store={store}>
         <SdkEmotionCacheProvider>
-          <ThemeProvider>
+          <ThemeProvider theme={theme}>
             <ContentWrapper id={SDK_CONTEXT_CLASS_NAME} font={font}>
               {!isInitialized ? <div>Initializing...</div> : children}
             </ContentWrapper>
@@ -72,7 +75,7 @@ const ContentWrapper = styled.div<{ font: string }>`
   --color-brand-alpha-88: ${alpha("brand", 0.88)};
   --color-focus: ${color("focus")};
 
-  ${aceEditorStyles}
+  ${({ theme }) => getAceEditorStyles(theme)}
   ${saveDomImageStyles}
 
   --default-font-size: 0.875em;

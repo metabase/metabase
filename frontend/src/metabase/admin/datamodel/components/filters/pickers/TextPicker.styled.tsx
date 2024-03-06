@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import AutosizeTextarea from "react-textarea-autosize";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export interface TextPickerInputProps {
   hasInvalidValues: boolean;
@@ -10,10 +10,10 @@ export interface TextPickerInputProps {
 export const TextPickerInput = styled.input<TextPickerInputProps>`
   border-color: ${color("filter")};
 
-  ${({ hasInvalidValues }) =>
+  ${({ hasInvalidValues, theme }) =>
     hasInvalidValues &&
     css`
-      border-color: ${color("error")};
+      border-color: ${theme.fn.themeColor("error")};
     `}
 `;
 
@@ -24,9 +24,9 @@ export interface TextPickerAreaProps {
 export const TextPickerArea = styled(AutosizeTextarea)<TextPickerAreaProps>`
   border-color: ${color("filter")};
 
-  ${({ hasInvalidValues }) =>
+  ${({ hasInvalidValues, theme }) =>
     hasInvalidValues &&
     css`
-      border-color: ${color("error")};
+      border-color: ${theme.fn.themeColor("error")};
     `}
 `;

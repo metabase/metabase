@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 
 export const Root = styled.div<{ color: ColorName }>`

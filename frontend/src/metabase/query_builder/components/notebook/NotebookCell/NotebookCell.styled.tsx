@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/ui/utils/colors";
+import * as colors from "metabase/lib/colors";
 
 export type BorderSide = "top" | "right" | "bottom" | "left";
 
@@ -74,7 +75,10 @@ export const NotebookCellItemContentContainer = styled.div<{
   ${props =>
     !!props.border &&
     css`
-    border-${props.border}: 1px solid ${alpha("white", 0.25)};
+    border-${props.border}: 1px solid ${colors.alpha(
+      props.theme.fn.themeColor("white"),
+      0.25,
+    )};
   `}
 
   ${props =>

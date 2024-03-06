@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Icon } from "metabase/ui";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 export const Root = styled.button`
   display: flex;

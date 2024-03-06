@@ -1,9 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import {
-  breakpointMinExtraLarge,
   breakpointMaxExtraLarge,
+  breakpointMinExtraLarge,
 } from "metabase/styled-components/theme";
 
 const DEFAULT_CONTAINER_PADDING_SIZE = "0.75rem";
@@ -67,11 +67,11 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     border: 1px solid ${color("brand")};
   }
 
-  ${({ isEmpty }) =>
+  ${({ isEmpty, theme }) =>
     isEmpty &&
     css`
-      border: 1px solid ${color("brand")};
-      color: ${color("text-light")};
+      border: 1px solid ${theme.fn.themeColor("brand")};
+      color: ${theme.fn.themeColor("text-light")};
     `}
 
   ${({ isSingleRow, isPreviewing, isEmpty, isMobile }) => {

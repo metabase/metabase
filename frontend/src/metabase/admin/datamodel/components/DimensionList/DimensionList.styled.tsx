@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/ui/utils/colors";
 
 export const FieldListGroupingTrigger = styled.div`
   display: flex;

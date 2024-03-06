@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/ui";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const SkeletonRoot = styled.div`
   position: relative;

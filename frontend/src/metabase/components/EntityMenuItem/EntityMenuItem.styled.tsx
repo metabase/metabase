@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Icon } from "metabase/ui";
 

@@ -5,7 +5,7 @@ import { Icon } from "metabase/ui";
 
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 import {
   breakpointMaxSmall,
@@ -33,17 +33,17 @@ export const SearchInputContainer = styled.div<{
   align-items: center;
   position: relative;
 
-  ${({ isActive }) => {
+  ${({ isActive, theme }) => {
     if (isActive) {
       return css`
-        background-color: ${color("bg-medium")};
+        background-color: ${theme.fn.themeColor("bg-medium")};
       `;
     }
     return css`
-      background-color: ${color("white")};
+      background-color: ${theme.fn.themeColor("white")};
 
       &:hover {
-        background-color: ${color("bg-light")};
+        background-color: ${theme.fn.themeColor("bg-light")};
       }
     `;
   }}
@@ -70,7 +70,7 @@ export const SearchInputContainer = styled.div<{
       props.isActive &&
       css`
         width: 100%;
-        border-color: ${color("border")};
+        border-color: ${props.theme.fn.themeColor("border")};
         ${activeInputCSS};
       `};
   }

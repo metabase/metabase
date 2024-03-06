@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import Label from "metabase/components/type/Label";
 
 export const LoginGroup = styled.div`

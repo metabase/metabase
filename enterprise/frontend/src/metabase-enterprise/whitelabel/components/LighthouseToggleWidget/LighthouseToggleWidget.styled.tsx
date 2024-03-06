@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { hueRotate } from "metabase/lib/colors";
+import { hueRotate } from "metabase/ui/utils/colors";
 
 export const LighthouseImage = styled.div`
   width: 100px;

@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import EditableText from "metabase/core/components/EditableText";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const Root = styled.div`
   padding: 1rem 1.5rem 0;

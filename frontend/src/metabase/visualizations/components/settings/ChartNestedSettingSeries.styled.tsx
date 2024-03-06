@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { Icon } from "metabase/ui";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Input from "metabase/core/components/Input";

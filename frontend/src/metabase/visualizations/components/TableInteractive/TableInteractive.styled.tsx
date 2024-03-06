@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import Draggable from "react-draggable";
 import Button from "metabase/core/components/Button";
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, color, lighten } from "metabase/ui/utils/colors";
 import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
 export const TableInteractiveRoot = styled(TableRoot)`

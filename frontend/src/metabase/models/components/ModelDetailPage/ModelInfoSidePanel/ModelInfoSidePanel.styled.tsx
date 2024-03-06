@@ -1,10 +1,11 @@
 import styled from "@emotion/styled";
+import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
 
 import EditableText from "metabase/core/components/EditableText";
 import Link from "metabase/core/components/Link";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const ModelInfoSection = styled.div``;
 
@@ -32,20 +33,20 @@ export const valueBlockStyle = css`
   padding-left: 4px;
 `;
 
-const commonInfoTextStyle = css`
+const getCommonInfoTextStyle = (theme: Theme) => css`
   ${valueBlockStyle}
-  color: ${color("text-medium")};
+  color: ${theme.fn.themeColor("text-medium")};
 `;
 
 export const ModelInfoText = styled.span`
-  ${commonInfoTextStyle}
+  ${({ theme }) => getCommonInfoTextStyle(theme)}
 `;
 
 export const ModelDescription = styled(EditableText)`
-  ${commonInfoTextStyle}
+  ${({ theme }) => getCommonInfoTextStyle(theme)}
 `;
 
 export const ModelInfoLink = styled(Link)`
-  ${commonInfoTextStyle}
+  ${({ theme }) => getCommonInfoTextStyle(theme)}
   color: ${color("brand")};
 `;

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import TextArea from "metabase/core/components/TextArea";
 import { ModalBody } from "metabase/parameters/components/ValuesSourceModal/ValuesSourceModal.styled";
 

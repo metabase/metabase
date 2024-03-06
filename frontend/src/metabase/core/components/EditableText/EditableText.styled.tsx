@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export interface EditableTextRootProps {
   isEditing?: boolean;
@@ -25,7 +25,7 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
     props.isEditing &&
     !props.isDisabled &&
     css`
-      border-color: ${color("border")};
+      border-color: ${props.theme.fn.themeColor("border")};
     `}
 
   ${({ isEditingMarkdown }) =>

@@ -2,7 +2,7 @@ import cx from "classnames";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import type { ComponentPropsWithoutRef } from "react";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -70,7 +70,7 @@ export const DashboardHeaderContainer = styled.header<{
   position: relative;
   z-index: 2;
 
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
   border-bottom: 1px solid ${color("border")};
 
   ${({ isFullscreen }) =>
@@ -80,10 +80,10 @@ export const DashboardHeaderContainer = styled.header<{
       border: none;
     `}
 
-  ${({ isNightMode }) =>
+  ${({ isNightMode, theme }) =>
     isNightMode &&
     css`
-      color: ${color("text-white")};
+      color: ${theme.fn.themeColor("text-white")};
     `}
 `;
 
@@ -115,12 +115,14 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   left: 0;
 
   /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
-  ${({ isSticky, hasScroll }) =>
+  ${({ isSticky, hasScroll, theme }) =>
     isSticky &&
     css`
       position: sticky;
       border-bottom: 1px solid
-        ${hasScroll ? color("border") : color("bg-light")};
+        ${hasScroll
+          ? theme.fn.themeColor("border")
+          : theme.fn.themeColor("bg-light")};
     `}
 `;
 

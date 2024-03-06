@@ -4,7 +4,7 @@ import Card from "metabase/components/Card";
 import { Icon } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const ItemCard = styled(Card)``;
 

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import DefaultButton from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const SectionTitle = styled.span`
   font-size: 12px;

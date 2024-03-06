@@ -4,7 +4,7 @@ import { css } from "@emotion/react";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon } from "metabase/ui";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export interface ItemRootProps {
   canSelect: boolean;
@@ -19,25 +19,25 @@ export const ItemRoot = styled.div<ItemRootProps>`
   padding: 0.5rem;
   border-radius: 0.5rem;
 
-  ${({ isSelected }) =>
+  ${({ isSelected, theme }) =>
     isSelected &&
     css`
-      color: ${color("white")};
-      background-color: ${color("brand")};
+      color: ${theme.fn.themeColor("white")};
+      background-color: ${theme.fn.themeColor("brand")};
 
       & ${ExpandButton} {
-        color: ${color("white")};
+        color: ${theme.fn.themeColor("white")};
       }
     `}
 
-  ${({ canSelect, hasChildren }) =>
+  ${({ canSelect, hasChildren, theme }) =>
     (canSelect || hasChildren) &&
     css`
       cursor: pointer;
 
       &:hover {
-        color: ${color("white")};
-        background-color: ${color("brand")};
+        color: ${theme.fn.themeColor("white")};
+        background-color: ${theme.fn.themeColor("brand")};
 
         & ${ExpandButton} {
           /**
@@ -45,15 +45,19 @@ export const ItemRoot = styled.div<ItemRootProps>`
            * state to indicate that the ExapndButton's click handler will be
            * called if the user clicks on the item.
            */
-          color: ${canSelect ? color("white") : color("brand")};
-          background-color: ${canSelect ? color("brand") : color("white")};
+          color: ${canSelect
+            ? theme.fn.themeColor("white")
+            : theme.fn.themeColor("brand")};
+          background-color: ${canSelect
+            ? theme.fn.themeColor("brand")
+            : theme.fn.themeColor("white")};
 
           &:hover {
-            color: ${color("brand")};
+            color: ${theme.fn.themeColor("brand")};
             & ${ItemIcon} {
-              color: ${color("brand")};
+              color: ${theme.fn.themeColor("brand")};
             }
-            background-color: ${color("white")};
+            background-color: ${theme.fn.themeColor("white")};
           }
         }
       }

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 import { focusOutlineStyle } from "metabase/core/style/input";

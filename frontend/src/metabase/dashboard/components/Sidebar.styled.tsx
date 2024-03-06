@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const SidebarAside = styled.aside<{ $width: number }>`
   display: flex;
@@ -7,7 +7,7 @@ export const SidebarAside = styled.aside<{ $width: number }>`
   width: ${props => props.$width}px;
   min-width: ${props => props.$width}px;
   border-left: 1px solid ${color("border")};
-  background: ${color("bg-white")};
+  background: ${color("white")};
 `;
 
 export const ChildrenContainer = styled.div`

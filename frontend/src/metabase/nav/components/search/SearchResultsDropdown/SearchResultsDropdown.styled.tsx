@@ -6,7 +6,7 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-import type { PaperProps, GroupProps } from "metabase/ui";
+import type { GroupProps, PaperProps } from "metabase/ui";
 import { Group, Paper } from "metabase/ui";
 
 export const SearchResultsContainer = styled(Paper)<PaperProps>`

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Form } from "metabase/forms";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const GoogleForm = styled(Form)`
   margin: 0 1rem;

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 const cellStyles = css`
   padding-left: 1.5rem;

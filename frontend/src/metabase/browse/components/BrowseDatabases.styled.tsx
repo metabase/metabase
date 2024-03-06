@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
-import { GridItem, Grid } from "metabase/components/Grid";
+import { Grid, GridItem } from "metabase/components/Grid";
 
 export const DatabaseGrid = styled(Grid)`
   width: 100%;

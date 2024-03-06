@@ -2,12 +2,12 @@ import styled from "@emotion/styled";
 
 import { Icon } from "metabase/ui";
 
-import { color, darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/ui/utils/colors";
 
-import { commonLabelStyle } from "./ModelCachingScheduleWidget.styled";
+import { getCommonLabelStyle } from "./ModelCachingScheduleWidget.styled";
 
 export const CustomScheduleLabel = styled.span`
-  ${commonLabelStyle}
+  ${({ theme }) => getCommonLabelStyle(theme)}
   color: ${color("text-medium")};
   font-size: 0.875rem;
   font-weight: 400;

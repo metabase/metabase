@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const MetabotRoot = styled.main`
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
 `;

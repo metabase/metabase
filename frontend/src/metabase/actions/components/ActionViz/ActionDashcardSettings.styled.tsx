@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import { space } from "metabase/styled-components/theme";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const ActionSettingsWrapper = styled.div`
   display: flex;

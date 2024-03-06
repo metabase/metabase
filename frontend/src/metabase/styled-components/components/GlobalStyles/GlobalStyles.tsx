@@ -1,6 +1,6 @@
-import { css, Global } from "@emotion/react";
+import { css, Global, useTheme } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
-import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { getAceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 import type { FontFile } from "metabase-types/api";
 
@@ -10,6 +10,7 @@ export interface GlobalStylesProps {
 }
 
 const GlobalStyles = ({ font, fontFiles }: GlobalStylesProps): JSX.Element => {
+  const theme = useTheme();
   const styles = css`
     :root {
       --default-font-family: "${font}";
@@ -31,7 +32,7 @@ const GlobalStyles = ({ font, fontFiles }: GlobalStylesProps): JSX.Element => {
       `,
     )}
 
-    ${aceEditorStyles}
+    ${getAceEditorStyles(theme)}
     ${saveDomImageStyles}
   `;
 

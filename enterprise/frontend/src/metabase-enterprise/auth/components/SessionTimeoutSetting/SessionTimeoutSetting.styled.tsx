@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import Input from "metabase/core/components/Input";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const SessionTimeoutSettingRoot = styled.div`
   margin: 0.5rem 0;

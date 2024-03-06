@@ -6,10 +6,10 @@ import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
-import ViewSection, { ViewSubHeading, ViewHeading } from "../ViewSection";
+import ViewSection, { ViewHeading, ViewSubHeading } from "../ViewSection";
 import { QuestionDataSource } from "./components/QuestionDataSource";
 
 export const ViewHeaderContainer = styled(ViewSection)<{
@@ -65,7 +65,7 @@ export const SaveButton = styled(Link)`
   font-weight: bold;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
 
   :hover {
     background-color: ${color("bg-light")};

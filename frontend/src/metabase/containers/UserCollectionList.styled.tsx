@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { GridItem } from "metabase/components/Grid";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const ListRoot = styled.div`
   padding: 0 4rem;

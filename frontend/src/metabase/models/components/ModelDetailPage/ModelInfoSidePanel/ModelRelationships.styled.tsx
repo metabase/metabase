@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
 
-import { color, darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/ui/utils/colors";
 
 import { valueBlockStyle } from "./ModelInfoSidePanel.styled";
 

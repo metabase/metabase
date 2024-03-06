@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import type { AnchorHTMLAttributes, HTMLAttributes, RefObject } from "react";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
-import { Box, Divider, Stack, Anchor, Button } from "metabase/ui";
+import { Anchor, Box, Button, Divider, Stack } from "metabase/ui";
 import Markdown from "metabase/core/components/Markdown";
 
 const { ModerationStatusIcon } = PLUGIN_MODERATION;

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/ui/utils/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const TableHeader = styled.div`

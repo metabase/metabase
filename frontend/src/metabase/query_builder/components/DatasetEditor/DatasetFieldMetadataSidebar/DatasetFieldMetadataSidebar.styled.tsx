@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import Radio from "metabase/core/components/Radio";
 import SelectButton from "metabase/core/components/SelectButton";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 const CONTENT_PADDING = "24px";
 

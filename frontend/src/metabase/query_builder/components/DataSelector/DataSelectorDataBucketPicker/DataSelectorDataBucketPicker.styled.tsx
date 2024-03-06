@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import SelectList from "metabase/components/SelectList";
 import { Icon } from "metabase/ui";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const DataBucketList = styled(SelectList)`

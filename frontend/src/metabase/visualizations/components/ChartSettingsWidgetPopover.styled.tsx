@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import Radio from "metabase/core/components/Radio";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 interface PopoverRootProps {
   noTopPadding: boolean;

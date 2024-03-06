@@ -3,11 +3,11 @@ import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import {
+  breakpointMaxMedium,
   breakpointMaxSmall,
   breakpointMinSmall,
-  breakpointMaxMedium,
 } from "metabase/styled-components/theme";
 import EditableText from "metabase/core/components/EditableText";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";

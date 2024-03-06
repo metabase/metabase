@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { focusOutlineStyle } from "metabase/core/style/input";
 
 export interface TextAreaRootProps {
@@ -17,7 +17,7 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   padding: 0.75rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
-  background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
+  background-color: ${props => color(props.readOnly ? "bg-light" : "white")};
   outline: none;
   text-align: inherit;
 
@@ -38,7 +38,7 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   ${props =>
     props.hasError &&
     css`
-      border-color: ${color("error")};
+      border-color: ${props.theme.fn.themeColor("error")};
     `};
 
   ${props =>

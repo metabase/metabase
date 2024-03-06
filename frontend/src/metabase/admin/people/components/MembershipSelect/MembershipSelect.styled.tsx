@@ -1,6 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const MembershipSelectContainer = styled.ul`
   padding: 0.5rem 0;
@@ -26,11 +26,11 @@ export const MembershipSelectItem = styled.li<MembershipSelectItemProps>`
     !props.isDisabled &&
     css`
       &:hover {
-        color: ${color("white")};
-        background-color: ${color("filter")};
+        color: ${props.theme.fn.themeColor("white")};
+        background-color: ${props.theme.fn.themeColor("filter")};
 
         .Icon {
-          color: ${color("white")} !important;
+          color: ${props.theme.fn.themeColor("white")} !important;
         }
       }
     `}

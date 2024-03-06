@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { Icon } from "metabase/ui";
 import EmptyState from "metabase/components/EmptyState";
 import { VisualizationRunningState } from "metabase/query_builder/components/QueryVisualization";

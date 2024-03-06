@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const ActionLink = styled(Link)`
   display: block;

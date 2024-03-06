@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import type { ComponentProps } from "react";
-import { color, darken } from "metabase/lib/colors";
+import { darken } from "metabase/ui/utils/colors";
 
 export const NotebookContainer = styled.div<{ isResizing: boolean }>`
   width: 100%;
@@ -32,7 +32,7 @@ const HandleContent = styled.div`
   width: 100px;
   height: 5px;
   border-radius: 4px;
-  background-color: ${darken(color("border"), 0.03)};
+  background-color: ${darken("border", 0.03)};
 `;
 
 export function Handle(props: ComponentProps<typeof HandleContainer>) {

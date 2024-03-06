@@ -1,6 +1,7 @@
+import type { Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 import { focusOutlineStyle } from "metabase/core/style/input";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export interface ToggleRootProps {
   checked?: boolean;
@@ -21,11 +22,12 @@ const getTranslateX = ({ checked, small }: ToggleRootProps): string => {
 const getBackgroundColor = ({
   checked,
   currentColor,
-}: ToggleRootProps): string => {
+  theme,
+}: ToggleRootProps & { theme: Theme }): string => {
   if (checked) {
-    return currentColor ?? color("brand");
+    return currentColor ?? theme.fn.themeColor("brand");
   } else {
-    return color("bg-medium");
+    return theme.fn.themeColor("bg-medium");
   }
 };
 

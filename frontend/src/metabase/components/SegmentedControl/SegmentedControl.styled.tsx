@@ -5,7 +5,7 @@ import _ from "underscore";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
-import { color, darken, alpha } from "metabase/lib/colors";
+import { alpha, color, darken } from "metabase/lib/colors";
 
 export type SegmentedControlVariant =
   | "fill-text"

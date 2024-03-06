@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper/IconButtonWrapper";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { NotebookCell } from "../../../NotebookCell";
 
 export const PickerButton = styled.button`

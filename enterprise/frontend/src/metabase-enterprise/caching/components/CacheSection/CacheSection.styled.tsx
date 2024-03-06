@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const CacheSectionRoot = styled.div`
   ${Button.Root} {

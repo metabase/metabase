@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const HeaderRoot = styled.div`
   display: flex;
@@ -12,16 +13,16 @@ export const HeaderIcon = styled(Icon)`
   margin-right: 0.5rem;
 `;
 
-const backButtonStyle = () => css`
+const getBackButtonStyle = (theme: Theme) => css`
   cursor: pointer;
   &:hover {
-    color: ${color("brand")};
+    color: ${theme.fn.themeColor("brand")};
   }
 `;
 
-const defaultBackButtonStyle = () => css`
-  ${backButtonStyle()}
-  color: ${color("text-medium")};
+const getDefaultBackButtonStyle = (theme: Theme) => css`
+  ${getBackButtonStyle(theme)}
+  color: ${theme.fn.themeColor("text-medium")};
   font-size: 0.83em;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -34,13 +35,14 @@ export type HeaderTitleContainerVariant =
 
 function getHeaderTitleContainerVariantStyle(
   variant: HeaderTitleContainerVariant = "default",
+  theme: Theme,
 ) {
   if (variant === "default") {
     return;
   }
   return variant === "default-back-button"
-    ? defaultBackButtonStyle()
-    : backButtonStyle();
+    ? getDefaultBackButtonStyle(theme)
+    : getBackButtonStyle(theme);
 }
 
 export const HeaderTitleContainer = styled.span<{
@@ -55,7 +57,7 @@ export const HeaderTitleContainer = styled.span<{
   margin-top: 0;
   margin-bottom: 0;
 
-  ${props => getHeaderTitleContainerVariantStyle(props.variant)}
+  ${props => getHeaderTitleContainerVariantStyle(props.variant, props.theme)}
 `;
 
 export const CloseButton = styled.a`
