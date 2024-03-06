@@ -7,6 +7,7 @@ import {
   getFilterOperators,
   getSupportedAggregationOperators,
   getAggregationOperators,
+  isFuzzyOperator,
 } from "metabase-lib/operators/utils/index";
 import {
   TYPE,
@@ -124,6 +125,18 @@ describe("metabase-lib/operators/utils", () => {
           semantic_type: TYPE.FK,
         }).map(op => op.name),
       ).toEqual(["=", "!=", "is-null", "not-null", "is-empty", "not-empty"]);
+    });
+  });
+
+  describe("isFuzzyOperator", () => {
+    it("should return false for operators that expect an exact match", () => {
+      expect(isFuzzyOperator({ name: "=" })).toBe(false);
+      expect(isFuzzyOperator({ name: "!=" })).toBe(false);
+    });
+
+    it("should return true for operators that are not exact", () => {
+      expect(isFuzzyOperator({ name: "contains" })).toBe(true);
+      expect(isFuzzyOperator({ name: "between" })).toBe(true);
     });
   });
 
