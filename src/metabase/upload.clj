@@ -46,18 +46,18 @@
 ;;;; | Schema detection |
 ;;;; +------------------+
 
-;; Upload types form a DAG (directed acyclic graph) where each type can be coerced into any
-;; of its ancestors types. We parse each value in the CSV file to the most-specific possible
-;; type for each column. The most-specific possible type for a column is a common ancestor
-;; of the types for each value in the column, found by walking through the graph in a
-;; topological order, following edges from left to right.
+;; Upload value-types form a DAG (directed acyclic graph) where each type can be coerced into any of
+;; its ancestors types. We parse each value in the CSV file to the most-specific possible type for
+;; each column. The most-specific possible type for a column is the closest common ancestor of the
+;; types for each value in the column, found by walking through the graph in topological order,
+;; following edges from left to right - not that this is not guaranteed to be a least common ancestor!
 ;;
 ;; See [[metabase.util.ordered-hierarchy/first-common-ancestor]] for more details.
 ;;
 ;;                 text
 ;;                  |
 ;;                  │
-;;              varchar-255─────────┐
+;;              varchar-255────────┐
 ;;               /  |  \           │
 ;;              /   │  datetime  offset-datetime
 ;;             /    │      \
@@ -80,18 +80,21 @@
 ;; - `explicit-int` is an integer without an explicit decimal point.
 ;; - `float-or-int` is an integer with an explicit decimal point.
 ;;
-;; A column can never have any of these types, they are used purely for type-inference from values.
-;; As we scan through the values in a given column, we resolve to the first common ancestor of the
-;; value types which we have seen so far, and once this scan is completed, if any of these types
-;; are still not a `column-type` we then then use `abstract->concrete` to resolve it. For ease of
-;; reference we structure the graph so that this projection can always be found by travelling up
-;; along the left-most edge until we reach a valid `column-type`.
+;; While a `boolean-or-int` is a genuinely ambiguous value, `explicit-int` and `float-or-int` exist
+;; solely to power the type coercion and promotion behaviour on CSV appending.
 ;;
-;; While a `boolean-or-int` is a genuintely ambiguous value, `explicit-int` and `float-or-int` exist
-;; solely to power the type coercion and type promotion behaviour on CSV appending. If we encounter
-;; a `float-or-int` inside an `int` column, then we can safely cast it down to an integer. If we
-;; encounter a `float` (i.e. there is a non-zero fraction component), then we will need to promote
-;; the column to a `float.`
+;; - If we encounter a `float-or-int` inside an `int` column, then we can safely cast it down to an integer.
+;; - If we encounter a `float` (i.e. there is a non-zero fraction component), then we will need to promote
+;;   the column to a `float.`
+;;
+;; Columns can not have an abstract type, which has no meaning outside of inference and reconciliation.
+;; If we are left with an abstract type after having processed all the values, we need to traverse
+;; further up the graph until we reach a concrete `column-type`. For ease of reference and explicitness
+;; these corresponding values are given in the `abtract->concrete` map. One can figure out these
+;; mappings without looking away from the graph however by simplify following the first edge up from
+;; each node until you reach a concrete node. Structuring the graph this way not only gives us more
+;; value out of a single graphic, it also makes it simpler to prove that our graph meets some
+;; structural guarantess in our tests. It also saves us from some arbitrary visualization choices.
 ;;
 ;; </code></pre>
 

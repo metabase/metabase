@@ -20,14 +20,14 @@
     (is (nil? (parents h ::text)))
     (is (= [::text] (vec (parents h ::varchar-255))))
     (is (= [::float] (vec (parents h ::int))))
-    (is (= [::boolean ::int] (vec (parents h ::boolean-or-int))))))
+    (is (= [::boolean ::explicit-int] (vec (parents h ::boolean-or-int))))))
 
 (deftest ^:parallel children-test
   (testing "Children are listed in reverse order to when they were each derived from this tag"
     (is (nil? (ordered-hierarchy/children h ::boolean-or-int)))
     (is (= [::varchar-255] (vec (ordered-hierarchy/children h ::text))))
-    (is (= [::int] (vec (ordered-hierarchy/children h ::float))))
-    (is (= [::auto-incrementing-int-pk ::boolean-or-int] (vec (ordered-hierarchy/children h ::int))))))
+    (is (= [::int ::float-or-int] (vec (ordered-hierarchy/children h ::float))))
+    (is (= [::auto-incrementing-int-pk ::boolean-or-int] (vec (ordered-hierarchy/children h ::explicit-int))))))
 
 (deftest ^:parallel ancestors-test
   (testing "Linear ancestors are listed in order"
@@ -36,8 +36,10 @@
     (is (= [::varchar-255 ::text] (vec (ancestors h ::boolean))))
     (is (= [::float ::varchar-255 ::text] (vec (ancestors h ::int)))))
 
-  (testing "Non-linear ancestors are listed in breadth-first order"
+  (testing "Non-linear ancestors are listed in topological order, following edges in the order they were defined."
     (is (= [::boolean
+            ::explicit-int
+            ::float-or-int
             ::int
             ::float
             ::varchar-255
@@ -51,24 +53,33 @@
     (is (= [::date] (vec (descendants h ::datetime))))
     (is (= [::boolean-or-int] (vec (descendants h ::boolean)))))
 
-  (testing "Non-linear descendants are listed in breadth-first order"
-    (is (= [::int ::auto-incrementing-int-pk ::boolean-or-int] (vec (descendants h ::float))))
+  (testing "Non-linear descendants are listed in reverse topological order, following edges in reserve order."
+    (is (= [::int
+            ::float-or-int
+            ::explicit-int
+            ::auto-incrementing-int-pk
+            ::boolean-or-int]
+           (vec (descendants h ::float))))
     (is (= [::varchar-255
             ::offset-datetime
             ::datetime
             ::date
             ::float
             ::int
+            ::float-or-int
+            ::explicit-int
             ::auto-incrementing-int-pk
             ::boolean
             ::boolean-or-int]
            (vec (descendants h ::text))))))
 
-(deftest ^:parallel tags-test
-  (testing "Tags are returned in a topologically sorted order that also preserves insert order"
+(deftest ^:parallel sorted-tags-test
+  (testing "Tags are returned in a topological ordering that also preserves insertion order of the edges."
     (is (= [::boolean-or-int
             ::boolean
             ::auto-incrementing-int-pk
+            ::explicit-int
+            ::float-or-int
             ::int
             ::float
             ::date
@@ -100,7 +111,7 @@
     :right-angled-triangle
     :obtuse-triangle]))
 
-(deftest make-hierarchy-test
+(deftest ^:parallel make-hierarchy-test
   (testing "Hiccup structures have the expected topological order"
     (is (= [:isosceles-trapezoid
             :right-trapezoid
