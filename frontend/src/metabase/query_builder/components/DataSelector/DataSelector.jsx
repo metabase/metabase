@@ -140,7 +140,7 @@ export class UnconnectedDataSelector extends Component {
     selectedDataBucketId: PropTypes.string,
     selectedDatabaseId: PropTypes.number,
     selectedSchemaId: PropTypes.string,
-    selectedTableId: PropTypes.number,
+    selectedTableId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     selectedFieldId: PropTypes.number,
     databases: PropTypes.array.isRequired,
     setDatabaseFn: PropTypes.func,
