@@ -91,14 +91,18 @@
    (lib.core/query metadata-provider table-or-card-metadata))
 
   ([database-id metadata-provider query-map]
-   (let [query-cache (lib.cache/side-channel-cache (str database-id) metadata-provider
-                                                   #(js/WeakMap.)
-                                                   true #_force?)]
-     (or (.get query-cache query-map)
-         (let [new-query-map (lib.convert/js-legacy-query->pMBQL query-map)
-               new-query (lib.core/query metadata-provider new-query-map)]
-           (.set query-cache query-map new-query)
-           new-query)))))
+   ;; Since the query-map is possibly `Object.freeze`'d, we can't mutate it to attach the query.
+   ;; Therefore, we attach a two-level cache to the metadata-provider:
+   ;; The outer key is the database-id; the inner one i a weak ref to the legacy query-map (a JS object).
+   ;; This should achieve efficient caching of legacy queries without retaining garbage.
+   ;; (Except possibly for a few empty WeakMaps, if queries are cached and then GC'd.)
+   ;; If the metadata changes, the metadata-provider is replaced, so all these caches are destroyed.
+   (lib.cache/side-channel-cache-weak-refs
+     (str database-id) metadata-provider query-map
+     #(->> %
+           lib.convert/js-legacy-query->pMBQL
+           (lib.core/query metadata-provider))
+     {:force? true})))
 
 (defn- fix-namespaced-values
   "This converts namespaced keywords to strings as `\"foo/bar\"`.
