@@ -238,6 +238,8 @@ You can choose:
 - A model or saved question, then a field to supply the values for that dropdown or search box.
 - If you selected the Field filter variable type, you'll also have the option to use the connected field.
 
+You can also [change a dashboard filter's selectable values](../../dashboards/filters.md#change-a-filters-selectable-values).
+
 ## Setting a default value in the filter widget
 
 In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty). You'll need to insert a new value into the filter widget to override the default.
