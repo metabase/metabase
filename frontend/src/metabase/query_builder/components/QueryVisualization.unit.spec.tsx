@@ -13,24 +13,21 @@ function setup({ loadingMessage }: SetupOpts) {
 }
 
 describe("VisualizationRunningState", () => {
-  it("should render the default loading message initially", () => {
-    setup({ loadingMessage: "Doing Science..." });
-    expect(screen.getByText("Doing Science...")).toBeInTheDocument();
-  });
-
-  it("should render a custom loading message initially", () => {
-    setup({ loadingMessage: "Thinking Hard..." });
-    expect(screen.getByText("Thinking Hard...")).toBeInTheDocument();
-  });
-
-  it("should render a different loading message after a timeout", () => {
+  it("should render the different loading messages after a while", () => {
     jest.useFakeTimers();
 
-    setup({ loadingMessage: "Doing Science..." });
-    expect(screen.getByText("Doing Science...")).toBeInTheDocument();
+    setup({ loadingMessage: "Doing science..." });
+    expect(screen.getByText("Doing science...")).toBeInTheDocument();
 
-    jest.runAllTimers();
+    jest.advanceTimersByTime(5000);
+    expect(screen.getByText("Waiting for results...")).toBeInTheDocument();
+  });
 
-    expect(screen.getByText("Talking to the database...")).toBeInTheDocument();
+  it("should only render the custom loading message when it was customized", () => {
+    setup({ loadingMessage: "Thinking hard..." });
+    expect(screen.getByText("Thinking hard...")).toBeInTheDocument();
+
+    jest.advanceTimersByTime(5000);
+    expect(screen.getByText("Thinking hard...")).toBeInTheDocument();
   });
 });

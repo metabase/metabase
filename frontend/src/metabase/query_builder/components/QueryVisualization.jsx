@@ -86,7 +86,12 @@ export const VisualizationEmptyState = ({ className }) => (
 export function VisualizationRunningState({ className = "", loadingMessage }) {
   const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
 
-  const message = isSlow() ? t`Talking to the database...` : loadingMessage;
+  // show the slower loading message only when the loadingMessage is
+  // not customised
+  const message =
+    loadingMessage === "Doing science..." && isSlow()
+      ? t`Waiting for results...`
+      : loadingMessage;
 
   return (
     <div
