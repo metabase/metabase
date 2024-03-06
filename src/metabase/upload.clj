@@ -51,22 +51,23 @@
 ;; type for each column. The most-specific possible type for a column is the lowest common
 ;; ancestor of the types for each value in the column.
 ;;
-;;              text
-;;               |
-;;               |
-;;          varchar-255┐
-;;        /     / \    │
-;;       /     /   \   └──────────┬
-;;      /     /     \             │
-;;  boolean float   datetime  offset-datetime
-;;     |     │       │
-;;     │     │       │
-;;     |    int     date
-;;     |   /   \
-;;     |  /     \
-;;     | /       \
-;;     |/         \
-;; boolean-or-int  auto-incrementing-int-pk
+;;               text
+;;                |
+;;                │
+;;            varchar-255────────────┐
+;;             /  |  \               │
+;;            /   │  datetime  offset-datetime
+;;           /    │      \
+;;          /     │      date
+;;         /      │
+;;    boolean   float-───────┐
+;;        |       |     \    │
+;;        │       │    ──\──int
+;;        │       │  /    \  │
+;;        │ explicit-int  float-or-int
+;;        │    |     |
+;;        │    │     │
+;; boolean-or-int   auto-incrementing-int-pk
 ;;
 ;; `boolean-or-int` is a special type with two parents, where we parse it as a boolean if the whole
 ;; column's values are of that type. additionally a column cannot have a boolean-or-int type, but
@@ -85,13 +86,17 @@
     [::varchar-255
      [::boolean ::boolean-or-int]
      [::float
-      [::int ::boolean-or-int ::auto-incrementing-int-pk]]
+      [::float-or-int
+       [::explicit-int ::boolean-or-int ::auto-incrementing-int-pk]]
+      [::int ::explicit-int ::float-or-int]]
      [::datetime ::date]
      [::offset-datetime]]]))
 
 (def ^:private abstract->concrete
   "Not all value types correspond to database types. For those that don't, this maps to their concrete ancestor."
-  {::boolean-or-int ::boolean})
+  {::boolean-or-int ::boolean
+   ::explicit-int   ::int
+   ::float-or-int   ::float})
 
 (def ^:private value-types
   "All type tags which values can be inferred as. An ordered set from most to least specialized."
@@ -133,6 +138,15 @@
         ",." #"\d[\d.]*"
         ", " #"\d[\d \u00A0]*"
         ".’" #"\d[\d’]*"))))
+
+(defn- float-or-int-regex [number-separators]
+  (with-parens
+   (with-currency
+    (case number-separators
+      ("." ".,") #"\d[\d,]*\.0+"
+      ",." #"\d[\d.]*\,[0]+"
+      ", " #"\d[\d \u00A0]*\,[0.]+"
+      ".’" #"\d[\d’]*\.[0.]+"))))
 
 (defn- float-regex [number-separators]
   (with-parens
@@ -187,15 +201,20 @@
 
 (mu/defn ^:private settings->type->check :- type->check-schema
   [{:keys [number-separators] :as _settings}]
-  {::boolean-or-int  boolean-or-int-string?
-   ::boolean         boolean-string?
-   ::offset-datetime offset-datetime-string?
-   ::date            date-string?
-   ::datetime        datetime-string?
-   ::int             (regex-matcher (int-regex number-separators))
-   ::float           (regex-matcher (float-regex number-separators))
-   ::varchar-255     varchar-255?
-   ::text            (constantly true)})
+  (let [explicit-int? (regex-matcher (int-regex number-separators))
+        float-or-int? (regex-matcher (float-or-int-regex number-separators))
+        coerced-int?  #(or (explicit-int? %) (float-or-int? %))]
+    {::boolean-or-int  boolean-or-int-string?
+     ::boolean         boolean-string?
+     ::offset-datetime offset-datetime-string?
+     ::date            date-string?
+     ::datetime        datetime-string?
+     ::explicit-int    explicit-int?
+     ::int             coerced-int?
+     ::float-or-int    float-or-int?
+     ::float           (regex-matcher (float-regex number-separators))
+     ::varchar-255     varchar-255?
+     ::text            (constantly true)}))
 
 (defn- value->type
   "Determine the most specific type that is compatible with the given value.

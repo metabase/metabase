@@ -30,16 +30,18 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type        ::upload/boolean)
-(def ^:private int-type         ::upload/int)
-(def ^:private bool-or-int-type ::upload/boolean-or-int)
-(def ^:private float-type       ::upload/float)
-(def ^:private vchar-type       ::upload/varchar-255)
-(def ^:private date-type        ::upload/date)
-(def ^:private datetime-type    ::upload/datetime)
-(def ^:private offset-dt-type   ::upload/offset-datetime)
-(def ^:private text-type        ::upload/text)
-(def ^:private auto-pk-type     ::upload/auto-incrementing-int-pk)
+(def ^:private bool-type         ::upload/boolean)
+(def ^:private explicit-int-type ::upload/explicit-int)
+(def ^:private int-type          ::upload/int)
+(def ^:private bool-or-int-type  ::upload/boolean-or-int)
+(def ^:private float-type        ::upload/float)
+(def ^:private float-or-int-type ::upload/float-or-int)
+(def ^:private vchar-type        ::upload/varchar-255)
+(def ^:private date-type         ::upload/date)
+(def ^:private datetime-type     ::upload/datetime)
+(def ^:private offset-dt-type    ::upload/offset-datetime)
+(def ^:private text-type         ::upload/text)
+(def ^:private auto-pk-type      ::upload/auto-incrementing-int-pk)
 
 (defn- local-infile-on? []
   (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -112,37 +114,37 @@
 (deftest type-detection-and-parse-test
   (doseq [[string-value expected-value expected-type seps]
           ;; Number-related
-          [["0.0"        0              float-type "."]
-           ["0.0"        0              float-type ".,"]
-           ["0,0"        0              float-type ",."]
-           ["0,0"        0              float-type ", "]
-           ["0.0"        0              float-type ".’"]
-           ["$2"         2              int-type]
-           ["$ 3"        3              int-type]
-           ["-43€"       -43            int-type]
-           ["(86)"       -86            int-type]
-           ["($86)"      -86            int-type]
-           ["£1000"      1000           int-type]
-           ["£1000"      1000           int-type "."]
-           ["£1000"      1000           int-type ".,"]
-           ["£1000"      1000           int-type ",."]
-           ["£1000"      1000           int-type ", "]
-           ["£1000"      1000           int-type ".’"]
-           ["-¥9"        -9             int-type]
-           ["₹ -13"      -13            int-type]
-           ["₪13"        13             int-type]
-           ["₩-13"       -13            int-type]
-           ["₿42"        42             int-type]
-           ["-99¢"       -99            int-type]
-           ["2"          2              int-type]
-           ["-86"        -86            int-type]
-           ["9,986,000"  9986000        int-type]
-           ["9,986,000"  9986000        int-type "."]
-           ["9,986,000"  9986000        int-type ".,"]
-           ["9.986.000"  9986000        int-type ",."]
-           ["9’986’000"  9986000        int-type ".’"]
-           ["$0"         0              int-type]
-           ["-1"         -1             int-type]
+          [["0.0"        0              float-or-int-type"."]
+           ["0.0"        0              float-or-int-type ".,"]
+           ["0,0"        0              float-or-int-type ",."]
+           ["0,0"        0              float-or-int-type ", "]
+           ["0.0"        0              float-or-int-type ".’"]
+           ["$2"         2              explicit-int-type]
+           ["$ 3"        3              explicit-int-type]
+           ["-43€"       -43            explicit-int-type]
+           ["(86)"       -86            explicit-int-type]
+           ["($86)"      -86            explicit-int-type]
+           ["£1000"      1000           explicit-int-type]
+           ["£1000"      1000           explicit-int-type "."]
+           ["£1000"      1000           explicit-int-type ".,"]
+           ["£1000"      1000           explicit-int-type ",."]
+           ["£1000"      1000           explicit-int-type ", "]
+           ["£1000"      1000           explicit-int-type ".’"]
+           ["-¥9"        -9             explicit-int-type]
+           ["₹ -13"      -13            explicit-int-type]
+           ["₪13"        13             explicit-int-type]
+           ["₩-13"       -13            explicit-int-type]
+           ["₿42"        42             explicit-int-type]
+           ["-99¢"       -99            explicit-int-type]
+           ["2"          2              explicit-int-type]
+           ["-86"        -86            explicit-int-type]
+           ["9,986,000"  9986000        explicit-int-type]
+           ["9,986,000"  9986000        explicit-int-type "."]
+           ["9,986,000"  9986000        explicit-int-type ".,"]
+           ["9.986.000"  9986000        explicit-int-type ",."]
+           ["9’986’000"  9986000        explicit-int-type ".’"]
+           ["$0"         0              explicit-int-type]
+           ["-1"         -1             explicit-int-type]
            ["0"          false          bool-or-int-type]
            ["1"          true           bool-or-int-type]
            ["9.986.000"  "9.986.000"    vchar-type ".,"]
@@ -156,7 +158,7 @@
            [".14"        ".14"          vchar-type ".,"] ;; TODO: this should be a float type
            ["0.14"       0.14           float-type ".,"]
            ["-9986.567"  -9986.567      float-type ".,"]
-           ["$2.0"       2              float-type ".,"]
+           ["$2.0"       2              float-or-int-type ".,"]
            ["$ 3.50"     3.50           float-type ".,"]
            ["-4300.23€"  -4300.23       float-type ".,"]
            ["£1,000.23"  1000.23        float-type]
@@ -233,7 +235,7 @@
           ;; get the type of the column, if it were filled with only that value
           col-type    (first (upload/column-types-from-rows settings nil [[string-value]]))
           parser      (upload-parsing/upload-type->parser col-type settings)]
-      (testing (format "\"%s\" is a %s" string-value type)
+      (testing (format "\"%s\" is a %s" string-value value-type)
         (is (= expected-type
                value-type)))
       (testing (format "\"%s\" is parsed into %s" string-value expected-value)
