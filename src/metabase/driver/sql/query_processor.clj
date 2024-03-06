@@ -1420,7 +1420,8 @@
                                   (and
                                     (seq field-aliases)
                                     (distinct? field-aliases)
-                                    (every? some? field-aliases))
+                                    (every? some? field-aliases)
+                                    (every? string? field-aliases))
                                   (conj {:columns (mapv #(h2x/identifier :field %) field-aliases)}))]
     (merge
       honeysql-form

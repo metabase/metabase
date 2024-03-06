@@ -189,7 +189,7 @@
   (driver/with-driver :h2
     (mt/with-metadata-provider (mt/id)
       (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
-        (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM some_table WHERE name = ?) AS \"source\" WHERE (\"source\".\"name\" <> ?) OR (\"source\".\"name\" IS NULL)"
+        (is (= {:query  "WITH \"source\"  AS (SELECT * FROM some_table WHERE name = ?) SELECT \"source\".* FROM \"source\" WHERE (\"source\".\"name\" <> ?) OR (\"source\".\"name\" IS NULL)"
                 :params ["Cam" "Lucky Pigeon"]}
                (sql.qp/mbql->native
                 :h2
