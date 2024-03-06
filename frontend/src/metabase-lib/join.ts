@@ -23,7 +23,7 @@ import type {
  */
 export type Joinable = TableMetadata | CardMetadata;
 
-type JoinOrJoinable = Join | Joinable;
+export type JoinOrJoinable = Join | Joinable;
 
 type ColumnMetadataOrFieldRef = ColumnMetadata | Clause;
 

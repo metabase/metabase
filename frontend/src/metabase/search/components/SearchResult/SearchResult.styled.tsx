@@ -8,7 +8,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
 import { Box, Divider, Stack, Anchor, Button } from "metabase/ui";
 
-const isBoxPropValid = (propName: PropertyKey) => {
+const isBoxPropValid = (propName: string) => {
   return (
     propName !== "isActive" &&
     propName !== "isSelected" &&

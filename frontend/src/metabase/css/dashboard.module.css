@@ -92,7 +92,7 @@
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
-:global(.BrandColorResizeHandle .react-resizable-handle:after) {
+:global(.BrandColorResizeHandle .react-resizable-handle::after) {
   border-color: var(--color-brand) !important;
 }
 
@@ -112,6 +112,7 @@
   right: -2px;
   top: -2px;
 }
+
 :global(.Dash--editing .DashCard:hover .Visualization-slow-spinner) {
   opacity: 0;
   transition: opacity 0.15s linear;
@@ -134,7 +135,7 @@
   background: none; /* hide default RGL's resize handle */
 }
 
-:global(.Dash--editing .DashCard .react-resizable-handle:after) {
+:global(.Dash--editing .DashCard .react-resizable-handle::after) {
   content: "";
   position: absolute;
   width: 8px;
@@ -148,20 +149,20 @@
   opacity: 0.01;
 }
 
-:global(.Dash--editing .DashCard .react-resizable-handle:hover:after) {
+:global(.Dash--editing .DashCard .react-resizable-handle:hover::after) {
   border-color: var(--color-border);
 }
 
-:global(.Dash--editing .DashCard:hover .react-resizable-handle:after) {
+:global(.Dash--editing .DashCard:hover .react-resizable-handle::after) {
   opacity: 1;
 }
 
 :global(.Dash--editing
     .DashCard.react-draggable-dragging
-    .react-resizable-handle:after),
+    .react-resizable-handle::after),
 :global(.Dash--editing
     .DashCard.react-resizable-resizing
-    .react-resizable-handle:after) {
+    .react-resizable-handle::after) {
   opacity: 0.01;
 }
 
@@ -184,6 +185,7 @@
   nav {
     display: none;
   }
+
   /* improve label contrast */
   :global(.dc-chart .axis .tick text),
   :global(.dc-chart .x-axis-label),
