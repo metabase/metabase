@@ -7,6 +7,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import { restore, visitQuestion } from "e2e/support/helpers";
 import type {
+  CardId,
   ConcreteFieldReference,
   Group,
   GroupId,
@@ -63,18 +64,18 @@ describe("issue 11994", () => {
   });
 
   // TODO: report the issue with /pivot endpoint throwing an error
-  it.skip("does not show raw data toggle for pivot questions (metabase#11994)", () => {
+  it("does not show raw data toggle for pivot questions (metabase#11994)", () => {
     // TODO: refactor visitQuestion to accept alias or id.
-    cy.get<number>("@pivotQuestionId").then(pivotQuestionId => {
-      visitQuestion(pivotQuestionId);
+    cy.get<CardId>("@pivotQuestionId").then(questionId => {
+      visitQuestion(questionId);
     });
     cy.icon("table2").should("not.exist");
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
   });
 
   it("does not offer to save combo question viewed in raw mode (metabase#11994)", () => {
-    cy.get<number>("@comboQuestionId").then(pivotQuestionId => {
-      visitQuestion(pivotQuestionId);
+    cy.get<CardId>("@comboQuestionId").then(questionId => {
+      visitQuestion(questionId);
     });
     cy.location().then(questionLocation => {
       cy.icon("table2").click();
