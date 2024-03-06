@@ -8,7 +8,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (mu/defn ^:private mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
@@ -64,7 +65,8 @@
   DB based on values from the `FKMetadata` returned by [[metabase.driver/describe-table-fks]]."
   [database :- i/DatabaseInstance]
   (reduce (fn [update-info table]
-            (let [table-fk-info (sync-fks-for-table! database table)]
+            (let [table         (t2.realize/realize table)
+                  table-fk-info (sync-fks-for-table! database table)]
               ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
               ;; sync-aborting errors should be surfaced to the UI (see
               ;; `:metabase.sync.util/exception-classes-not-to-retry`).
@@ -75,4 +77,4 @@
           {:total-fks    0
            :updated-fks  0
            :total-failed 0}
-          (sync-util/db->sync-tables database)))
+          (sync-util/db->reducible-sync-tables database)))
