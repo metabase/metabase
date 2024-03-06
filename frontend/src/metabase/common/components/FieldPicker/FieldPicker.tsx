@@ -78,7 +78,7 @@ export const FieldPicker = ({
         </Label>
       </ToggleItem>
       <DelayGroup>
-        {items.map((item, index) => (
+        {items.map(item => (
           <li key={item.columnInfo.longDisplayName}>
             <Label as="label">
               <Checkbox
