@@ -6,19 +6,6 @@ import EntityMenuItem from "metabase/components/EntityMenuItem";
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import { Popover } from "metabase/ui";
 
-const checkForDelay = async () => {
-  const before = performance.now();
-  const sleep = 1000;
-  const threshold = 200;
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  const after = performance.now();
-  if (after - before > sleep + threshold) {
-    console.warn("checkForDelay: Delay detected");
-  } else {
-    console.warn("checkForDelay: No delay detected");
-  }
-};
-
 /**
  * @deprecated: use Menu from "metabase/ui"
  */
@@ -27,6 +14,7 @@ class EntityMenu extends Component {
     open: false,
     freezeMenu: false,
     menuItemContent: null,
+    transition: "fade",
   };
 
   static defaultProps = {
@@ -36,7 +24,10 @@ class EntityMenu extends Component {
   constructor(props, context) {
     super(props, context);
 
+    // TODO: Remove this?
     this.rootRef = createRef();
+
+    this.popoverOLRef = createRef();
   }
 
   toggleMenu = () => {
@@ -56,9 +47,17 @@ class EntityMenu extends Component {
     this.setState({ menuItemContent });
   };
 
-  componentDidMount = async () => {
-    await checkForDelay();
-  };
+  componentDidUpdate() {
+    setTimeout(() => {
+      if (open && !this.popoverOLRef) {
+        this.setState({ transition: null });
+        console.warn(
+          "disabling transition since it seems the popover was delayed",
+        );
+        return;
+      }
+    }, 200);
+  }
 
   render() {
     const {
@@ -75,7 +74,7 @@ class EntityMenu extends Component {
       triggerAriaLabel,
       tooltipPlacement,
     } = this.props;
-    const { open, menuItemContent } = this.state;
+    const { open, menuItemContent, transition } = this.state;
 
     return (
       <Popover
@@ -83,7 +82,7 @@ class EntityMenu extends Component {
         className={cx(className, open ? openClassNames : closedClassNames)}
         transitionProps={{
           duration: 300,
-          transition: "fade",
+          transition,
         }}
         onChange={() => this.toggleMenu()}
         position="bottom-end"
@@ -113,6 +112,7 @@ class EntityMenu extends Component {
               style={{
                 minWidth: minWidth ?? 184,
               }}
+              ref={this.popoverOLRef}
             >
               {items.map(item => {
                 if (!item) {
