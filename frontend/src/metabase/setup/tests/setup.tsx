@@ -117,7 +117,7 @@ export const expectSectionsToHaveLabelsInOrder = ({
 }: {
   from?: number;
 } = {}): void => {
-  screen.getAllByRole("listitem").forEach((section, index) => {
+  screen.getAllByTestId("setup-step").forEach((section, index) => {
     if (index >= from) {
       expect(within(section).getByText(`${index + 1}`)).toBeInTheDocument();
     }

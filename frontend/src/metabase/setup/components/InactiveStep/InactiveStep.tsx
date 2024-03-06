@@ -27,6 +27,7 @@ export const InactiveStep = ({
       isCompleted={isStepCompleted}
       onClick={isStepCompleted && !isSetupCompleted ? onStepSelect : undefined}
       aria-label={title}
+      data-testid="setup-step"
     >
       <StepTitle isCompleted={isStepCompleted}>{title}</StepTitle>
       <StepLabel isCompleted={isStepCompleted}>
