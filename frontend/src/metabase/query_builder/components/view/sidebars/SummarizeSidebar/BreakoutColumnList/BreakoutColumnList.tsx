@@ -140,33 +140,35 @@ export function BreakoutColumnList({
           </ul>
         </DelayGroup>
       )}
-      <ul data-testid="unpinned-dimensions">
-        {sections.map(section => (
-          <li key={section.name}>
-            <ColumnGroupName>{section.name}</ColumnGroupName>
-            <ul>
-              {section.items.map(item => (
-                <BreakoutColumnListItem
-                  key={item.longDisplayName}
-                  query={query}
-                  item={item}
-                  breakout={item.breakout}
-                  onAddColumn={onAddBreakout}
-                  onUpdateColumn={column => {
-                    if (item.breakout) {
-                      onUpdateBreakout(item.breakout, column);
-                    } else {
-                      onAddBreakout(column);
-                    }
-                  }}
-                  onRemoveColumn={onRemoveBreakout}
-                  onReplaceColumns={handleReplaceBreakout}
-                />
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
+      <DelayGroup>
+        <ul data-testid="unpinned-dimensions">
+          {sections.map(section => (
+            <li key={section.name}>
+              <ColumnGroupName>{section.name}</ColumnGroupName>
+              <ul>
+                {section.items.map(item => (
+                  <BreakoutColumnListItem
+                    key={item.longDisplayName}
+                    query={query}
+                    item={item}
+                    breakout={item.breakout}
+                    onAddColumn={onAddBreakout}
+                    onUpdateColumn={column => {
+                      if (item.breakout) {
+                        onUpdateBreakout(item.breakout, column);
+                      } else {
+                        onAddBreakout(column);
+                      }
+                    }}
+                    onRemoveColumn={onRemoveBreakout}
+                    onReplaceColumns={handleReplaceBreakout}
+                  />
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </DelayGroup>
     </>
   );
 }
