@@ -22,8 +22,8 @@ export function getParameterValueFromQueryParams(
   if (maybeParameterValue === "") {
     return null;
   } else if (maybeParameterValue == null) {
-    // try to use the default if the parameter is not present in the query params
-    // then try to use recently used parameter
+    // first try to use recently used parameter
+    // then try to use the default if the parameter is not present in the query params
     return recentlyUsedParameters[parameter.id] ?? parameter.default ?? null;
   }
 
