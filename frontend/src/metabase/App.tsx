@@ -7,9 +7,10 @@ import { AppBanner } from "metabase/components/AppBanner";
 import {
   Archived,
   GenericError,
+  KeyboardTriggeredErrorModal,
   NotFound,
   Unauthorized,
-} from "metabase/containers/ErrorPages";
+} from "metabase/components/ErrorPages";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
@@ -103,6 +104,7 @@ function App({
             {isNavBarEnabled && <Navbar />}
             <AppContent ref={setViewportElement}>
               <ContentViewportContext.Provider value={viewportElement ?? null}>
+                <KeyboardTriggeredErrorModal />
                 {errorPage ? getErrorComponent(errorPage) : children}
               </ContentViewportContext.Provider>
             </AppContent>
