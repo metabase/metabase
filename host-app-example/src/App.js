@@ -13,7 +13,9 @@ const config = {
   font: "Inter",
   authType: "apiKey",
   // jwtProviderUri: "http://localhost:8081/sso/metabase",
-  apiKey: "mb_Zhns2vrYNTIAAc/GHBuIoUshpysJ2laLWsZ9MbJavj0=",
+  apiKey:
+    process.env.REACT_APP_API_KEY ||
+    "mb_Zhns2vrYNTIAAc/GHBuIoUshpysJ2laLWsZ9MbJavj0=",
 };
 
 const App = () => {
