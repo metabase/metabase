@@ -8,7 +8,11 @@ import type {
   BreakoutChartColumns,
   CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
-import type { RowValue, SingleSeries } from "metabase-types/api";
+import {
+  numericScale,
+  type RowValue,
+  type SingleSeries,
+} from "metabase-types/api";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
@@ -463,22 +467,19 @@ describe("dataset transform functions", () => {
       expect(result[2][X_AXIS_DATA_KEY]).toBe("2022-03-01");
     });
 
-    it.each(["linear", "pow", "log"] as const)(
-      "should sort numeric datasets",
-      xAxisScale => {
-        const dataset = [
-          { [X_AXIS_DATA_KEY]: 1000, [seriesKey]: 10 },
-          { [X_AXIS_DATA_KEY]: 1, [seriesKey]: 5 },
-          { [X_AXIS_DATA_KEY]: 5, [seriesKey]: 8 },
-        ];
+    it.each(numericScale)("should sort numeric datasets", xAxisScale => {
+      const dataset = [
+        { [X_AXIS_DATA_KEY]: 1000, [seriesKey]: 10 },
+        { [X_AXIS_DATA_KEY]: 1, [seriesKey]: 5 },
+        { [X_AXIS_DATA_KEY]: 5, [seriesKey]: 8 },
+      ];
 
-        const result = sortDataset(dataset, xAxisScale);
+      const result = sortDataset(dataset, xAxisScale);
 
-        expect(result[0][X_AXIS_DATA_KEY]).toBe(1);
-        expect(result[1][X_AXIS_DATA_KEY]).toBe(5);
-        expect(result[2][X_AXIS_DATA_KEY]).toBe(1000);
-      },
-    );
+      expect(result[0][X_AXIS_DATA_KEY]).toBe(1);
+      expect(result[1][X_AXIS_DATA_KEY]).toBe(5);
+      expect(result[2][X_AXIS_DATA_KEY]).toBe(1000);
+    });
 
     it("handles empty datasets without errors", () => {
       expect(() =>

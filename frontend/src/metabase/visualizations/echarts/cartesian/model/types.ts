@@ -98,8 +98,8 @@ export type TimeSeriesInterval = {
 
 // Allows to have non-linear axis scaling
 export type NumericAxisScaleTransforms = {
-  toAxisValue: (value: RowValue) => number | null;
-  fromAxisValue: (value: number) => number;
+  toEChartsAxisValue: (value: RowValue) => number | null;
+  fromEChartsAxisValue: (value: number) => number;
 };
 
 export type BaseXAxisModel = {

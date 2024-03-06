@@ -314,7 +314,7 @@ export const applyVisualizationSettingsDataTransformations = (
       condition: isNumericAxis(xAxisModel),
       fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
         return isNumericAxis(xAxisModel)
-          ? xAxisModel.toAxisValue(value)
+          ? xAxisModel.toEChartsAxisValue(value)
           : value;
       }),
     },

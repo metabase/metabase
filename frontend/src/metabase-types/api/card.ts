@@ -105,14 +105,12 @@ export type TableColumnOrderSetting = {
 
 export type StackType = "stacked" | "normalized" | null;
 
-export type QuantitativeScale = "linear" | "log" | "pow";
-export type XAxisScale =
-  | "ordinal"
-  | "timeseries"
-  | QuantitativeScale
-  | "histogram";
+export const numericScale = ["linear", "pow", "log"] as const;
+export type NumericScale = (typeof numericScale)[number];
 
-export type YAxisScale = QuantitativeScale;
+export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
+
+export type YAxisScale = NumericScale;
 
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;

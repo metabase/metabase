@@ -34,7 +34,11 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { buildEChartsScatterSeries } from "../scatter/series";
-import { isCategoryAxis } from "../model/guards";
+import {
+  isCategoryAxis,
+  isNumericAxis,
+  isTimeSeriesAxis,
+} from "../model/guards";
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { getSeriesYAxisIndex } from "./utils";
 
@@ -128,7 +132,8 @@ export const computeBarWidth = (
 ) => {
   let barWidth: string | number | undefined = undefined;
   const stackedOrSingleSeries = isStacked || barSeriesCount === 1;
-  const isNumericOrTimeSeries = "intervalsCount" in xAxisModel;
+  const isNumericOrTimeSeries =
+    isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel);
 
   if (isNumericOrTimeSeries) {
     barWidth =

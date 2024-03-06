@@ -24,13 +24,14 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type {
-  SeriesSettings,
-  StackType,
-  DatasetColumn,
-  RowValue,
-  RawSeries,
-  QuantitativeScale,
+import {
+  type SeriesSettings,
+  type StackType,
+  type DatasetColumn,
+  type RowValue,
+  type RawSeries,
+  type NumericScale,
+  numericScale,
 } from "metabase-types/api";
 import { isNotNull, isNumber } from "metabase/lib/types";
 import {
@@ -664,18 +665,16 @@ export function getTimeSeriesXAxisModel(
 
 const getSign = (value: number) => (value >= 0 ? 1 : -1);
 
-const getAxisTransforms = (
-  scale: QuantitativeScale,
-): NumericAxisScaleTransforms => {
+const getAxisTransforms = (scale: NumericScale): NumericAxisScaleTransforms => {
   if (scale === "pow") {
     return {
-      toAxisValue: value => {
+      toEChartsAxisValue: value => {
         if (!isNumber(value)) {
           return null;
         }
         return Math.sqrt(Math.abs(value)) * getSign(value);
       },
-      fromAxisValue: value => {
+      fromEChartsAxisValue: value => {
         return Math.pow(value, 2) * getSign(value);
       },
     };
@@ -683,33 +682,33 @@ const getAxisTransforms = (
 
   if (scale === "log") {
     return {
-      toAxisValue: value => {
+      toEChartsAxisValue: value => {
         if (!isNumber(value)) {
           return null;
         }
         return Math.log10(Math.abs(value)) * getSign(value);
       },
-      fromAxisValue: value => {
+      fromEChartsAxisValue: value => {
         return Math.pow(10, Math.abs(value)) * getSign(value);
       },
     };
   }
 
   return {
-    toAxisValue: value => {
+    toEChartsAxisValue: value => {
       if (!isNumber(value)) {
         return null;
       }
       return value;
     },
-    fromAxisValue: value => value,
+    fromEChartsAxisValue: value => value,
   };
 };
 
 function getNumericXAxisModel(
   dimensionModel: DimensionModel,
   dataset: ChartDataset,
-  scale: QuantitativeScale,
+  scale: NumericScale,
   settings: ComputedVisualizationSettings,
   label: string | undefined,
   isPadded: boolean,
@@ -719,8 +718,8 @@ function getNumericXAxisModel(
   const dimensionColumn = dimensionModel.column;
   const rawExtent = getSeriesExtent(dataset, X_AXIS_DATA_KEY) ?? [0, 0];
   const extent: Extent = [
-    axisTransforms.toAxisValue(rawExtent[0]) ?? 0,
-    axisTransforms.toAxisValue(rawExtent[1]) ?? 0,
+    axisTransforms.toEChartsAxisValue(rawExtent[0]) ?? 0,
+    axisTransforms.toEChartsAxisValue(rawExtent[1]) ?? 0,
   ];
 
   const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
@@ -751,10 +750,10 @@ function getNumericXAxisModel(
   };
 }
 
-export const isQuantitative = (
+export const isNumeric = (
   scale: ComputedVisualizationSettings["graph.x_axis.scale"],
-): scale is QuantitativeScale => {
-  return scale != null && ["linear", "log", "pow"].includes(scale);
+): scale is NumericScale => {
+  return numericScale.includes(scale as NumericScale);
 };
 
 export function getXAxisModel(
@@ -781,7 +780,7 @@ export function getXAxisModel(
     );
   }
 
-  if (isQuantitative(xAxisScale)) {
+  if (isNumeric(xAxisScale)) {
     return getNumericXAxisModel(
       dimensionModel,
       dataset,

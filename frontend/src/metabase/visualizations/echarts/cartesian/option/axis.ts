@@ -96,6 +96,17 @@ export const getTicksDefaultOption = ({
   };
 };
 
+export const getDimensionTicksDefaultOption = (
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) => {
+  return {
+    ...getTicksDefaultOption(renderingContext),
+    show: !!settings["graph.x_axis.axis_enabled"],
+    rotate: getRotateAngle(settings),
+  };
+};
+
 const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   switch (settings["graph.x_axis.axis_enabled"]) {
     case "rotate-45":
@@ -182,7 +193,7 @@ export const buildNumericDimensionAxis = (
   renderingContext: RenderingContext,
 ): ValueAxisBaseOption | LogAxisBaseOption => {
   const {
-    fromAxisValue,
+    fromEChartsAxisValue: fromAxisValue,
     isPadded,
     extent,
     interval,
@@ -200,11 +211,10 @@ export const buildNumericDimensionAxis = (
       renderingContext,
     ),
     type: "value",
+    scale: true,
     axisLabel: {
       margin: CHART_STYLE.axisTicksMarginX,
-      show: !!settings["graph.x_axis.axis_enabled"],
-      rotate: getRotateAngle(settings),
-      ...getTicksDefaultOption(renderingContext),
+      ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
         if (isPadded && (rawValue < min || rawValue > max)) {
           return "";
@@ -217,10 +227,7 @@ export const buildNumericDimensionAxis = (
           min: () => min - axisPadding,
           max: () => max + axisPadding,
         }
-      : {
-          min: "dataMin",
-          max: "dataMax",
-        }),
+      : {}),
     maxInterval: ticksMaxInterval,
   };
 };
@@ -245,10 +252,7 @@ export const buildTimeSeriesDimensionAxis = (
       margin:
         CHART_STYLE.axisTicksMarginX +
         (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0),
-      show: !!settings["graph.x_axis.axis_enabled"],
-      rotate: getRotateAngle(settings),
-      ...getTicksDefaultOption(renderingContext),
-      // Value is always converted to a string by ECharts
+      ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
         const value = xAxisModel.fromAxisValue(rawValue);
         if (xAxisModel.tickRenderPredicate?.(value) ?? true) {
@@ -285,9 +289,7 @@ export const buildCategoricalDimensionAxis = (
     type: "category",
     axisLabel: {
       margin: CHART_STYLE.axisTicksMarginX,
-      show: !!settings["graph.x_axis.axis_enabled"],
-      rotate: getRotateAngle(settings),
-      ...getTicksDefaultOption(renderingContext),
+      ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (value: string) => {
         return ` ${formatter(value)} `; // spaces force padding between ticks
       },
