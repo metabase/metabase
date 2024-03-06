@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
@@ -223,17 +224,18 @@
          ["country"
           [name-field-def {:field-name "continent_id", :base-type :type/Integer}]
           []]]
-        (let [db            (mt/db)
+        (let [db (mt/db)
+              db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
               get-fk #(t2/select-one :model/Field (mt/id :country :continent_id))]
           ;; 1. add FK relationship in the database targeting continent_1
-          (t2/query-one db "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
+          (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
           (sync/sync-database! db {:scan :schema})
           (testing "initially country's continent_id is targeting continent_1"
             (is (=? {:fk_target_field_id (mt/id :continent_1 :id)
                      :semantic_type      :type/FK}
                     (get-fk))))
           ;; 2. drop the FK relationship in the database with SQL
-          (t2/query-one db "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
+          (jdbc/execute! db-spec "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
           (sync/sync-database! db {:scan :schema})
           ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database (metabase#39687)
           #_(testing "after dropping the FK relationship, country's continent_id is targeting nothing"
@@ -241,7 +243,7 @@
                        :semantic_type      :type/Category}
                       (get-fk))))
           ;; 3. add back the FK relationship but targeting continent_2
-          (t2/query-one db "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
+          (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
           (sync/sync-database! db {:scan :schema})
           (testing "initially country's continent_id is targeting continent_2"
             (is (=? {:fk_target_field_id (mt/id :continent_2 :id)
