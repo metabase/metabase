@@ -1,6 +1,7 @@
 import { useClickOutside } from "@mantine/hooks";
 import type { ChangeEvent, KeyboardEvent } from "react";
 import { useState } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
@@ -25,6 +26,7 @@ interface ParameterValuePickerProps {
 
 // TODO make controlled outside
 // TODO must change value when type is changed
+// TODO setting default value on blur/closing picker
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
   const { tag, parameter, initialValue, onValueChange, placeholder } = props;
 
@@ -177,7 +179,7 @@ function OwnDatePicker(props: {
           <TextInput
             value={typeof formatted === "string" ? formatted : value}
             readOnly
-            placeholder="Select a default value..."
+            placeholder={t`Select a default value…`}
             onClick={() => setIsOpen(true)}
             rightSection={
               value ? (
