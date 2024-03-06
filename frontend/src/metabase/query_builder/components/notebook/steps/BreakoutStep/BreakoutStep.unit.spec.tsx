@@ -92,14 +92,14 @@ describe("BreakoutStep", () => {
     expect(screen.getByText("Pick a column to group by")).toBeInTheDocument();
   });
 
-  it("should render a breakout correctly", () => {
+  it("should render a breakout correctly", async () => {
     const { query, columnInfo } = createQueryWithBreakout();
     const columnName = columnInfo.displayName;
     setup(createMockNotebookStep({ query }));
 
     userEvent.click(screen.getByText(columnName));
 
-    const listItem = screen.getByRole("option", { name: columnName });
+    const listItem = await screen.findByRole("option", { name: columnName });
     expect(listItem).toBeInTheDocument();
     expect(listItem).toHaveAttribute("aria-selected", "true");
   });
@@ -115,24 +115,24 @@ describe("BreakoutStep", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should add a breakout", () => {
+  it("should add a breakout", async () => {
     const { getRecentBreakoutClause } = setup();
 
     userEvent.click(screen.getByText("Pick a column to group by"));
-    userEvent.click(screen.getByText("Created At"));
+    userEvent.click(await screen.findByText("Created At"));
 
     const breakout = getRecentBreakoutClause();
     expect(breakout.displayName).toBe("Created At: Month");
   });
 
-  it("should change a breakout column", () => {
+  it("should change a breakout column", async () => {
     const { query, columnInfo } = createQueryWithBreakout();
     const { getRecentBreakoutClause } = setup(
       createMockNotebookStep({ query }),
     );
 
     userEvent.click(screen.getByText(columnInfo.displayName));
-    userEvent.click(screen.getByText("Discount"));
+    userEvent.click(await screen.findByText("Discount"));
 
     const breakout = getRecentBreakoutClause();
     expect(breakout.displayName).toBe("Discount: Auto binned");
@@ -153,7 +153,7 @@ describe("BreakoutStep", () => {
       const { getRecentBreakoutClause } = setup();
 
       userEvent.click(screen.getByText("Pick a column to group by"));
-      const option = screen.getByRole("option", { name: "Total" });
+      const option = await screen.findByRole("option", { name: "Total" });
 
       expect(within(option).getByText("Auto bin")).toBeInTheDocument();
 
@@ -167,7 +167,7 @@ describe("BreakoutStep", () => {
       const { getRecentBreakoutClause } = setup();
 
       userEvent.click(screen.getByText("Pick a column to group by"));
-      const option = screen.getByRole("option", { name: "Total" });
+      const option = await screen.findByRole("option", { name: "Total" });
       userEvent.click(within(option).getByLabelText("Binning strategy"));
       userEvent.click(await screen.findByRole("menuitem", { name: "10 bins" }));
 
@@ -180,7 +180,7 @@ describe("BreakoutStep", () => {
       setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Tax: 10 bins"));
-      const option = screen.getByRole("option", { name: "Tax" });
+      const option = await screen.findByRole("option", { name: "Tax" });
       userEvent.click(within(option).getByLabelText("Binning strategy"));
 
       expect(
@@ -193,7 +193,7 @@ describe("BreakoutStep", () => {
       const { updateQuery } = setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Tax: 10 bins"));
-      userEvent.click(screen.getByText("Tax"));
+      userEvent.click(await screen.findByText("Tax"));
 
       expect(updateQuery).not.toHaveBeenCalled();
     });
@@ -203,7 +203,7 @@ describe("BreakoutStep", () => {
       setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText(columnInfo.displayName));
-      const option = screen.getByRole("option", {
+      const option = await screen.findByRole("option", {
         name: columnInfo.displayName,
       });
 
@@ -219,7 +219,7 @@ describe("BreakoutStep", () => {
       const { getRecentBreakoutClause } = setup();
 
       userEvent.click(screen.getByText("Pick a column to group by"));
-      userEvent.click(screen.getByText("Created At"));
+      userEvent.click(await screen.findByText("Created At"));
 
       const breakout = getRecentBreakoutClause();
       expect(breakout.displayName).toBe("Created At: Month");
@@ -229,7 +229,7 @@ describe("BreakoutStep", () => {
       const { getRecentBreakoutClause } = setup();
 
       userEvent.click(screen.getByText("Pick a column to group by"));
-      const option = screen.getByRole("option", { name: "Created At" });
+      const option = await screen.findByRole("option", { name: "Created At" });
       userEvent.click(within(option).getByLabelText("Temporal bucket"));
 
       // For some reason, a click won't happen with `userEvent.click`
@@ -245,7 +245,7 @@ describe("BreakoutStep", () => {
       setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Created At: Quarter"));
-      const option = screen.getByRole("option", { name: "Created At" });
+      const option = await screen.findByRole("option", { name: "Created At" });
       userEvent.click(within(option).getByLabelText("Temporal bucket"));
 
       expect(
@@ -258,7 +258,7 @@ describe("BreakoutStep", () => {
       setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Created At"));
-      const option = screen.getByRole("option", {
+      const option = await screen.findByRole("option", {
         name: "Created At",
       });
 
@@ -280,7 +280,7 @@ describe("BreakoutStep", () => {
       const { updateQuery } = setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Created At: Quarter"));
-      userEvent.click(screen.getByText("Created At"));
+      userEvent.click(await screen.findByText("Created At"));
 
       expect(updateQuery).not.toHaveBeenCalled();
     });
