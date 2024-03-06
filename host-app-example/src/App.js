@@ -19,8 +19,15 @@ const config = {
 };
 
 const App = () => {
+  /** @type {import("@mantine/core").MantineThemeOverride} */
+  const theme = {
+    colors: {
+      brand: Array(10).fill("#E350CA"),
+    },
+  };
+
   return (
-    <MetabaseProvider config={config}>
+    <MetabaseProvider config={config} theme={theme}>
       <div className="Page--container">
         <header className="Page--header">
           <Welcome />
