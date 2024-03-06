@@ -74,7 +74,8 @@ const config = (module.exports = {
   // output to "dist"
   output: {
     path: BUILD_PATH + "/app/dist",
-    filename: devMode ? "[name].bundle.js" : "[name].[contenthash].js",
+    // for production, dev mode is overridden below
+    filename: "[name].[contenthash].js",
     publicPath: "app/dist/",
     hashFunction: "sha256",
   },
@@ -270,7 +271,7 @@ const config = (module.exports = {
 if (WEBPACK_BUNDLE === "hot") {
   config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
-  config.output.filename = "[name].hot.bundle.js?[contenthash]";
+  config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
