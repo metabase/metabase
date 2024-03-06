@@ -6,7 +6,7 @@ redirect_from:
 
 # Basic exploration
 
-How to poke around your Metabase.
+How to poke around your Metabase. Browsing models and databases, exploring collections, bookmarks, verified items, search, and more.
 
 ## Browse models and data
 
@@ -40,7 +40,7 @@ If you click on a part of a chart, such as a bar in a bar chart, or a dot on a l
 
 ![Drill-through menu](images/automatic-insights.png)
 
-Clicking on a table cell will often allow you to filter the results using a comparison operator, like =, >, or <. For example, you can click on a table cell, and select the less than operator `<` to filter for values that are less than the selected value.
+If you click on a cell in a table (like in a model), Metabase will often allow you to filter the results using a comparison operator, like =, >, or <. For example, you can click on a table cell, and select the less than operator `<` to filter for values that are less than the selected value.
 
 ![Comparison operator filters](images/comparison-operator-filters.png)
 
