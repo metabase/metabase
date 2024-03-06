@@ -8,6 +8,7 @@
   (:require
    [java-time.api :as t]
    [metabase.events :as events]
+   [metabase.lib.core :as lib]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
@@ -32,6 +33,7 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
 ;; in the completing arity of the rf
 ;;
@@ -40,6 +42,14 @@
 (defn- save-query-execution!*
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
+  (def query-execution query-execution)
+  (when (and
+         (not (contains? query-execution :error))
+         (= :query (:type query)))
+    (let [breakouts     (lib/breakouts (lib/->pMBQL query))
+          filters     (lib/filters (lib/->pMBQL query))
+          aggreations (lib/aggregations (lib/->pMBQL query))])
+    (t2/insert! :model/FieldUsage))
   (when-not (:cache_hit query-execution)
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context

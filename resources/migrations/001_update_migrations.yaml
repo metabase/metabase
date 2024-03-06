@@ -5599,6 +5599,52 @@ databaseChangeLog:
               DROP VIEW IF EXISTS v_content;
 
 
+  - changeSet:
+      id: v50.2024-03-04T00:38:28
+      author: qnkhuat
+      comment: Add field_usage table
+      changes:
+        - createTable:
+            tableName: field_usage
+            remarks: Used to store field usage during query execution
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_field_id_metabase_field_id
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  remarks: The time an event was recorded
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-03-04T00:39:28
+      author: qnkhuat
+      comment: Add field_usage table
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: field_usage
+            indexName: idx_field_usage_field_id
+            columns:
+              column:
+                name: field_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
