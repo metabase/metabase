@@ -55,7 +55,7 @@ export function getThemeColors(): Record<string, ColorShades> {
   };
 }
 
-type ThemeColorFunction = ({ theme }: { theme: Theme }) => string;
+type ThemeColorFunction<T = string> = ({ theme }: { theme: Theme }) => T;
 
 export function color(colorName: keyof ColorPalette): ThemeColorFunction;
 export function color(color: string): ThemeColorFunction;
@@ -88,4 +88,12 @@ export function darken(
 export function darken(color: string, value?: number): ThemeColorFunction;
 export function darken(color: any, value?: number): ThemeColorFunction {
   return ({ theme }) => colors.darken(theme.fn?.themeColor(color), value);
+}
+
+export function hueRotate(
+  colorName: keyof ColorPalette,
+): ThemeColorFunction<number>;
+export function hueRotate(color: string): ThemeColorFunction<number>;
+export function hueRotate(color: any): ThemeColorFunction<number> {
+  return ({ theme }) => colors.hueRotate(theme.fn?.themeColor(color));
 }
