@@ -70,7 +70,8 @@ function _BaseBucketPickerPopover({
     [items],
   );
 
-  const handleExpand = useCallback(() => {
+  const handleExpand = useCallback(evt => {
+    evt.stopPropagation();
     setIsExpanded(true);
   }, []);
 
