@@ -16,31 +16,19 @@ import {
 } from "./ParameterValuePicker.styled";
 
 export function OwnDatePicker(props: {
-  value: any;
+  value: string;
+  onValueChange: (value: string | null) => void;
   parameter: Parameter;
-  onValueChange: (value: any) => void;
 }) {
   const { value, parameter, onValueChange } = props;
   const [isOpen, setIsOpen] = useState(false);
   const formatted = formatParameterValue(value, parameter);
 
-  const DateWidget = {
-    "date/relative": DateRelativeWidget,
-    "date/month-year": DateMonthYearWidget,
-    "date/quarter-year": DateQuarterYearWidget,
-    // pickers
-    "date/single": DateAllOptionsWidget,
-    "date/range": DateAllOptionsWidget,
-    "date/all-options": DateAllOptionsWidget,
-  }[parameter.type];
-
   const openPopover = () => setIsOpen(true);
   const closePopover = () => setIsOpen(false);
 
   const [triggerRef, setTriggerRef] = useState<HTMLDivElement | null>(null);
-  const ref = useClickOutside(closePopover, null, [triggerRef]);
-
-  // console.log("OwnDatePicker", value, formatted);
+  const dropdownRef = useClickOutside(closePopover, null, [triggerRef]);
 
   const icon = value ? (
     <TextInputIcon
@@ -77,24 +65,53 @@ export function OwnDatePicker(props: {
       </Popover.Target>
 
       <Popover.Dropdown>
-        <div ref={ref}>
-          {DateWidget ? (
-            <DateWidget
-              value={value}
-              initialValue={DEPRECATED_getInitialDateValue(
-                value,
-                parameter.type as ParameterType,
-              )}
-              onClose={closePopover}
-              setValue={onValueChange}
-            />
-          ) : (
-            "<none>"
-          )}
+        <div ref={dropdownRef}>
+          <DateComponentRouter
+            type={parameter.type as ParameterType}
+            value={value}
+            onClose={closePopover}
+            setValue={onValueChange}
+          />
         </div>
       </Popover.Dropdown>
     </Popover>
   );
+}
+
+function DateComponentRouter(props: {
+  type: ParameterType;
+  value: string;
+  setValue: (value: string | null) => void;
+  onClose: () => void;
+}) {
+  const { type, ...restProps } = props;
+  const componentProps = {
+    ...restProps,
+    initialValue: DEPRECATED_getInitialDateValue(props.value, type),
+  };
+
+  switch (type) {
+    case "date/relative":
+      return (
+        <DateRelativeWidget
+          {...componentProps}
+          // TODO fix types
+          setValue={val => props.setValue(val ?? null)}
+        />
+      );
+    case "date/month-year":
+      return <DateMonthYearWidget {...componentProps} />;
+    case "date/quarter-year":
+      return <DateQuarterYearWidget {...componentProps} />;
+
+    case "date/single":
+    case "date/range":
+    case "date/all-options":
+      return <DateAllOptionsWidget {...componentProps} />;
+  }
+
+  // TODO should never happen
+  return null;
 }
 
 // TODO this should be in the Lib or somewhere else
