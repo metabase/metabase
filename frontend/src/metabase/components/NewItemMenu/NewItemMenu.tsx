@@ -156,6 +156,11 @@ const NewItemMenu = ({
         trigger={trigger}
         triggerIcon={triggerIcon}
         tooltip={triggerTooltip}
+        // I've disabled this transition, since it results in the menu
+        // sometimes not appearing until content finishes loading on complex
+        // dashboards and questions #39303
+        // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+        transitionDuration={0}
       />
       {modal && (
         <>
