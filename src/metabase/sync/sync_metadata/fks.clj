@@ -39,7 +39,9 @@
     (u/prog1 (t2/query-one {:update [:metabase_field :f]
                             :set {:fk_target_field_id dest-field-id-query
                                   :semantic_type      "type/FK"}
-                            :where [:= :f.id fk-field-id-query]})
+                            :where [:and
+                                    [:= :f.id fk-field-id-query]
+                                    dest-field-id-query]})
       (when (= <> 1)
         (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
                                   (sync-util/table-name-for-logging table)
