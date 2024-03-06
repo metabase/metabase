@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, color, lighten } from "metabase/ui/utils/colors";
 
 interface ToasterContainerProps {
   show: boolean;
@@ -39,7 +39,7 @@ export const ToasterMessage = styled.p`
 export const ToasterButton = styled.button`
   display: flex;
   padding: 7px 18px;
-  background-color: ${alpha(color("white"), 0.1)};
+  background-color: ${alpha("white", 0.1)};
   border-radius: 6px;
   color: ${color("white")};
   width: 90px;
@@ -50,7 +50,7 @@ export const ToasterButton = styled.button`
 
   &:hover {
     cursor: pointer;
-    background-color: ${alpha(color("white"), 0.3)};
+    background-color: ${alpha("white", 0.3)};
   }
 `;
 

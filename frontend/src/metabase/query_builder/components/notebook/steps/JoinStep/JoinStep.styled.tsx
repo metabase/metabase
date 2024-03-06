@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, color, lighten } from "metabase/ui/utils/colors";
 import { Flex } from "metabase/ui";
 import { NotebookCell } from "../../NotebookCell";
 
@@ -47,7 +47,7 @@ export const RemoveConditionButton = styled.button<{
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
 
-  border-left: 1px solid ${alpha(color("white"), 0.25)};
+  border-left: 1px solid ${alpha("white", 0.25)};
 
   transition: background-color 300ms linear;
 

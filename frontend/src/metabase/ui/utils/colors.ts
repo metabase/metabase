@@ -60,14 +60,23 @@ type ThemeColorFunction = ({ theme }: { theme: Theme }) => string;
 export function color(colorName: keyof ColorPalette): ThemeColorFunction;
 export function color(color: string): ThemeColorFunction;
 export function color(color: any): ThemeColorFunction {
-  return ({ theme }) => theme.fn.themeColor(color);
+  return ({ theme }) => theme.fn?.themeColor(color);
 }
 
 export function alpha(
   colorName: keyof ColorPalette,
-  alphaValue: number,
+  value: number,
 ): ThemeColorFunction;
-export function alpha(color: string, alphaValue: number): ThemeColorFunction;
-export function alpha(color: any, alphaValue: number): ThemeColorFunction {
-  return ({ theme }) => colors.alpha(theme.fn.themeColor(color), alphaValue);
+export function alpha(color: string, value: number): ThemeColorFunction;
+export function alpha(color: any, value: number): ThemeColorFunction {
+  return ({ theme }) => colors.alpha(theme.fn?.themeColor(color), value);
+}
+
+export function lighten(
+  colorName: keyof ColorPalette,
+  value?: number,
+): ThemeColorFunction;
+export function lighten(color: string, value?: number): ThemeColorFunction;
+export function lighten(color: any, value?: number): ThemeColorFunction {
+  return ({ theme }) => colors.lighten(theme.fn?.themeColor(color), value);
 }

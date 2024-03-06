@@ -4,7 +4,7 @@ import { Box, Icon } from "metabase/ui";
 import Card from "metabase/components/Card";
 
 import Link from "metabase/core/components/Link";
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, color, lighten } from "metabase/ui/utils/colors";
 import { space } from "metabase/styled-components/theme";
 
 const LIST_H_MARGINS = space(2);
@@ -59,13 +59,13 @@ export const DefaultText = styled.span`
 
 export const UndoButton = styled(Link)`
   font-weight: bold;
-  background-color: ${alpha(color("white"), 0.1)};
+  background-color: ${alpha("white", 0.1)};
   padding: 4px 12px;
   margin-left: ${space(1)};
   border-radius: 8px;
 
   :hover {
-    background-color: ${alpha(color("white"), 0.3)};
+    background-color: ${alpha("white", 0.3)};
   }
 `;
 
@@ -75,6 +75,6 @@ export const DismissIcon = styled(Icon)`
   cursor: pointer;
 
   :hover {
-    color: ${lighten(color("bg-dark"), 0.3)};
+    color: ${lighten("bg-dark", 0.3)};
   }
 `;
