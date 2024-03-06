@@ -34,7 +34,7 @@ export function DefaultRequiredValueControl({
         <ParameterValuePicker
           tag={tag}
           parameter={parameter}
-          initialValue={tag.default}
+          value={parameter.value ?? tag.default}
           onValueChange={onChangeDefaultValue}
           placeholder={t`Enter a default value…`}
         />

@@ -14,12 +14,16 @@ import { Icon, Popover, TextInput } from "metabase/ui";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type { Parameter, ParameterType, TemplateTag } from "metabase-types/api";
 
+import {
+  TextInputIcon,
+  TextInputTrirgger,
+} from "./ParameterValuePicker.styled";
 import { shouldShowPlainInput } from "./core";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
   parameter: Parameter;
-  initialValue: any;
+  value: any;
   onValueChange: (value: any) => void;
   placeholder?: string;
 }
@@ -27,8 +31,15 @@ interface ParameterValuePickerProps {
 // TODO make controlled outside
 // TODO must change value when type is changed
 // TODO setting default value on blur/closing picker
+// TODO error states
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
-  const { tag, parameter, initialValue, onValueChange, placeholder } = props;
+  const {
+    tag,
+    parameter,
+    value: initialValue,
+    onValueChange,
+    placeholder,
+  } = props;
 
   if (!parameter) {
     return null;
@@ -39,8 +50,8 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
   if (shouldShowPlainInput(parameter)) {
     return (
       <PlainValueInput
-        initialValue={initialValue}
-        onValueChange={onValueChange}
+        value={initialValue}
+        onChange={onValueChange}
         placeholder={placeholder}
       />
     );
@@ -70,62 +81,42 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
 }
 
 interface PlainValueInputProps {
-  initialValue: any;
-  onValueChange: (value: any) => void;
+  value: any;
+  onChange: (value: any) => void;
   placeholder?: string;
 }
 
-// TODO value must change when changing filter types
 function PlainValueInput(props: PlainValueInputProps) {
-  const { initialValue, onValueChange, placeholder } = props;
-  const [value, setValue] = useState(initialValue);
-
-  const commit = (newValue: any) => {
-    setValue(newValue);
-    onValueChange(newValue);
-  };
+  const { value, onChange, placeholder } = props;
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    commit(event.currentTarget.value);
+    onChange(event.currentTarget.value);
   };
 
   const handleKeyup = (event: KeyboardEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     switch (event.key) {
+      // Values are "committed" immediately because it's controlled from the outside
       case "Enter":
-        onValueChange(value);
-        target.blur();
-        break;
       case "Escape":
         target.blur();
-        break;
-      default:
-        break;
     }
   };
 
+  const icon = value ? (
+    <TextInputIcon name="close" onClick={() => onChange(null)} />
+  ) : null;
+
   return (
     <TextInput
-      value={value}
+      value={value ?? ""} // required by Mantine
       onChange={handleChange}
       onKeyUp={handleKeyup}
       placeholder={placeholder}
-      rightSection={
-        value ? (
-          // TODO value must be null
-          <Icon cursor="pointer" name="close" onClick={() => commit("")} />
-        ) : null
-      }
+      rightSection={icon}
     />
   );
 }
-
-// function getFirstValue(value: any) {
-//   if (Array.isArray(value)) {
-//     return value[0] ?? null;
-//   }
-//   return value;
-// }
 
 function getAmendedParameter(tag: TemplateTag, parameter: Parameter) {
   const amended =
@@ -176,7 +167,7 @@ function OwnDatePicker(props: {
     <Popover opened={isOpen}>
       <Popover.Target>
         <div ref={setTargetRef}>
-          <TextInput
+          <TextInputTrirgger
             value={typeof formatted === "string" ? formatted : value}
             readOnly
             placeholder={t`Select a default value…`}
