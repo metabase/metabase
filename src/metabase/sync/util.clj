@@ -319,15 +319,19 @@
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private sync-tables-clause
+  [:and [:= :active true]
+        [:= :visibility_type nil]])
+
 (defn db->sync-tables
   "Return all the Tables that should go through the sync processes for `database-or-id`."
   [database-or-id]
-  (t2/select :model/Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
+  (t2/select :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}))
 
 (defn db->reducible-sync-tables
   "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
   [database-or-id]
-  (t2/reducible-select :model/Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
+  (t2/reducible-select :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}))
 
 (defmulti name-for-logging
   "Return an appropriate string for logging an object in sync logging messages. Should be something like
