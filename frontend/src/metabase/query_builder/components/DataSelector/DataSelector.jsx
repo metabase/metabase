@@ -323,6 +323,8 @@ export class UnconnectedDataSelector extends Component {
 
   async componentDidMount() {
     const { activeStep } = this.state;
+    const sourceId = this.props.selectedTableId;
+
     if (!this.isLoadingDatasets() && !activeStep) {
       await this.hydrateActiveStep();
     }
@@ -331,8 +333,8 @@ export class UnconnectedDataSelector extends Component {
       this.showSavedQuestionPicker();
     }
 
-    if (this.props.selectedTableId) {
-      await this.props.fetchFields(this.props.selectedTableId);
+    if (sourceId) {
+      await this.props.fetchFields(sourceId);
       if (this.isSavedEntitySelected()) {
         this.showSavedQuestionPicker();
       }
