@@ -41,6 +41,9 @@ describe("issue 11994", () => {
         database: SAMPLE_DB_ID,
         query: QUERY,
         display: "pivot",
+        // If these visualization_settings are missing, they will be automatically
+        // added in FE, which will turn the question dirty, which will cause
+        // permission issues due to an extra call to /api/dataset/pivot endpoint.
         visualization_settings: {
           "pivot_table.column_split": {
             rows: [CREATED_AT_MONTH_BREAKOUT],
