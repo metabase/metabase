@@ -1,5 +1,11 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import type { GroupPermissions, Impersonation } from "metabase-types/api";
+import type {
+  DatabaseId,
+  GroupId,
+  GroupPermissions,
+  Impersonation,
+  SchemasPermissions,
+} from "metabase-types/api";
 
 declare global {
   namespace Cypress {
@@ -8,6 +14,11 @@ declare global {
         groupsPermissionsObject?: GroupPermissions,
         impersonations?: Impersonation[],
       ): void;
+      updatePermissionsSchemas(options?: {
+        schemas: SchemasPermissions;
+        user_group: GroupId;
+        database_id: DatabaseId;
+      }): void;
     }
   }
 }
