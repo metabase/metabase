@@ -109,7 +109,7 @@
   ;; more info.
   (with-open [rset (.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
                                (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
-                                                   "EXTERNAL TABLE" "DYNAMIC_TABLE"]))]
+                                                   "EXTERNAL TABLE" "DYNAMIC_TABLE" "BASE TABLE"]))]
     (loop [acc []]
       (if-not (.next rset)
         acc

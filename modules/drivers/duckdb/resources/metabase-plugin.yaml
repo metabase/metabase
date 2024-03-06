@@ -1,0 +1,44 @@
+# This driver is based on the community driver with minor modifications:
+# https://github.com/AlexR2D2/metabase_duckdb_driver
+
+info:
+  name: Metabase DuckDB Driver
+  version: 0.0.1
+  description: Allows Metabase to connect to DuckDB databases
+contact-info:
+  name: Faros AI
+driver:
+  name: duckdb
+  display-name: DuckDB
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - name: database_file
+      display-name: Database file
+      placeholder: /tmp/data.db
+      required: true
+    - name: read_only
+      display-name: Establish a read-only connection
+      default: true
+      type: boolean
+    - advanced-options-start
+    - name: memory_limit
+      display-name: Memory limit
+      placeholder: 8GB
+      type: string
+      required: false
+      visible-if:
+        advanced-options: true
+    - name: temp_directory
+      display-name: Temporary directory
+      placeholder: /tmp/data.db.tmp
+      type: string
+      required: false
+      visible-if:
+        advanced-options: true
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.duckdb
+  - step: register-jdbc-driver
+    class: org.duckdb.DuckDBDriver
