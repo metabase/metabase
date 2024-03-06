@@ -1,7 +1,6 @@
 (ns metabase.models.params.chain-filter-test
   (:require
    [cheshire.core :as json]
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.models :refer [Field FieldValues]]
    [metabase.models.field-values :as field-values]
@@ -676,20 +675,22 @@
   (testing "Inactive fields are not used to generate joins"
     (mt/dataset avian-singles
       (mt/$ids nil
-        (testing "receiver_id is active and should be used for the join"
-          (memoize/memo-clear! @#'chain-filter/database-fk-relationships)
-          (memoize/memo-clear! @#'chain-filter/find-joins)
-          (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
-                   :rhs {:table $$users, :field %users.id}}]
-                 (#'chain-filter/find-joins (mt/id) $$messages $$users))))
-
-        (try
-          (t2/update! :model/Field {:id %messages.receiver_id} {:active false})
-          (testing "check that it switches to sender once receiver is inactive"
-            (memoize/memo-clear! @#'chain-filter/database-fk-relationships)
-            (memoize/memo-clear! @#'chain-filter/find-joins)
-            (is (= [{:lhs {:table $$messages, :field %messages.sender_id}
+        (mt/with-dynamic-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
+                                 chain-filter/find-joins                (fn
+                                                                          ([a b c]
+                                                                           (#'chain-filter/find-joins* a b c false))
+                                                                          ([a b c d]
+                                                                           (#'chain-filter/find-joins* a b c d)))]
+          (testing "receiver_id is active and should be used for the join"
+            (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
                      :rhs {:table $$users, :field %users.id}}]
                    (#'chain-filter/find-joins (mt/id) $$messages $$users))))
-          (finally
-            (t2/update! :model/Field {:id %messages.receiver_id} {:active true})))))))
+
+          (try
+            (t2/update! :model/Field {:id %messages.receiver_id} {:active false})
+            (testing "check that it switches to sender once receiver is inactive"
+              (is (= [{:lhs {:table $$messages, :field %messages.sender_id}
+                       :rhs {:table $$users, :field %users.id}}]
+                     (#'chain-filter/find-joins (mt/id) $$messages $$users))))
+            (finally
+              (t2/update! :model/Field {:id %messages.receiver_id} {:active true}))))))))
