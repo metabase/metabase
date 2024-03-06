@@ -35,15 +35,19 @@
         dest-field-id-query (field-id-query (:id database)
                                             (:schema (:dest-table fk))
                                             (:name (:dest-table fk))
-                                            (:dest-column-name fk))]
+                                            (:dest-column-name fk))
+        never-matching-id -100]
     (u/prog1 (t2/query-one {:update [:metabase_field :f]
                             :set {:fk_target_field_id dest-field-id-query
                                   :semantic_type      "type/FK"}
                             :where [:and
                                     [:= :f.id fk-field-id-query]
-                                    [:or
-                                     [:= :f.fk_target_field_id nil]
-                                     [:not= :f.fk_target_field_id dest-field-id-query]]]})
+                                    ;; Update if either:
+                                    ;; - fk_target_field_id is NULL and the new value is not NULL
+                                    ;; - fk_target_field_id is not NULL but the new value is different and not NULL
+                                    [:not=
+                                     [:coalesce :f.fk_target_field_id never-matching-id]
+                                     dest-field-id-query]]})
       (when (= <> 1)
         (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
                                   (sync-util/table-name-for-logging table)
