@@ -14,16 +14,25 @@ declare global {
   namespace Cypress {
     interface Chainable {
       updatePermissionsGraph(
-        groupsPermissionsObject?: GroupPermissions,
+        groupsPermissionsObject: GroupPermissions,
         impersonations?: Impersonation[],
       ): void;
       updatePermissionsSchemas(options?: {
+        /**
+         * Defaults to {}.
+         */
         schemas?: SchemasPermissions;
+        /**
+         * Defaults to COLLECTION_GROUP.
+         */
         user_group?: GroupId;
+        /**
+         * Defaults to SAMPLE_DB_ID.
+         */
         database_id?: DatabaseId;
       }): void;
       updateCollectionGraph(
-        groupsCollectionObject?: CollectionPermissions,
+        groupsCollectionObject: CollectionPermissions,
       ): void;
     }
   }
