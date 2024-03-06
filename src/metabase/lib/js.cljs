@@ -88,9 +88,14 @@
    (lib.core/query metadata-provider table-or-card-metadata))
 
   ([database-id metadata query-map]
-   (let [query-map (lib.convert/js-legacy-query->pMBQL query-map)]
-     (log/debugf "query map: %s" (pr-str query-map))
-     (lib.core/query (metadataProvider database-id metadata) query-map))))
+   (let [query-cache (lib.cache/side-channel-cache (str database-id) metadata
+                                                   #(js/WeakMap.)
+                                                   true #_force?)]
+     (or (.get query-cache query-map)
+         (let [new-query-map (lib.convert/js-legacy-query->pMBQL query-map)
+               new-query (lib.core/query (metadataProvider database-id metadata) new-query-map)]
+           (.set query-cache query-map new-query)
+           new-query)))))
 
 (defn- fix-namespaced-values
   "This converts namespaced keywords to strings as `\"foo/bar\"`.
