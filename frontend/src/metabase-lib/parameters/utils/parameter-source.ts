@@ -14,10 +14,23 @@ import { getParameterSubType, getParameterType } from "./parameter-type";
 export const getQueryType = (
   parameter: ParameterWithTemplateTagTarget,
 ): ValuesQueryType => {
-  if (parameter.hasVariableTemplateTagTarget) {
-    return parameter.values_query_type ?? "none";
-  } else {
-    return parameter.values_query_type ?? "list";
+  return parameter.values_query_type ?? getDefaultQueryType(parameter);
+};
+
+const getDefaultQueryType = (
+  parameter: ParameterWithTemplateTagTarget,
+): ValuesQueryType => {
+  const type = getParameterType(parameter);
+  const subType = getParameterSubType(parameter);
+
+  switch (type) {
+    case "string":
+    case "location":
+      return subType === "=" ? "list" : "none";
+    case "category":
+      return "list";
+    default:
+      return "none";
   }
 };
 
@@ -31,12 +44,11 @@ export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
 
 export const canUseCustomSource = (parameter: Parameter) => {
   const type = getParameterType(parameter);
-  const subType = getParameterSubType(parameter);
 
   switch (type) {
     case "string":
     case "location":
-      return subType === "=";
+      return true;
     case "category":
       return true;
     default:

@@ -114,11 +114,6 @@ export function isEqualsOperator(operator) {
   return !!operator && operator.name === "=";
 }
 
-export function isFuzzyOperator(operator) {
-  const { name } = operator || {};
-  return !["=", "!="].includes(name);
-}
-
 export function getFilterArgumentFormatOptions(filterOperator, index) {
   return (
     (filterOperator &&
