@@ -665,7 +665,8 @@
           ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
           ;; we can come back and optimize this to an optimistic-with-fallback approach later.
           type->value->type  (partial relax-type (settings->type->check settings))
-          relaxed-types      (->> (sample-rows rows)
+          ;; for now we favor correctness over speed, but need to revisit this if we increase the allowed file size
+          relaxed-types      (->> #_(sample-rows rows) rows
                                   (reduce #(u/map-all type->value->type %1 %2) old-column-types)
                                   (map column-type))
           new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types relaxed-types)
@@ -677,7 +678,7 @@
                                  (->> (changed-field->new-type fields old-column-types relaxed-types)
                                       (alter-columns! driver database table))))
           ;; this will fail if any of our required relaxations were rejected.
-          parsed-rows        (parse-rows new-column-types rows)]
+          parsed-rows        (parse-rows settings new-column-types rows)]
       (try
         (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
         (catch Throwable e
