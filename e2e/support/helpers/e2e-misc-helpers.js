@@ -138,11 +138,6 @@ export function visitQuestion(questionIdOrAlias) {
   }
 }
 
-/**
- * Visit a question and wait for its query to load.
- *
- * @param {number} id
- */
 function visitQuestionById(id) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
