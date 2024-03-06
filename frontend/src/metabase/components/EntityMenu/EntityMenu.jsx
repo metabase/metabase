@@ -65,6 +65,9 @@ class EntityMenu extends Component {
       <Popover
         opened={open}
         className={cx(className, open ? openClassNames : closedClassNames)}
+        // I've disabled this transition, since it results in the menu sometimes
+        // not appearing until complex content finishes loading on dashboard and questions pages
+        // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
         transitionProps={undefined}
         onChange={() => this.toggleMenu()}
         position="bottom-end"
