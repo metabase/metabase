@@ -209,6 +209,40 @@
       (is (= (mt/id :categories :id)
              (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :venues :category_id)))))))
 
+(deftest update-fk-relationships-test
+  (testing "Check that Foreign Key relationships can be updated"
+    (mt/with-temp-test-data
+      [["continent_1"
+        [{:field-name "name", :base-type :type/Text}]
+        []]
+       ["continent_2"
+        [{:field-name "name", :base-type :type/Text}]
+        []]
+       ["country"
+        [{:field-name "name", :base-type :type/Text}
+         {:field-name "continent_id", :base-type :type/Integer}]
+        []]]
+      (let [db (mt/db)
+            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
+        ;; add the FK relationship in the database with SQL so we can name it
+        (t2/query-one db "ALTER TABLE country ADD CONSTRAINT IF NOT EXISTS country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
+        (sync/sync-database! db {:scan :schema})
+        (testing "initially country's continent_id is targeting continent_1"
+          (is (= (mt/id :continent_1 :id)
+                 (get-fk-target))))
+        ;; drop the FK relationship in the database with SQL
+        (t2/query-one db "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
+        (sync/sync-database! db {:scan :schema})
+        (testing "This reproduces a bug where if FK relationships are dropped, we don't sync the change"
+          (is (= (mt/id :continent_1 :id)
+                 (get-fk-target))))
+        ;; add back the FK relationship but targeting continent_2
+        (t2/query-one db "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
+        (sync/sync-database! db {:scan :schema})
+        (testing "initially country's continent_id is targeting continent_2"
+          (is (= (mt/id :continent_2 :id)
+                 (get-fk-target))))))))
+
 (deftest sync-table-fks-test
   (testing "Check that sync-table! causes FKs to be set like we'd expect"
     (mt/with-temp-copy-of-db
