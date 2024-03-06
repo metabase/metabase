@@ -9,8 +9,12 @@
 (def ^:private h
   (-> (ordered-hierarchy/make-hierarchy)
       (ordered-hierarchy/derive ::boolean-or-int ::boolean)
-      (ordered-hierarchy/derive ::boolean-or-int ::int)
-      (ordered-hierarchy/derive ::auto-incrementing-int-pk ::int)
+      (ordered-hierarchy/derive ::boolean-or-int ::explicit-int)
+      (ordered-hierarchy/derive ::auto-incrementing-int-pk ::explicit-int)
+      (ordered-hierarchy/derive ::explicit-int ::int)
+      (ordered-hierarchy/derive ::explicit-int ::float-or-int)
+      (ordered-hierarchy/derive ::float-or-int ::float)
+      (ordered-hierarchy/derive ::float-or-int ::int)
       (ordered-hierarchy/derive ::int ::float)
       (ordered-hierarchy/derive ::date ::datetime)
       (ordered-hierarchy/derive ::boolean ::varchar-255)
@@ -24,14 +28,14 @@
     (is (nil? (parents h ::text)))
     (is (= [::text] (vec (parents h ::varchar-255))))
     (is (= [::float] (vec (parents h ::int))))
-    (is (= [::boolean ::int] (vec (parents h ::boolean-or-int))))))
+    (is (= [::boolean ::explicit-int] (vec (parents h ::boolean-or-int))))))
 
 (deftest children-test
   (testing "Children are listed in reverse order to when they were each derived from this tag"
     (is (nil? (ordered-hierarchy/children h ::boolean-or-int)))
     (is (= [::varchar-255] (vec (ordered-hierarchy/children h ::text))))
-    (is (= [::int] (vec (ordered-hierarchy/children h ::float))))
-    (is (= [::auto-incrementing-int-pk ::boolean-or-int] (vec (ordered-hierarchy/children h ::int))))))
+    (is (= [::int ::float-or-int] (vec (ordered-hierarchy/children h ::float))))
+    (is (= [::auto-incrementing-int-pk ::boolean-or-int] (vec (ordered-hierarchy/children h ::explicit-int))))))
 
 (deftest ancestors-test
   (testing "Linear ancestors are listed in order"
@@ -40,8 +44,10 @@
     (is (= [::varchar-255 ::text] (vec (ancestors h ::boolean))))
     (is (= [::float ::varchar-255 ::text] (vec (ancestors h ::int)))))
 
-  (testing "Non-linear ancestors are listed in breadth-first order"
+  (testing "Non-linear ancestors are listed in topological order, following edges in the order they were defined."
     (is (= [::boolean
+            ::explicit-int
+            ::float-or-int
             ::int
             ::float
             ::varchar-255
@@ -55,24 +61,33 @@
     (is (= [::date] (vec (descendants h ::datetime))))
     (is (= [::boolean-or-int] (vec (descendants h ::boolean)))))
 
-  (testing "Non-linear descendants are listed in breadth-first order"
-    (is (= [::int ::auto-incrementing-int-pk ::boolean-or-int] (vec (descendants h ::float))))
+  (testing "Non-linear descendants are listed in reverse topological order, following edges in reserve order."
+    (is (= [::int
+            ::float-or-int
+            ::explicit-int
+            ::auto-incrementing-int-pk
+            ::boolean-or-int]
+           (vec (descendants h ::float))))
     (is (= [::varchar-255
             ::offset-datetime
             ::datetime
             ::date
             ::float
             ::int
+            ::float-or-int
+            ::explicit-int
             ::auto-incrementing-int-pk
             ::boolean
             ::boolean-or-int]
            (vec (descendants h ::text))))))
 
-(deftest tags-test
-  (testing "Tags are returned in a topologically sorted order that also preserves insert order"
+(deftest sorted-tags-test
+  (testing "Tags are returned in a topological ordering that also preserves insertion order of the edges."
     (is (= [::boolean-or-int
             ::boolean
             ::auto-incrementing-int-pk
+            ::explicit-int
+            ::float-or-int
             ::int
             ::float
             ::date
