@@ -3,25 +3,28 @@ import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getIsMetabotEnabled } from "metabase/home/selectors";
-import MetabaseSettings from "metabase/lib/settings";
+import { getSetting } from "metabase/selectors/settings";
+import type { State } from "metabase-types/store";
 
-const MetabaseIsSetup = connectedReduxRedirect({
+type Props = { children: React.ReactElement };
+
+const MetabaseIsSetup = connectedReduxRedirect<Props, State>({
   // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
   wrapperDisplayName: "MetabaseIsSetup",
   redirectPath: "/setup",
   allowRedirectBack: false,
-  authenticatedSelector: () => MetabaseSettings.hasUserSetup(), // HACK
+  authenticatedSelector: state => getSetting(state, "has-user-setup"),
   redirectAction: routerActions.replace,
 });
 
-const UserIsAuthenticated = connectedReduxRedirect({
+const UserIsAuthenticated = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsAuthenticated",
   redirectPath: "/auth/login",
   authenticatedSelector: state => !!state.currentUser,
   redirectAction: routerActions.replace,
 });
 
-const UserIsAdmin = connectedReduxRedirect({
+const UserIsAdmin = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsAdmin",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
@@ -30,7 +33,7 @@ const UserIsAdmin = connectedReduxRedirect({
   redirectAction: routerActions.replace,
 });
 
-const UserIsNotAuthenticated = connectedReduxRedirect({
+const UserIsNotAuthenticated = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsNotAuthenticated",
   redirectPath: "/",
   allowRedirectBack: false,
@@ -39,7 +42,7 @@ const UserIsNotAuthenticated = connectedReduxRedirect({
   redirectAction: routerActions.replace,
 });
 
-const UserCanAccessSettings = connectedReduxRedirect({
+const UserCanAccessSettings = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessSettings",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
@@ -47,7 +50,7 @@ const UserCanAccessSettings = connectedReduxRedirect({
   redirectAction: routerActions.replace,
 });
 
-export const UserCanAccessMetabot = connectedReduxRedirect({
+export const UserCanAccessMetabot = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessMetabot",
   redirectPath: "/",
   allowRedirectBack: false,
