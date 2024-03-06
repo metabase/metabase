@@ -83,14 +83,16 @@
     (js.metadata/metadata-provider database-id metadata)))
 
 (defn ^:export query
-  "Coerce a plain map `query` to an actual query object that you can use with MLv2."
+  "Coerce a plain map `query` to an actual query object that you can use with MLv2.
+
+  Attaches a cache to `metadata-provider` so that subsequent calls with the same `database-id` and `query-map` return
+  the same query object."
   ([metadata-provider table-or-card-metadata]
    (lib.core/query metadata-provider table-or-card-metadata))
 
   ([database-id metadata query-map]
    (let [query-cache (lib.cache/side-channel-cache (str database-id) metadata
-                                                   #(js/WeakMap.)
-                                                   true #_force?)]
+                                                   #(js/WeakMap.))]
      (or (.get query-cache query-map)
          (let [new-query-map (lib.convert/js-legacy-query->pMBQL query-map)
                new-query (lib.core/query (metadataProvider database-id metadata) new-query-map)]
