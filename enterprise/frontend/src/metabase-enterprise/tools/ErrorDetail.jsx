@@ -12,7 +12,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { CardApi } from "metabase/services";
 import Question from "metabase-lib/Question";
 
-import { columnNameToUrl } from "../../audit_app/lib/mode";
+import { columnNameToUrl } from "../audit_app/lib/mode";
 
 function idxToUrl(resRow, resCols, nameToResCol, colName) {
   const idVal = resRow[nameToResCol[colName]];
@@ -73,7 +73,7 @@ function ErrorDetailDisplay(props) {
           <td>
             {
               <Link to={urlVal} className={linkClass}>
-                {formattedVal}
+                link: {formattedVal}
               </Link>
             }
           </td>
