@@ -112,6 +112,7 @@
 :global(.text-normal) {
   font-weight: 400;
 }
+
 :global(.text-bold),
 .text-bold {
   font-weight: 700;

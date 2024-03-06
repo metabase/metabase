@@ -99,6 +99,7 @@
   background: transparent;
   color: var(--color-text-medium);
 }
+
 :global(.Button--borderless:hover) {
   border-color: transparent;
   color: var(--color-text-medium);
@@ -175,6 +176,7 @@
   border-color: var(--color-success);
   color: var(--color-text-white);
 }
+
 :global(.Button--success:hover) {
   background-color: var(--color-success);
   border-color: var(--color-success);
