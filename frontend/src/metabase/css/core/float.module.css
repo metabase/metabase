@@ -2,6 +2,7 @@
 .float-left {
   float: left;
 }
+
 :global(.float-right),
 .float-right {
   float: right;

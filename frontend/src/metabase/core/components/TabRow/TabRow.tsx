@@ -13,7 +13,8 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useState, useRef, useEffect } from "react";
+import { useCallback, useState, useRef, useLayoutEffect } from "react";
+import { usePreviousDistinct } from "react-use";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { Icon } from "metabase/ui";
@@ -44,24 +45,8 @@ function TabRowInner<T>({
   const [showScrollRight, setShowScrollRight] = useState(false);
   const showScrollLeft = scrollPosition > 0;
 
-  useEffect(() => {
-    if (!width || !tabListRef.current) {
-      return;
-    }
-
-    setShowScrollRight(
-      Math.round(scrollPosition + width) < tabListRef.current?.scrollWidth,
-    );
-  }, [children, scrollPosition, width]);
-
-  const scroll = (direction: "left" | "right") => {
-    if (!tabListRef.current || !width) {
-      return;
-    }
-
-    const scrollDistance = width * (direction === "left" ? -1 : 1);
-    tabListRef.current.scrollBy(scrollDistance, 0);
-  };
+  const itemsCount = itemIds?.length ?? 0;
+  const previousItemsCount = usePreviousDistinct(itemsCount) ?? 0;
 
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
@@ -72,6 +57,34 @@ function TabRowInner<T>({
   const mouseSensor = useSensor(MouseSensor, {
     activationConstraint: { distance: 10 },
   });
+
+  const scroll = useCallback(
+    (direction: "left" | "right") => {
+      if (!tabListRef.current || !width) {
+        return;
+      }
+      const left = width * (direction === "left" ? -1 : 1);
+      // @ts-expect-error — https://github.com/Microsoft/TypeScript/issues/28755
+      tabListRef.current.scrollBy?.({ left, behavior: "instant" });
+    },
+    [width],
+  );
+
+  useLayoutEffect(() => {
+    if (itemsCount - previousItemsCount === 1) {
+      scroll("right");
+    }
+  }, [itemsCount, previousItemsCount, scroll]);
+
+  useLayoutEffect(() => {
+    if (!width || !tabListRef.current) {
+      return;
+    }
+
+    setShowScrollRight(
+      Math.round(scrollPosition + width) < tabListRef.current?.scrollWidth,
+    );
+  }, [scrollPosition, width]);
 
   const onDragEnd = (event: DragEndEvent) => {
     if (!event.over || !handleDragEnd) {
