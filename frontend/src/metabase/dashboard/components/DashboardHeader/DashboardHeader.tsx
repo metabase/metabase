@@ -590,6 +590,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
+            transitionDuration={0}
           />,
         );
       }
