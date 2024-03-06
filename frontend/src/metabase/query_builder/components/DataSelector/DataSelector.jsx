@@ -12,6 +12,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
 import Databases from "metabase/entities/databases";
+import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
 import Search from "metabase/entities/search";
 import Tables from "metabase/entities/tables";
@@ -338,10 +339,11 @@ export class UnconnectedDataSelector extends Component {
     if (sourceId) {
       await this.props.fetchFields(sourceId);
       if (this.isSavedEntitySelected()) {
-        const id = getQuestionIdFromVirtualTableId(sourceId);
-        const question = this.props.metadata?.question(id);
+        this.props.fetchQuestion(sourceId);
 
-        this.showSavedEntityPicker({ entityType: question?.type() });
+        this.showSavedEntityPicker({
+          entityType: this.props.selectedQuestion?.type(),
+        });
       }
     }
   }
@@ -1070,6 +1072,9 @@ const DataSelector = _.compose(
       }),
       hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
       hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
+      selectedQuestion: Questions.selectors.getObject(state, {
+        entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
+      }),
     }),
     {
       fetchDatabases: databaseQuery =>
@@ -1078,6 +1083,10 @@ const DataSelector = _.compose(
         Schemas.actions.fetchList({ dbId: databaseId }),
       fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
       fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
+      fetchQuestion: id =>
+        Questions.actions.fetch({
+          id: getQuestionIdFromVirtualTableId(id),
+        }),
     },
   ),
 )(UnconnectedDataSelector);
