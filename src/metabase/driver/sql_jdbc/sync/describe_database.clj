@@ -92,18 +92,10 @@
          (.rollback conn))
        false))))
 
-(defn db-tables
-  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
-  schema. Returns a reducible sequence of results."
-  [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
-  ;; seems like some JDBC drivers like Snowflake are dumb and still narrow the search results by the current session
-  ;; schema if you pass in `nil` for `schema-or-nil`, which means not to narrow results at all... For Snowflake, I fixed
-  ;; this by passing in `"%"` instead -- consider making this the default behavior. See this Slack thread
-  ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6 for
-  ;; more info.
-  (with-open [rset (.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
-                               (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
-                                                   "EXTERNAL TABLE" "DYNAMIC_TABLE"]))]
+(defmethod sql-jdbc.sync.interface/get-tables :sql-jdbc
+  [driver ^Connection conn catalog schema-pattern tablename-pattern types]
+  (with-open [rset (.getTables (.getMetaData conn) catalog (some->> schema-pattern (driver/escape-entity-name-for-metadata driver)) tablename-pattern
+                               (when (seq types) (into-array String types)))]
     (loop [acc []]
       (if-not (.next rset)
         acc
@@ -113,6 +105,19 @@
                                          (when-not (str/blank? remarks)
                                            remarks))
                           :type        (.getString rset "TABLE_TYPE")}))))))
+
+(defn db-tables
+  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
+  schema. Returns a reducible sequence of results."
+  [driver ^Connection conn ^String schema-or-nil ^String db-name-or-nil]
+  ;; seems like some JDBC drivers like Snowflake are dumb and still narrow the search results by the current session
+  ;; schema if you pass in `nil` for `schema-or-nil`, which means not to narrow results at all... For Snowflake, I fixed
+  ;; this by passing in `"%"` instead -- consider making this the default behavior. See this Slack thread
+  ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6 for
+  ;; more info.
+  (sql-jdbc.sync.interface/get-tables driver conn db-name-or-nil schema-or-nil "%"
+                                      ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
+                                       "EXTERNAL TABLE" "DYNAMIC_TABLE"]))
 
 (defn- schema+table-with-select-privileges
   [driver conn]
@@ -158,7 +163,7 @@
                                                                                      schema-inclusion-filters schema-exclusion-filters)
         have-select-privilege-fn? (have-select-privilege-fn driver conn)]
     (eduction (mapcat (fn [schema]
-                        (->> (db-tables driver metadata schema db-name-or-nil)
+                        (->> (db-tables driver conn schema db-name-or-nil)
                              (filter have-select-privilege-fn?)
                              (map #(dissoc % :type))))) syncable-schemas)))
 

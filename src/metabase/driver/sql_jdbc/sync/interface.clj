@@ -124,3 +124,9 @@
   {:added "0.49.0" :arglists '([driver conn-spec & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defmulti get-tables
+  "A."
+  {:added "0.50.0" :arglists '([driver conn catalog schema-pattern tablename-pattern types])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)

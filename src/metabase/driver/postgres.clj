@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
@@ -18,6 +19,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -36,7 +38,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [next.jdbc :as next.jdbc])
   (:import
    (java.io StringReader)
    (java.sql Connection ResultSet ResultSetMetaData Time Types)
@@ -853,8 +856,8 @@
   ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
   ;; result in a operation not supported error
   (->> (jdbc/query
-         conn-spec
-         (str/join
+        conn-spec
+        (str/join
          "\n"
          ["with table_privileges as ("
           " select"
@@ -879,6 +882,137 @@
           "select t.*"
           "from table_privileges t"]))
        (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
+
+(def ^:private table-type-clauses
+  {"TABLE"              [:and
+                         [:= :c.relkind [:inline "r"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [:<> :n.nspname [:inline "information_schema"]]]
+   "PARTITIONED TABLE"  [:and
+                         [:= :c.relkind [:inline "p"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [:<> :n.nspname [:inline "information_schema"]]]
+   "VIEW"               [:and
+                         [:= :c.relkind [:inline "v"]]
+                         [:<> :n.nspname [:inline "pg_catalog"]]
+                         [:<> :n.nspname [:inline "information_schema"]]]
+   "INDEX"              [:and
+                         [:= :c.relkind [:inline "i"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [:<> :n.nspname [:inline "information_schema"]]]
+   "PARTITIONED INDEX"  [:and
+                         [:= :c.relkind [:inline "I"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [:<> :n.nspname [:inline "information_schema"]]]
+   "SEQUENCE"           [:= :c.relkind [:inline "S"]]
+   "TYPE"               [:and
+                         [:= :c.relkind [:inline "c"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [:<> :n.nspname [:inline "information_schema"]]]
+   "SYSTEM TABLE"       [:and
+                         [:= :c.relkind [:inline "r"]]
+                         [:or
+                          [:= :n.nspname [:inline "pg_catalog"]]
+                          [:<> :n.nspname [:inline "information_schema"]]]]
+   "SYSTEM TOAST TABLE" [:and
+                         [:= :c.relkind [:inline "i"]]
+                         [:= :n.nspname [:inline "pg_toast"]]]
+   "SYSTEM VIEW"        [:and
+                         [:= :c.relkind [:inline "v"]]
+                         [:or
+                          [:= :n.nspname [:inline "pg_catalog"]]
+                          [:<> :n.nspname [:inline "information_schema"]]]]
+   "SYSTEM INDEX"       [:and
+                         [:= :c.relkind [:inline "i"]]
+                         [:or
+                          [:= :n.nspname [:inline "pg_catalog"]]
+                          [:<> :n.nspname [:inline "information_schema"]]]]
+   "TEMPORARY TABLE"    [:and
+                         [:in :c.relkind [[:inline "r"] [:inline "p"]]]
+                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
+   "TEMPORARY INDEX"    [:and
+                         [:= :c.relkind [:inline "i"]]
+                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
+   "TEMPORARY VIEW"     [:and
+                         [:= :c.relkind [:inline "v"]]
+                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
+   "TEMPORARY SEQUENCE" [:and
+                         [:= :c.relkind [:inline "S"]]
+                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
+   "FOREIGN TABLE"      [:= :c.relkind [:inline "f"]]
+   "MATERIALIZED VIEW"  [:= :c.relkind [:inline "m"]]})
+
+(defn get-table-sql
+  [schema-pattern tablename-pattern types]
+  (sql/format
+   (cond-> {:select    [[:n.nspname :schema]
+                        [:c.relname :name]
+                        [[:case-expr [:or [(keyword "~") :n.nspname "^pg_"] [:= :n.nspname "information_schema"]]
+                          true ;; system tables
+                          [:case
+                           [:or [:= :n.nspname "pg_catalog"] [:= :n.nspname "information_schema"]]
+                           [:case-expr :c.relkind
+                            [:inline "r"] [:inline "SYSTEM TABLE"]
+                            [:inline "v"] [:inline "SYSTEM VIEW"]
+                            [:inline "i"] [:inline "SYSTEM INDEX"]
+                            :else nil]
+                           [:= :n.nspname [:inline "pg_toast"]]
+                           [:case-expr :c.relkind
+                            [:inline "r"] [:inline "SYSTEM TOAST TABLE"]
+                            [:inline "i"] [:inline "SYSTEM TOAST INDEX"]
+                            :else nil]
+
+                           [:case-expr :c.relkind
+                            [:inline "r"] [:inline "TEMPORARY TABLE"]
+                            [:inline "p"] [:inline "TEMPORARY TABLE"]
+                            [:inline "i"] [:inline "TEMPORARY INDEX"]
+                            [:inline "s"] [:inline "TEMPORARY SEQUENCE"]
+                            [:inline "v"] [:inline "TEMPORARY VIEW"]
+                            :else nil]]
+
+                          false ;; non system tables
+                          [:case-expr :c.relkind
+                           [:inline "r"] [:inline "TABLE"]
+                           [:inline "p"] [:inline "PARTITIONED TABLE"]
+                           [:inline "i"] [:inline "INDEX"]
+                           [:inline "P"] [:inline "PARTITIONED INDEX"]
+                           [:inline "S"] [:inline "SEQUENCE"]
+                           [:inline "v"] [:inline "VIEW"]
+                           [:inline "c"] [:inline "TYPE"]
+                           [:inline "f"] [:inline "FOREIGN TABLE"]
+                           [:inline "m"] [:inline "MATERIALIZED VIEW"]
+                           :else nil]
+                          :else nil]
+                         :type]
+                        [:d.description :description]
+                        #_[[:inline ""] :TYPE_CAT]
+                        #_[[:inline ""] :TYPE_SCHEM]
+                        #_[[:inline ""] :TYPE_NAME]
+                        #_[[:inline ""] :SELF_REFERENCING_COL_NAME]
+                        #_[[:inline ""] :REF_GENERATION]]
+            :from      [[:pg_catalog.pg_namespace :n]
+                        [:pg_catalog.pg_class :c]]
+            :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid [:inline 0]]]
+                        [:pg_catalog.pg_class :dc]      [:and [:= :d.classoid :dc.oid] [:= :dc.relname [:inline "pg_class"]]]
+                        [:pg_catalog.pg_namespace :dn]  [:and [:= :dn.oid :dc.relnamespace] [:= :dn.nspname [:inline "pg_catalog"]]]]
+            :where     [:= :c.relnamespace :n.oid]
+            :order-by  [:type :schema :name]}
+    (not (str/blank? schema-pattern))
+;; TODO escape quotes?
+    (sql.helpers/where [:like :n.nspname schema-pattern])
+
+;; TODO do privilege check
+    (not (str/blank? tablename-pattern))
+    (sql.helpers/where [:like :c.relname tablename-pattern])
+
+    (seq types)
+    (sql.helpers/where (into [:or] (map #(get table-type-clauses %) types))))
+   {#_:inline #_true
+    :dialect :ansi}))
+
+(defmethod sql-jdbc.sync.interface/get-tables :postgres
+  [_driver conn _catalog schema-pattern tablename-pattern types]
+  (jdbc/query {:connection conn} (get-table-sql schema-pattern tablename-pattern types)))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
