@@ -35,7 +35,7 @@
   [jdbc-url]
   (second (re-matches #"jdbc:h2:file:(.*)$" jdbc-url)))
 
-(defn db-version
+(defn- db-version!
   "Returns the H2 major version number of H2 MV database file at path, or nil if no file exists"
   [jdbc-url]
   ;; The H2 database version is indicated in the "format:" key of the MV file header, which is 4096 bytes
@@ -86,16 +86,30 @@
   (log/info "Backup restored into H2 v2 database. Update complete!"))
 
 (def ^:private h2-lock (Object.))
+(def ^{:private true
+       :doc     "Used to ensure that we only do the check once per instance."}
+  h2-update-checked (atom false))
+
+#_(time
+   (dotimes [_ 10000]
+    (h2-base-path "jdbc:postgres:fdsjfdsjflkdsjfl")))
+
+#_(time
+   (dotimes [_ 10000]
+    @h2-update-checked))
 
 (defn update-if-needed!
   "Updates H2 database at db-path from version 1.x to 2.x if jdbc-url points
-   to version 1 H2 database."
+  to version 1 H2 database."
   [jdbc-url]
-  (locking h2-lock
-    (when (= 1 (db-version jdbc-url))
-      (log/info "H2 v1 database detected, updating...")
-      (try
-        (update! jdbc-url)
-        (catch Exception e
-          (log/error "Failed to update H2 database:" e)
-          (throw e))))))
+  (when (and (not @h2-update-checked) (h2-base-path jdbc-url))
+    (locking h2-lock
+      (when-not @h2-update-checked
+        (when (= 1 (db-version! jdbc-url))
+          (log/info "H2 v1 database detected, updating...")
+          (try
+           (update! jdbc-url)
+           (catch Exception e
+             (log/error "Failed to update H2 database:" e)
+             (throw e)))))
+      (reset! h2-update-checked true))))
