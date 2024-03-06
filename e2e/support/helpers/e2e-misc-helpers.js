@@ -126,9 +126,19 @@ export const cypressWaitAll = function (commands) {
 /**
  * Visit a question and wait for its query to load.
  *
- * @param {number} id
+ * @param {number|string} questionIdOrAlias
  */
-export function visitQuestion(id) {
+export function visitQuestion(questionIdOrAlias) {
+  if (typeof questionIdOrAlias === "number") {
+    visitQuestionById(questionIdOrAlias);
+  }
+
+  if (typeof questionIdOrAlias === "string") {
+    cy.get(questionIdOrAlias).then(id => visitQuestionById(id));
+  }
+}
+
+function visitQuestionById(id) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
 
@@ -171,7 +181,7 @@ export function visitDashboard(dashboardIdOrAlias, { params = {} } = {}) {
   }
 
   if (typeof dashboardIdOrAlias === "string") {
-    visitDashboardByAlias(dashboardIdOrAlias, { params });
+    cy.get(dashboardIdOrAlias).then(id => visitDashboardById(id, { params }));
   }
 }
 
@@ -235,14 +245,6 @@ function visitDashboardById(dashboard_id, config) {
       cy.wait(`@${dashboardAlias}`);
     }
   });
-}
-
-/**
- * Visit a dashboard by using its previously saved dashboard id alias.
- * @param {string} alias
- */
-function visitDashboardByAlias(alias, config) {
-  cy.get(alias).then(id => visitDashboard(id, config));
 }
 
 function hasAccess(statusCode) {

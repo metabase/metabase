@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 
 import { NotebookCell } from "../../../NotebookCell";
 
-export const PickerButton = styled.button`
+export const TablePickerButton = styled.button`
   color: inherit;
   font-weight: inherit;
   cursor: ${props => (props.disabled ? "auto" : "pointer")};

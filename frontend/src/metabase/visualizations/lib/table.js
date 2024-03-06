@@ -42,7 +42,8 @@ export function getTableCellClickedObject(
   if (isPivoted) {
     // if it's a pivot table, the first column is
     if (columnIndex === 0) {
-      return row._dimension;
+      const { value, column: col } = row._dimension;
+      return { value, column: col, settings, data: [{ value, col }] };
     } else {
       return {
         value,
