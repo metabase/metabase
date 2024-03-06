@@ -134,8 +134,9 @@ const ChartSettingsTableFormatting = props => {
           setEditingRule(index);
           setEditingRuleIsNew(false);
         }}
-        onAdd={() => {
-          onChange([
+        //This needs to be
+        onAdd={async () => {
+          await onChange([
             {
               ...DEFAULTS_BY_TYPE["single"],
               // if there's a single column use that by default
@@ -144,8 +145,8 @@ const ChartSettingsTableFormatting = props => {
             },
             ...value,
           ]);
-          setEditingRule(0);
           setEditingRuleIsNew(true);
+          setEditingRule(0);
         }}
         onRemove={index => {
           onChange([...value.slice(0, index), ...value.slice(index + 1)]);
