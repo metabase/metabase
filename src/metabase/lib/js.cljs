@@ -92,7 +92,8 @@
 
   ([database-id metadata query-map]
    (let [query-cache (lib.cache/side-channel-cache (str database-id) metadata
-                                                   #(js/WeakMap.))]
+                                                   #(js/WeakMap.)
+                                                   true #_force?)]
      (or (.get query-cache query-map)
          (let [new-query-map (lib.convert/js-legacy-query->pMBQL query-map)
                new-query (lib.core/query (metadataProvider database-id metadata) new-query-map)]
