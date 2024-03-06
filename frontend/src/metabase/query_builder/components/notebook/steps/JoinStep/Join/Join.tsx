@@ -151,7 +151,7 @@ export function Join({
             <JoinConditionDraft
               query={query}
               stageIndex={stageIndex}
-              rhsTable={rhsTable}
+              joinable={join}
               lhsTableName={lhsTableName}
               rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}

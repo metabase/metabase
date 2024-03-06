@@ -14,7 +14,7 @@ import {
 interface JoinConditionColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
-  joinable: Lib.Join | Lib.Joinable;
+  joinable: Lib.JoinOrJoinable;
   tableName: string | undefined;
   lhsColumn: Lib.ColumnMetadata | undefined;
   rhsColumn: Lib.ColumnMetadata | undefined;
@@ -139,7 +139,7 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
 interface JoinColumnDropdownProps {
   query: Lib.Query;
   stageIndex: number;
-  joinable: Lib.Join | Lib.Joinable;
+  joinable: Lib.JoinOrJoinable;
   lhsColumn: Lib.ColumnMetadata | undefined;
   rhsColumn: Lib.ColumnMetadata | undefined;
   isLhsColumn: boolean;
@@ -177,7 +177,7 @@ function JoinColumnDropdown({
       columnGroups={columnGroups}
       stageIndex={stageIndex}
       hasTemporalBucketing
-      checkIsColumnSelected={checkColumnSelected}
+      checkIsColumnSelected={checkIsColumnSelected}
       onSelect={onChange}
       onClose={onClose}
       data-testid={isLhsColumn ? "lhs-column-picker" : "rhs-column-picker"}
@@ -185,6 +185,6 @@ function JoinColumnDropdown({
   );
 }
 
-function checkColumnSelected(item: ColumnListItem) {
+function checkIsColumnSelected(item: ColumnListItem) {
   return Boolean(item.selected);
 }
