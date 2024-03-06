@@ -5,8 +5,8 @@ import { SetupApi } from "metabase/services";
 import { Box, Button, Flex, Text, TextInput } from "metabase/ui";
 
 type LicenseTokenFormProps = {
-  onValidSubmit: (token: string) => void | Promise<void>;
-  onSkip: () => void | Promise<void>;
+  onValidSubmit: (token: string) => void;
+  onSkip: () => void;
   initialValue?: string;
 };
 
@@ -25,7 +25,6 @@ export const LicenseTokenForm = ({
   const submit = async () => {
     setStatus("loading");
     try {
-      // TODO: make a new endpoint that's not using /setup
       const response = await SetupApi.validate_token({ token });
       if (response.valid) {
         setStatus("success");

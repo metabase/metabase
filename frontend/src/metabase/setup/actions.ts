@@ -208,9 +208,6 @@ export const updateTracking = createAsyncThunk(
   },
 );
 
-// TODO: fix. need better error message (nabbed this from admin settings). We've already validated the token at this point, but in theory _something_ could error.
-const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
-
 export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
 export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
   SUBMIT_SETUP,
@@ -236,7 +233,9 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
         );
       }
     } catch (err) {
-      return rejectWithValue(INVALID_TOKEN_ERROR);
+      return rejectWithValue(
+        t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`,
+      );
     }
 
     dispatch(goToNextStep());
