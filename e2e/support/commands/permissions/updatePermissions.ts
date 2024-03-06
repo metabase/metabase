@@ -1,9 +1,12 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import type {
+  CollectionPermissions,
+  CollectionPermissionsGraph,
   DatabaseId,
   GroupId,
   GroupPermissions,
   Impersonation,
+  PermissionsGraph,
   SchemasPermissions,
 } from "metabase-types/api";
 
@@ -15,10 +18,13 @@ declare global {
         impersonations?: Impersonation[],
       ): void;
       updatePermissionsSchemas(options?: {
-        schemas: SchemasPermissions;
-        user_group: GroupId;
-        database_id: DatabaseId;
+        schemas?: SchemasPermissions;
+        user_group?: GroupId;
+        database_id?: DatabaseId;
       }): void;
+      updateCollectionGraph(
+        groupsCollectionObject?: CollectionPermissions,
+      ): void;
     }
   }
 }
@@ -45,7 +51,7 @@ Cypress.Commands.add(
     }
 
     cy.log("Fetch permissions graph");
-    cy.request("GET", "/api/permissions/graph").then(
+    cy.request<PermissionsGraph>("GET", "/api/permissions/graph").then(
       ({ body: { groups, revision } }) => {
         const UPDATED_GROUPS = Object.assign(groups, groupsPermissionsObject);
 
@@ -73,7 +79,7 @@ Cypress.Commands.add(
       throw new Error("`schemas` must be an object!");
     }
 
-    cy.request("GET", "/api/permissions/graph").then(
+    cy.request<PermissionsGraph>("GET", "/api/permissions/graph").then(
       ({ body: { groups, revision } }) => {
         const UPDATED_GROUPS = Object.assign(groups, {
           [user_group]: {
@@ -101,7 +107,7 @@ Cypress.Commands.add("updateCollectionGraph", (groupsCollectionObject = {}) => {
   }
 
   cy.log("Fetch permissions graph");
-  cy.request("GET", "/api/collection/graph").then(
+  cy.request<CollectionPermissionsGraph>("GET", "/api/collection/graph").then(
     ({ body: { groups, revision } }) => {
       const UPDATED_GROUPS = Object.assign(groups, groupsCollectionObject);
 
