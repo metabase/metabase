@@ -35,8 +35,6 @@ describe("TableInfoIcon", () => {
 
     fireEvent.mouseEnter(icon);
 
-    expect(
-      await screen.findByText(description, { exact: false }),
-    ).toBeInTheDocument();
+    expect(screen.getByText(description, { exact: false })).toBeInTheDocument();
   });
 });
