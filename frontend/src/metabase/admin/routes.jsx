@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { routerActions } from "react-router-redux";
-import { connectedReduxRedirect } from "redux-auth-wrapper";
+import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";

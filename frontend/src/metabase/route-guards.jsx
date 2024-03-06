@@ -1,5 +1,5 @@
 import { routerActions } from "react-router-redux";
-import { connectedReduxRedirect } from "redux-auth-wrapper";
+import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getIsMetabotEnabled } from "metabase/home/selectors";
