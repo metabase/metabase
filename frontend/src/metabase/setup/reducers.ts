@@ -72,7 +72,7 @@ export const reducer = createReducer(initialState, builder => {
     state.database = undefined;
     state.invite = undefined;
   });
-  builder.addCase(updateTracking.pending, (state, { meta }) => {
+  builder.addCase(updateTracking.fulfilled, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;
   });
   builder.addCase(submitSetup.fulfilled, state => {
