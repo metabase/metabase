@@ -103,7 +103,6 @@ function getAmendedParameter(tag: TemplateTag, parameter: Parameter) {
   return _.omit(amended, "default", "required");
 }
 
-// TODO value should reset when changing types
 // TODO popover z-index (select inside dropdown)
 function OwnDatePicker(props: {
   value: any;

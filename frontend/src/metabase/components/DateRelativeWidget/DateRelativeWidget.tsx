@@ -158,10 +158,6 @@ type DateRelativeWidgetProps = {
 };
 
 export class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
-  constructor(props: DateRelativeWidgetProps) {
-    super(props);
-  }
-
   render() {
     const { value, setValue, onClose } = this.props;
     return (
