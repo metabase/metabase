@@ -15,6 +15,13 @@
     "selector-id-pattern": null,
     "selector-class-pattern": null,
     "selector-no-vendor-prefix": null,
-    "value-keyword-case": null
+    "value-keyword-case": null,
+    "declaration-block-no-redundant-longhand-properties": null,
+    "shorthand-property-no-redundant-values": null,
+    "declaration-block-no-duplicate-properties": [
+      true,
+      { "ignoreProperties": ["composes"] }
+    ],
+    "comment-empty-line-before": null
   }
 }

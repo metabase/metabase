@@ -384,6 +384,7 @@
   },
   "lint-staged": {
     "+(frontend|enterprise/frontend|e2e)/**/*.css": [
+      "stylelint --fix",
       "prettier --write"
     ],
     "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
