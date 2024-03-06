@@ -13,6 +13,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
    [metabase.lib.core :as lib]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
@@ -531,6 +532,16 @@
                                @api/*current-user*)
             upload-seconds    (/ (- (System/currentTimeMillis) start-time)
                                  1000.0)]
+
+        (events/publish-event! :event/upload-create
+                               {:user-id (:id @api/*current-user*)
+                                :model-id (:id card)
+                                ;; details
+                                :db-id db-id
+                                :schema-name schema-name
+                                :table-name table-name
+                                :stats stats})
+
         (snowplow/track-event! ::snowplow/csv-upload-successful
                                api/*current-user-id*
                                (merge

@@ -129,6 +129,34 @@
                                         [:user-id [:maybe pos-int?]]
                                         [:model [:or :keyword :string]]])}))
 
+;; upload events
+
+(def ^:private upload-schema
+  (mc/schema [:map {:closed true}
+              ;; TODO WIP
+              [:db-id       integer?]
+              [:schema-name string?]
+              [:table-name  string?]
+              [:stats [:map {:closed true}
+                       [:num-rows          nat-int?]
+                       [:num-columns       nat-int?]
+                       [:generated-columns nat-int?]
+                       [:size-mb           float?]]]
+              ;; generic parameters
+              [:user-id  pos-int?]
+              [:model-id pos-int?]
+              ]))
+
+(comment
+ (def upload-event {:db-id 1, :schema-name "PUBLIC", :table-name "test_20240306225715", :stats {:num-rows 3, :num-columns 2, :generated-columns 1, :size-mb 2.384185791015625E-5}})
+ (mc/validate upload-schema upload-event))
+
+(let [default-schema upload-schema]
+  (def ^:private upload-events
+    {:event/upload-create default-schema
+     :event/upload-append default-schema}))
+
+
 (def topic->schema
   "Returns the schema for an event topic."
   (merge dashboard-events-schemas
@@ -140,4 +168,5 @@
          alert-schema
          pulse-schemas
          table-events
-         permission-failure-events))
+         permission-failure-events
+         upload-events))

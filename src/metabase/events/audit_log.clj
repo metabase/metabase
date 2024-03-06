@@ -209,3 +209,15 @@
 (methodical/defmethod events/publish-event! ::api-key-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::upload-event ::event)
+(derive :event/upload-create ::upload-event)
+(derive :event/upload-append ::upload-event)
+
+(methodical/defmethod events/publish-event! ::upload-event
+  [topic {:keys [user-id model-id] :as event}]
+  (audit-log/record-event! topic
+                           {:user-id user-id
+                            :model-id model-id
+                            :model :model/Card
+                            :details (dissoc event :user-id :model-id)}))
