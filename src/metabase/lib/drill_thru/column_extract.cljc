@@ -42,7 +42,8 @@
             :type         :drill-thru/column-extract
             :display-name (i18n/tru "Extract day, month…")
             :extractions  (column-extract-temporal-units)}
-           (lib.drill-thru.column-filter/prepare-query-for-drill-addition query stage-number column column-ref))))
+           (lib.drill-thru.column-filter/prepare-query-for-drill-addition
+             query stage-number column column-ref :expression))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-extract
   [_query _stage-number drill]

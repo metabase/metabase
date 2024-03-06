@@ -169,13 +169,12 @@
                                       {:name ">"}
                                       {:name "="}
                                       {:name "≠"}]
-                       :query        {:stages [{} {}]}
+                       :query        {:stages [{}]}
                        :stage-number -1
                        :value        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])}
       :drill-args     ["<"]
-      :expected-query {:stages [(get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query :stages 0])
-                                {:filters [[:< {}
-                                            [:field {} "CREATED_AT"]
+      :expected-query {:stages [{:filters [[:< {}
+                                            [:field {} (meta/id :orders :created-at)]
                                             (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "CREATED_AT"])]]}]}})))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-3
