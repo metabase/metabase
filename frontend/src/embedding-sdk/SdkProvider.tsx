@@ -25,7 +25,11 @@ const MetabaseProviderInternal = ({
   children: React.ReactNode;
   config: SDKConfigType;
 }): JSX.Element => {
-  const store = getStore(reducers);
+  const store = getStore(reducers, null, {
+    embed: {
+      isEmbeddingSdk: true,
+    },
+  });
 
   useEffect(() => {
     if (window.location.hostname === "localhost") {
@@ -39,8 +43,7 @@ const MetabaseProviderInternal = ({
     if (font) {
       store.dispatch(setOptions({ font }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [font]);
+  }, [font, store]);
 
   const { isLoggedIn, isInitialized } = useInitData({
     store,

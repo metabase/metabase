@@ -1045,3 +1045,7 @@ export function getEmbeddedParameterVisibility(state, slug) {
   const embeddingParams = card.embedding_params ?? {};
   return embeddingParams[slug] ?? "disabled";
 }
+
+export function getIsEmbeddingSdk(state) {
+  return state.embed.isEmbeddingSdk;
+}

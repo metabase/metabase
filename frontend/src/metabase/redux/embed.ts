@@ -22,7 +22,6 @@ export const setOptions = createAction(SET_OPTIONS);
 const options = handleActions(
   {
     [SET_OPTIONS]: (state, { payload }) => {
-      console.log(payload)
       return {
         ...DEFAULT_EMBED_OPTIONS,
         ...payload,
@@ -32,7 +31,10 @@ const options = handleActions(
   {},
 );
 
+const isEmbeddingSdk = handleActions({}, false);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   options,
+  isEmbeddingSdk,
 });

@@ -90,6 +90,7 @@ import {
   getShouldShowUnsavedChangesWarning,
   getRequiredTemplateTags,
   getEmbeddedParameterVisibility,
+  getIsEmbeddingSdk,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
@@ -185,6 +186,7 @@ const mapStateToProps = (state, props) => {
     requiredTemplateTags: getRequiredTemplateTags(state),
     getEmbeddedParameterVisibility: slug =>
       getEmbeddedParameterVisibility(state, slug),
+    isEmbeddingSdk: getIsEmbeddingSdk(state),
   };
 };
 
