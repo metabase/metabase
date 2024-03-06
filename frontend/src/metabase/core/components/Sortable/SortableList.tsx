@@ -12,6 +12,10 @@ import _ from "underscore";
 import { isNotNull } from "metabase/lib/types";
 
 type ItemId = number | string;
+export type DragEndEvent = {
+  id: ItemId;
+  newIndex: number;
+};
 
 interface RenderItemProps<T> {
   item: T;
@@ -23,7 +27,7 @@ interface useSortableListProps<T> {
   getId: (item: T) => ItemId;
   renderItem: ({ item, id, isDragOverlay }: RenderItemProps<T>) => JSX.Element;
   onSortStart?: (event: DragStartEvent) => void;
-  onSortEnd?: ({ id, newIndex }: { id: ItemId; newIndex: number }) => void;
+  onSortEnd?: ({ id, newIndex }: DragEndEvent) => void;
   sensors?: SensorDescriptor<any>[];
   modifiers?: Modifier[];
 }
