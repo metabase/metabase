@@ -29,7 +29,116 @@ import type { ErrorPayload } from "./types";
 import { useErrorInfo } from "./use-error-info";
 import { downloadObjectAsJson, hasQueryData } from "./utils";
 
-export const ReportableError = () => {
+interface ErrorDiagnosticModalProps {
+  errorInfo: ErrorPayload;
+  onClose: () => void;
+}
+
+type PayloadSelection = Partial<Record<keyof ErrorPayload, boolean>>;
+
+export const ErrorDiagnosticModal = ({
+  errorInfo,
+  onClose,
+}: ErrorDiagnosticModalProps) => {
+  const handleSubmit = (values: PayloadSelection) => {
+    const selectedKeys = Object.keys(values).filter(
+      key => values[key as keyof PayloadSelection],
+    );
+    const selectedInfo: ErrorPayload = _.pick(errorInfo, ...selectedKeys);
+
+    downloadObjectAsJson(
+      selectedInfo,
+      `metabase-diagnostic-info-${new Date().toISOString()}`,
+    );
+    onClose();
+  };
+
+  const canIncludeQueryData = hasQueryData(errorInfo?.entityName);
+
+  const hiddenValues = {
+    url: true,
+    entityName: true,
+  };
+
+  return (
+    <Modal
+      opened
+      onClose={onClose}
+      title={t`Download diagnostic information`}
+      padding="xl"
+      size="lg"
+    >
+      <FormProvider
+        initialValues={{
+          ...hiddenValues,
+          queryResults: false,
+          entityInfo: true,
+          frontendErrors: true,
+          backendErrors: true,
+          userLogs: true,
+          logs: true,
+          instanceInfo: true,
+        }}
+        onSubmit={handleSubmit}
+      >
+        <Form>
+          <Text>
+            {t`Select the info you want to include in the diagnostic JSON file.`}
+          </Text>
+          <Stack spacing="md" my="lg">
+            {canIncludeQueryData && (
+              <FormCheckbox name="queryData" label={t`Query results`} />
+            )}
+            {!!errorInfo.localizedEntityName && (
+              <FormCheckbox
+                name="entityInfo"
+                label={t`${capitalize(
+                  errorInfo.localizedEntityName,
+                )} definition`}
+              />
+            )}
+            <FormCheckbox
+              name="frontendErrors"
+              label={t`Browser error messages`}
+            />
+            {!!errorInfo?.logs && (
+              <>
+                <FormCheckbox
+                  name="backendErrors"
+                  label={t`All server error messages`}
+                />
+                <FormCheckbox name="logs" label={t`All server logs`} />
+                <FormCheckbox
+                  name="userLogs"
+                  label={t`Server logs from the current user only`}
+                />
+              </>
+            )}
+            <FormCheckbox
+              name="instanceInfo"
+              // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
+              label={t`Metabase instance version and settings`}
+            />
+          </Stack>
+          <Alert variant="warning">
+            {t`Review the downloaded file before sharing it, as the diagnostic info may contain sensitive data.`}
+          </Alert>
+          <Flex gap="sm" justify="flex-end" mt="lg">
+            <Button onClick={onClose}>{t`Cancel`}</Button>
+            <FormSubmitButton
+              variant="filled"
+              leftIcon={<Icon name="download" />}
+              label={t`Download`}
+              color="brand"
+            />
+          </Flex>
+        </Form>
+      </FormProvider>
+    </Modal>
+  );
+};
+
+export const ErrorDiagnosticModalTrigger = () => {
   const { value: errorInfo, loading, error } = useErrorInfo();
 
   const [isModalOpen, setModalOpen] = useState(false);
@@ -75,112 +184,6 @@ export const ReportableError = () => {
         />
       )}
     </ErrorBoundary>
-  );
-};
-
-interface ErrorDiagnosticModalProps {
-  errorInfo: ErrorPayload;
-  onClose: () => void;
-}
-
-type PayloadSelection = Partial<Record<keyof ErrorPayload, boolean>>;
-
-export const ErrorDiagnosticModal = ({
-  errorInfo,
-  onClose,
-}: ErrorDiagnosticModalProps) => {
-  const handleSubmit = (values: PayloadSelection) => {
-    const selectedKeys = Object.keys(values).filter(
-      key => values[key as keyof PayloadSelection],
-    );
-    const selectedInfo: ErrorPayload = _.pick(errorInfo, ...selectedKeys);
-
-    downloadObjectAsJson(
-      selectedInfo,
-      `metabase-diagnostic-info-${new Date().toISOString()}`,
-    );
-    onClose();
-  };
-
-  const canIncludeQueryData = hasQueryData(errorInfo?.entityName);
-
-  const hiddenValues = {
-    url: true,
-    entityName: true,
-  };
-
-  return (
-    <Modal
-      opened
-      onClose={onClose}
-      title={t`Download diagnostic information`}
-      padding="xl"
-    >
-      <FormProvider
-        initialValues={{
-          ...hiddenValues,
-          entityInfo: true,
-          queryData: canIncludeQueryData,
-          frontendErrors: true,
-          backendErrors: true,
-          userLogs: true,
-          logs: true,
-          instanceInfo: true,
-        }}
-        onSubmit={handleSubmit}
-      >
-        <Form>
-          <Text>
-            {t`Select the info you want to include in the diagnostic JSON file.`}
-          </Text>
-          <Stack spacing="md" p="lg">
-            {!!errorInfo.localizedEntityName && (
-              <FormCheckbox
-                name="entityInfo"
-                label={t`${capitalize(errorInfo.localizedEntityName)} data`}
-              />
-            )}
-            {canIncludeQueryData && (
-              <FormCheckbox name="queryData" label={t`Query data`} />
-            )}
-            <FormCheckbox
-              name="frontendErrors"
-              label={t`Browser error messages`}
-            />
-            {!!errorInfo?.logs && (
-              <Stack>
-                <FormCheckbox
-                  name="backendErrors"
-                  label={t`All server error messages`}
-                />
-                <FormCheckbox name="logs" label={t`Include all server logs`} />
-                <FormCheckbox
-                  name="userLogs"
-                  label={t`Server logs from the current user only`}
-                />
-              </Stack>
-            )}
-            <FormCheckbox
-              name="instanceInfo"
-              // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
-              label={t`Metabase version and settings`}
-            />
-          </Stack>
-          <Alert variant="warning">
-            {t`Review the downloaded file before sharing it, as the diagnostic info may contain sensitive data.`}
-          </Alert>
-          <Flex gap="sm" justify="flex-end" mt="lg">
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton
-              variant="filled"
-              leftIcon={<Icon name="download" />}
-              label={t`Download`}
-              color="brand"
-            />
-          </Flex>
-        </Form>
-      </FormProvider>
-    </Modal>
   );
 };
 

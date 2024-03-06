@@ -54,7 +54,7 @@ export const useErrorInfo = (
 
     const [entityInfo, bugReportDetails, sessionProperties, logs] =
       settledPromises.map((promise: any) => promise.value);
-    const queryData =
+    const queryResults =
       entity === "question" &&
       entityInfo?.dataset_query &&
       (await MetabaseApi.dataset(entityInfo.dataset_query).catch(nullOnCatch));
@@ -75,7 +75,7 @@ export const useErrorInfo = (
       entityInfo,
       entityName: entity,
       localizedEntityName: getLocalizedEntityName(entity),
-      ...(queryData ? { queryData } : undefined),
+      ...(queryResults ? { queryResults } : undefined),
       logs: filteredLogs,
       frontendErrors,
       backendErrors,
