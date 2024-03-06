@@ -132,7 +132,6 @@
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
                 ;; this because there is `io!` in this block
                 (setting.cache/restore-cache!)
-                (snowplow/track-event! ::snowplow/database-connection-failed nil {:source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id session]} (create!)
           superuser (t2/select-one :model/User :id user-id)]
