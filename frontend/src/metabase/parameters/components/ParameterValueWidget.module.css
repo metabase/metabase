@@ -22,9 +22,11 @@
   margin-right: 0;
   margin-left: 0;
 }
+
 .fullscreen .name {
   font-size: 14px;
 }
+
 .fullscreen .parameter {
   min-width: 0;
   min-height: 0;
@@ -66,15 +68,19 @@
   outline: none;
   color: var(--color-text-dark);
 }
+
 .parameter.noPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
 }
+
 .parameter.noPopover input:-moz-placeholder {
   color: var(--color-text-medium);
 }
+
 .parameter.noPopover input::-moz-placeholder {
   color: var(--color-text-medium);
 }
+
 .parameter.noPopover input:-ms-input-placeholder {
   color: var(--color-text-medium);
 }

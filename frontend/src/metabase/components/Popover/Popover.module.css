@@ -9,6 +9,7 @@
   min-width: 1em; /* ewwwwwwww */
   display: flex;
   flex-direction: column;
+
   /* add a max-width so that long strings don't cause the popover to expand
    * see metabase#4930 */
   max-width: 500px;
@@ -51,7 +52,6 @@
 
 :global(.tippy-box[data-theme~="popover"]) {
   font-size: inherit;
-  background-color: var(--color-bg-white);
   color: var(--color-text-default);
   border: 1px solid var(--color-border);
   box-shadow: 0 4px 10px var(--color-shadow);
@@ -81,14 +81,15 @@
   line-height: 1.26;
   padding: 10px 12px;
 }
+
 :global(.PopoverBody.PopoverBody--tooltip.PopoverBody--tooltipConstrainedWidth) {
   font-size: 12px;
   max-width: 200px;
 }
 
 /* shared arrow styles */
-:global(.PopoverBody--withArrow:before),
-:global(.PopoverBody--withArrow:after) {
+:global(.PopoverBody--withArrow::before),
+:global(.PopoverBody--withArrow::after) {
   position: absolute;
   content: "";
   display: block;
@@ -127,7 +128,6 @@
   top: 1px; /* to overlap bottom border */
   text-align: center;
   padding: 1em;
-
   text-transform: uppercase;
   font-size: 0.8em;
   font-weight: 700;
@@ -144,8 +144,8 @@
   margin-right: 8px;
 }
 
-:global(.PopoverHeader-item--withArrow:before),
-:global(.PopoverHeader-item--withArrow:after) {
+:global(.PopoverHeader-item--withArrow::before),
+:global(.PopoverHeader-item--withArrow::after) {
   position: absolute;
   content: "";
   display: block;
@@ -158,13 +158,13 @@
 }
 
 /* create a slightly larger arrow on the right for border purposes */
-:global(.PopoverHeader-item--withArrow:before) {
+:global(.PopoverHeader-item--withArrow::before) {
   right: -16px;
   border-left-color: var(--color-border);
 }
 
 /* create a smaller inset arrow on the right */
-:global(.PopoverHeader-item--withArrow:after) {
+:global(.PopoverHeader-item--withArrow::after) {
   right: -15px;
   border-left-color: var(--color-bg-white);
 }
@@ -178,6 +178,7 @@
   border-bottom-left-radius: 6px;
   padding-top: 8px;
   width: 100%;
+
   /* Without z-index; calendar days, if selected, scroll above this component */
   z-index: 1;
 }
@@ -196,61 +197,65 @@
 }
 
 /* create a slightly larger arrow on the top for border purposes */
-:global(.tether-element-attached-top .PopoverBody--withArrow:before) {
+:global(.tether-element-attached-top .PopoverBody--withArrow::before) {
   top: -20px;
   border-bottom-color: var(--color-border);
 }
-:global(.tether-element-attached-top .PopoverBody--tooltip:before) {
+
+:global(.tether-element-attached-top .PopoverBody--tooltip::before) {
   border-bottom: none;
 }
 
 /* create a smaller inset arrow on the top */
-:global(.tether-element-attached-top .PopoverBody--withArrow:after) {
+:global(.tether-element-attached-top .PopoverBody--withArrow::after) {
   top: -18px;
   border-bottom-color: var(--color-bg-white);
 }
-:global(.tether-element-attached-top .PopoverBody--tooltip:after) {
+
+:global(.tether-element-attached-top .PopoverBody--tooltip::after) {
   border-bottom-color: var(--color-bg-black);
 }
 
 /* create a slightly larger arrow on the bottom for border purposes */
-:global(.tether-element-attached-bottom .PopoverBody--withArrow:before) {
+:global(.tether-element-attached-bottom .PopoverBody--withArrow::before) {
   bottom: -20px;
   border-top-color: var(--color-border);
 }
-:global(.tether-element-attached-bottom .PopoverBody--tooltip:before) {
+
+:global(.tether-element-attached-bottom .PopoverBody--tooltip::before) {
   border-top: none;
 }
 
 /* create a smaller inset arrow on the bottom */
-:global(.tether-element-attached-bottom .PopoverBody--withArrow:after) {
+:global(.tether-element-attached-bottom .PopoverBody--withArrow::after) {
   bottom: -18px;
   border-top-color: var(--color-bg-white);
 }
-:global(.tether-element-attached-bottom .PopoverBody--tooltip:after) {
+
+:global(.tether-element-attached-bottom .PopoverBody--tooltip::after) {
   border-top-color: var(--color-bg-black);
 }
 
 /* if the tether element is attached right, move our arrows right */
-:global(.tether-target-attached-right .PopoverBody--withArrow:before),
-:global(.tether-target-attached-right .PopoverBody--withArrow:after) {
+:global(.tether-target-attached-right .PopoverBody--withArrow::before),
+:global(.tether-target-attached-right .PopoverBody--withArrow::after) {
   right: 12px;
 }
 
 /* if the tether element is attached center, move our arrows to the center */
-:global(.tether-element-attached-center .PopoverBody--withArrow:before),
-:global(.tether-element-attached-center .PopoverBody--withArrow:after) {
+:global(.tether-element-attached-center .PopoverBody--withArrow::before),
+:global(.tether-element-attached-center .PopoverBody--withArrow::after) {
   margin-left: 50%;
   left: -10px;
 }
 
-:global(.tether-element-attached-right .PopoverBody--withArrow:before),
-:global(.tether-element-attached-right .PopoverBody--withArrow:after) {
+:global(.tether-element-attached-right .PopoverBody--withArrow::before),
+:global(.tether-element-attached-right .PopoverBody--withArrow::after) {
   right: 12px;
 }
 
-:global(.tether-element-attached-left .PopoverBody--withArrow:before),
-:global(.tether-element-attached-left .PopoverBody--withArrow:after) {
+:global(.tether-element-attached-left .PopoverBody--withArrow::before),
+:global(.tether-element-attached-left .PopoverBody--withArrow::after) {
   left: 12px;
 }
 
