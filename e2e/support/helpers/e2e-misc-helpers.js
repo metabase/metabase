@@ -171,7 +171,7 @@ export function visitDashboard(dashboardIdOrAlias, { params = {} } = {}) {
   }
 
   if (typeof dashboardIdOrAlias === "string") {
-    visitDashboardByAlias(dashboardIdOrAlias, { params });
+    cy.get(dashboardIdOrAlias).then(id => visitDashboardById(id, { params }));
   }
 }
 
@@ -235,14 +235,6 @@ function visitDashboardById(dashboard_id, config) {
       cy.wait(`@${dashboardAlias}`);
     }
   });
-}
-
-/**
- * Visit a dashboard by using its previously saved dashboard id alias.
- * @param {string} alias
- */
-function visitDashboardByAlias(alias, config) {
-  cy.get(alias).then(id => visitDashboard(id, config));
 }
 
 function hasAccess(statusCode) {
