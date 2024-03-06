@@ -35,7 +35,7 @@ export function Join({
   onQueryChange,
 }: JoinProps) {
   const strategy = useMemo(() => Lib.joinStrategy(join), [join]);
-  const table = useMemo(() => Lib.joinedThing(query, join), [query, join]);
+  const rhsTable = useMemo(() => Lib.joinedThing(query, join), [query, join]);
   const conditions = useMemo(() => Lib.joinConditions(join), [join]);
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
 
@@ -45,8 +45,8 @@ export function Join({
   );
 
   const rhsTableName = useMemo(
-    () => Lib.displayInfo(query, stageIndex, table).displayName,
-    [query, stageIndex, table],
+    () => Lib.displayInfo(query, stageIndex, rhsTable).displayName,
+    [query, stageIndex, rhsTable],
   );
 
   const handleStrategyChange = (newStrategy: Lib.JoinStrategy) => {
@@ -94,7 +94,7 @@ export function Join({
           />
           <JoinTablePicker
             query={query}
-            table={table}
+            table={rhsTable}
             tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
@@ -151,7 +151,7 @@ export function Join({
             <JoinConditionDraft
               query={query}
               stageIndex={stageIndex}
-              table={table}
+              rhsTable={rhsTable}
               lhsTableName={lhsTableName}
               rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}

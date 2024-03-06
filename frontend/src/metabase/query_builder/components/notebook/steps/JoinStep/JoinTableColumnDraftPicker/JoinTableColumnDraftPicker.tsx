@@ -4,7 +4,7 @@ import type * as Lib from "metabase-lib";
 interface JoinTableColumnPickerDraftProps {
   query: Lib.Query;
   stageIndex: number;
-  tableColumns: Lib.ColumnMetadata[];
+  columns: Lib.ColumnMetadata[];
   selectedColumns: Lib.ColumnMetadata[];
   onChange: (newSelectedColumns: Lib.ColumnMetadata[]) => void;
 }
@@ -12,7 +12,7 @@ interface JoinTableColumnPickerDraftProps {
 export function JoinTableColumnDraftPicker({
   query,
   stageIndex,
-  tableColumns,
+  columns,
   selectedColumns,
   onChange,
 }: JoinTableColumnPickerDraftProps) {
@@ -32,7 +32,7 @@ export function JoinTableColumnDraftPicker({
   };
 
   const handleSelectAll = () => {
-    onChange(tableColumns);
+    onChange(columns);
   };
 
   const handleSelectNone = () => {
@@ -43,7 +43,7 @@ export function JoinTableColumnDraftPicker({
     <FieldPicker
       query={query}
       stageIndex={stageIndex}
-      columns={tableColumns}
+      columns={columns}
       isColumnSelected={isColumnSelected}
       onToggle={handleToggle}
       onSelectAll={handleSelectAll}

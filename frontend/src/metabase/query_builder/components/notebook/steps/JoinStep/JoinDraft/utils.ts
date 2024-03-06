@@ -12,10 +12,10 @@ export function getDefaultJoinStrategy(
 }
 
 export function getJoinFields(
-  tableColumns: Lib.ColumnMetadata[],
+  columns: Lib.ColumnMetadata[],
   selectedColumns: Lib.ColumnMetadata[],
 ): Lib.JoinFields {
-  if (tableColumns.length === selectedColumns.length) {
+  if (columns.length === selectedColumns.length) {
     return "all";
   } else if (selectedColumns.length === 0) {
     return "none";

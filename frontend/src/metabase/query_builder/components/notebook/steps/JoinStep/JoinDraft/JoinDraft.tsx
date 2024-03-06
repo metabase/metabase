@@ -33,22 +33,26 @@ export function JoinDraft({
   const [strategy, setStrategy] = useState(() =>
     getDefaultJoinStrategy(query, stageIndex),
   );
-  const [table, setTable] = useState<Lib.Joinable>();
-  const [tableColumns, setTableColumns] = useState<Lib.ColumnMetadata[]>([]);
-  const [selectedColumns, setSelectedColumns] = useState<Lib.ColumnMetadata[]>(
+  const [rhsTable, setRhsTable] = useState<Lib.Joinable>();
+  const [rhsTableColumns, setRhsTableColumns] = useState<Lib.ColumnMetadata[]>(
     [],
   );
+  const [selectedRhsTableColumns, setSelectedRhsTableColumns] = useState<
+    Lib.ColumnMetadata[]
+  >([]);
   const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
 
   const lhsTableName = useMemo(
-    () => Lib.joinLHSDisplayName(query, stageIndex, table, lhsColumn),
-    [query, stageIndex, table, lhsColumn],
+    () => Lib.joinLHSDisplayName(query, stageIndex, rhsTable, lhsColumn),
+    [query, stageIndex, rhsTable, lhsColumn],
   );
 
   const rhsTableName = useMemo(
     () =>
-      table ? Lib.displayInfo(query, stageIndex, table).displayName : undefined,
-    [query, stageIndex, table],
+      rhsTable
+        ? Lib.displayInfo(query, stageIndex, rhsTable).displayName
+        : undefined,
+    [query, stageIndex, rhsTable],
   );
 
   const handleTableChange = (newTable: Lib.Joinable) => {
@@ -62,17 +66,17 @@ export function JoinDraft({
       onJoinChange(newJoin);
     } else {
       const newColumns = Lib.joinableColumns(query, stageIndex, newTable);
-      setTable(newTable);
-      setTableColumns(newColumns);
-      setSelectedColumns(newColumns);
+      setRhsTable(newTable);
+      setRhsTableColumns(newColumns);
+      setSelectedRhsTableColumns(newColumns);
     }
   };
 
   const handleConditionChange = (newCondition: Lib.JoinCondition) => {
-    if (table) {
+    if (rhsTable) {
       const newJoin = Lib.withJoinFields(
-        Lib.joinClause(table, [newCondition]),
-        getJoinFields(tableColumns, selectedColumns),
+        Lib.joinClause(rhsTable, [newCondition]),
+        getJoinFields(rhsTableColumns, selectedRhsTableColumns),
       );
       onJoinChange(newJoin);
     }
@@ -94,7 +98,7 @@ export function JoinDraft({
           />
           <JoinTablePicker
             query={query}
-            table={table}
+            table={rhsTable}
             tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
@@ -103,16 +107,16 @@ export function JoinDraft({
               <JoinTableColumnDraftPicker
                 query={query}
                 stageIndex={stageIndex}
-                tableColumns={tableColumns}
-                selectedColumns={selectedColumns}
-                onChange={setSelectedColumns}
+                columns={rhsTableColumns}
+                selectedColumns={selectedRhsTableColumns}
+                onChange={setSelectedRhsTableColumns}
               />
             }
             onChange={handleTableChange}
           />
         </Flex>
       </JoinCell>
-      {table && (
+      {rhsTable && (
         <>
           <Box mt="1.5rem">
             <Text color="brand" weight="bold">{t`on`}</Text>
@@ -121,7 +125,7 @@ export function JoinDraft({
             <JoinConditionDraft
               query={query}
               stageIndex={stageIndex}
-              table={table}
+              rhsTable={rhsTable}
               lhsTableName={lhsTableName}
               rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}

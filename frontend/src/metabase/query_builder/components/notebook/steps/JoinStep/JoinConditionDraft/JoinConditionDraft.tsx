@@ -14,7 +14,7 @@ import { getDefaultJoinConditionOperator } from "./utils";
 interface JoinConditionDraftProps {
   query: Lib.Query;
   stageIndex: number;
-  table: Lib.Joinable;
+  rhsTable: Lib.Joinable;
   lhsTableName: string;
   rhsTableName: string | undefined;
   isReadOnly: boolean;
@@ -27,7 +27,7 @@ interface JoinConditionDraftProps {
 export function JoinConditionDraft({
   query,
   stageIndex,
-  table,
+  rhsTable,
   lhsTableName,
   rhsTableName,
   isReadOnly,
@@ -85,7 +85,7 @@ export function JoinConditionDraft({
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
-            joinable={table}
+            joinable={rhsTable}
             tableName={lhsTableName}
             lhsColumn={lhsColumn}
             rhsColumn={rhsColumn}
@@ -108,7 +108,7 @@ export function JoinConditionDraft({
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
-            joinable={table}
+            joinable={rhsTable}
             tableName={rhsTableName}
             lhsColumn={lhsColumn}
             rhsColumn={rhsColumn}
