@@ -144,7 +144,7 @@
                     :visibility_type "normal"
                     {:order-by field-order-rule})]
     (when (seq field-ids)
-      (t2/select-fn->fn :field_id :values FieldValues, :field_id [:in field-ids]))))
+      (t2/select-fn->fn :field_id :values FieldValues, :field_id [:in field-ids] :type :full))))
 
 (mi/define-simple-hydration-method ^{:arglists '([table])} pk-field-id
   :pk_field

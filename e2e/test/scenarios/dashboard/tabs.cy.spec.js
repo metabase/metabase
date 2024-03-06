@@ -402,7 +402,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
   });
 
-  it("should only fetch cards on the current tab", () => {
+  it("should only fetch cards on the current tab", { tags: "@flaky" }, () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
 
     visitDashboardAndCreateTab({

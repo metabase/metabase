@@ -41,15 +41,19 @@
   outline: none;
   color: var(--color-text-dark);
 }
+
 .parameter.noPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
 }
+
 .parameter.noPopover input:-moz-placeholder {
   color: var(--color-text-medium);
 }
+
 .parameter.noPopover input::-moz-placeholder {
   color: var(--color-text-medium);
 }
+
 .parameter.noPopover input:-ms-input-placeholder {
   color: var(--color-text-medium);
 }

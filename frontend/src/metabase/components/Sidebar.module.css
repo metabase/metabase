@@ -35,6 +35,7 @@
 .item.selected .icon {
   color: var(--color-brand);
 }
+
 .item.selected {
   background-color: rgba(80, 158, 227, 0.15);
 }

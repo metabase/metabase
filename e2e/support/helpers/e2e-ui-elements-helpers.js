@@ -168,6 +168,34 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
+export const moveDnDKitColumnVertical = (column, distance) => {
+  column
+    .trigger("pointerdown", 0, 0, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", 5, 5, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", 0, distance, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointerup", 0, distance, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+};
+
 export const queryBuilderMain = () => {
   return cy.findByTestId("query-builder-main");
 };
