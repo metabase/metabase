@@ -10,6 +10,21 @@ import type {
   SchemasPermissions,
 } from "metabase-types/api";
 
+interface UpdatePermissionsSchemasParams {
+  /**
+   * Defaults to {}.
+   */
+  schemas?: SchemasPermissions;
+  /**
+   * Defaults to COLLECTION_GROUP.
+   */
+  user_group?: GroupId;
+  /**
+   * Defaults to SAMPLE_DB_ID.
+   */
+  database_id?: DatabaseId;
+}
+
 declare global {
   namespace Cypress {
     interface Chainable {
@@ -17,20 +32,7 @@ declare global {
         groupsPermissionsObject: GroupPermissions,
         impersonations?: Impersonation[],
       ): void;
-      updatePermissionsSchemas(options?: {
-        /**
-         * Defaults to {}.
-         */
-        schemas?: SchemasPermissions;
-        /**
-         * Defaults to COLLECTION_GROUP.
-         */
-        user_group?: GroupId;
-        /**
-         * Defaults to SAMPLE_DB_ID.
-         */
-        database_id?: DatabaseId;
-      }): void;
+      updatePermissionsSchemas(options?: UpdatePermissionsSchemasParams): void;
       updateCollectionGraph(
         groupsCollectionObject: CollectionPermissions,
       ): void;
@@ -54,11 +56,10 @@ const { COLLECTION_GROUP } = USER_GROUPS;
 
 Cypress.Commands.add(
   "updatePermissionsGraph",
-  (groupsPermissionsObject = {}, impersonations) => {
-    if (typeof groupsPermissionsObject !== "object") {
-      throw new Error("`groupsPermissionsObject` must be an object!");
-    }
-
+  (
+    groupsPermissionsObject: GroupPermissions,
+    impersonations?: Impersonation[],
+  ) => {
     cy.log("Fetch permissions graph");
     cy.request<PermissionsGraph>("GET", "/api/permissions/graph").then(
       ({ body: { groups, revision } }) => {
@@ -83,7 +84,7 @@ Cypress.Commands.add(
     schemas = {},
     user_group = COLLECTION_GROUP,
     database_id = SAMPLE_DB_ID,
-  } = {}) => {
+  }: UpdatePermissionsSchemasParams = {}) => {
     if (typeof schemas !== "object") {
       throw new Error("`schemas` must be an object!");
     }
@@ -110,21 +111,20 @@ Cypress.Commands.add(
   },
 );
 
-Cypress.Commands.add("updateCollectionGraph", (groupsCollectionObject = {}) => {
-  if (typeof groupsCollectionObject !== "object") {
-    throw new Error("`groupsCollectionObject` must be an object!");
-  }
+Cypress.Commands.add(
+  "updateCollectionGraph",
+  (groupsCollectionObject: CollectionPermissions) => {
+    cy.log("Fetch permissions graph");
+    cy.request<CollectionPermissionsGraph>("GET", "/api/collection/graph").then(
+      ({ body: { groups, revision } }) => {
+        const UPDATED_GROUPS = Object.assign(groups, groupsCollectionObject);
 
-  cy.log("Fetch permissions graph");
-  cy.request<CollectionPermissionsGraph>("GET", "/api/collection/graph").then(
-    ({ body: { groups, revision } }) => {
-      const UPDATED_GROUPS = Object.assign(groups, groupsCollectionObject);
-
-      cy.log("Update/save permissions");
-      cy.request("PUT", "/api/collection/graph", {
-        groups: UPDATED_GROUPS,
-        revision,
-      });
-    },
-  );
-});
+        cy.log("Update/save permissions");
+        cy.request("PUT", "/api/collection/graph", {
+          groups: UPDATED_GROUPS,
+          revision,
+        });
+      },
+    );
+  },
+);
