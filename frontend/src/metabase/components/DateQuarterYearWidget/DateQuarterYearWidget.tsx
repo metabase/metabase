@@ -60,10 +60,7 @@ export class DateQuarterYearWidget extends Component<Props, State> {
     return (
       <div className="py2">
         <div className="flex flex-column align-center py1">
-          <YearPicker
-            value={year}
-            onChange={year => this.setState({ year: year })}
-          />
+          <YearPicker value={year} onChange={year => this.setState({ year })} />
         </div>
         <ol
           className="flex flex-wrap bordered mx2 text-bold rounded"

@@ -15,7 +15,6 @@ import {
   TextInputTrirgger,
 } from "./ParameterValuePicker.styled";
 
-// TODO popover z-index (select inside dropdown)
 export function OwnDatePicker(props: {
   value: any;
   parameter: Parameter;
@@ -60,8 +59,11 @@ export function OwnDatePicker(props: {
     ? undefined
     : { style: { pointerEvents: "none" } };
 
+  // TODO this should be removed as soon as we reconcile all dropdowns and make them use Mantine
+  const Z_INDEX = 2;
+
   return (
-    <Popover opened={isOpen}>
+    <Popover opened={isOpen} zIndex={Z_INDEX}>
       <Popover.Target>
         <TextInputTrirgger
           ref={setTriggerRef}
@@ -79,7 +81,7 @@ export function OwnDatePicker(props: {
           {DateWidget ? (
             <DateWidget
               value={value}
-              initialValue={getInitialDateValue(
+              initialValue={DEPRECATED_getInitialDateValue(
                 value,
                 parameter.type as ParameterType,
               )}
@@ -95,7 +97,11 @@ export function OwnDatePicker(props: {
   );
 }
 
-function getInitialDateValue(value: any, parameterType: ParameterType) {
+// TODO this should be in the Lib or somewhere else
+function DEPRECATED_getInitialDateValue(
+  value: string | undefined,
+  parameterType: ParameterType,
+) {
   if (value == null) {
     if (parameterType === "date/single") {
       return getIsoDate();
