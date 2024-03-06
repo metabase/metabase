@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
+import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import {
   breakpointMinLarge,
   breakpointMinMedium,
@@ -27,9 +28,9 @@ export const Root = styled.div<{
   ${props =>
     props.isBordered &&
     css`
-      border: 1px solid ${color("border")};
+      border: 1px solid ${props.theme.fn.themeColor("border")};
       border-radius: 8px;
-      box-shadow: 0 2px 2px ${color("shadow")};
+      box-shadow: 0 2px 2px ${props.theme.fn.themeColor("shadow")};
     `}
 `;
 
@@ -75,10 +76,10 @@ export const ActionButtonsContainer = styled.div`
 export type FooterVariant = "default" | "large";
 
 const footerVariantStyles = {
-  default: css`
-    border-top: 1px solid ${color("border")};
+  default: (theme: Theme) => css`
+    border-top: 1px solid ${theme.fn.themeColor("border")};
   `,
-  large: css`
+  large: () => css`
     justify-content: center;
     align-items: center;
     margin-bottom: 2rem;
@@ -109,7 +110,7 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   flex-shrink: 0;
   align-items: center;
 
-  ${props => footerVariantStyles[props.variant]}
+  ${props => footerVariantStyles[props.variant](props.theme)}
 
   padding: 0.5rem;
 

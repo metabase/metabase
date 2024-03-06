@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import CheckBox from "metabase/core/components/CheckBox";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const StackedCheckBoxRoot = styled.div<{ disabled: boolean }>`
   position: relative;
@@ -29,7 +29,7 @@ export const StackedBackground = styled.div<{
   left: 3px;
 
   background: ${props =>
-    props.checked ? color(props.checkedColor) : color("bg-white")};
+    props.checked ? color(props.checkedColor) : color("white")};
 
   border: 2px solid
     ${props =>

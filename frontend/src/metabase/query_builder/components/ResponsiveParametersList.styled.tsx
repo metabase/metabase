@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 import Button from "metabase/core/components/Button";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const FilterButton = styled(Button)`
   color: ${color("brand")};
@@ -32,7 +32,7 @@ interface ParametersListContainerProps {
 export const ParametersListContainer = styled.div<ParametersListContainerProps>`
   background-color: ${color("bg-light")};
 
-  ${({ isSmallScreen, isShowingMobile }) =>
+  ${({ isSmallScreen, isShowingMobile, theme }) =>
     isSmallScreen &&
     css`
       position: absolute;
@@ -40,7 +40,7 @@ export const ParametersListContainer = styled.div<ParametersListContainerProps>`
       left: 0;
 
       width: 100%;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid ${theme.fn.themeColor("border")};
 
       overflow-y: auto;
       bottom: ${isShowingMobile ? "0" : "100%"};

@@ -98,10 +98,10 @@ export const InfoIcon = styled(Icon)<VariantProp>`
   ${props =>
     props.variant === "form-field" &&
     css`
-      color: ${color("bg-dark")};
+      color: ${props.theme.fn.themeColor("bg-dark")};
 
       &:hover {
-        color: ${color("brand")};
+        color: ${props.theme.fn.themeColor("brand")};
       }
     `}
 `;

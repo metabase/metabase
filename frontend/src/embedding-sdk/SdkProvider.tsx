@@ -9,7 +9,7 @@ import reducers from "metabase/reducers-main";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 import { setOptions } from "metabase/redux/embed";
-import { color, alpha } from "metabase/ui/theme";
+import { color, alpha } from "metabase/ui/utils/colors";
 
 import { SdkEmotionCacheProvider } from "./SdkEmotionCacheProvider";
 import { EmbeddingContext } from "./context";

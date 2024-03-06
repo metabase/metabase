@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 import styled from "@emotion/styled";
 import type { ButtonProps as BaseButtonProps, TextProps } from "metabase/ui";
 import { Button, Icon, Text } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 

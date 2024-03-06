@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import { space } from "metabase/styled-components/theme";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const FormMessageStyled = styled.span<{
   visible?: boolean;

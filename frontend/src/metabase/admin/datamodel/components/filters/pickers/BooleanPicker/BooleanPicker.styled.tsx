@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import styled from "@emotion/styled";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { space } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";

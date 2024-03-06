@@ -65,7 +65,7 @@ export const SaveButton = styled(Link)`
   font-weight: bold;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
 
   :hover {
     background-color: ${color("bg-light")};

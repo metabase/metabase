@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import type { ComponentPropsWithRef } from "react";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { Icon } from "metabase/ui";
 import { space } from "metabase/styled-components/theme";
 import { inputPadding } from "metabase/core/style/input";

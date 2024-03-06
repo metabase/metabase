@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 import { Icon } from "metabase/ui";
 
@@ -16,7 +16,7 @@ export const FieldTypeIcon = styled(Icon)`
     css`
       border-radius: 0.3em;
       padding: 0.2em;
-      background-color: ${color("text-dark")};
+      background-color: ${props.theme.fn.themeColor("text-dark")};
     `}
 `;
 

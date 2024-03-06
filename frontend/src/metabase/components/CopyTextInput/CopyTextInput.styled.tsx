@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { CopyButton } from "metabase/components/CopyButton";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const CopyWidgetButton = styled(CopyButton)`
   position: absolute;

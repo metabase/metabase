@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import Button from "metabase/core/components/Button";
 
 export interface TabButtonProps {
@@ -71,7 +71,7 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
     ${props =>
       !props.disabled &&
       css`
-        color: ${color("brand")};
+        color: ${props.theme.fn.themeColor("brand")};
       `}
   }
 `;
@@ -91,18 +91,18 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
     props.isOpen &&
     !props.disabled &&
     css`
-      color: ${color("brand")};
-      background-color: ${color("bg-medium")};
+      color: ${props.theme.fn.themeColor("brand")};
+      background-color: ${props.theme.fn.themeColor("bg-medium")};
     `}
   &:hover,:focus {
     ${props =>
       props.disabled
         ? css`
-            color: ${color("text-dark")};
+            color: ${props.theme.fn.themeColor("text-dark")};
           `
         : css`
-            color: ${color("brand")};
-            background-color: ${color("bg-medium")};
+            color: ${props.theme.fn.themeColor("brand")};
+            background-color: ${props.theme.fn.themeColor("bg-medium")};
           `}
   }
 `;

@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
+import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { Icon } from "metabase/ui";
 
 export const ListRoot = styled.div`
@@ -54,20 +55,20 @@ export interface CardProps {
   isSelected?: boolean;
 }
 
-const selectedStyles = css`
-  background-color: ${color("brand")};
+const getSelectedStyles = (theme: Theme) => css`
+  background-color: ${theme.fn.themeColor("brand")};
 
   ${CardTitle}, ${CardDescription}, ${CardAside} {
-    color: ${color("white")};
+    color: ${theme.fn.themeColor("white")};
   }
 
   ${CardIcon} {
-    color: ${color("brand")};
+    color: ${theme.fn.themeColor("brand")};
   }
 
   ${CardIconContainer} {
-    border-color: ${color("white")};
-    background-color: ${color("white")};
+    border-color: ${theme.fn.themeColor("white")};
+    background-color: ${theme.fn.themeColor("white")};
   }
 `;
 
@@ -77,10 +78,10 @@ export const CardRoot = styled.div<CardProps>`
   padding: 1rem;
   border-radius: 0.25rem;
   cursor: pointer;
-  ${props => props.isSelected && selectedStyles}
+  ${props => props.isSelected && getSelectedStyles(props.theme)}
 
   &:hover {
-    ${selectedStyles}
+    ${({ theme }) => getSelectedStyles(theme)}
   }
 
   &:not(:last-child) {

@@ -1,12 +1,15 @@
+import type { Theme } from "@emotion/react";
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
 
 export interface BadgeProps {
   isValid?: boolean;
 }
 
-const getColor = ({ isValid }: BadgeProps): string => {
-  return color(isValid ? "success" : "error");
+const getColor = ({
+  isValid,
+  theme,
+}: BadgeProps & { theme: Theme }): string => {
+  return theme.fn.themeColor(isValid ? "success" : "error");
 };
 
 export const BadgeRoot = styled.span`

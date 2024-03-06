@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import Badge from "metabase/components/Badge";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const HeaderBadge = styled(Badge)`
   .Icon {

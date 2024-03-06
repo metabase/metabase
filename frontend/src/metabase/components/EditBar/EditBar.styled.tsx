@@ -19,7 +19,7 @@ export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
 
   .Button {
     color: ${color("text-white")};
-    background-color: ${alpha(color("bg-white"), 0.1)};
+    background-color: ${alpha(color("white"), 0.1)};
 
     border: none;
     font-size: 1em;
@@ -28,7 +28,7 @@ export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
 
   .Button--primary {
     color: ${props => color(props.admin ? "text-dark" : "brand")};
-    background-color: ${color("bg-white")};
+    background-color: ${color("white")};
   }
 
   .Button:hover {

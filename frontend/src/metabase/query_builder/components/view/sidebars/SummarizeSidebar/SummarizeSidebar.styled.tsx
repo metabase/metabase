@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { AggregationPicker as BaseAggregationPicker } from "metabase/common/components/AggregationPicker";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 

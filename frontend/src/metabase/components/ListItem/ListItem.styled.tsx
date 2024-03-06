@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { Link } from "react-router";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 interface Props {
   disabled?: boolean;

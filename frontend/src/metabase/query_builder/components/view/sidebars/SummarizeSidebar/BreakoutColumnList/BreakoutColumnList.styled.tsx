@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const ColumnGroupName = styled.div`
   margin: 1rem 0 0.5rem 0;

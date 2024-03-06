@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import { Tree } from "metabase/components/tree";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
@@ -23,11 +23,11 @@ export const LeftPaneContainer = styled.div<{ hasContent?: boolean }>`
   flex-direction: column;
   overflow: auto;
 
-  ${({ hasContent }) =>
+  ${({ hasContent, theme }) =>
     hasContent &&
     css`
       flex: 1;
-      border-right: 1px solid ${color("border")};
+      border-right: 1px solid ${theme.fn.themeColor("border")};
     `}
 
   ${Tree.Node.Root} {

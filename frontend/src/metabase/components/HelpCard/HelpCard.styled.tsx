@@ -1,16 +1,17 @@
 import styled from "@emotion/styled";
+import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { Icon } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
-const CardRootMixin = css`
+const getCardRootStyle = (theme: Theme) => css`
   display: block;
   padding: 1.5rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid ${theme.fn.themeColor("border")};
   border-radius: 0.375rem;
-  background-color: ${color("white")};
-  box-shadow: 0 1px 6px ${color("shadow")};
+  background-color: ${theme.fn.themeColor("white")};
+  box-shadow: 0 1px 6px ${theme.fn.themeColor("shadow")};
   box-sizing: border-box;
 `;
 
@@ -21,11 +22,11 @@ const CardHeaderMixin = css`
 `;
 
 export const CardRootStatic = styled.div`
-  ${CardRootMixin};
+  ${({ theme }) => getCardRootStyle(theme)};
 `;
 
 export const CardRootLink = styled(ExternalLink)`
-  ${CardRootMixin};
+  ${({ theme }) => getCardRootStyle(theme)};
 
   &:hover {
     background-color: ${color("bg-light")};

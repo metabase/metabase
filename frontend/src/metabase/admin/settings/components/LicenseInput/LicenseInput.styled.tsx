@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import Input from "metabase/core/components/Input";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const LicenseInputContainer = styled.div`
   display: flex;

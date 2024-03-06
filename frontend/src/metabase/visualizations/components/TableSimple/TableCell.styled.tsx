@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const CellRoot = styled.td<{
   isRightAligned: boolean;
@@ -28,7 +28,7 @@ export const CellContent = styled.span<{ isClickable: boolean }>`
     css`
       cursor: pointer;
       &:hover {
-        color: ${color("brand")};
+        color: ${props.theme.fn.themeColor("brand")};
       }
     `}
 `;

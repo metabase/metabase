@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 import SettingSelect from "../SettingSelect";
 
@@ -28,13 +29,13 @@ export const StyledSettingSelect = styled(SettingSelect)`
   margin-top: 12px;
 `;
 
-export const commonLabelStyle = css`
+export const getCommonLabelStyle = (theme: Theme) => css`
   display: block;
-  color: ${color("text-medium")};
+  color: ${theme.fn.themeColor("text-medium")};
 `;
 
 export const SelectLabel = styled.span`
-  ${commonLabelStyle}
+  ${({ theme }) => getCommonLabelStyle(theme)}
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 0.875rem;

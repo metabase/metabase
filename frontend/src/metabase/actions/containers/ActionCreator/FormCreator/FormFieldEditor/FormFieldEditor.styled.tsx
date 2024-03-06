@@ -10,7 +10,7 @@ import { color, darken } from "metabase/lib/colors";
 const DRAG_HANDLE_SIZE = 12;
 
 export const FormFieldContainer = styled.div`
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
   border: 1px solid ${color("border")};
   border-radius: ${space(1)};
   overflow: hidden;

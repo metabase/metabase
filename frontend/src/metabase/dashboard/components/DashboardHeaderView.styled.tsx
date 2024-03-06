@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import {
   breakpointMaxMedium,
   breakpointMaxSmall,

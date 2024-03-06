@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const HeaderContainer = styled.div`
   padding: 2rem;
@@ -69,11 +69,11 @@ export const HeaderTextContainer = styled.div<{
   flex-direction: row;
   flex-grow: 1;
 
-  ${({ onClick }) =>
+  ${({ onClick, theme }) =>
     onClick &&
     css`
       &:hover > * {
-        color: ${color("brand")};
+        color: ${theme.fn.themeColor("brand")};
         cursor: pointer;
       }
     `}

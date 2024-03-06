@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const AppContainer = styled.div`
   display: flex;
@@ -14,8 +14,7 @@ export const AppContentContainer = styled.div<{
   flex-direction: ${props => (props.isAdminApp ? "column" : "row")};
   position: relative;
   overflow: hidden;
-  background-color: ${props =>
-    color(props.isAdminApp ? "bg-white" : "content")};
+  background-color: ${props => color(props.isAdminApp ? "white" : "bg-light")};
 
   @media print {
     height: 100%;

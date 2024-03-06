@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const TableCellContent = styled.div`

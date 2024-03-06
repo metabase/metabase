@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import PinnedItemSortDropTarget from "metabase/containers/dnd/PinnedItemSortDropTarget";
 import { GAP_REM } from "metabase/collections/components/PinnedItemOverview/PinnedItemOverview.styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export type PinDropTargetProps = {
   isBackTarget?: boolean;

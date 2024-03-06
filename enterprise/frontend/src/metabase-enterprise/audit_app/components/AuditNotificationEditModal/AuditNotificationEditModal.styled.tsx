@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const ModalButton = styled(Button)<{ fullwidth?: boolean }>`

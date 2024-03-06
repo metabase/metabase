@@ -1,8 +1,5 @@
-import type { Theme } from "@emotion/react";
 import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
-import { alpha as originalAlpha } from "metabase/lib/colors";
-import type { ColorPalette } from "metabase/lib/colors/types";
 import {
   getAccordionOverrides,
   getActionIconOverrides,
@@ -127,20 +124,3 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getHoverCardOverrides(),
   },
 });
-
-type ThemeColorFunction = ({ theme }: { theme: Theme }) => string;
-
-export function color(colorName: keyof ColorPalette): ThemeColorFunction;
-export function color(color: string): ThemeColorFunction;
-export function color(color: any): ThemeColorFunction {
-  return ({ theme }) => theme.fn.themeColor(color);
-}
-
-export function alpha(
-  colorName: keyof ColorPalette,
-  alphaValue: number,
-): ThemeColorFunction;
-export function alpha(color: string, alphaValue: number): ThemeColorFunction;
-export function alpha(color: any, alphaValue: number): ThemeColorFunction {
-  return ({ theme }) => originalAlpha(theme.fn.themeColor(color), alphaValue);
-}

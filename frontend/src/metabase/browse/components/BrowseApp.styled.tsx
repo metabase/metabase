@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { Tabs } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import EmptyState from "metabase/components/EmptyState";
 
 export const BrowseAppRoot = styled.div`

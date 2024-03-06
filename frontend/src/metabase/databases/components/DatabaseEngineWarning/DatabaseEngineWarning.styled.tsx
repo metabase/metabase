@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import Alert from "metabase/core/components/Alert";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const Warning = styled(Alert)`
   margin-bottom: 2rem;

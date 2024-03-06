@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import Link from "metabase/core/components/Link";
 import BaseExternalLink from "metabase/core/components/ExternalLink";
 import Input from "metabase/core/components/Input";
@@ -68,7 +68,7 @@ const searchResultsStyles = `
   min-width: 20rem;
   overflow-y: auto;
 
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
   line-height: 24px;
 
   max-height: 400px;

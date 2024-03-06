@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { Icon } from "metabase/ui";
 
 export const BrowserCrumbsRoot = styled.div`

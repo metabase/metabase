@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import Radio from "metabase/core/components/Radio";
 import Button from "metabase/core/components/Button";
 import Warnings from "metabase/query_builder/components/Warnings";

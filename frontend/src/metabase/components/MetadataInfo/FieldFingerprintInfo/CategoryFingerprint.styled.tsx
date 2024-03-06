@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import _LoadingSpinner from "metabase/components/LoadingSpinner";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 

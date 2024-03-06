@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import { space } from "metabase/styled-components/theme";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { inputPadding } from "metabase/core/style/input";
 
 export const EditorContainer = styled.div<{
@@ -18,16 +18,16 @@ export const EditorContainer = styled.div<{
   ${inputPadding()};
   transition: border 0.3s linear;
 
-  ${({ isFocused }) =>
+  ${({ isFocused, theme }) =>
     isFocused &&
     css`
-      border-color: ${color("brand")};
+      border-color: ${theme.fn.themeColor("brand")};
     `}
 
-  ${({ hasError }) =>
+  ${({ hasError, theme }) =>
     hasError &&
     css`
-      border-color: ${color("error")};
+      border-color: ${theme.fn.themeColor("error")};
     `}
 
   @media (prefers-reduced-motion) {

@@ -1,18 +1,17 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
 import SelectButton from "metabase/core/components/SelectButton";
 
 export const StyledSelectButton = styled(SelectButton)`
   ${props =>
     props.hasValue &&
     css`
-      color: ${color("text-white")} !important;
-      background-color: ${color("brand")};
-      border-color: ${color("brand")};
+      color: ${props.theme.fn.themeColor("text-white")} !important;
+      background-color: ${props.theme.fn.themeColor("brand")};
+      border-color: ${props.theme.fn.themeColor("brand")};
 
       .Icon {
-        color: ${color("text-white")};
+        color: ${props.theme.fn.themeColor("text-white")};
       }
     `};
 `;

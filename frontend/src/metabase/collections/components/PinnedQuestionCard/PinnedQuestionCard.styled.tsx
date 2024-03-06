@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import Link from "metabase/core/components/Link";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import StaticSkeleton from "metabase/visualizations/components/skeletons/StaticSkeleton";

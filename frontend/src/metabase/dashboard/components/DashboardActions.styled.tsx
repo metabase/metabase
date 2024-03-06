@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";

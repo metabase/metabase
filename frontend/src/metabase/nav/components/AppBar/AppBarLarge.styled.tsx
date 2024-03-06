@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
 interface AppBarRootProps {
@@ -15,7 +15,7 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
   padding-right: 1rem;
   border-bottom: 1px solid
     ${props => (props.isNavBarOpen ? color("border") : "transparent")};
-  background-color: ${color("bg-white")};
+  background-color: ${color("white")};
   transition: border-bottom-color 200ms ease;
 `;
 

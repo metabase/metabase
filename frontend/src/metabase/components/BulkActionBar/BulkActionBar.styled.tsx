@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
 export const FixedBottomBar = styled.div<{ isNavbarOpen: boolean }>`
