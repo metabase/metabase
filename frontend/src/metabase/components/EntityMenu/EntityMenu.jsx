@@ -14,7 +14,6 @@ class EntityMenu extends Component {
     open: false,
     freezeMenu: false,
     menuItemContent: null,
-    transition: "fade",
   };
 
   static defaultProps = {
@@ -26,8 +25,6 @@ class EntityMenu extends Component {
 
     // TODO: Remove this?
     this.rootRef = createRef();
-
-    this.popoverOLRef = createRef();
   }
 
   toggleMenu = () => {
@@ -47,18 +44,6 @@ class EntityMenu extends Component {
     this.setState({ menuItemContent });
   };
 
-  componentDidUpdate() {
-    setTimeout(() => {
-      if (open && !this.popoverOLRef) {
-        this.setState({ transition: null });
-        console.warn(
-          "disabling transition since it seems the popover was delayed",
-        );
-        return;
-      }
-    }, 200);
-  }
-
   render() {
     const {
       items,
@@ -74,16 +59,13 @@ class EntityMenu extends Component {
       triggerAriaLabel,
       tooltipPlacement,
     } = this.props;
-    const { open, menuItemContent, transition } = this.state;
+    const { open, menuItemContent } = this.state;
 
     return (
       <Popover
         opened={open}
         className={cx(className, open ? openClassNames : closedClassNames)}
-        transitionProps={{
-          duration: 300,
-          transition,
-        }}
+        transitionProps={undefined}
         onChange={() => this.toggleMenu()}
         position="bottom-end"
       >
