@@ -1415,13 +1415,16 @@
   source queries are aliased as `source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
                          source-metadata :source-metadata :as _x}]
-  (let [field-aliases (mapv (fn [{[_ ref-name] :field_ref}]
-                              ref-name)
+  (let [alias-info (mapv (fn [{[_ ref-name] :field_ref source-name :name}]
+                              [source-name ref-name])
                             source-metadata)
+        field-aliases (mapv second alias-info)
+        source-aliases (mapv first alias-info)
         table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
         needs-columns? (and
                          (seq field-aliases)
                          (> (count field-aliases) 1)
+                         (not (distinct? source-aliases))
                          (distinct? field-aliases)
                          (every? some? field-aliases)
                          (every? string? field-aliases))
