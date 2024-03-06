@@ -272,7 +272,7 @@
      (describe-table-fks* driver conn table db-name-or-nil))))
 
 (defmulti describe-fks-sql
- "Returns a SQL query that produces results with the following columns:
+ "Returns a vector of [sql & params] that produces results with the following columns:
   - fk-column-name
   - fk-table-schema
   - fk-table-name
@@ -287,38 +287,10 @@
  driver/dispatch-on-initialized-driver
  :hierarchy #'driver/hierarchy)
 
-(defn- describe-fks*
-  [driver db & {:keys [schema-names table-names]}]
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       db
-       nil
-       (fn [^Connection conn]
-         (let [[sql & params] (describe-fks-sql driver schema-names table-names)]
-           (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)
-                       ^ResultSet rs (if (sql-jdbc.execute/statement-supported? driver)
-                                       (sql-jdbc.execute/execute-statement! driver stmt sql)
-                                       (sql-jdbc.execute/execute-prepared-statement! driver stmt))]
-             (.setFetchSize stmt (sql-jdbc.execute/sql-jdbc-fetch-size))
-             (reduce
-              rf
-              init
-              (jdbc/reducible-result-set rs {})))))))))
-
 (defn describe-fks
   "Default implementation of [[metabase.driver/describe-fks]] for JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db & {:as args}]
-  (eduction
-   (map (fn [x]
-          {:fk-column-name   (:fk-column-name x)
-           :fk-table         {:name   (:fk-table-name x)
-                              :schema (:fk-table-schema x)}
-           :dest-column-name (:dest-column-name x)
-           :dest-table       {:name   (:fk-table-name x)
-                              :schema (:fk-table-schema x)}}))
-   (describe-fks* driver db args)))
+  [driver db & {:keys [schema-names table-names]}]
+  (sql-jdbc.execute/sql->reducible-rows db (describe-fks-sql driver schema-names table-names)))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

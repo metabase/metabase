@@ -16,7 +16,7 @@
 (mu/defn ^:private mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
-   metadata :- i/FastFKMetadata]
+   metadata :- i/FastFKMetadataEntry]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
                          {:select [:f.id]
                           :from   [[:metabase_field :f]]
@@ -58,7 +58,7 @@
   "Sync the foreign keys for a specific `table`."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
-    (let [fk-metadata (fetch-metadata/fast-fk-metadata database)]
+    (let [fk-metadata (fetch-metadata/fk-metadata database)]
       (transduce (map (fn [x]
                         {:total-fks   1
                          :updated-fks (mark-fk! database x)}))

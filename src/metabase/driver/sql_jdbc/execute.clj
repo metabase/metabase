@@ -714,6 +714,26 @@
               results-metadata {:cols (column-metadata driver rsmeta)}]
           (respond results-metadata (reducible-rows driver rs rsmeta qp.pipeline/*canceled-chan*))))))))
 
+(defn sql->reducible-rows
+  "Returns a reducible collection of rows from `db` and a given SQL query"
+  [db [sql & params]]
+  (let [driver (:engine db)]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (do-with-connection-with-options
+         db
+         nil
+         (fn [^Connection conn]
+           (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)
+                       ^ResultSet rs (if (statement-supported? driver)
+                                       (execute-statement! driver stmt sql)
+                                       (execute-prepared-statement! driver stmt))]
+             (.setFetchSize stmt (sql-jdbc-fetch-size))
+             (reduce
+              rf
+              init
+              (jdbc/reducible-result-set rs {})))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Actions Stuff                                                  |

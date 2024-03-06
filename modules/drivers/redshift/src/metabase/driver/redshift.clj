@@ -57,9 +57,9 @@
                         {:source_ns.nspname     "fk-table-schema"
                          :source_table.relname  "fk-table-name"
                          :source_column.attname "fk-column-name"
-                         :dest_ns.nspname       "dest-table-schema"
-                         :dest_column.attname   "dest-column-name"
-                         :dest_table.relname    "dest-table-name"})
+                         :dest_ns.nspname       "pk-table-schema"
+                         :dest_column.attname   "pk-column-name"
+                         :dest_table.relname    "pk-table-name"})
                :from   [[:pg_constraint :c]]
                :join   [[:pg_namespace :source_ns]     [:= :c.connamespace :source_ns.oid]
                         [:pg_class     :source_table]  [:= :c.conrelid :source_table.oid]
