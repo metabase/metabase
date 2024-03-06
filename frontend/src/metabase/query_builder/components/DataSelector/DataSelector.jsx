@@ -41,7 +41,7 @@ import {
   Trigger,
 } from "./TriggerComponents";
 import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
-import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
+import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
 
 import "./DataSelector.module.css";
 
@@ -968,7 +968,7 @@ export class UnconnectedDataSelector extends Component {
           )}
           {!isSearchActive &&
             (isPickerOpen ? (
-              <SavedQuestionPicker
+              <SavedEntityPicker
                 collectionName={
                   selectedTable &&
                   selectedTable.schema &&
