@@ -33,7 +33,7 @@ interface ParameterValuePickerProps {
 // TODO must change value when type is changed
 // TODO setting default value on blur/closing picker
 // TODO error states
-// TODO placeholders
+// TODO placeholders unification
 // TODO filter input for numbers
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
   const {
@@ -143,6 +143,11 @@ function OwnDatePicker(props: {
   ) : (
     <TextInputIcon name="chevrondown" />
   );
+  // This is required to allow clicking through the "chevrondown" icon.
+  // Must be replaced with `rightSectionPointerEvents=none` after upgrade
+  const rightSectionProps = value
+    ? undefined
+    : { style: { pointerEvents: "none" } };
 
   return (
     <Popover opened={isOpen}>
@@ -154,6 +159,7 @@ function OwnDatePicker(props: {
           placeholder={t`Select a default value…`}
           onClick={openPopover}
           rightSection={icon}
+          rightSectionProps={rightSectionProps}
         />
       </Popover.Target>
 
