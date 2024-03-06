@@ -175,7 +175,7 @@
 (defn- strip-timestamp
   "Remove the timestamp portion of attachment filenames.
   This is useful for creating stable filename keys in tests.
-  For example, see `run-pulse-and-return-attached-csv-data` below.
+  For example, see `summarize-attachment` below.
 
   Eg. test_card_2024-03-05T22:30:24.077306Z.csv -> test_card.csv"
   [fname]
