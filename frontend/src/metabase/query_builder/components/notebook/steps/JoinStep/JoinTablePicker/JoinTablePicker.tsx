@@ -68,7 +68,7 @@ export function JoinTablePicker({
       return undefined;
     }
     if (isStartedFromModel) {
-      return DATA_BUCKET.DATASETS;
+      return DATA_BUCKET.MODELS;
     }
     return undefined;
   }, [tableId, isStartedFromModel]);
