@@ -83,7 +83,7 @@ function TabRowInner<T>({
     setShowScrollRight(
       Math.round(scrollPosition + width) < tabListRef.current?.scrollWidth,
     );
-  }, [children, scrollPosition, width]);
+  }, [scrollPosition, width]);
 
   const onDragEnd = (event: DragEndEvent) => {
     if (!event.over || !handleDragEnd) {
