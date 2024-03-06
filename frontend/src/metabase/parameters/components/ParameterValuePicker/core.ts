@@ -19,10 +19,7 @@ export function shouldShowPlainInput(parameter: Parameter) {
     return subtype === "=";
   }
 
-  // TODO this means "string" selected in native query tag editor
-  // sidebar.
-  // Although we did show a popup previously values_query_type in ('list', 'search'),
-  // it was still a single value
+  // TODO this means "string" + "input box" is selected
   if (
     parameter.type === "category" &&
     (parameter.values_query_type == null ||
