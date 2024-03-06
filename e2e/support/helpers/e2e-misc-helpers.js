@@ -126,9 +126,24 @@ export const cypressWaitAll = function (commands) {
 /**
  * Visit a question and wait for its query to load.
  *
+ * @param {number|string} questionIdOrAlias
+ */
+export function visitQuestion(questionIdOrAlias) {
+  if (typeof questionIdOrAlias === "number") {
+    visitQuestionById(questionIdOrAlias);
+  }
+
+  if (typeof questionIdOrAlias === "string") {
+    cy.get(questionIdOrAlias).then(id => visitQuestionById(id));
+  }
+}
+
+/**
+ * Visit a question and wait for its query to load.
+ *
  * @param {number} id
  */
-export function visitQuestion(id) {
+function visitQuestionById(id) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
 
