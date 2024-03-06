@@ -296,7 +296,7 @@
   [rows]
   (with-open [reader (io/reader (csv-file-with rows))]
     (let [[header & rows] (csv/read-csv reader)]
-      (#'upload/detect-schema header rows))))
+      (#'upload/detect-schema (upload-parsing/get-settings) header rows))))
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
