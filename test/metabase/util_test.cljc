@@ -1,14 +1,16 @@
 (ns ^:mb/once metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
+   #?@(:clj [[metabase.test :as mt]])
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase.util :as u]
-   #?@(:clj [[metabase.test :as mt]])))
+   #_:clj-kondo/ignore
+   [malli.generator :as mg]
+   [metabase.util :as u]))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -470,11 +472,20 @@
     (is (= [:c :e] (u/conflicting-keys {:a 1 :b 2 :c 3 :e nil}
                                        {:b 2 :c 4 :d 5 :e 6})))))
 
+(defn- join [& crumbs] (str/join ":" crumbs))
+
 (deftest map-all-test
-  (let [join (fn [& crumbs] (str/join ":" crumbs))]
-    (testing "map-all with 1 collection is just map"
-      (is (= ["0" "1" "2" "3" "4"] (u/map-all join (range 5)))))
-    (testing "map-all works with 3 collections"
-      (is (= ["0:0" "1:1" "2:2" "3:" "4:"] (u/map-all join (range 5) (range 3)))))
-    (testing "map-all works with higher arity"
-      (is (= ["0:0:0" "1:1:1" "2:2:2" "3::3" "::4"] (u/map-all join (range 4) (range 3) (range 5)))))))
+  (testing "map-all with 1 collection is just map"
+    (is (= ["0" "1" "2" "3" "4"] (u/map-all join (range 5)))))
+  (testing "map-all works with 3 collections"
+    (is (= ["0:0" "1:1" "2:2" "3:" "4:"] (u/map-all join (range 5) (range 3)))))
+  (testing "map-all works with higher arity"
+    (is (= ["0:0:0" "1:1:1" "2:2:2" "3::3" "::4"] (u/map-all join (range 4) (range 3) (range 5))))))
+
+#?(:clj
+   (defspec map-all-returns-max-coll-input-size-test 1000
+     (prop/for-all [xs (mg/generator [:sequential :int])
+                    ys (mg/generator [:sequential :int])
+                    zs (mg/generator [:sequential :int])]
+       (let [expected (u/map-all join xs ys zs)]
+         (= (count expected) (max (count xs) (count ys) (count zs)))))))
