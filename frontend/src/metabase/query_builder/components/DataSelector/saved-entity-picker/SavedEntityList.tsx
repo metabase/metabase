@@ -10,34 +10,34 @@ import type { Collection, CollectionItem } from "metabase-types/api";
 
 import {
   LoadingWrapper,
-  SavedQuestionListEmptyState,
-  SavedQuestionListItem,
-  SavedQuestionListRoot,
-} from "./SavedQuestionList.styled";
+  SavedEntityListEmptyState,
+  SavedEntityListItem,
+  SavedEntityListRoot,
+} from "./SavedEntityList.styled";
 
-interface SavedQuestionListProps {
+interface SavedEntityListProps {
   isDatasets: boolean;
   selectedId: string;
   collection?: Collection;
   onSelect: (tableOrModelId: string) => void;
 }
 
-const SavedQuestionList = ({
+const SavedEntityList = ({
   isDatasets,
   selectedId,
   collection,
   onSelect,
-}: SavedQuestionListProps): JSX.Element => {
+}: SavedEntityListProps): JSX.Element => {
   const emptyState = (
-    <SavedQuestionListEmptyState>
+    <SavedEntityListEmptyState>
       <EmptyState message={t`Nothing here`} />
-    </SavedQuestionListEmptyState>
+    </SavedEntityListEmptyState>
   );
 
   const isVirtualCollection = collection?.id === PERSONAL_COLLECTIONS.id;
 
   return (
-    <SavedQuestionListRoot>
+    <SavedEntityListRoot>
       <LoadingWrapper loading={!collection}>
         {collection && !isVirtualCollection && (
           <Search.ListLoader
@@ -56,7 +56,7 @@ const SavedQuestionList = ({
                     const virtualTableId = getQuestionVirtualTableId(id);
 
                     return (
-                      <SavedQuestionListItem
+                      <SavedEntityListItem
                         key={id}
                         id={id}
                         isSelected={selectedId === virtualTableId}
@@ -81,9 +81,9 @@ const SavedQuestionList = ({
         )}
         {isVirtualCollection && emptyState}
       </LoadingWrapper>
-    </SavedQuestionListRoot>
+    </SavedEntityListRoot>
   );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SavedQuestionList;
+export default SavedEntityList;
