@@ -49,7 +49,11 @@ function CreateDashboardModal({
   return (
     <CreateCollectionOnTheGo>
       {({ resumedValues }) => (
-        <ModalContent title={t`New dashboard`} onClose={onClose}>
+        <ModalContent
+          title={t`New dashboard`}
+          onClose={onClose}
+          data-testid="new-dashboard-modal"
+        >
           <CreateDashboardFormConnected
             {...props}
             onCreate={handleCreate}

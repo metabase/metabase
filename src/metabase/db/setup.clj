@@ -132,18 +132,17 @@
             latest-applied (liquibase/latest-applied-major-version conn)]
         ;; `latest-applied` will be `nil` for fresh installs
         (when (and latest-applied (< latest-available latest-applied))
-          (log/error (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
-                          "\n\n"
-                          (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
-                          "\n\n"
-                          (trs "You must run `java -jar metabase.jar migrate down` from version {0}." latest-applied)
-                          "\n\n"
-                          (trs "Once your database has been downgraded, try running the application again.")
-                          "\n\n"
-                          (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade")))
-          (throw (ex-info (trs "Downgrade detected. Please run `migrate down` from version {0}."
-                            latest-applied)
-                          {})))))))
+          (throw (ex-info
+                  (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                       "\n\n"
+                       (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                       "\n\n"
+                       (trs "You must run `java -jar metabase.jar migrate down` from version {0}." latest-applied)
+                       "\n\n"
+                       (trs "Once your database has been downgraded, try running the application again.")
+                       "\n\n"
+                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
+                  {})))))))
 
 (mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"

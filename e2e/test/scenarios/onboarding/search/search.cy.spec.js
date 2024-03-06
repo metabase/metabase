@@ -14,7 +14,6 @@ import {
   enableTracking,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  modal,
   popover,
   resetSnowplow,
   restore,
@@ -64,13 +63,13 @@ const typeFilters = [
 const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const NORMAL_USER_TEST_QUESTION = {
-  name: `Robert's Super Duper Reviews`,
+  name: "Robert's Super Duper Reviews",
   query: { "source-table": ORDERS_ID, limit: 1 },
   collection_id: null,
 };
 
 const ADMIN_TEST_QUESTION = {
-  name: `Admin Super Duper Reviews`,
+  name: "Admin Super Duper Reviews",
   query: { "source-table": ORDERS_ID, limit: 1 },
   collection_id: null,
 };
@@ -226,7 +225,8 @@ describe("scenarios > search", () => {
       cy.createQuestion({
         name: "Description Test",
         query: { "source-table": ORDERS_ID },
-        description: `testingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting`,
+        description:
+          "testingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting",
       }).then(() => {
         cy.signInAsNormalUser();
         cy.visit("/");
@@ -278,7 +278,7 @@ describe("scenarios > search", () => {
           });
         },
       );
-      cy.visit(`/`);
+      cy.visit("/");
 
       // Type as soon as possible, before the dashboard has finished loading
       getSearchBar().type("ord");
@@ -683,7 +683,9 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            modal().findByText("Save").click();
+            cy.findByTestId("save-question-modal").within(modal => {
+              cy.findByText("Save").click();
+            });
           },
         );
 
@@ -697,7 +699,9 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            modal().findByText("Save").click();
+            cy.findByTestId("save-question-modal").within(modal => {
+              cy.findByText("Save").click();
+            });
           },
         );
       });
@@ -936,8 +940,8 @@ describe("scenarios > search", () => {
 
       // we can only test the 'today' filter since we currently
       // can't edit the created_at column of a question in our database
-      it(`should filter results by Today (created_at=thisday)`, () => {
-        cy.visit(`/search?q=Reviews`);
+      it("should filter results by Today (created_at=thisday)", () => {
+        cy.visit("/search?q=Reviews");
 
         expectSearchResultItemNameContent(
           {
@@ -964,7 +968,7 @@ describe("scenarios > search", () => {
       });
 
       it("should remove created_at filter when `X` is clicked on search filter", () => {
-        cy.visit(`/search?q=Reviews&created_at=thisday`);
+        cy.visit("/search?q=Reviews&created_at=thisday");
         cy.wait("@search");
 
         expectSearchResultContent({
@@ -1012,7 +1016,9 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            modal().findByText("Save").click();
+            cy.findByTestId("save-question-modal").within(modal => {
+              cy.findByText("Save").click();
+            });
             cy.signOut();
             cy.signInAsAdmin();
           },
@@ -1034,8 +1040,8 @@ describe("scenarios > search", () => {
 
       // we can only test the 'today' filter since we currently
       // can't edit the last_edited_at column of a question in our database
-      it(`should filter results by Today (last_edited_at=thisday)`, () => {
-        cy.visit(`/search?q=Reviews`);
+      it("should filter results by Today (last_edited_at=thisday)", () => {
+        cy.visit("/search?q=Reviews");
 
         expectSearchResultItemNameContent({
           itemNames: [
@@ -1062,7 +1068,7 @@ describe("scenarios > search", () => {
       });
 
       it("should remove last_edited_at filter when `X` is clicked on search filter", () => {
-        cy.visit(`/search?q=Reviews&last_edited_at=thisday`);
+        cy.visit("/search?q=Reviews&last_edited_at=thisday");
         cy.wait("@search");
 
         expectSearchResultContent({

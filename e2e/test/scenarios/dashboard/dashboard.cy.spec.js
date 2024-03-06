@@ -40,6 +40,8 @@ import {
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
   createDashboardWithTabs,
+  entityPickerModal,
+  collectionOnTheGoModal,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
@@ -107,9 +109,9 @@ describe("scenarios > dashboard", () => {
       });
 
       queryBuilderHeader().findByText("Save").click();
-      modal().within(() => {
+      cy.findByTestId("save-question-modal").within(modal => {
         cy.findByLabelText("Name").clear().type(newQuestionName);
-        cy.button("Save").click();
+        cy.findByText("Save").click();
       });
       cy.wait("@createQuestion");
       modal().within(() => {
@@ -144,24 +146,38 @@ describe("scenarios > dashboard", () => {
         appBar().findByText("New").click();
         popover().findByText("Dashboard").should("be.visible").click();
         const NEW_DASHBOARD = "Foo";
-        modal().within(() => {
+        cy.findByTestId("new-dashboard-modal").then(modal => {
           cy.findByRole("heading", { name: "New dashboard" });
           cy.findByLabelText("Name").type(NEW_DASHBOARD).blur();
-          cy.findByTestId("select-button")
+          cy.findByTestId("collection-picker-button")
             .should("have.text", "Our analytics")
             .click();
         });
-        popover().findByText("New collection").click({ force: true });
+        entityPickerModal()
+          .findByText("Create a new collection")
+          .click({ force: true });
         const NEW_COLLECTION = "Bar";
-        modal().within(() => {
-          cy.findByRole("heading", { name: "New collection" });
-          cy.findByLabelText("Name").type(NEW_COLLECTION).blur();
-          cy.button("Create").click();
+        collectionOnTheGoModal().within(() => {
+          cy.findByText("Create a new collection");
+          cy.findByPlaceholderText(/My new collection/)
+            .type(NEW_COLLECTION)
+            .blur();
+          cy.findByText("Create").click();
           cy.wait("@createCollection");
+        });
+        entityPickerModal().within(() => {
+          cy.findByText(NEW_COLLECTION).click();
+          cy.button("Select").click();
+        });
+        modal().within(() => {
           cy.findByText("New dashboard");
-          cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+          cy.findByTestId("collection-picker-button").should(
+            "have.text",
+            NEW_COLLECTION,
+          );
           cy.button("Create").click();
         });
+
         saveDashboard();
         cy.findByTestId("app-bar").findByText(NEW_COLLECTION);
       },
@@ -175,7 +191,9 @@ describe("scenarios > dashboard", () => {
       cy.log("Save new question from an ad-hoc query");
       openProductsTable();
       cy.findByTestId("qb-header").findByText("Save").click();
-      modal().button("Save").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+      });
       cy.wait("@saveQuestion");
 
       cy.log("Add this new question to a dashboard created on the fly");
@@ -548,7 +566,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("State").click();
     });
     cy.icon("close");
-    cy.get(".Button--primary").contains("Done").click();
+    cy.button("Done").click();
 
     saveDashboard();
 

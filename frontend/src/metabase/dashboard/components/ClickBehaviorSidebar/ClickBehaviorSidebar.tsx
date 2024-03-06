@@ -104,7 +104,7 @@ export function ClickBehaviorSidebar({
     [clickBehavior],
   );
 
-  const closeIsDisabled = useMemo(
+  const isCloseDisabled = useMemo(
     () => !canSaveClickBehavior(clickBehavior, targetDashboard),
     [clickBehavior, targetDashboard],
   );
@@ -202,7 +202,7 @@ export function ClickBehaviorSidebar({
     <Sidebar
       onClose={hideClickBehaviorSidebar}
       onCancel={handleCancel}
-      closeIsDisabled={closeIsDisabled}
+      isCloseDisabled={isCloseDisabled}
     >
       <ClickBehaviorSidebarHeader
         dashcard={dashcard}

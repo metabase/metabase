@@ -17,6 +17,7 @@ import {
   ensureDashboardCardHasText,
   resetFilterWidgetToDefault,
   sidebar,
+  dashboardParametersDoneButton,
 } from "e2e/support/helpers";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -70,7 +71,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
   // Rather than going through every single filter type,
   // make sure the default filter works for just one of the available options
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Time", "Month and Year");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
@@ -106,10 +107,17 @@ describe("scenarios > dashboard > filters > date", () => {
     toggleRequiredParameter();
     dashboardSaveButton().should("be.disabled");
     dashboardSaveButton().realHover();
-
     cy.findByRole("tooltip").should(
       "contain.text",
       'The "Month and Year" parameter requires a default value but none was provided.',
+    );
+
+    // Can't close sidebar without a default value
+    dashboardParametersDoneButton().should("be.disabled");
+    dashboardParametersDoneButton().realHover();
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      "The parameter requires a default value but none was provided.",
     );
 
     sidebar().findByText("Default value").next().click();

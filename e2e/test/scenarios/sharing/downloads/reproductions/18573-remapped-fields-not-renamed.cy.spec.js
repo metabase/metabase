@@ -36,7 +36,7 @@ describe("issue 18573", () => {
     });
   });
 
-  it(`for the remapped columns, it should preserve renamed column name in exports for xlsx (metabase#18573)`, () => {
+  it("for the remapped columns, it should preserve renamed column name in exports for xlsx (metabase#18573)", () => {
     visitQuestionAdhoc(questionDetails);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -5,17 +5,17 @@ import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import { loadDefaults, selectStep } from "../../actions";
+import { goToNextStep, loadDefaults } from "../../actions";
 import { LOCALE_TIMEOUT } from "../../constants";
 import { getIsLocaleLoaded } from "../../selectors";
 import { SetupHelp } from "../SetupHelp";
 
 import {
-  PageRoot,
-  PageMain,
-  PageTitle,
   PageBody,
   PageButton,
+  PageMain,
+  PageRoot,
+  PageTitle,
 } from "./WelcomePage.styled";
 
 export const WelcomePage = (): JSX.Element | null => {
@@ -24,7 +24,7 @@ export const WelcomePage = (): JSX.Element | null => {
   const dispatch = useDispatch();
 
   const handleStepSubmit = () => {
-    dispatch(selectStep("language"));
+    dispatch(goToNextStep());
   };
 
   useEffect(() => {

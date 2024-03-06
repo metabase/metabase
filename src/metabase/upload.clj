@@ -1,11 +1,11 @@
 (ns metabase.upload
+  (:refer-clojure :exclude [derive make-hierarchy parents])
   (:require
    [clj-bom.core :as bom]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [flatland.ordered.set :as ordered-set]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -32,6 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.ordered-hierarchy :as ordered-hierarchy :refer [derive make-hierarchy]]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -74,53 +75,40 @@
 ;;
 ;; </code></pre>
 
-(def ^:private type+parent-pairs
-  ;; listed in depth-first order
-  '([::boolean-or-int ::boolean]
-    [::boolean-or-int ::int]
-    [::auto-incrementing-int-pk ::int]
-    [::int ::float]
-    [::date ::datetime]
-    [::boolean ::varchar-255]
-    [::offset-datetime ::varchar-255]
-    [::datetime ::varchar-255]
-    [::float ::varchar-255]
-    [::varchar-255 ::text]))
+(def ^:private h
+  "This hierarchy defines a relationship between value types and their specializations.
+  We use an [[metabase.util.ordered-hierarchy]] for its topological sorting, which simplify writing efficient and
+  consistent implementations for of our type inference, parsing, and relaxation."
+  (-> (make-hierarchy)
+      (derive ::boolean-or-int ::boolean)
+      (derive ::boolean-or-int ::int)
+      (derive ::auto-incrementing-int-pk ::int)
+      (derive ::int ::float)
+      (derive ::date ::datetime)
+      (derive ::boolean ::varchar-255)
+      (derive ::offset-datetime ::varchar-255)
+      (derive ::datetime ::varchar-255)
+      (derive ::float ::varchar-255)
+      (derive ::varchar-255 ::text)))
 
-(defn ^:private column-type
-  "Returns the type of a column given the lowest common ancestor type of the values in the column."
-  [type]
-  (case type
-    ::boolean-or-int ::boolean
-    type))
-
-(def ^:private type->parents
-  (reduce
-   (fn [m [type parent]]
-     (update m type conj parent))
-   {}
-   type+parent-pairs))
+(def ^:private abstract->concrete
+  "Not all value types correspond to database types. For those that don't, this maps to their concrete ancestor."
+  {::boolean-or-int ::boolean})
 
 (def ^:private value-types
-  "All value types including the root type, ::text"
-  (conj (keys type->parents) ::text))
+  "All type tags which values can be inferred as. An ordered set from most to least specialized."
+  (ordered-hierarchy/sorted-tags h))
 
 (def ^:private column-types
-  "All column types"
-  (map column-type value-types))
+  "All type tags that correspond to concrete column types."
+  (into #{} (remove abstract->concrete) value-types))
 
-(defn- bfs-ancestors [type]
-  (loop [visit   (list type)
-         visited (ordered-set/ordered-set)]
-    (if (empty? visit)
-      visited
-      (let [parents (mapcat type->parents visit)]
-        (recur parents (into visited parents))))))
-
-(def ^:private type->bfs-ancestors
-  "A map from each type to an ordered set of its ancestors, in breadth-first order"
-  (into {} (for [type value-types]
-             [type (bfs-ancestors type)])))
+(defn ^:private column-type
+  "The most specific column type corresponding to the given value type."
+  [value-type]
+  (or (abstract->concrete value-type value-type)
+      ;; If we know nothing about the value type, treat it as an arbitrary string.
+      ::text))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; [[value->type]] helpers
@@ -179,75 +167,67 @@
   (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
 
 (defn- boolean-or-int-string? [s]
-  (boolean (#{"0" "1"} s)))
+  (contains? #{"0" "1"} s))
+
+(defn- varchar-255? [s]
+  (<= (count s) 255))
+
+(defn- regex-matcher [regex]
+  (fn [s]
+    (boolean (re-matches regex s))))
 
 ;; end [[value->type]] helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def ^:private non-inferable-types
+  #{::auto-incrementing-int-pk})
+
+(def ^:private type->check-schema
+  "Every inferable value-type needs to have a detection function registered."
+  (into [:map] (map #(vector % [:=> [:cat :string] :boolean])
+                    (remove non-inferable-types value-types))))
+
+(mu/defn ^:private settings->type->check :- type->check-schema
+  [{:keys [number-separators] :as _settings}]
+  {::boolean-or-int  boolean-or-int-string?
+   ::boolean         boolean-string?
+   ::offset-datetime offset-datetime-string?
+   ::date            date-string?
+   ::datetime        datetime-string?
+   ::int             (regex-matcher (int-regex number-separators))
+   ::float           (regex-matcher (float-regex number-separators))
+   ::varchar-255     varchar-255?
+   ::text            (constantly true)})
+
 (defn- value->type
-  "The most-specific possible type for a given value. Possibilities are:
-
-    - `::boolean`
-    - `::int`
-    - `::float`
-    - `::varchar-255`
-    - `::date`
-    - `::datetime`
-    - `::offset-datetime`
-    - `::text` (the catch-all type)
-
-  NB: There are currently the following gotchas:
-    1. ints/floats are assumed to use the separators and decimal points corresponding to the locale defined in the
-       application settings
-    2. 0 and 1 are assumed to be booleans, not ints."
-  [value {:keys [number-separators] :as _settings}]
-  (let [trimmed (str/trim value)]
-    (cond
-      (str/blank? value)                                        nil
-      (boolean-or-int-string? trimmed)                          ::boolean-or-int
-      (boolean-string? trimmed)                                 ::boolean
-      (offset-datetime-string? trimmed)                         ::offset-datetime
-      (datetime-string? trimmed)                                ::datetime
-      (date-string? trimmed)                                    ::date
-      (re-matches (int-regex number-separators) trimmed)        ::int
-      (re-matches (float-regex number-separators) trimmed)      ::float
-      (<= (count trimmed) 255)                                  ::varchar-255
-      :else                                                     ::text)))
+  "Determine the most specific type that is compatible with the given value.
+  Numbers are assumed to use separators corresponding to the locale defined in the application settings"
+  [type->check value]
+  (when-not (str/blank? value)
+    (let [trimmed (str/trim value)]
+      (->> (remove non-inferable-types value-types)
+           (filter #((type->check %) trimmed))
+           first))))
 
 (defn- row->value-types
-  [row settings]
-  (map #(value->type % settings) row))
+  [type->check row]
+  (map (partial value->type type->check) row))
 
-(defn- lowest-common-member [[x & xs :as all-xs] ys]
-  (cond
-    (empty? all-xs)  (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}" all-xs ys)))
-    (contains? ys x) x
-    :else            (recur xs ys)))
-
-(defn- lowest-common-ancestor [type-a type-b]
-  (cond
-    (nil? type-a) type-b
-    (nil? type-b) type-a
-    (= type-a type-b) type-a
-    (contains? (type->bfs-ancestors type-a) type-b) type-b
-    (contains? (type->bfs-ancestors type-b) type-a) type-a
-    :else (lowest-common-member (type->bfs-ancestors type-a) (type->bfs-ancestors type-b))))
-
-(defn- map-with-nils
-  "like map with two args except it continues to apply f until ALL of the colls are
-  exhausted. if colls are of uneven length, nils are supplied."
-  [f c1 c2]
-  (lazy-seq
-   (let [s1 (seq c1) s2 (seq c2)]
-     (when (or s1 s2)
-       (cons (f (first s1) (first s2))
-             (map-with-nils f (rest s1) (rest s2)))))))
+(defn- most-specific-common-ancestor
+  "Return the first \"ancestor\" of `base-type` which is also an \"ancestor\" of `new-type`.
+  We use a more relaxed definition of \"ancestor\" here than usual, which includes the tag itself."
+  [base-type new-type]
+  (when (or base-type new-type)
+    (or (ordered-hierarchy/first-common-ancestor h base-type new-type)
+        (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}"
+                                               base-type
+                                               new-type))))))
 
 (defn- coalesce-types
-  "compares types-a and types-b pairwise, finding the lowest-common-ancestor for each pair.
-  types-a and types-b can be different lengths."
+  "Given two collections of type tags, find the most specific common ancestor for each pair.
+  If one of the collections is longer, we return its existing tags for the remaining length."
   [types-a types-b]
-  (map-with-nils lowest-common-ancestor types-a types-b))
+  (u/map-all most-specific-common-ancestor types-a types-b))
 
 (defn- normalize-column-name
   [raw-name]
@@ -271,14 +251,11 @@
 (mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
   "Returns a sequence of types, given the unparsed rows in the CSV file"
   [settings column-count rows]
-  (->> rows
-       (map #(row->value-types % settings))
-       (reduce coalesce-types (repeat column-count nil))
-       (map (fn [type]
-              ;; if there's no values in the column, assume it's a string
-              (if (nil? type)
-                ::text
-                (column-type type))))))
+  (let [type->check (settings->type->check settings)]
+    (->> rows
+         (map (partial row->value-types type->check))
+         (reduce coalesce-types (repeat column-count nil))
+         (map column-type))))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
@@ -369,12 +346,12 @@
 
 (defn- parse-rows
   "Returns a lazy seq of parsed rows, given a sequence of upload types for each column.
-  Replaces empty strings with nil."
+  Empty strings are parsed as nil."
   [col-upload-types rows]
   (let [settings (upload-parsing/get-settings)
         parsers  (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
     (for [row rows]
-      (for [[value parser] (map-with-nils vector row parsers)]
+      (for [[value parser] (u/map-all vector row parsers)]
         (when-not (str/blank? value)
           (parser value))))))
 
@@ -558,7 +535,7 @@
             _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
             card              (card/create-card!
                                {:collection_id          collection-id
-                                :dataset                true
+                                :type                   :model
                                 :database_id            (:id database)
                                 :dataset_query          {:database (:id database)
                                                          :query    {:source-table (:id table)}
@@ -731,7 +708,7 @@
                            [:query_type    [:maybe [:or :string :keyword]]]
                            [:table_id      [:maybe ms/PositiveInt]]
                            ;; is_upload can be provided for an optional optimization
-                           [:is_upload {:optional true} [:maybe :boolean]]]]]
+                           [:is_upload {:optional true} [:maybe :any]]]]]
   (let [table-ids             (->> models
                                    ;; as an optimization when listing collection items (GET /api/collection/items),
                                    ;; we might already know that the table is not an upload if is_upload=false. We
@@ -759,6 +736,6 @@
     - uploads are enabled
   Otherwise based_on_upload is nil."
   [cards]
-  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter :dataset cards)))
+  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter #(= (:type %) :model) cards)))
         card->maybe-model (comp id->model :id)]
     (map #(or (card->maybe-model %) %) cards)))

@@ -149,10 +149,11 @@ export function getParameterMappingOptions(
   }
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  if (!isNative || question.isDataset()) {
+  const isModel = question.type() === "model";
+  if (!isNative || isModel) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
-    const query = question.isDataset()
+    const query = isModel
       ? question.composeDataset().query()
       : question.query();
     const stageIndex = -1;

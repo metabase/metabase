@@ -1072,7 +1072,7 @@
                                               [:field (mt/id :products :category)
                                                nil]]}}}}
         (mt/with-persistence-enabled [persist-models!]
-          (mt/with-temp [Card model {:dataset       true
+          (mt/with-temp [Card model {:type          :model
                                      :dataset_query (mt/mbql-query
                                                       products
                                                       ;; note does not include the field we have to filter on. No way

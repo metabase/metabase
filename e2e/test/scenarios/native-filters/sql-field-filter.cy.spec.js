@@ -93,7 +93,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.get("input").type("10{enter}");
         cy.findByText("Update filter").click();
       });
-      filterWidget().icon("refresh").click();
+      filterWidget().icon("time_history").click();
       filterWidget().findByTestId("field-set-content").should("have.text", "8");
     });
   });

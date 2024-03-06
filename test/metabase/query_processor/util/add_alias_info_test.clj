@@ -695,7 +695,8 @@
         (is (= {:field-name              "CREATED_AT"
                 :join-is-this-level?     "Q2"
                 :alias-from-join         "Products__CREATED_AT"
-                :alias-from-source-query nil}
+                :alias-from-source-query nil
+                :override-alias?         false}
                (#'add/expensive-field-info
                 (lib.tu.macros/$ids nil
                   {:source-table $$reviews

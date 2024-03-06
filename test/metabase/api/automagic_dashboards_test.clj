@@ -166,7 +166,7 @@
                                                                    :collection_id collection-id
                                                                    :dataset_query (mt/mbql-query venues
                                                                                     {:filter [:> $price 10]})
-                                                                   :dataset       true}]
+                                                                   :type          :model}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-fn collection-id card-id)))))))
 
@@ -284,7 +284,7 @@
 
 (defn- do-with-testing-model
   [{:keys [query pk-ref value-ref]} f]
-  (t2.with-temp/with-temp [Card model {:dataset       true
+  (t2.with-temp/with-temp [Card model {:type          :model
                                        :dataset_query query}]
     (mt/with-model-cleanup [ModelIndex]
       (let [model-index (model-index/create {:model-id   (:id model)

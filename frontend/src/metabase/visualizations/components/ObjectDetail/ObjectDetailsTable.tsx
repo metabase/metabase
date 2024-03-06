@@ -7,8 +7,7 @@ import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
-import type Question from "metabase-lib/Question";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
 import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
@@ -128,7 +127,6 @@ export interface DetailsTableProps {
   data: DatasetData;
   zoomedRow: unknown[];
   settings: VisualizationSettings;
-  question?: Question;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
 }
@@ -139,7 +137,6 @@ export function DetailsTable({
   settings,
   onVisualizationClick,
   visualizationIsClickable,
-  question,
 }: DetailsTableProps): JSX.Element {
   const { cols: columns } = data;
   const columnSettings = settings["table.columns"];
@@ -148,25 +145,16 @@ export function DetailsTable({
     if (!columnSettings) {
       return { cols: columns, row: zoomedRow };
     }
-    const columnIndexes = columnSettings
-      .filter(columnSetting => columnSetting?.enabled)
-      .map(columnSetting =>
-        findColumnIndexForColumnSetting(
-          columns,
-          columnSetting,
-          question?.query(),
-        ),
-      )
-      .filter(
-        (columnIndex: number) =>
-          columnIndex >= 0 && columnIndex < columns.length,
-      );
+    const columnIndexes = findColumnIndexesForColumnSettings(
+      columns,
+      columnSettings.filter(({ enabled }) => enabled),
+    ).filter((columnIndex: number) => columnIndex >= 0);
 
     return {
-      cols: columnIndexes.map((i: number) => columns[i]) as any[],
+      cols: columnIndexes.map((i: number) => columns[i]),
       row: columnIndexes.map((i: number) => zoomedRow[i]),
     };
-  }, [columnSettings, columns, zoomedRow, question]);
+  }, [columnSettings, columns, zoomedRow]);
 
   if (!cols?.length) {
     return (

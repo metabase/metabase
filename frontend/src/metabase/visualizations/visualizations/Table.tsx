@@ -25,7 +25,7 @@ import {
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import { isNative } from "metabase-lib/queries/utils/card";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
 import {
   isMetric,
   isDimension,
@@ -320,7 +320,6 @@ class Table extends Component<TableProps, TableState> {
     const [{ card, data }] = series;
     // construct a Question that is in-sync with query results
     const question = new Question(card, metadata);
-    const query = question.query();
 
     if (Table.isPivoted(series, settings)) {
       const pivotIndex = _.findIndex(
@@ -340,16 +339,13 @@ class Table extends Component<TableProps, TableState> {
       });
     } else {
       const { cols, rows, results_timezone } = data;
-      const columnSettings = settings["table.columns"];
-      const columnIndexes = (columnSettings || [])
-        .filter(
-          columnSetting =>
-            columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
-        )
-        .map(columnSetting =>
-          findColumnIndexForColumnSetting(cols, columnSetting, query),
-        )
-        .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
+      const columnSettings = settings["table.columns"] ?? [];
+      const columnIndexes = findColumnIndexesForColumnSettings(
+        cols,
+        this.props.isShowingDetailsOnlyColumns
+          ? columnSettings
+          : columnSettings.filter(({ enabled }) => enabled),
+      ).filter(columnIndex => columnIndex >= 0);
 
       this.setState({
         data: {

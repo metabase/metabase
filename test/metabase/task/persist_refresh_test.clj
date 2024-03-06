@@ -117,10 +117,10 @@
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [TaskHistory]
     (mt/with-temp [Database db {:settings {:persist-models-enabled true}}
-                   Card     model1 {:dataset true :database_id (u/the-id db)}
-                   Card     model2 {:dataset true :database_id (u/the-id db)}
-                   Card     archived {:archived true :dataset true :database_id (u/the-id db)}
-                   Card     unmodeled {:dataset false :database_id (u/the-id db)}
+                   Card     model1 {:type :model :database_id (u/the-id db)}
+                   Card     model2 {:type :model :database_id (u/the-id db)}
+                   Card     archived {:archived true :type :model :database_id (u/the-id db)}
+                   Card     unmodeled {:type :question :database_id (u/the-id db)}
                    PersistedInfo _p1 {:card_id (u/the-id model1) :database_id (u/the-id db)}
                    PersistedInfo _p2 {:card_id (u/the-id model2) :database_id (u/the-id db)}
                    PersistedInfo _parchived {:card_id (u/the-id archived) :database_id (u/the-id db)}
@@ -161,9 +161,9 @@
                                        {:order-by [[:id :desc]]}))))))
     (testing "Deletes any in a deletable state"
       (mt/with-temp [Database db {:settings {:persist-models-enabled true}}
-                     Card     model3 {:dataset true :database_id (u/the-id db)}
-                     Card     archived {:archived true :dataset true :database_id (u/the-id db)}
-                     Card     unmodeled {:dataset false :database_id (u/the-id db)}
+                     Card     model3 {:type :model :database_id (u/the-id db)}
+                     Card     archived {:archived true :type :model :database_id (u/the-id db)}
+                     Card     unmodeled {:type :question :database_id (u/the-id db)}
                      PersistedInfo parchived {:card_id (u/the-id archived) :database_id (u/the-id db)}
                      PersistedInfo punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}
                      PersistedInfo deletable {:card_id (u/the-id model3) :database_id (u/the-id db)
@@ -182,6 +182,16 @@
                 (is (contains? queued-for-deletion (u/the-id deletable-persisted))))))
           ;; we manually pass in the deleteable ones to not catch others in a running instance
           (#'task.persist-refresh/prune-deletables! test-refresher [deletable parchived punmodeled])
+          (testing "We delete persisted_info records for all of the pruned"
+            (let [persisted-records (t2/select :model/PersistedInfo :id [:in (map :id [parchived punmodeled deletable])])
+                  existing (map (comp
+                                 (update-keys {parchived 'parchived
+                                               punmodeled 'punmodeled
+                                               deletable 'deletable}
+                                              :id)
+                                 :id)
+                                persisted-records)]
+              (is (= [] existing))))
           ;; don't assert equality if there are any deletable in the app db
           (doseq [deletable-persisted [deletable punmodeled parchived]]
             (is (contains? @called-on (u/the-id deletable-persisted))))

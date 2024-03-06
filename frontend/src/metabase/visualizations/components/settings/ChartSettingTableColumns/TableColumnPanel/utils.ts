@@ -1,5 +1,5 @@
-import { getColumnIcon } from "metabase/common/utils/columns";
-import * as Lib from "metabase-lib";
+import type { IconName } from "metabase/ui";
+import { getIconForField } from "metabase-lib/metadata/utils/fields";
 import { findColumnSettingIndexesForColumns } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import type {
@@ -9,78 +9,67 @@ import type {
 
 import type { EditWidgetData } from "../types";
 
-import type { ColumnItem, DragColumnProps } from "./types";
+import type { ColumnItem } from "./types";
 
 export function getColumnItems(
-  query: Lib.Query,
-  stageIndex: number,
   columns: DatasetColumn[],
-  columnSettings: TableColumnOrderSetting[],
+  originalSettings: TableColumnOrderSetting[],
 ): ColumnItem[] {
-  const settingIndexByColumnIndex = findColumnSettingIndexesForColumns(
-    query,
-    stageIndex,
+  const originalIndexes = findColumnSettingIndexesForColumns(
     columns,
-    columnSettings,
+    originalSettings,
   );
 
-  const columnItems = columns.map((datasetColumn, columnIndex) => {
-    const column = Lib.fromLegacyColumn(query, stageIndex, datasetColumn);
-    const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    const columnSettingIndex = settingIndexByColumnIndex[columnIndex];
-    const columnSetting = columnSettings[columnSettingIndex];
+  const updatedIndexes = [...originalIndexes];
+  const updatedSettings = [...originalSettings];
+  columns.forEach((column, columnIndex) => {
+    const columnSettingIndex = originalIndexes[columnIndex];
+    if (columnSettingIndex < 0) {
+      updatedIndexes[columnIndex] = updatedSettings.length;
+      updatedSettings.push({
+        name: column.name,
+        key: getColumnKey(column),
+        fieldRef: column.field_ref,
+        enabled: false,
+      });
+    }
+  });
+
+  const columnItems = columns.map((column, columnIndex) => {
+    const columnSettingIndex = updatedIndexes[columnIndex];
+    const columnSetting = updatedSettings[columnSettingIndex];
 
     return {
-      name: columnInfo.name,
-      fieldRef: Lib.legacyRef(query, stageIndex, column),
-      enabled: columnSetting ? columnSetting.enabled : true,
-      icon: getColumnIcon(column),
-      column: datasetColumn,
-      columnSettingIndex,
+      name: column.name,
+      enabled: columnSetting.enabled,
+      index: columnSettingIndex,
+      icon: getIconForField(column) as IconName,
+      column,
+      columnSetting,
     };
   });
 
-  return [
-    ...columnItems
-      .filter(({ columnSettingIndex }) => columnSettingIndex >= 0)
-      .sort((a, b) => a.columnSettingIndex - b.columnSettingIndex),
-    ...columnItems.filter(({ columnSettingIndex }) => columnSettingIndex < 0),
-  ];
+  return columnItems.sort((a, b) => a.index - b.index);
 }
 
 export function toggleColumnInSettings(
-  { name, fieldRef, columnSettingIndex }: ColumnItem,
-  columnSettings: TableColumnOrderSetting[],
+  { index, columnSetting }: ColumnItem,
+  columnItems: ColumnItem[],
   isEnabled: boolean,
 ): TableColumnOrderSetting[] {
-  const newSettings = [...columnSettings];
-
-  if (columnSettingIndex >= 0) {
-    const setting = newSettings[columnSettingIndex];
-    newSettings[columnSettingIndex] = { ...setting, enabled: isEnabled };
-  } else {
-    newSettings.push({ name, fieldRef, enabled: isEnabled });
-  }
-
+  const newSettings = columnItems.map(({ columnSetting }) => columnSetting);
+  newSettings[index] = { ...columnSetting, enabled: isEnabled };
   return newSettings;
 }
 
 export const moveColumnInSettings = (
   columnItems: ColumnItem[],
-  columnSettings: TableColumnOrderSetting[],
-  { oldIndex, newIndex }: DragColumnProps,
+  oldIndex: number,
+  newIndex: number,
 ) => {
-  const adjustedOldIndex = columnItems[oldIndex].columnSettingIndex;
-  const adjustedNewIndex = columnItems[newIndex].columnSettingIndex;
-
   // delete a setting from the old index and put it to the new index, shifting all elements
-  const newSettings = [...columnSettings];
-  newSettings.splice(
-    adjustedNewIndex,
-    0,
-    newSettings.splice(adjustedOldIndex, 1)[0],
-  );
-
+  const newSettings = columnItems.map(({ columnSetting }) => columnSetting);
+  newSettings.splice(newIndex, 0, newSettings.splice(oldIndex, 1)[0]);
   return newSettings;
 };
 

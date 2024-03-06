@@ -168,7 +168,7 @@ describe("dashboard actions", () => {
 
       const getState = () => ({
         dashboard: {
-          isEditing: dashboard,
+          editingDashboard: dashboard,
           dashboardId: 1,
           dashboards: {
             1: {

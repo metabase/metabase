@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import { assoc } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -20,6 +21,7 @@ import {
   getDraftParameterValues,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
+import { isActionDashCard } from "metabase/dashboard/utils";
 import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import { setErrorPage } from "metabase/redux/app";
@@ -154,8 +156,12 @@ class PublicDashboard extends Component {
     } = this.props;
 
     const buttons = !isWithinIframe()
-      ? getDashboardActions(this, { ...this.props, isPublic: true })
+      ? getDashboardActions({ ...this.props, isPublic: true })
       : [];
+
+    const visibleDashcards = (dashboard?.dashcards ?? []).filter(
+      dashcard => !isActionDashCard(dashcard),
+    );
 
     return (
       <EmbedFrame
@@ -185,6 +191,7 @@ class PublicDashboard extends Component {
             <DashboardContainer>
               <DashboardGridConnected
                 {...this.props}
+                dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                 isPublic
                 className="spread"
                 mode={PublicMode}

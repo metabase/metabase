@@ -3,11 +3,12 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useSetting } from "metabase/common/hooks";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import { CopyButton } from "metabase/components/CopyButton";
 import { useSelector } from "metabase/lib/redux";
-import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
+import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
 
 import {
@@ -91,7 +92,7 @@ const InfoBlock = ({ children }: InfoBlockProps) => (
 
 export const Help = () => {
   const [details, setDetails] = useState({ "browser-info": navigatorInfo() });
-  const { tag } = useSelector(state => getSetting(state, "version"));
+  const { tag } = useSetting("version");
   const isPaidPlan = useSelector(getIsPaidPlan);
 
   useMount(async () => {

@@ -58,7 +58,7 @@ interface ExpressionEditorTextfieldProps {
   query: Lib.Query;
   stageIndex: number;
   metadata: Metadata;
-  startRule: string;
+  startRule: "expression" | "aggregation" | "boolean";
   expressionPosition?: number;
   width?: number;
   reportTimezone?: string;
@@ -135,7 +135,7 @@ class ExpressionEditorTextfield extends React.Component<
   static defaultProps = {
     expression: "",
     startRule: "expression",
-  };
+  } as const;
 
   constructor(props: ExpressionEditorTextfieldProps) {
     super(props);
@@ -405,16 +405,20 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
+      expressionPosition,
     } = this.props;
+
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
     }
+
     return diagnose({
       source,
       startRule,
       name,
       query,
       stageIndex,
+      expressionPosition,
     });
   }
 
@@ -425,14 +429,18 @@ class ExpressionEditorTextfield extends React.Component<
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       onCommit,
       onError,
+      expressionPosition,
     } = this.props;
     const { source } = this.state;
+
     const errorMessage = diagnose({
       source,
       startRule,
       query,
       stageIndex,
+      expressionPosition,
     });
+
     this.setState({ errorMessage });
 
     if (errorMessage) {

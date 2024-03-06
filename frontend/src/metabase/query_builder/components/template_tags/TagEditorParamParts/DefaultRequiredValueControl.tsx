@@ -57,6 +57,7 @@ export function DefaultRequiredValueControl({
           setValue={onChangeDefaultValue}
           isEditing
           commitImmediately
+          mimicMantine
         />
 
         <RequiredParamToggle

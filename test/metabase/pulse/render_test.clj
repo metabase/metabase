@@ -176,7 +176,7 @@
                      Card {model-card-id  :id
                            model-query    :dataset_query
                            model-metadata :result_metadata
-                           :as            model-card} {:dataset         true
+                           :as            model-card} {:type            :model
                                                        :dataset_query   {:type     :query
                                                                          :database (mt/id)
                                                                          :query    {:source-table (format "card__%s" base-card-id)}}
@@ -213,7 +213,7 @@
                                     (map #(peek (get (vec (get % 2)) tax-col))))}))]
           (testing "To apply the custom metadata to a model, you must explicitly pass the result metadata"
             (let [query-results (qp/process-query
-                                  (assoc-in model-query [:info :metadata/dataset-metadata] model-metadata))
+                                  (assoc-in model-query [:info :metadata/model-metadata] model-metadata))
                   {:keys [expected actual]} (create-comparison-results query-results model-card)]
               (is (= expected actual))))
           (testing "A question based on a model will use the underlying model's metadata"

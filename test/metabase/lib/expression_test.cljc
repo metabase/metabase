@@ -1,9 +1,10 @@
 (ns metabase.lib.expression-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is are testing]]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.options :as lib.options]
@@ -250,7 +251,10 @@
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions
                 (->> (map (fn [expr] (lib/display-info lib.tu/venues-query expr))))))))
-  (testing "collisions with other column names are detected and rejected"
+  ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
+  ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
+  ;; QP code, and it should be powered by MLv2 in due course.
+  #_(testing "collisions with other column names are detected and rejected"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
                   (lib/expression query "ID" (meta/field-metadata :categories :name))
@@ -428,3 +432,57 @@
       (is (=? [:value {:name "zero", :display-name "zero", :effective-type :type/Integer} 0]
               expr))
       (is (= "zero" (lib/display-name lib.tu/venues-query expr))))))
+
+(deftest ^:parallel diagnose-expression-test
+  (testing "correct expression are accepted silently"
+    (are [mode expr] (nil? (lib.expression/diagnose-expression
+                            lib.tu/venues-query 0 mode
+                            (lib.convert/->pMBQL expr)
+                            #?(:clj nil :cljs js/undefined)))
+      :expression  [:/ [:field 1 nil] 100]
+      :aggregation [:sum [:field 1 {:base-type :type/Integer}]]
+      :filter      [:= [:field 1 {:base-type :type/Integer}] 3])
+    (testing "type errors are reported"
+      (are [mode expr] (=? {:message #"Type error: .*"}
+                           (lib.expression/diagnose-expression
+                            lib.tu/venues-query 0 mode
+                            (lib.convert/->pMBQL expr)
+                            #?(:clj nil :cljs js/undefined)))
+        :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
+        ;; To make this test case work, the aggregation schema has to be
+        ;; tighter and not allow anything. That's a bigger piece of work,
+        ;; because it makes expressions and aggregations mutually recursive
+        ;; or requires a large amount of duplication.
+        #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
+        :filter      [:sum [:field 1 {:base-type :type/Integer}]]))
+    (testing "editing expressions"
+      (let [exprs (update-vals {"a" 1
+                                "c" [:+ 0 1]
+                                "b" [:+ [:expression "a"] [:expression "c"]]
+                                "x" [:+ [:expression "b"] 1]
+                                "s" [:+ [:expression "a"] [:expression "b"] [:expression "c"]]
+                                "circular-c" [:+ [:expression "x"] 1]
+                                "non-circular-c" [:+ [:expression "a"] 1]}
+                               lib.convert/->pMBQL)
+            query (reduce-kv (fn [query expr-name expr]
+                               (lib/expression query 0 expr-name expr))
+                             lib.tu/venues-query
+                             exprs)
+            expressions (lib/expressions query)
+            c-pos (some (fn [[i e]]
+                          (when (= (-> e lib.options/options :lib/expression-name) "c")
+                            i))
+                        (m/indexed expressions))]
+        (is (= (count exprs) (count expressions)))
+        (is (some? c-pos))
+        (testing "no circularity problem"
+          (are [mode expr]
+               (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
+            :expression  (get exprs "non-circular-c")
+            :aggregation (get exprs "circular-c")
+            :filter      (assoc (get exprs "circular-c") 0 :=)))
+        (testing "circular definition"
+          (is (= {:message "Cycle detected: c → x → b → c"}
+                 (lib.expression/diagnose-expression query 0 :expression
+                                                     (get exprs "circular-c")
+                                                     c-pos))))))))

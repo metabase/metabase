@@ -1,10 +1,10 @@
 import { popover, restore, startNewQuestion } from "e2e/support/helpers";
 
-const MONGO_DB_NAME = "QA Mongo4";
+const MONGO_DB_NAME = "QA Mongo";
 
 describe("issue 15946", { tags: "@mongo" }, () => {
   before(() => {
-    restore("mongo-4");
+    restore("mongo-5");
     cy.signInAsAdmin();
 
     startNewQuestion();
@@ -16,7 +16,7 @@ describe("issue 15946", { tags: "@mongo" }, () => {
   });
 
   it("converting a question to the native query should pre-select a table (metabase#15946)", () => {
-    cy.get(".QueryBuilder .Icon-sql").click();
+    cy.findByTestId("query-builder-root").icon("sql").click();
 
     cy.get(".Modal")
       .findByText("Convert this question to a native query")

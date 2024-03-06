@@ -215,7 +215,7 @@
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
       (mt/dataset test-data
-        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
                             COUNT (*)         AS count]
                  :from     [{:select [products.category       AS category
                                       products.category || ?  AS CATEGORY_2]

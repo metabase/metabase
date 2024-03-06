@@ -84,14 +84,14 @@
 (def csv-attachment
   {:type         :attachment
    :content-type "text/csv"
-   :file-name    "Test card.csv",
+   :file-name    "test_card.csv",
    :content      java.net.URL
    :description  "More results for 'Test card'"
    :content-id   false})
 
 (def xls-attachment
   {:type         :attachment
-   :file-name    "Test card.xlsx"
+   :file-name    "test_card.xlsx"
    :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
    :content      java.net.URL
    :description  "More results for 'Test card'"

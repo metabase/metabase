@@ -7,18 +7,6 @@ import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
-const breakoutTetherOptions = {
-  attachment: "top left",
-  targetAttachment: "bottom left",
-  offset: "10px 0",
-  constraints: [
-    {
-      to: "scrollParent",
-      attachment: "together",
-    },
-  ],
-};
-
 function BreakoutStep({
   query,
   step,
@@ -61,9 +49,8 @@ function BreakoutStep({
       readOnly={readOnly}
       color={color}
       isLastOpened={isLastOpened}
-      tetherOptions={breakoutTetherOptions}
       renderName={renderBreakoutName}
-      renderPopover={({ item: breakout, index }) => (
+      renderPopover={({ item: breakout, index, onClose }) => (
         <BreakoutPopover
           query={query}
           stageIndex={stageIndex}
@@ -71,11 +58,11 @@ function BreakoutStep({
           breakoutIndex={index}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
+          onClose={onClose}
         />
       )}
       onRemove={handleRemoveBreakout}
       data-testid="breakout-step"
-      withLegacyPopover
     />
   );
 }
@@ -90,7 +77,7 @@ interface BreakoutPopoverProps {
     breakout: Lib.BreakoutClause,
     column: Lib.ColumnMetadata,
   ) => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const BreakoutPopover = ({

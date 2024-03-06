@@ -14,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
+   [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
@@ -158,7 +159,7 @@
                                                  :joinedUserName    (or (:first_name new-user) (:email new-user))
                                                  :joinedViaSSO      google-auth?
                                                  :joinedUserEmail   (:email new-user)
-                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
                                                  :adminEmail        (first recipients)
                                                  :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
 
@@ -388,7 +389,10 @@
   (let [{:keys [content-type]} (qp.si/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
-     :file-name    (format "%s.%s" card-name (name export-type))
+     :file-name    (format "%s_%s.%s"
+                           (or (u/slugify card-name) "query_result")
+                           (u.date/format (t/zoned-date-time))
+                           (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
@@ -711,3 +715,38 @@
                                  (merge (common-context)
                                         {:logoHeader  true
                                          :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))
+
+(defn send-broken-subscription-notification!
+  "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
+  [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters]}]
+  (let [{:keys [siteUrl] :as context} (common-context)]
+    (email/send-message!
+      :subject (trs "Subscription to {0} removed" dashboard-name)
+      :recipients (distinct (map :email [pulse-creator dashboard-creator]))
+      :message-type :html
+      :message (stencil/render-file
+                 "metabase/email/broken_subscription_notification.mustache"
+                 (merge context
+                        {:dashboardName            dashboard-name
+                         :badParameters            (map
+                                                     (fn [{:keys [value] :as param}]
+                                                       (cond-> param
+                                                         (coll? value)
+                                                         (update :value #(lib.util/join-strings-with-conjunction
+                                                                           (i18n/tru "or")
+                                                                           %))))
+                                                     bad-parameters)
+                         :affectedUsers            (map
+                                                     (fn [{:keys [notification-type] :as m}]
+                                                       (cond-> m
+                                                         notification-type
+                                                         (update :notification-type name)))
+                                                     (into
+                                                       [{:notification-type :email
+                                                         :recipient         (:common_name dashboard-creator)
+                                                         :role              "Dashboard Creator"}
+                                                        {:notification-type :email
+                                                         :recipient         (:common_name pulse-creator)
+                                                         :role              "Subscription Creator"}]
+                                                       (map #(assoc % :role "Subscriber") affected-users)))
+                         :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)})))))

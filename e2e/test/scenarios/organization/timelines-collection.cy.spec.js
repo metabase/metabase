@@ -393,7 +393,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.createTimeline({ name: "Releases" });
       cy.createTimeline({ name: "Metrics" });
 
-      cy.visit(`/collection/root/timelines/1`);
+      cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
 
@@ -407,7 +407,7 @@ describe("scenarios > organization > timelines > collection", () => {
     it("should not allow navigating back when there is only one timeline in a collection", () => {
       cy.createTimeline({ name: "Releases" });
 
-      cy.visit(`/collection/root/timelines/1`);
+      cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
       cy.icon("chevronleft").should("not.exist");

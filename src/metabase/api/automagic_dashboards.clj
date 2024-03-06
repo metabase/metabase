@@ -107,7 +107,7 @@
   [_entity-type card-id-str]
   (api/read-check (t2/select-one Card
                                  :id (ensure-int card-id-str)
-                                 :dataset true)))
+                                 :type :model)))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]

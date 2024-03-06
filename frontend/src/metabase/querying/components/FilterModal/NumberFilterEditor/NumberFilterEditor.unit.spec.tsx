@@ -1,11 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupFieldValuesEndpoints } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import type { FieldValuesResult } from "metabase-types/api";
@@ -88,7 +84,6 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Equal to"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Enter a number"), "15");
       userEvent.tab();
 
@@ -131,7 +126,6 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Less than"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
       userEvent.tab();
 

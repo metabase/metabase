@@ -1,4 +1,4 @@
-import { restore, modal } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 
 const nativeQuery =
   "select * from products where created_at < {{max_date}} and created_at > {{from}} limit 5";
@@ -45,7 +45,9 @@ describe("issue 35785", () => {
 
     cy.findByTestId("qb-header").findByRole("button", { name: "Save" }).click();
 
-    modal().findByRole("button", { name: "Save" }).click();
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save").click();
+    });
 
     cy.wait("@getSearchResults");
 
