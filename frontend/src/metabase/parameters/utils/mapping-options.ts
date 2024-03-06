@@ -120,7 +120,7 @@ export type ParameterMappingOption =
   | NativeParameterMappingOption;
 
 export function getParameterMappingOptions(
-  question: Question,
+  question: Question | undefined,
   parameter: Parameter | null | undefined = null,
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
@@ -144,7 +144,11 @@ export function getParameterMappingOptions(
     return actionParams || [];
   }
 
-  if (!card.dataset_query || (dashcard && isVirtualDashCard(dashcard))) {
+  if (
+    !question ||
+    !card.dataset_query ||
+    (dashcard && isVirtualDashCard(dashcard))
+  ) {
     return [];
   }
 

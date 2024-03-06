@@ -7,6 +7,7 @@ import { t } from "ttag";
 import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";
 import {
   getVirtualCardType,
+  isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import type { IconName, IconProps } from "metabase/ui";
@@ -125,7 +126,7 @@ export function DashCardVisualization({
   onUpdateVisualizationSettings,
 }: DashCardVisualizationProps) {
   const question = useMemo(() => {
-    return dashcard.card.dataset_query
+    return isQuestionCard(dashcard.card)
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
