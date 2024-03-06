@@ -64,6 +64,7 @@ function TabRowInner<T>({
         return;
       }
       const left = width * (direction === "left" ? -1 : 1);
+      // @ts-expect-error — https://github.com/Microsoft/TypeScript/issues/28755
       tabListRef.current.scrollBy?.({ left, behavior: "instant" });
     },
     [width],
