@@ -10,12 +10,13 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import { GET, POST } from "metabase/lib/api";
-import { Box, Button, Group, Text } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import Question from "metabase-lib/Question";
 
-import { useEmbeddingContext } from "../../../hooks";
-import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
+import { NotLoggedInBlock } from "../NotLoggedInBlock";
+import { useEmbeddingContext } from "../../../hooks/private/use-sdk-context";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -99,12 +100,7 @@ export const QueryVisualizationSdk = (
   }
 
   if (!isLoggedIn) {
-    return (
-      <div>
-        <Text>You should be logged in to see this content.</Text>
-        <Button>Log in</Button>
-      </div>
-    );
+    return <NotLoggedInBlock />;
   }
 
   return (
@@ -135,8 +131,8 @@ export const QueryVisualizationSdk = (
                 />
               </Box>
             )}
-            <QueryVisualizationSdkWrapper
-              className="full-width"
+            <QueryVisualization
+              className="full-width flex-full"
               question={question}
               rawSeries={[{ card, data: result && result.data }]}
               isRunning={state.loading}

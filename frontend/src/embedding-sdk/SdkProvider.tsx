@@ -27,6 +27,12 @@ const MetabaseProviderInternal = ({
 }): JSX.Element => {
   const store = getStore(reducers);
 
+  useEffect(() => {
+    if (window.location.hostname === "localhost") {
+      (window as any).metaReduxStore = store;
+    }
+  }, [store]);
+
   const [font, setFont] = useState<string>(config.font ?? "Lato");
 
   useEffect(() => {
