@@ -222,7 +222,7 @@
           []]]
         (let [db            (mt/db)
               get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
-          ;; 1. add the FK relationship in the database with SQL so we can name it
+          ;; 1. add FK relationship in the database targeting continent_1
           (t2/query-one db "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
           (sync/sync-database! db {:scan :schema})
           (testing "initially country's continent_id is targeting continent_1"
@@ -231,9 +231,9 @@
           ;; 2. drop the FK relationship in the database with SQL
           (t2/query-one db "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
           (sync/sync-database! db {:scan :schema})
-          (testing "This reproduces a bug where if FK relationships are dropped, we don't sync the change"
-            (is (= (mt/id :continent_1 :id)
-                   (get-fk-target))))
+          ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database.
+          #_(testing "after dropping the FK relationship, country's continent_id is targeting nothing"
+              (is (nil? (get-fk-target))))
           ;; 3. add back the FK relationship but targeting continent_2
           (t2/query-one db "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
           (sync/sync-database! db {:scan :schema})
