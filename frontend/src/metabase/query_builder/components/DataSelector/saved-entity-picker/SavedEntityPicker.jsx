@@ -118,11 +118,11 @@ function SavedEntityPicker({
   return (
     <SavedEntityPickerRoot>
       <CollectionsContainer>
-        <BackButton onClick={onBack}>
+        <BackButton onClick={onBack} data-testid="saved-entity-back-navigation">
           <Icon name="chevronleft" className="mr1" />
           {isDatasets ? t`Models` : t`Saved Questions`}
         </BackButton>
-        <TreeContainer>
+        <TreeContainer data-testid="saved-entity-collection-tree">
           <Tree
             data={collectionTree}
             onSelect={handleSelect}
