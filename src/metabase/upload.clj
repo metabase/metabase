@@ -47,32 +47,50 @@
 
 ;; Upload types form a DAG (directed acyclic graph) where each type can be coerced into any
 ;; of its ancestors types. We parse each value in the CSV file to the most-specific possible
-;; type for each column. The most-specific possible type for a column is the lowest common
-;; ancestor of the types for each value in the column.
+;; type for each column. The most-specific possible type for a column is a common ancestor
+;; of the types for each value in the column, found by walking through the graph in a
+;; topological order, following edges from left to right.
 ;;
-;;               text
-;;                |
-;;                │
-;;            varchar-255────────────┐
-;;             /  |  \               │
-;;            /   │  datetime  offset-datetime
-;;           /    │      \
-;;          /     │      date
-;;         /      │
-;;    boolean   float-───────┐
-;;        |       |     \    │
-;;        │       │    ──\──int
-;;        │       │  /    \  │
-;;        │ explicit-int  float-or-int
-;;        │    |     |
-;;        │    │     │
-;; boolean-or-int   auto-incrementing-int-pk
+;; See [[metabase.util.ordered-hierarchy/first-common-ancestor]] for more details.
 ;;
-;; `boolean-or-int` is a special type with two parents, where we parse it as a boolean if the whole
-;; column's values are of that type. additionally a column cannot have a boolean-or-int type, but
-;; a value can. if there is a column with a boolean-or-int value and an integer value, the column will be int
-;; if there is a column with a boolean-or-int value and a boolean value, the column will be boolean
-;; if there is a column with only boolean-or-int values, the column will be parsed as if it were boolean
+;;                 text
+;;                  |
+;;                  │
+;;              varchar-255─────────┐
+;;               /  |  \           │
+;;              /   │  datetime  offset-datetime
+;;             /    │      \
+;;            /     │      date
+;;           /      │
+;;      boolean   float-──┬──┐
+;;         |        |     |  │
+;;         │        │    int─|───┐
+;;         │        │   /    │   │
+;;         │        │  / *float-or-int*
+;;         │        │ /   /
+;;         │  *explicit-int*
+;;         │     |      |
+;;         │     │      │
+;; *boolean-or-int*  auto-incrementing-int-pk
+;;
+;; We have a number of special "abstract" nodes in this graph:
+;;
+;; - `boolean-or-int` is an ambiguous node, that could either be a boolean or an integer.
+;; - `explicit-int` is an integer without an explicit decimal point.
+;; - `float-or-int` is an integer with an explicit decimal point.
+;;
+;; A column can never have any of these types, they are used purely for type-inference from values.
+;; As we scan through the values in a given column, we resolve to the first common ancestor of the
+;; value types which we have seen so far, and once this scan is completed, if any of these types
+;; are still not a `column-type` we then then use `abstract->concrete` to resolve it. For ease of
+;; reference we structure the graph so that this projection can always be found by travelling up
+;; along the left-most edge until we reach a valid `column-type`.
+;;
+;; While a `boolean-or-int` is a genuintely ambiguous value, `explicit-int` and `float-or-int` exist
+;; solely to power the type coercion and type promotion behaviour on CSV appending. If we encounter
+;; a `float-or-int` inside an `int` column, then we can safely cast it down to an integer. If we
+;; encounter a `float` (i.e. there is a non-zero fraction component), then we will need to promote
+;; the column to a `float.`
 ;;
 ;; </code></pre>
 
