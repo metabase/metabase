@@ -40,7 +40,7 @@ export function OwnDatePicker(props: {
       name="close"
       onClick={() => {
         onValueChange(null);
-        setIsOpen(false);
+        closePopover();
       }}
     />
   ) : (
