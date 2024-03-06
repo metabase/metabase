@@ -57,7 +57,7 @@ class EntityMenu extends Component {
       renderTrigger,
       triggerAriaLabel,
       tooltipPlacement,
-      transitionDuration = 300,
+      transitionDuration = 150,
     } = this.props;
     const { open, menuItemContent } = this.state;
 
