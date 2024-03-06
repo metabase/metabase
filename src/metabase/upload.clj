@@ -322,18 +322,6 @@
     (str truncated-name-without-time
          (t/format time-format (strictly-monotonic-now)))))
 
-(def ^:private max-sample-rows "Maximum number of values to use for detecting a column's type" 1000)
-
-(defn- sample-rows
-  "Returns an improper subset of the rows no longer than [[max-sample-rows]]. Takes an evenly-distributed sample (not
-  just the first n)."
-  [rows]
-  (take max-sample-rows
-        (take-nth (max 1
-                       (long (/ (count rows)
-                                max-sample-rows)))
-                  rows)))
-
 (defn- column-definitions
   "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."
   [driver col->upload-type]
@@ -401,7 +389,7 @@
   [driver db-id table-name ^File csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows]         (without-auto-pk-columns (csv/read-csv reader))
-          {:keys [extant-columns generated-columns]} (detect-schema header (sample-rows rows))
+          {:keys [extant-columns generated-columns]} (detect-schema header rows)
           cols->upload-type       (merge generated-columns extant-columns)
           col-definitions         (column-definitions driver cols->upload-type)
           csv-col-names           (keys extant-columns)
@@ -665,10 +653,7 @@
           ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
           ;; we can come back and optimize this to an optimistic-with-fallback approach later.
           type->value->type  (partial relax-type (settings->type->check settings))
-          ;; for now we favor correctness over speed, but need to revisit this if we increase the allowed file size
-          relaxed-types      (->> #_(sample-rows rows) rows
-                                  (reduce #(u/map-all type->value->type %1 %2) old-column-types)
-                                  (map column-type))
+          relaxed-types      (map column-type (reduce #(u/map-all type->value->type %1 %2) old-column-types rows))
           new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types relaxed-types)
           _                  (when (and (not= old-column-types new-column-types)
                                         ;; if we cannot coerce all the columns, don't bother coercing any of them
