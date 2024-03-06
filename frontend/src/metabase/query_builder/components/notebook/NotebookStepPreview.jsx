@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -37,20 +37,17 @@ const getPreviewQuestion = step => {
     .setSettings({ "table.pivot": false });
 };
 
-const NotebookStepPreview = props => {
-  const { onClose } = props;
-  const [question, setQuestion] = useState(getPreviewQuestion(props.step));
+const NotebookStepPreview = ({ step, onClose }) => {
+  const [question, setQuestion] = useState(getPreviewQuestion(step));
 
   const refresh = () => {
-    setQuestion(getPreviewQuestion(props.step));
+    setQuestion(getPreviewQuestion(step));
   };
 
-  const getIsDirty = () => {
-    const newQuestion = getPreviewQuestion(props.step);
+  const isDirty = useMemo(() => {
+    const newQuestion = getPreviewQuestion(step);
     return !_.isEqual(newQuestion.card(), question.card());
-  };
-
-  const isDirty = getIsDirty();
+  }, [step, question]);
 
   return (
     <PreviewRoot data-testid="preview-root">
