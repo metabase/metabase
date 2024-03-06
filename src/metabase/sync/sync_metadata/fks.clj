@@ -1,8 +1,7 @@
 (ns metabase.sync.sync-metadata.fks
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -11,55 +10,40 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(def ^:private FKRelationshipObjects
-  "Relevant objects for a foreign key relationship."
-  [:map
-   [:source-field i/FieldInstance]
-   [:dest-table   i/TableInstance]
-   [:dest-field   i/FieldInstance]])
-
-(mu/defn ^:private fetch-fk-relationship-objects :- [:maybe FKRelationshipObjects]
-  "Fetch the Metabase objects (Tables and Fields) that are relevant to a foreign key relationship described by FK."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance
-   fk       :- i/FKMetadataEntry]
-  (when-let [source-field (t2/select-one Field
-                            :table_id           (u/the-id table)
-                            :%lower.name        (u/lower-case-en (:fk-column-name fk))
-                            :fk_target_field_id nil
-                            :active             true
-                            :visibility_type    [:not= "retired"])]
-    (when-let [dest-table (t2/select-one Table
-                            :db_id           (u/the-id database)
-                            :%lower.name     (u/lower-case-en (-> fk :dest-table :name))
-                            :%lower.schema   (when-let [schema (-> fk :dest-table :schema)]
-                                               (u/lower-case-en schema))
-                            :active          true
-                            :visibility_type nil)]
-      (when-let [dest-field (t2/select-one Field
-                              :table_id           (u/the-id dest-table)
-                              :%lower.name        (u/lower-case-en (:dest-column-name fk))
-                              :active             true
-                              :visibility_type    [:not= "retired"])]
-        {:source-field source-field
-         :dest-table   dest-table
-         :dest-field   dest-field}))))
-
-
 (mu/defn ^:private mark-fk!
+  "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance
    fk       :- i/FKMetadataEntry]
-  (when-let [{:keys [source-field dest-table dest-field]} (fetch-fk-relationship-objects database table fk)]
-    (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
-                (sync-util/name-for-logging table)
-                (sync-util/name-for-logging source-field)
-                (sync-util/name-for-logging dest-table)
-                (sync-util/name-for-logging dest-field)))
-    (t2/update! Field (u/the-id source-field)
-                {:semantic_type      :type/FK
-                 :fk_target_field_id (u/the-id dest-field)})
-    true))
+  (let [field-id-query (fn [db-id table-schema table-name column-name]
+                         {:select [:f.id]
+                          :from   [[:metabase_field :f]]
+                          :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
+                          :where  [:and
+                                   [:= :t.db_id db-id]
+                                   [:= [:lower :f.name] (u/lower-case-en column-name)]
+                                   [:= [:lower :t.name] (u/lower-case-en table-name)]
+                                   (when table-schema
+                                     [:= [:lower :t.schema] (u/lower-case-en table-schema)])
+                                   [:= :f.active true]
+                                   [:not= :f.visibility_type "retired"]]})
+        fk-field-id-query (field-id-query (:id database)
+                                          (:schema table)
+                                          (:name table)
+                                          (:fk-column-name fk))
+        dest-field-id-query (field-id-query (:id database)
+                                            (:schema (:dest-table fk))
+                                            (:name (:dest-table fk))
+                                            (:dest-column-name fk))]
+    (u/prog1 (t2/query-one {:update [:metabase_field :f]
+                            :set {:fk_target_field_id dest-field-id-query}
+                            :where [:= :f.id fk-field-id-query]})
+      (when (= <> 1)
+        (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
+                                  (sync-util/table-name-for-logging table)
+                                  (sync-util/field-name-for-logging :name (:fk-column-name fk))
+                                  (sync-util/table-name-for-logging (:dest-table fk))
+                                  (sync-util/field-name-for-logging :name (:dest-column-name fk))))))))
 
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
@@ -72,9 +56,7 @@
      (let [fks-to-update (fetch-metadata/fk-metadata database table)]
        {:total-fks   (count fks-to-update)
         :updated-fks (sync-util/sum-numbers (fn [fk]
-                                              (if (mark-fk! database table fk)
-                                                1
-                                                0))
+                                              (mark-fk! database table fk))
                                             fks-to-update)}))))
 
 (mu/defn sync-fks!
