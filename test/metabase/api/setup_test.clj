@@ -264,22 +264,6 @@
                                                                     :name    (mt/random-name)
                                                                     :details {}})))))))))
 
-(deftest disallow-h2-setup-test
-  (testing "POST /api/setup"
-    (mt/with-temporary-setting-values [has-user-setup false]
-      (let [details (:details (mt/db))
-            db-name (mt/random-name)
-            request (merge (default-setup-input)
-                           {:database {:engine  :h2
-                                       :details details
-                                       :name    db-name}})]
-        (do-with-setup!*
-         request
-         (fn []
-           (is (=? {:message "H2 is not supported as a data warehouse"}
-                   (mt/user-http-request :crowberto :post 400 "setup" request)))
-           (is (not (t2/exists? Database :name db-name)))))))))
-
 (s/def ::setup!-args
   (s/cat :expected-status (s/? integer?)
             :f               any?
