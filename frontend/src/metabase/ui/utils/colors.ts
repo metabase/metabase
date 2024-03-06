@@ -80,3 +80,12 @@ export function lighten(color: string, value?: number): ThemeColorFunction;
 export function lighten(color: any, value?: number): ThemeColorFunction {
   return ({ theme }) => colors.lighten(theme.fn?.themeColor(color), value);
 }
+
+export function darken(
+  colorName: keyof ColorPalette,
+  value?: number,
+): ThemeColorFunction;
+export function darken(color: string, value?: number): ThemeColorFunction;
+export function darken(color: any, value?: number): ThemeColorFunction {
+  return ({ theme }) => colors.darken(theme.fn?.themeColor(color), value);
+}

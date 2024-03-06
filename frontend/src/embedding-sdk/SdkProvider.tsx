@@ -6,7 +6,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 import { getStore } from "metabase/store";
 import reducers from "metabase/reducers-main";
-import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { getAceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 import { setOptions } from "metabase/redux/embed";
 import { color, alpha } from "metabase/ui/utils/colors";
@@ -75,7 +75,7 @@ const ContentWrapper = styled.div<{ font: string }>`
   --color-brand-alpha-88: ${alpha("brand", 0.88)};
   --color-focus: ${color("focus")};
 
-  ${aceEditorStyles}
+  ${({ theme }) => getAceEditorStyles(theme)}
   ${saveDomImageStyles}
 
   --default-font-size: 0.875em;

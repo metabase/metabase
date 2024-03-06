@@ -1,20 +1,23 @@
 import styled from "@emotion/styled";
 
-import { color, darken } from "metabase/lib/colors";
+import type { Theme } from "@emotion/react";
+import { color, darken } from "metabase/ui/utils/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-function getPinnedForeground(disabled: boolean) {
-  return disabled ? darken(color("border"), 0.38) : color("accent4");
+function getPinnedForeground(disabled: boolean, theme: Theme) {
+  return disabled
+    ? darken(theme.fn.themeColor("border"), 0.38)
+    : color("accent4");
 }
 
-function getForeground(model: string, disabled: boolean) {
+function getForeground(model: string, disabled: boolean, theme: Theme) {
   return disabled
-    ? darken(color("border"), 0.38)
+    ? darken(theme.fn.themeColor("border"), 0.38)
     : model === "dataset"
-    ? color("accent2")
-    : color("brand");
+    ? theme.fn.themeColor("accent2")
+    : theme.fn.themeColor("brand");
 }
 
 const getItemPadding = (variant: string) => {
@@ -38,8 +41,8 @@ export const EntityIconWrapper = styled(IconButtonWrapper)<{
 
   color: ${props =>
     props.isPinned
-      ? getPinnedForeground(props.disabled)
-      : getForeground("", props.disabled)};
+      ? getPinnedForeground(props.disabled, props.theme)
+      : getForeground("", props.disabled, props.theme)};
 `;
 
 export const EntityItemWrapper = styled.div<{

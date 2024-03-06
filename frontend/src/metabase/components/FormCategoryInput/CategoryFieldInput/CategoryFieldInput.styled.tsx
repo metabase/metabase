@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import TokenField from "metabase/components/TokenField";
 
-import { color, darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/ui/utils/colors";
 
 export const OptionListContainer = styled.div`
   max-height: 200px;

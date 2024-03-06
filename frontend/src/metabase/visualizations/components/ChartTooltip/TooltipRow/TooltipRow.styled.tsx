@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/ui/utils/colors";
 
 interface TooltipRowRootProps {
   isHeader?: boolean;

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/ui/utils/colors";
 
 export const Well = styled.div`
   display: flex;
@@ -8,7 +8,7 @@ export const Well = styled.div`
   border-radius: 99px;
   background-color: ${color("bg-medium")};
   &:hover {
-    background-color: ${darken(color("bg-medium"), 0.05)};
+    background-color: ${darken("bg-medium", 0.05)};
   }
   transition: background 300ms linear;
 `;
