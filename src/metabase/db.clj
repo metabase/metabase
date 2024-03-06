@@ -1,32 +1,12 @@
 (ns metabase.db
-  "High-level functions for setting up the Metabase application database. Additional functions can be found in
-  sub-namespaces:
+  "API namespace for the application database (app-db).
 
-  * [[metabase.db.connection]] - functions for getting the application database type (e.g. `:h2`) and a
-    [[clojure.java.jdbc]] spec for it; dynamic variable for rebinding it
+  It has a few different functions you might need:
+  - A connectible for the app-db [[app-db]] and [[data-source]]
+  - Information about the app-db: [[db-is-set-up?]], [[db-type]], [[quoting-style]]
+  - a few other random functions that have built up for different purposes.
 
-  * [[metabase.db.connection-pool-setup]] - functions for creating a connection pool for the application database
-
-  * [[metabase.db.custom-migrations]] - Clojure-land data migration definitions and functions for running them
-
-  * [[metabase.db.data-source]] - Implementations of [[javax.sql.DataSource]] for raw connection strings and
-    broken-out db details. See [[metabase.db.env/broken-out-details]] for more details about what 'broken-out details'
-    means.
-
-  * [[metabase.db.env]] - functions for getting application database connection information from environment variables
-
-  * [[metabase.db.jdbc-protocols]] - implementations of [[clojure.java.jdbc]] protocols for the Metabase application
-    database
-
-  * [[metabase.db.liquibase]] - high-level Clojure wrapper around relevant parts of the Liquibase API
-
-  * [[metabase.db.setup]] - code related to setting up the application DB -- verifying the connection and running
-    migrations -- and for setting it up as the default Toucan connection
-
-  * [[metabase.db.spec]] - util functions for creating JDBC specs for supported application DB types from connection
-    details maps
-
-  * [[metabase.db.util]] - general util functions for Toucan/HoneySQL queries against the application DB"
+  Other namespaces should only depend on this namespace and a sensible API for the app-db maintained."
   (:require
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]

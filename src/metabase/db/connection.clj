@@ -1,6 +1,5 @@
 (ns metabase.db.connection
-  "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them.
-   TODO - consider renaming this namespace `metabase.db.config`."
+  "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them."
   (:require
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.db.connection-pool-setup :as connection-pool-setup]
