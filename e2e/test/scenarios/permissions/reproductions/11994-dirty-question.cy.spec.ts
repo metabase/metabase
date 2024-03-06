@@ -1,23 +1,13 @@
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  COLLECTION_GROUP_ID,
-  DATA_GROUP_ID,
-  NORMAL_USER_ID,
-} from "e2e/support/cypress_sample_instance_data";
 import { restore, visitQuestion } from "e2e/support/helpers";
 import type {
   CardId,
   ConcreteFieldReference,
-  Group,
-  GroupId,
-  Member,
   StructuredQuery,
-  UserId,
 } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const ORDERS_TOTAL_FIELD: ConcreteFieldReference = [
   "field",
@@ -42,28 +32,44 @@ const QUERY: StructuredQuery = {
   breakout: [CREATED_AT_MONTH_BREAKOUT],
 };
 
-type Memberships = Map<Group["id"], Partial<Member>>;
-
 describe("issue 11994", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     cy.createQuestion(
-      { database: SAMPLE_DB_ID, query: QUERY, display: "pivot" },
+      {
+        database: SAMPLE_DB_ID,
+        query: QUERY,
+        display: "pivot",
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: [CREATED_AT_MONTH_BREAKOUT],
+            columns: [],
+            values: [
+              ["aggregation", 0],
+              ["aggregation", 1],
+            ],
+          },
+          "pivot_table.column_widths": {
+            leftHeaderWidths: [141],
+            totalLeftHeaderWidths: 141,
+            valueHeaderWidths: {},
+          },
+        },
+      },
       { wrapId: true, idAlias: "pivotQuestionId" },
     );
     cy.createQuestion(
-      { database: SAMPLE_DB_ID, query: QUERY, display: "combo" },
+      {
+        database: SAMPLE_DB_ID,
+        query: QUERY,
+        display: "combo",
+      },
       { wrapId: true, idAlias: "comboQuestionId" },
     );
-    removeUserMemberships(NORMAL_USER_ID, [DATA_GROUP_ID, COLLECTION_GROUP_ID]);
-    cy.updateCollectionGraph({
-      [ALL_USERS_GROUP]: { root: "read" },
-    });
-    cy.signInAsNormalUser();
+    cy.signIn("readonly");
   });
 
-  // TODO: report the issue with /pivot endpoint throwing an error
   it("does not show raw data toggle for pivot questions (metabase#11994)", () => {
     // TODO: refactor visitQuestion to accept alias or id.
     cy.get<CardId>("@pivotQuestionId").then(questionId => {
@@ -84,24 +90,3 @@ describe("issue 11994", () => {
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
   });
 });
-
-function removeUserMemberships(userId: UserId, groupIds: GroupId[]) {
-  cy.request<Memberships>("GET", "/api/permissions/membership").then(
-    ({ body: memberships }) => {
-      Object.values(memberships)
-        .flat()
-        .filter(membership => {
-          return (
-            membership.user_id === userId &&
-            groupIds.includes(membership.group_id)
-          );
-        })
-        .forEach(membership => {
-          cy.request(
-            "DELETE",
-            `/api/permissions/membership/${membership.membership_id}`,
-          );
-        });
-    },
-  );
-}
