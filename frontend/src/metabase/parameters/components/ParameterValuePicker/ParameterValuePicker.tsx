@@ -1,5 +1,4 @@
 import { useClickOutside } from "@mantine/hooks";
-import type { ChangeEvent, KeyboardEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,7 +9,7 @@ import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget
 import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
-import { Icon, Popover, TextInput } from "metabase/ui";
+import { Popover } from "metabase/ui";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type { Parameter, ParameterType, TemplateTag } from "metabase-types/api";
 
@@ -18,6 +17,7 @@ import {
   TextInputIcon,
   TextInputTrirgger,
 } from "./ParameterValuePicker.styled";
+import { PlainValueInput } from "./PlainValueInput";
 import { shouldShowPlainInput } from "./core";
 
 interface ParameterValuePickerProps {
@@ -28,10 +28,13 @@ interface ParameterValuePickerProps {
   placeholder?: string;
 }
 
+// TODO multiple value pickers
 // TODO make controlled outside
 // TODO must change value when type is changed
 // TODO setting default value on blur/closing picker
 // TODO error states
+// TODO placeholders
+// TODO filter input for numbers
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
   const {
     tag,
@@ -80,44 +83,6 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
   );
 }
 
-interface PlainValueInputProps {
-  value: any;
-  onChange: (value: any) => void;
-  placeholder?: string;
-}
-
-function PlainValueInput(props: PlainValueInputProps) {
-  const { value, onChange, placeholder } = props;
-
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange(event.currentTarget.value);
-  };
-
-  const handleKeyup = (event: KeyboardEvent<HTMLInputElement>) => {
-    const target = event.target as HTMLInputElement;
-    switch (event.key) {
-      // Values are "committed" immediately because it's controlled from the outside
-      case "Enter":
-      case "Escape":
-        target.blur();
-    }
-  };
-
-  const icon = value ? (
-    <TextInputIcon name="close" onClick={() => onChange(null)} />
-  ) : null;
-
-  return (
-    <TextInput
-      value={value ?? ""} // required by Mantine
-      onChange={handleChange}
-      onKeyUp={handleKeyup}
-      placeholder={placeholder}
-      rightSection={icon}
-    />
-  );
-}
-
 function getAmendedParameter(tag: TemplateTag, parameter: Parameter) {
   const amended =
     tag.type === "text" || tag.type === "dimension"
@@ -140,7 +105,6 @@ function getAmendedParameter(tag: TemplateTag, parameter: Parameter) {
 
 // TODO value should reset when changing types
 // TODO popover z-index (select inside dropdown)
-// TODO placholder "Select default value..." isn't showing
 function OwnDatePicker(props: {
   value: any;
   parameter: Parameter;
@@ -160,34 +124,37 @@ function OwnDatePicker(props: {
     "date/all-options": DateAllOptionsWidget,
   }[parameter.type];
 
-  const [targetRef, setTargetRef] = useState<HTMLDivElement | null>(null);
-  const ref = useClickOutside(() => setIsOpen(false), null, [targetRef]);
+  const openPopover = () => setIsOpen(true);
+  const closePopover = () => setIsOpen(false);
+
+  const [triggerRef, setTriggerRef] = useState<HTMLDivElement | null>(null);
+  const ref = useClickOutside(closePopover, null, [triggerRef]);
+
+  // console.log("OwnDatePicker", value, formatted);
+
+  const icon = value ? (
+    <TextInputIcon
+      name="close"
+      onClick={() => {
+        onValueChange(null);
+        setIsOpen(false);
+      }}
+    />
+  ) : (
+    <TextInputIcon name="chevrondown" />
+  );
 
   return (
     <Popover opened={isOpen}>
       <Popover.Target>
-        <div ref={setTargetRef}>
-          <TextInputTrirgger
-            value={typeof formatted === "string" ? formatted : value}
-            readOnly
-            placeholder={t`Select a default value…`}
-            onClick={() => setIsOpen(true)}
-            rightSection={
-              value ? (
-                <Icon
-                  cursor="pointer"
-                  name="close"
-                  onClick={() => {
-                    onValueChange(null);
-                    setIsOpen(false);
-                  }}
-                />
-              ) : (
-                <Icon cursor="pointer" name="chevrondown" />
-              )
-            }
-          />
-        </div>
+        <TextInputTrirgger
+          ref={setTriggerRef}
+          value={typeof formatted === "string" ? formatted : value ?? ""} // required by Mantine
+          readOnly
+          placeholder={t`Select a default value…`}
+          onClick={openPopover}
+          rightSection={icon}
+        />
       </Popover.Target>
 
       <Popover.Dropdown>
@@ -199,7 +166,7 @@ function OwnDatePicker(props: {
                 value,
                 parameter.type as ParameterType,
               )}
-              onClose={() => setIsOpen(false)}
+              onClose={closePopover}
               setValue={onValueChange}
             />
           ) : (
