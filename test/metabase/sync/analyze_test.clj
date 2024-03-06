@@ -55,7 +55,7 @@
              {:name "ID", :semantic_type :type/PK, :last_analyzed false}
              {:name "PRICE", :semantic_type :type/Category, :last_analyzed true}
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
-             {:name "CATEGORY_ID", :semantic_type :type/Category, :last_analyzed true}
+             {:name "CATEGORY_ID", :semantic_type :type/FK, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
            (set (for [field (t2/select [Field :name :semantic_type :last_analyzed] :table_id (u/the-id table))]
                   (into {} (update field :last_analyzed boolean))))))))
