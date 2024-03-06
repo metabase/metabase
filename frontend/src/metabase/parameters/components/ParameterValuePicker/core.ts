@@ -1,6 +1,5 @@
 import {
   getParameterSubType,
-  isDateParameter,
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
 import type { Parameter } from "metabase-types/api";
@@ -33,10 +32,4 @@ export function shouldShowPlainInput(parameter: Parameter) {
   }
 
   return false;
-}
-
-export function shouldShowDatePicker(parameter: Parameter) {
-  return (
-    isDateParameter(parameter) && getParameterSubType(parameter) === "single"
-  );
 }
