@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, alpha, darken } from "metabase/lib/colors";
+import { alpha, color, darken } from "metabase/lib/colors";
 
 export const TokenFieldItem = styled.li<{
   isValid: boolean;

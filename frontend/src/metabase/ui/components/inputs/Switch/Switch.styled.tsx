@@ -1,5 +1,5 @@
 import type { MantineThemeOverride, SwitchStylesParams } from "@mantine/core";
-import { rem, getSize, getStylesRef } from "@mantine/core";
+import { getSize, getStylesRef, rem } from "@mantine/core";
 
 import { color } from "metabase/lib/colors";
 

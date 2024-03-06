@@ -2,9 +2,9 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import {
-  breakpointMinSmall,
   breakpointMinLarge,
   breakpointMinMedium,
+  breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
 export const Root = styled.div<{

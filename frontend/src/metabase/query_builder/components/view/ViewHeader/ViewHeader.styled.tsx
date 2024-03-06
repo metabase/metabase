@@ -6,10 +6,10 @@ import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
-import ViewSection, { ViewSubHeading, ViewHeading } from "../ViewSection";
+import ViewSection, { ViewHeading, ViewSubHeading } from "../ViewSection";
 import { QuestionDataSource } from "./components/QuestionDataSource";
 
 export const ViewHeaderContainer = styled(ViewSection)<{

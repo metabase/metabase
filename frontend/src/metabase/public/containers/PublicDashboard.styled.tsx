@@ -2,8 +2,8 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import {
-  breakpointMinSmall,
   breakpointMinLarge,
+  breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
 export const StyledDashboardTabs = styled(DashboardTabs)`

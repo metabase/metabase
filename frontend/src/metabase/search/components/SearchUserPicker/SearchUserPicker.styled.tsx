@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import type { HTMLAttributes } from "react";
 import type { ButtonProps } from "metabase/ui";
-import { Stack, Button, Group, TextInput } from "metabase/ui";
+import { Button, Group, Stack, TextInput } from "metabase/ui";
 
 export const SearchUserPickerContainer = styled(Stack)`
   overflow: hidden;

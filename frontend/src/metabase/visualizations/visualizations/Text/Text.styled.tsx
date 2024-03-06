@@ -2,8 +2,8 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import {
-  breakpointMinExtraLarge,
   breakpointMaxExtraLarge,
+  breakpointMinExtraLarge,
 } from "metabase/styled-components/theme";
 
 const DEFAULT_CONTAINER_PADDING_SIZE = "0.75rem";
