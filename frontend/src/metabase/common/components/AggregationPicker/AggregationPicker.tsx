@@ -238,7 +238,7 @@ export function AggregationPicker({
           hasTemporalBucketing
           maxHeight={maxHeight}
           color="summarize"
-          checkIsColumnSelected={checkColumnSelected}
+          checkIsColumnSelected={checkIsColumnSelected}
           onSelect={handleColumnSelect}
           onClose={onClose}
         />
@@ -352,6 +352,6 @@ function getMetricListItem(
   };
 }
 
-function checkColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
+function checkIsColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
   return !!columnInfo.selected;
 }
