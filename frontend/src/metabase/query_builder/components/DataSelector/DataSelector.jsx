@@ -333,7 +333,7 @@ export class UnconnectedDataSelector extends Component {
 
     if (this.props.selectedTableId) {
       await this.props.fetchFields(this.props.selectedTableId);
-      if (this.isSavedQuestionSelected()) {
+      if (this.isSavedEntitySelected()) {
         this.showSavedQuestionPicker();
       }
     }
@@ -434,7 +434,7 @@ export class UnconnectedDataSelector extends Component {
   async hydrateActiveStep() {
     const { steps } = this.props;
     if (
-      this.isSavedQuestionSelected() ||
+      this.isSavedEntitySelected() ||
       this.state.selectedDataBucketId === DATA_BUCKET.MODELS ||
       this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
     ) {
@@ -835,7 +835,7 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
-  isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
+  isSavedEntitySelected = () => isVirtualCardId(this.props.selectedTableId);
 
   handleSavedQuestionSelect = async tableOrCardId => {
     await this.props.fetchFields(tableOrCardId);
