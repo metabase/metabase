@@ -444,8 +444,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     cy.findByTestId("fields-picker").click();
-    cy.findAllByLabelText("More info").first().realHover();
-    cy.findByRole("dialog").contains("This is a unique ID");
+    popover().findAllByLabelText("More info").first().realHover();
+
+    hovercard().contains("This is a unique ID");
   });
 
   it("should treat max/min on a name as a string filter (metabase#21973)", () => {

@@ -10,8 +10,7 @@ import {
   QueryColumnInfoPopover,
   TableColumnInfoPopover,
 } from "../ColumnInfoPopover";
-
-import { PopoverHoverTarget, HoverParent } from "./ColumnInfoIcon.styled";
+import { PopoverHoverTarget, HoverParent } from "../InfoIcon";
 export { HoverParent };
 
 export function QueryColumnInfoIcon({
