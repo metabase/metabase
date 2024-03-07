@@ -215,9 +215,11 @@
   (cond (nil? value) current-type
         (nil? current-type) (value->type type->check value)
         :else (let [trimmed (str/trim value)]
-                (->> (cons current-type (ancestors h current-type))
-                     (filter #((type->check %) trimmed))
-                     first))))
+                (if (str/blank? trimmed)
+                  current-type
+                  (->> (cons current-type (ancestors h current-type))
+                       (filter #((type->check %) trimmed))
+                       first)))))
 
 (defn- type-relaxer
   "Given a map of {value-type -> predicate}, return a reducing fn which updates our inferred schema using the next row."
