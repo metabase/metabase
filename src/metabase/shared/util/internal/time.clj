@@ -266,8 +266,23 @@
     (re-find #"(?:Z|[+-]\d\d(?::?\d\d)?)$" input) (t/offset-date-time)
     :always (localize)))
 
+(defn ^:private format-extraction-unit
+  "Formats a date-time value given the temporal extraction unit.
+  If unit is not supported, returns nil."
+  [t unit]
+  (case unit
+    :day-of-week     (t/format "EEEE" t)
+    :month-of-year   (t/format "MMM" t)
+    :minute-of-hour  (t/format "m" t)
+    :hour-of-day     (t/format "h a" t)
+    :day-of-month    (t/format "d" t)
+    :day-of-year     (t/format "D" t)
+    :week-of-year    (t/format "w" t)
+    :quarter-of-year (t/format "'Q'Q" t)
+    nil))
+
 (defn format-unit
-  "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
+  "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time"
   [input unit]
   (if (string? input)
@@ -279,15 +294,8 @@
               date? (t/local-date input)
               date-time? (coerce-local-date-time input))]
       (if t
-        (case unit
-          :day-of-week (t/format "EEEE" t)
-          :month-of-year (t/format "MMM" t)
-          :minute-of-hour (t/format "m" t)
-          :hour-of-day (t/format "h a" t)
-          :day-of-month (t/format "d" t)
-          :day-of-year (t/format "D" t)
-          :week-of-year (t/format "w" t)
-          :quarter-of-year (t/format "'Q'Q" t)
+        (or
+          (format-extraction-unit t unit)
           (cond
             time? (t/format "h:mm a" t)
             date? (t/format "MMM d, yyyy" t)
@@ -295,7 +303,9 @@
         input))
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
-      (str input))))
+      (or
+        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit)
+        (str input)))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.
