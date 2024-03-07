@@ -33,20 +33,13 @@
                                 tmp-h2-db-mv h2-file-dump-content}]
       ;; 1. Don't actually run the copy steps themselves
       (with-redefs [copy/copy! (constantly nil)]
-        (try
-         (doseq [[filename contents] file-contents]
-           (spit filename contents))
-         (dump-to-h2/dump-to-h2! tmp-h2-db)
+        (doseq [[filename contents] file-contents]
+          (spit filename contents))
+        (dump-to-h2/dump-to-h2! tmp-h2-db)
 
-         (doseq [filename (keys file-contents)]
-           (testing (str filename " was deleted")
-             (is (false? (.exists (io/file filename))))))
-
-         (finally
-          (doseq [filename (keys file-contents)
-                  :let     [file (io/file filename)]]
-            (when (.exists file)
-              (io/delete-file file)))))))))
+        (doseq [filename (keys file-contents)]
+          (testing (str filename " was deleted")
+            (is (false? (.exists (io/file filename))))))))))
 
 (deftest cmd-dump-to-h2-returns-code-from-dump-test
   (with-redefs [dump-to-h2/dump-to-h2! #(throw (Exception. "err"))
