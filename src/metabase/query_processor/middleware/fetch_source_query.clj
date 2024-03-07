@@ -66,55 +66,37 @@
                     (update :stages update-stages)))]
         (update card :dataset-query update-query)))))
 
-(mu/defn ^:private resolve-source-cards-in-stages :- [:maybe
-                                                      [:map
-                                                       [:card-id ::lib.schema.id/card]
-                                                       [:stages  ::lib.schema/stages]]]
-  [query                    :- ::lib.schema/query
-   [first-stage :as stages] :- ::lib.schema/stages
-   dep-graph                :- (ms/InstanceOfClass clojure.lang.Atom)]
-  (when (and (= (:lib/type first-stage) :mbql.stage/mbql)
-             (:source-card first-stage))
+(mu/defn ^:private resolve-source-cards-in-stage :- [:maybe ::lib.schema/stages]
+  [query     :- ::lib.schema/query
+   stage     :- ::lib.schema/stage
+   dep-graph :- (ms/InstanceOfClass clojure.lang.Atom)]
+  (when (and (= (:lib/type stage) :mbql.stage/mbql)
+             (:source-card stage))
     ;; make sure nested queries are enabled before resolving them.
     (when-not (public-settings/enable-nested-queries)
       (throw (ex-info (trs "Nested queries are disabled")
-                      {:type qp.error-type/disabled-feature, :card-id (:source-card first-stage)})))
+                      {:type qp.error-type/disabled-feature, :card-id (:source-card stage)})))
     ;; If the first stage came from a different source card (i.e., we are doing recursive resolution) record the
     ;; dependency of the previously-resolved source card on the one we're about to resolve. We can check for circular
     ;; dependencies this way.
-    (when (:qp/stage-is-from-source-card first-stage)
+    (when (:qp/stage-is-from-source-card stage)
       (u/prog1 (swap! dep-graph
                       dep/depend
-                      (tru "Card {0}" (:qp/stage-is-from-source-card first-stage))
-                      (tru "Card {0}" (:source-card first-stage)))
+                      (tru "Card {0}" (:qp/stage-is-from-source-card stage))
+                      (tru "Card {0}" (:source-card stage)))
         ;; This will throw if there's a cycle
         (dep/topo-sort <>)))
-    (let [card         (card query (:source-card first-stage))
+    (let [card         (card query (:source-card stage))
           card-stages  (get-in card [:dataset-query :stages])
           ;; this information is used by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]]
-          first-stage' (-> first-stage
-                           ;; these keys are used by the [[metabase.query-processor.middleware.annotate]] middleware to
-                           ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
-                           ;; the metadata associated with Fields themselves)
-                           (assoc :qp/stage-had-source-card (:id card)
-                                  :source-query/model?      (= (:type card) :model))
-                           (dissoc :source-card))
-          stages'      (into (vec card-stages)
-                             cat
-                             [[first-stage']
-                              (rest stages)])]
-      {:stages stages', :card-id (:id card)})))
-
-(defn- resolve-source-cards-in-joins [query dep-graph]
-  (lib.walk/walk
-   query
-   (fn [query path-type path join]
-     (when (= path-type :lib.walk/join)
-       (when-let [{stages' :stages} (resolve-source-cards-in-stages
-                                     query
-                                     (get-in query (conj (vec path) :stages))
-                                     dep-graph)]
-         (assoc join :stages stages'))))))
+          stage'        (-> stage
+                            ;; these keys are used by the [[metabase.query-processor.middleware.annotate]] middleware to
+                            ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
+                            ;; the metadata associated with Fields themselves)
+                            (assoc :qp/stage-had-source-card (:id card)
+                                   :source-query/model?      (= (:type card) :model))
+                            (dissoc :source-card))]
+      (into (vec card-stages) [stage']))))
 
 (def ^:private max-recursion-depth 50)
 
@@ -123,15 +105,18 @@
   ;; dependencies if they occur
   (assert (<= recursion-depth max-recursion-depth)
           (format "Source Cards not fully resolved after %d iterations." max-recursion-depth))
-  (let [updated-query                              (resolve-source-cards-in-joins original-query dep-graph)
-        {updated-stages :stages, card-id :card-id} (resolve-source-cards-in-stages updated-query (:stages updated-query) dep-graph)
+  (let [updated-query                              (lib.walk/walk-stages
+                                                    original-query
+                                                    (fn [query _path stage]
+                                                      (resolve-source-cards-in-stage query stage dep-graph)))
+        card-id                                    (some :qp/stage-had-source-card
+                                                         (reverse (:stages updated-query)))
         ;; `:qp/source-card-id` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]] to
         ;; decide whether to record metadata as well as by the [[add-dataset-info]] post-processing middleware, and
         ;; by [[metabase.query-processor.middleware.permissions/check-query-permissions*]]
         updated-query                              (cond-> updated-query
-                                                     updated-stages (assoc :stages updated-stages)
-                                                     card-id        (update :qp/source-card-id #(or % card-id))
-                                                     card-id        (update-in [:info :card-id] #(or % card-id)))]
+                                                     card-id  (-> (update :qp/source-card-id #(or % card-id))
+                                                                  (update-in [:info :card-id] #(or % card-id))))]
     (if (= updated-query original-query)
       original-query
       ;; if any resolution happened, recursively resolve things in the updated query in case we need to do MORE.
