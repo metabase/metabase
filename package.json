@@ -89,7 +89,7 @@
     "react-dnd": "3",
     "react-dnd-html5-backend": "3",
     "react-dom": "~18.2.0",
-    "react-draggable": "^3.3.2",
+    "react-draggable": "^4.4.6",
     "react-dropzone": "^14.2.3",
     "react-grid-layout": "^1.2.5",
     "react-innertext": "^1.1.5",
