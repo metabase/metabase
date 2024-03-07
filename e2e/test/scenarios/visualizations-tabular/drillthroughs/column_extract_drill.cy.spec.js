@@ -64,30 +64,61 @@ describe("extract action", () => {
   });
 
   describe("date columns", () => {
-    describe("date options", () => {
+    describe("should add a date expression for each option", () => {
       DATE_CASES.forEach(({ option, value }) => {
         it(option, () => {
           openOrdersTable({ limit: 1 });
           cy.wait("@dataset");
-          extractColumnAndCheck("Created At", option, value);
+          extractColumnAndCheck({
+            column: "Created At",
+            option,
+            value,
+          });
         });
       });
     });
 
     it("should add an expression based on a breakout column", () => {
       cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
-      extractColumnAndCheck("Created At: Month", "Month of year", "Apr");
+      extractColumnAndCheck({
+        column: "Created At: Month",
+        option: "Month of year",
+        value: "Apr",
+      });
     });
 
     it("should add an expression based on an aggregation column", () => {
       cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
-      extractColumnAndCheck("Min of Created At: Default", "Year", "2,022");
+      extractColumnAndCheck({
+        column: "Min of Created At: Default",
+        option: "Year",
+        value: "2,022",
+      });
+    });
+
+    it("should handle duplicate expression names", () => {
+      openOrdersTable({ limit: 1 });
+      cy.wait("@dataset");
+      extractColumnAndCheck({
+        column: "Created At",
+        option: "Hour of day",
+        newColumn: "Hour of day",
+      });
+      extractColumnAndCheck({
+        column: "Created At",
+        option: "Hour of day",
+        newColumn: "Hour of day_2",
+      });
     });
 
     it("should be able to modify the expression in the notebook editor", () => {
       openOrdersTable({ limit: 1 });
       cy.wait("@dataset");
-      extractColumnAndCheck("Created At", "Year", "2,025");
+      extractColumnAndCheck({
+        column: "Created At",
+        option: "Year",
+        value: "2,025",
+      });
       cy.wait("@dataset");
       openNotebook();
       getNotebookStep("expression").findByText("Year").click();
@@ -104,17 +135,23 @@ describe("extract action", () => {
       });
       openOrdersTable({ limit: 1 });
       cy.wait("@dataset");
-      extractColumnAndCheck("Created At", "Tag der Woche", "Dienstag");
+      extractColumnAndCheck({
+        column: "Created At",
+        option: "Tag der Woche",
+        value: "Dienstag",
+      });
     });
   });
 });
 
-function extractColumnAndCheck(column, option, value) {
+function extractColumnAndCheck({ column, option, newColumn = option, value }) {
   cy.findByRole("columnheader", { name: column }).click();
   popover().findByText("Extract day, month…").click();
   popover().findByText(option).click();
   cy.wait("@dataset");
 
-  cy.findByRole("columnheader", { name: option }).should("be.visible");
-  cy.findByRole("gridcell", { name: value }).should("be.visible");
+  cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
+  if (value) {
+    cy.findByRole("gridcell", { name: value }).should("be.visible");
+  }
 }
