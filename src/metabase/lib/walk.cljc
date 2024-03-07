@@ -1,7 +1,7 @@
 (ns metabase.lib.walk
   "Tools for walking and transforming a query.")
 
-(declare walk-stages)
+(declare walk-stages*)
 
 (defn- reduce-preserving-reduced
   "Like [[reduce]] but preserves the [[reduced]] wrapper around the result. This is important because we use a few
@@ -20,44 +20,44 @@
      init
      xs)))
 
-(defn- walk-join [query path-to-join f]
+(defn- walk-join* [query path-to-join f]
   (let [path-to-join-stages (conj (vec path-to-join) :stages)
-        query'              (walk-stages query path-to-join-stages f)]
+        query'              (walk-stages* query path-to-join-stages f)]
     (if (reduced? query')
       query'
       (f query' :lib.walk/join path-to-join))))
 
-(defn- walk-joins [query path-to-joins f]
+(defn- walk-joins* [query path-to-joins f]
   (reduce-preserving-reduced
    (fn [query join-number]
      (let [path-to-join (conj (vec path-to-joins) join-number)]
-       (walk-join query path-to-join f)))
+       (walk-join* query path-to-join f)))
    query
    (range (count (get-in query path-to-joins [])))))
 
-(defn- walk-stage [query path-to-stage f]
+(defn- walk-stage* [query path-to-stage f]
   (let [stage         (get-in query path-to-stage)
         path-to-joins (conj (vec path-to-stage) :joins)
         ;; only walk joins in MBQL stages, if someone tries to put them in a native stage ignore them since they're
         ;; not allowed there anyway.
         query'        (if (and (= (:lib/type stage :mbql.stage/mbql) :mbql.stage/mbql)
                                (seq (get-in query path-to-joins)))
-                        (walk-joins query path-to-joins f)
+                        (walk-joins* query path-to-joins f)
                         query)]
     (if (reduced? query')
       query'
       (f query' :lib.walk/stage path-to-stage))))
 
-(defn- walk-stages [query path-to-stages f]
+(defn- walk-stages* [query path-to-stages f]
   (reduce-preserving-reduced
    (fn [query stage-number]
      (let [path-to-stage (conj (vec path-to-stages) stage-number)]
-       (walk-stage query path-to-stage f)))
+       (walk-stage* query path-to-stage f)))
    query
    (range (count (get-in query path-to-stages [])))))
 
-(defn- walk-query [query f]
-  (walk-stages query [:stages] f))
+(defn- walk-query* [query f]
+  (walk-stages* query [:stages] f))
 
 (defn walk
   "Depth-first recursive walk and replace for a `query`; call
@@ -89,7 +89,7 @@
                   (reduced true))))))"
   [query f]
   (unreduced
-   (walk-query
+   (walk-query*
     query
     (fn [query path-type path]
       (let [stage-or-join  (get-in query path)
@@ -99,3 +99,14 @@
           (reduced? stage-or-join')                 stage-or-join'
           (identical? stage-or-join' stage-or-join) query
           :else                                     (assoc-in query path stage-or-join')))))))
+
+(defn walk-stages
+  "Like [[walk]], but only walks the stages in a query. `f` is invoked like
+
+    (f query path stage)"
+  [query f]
+  (walk
+   query
+   (fn [query path-type path stage-or-join]
+     (when (= path-type :lib.walk/stage)
+       (f query path stage-or-join)))))

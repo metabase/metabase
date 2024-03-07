@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -753,3 +754,53 @@
               parts))
       (is (=? [:= {} (lib.options/update-options (lib/ref col) dissoc :lib/uuid) v]
               (lib/expression-clause (:operator parts) (:args parts) nil))))))
+
+(deftest ^:parallel add-filters-to-stage-test
+  (testing "Don't add empty :filters"
+    (is (= {:lib/type :mbql.stage/mbql}
+           (lib.filter/add-filters-to-stage {:lib/type :mbql.stage/mbql} nil)
+           (lib.filter/add-filters-to-stage {:lib/type :mbql.stage/mbql} []))))
+  (testing "Ignore duplicate filters"
+    (is (= {:lib/type :mbql.stage/mbql
+            :filters [[:=
+                       {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                       [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1]
+                       1]
+                      [:=
+                       {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+                       [:field {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1]
+                       2]]}
+           (lib.filter/add-filters-to-stage
+            {:lib/type :mbql.stage/mbql
+             :filters [[:=
+                        {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1]
+                        1]
+                       [:=
+                        {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1]
+                        2]]}
+            [[:=
+              {:lib/uuid "00000000-0000-0000-0000-000000000005"}
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000006"} 1]
+              1]])))))
+
+(deftest ^:parallel flatten-compound-filters-in-stage-test
+  (is (= {:lib/type :mbql.stage/mbql
+          :filters
+          [[:= {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1 2]
+           [:= {:lib/uuid "00000000-0000-0000-0000-000000000002"} 3 4]
+           [:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} 5 6]
+           [:= {:lib/uuid "00000000-0000-0000-0000-000000000005"} 7 8]
+           [:= {:lib/uuid "00000000-0000-0000-0000-000000000006"} 9 10]]}
+         (lib.filter/flatten-compound-filters-in-stage
+          {:lib/type :mbql.stage/mbql
+           :filters  [[:= {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1 2]
+                      [:and
+                       {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                       [:= {:lib/uuid "00000000-0000-0000-0000-000000000002"} 3 4]
+                       [:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} 5 6]
+                       [:and
+                        {:lib/uuid "00000000-0000-0000-0000-000000000004"}
+                        [:= {:lib/uuid "00000000-0000-0000-0000-000000000005"} 7 8]
+                        [:= {:lib/uuid "00000000-0000-0000-0000-000000000006"} 9 10]]]]}))))

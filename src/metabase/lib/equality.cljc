@@ -412,3 +412,21 @@
          (and (not (contains? matching nil))
               (= (count matching) (count columns))
               (every? #(= (count %) 1) (vals matching))))))
+
+(defn clauses-equal-ignoring-lib-uuids?
+  "Whether two MBQL clauses `x` and `y` should be considered equal if you ignore :lib/uuid values (including for recursive MBQL clauses)."
+  [x y]
+  (cond
+    (and (map? x)
+         (map? y))
+    (= (dissoc x :lib/uuid)
+       (dissoc y :lib/uuid))
+
+    (and (sequential? x)
+         (sequential? y))
+    (and (= (count x)
+            (count y))
+         (every? identity (map clauses-equal-ignoring-lib-uuids? x y)))
+
+    :else
+    (= x y)))

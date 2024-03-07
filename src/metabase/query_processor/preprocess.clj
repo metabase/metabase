@@ -54,10 +54,10 @@
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'fetch-source-query/resolve-source-cards
-   ;; ↑↑↑ ALL MIDDLEWARE ABOVE THIS POINT WILL SEE MLV2 PMBQL QUERIES ↑↑↑
-   #'qp.convert-to-legacy/convert-to-legacy
-   ;; ↓↓↓ ALL MIDDLEWARE BELOW THIS POINT WILL SEE LEGACY MBQL QUERIES ↓↓↓
    #'expand-macros/expand-macros
+   ;; ↑↑↑ ALL MIDDLEWARE ABOVE THIS POINT WILL SEE MLV2 PMBQL QUERIES ↑↑↑
+   ;; ↓↓↓ ALL MIDDLEWARE BELOW THIS POINT WILL SEE LEGACY MBQL QUERIES ↓↓↓
+   #'qp.convert-to-legacy/convert-to-legacy
    #'qp.resolve-referenced/resolve-referenced-card-resources
    #'parameters/substitute-parameters
    #'qp.resolve-source-table/resolve-source-tables

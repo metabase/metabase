@@ -586,3 +586,35 @@
                (lib.equality/find-matching-column (lib/ref created-at) columns)))
         (is (= ca-expr
                (lib.equality/find-matching-column (lib/ref ca-expr)    columns)))))))
+
+(deftest ^:parallel clauses-equal-ignoring-lib-uuids?-test
+  (testing "should be equal"
+    (are [x y] (lib.equality/clauses-equal-ignoring-lib-uuids? x y)
+      ;; should ignore different UUIDs
+      [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+
+      ;; should recurse into subclauses correctly
+      [:=
+       {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]
+      [:=
+       {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1]
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000005"} 2]]))
+  (testing "should not be equal"
+    (are [x y] (not (lib.equality/clauses-equal-ignoring-lib-uuids? x y))
+      ;; field IDs differ
+      [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 2]
+
+      ;; should not be equal because :base-types differ
+      [:=
+       {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000001", :base-type :type/Integer} 1]
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]
+      [:=
+       {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000004", :base-type :type/Text} 1]
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000005"} 2]])))

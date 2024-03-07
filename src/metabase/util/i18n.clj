@@ -182,6 +182,7 @@
 
   Prefer this over `deferred-tru`. Use `deferred-tru` only in code executed at compile time, or where `str` is manually
   applied to the result."
+  {:style/indent [:form]}
   [format-string-or-str & args]
   `(str* (deferred-tru ~format-string-or-str ~@args)))
 
@@ -193,6 +194,7 @@
 
   Prefer this over `deferred-trs`. Use `deferred-trs` only in code executed at compile time, or where `str` is manually
   applied to the result."
+  {:style/indent [:form]}
   [format-string-or-str & args]
   `(str* (deferred-trs ~format-string-or-str ~@args)))
 

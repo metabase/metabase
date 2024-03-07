@@ -114,7 +114,9 @@
 (def ^:private max-recursion-depth 50)
 
 (defn- resolve-source-cards* [original-query recursion-depth dep-graph]
-  (assert (<= recursion-depth max-recursion-depth) "Infinite recursion detected")
+  ;; this is mostly to catch programmer bugs and avoid infinite loops, thus not i18n'ed
+  (assert (<= recursion-depth max-recursion-depth)
+          (format "Source Cards not fully resolved after %d iterations." max-recursion-depth))
   (let [updated-query                              (resolve-source-cards-in-joins original-query dep-graph)
         {updated-stages :stages, card-id :card-id} (resolve-source-cards-in-stages updated-query (:stages updated-query) dep-graph)
         updated-query                              (cond-> updated-query

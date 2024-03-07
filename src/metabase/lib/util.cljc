@@ -523,3 +523,23 @@
           ;; subvec holds onto references, so create a new vector
           (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))
+
+(defn fresh-uuids
+  "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more
+  than once."
+  [x]
+  (cond
+    (sequential? x)
+    (into (empty x) (map fresh-uuids) x)
+
+    (map? x)
+    (into
+     (empty x)
+     (map (fn [[k v]]
+            [k (if (= k :lib/uuid)
+                 (str (random-uuid))
+                 (fresh-uuids v))]))
+     x)
+
+    :else
+    x))

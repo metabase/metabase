@@ -23,7 +23,7 @@
   [query]
   (some->
    (mbql.u/match query
-     (m :guard (every-pred map? :source-table #(integer? (:source-table %))))
+     (m :guard (every-pred map? :source-table #(pos-int? (:source-table %))))
      ;; Recursively look in the rest of `m` for any other source tables
      (cons
       (:source-table m)
