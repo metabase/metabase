@@ -115,7 +115,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         postUpdateActions: [
           () =>
             updateSetting({
-              key: "dismissed_custom_dashboard_toast",
+              key: "dismissed-custom-dashboard-toast",
               value: true,
             }),
           refreshCurrentUser,
