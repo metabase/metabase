@@ -20,6 +20,10 @@ export const getQueryType = (
 const getDefaultQueryType = (
   parameter: ParameterWithTemplateTagTarget,
 ): ValuesQueryType => {
+  if (parameter.hasVariableTemplateTagTarget) {
+    return "none";
+  }
+
   const type = getParameterType(parameter);
   const subType = getParameterSubType(parameter);
 
