@@ -1,23 +1,19 @@
-(ns ordered-hierarchy-test
+(ns util.ordered-hierarchy-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [clojure.walk :as walk]
+   [metabase.upload :as upload]
    [metabase.util.ordered-hierarchy :as ordered-hierarchy]))
 
 ;;; It would be nice to have property tests, to expose any subtle edge cases.
-;;; For now, we use an extraction of the first real world usage in the app, at the time of writing.
-
+;;; For now, we use a translation of some real world usage in the app.
 (def ^:private h
-  (-> (ordered-hierarchy/make-hierarchy)
-      (ordered-hierarchy/derive ::boolean-or-int ::boolean)
-      (ordered-hierarchy/derive ::boolean-or-int ::int)
-      (ordered-hierarchy/derive ::auto-incrementing-int-pk ::int)
-      (ordered-hierarchy/derive ::int ::float)
-      (ordered-hierarchy/derive ::date ::datetime)
-      (ordered-hierarchy/derive ::boolean ::varchar-255)
-      (ordered-hierarchy/derive ::float ::varchar-255)
-      (ordered-hierarchy/derive ::datetime ::varchar-255)
-      (ordered-hierarchy/derive ::offset-datetime ::varchar-255)
-      (ordered-hierarchy/derive ::varchar-255 ::text)))
+  (walk/postwalk
+   (fn [x]
+     (if (and (keyword? x) (namespace x))
+       (keyword (name (ns-name *ns*)) (name x))
+       x))
+   @#'upload/h))
 
 (deftest parents-test
   (testing "Parents are listed according to the order that this tag was derived from each of them"

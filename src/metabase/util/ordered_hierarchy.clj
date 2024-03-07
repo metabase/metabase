@@ -5,14 +5,30 @@
    [flatland.ordered.set :refer [ordered-set]]
    [medley.core :as m]))
 
+(declare derive)
+
+(defn- derive-children
+  [h [parent & children]]
+  (reduce (fn [h child]
+            (if (keyword? child)
+              (derive h child parent)
+              (derive-children (derive h (first child) parent)
+                               child)))
+          h
+          children))
+
 (defn make-hierarchy
   "Similar to [[clojure.core/make-hierarchy]], but the returned hierarchy will supports ordered derivations.
 
+  Can take arguments to be treated as roots, defined using hiccup syntax. NOTE: we do not check that they are roots.
+
   !! WARNING !!
   Using [[clojure.core/derive]] with this will corrupt the ordering - you must use the implementation from this ns."
-  []
-  (-> (clojure.core/make-hierarchy)
-      (with-meta {::ordered? true})))
+  ([]
+   (-> (clojure.core/make-hierarchy)
+       (with-meta {::ordered? true})))
+  ([& roots]
+   (reduce derive-children (make-hierarchy) roots)))
 
 (defn ancestors
   "Returns the immediate and indirect parents of tag, as established via derive. Earlier derivations are shown first.

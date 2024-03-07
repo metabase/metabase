@@ -33,7 +33,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.ordered-hierarchy :as ordered-hierarchy :refer [derive make-hierarchy]]
+   [metabase.util.ordered-hierarchy :as ordered-hierarchy :refer [make-hierarchy]]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -80,17 +80,14 @@
   "This hierarchy defines a relationship between value types and their specializations.
   We use an [[metabase.util.ordered-hierarchy]] for its topological sorting, which simplify writing efficient and
   consistent implementations for of our type inference, parsing, and relaxation."
-  (-> (make-hierarchy)
-      (derive ::boolean-or-int ::boolean)
-      (derive ::boolean-or-int ::int)
-      (derive ::auto-incrementing-int-pk ::int)
-      (derive ::int ::float)
-      (derive ::date ::datetime)
-      (derive ::boolean ::varchar-255)
-      (derive ::offset-datetime ::varchar-255)
-      (derive ::datetime ::varchar-255)
-      (derive ::float ::varchar-255)
-      (derive ::varchar-255 ::text)))
+  (-> (make-hierarchy
+       [::text
+        [::varchar-255
+         [::boolean ::boolean-or-int]
+         [::float
+          [::int ::boolean-or-int ::auto-incrementing-int-pk]]
+         [::datetime ::date]
+         [::offset-datetime]]])))
 
 (def ^:private abstract->concrete
   "Not all value types correspond to database types. For those that don't, this maps to their concrete ancestor."
