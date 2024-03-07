@@ -33,6 +33,12 @@
    h
    child->parents))
 
+(defn- derive-basis [h basis]
+  (cond (map? basis) (derive-parents h basis)
+        (coll? basis) (derive-children h basis)
+        :else (throw (ex-info (str "Unsupported type for ordered-hierarchy: " (type basis))
+                              {:h h :basis basis}))))
+
 (defn make-hierarchy
   "Similar to [[clojure.core/make-hierarchy]], but the returned hierarchy will supports ordered derivations.
 
@@ -43,11 +49,8 @@
   ([]
    (-> (clojure.core/make-hierarchy)
        (with-meta {::ordered? true})))
-  ([& roots]
-   (if (every? vector? roots)
-     (reduce derive-children (make-hierarchy) roots)
-     (derive-parents (make-hierarchy)
-                     (partition-all 2 roots)))))
+  ([& bases]
+   (reduce derive-basis (make-hierarchy) bases)))
 
 (defn ancestors
   "Returns the immediate and indirect parents of tag, as established via derive. Earlier derivations are shown first.
