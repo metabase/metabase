@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openReviewsTable, popover, restore } from "e2e/support/helpers";
+import {
+  openOrdersTable,
+  openReviewsTable,
+  popover,
+  restore,
+} from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -200,5 +205,24 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     popover()
       .findByText("Drill-through doesn’t work on SQL questions.")
       .should("be.visible");
+  });
+
+  describe("extract action", () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+    });
+
+    it("should extract a column from a non-aggregated query", () => {
+      openOrdersTable({ limit: 1 });
+      cy.wait("@dataset");
+
+      cy.get(".cellData").contains("Created At").click();
+      popover().findByText("Extract day, month…").click();
+      popover().findByText("Month of year").click();
+      cy.wait("@dataset");
+
+      cy.get(".cellData").contains("Month of year").should("be.visible");
+      cy.get(".cellData").contains("Feb").should("be.visible");
+    });
   });
 });
