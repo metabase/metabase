@@ -12,6 +12,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isNotNull } from "metabase/lib/types";
 
+import { isTimeSeriesAxis } from "../model/guards";
 import type {
   ChartBoundsCoords,
   ChartMeasurements,
@@ -176,6 +177,7 @@ export const getTicksDimensions = (
       ) + CHART_STYLE.axisTicksMarginY;
   }
 
+  const isTimeSeries = isTimeSeriesAxis(chartModel.xAxisModel);
   const hasBottomAxis = !!settings["graph.x_axis.axis_enabled"];
   if (hasBottomAxis) {
     ticksDimensions.xTicksHeight =
@@ -186,7 +188,9 @@ export const getTicksDimensions = (
         renderingContext,
       ) +
       CHART_STYLE.axisTicksMarginX +
-      (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0);
+      (isTimeSeries && hasTimelineEvents
+        ? CHART_STYLE.timelineEvents.height
+        : 0);
 
     const { firstXTickWidth, lastXTickWidth } = getXAxisTicksWidth(
       chartModel.dataset,
