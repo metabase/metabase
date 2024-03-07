@@ -6,8 +6,6 @@
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.util :as mongo.util]
@@ -22,9 +20,6 @@
 
 (defmethod tx/supports-time-type? :mongo [_driver] false)
 (defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
-
-;; during unit tests don't treat Mongo as having FK support
-(defmethod driver/supports? [:mongo :foreign-keys] [_ _] (not config/is-test?))
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."

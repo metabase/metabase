@@ -214,6 +214,7 @@ export const createMockSettings = (
   "slack-files-channel": null,
   "slack-token": null,
   "slack-token-valid?": false,
+  "start-of-week": "sunday",
   "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),
   "token-status": null,
@@ -227,5 +228,6 @@ export const createMockSettings = (
   "uploads-schema-name": null,
   "user-visibility": null,
   "last-acknowledged-version": "v1",
+  "last-used-native-database-id": 1,
   ...opts,
 });

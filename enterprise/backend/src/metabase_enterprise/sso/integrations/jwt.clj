@@ -12,7 +12,7 @@
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response])
   (:import
@@ -91,7 +91,7 @@
           first-name   (get jwt-data (jwt-attribute-firstname))
           last-name    (get jwt-data (jwt-attribute-lastname))
           user         (fetch-or-create-user! first-name last-name email login-attrs)
-          session      (api.session/create-session! :sso user (request.u/device-info request))]
+          session      (api.session/create-session! :sso user (req.util/device-info request))]
       (sync-groups! user jwt-data)
       (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT"))))))
 

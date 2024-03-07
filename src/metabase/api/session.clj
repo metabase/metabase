@@ -19,7 +19,7 @@
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
@@ -29,15 +29,14 @@
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
-   (com.unboundid.util LDAPSDKException)
-   (java.util UUID)))
+   (com.unboundid.util LDAPSDKException)))
 
 (set! *warn-on-reflection* true)
 
 (mu/defn ^:private record-login-history!
-  [session-id  :- (ms/InstanceOfClass UUID)
+  [session-id  :- uuid?
    user-id     :- ms/PositiveInt
-   device-info :- request.u/DeviceInfo]
+   device-info :- req.util/DeviceInfo]
   (t2/insert! LoginHistory (merge {:user_id    user-id
                                    :session_id (str session-id)}
                                   device-info)))
@@ -58,11 +57,11 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    [:id   (ms/InstanceOfClass UUID)]
+    [:id   uuid?]
     [:type [:enum :normal :full-app-embed]]]])
 
 (mu/defmethod create-session! :sso :- SessionSchema
-  [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
+  [_ user :- CreateSessionUserInfo device-info :- req.util/DeviceInfo]
   (let [session-uuid (random-uuid)
         session      (first (t2/insert-returning-instances! Session
                                                             :id      (str session-uuid)
@@ -80,7 +79,7 @@
 (mu/defmethod create-session! :password :- SessionSchema
   [session-type
    user         :- CreateSessionUserInfo
-   device-info  :- request.u/DeviceInfo]
+   device-info  :- req.util/DeviceInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
   (when-not (public-settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
@@ -104,10 +103,10 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(mu/defn ^:private ldap-login :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
+(mu/defn ^:private ldap-login :- [:maybe [:map [:id uuid?]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
-  [username password device-info :- request.u/DeviceInfo]
+  [username password device-info :- req.util/DeviceInfo]
   (when (api.ldap/ldap-enabled)
     (try
       (when-let [user-info (ldap/find-user username)]
@@ -127,11 +126,11 @@
       (catch LDAPSDKException e
         (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
 
-(mu/defn ^:private email-login :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
+(mu/defn ^:private email-login :- [:maybe [:map [:id uuid?]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
-   device-info :- request.u/DeviceInfo]
+   device-info :- req.util/DeviceInfo]
   (if-let [user (t2/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
@@ -157,7 +156,7 @@
   throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
-   device-info :- request.u/DeviceInfo]
+   device-info :- req.util/DeviceInfo]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
   (or (ldap-login username password device-info)  ; First try LDAP if it's enabled
       (email-login username password device-info) ; Then try local authentication
@@ -185,10 +184,10 @@
   [:as {{:keys [username password]} :body, :as request}]
   {username ms/NonBlankString
    password ms/NonBlankString}
-  (let [ip-address   (request.u/ip-address request)
+  (let [ip-address   (req.util/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-uuid :id, :as session} (login username password (request.u/device-info request))
+                       (let [{session-uuid :id, :as session} (login username password (req.util/device-info request))
                              response                        {:id (str session-uuid)}]
                          (mw.session/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
@@ -240,7 +239,7 @@
   [:as {{:keys [email]} :body, :as request}]
   {email ms/Email}
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (let [request-source (request.u/ip-address request)]
+  (let [request-source (req.util/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
   (throttle-check (forgot-password-throttlers :email) email)
   (forgot-password-impl email)
@@ -289,7 +288,7 @@
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
+          (let [{session-uuid :id, :as session} (create-session! :password user (req.util/device-info request))
                 response                        {:success    true
                                                  :session_id (str session-uuid)}]
             (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
@@ -317,9 +316,9 @@
   (if throttling-disabled?
     (google/do-google-auth request)
     (http-401-on-error
-     (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
+     (throttle/with-throttling [(login-throttlers :ip-address) (req.util/ip-address request)]
        (let [user (google/do-google-auth request)
-             {session-uuid :id, :as session} (create-session! :sso user (request.u/device-info request))
+             {session-uuid :id, :as session} (create-session! :sso user (req.util/device-info request))
              response {:id (str session-uuid)}
              user (t2/select-one [User :id :is_active], :email (:email user))]
          (if (and user (:is_active user))
@@ -356,7 +355,7 @@
   {pulse-id ms/PositiveInt
    email    :string
    hash     :string}
-  (check-hash pulse-id email hash (request.u/ip-address request))
+  (check-hash pulse-id email hash (req.util/ip-address request))
   (t2/with-transaction [_conn]
     (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
       (let [emails (get-in pulse-channel [:details :emails])]
@@ -374,7 +373,7 @@
   {pulse-id ms/PositiveInt
    email    :string
    hash     :string}
-  (check-hash pulse-id email hash (request.u/ip-address request))
+  (check-hash pulse-id email hash (req.util/ip-address request))
   (t2/with-transaction [_conn]
     (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
       (let [emails (get-in pulse-channel [:details :emails])]

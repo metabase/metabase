@@ -34,7 +34,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import "./EmbedFrame.css";
+import "./EmbedFrame.module.css";
 import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   ActionButtonsContainer,

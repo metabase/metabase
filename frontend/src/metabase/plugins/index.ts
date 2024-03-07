@@ -153,9 +153,8 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,
 };
 
-// llm autodescription
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
-  LLMSuggestQuestionInfo: () => null,
+  LLMSuggestQuestionInfo: PluginPlaceholder,
 };
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {

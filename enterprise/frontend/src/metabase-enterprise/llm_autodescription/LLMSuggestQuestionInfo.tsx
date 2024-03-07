@@ -2,111 +2,62 @@ import { useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import { POST } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
-import type { TLLMIndicatorProps } from "metabase/plugins/types";
-import { getQuestionWithDefaultVisualizationSettings } from "metabase/query_builder/actions/core/utils";
-import {
-  getIsResultDirty,
-  getResultsMetadata,
-  getTransformedSeries,
-} from "metabase/query_builder/selectors";
+import type { LLMIndicatorProps } from "metabase/plugins/types";
 import { getSetting } from "metabase/selectors/settings";
-import { Flex, Tooltip, Icon, Button } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
+import { AutoDescribeApi } from "metabase-enterprise/services";
+
 import "./loading.css";
-import * as Lib from "metabase-lib";
-
-const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
-
-type TSummarizeCardResponse = () => Promise<{
-  generatedName?: string;
-  generatedDescription?: string;
-}>;
 
 export const LLMSuggestQuestionInfo = ({
   question,
-  setFieldValue,
-  validateForm,
-}: TLLMIndicatorProps) => {
-  const state = useSelector(state => state);
-  const inactive = !getSetting(state, "ee-openai-api-key");
-
-  const { loading, value } = useAsync<TSummarizeCardResponse>(async () => {
-    if (inactive) {
-      return {
-        generatedName: undefined,
-        generatedDescription: undefined,
-      };
-    }
-
-    let questionWithVizSettings = question;
-    const series = getTransformedSeries(state);
-    if (series) {
-      questionWithVizSettings = getQuestionWithDefaultVisualizationSettings(
-        question,
-        series,
-      );
-    }
-
-    const resultsMetadata = getResultsMetadata(state);
-    const isResultDirty = getIsResultDirty(state);
-    const cleanQuery = Lib.dropEmptyStages(questionWithVizSettings.query());
-    questionWithVizSettings
-      .setQuery(cleanQuery)
-      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
-
-    const response = await postSummarizeCard(questionWithVizSettings.card());
-
-    return {
-      generatedName: response?.summary?.title ?? undefined,
-      generatedDescription: response?.summary?.description ?? undefined,
-    };
-  }, [question]);
-
-  const generatedName = value?.generatedName;
-  const generatedDescription = value?.generatedDescription;
-
+  onAccept,
+}: LLMIndicatorProps) => {
   const [acceptedSuggestion, setAcceptedSuggestion] = useState(false);
 
-  const handleClick = () => {
-    setAcceptedSuggestion(true);
+  const isActive = useSelector(
+    state => !!getSetting(state, "ee-openai-api-key"),
+  );
 
-    setFieldValue("name", generatedName ?? "");
-    setFieldValue("description", generatedDescription ?? "");
-    validateForm({ name: true, description: true });
+  const { loading, value } = useAsync(async () => {
+    if (!isActive) {
+      return { name: undefined, description: undefined };
+    }
+    const response = await AutoDescribeApi.summarizeCard(question.card());
+    return {
+      name: response?.summary?.title ?? undefined,
+      description: response?.summary?.description ?? undefined,
+    };
+  }, [isActive]);
+
+  const handleClick = () => {
+    if (value) {
+      setAcceptedSuggestion(true);
+      onAccept(value);
+    }
   };
 
-  if (inactive || acceptedSuggestion) {
+  if (!isActive || acceptedSuggestion) {
     return null;
   }
 
-  if (loading) {
-    return (
-      <Flex justify="flex-end">
-        <Tooltip
-          label={t`Generating descriptions`}
-          className="llm-pulse-icon"
-          position="top-end"
-        >
-          <Button variant="unstyled" p="xs">
-            <Icon name="ai" size={16} />
-          </Button>
-        </Tooltip>
-      </Flex>
-    );
-  }
+  const tooltip = loading
+    ? t`Generating descriptions`
+    : t`Description generated. Click to auto-fill.`;
+
+  const className = loading ? "llm-pulse-icon" : undefined;
+  const iconColor = loading ? color("text-medium") : color("brand");
 
   return (
-    <Flex justify="flex-end">
-      <Tooltip
-        label={t`Description generated. Click to auto-fill.`}
-        position="top-end"
-      >
-        <Button onClick={handleClick} variant="unstyled" p="xs">
-          <Icon name="ai" color={color("brand")} size={16} />
-        </Button>
-      </Tooltip>
-    </Flex>
+    <Tooltip label={tooltip} position="top-end">
+      <Button
+        onClick={handleClick}
+        className={className}
+        leftIcon={<Icon name="ai" color={iconColor} />}
+        variant="subtle"
+      />
+    </Tooltip>
   );
 };

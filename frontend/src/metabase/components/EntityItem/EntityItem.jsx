@@ -25,7 +25,6 @@ import {
 } from "./EntityItem.styled";
 
 function EntityIconCheckBox({
-  item,
   variant,
   icon,
   pinned,
@@ -45,9 +44,7 @@ function EntityIconCheckBox({
   return (
     <EntityIconWrapper
       isPinned={pinned}
-      model={item.model}
       onClick={selectable ? handleClick : null}
-      rounded
       disabled={disabled}
       {...props}
     >
@@ -109,6 +106,11 @@ function EntityItemMenu({
   const actions = useMemo(
     () =>
       [
+        onToggleBookmark && {
+          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
+          icon: "bookmark",
+          action: onToggleBookmark,
+        },
         onPin && {
           title: isPinned ? t`Unpin` : t`Pin this`,
           icon: isPinned ? "unpin" : "pin",
@@ -149,11 +151,6 @@ function EntityItemMenu({
           title: t`Archive`,
           icon: "archive",
           action: onArchive,
-        },
-        onToggleBookmark && {
-          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
-          icon: "bookmark",
-          action: onToggleBookmark,
         },
       ].filter(action => action),
     [

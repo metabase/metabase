@@ -17,7 +17,7 @@ If you have a token for the [Pro or Enterprise editions](https://www.metabase.co
 
 If you have Java installed:
 
-1. [Download the JAR file for Metabase OSS](https://metabase.com/start/oss/jar).
+1. [Download the JAR file for Metabase OSS](https://metabase.com/start/oss/jar). If you're on a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, download the [JAR for the Enterprise Edition](https://downloads.metabase.com/enterprise/latest/metabase.jar).
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
@@ -26,6 +26,8 @@ java -jar metabase.jar
 ```
 
 Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit `http://localhost:3000/setup`.
+
+If you are using a paid version, be sure to [activate your license](../paid-features/activating-the-enterprise-edition.md).
 
 ## Local installation
 
@@ -45,7 +47,10 @@ If Java isn't installed, you'll need to install Java before you can run Metabase
 
 ### 2. Download Metabase
 
-[Download the JAR file for Metabase OSS](https://www.metabase.com/start/oss/jar).
+Download the JAR file:
+
+- [Metabase OSS](https://www.metabase.com/start/oss/jar)
+- [Metabase Enterprise/Pro edition](https://downloads.metabase.com/enterprise/latest/metabase.jar)
 
 If you want to install the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../paid-features/activating-the-enterprise-edition.md).
 
@@ -98,7 +103,7 @@ At this point you're ready to go! You can access your new Metabase server on por
 
 You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../configuring-metabase/environment-variables.md) before running the jar.
 
-Note that in the default configuration Metabase will use a local H2 database for storing all its own application data. This default is meant for simple evaluation or personal use. If you want to run Metabase in production we recommend you [migrate away from H2](./migrating-from-h2.md).
+If you are using a paid version of Metabase, be sure to [activate your license](../paid-features/activating-the-enterprise-edition.md).
 
 ## Production installation
 
@@ -144,7 +149,7 @@ If you need to run the JAR in production, you should run Metabase as a service. 
 
 The exact instructions for how to run Metabase as a service will differ depending on your operating system. For an example of how to set up Metabase as a service, check out [Running Metabase on Debian](./running-metabase-on-debian.md).
 
-## Migrating to a production installation
+### Migrating to a production installation
 
 If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, you'll want to migrate that data to a production application database. And the sooner you do, the better. See [Migrating from the H2 database](migrating-from-h2.md).
 
@@ -156,6 +161,6 @@ If you run into any problems during installation, check out our [troubleshooting
 
 See [Upgrading Metabase](upgrading-metabase.md).
 
-## Continue to setup
+## Setting up Metabase
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).

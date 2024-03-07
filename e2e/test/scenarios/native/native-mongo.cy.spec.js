@@ -1,13 +1,13 @@
 import { restore } from "e2e/support/helpers";
 
-const MONGO_DB_NAME = "QA Mongo4";
+const MONGO_DB_NAME = "QA Mongo";
 
 describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   before(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    restore("mongo-4");
+    restore("mongo-5");
     cy.signInAsNormalUser();
 
     cy.visit("/");

@@ -470,56 +470,46 @@ class Question {
     });
   }
 
-  private _syncGraphMetricSettings(previousQuestion: Question) {
-    const query = this.query();
-    const previousQuery = previousQuestion.query();
-    const stageIndex = -1;
-    const columns = Lib.returnedColumns(query, stageIndex);
-    const previousColumns = Lib.returnedColumns(previousQuery, stageIndex);
-
-    const addedColumns = columns
-      .filter(
-        column =>
-          !Lib.findMatchingColumn(query, stageIndex, column, previousColumns),
-      )
-      .map(column => ({
-        column,
-        columnInfo: Lib.displayInfo(query, stageIndex, column),
-      }));
-    const removedColumns = previousColumns
-      .filter(
-        column =>
-          !Lib.findMatchingColumn(previousQuery, stageIndex, column, columns),
-      )
-      .map(column => ({
-        column,
-        columnInfo: Lib.displayInfo(previousQuery, stageIndex, column),
-      }));
+  private _syncGraphMetricSettings(
+    { data: { cols = [] } = {} }: Dataset,
+    { data: { cols: prevCols = [] } = {} }: Dataset,
+  ) {
     const graphMetrics = this.setting("graph.metrics");
+    if (!graphMetrics) {
+      return this;
+    }
 
-    if (
-      graphMetrics &&
-      (addedColumns.length > 0 || removedColumns.length > 0)
-    ) {
-      const addedMetricColumnNames = addedColumns
-        .filter(({ columnInfo }) => columnInfo.isAggregation)
-        .map(({ columnInfo }) => columnInfo.name);
+    const hasNativeColumns =
+      cols.some(column => column.source === "native") ||
+      prevCols.some(column => column.source === "native");
+    if (hasNativeColumns) {
+      return this;
+    }
 
-      const removedMetricColumnNames = removedColumns
-        .filter(({ columnInfo }) => columnInfo.isAggregation)
-        .map(({ columnInfo }) => columnInfo.name);
+    const metricColumnNames = new Set(
+      cols
+        .filter(column => column.source === "aggregation")
+        .map(column => column.name),
+    );
+    const prevMetricColumnNames = new Set(
+      prevCols
+        .filter(column => column.source === "aggregation")
+        .map(column => column.name),
+    );
+    const addedMetricColumnNames = new Set(
+      [...metricColumnNames].filter(name => !prevMetricColumnNames.has(name)),
+    );
+    const removedMetricColumnNames = new Set(
+      [...prevMetricColumnNames].filter(name => !metricColumnNames.has(name)),
+    );
 
-      if (
-        addedMetricColumnNames.length > 0 ||
-        removedMetricColumnNames.length > 0
-      ) {
-        return this.updateSettings({
-          "graph.metrics": [
-            ..._.difference(graphMetrics, removedMetricColumnNames),
-            ...addedMetricColumnNames,
-          ],
-        });
-      }
+    if (addedMetricColumnNames.size > 0 || removedMetricColumnNames.size > 0) {
+      return this.updateSettings({
+        "graph.metrics": [
+          ...graphMetrics.filter(name => !removedMetricColumnNames.has(name)),
+          ...addedMetricColumnNames,
+        ],
+      });
     }
 
     return this;
@@ -567,22 +557,17 @@ class Question {
     });
   }
 
-  syncColumnsAndSettings(previousQuestion?: Question, queryResults?: Dataset) {
+  syncColumnsAndSettings(queryResults?: Dataset, prevQueryResults?: Dataset) {
     let question = this;
-    const query = question.query();
-    const { isNative } = Lib.queryDisplayInfo(query);
 
     if (queryResults && !queryResults.error) {
       question = question._syncTableColumnSettings(queryResults);
-    }
 
-    if (previousQuestion) {
-      const previousQuery = previousQuestion.query();
-      const { isNative: isPreviousQuestionNative } =
-        Lib.queryDisplayInfo(previousQuery);
-
-      if (!isNative && !isPreviousQuestionNative) {
-        question = question._syncGraphMetricSettings(previousQuestion);
+      if (prevQueryResults && !prevQueryResults.error) {
+        question = question._syncGraphMetricSettings(
+          queryResults,
+          prevQueryResults,
+        );
       }
     }
 
@@ -785,11 +770,13 @@ class Question {
     return question;
   }
 
-  parameters(): ParameterObject[] {
+  parameters({ collectionPreview } = {}): ParameterObject[] {
     return getCardUiParameters(
       this.card(),
       this.metadata(),
       this._parameterValues,
+      undefined,
+      collectionPreview,
     );
   }
 

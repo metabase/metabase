@@ -480,7 +480,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       );
       await waitFor(() => {
         expect(
-          within(saveQuestionModal).getByTestId("select-button"),
+          within(saveQuestionModal).getByLabelText(/Which collection/),
         ).toHaveTextContent(TEST_COLLECTION.name);
       });
       userEvent.click(within(saveQuestionModal).getByText("Save"));
@@ -514,6 +514,23 @@ describe("QueryBuilder - unsaved changes warning", () => {
       history.push("/redirect");
 
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal when leaving edited question via SPA navigation without changing the query", async () => {
+      const { history } = await setup({
+        card: TEST_NATIVE_CARD,
+        initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
+      });
+
+      userEvent.click(screen.getByRole("button", { name: "Visualization" }));
+      userEvent.click(screen.getByTestId("Detail-button"));
+      await waitForSaveToBeEnabled();
+
+      history.push("/redirect");
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
     });
 
     it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {

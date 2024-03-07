@@ -5,7 +5,7 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import S from "./Detail.css";
+import S from "./Detail.module.css";
 
 const Detail = ({
   name,

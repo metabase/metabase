@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -28,7 +27,7 @@ const FieldVisibilityPicker = ({
 
   return (
     <Select
-      className={cx("TableEditor-field-visibility", className)}
+      className={className}
       value={field.visibility_type}
       options={MetabaseCore.field_visibility_types}
       optionValueFn={getFieldId}

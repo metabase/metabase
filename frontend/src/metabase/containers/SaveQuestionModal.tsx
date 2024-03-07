@@ -22,12 +22,15 @@ import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
-import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
+import {
+  getIsSavedQuestionChanged,
+  getSubmittableQuestion,
+} from "metabase/query_builder/selectors";
 import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import type { CollectionId } from "metabase-types/api";
 
-import "./SaveQuestionModal.css";
+import "./SaveQuestionModal.module.css";
 
 const getLabels = (question: Question, showSaveType: boolean) => {
   const type = question.type();
@@ -72,7 +75,7 @@ interface SaveQuestionModalProps {
   initialCollectionId?: CollectionId;
 }
 
-export interface FormValues {
+interface FormValues {
   saveType: string;
   collection_id: CollectionId | null | undefined;
   name: string;
@@ -141,6 +144,10 @@ export const SaveQuestionModal = ({
   const questionWithCollectionId: Question =
     question.setCollectionId(collectionId);
 
+  const submittableQuestion = useSelector(state =>
+    getSubmittableQuestion(state, questionWithCollectionId),
+  );
+
   const handleOverwrite = useCallback(
     async (originalQuestion: Question) => {
       const collectionId = canonicalCollectionId(
@@ -192,13 +199,6 @@ export const SaveQuestionModal = ({
     [originalQuestion, handleOverwrite, handleCreate],
   );
 
-  if (collections && isInInstanceAnalyticsQuestion) {
-    const customCollection = getInstanceAnalyticsCustomCollection(collections);
-    if (customCollection) {
-      initialCollectionId = customCollection.id;
-    }
-  }
-
   const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
   const showSaveType =
     isSavedQuestionChanged &&
@@ -209,6 +209,7 @@ export const SaveQuestionModal = ({
     question,
     showSaveType,
   );
+
   const title = multiStep ? multiStepTitle : singleStepTitle;
 
   return (
@@ -222,15 +223,16 @@ export const SaveQuestionModal = ({
             validationSchema={SAVE_QUESTION_SCHEMA}
             enableReinitialize
           >
-            {({ values, setFieldValue, validateForm }) => (
+            {({ values, setValues }) => (
               <Modal.Content p="md" data-testid="save-question-modal">
                 <Modal.Header>
                   <Modal.Title>{title}</Modal.Title>
-                  <Flex align="center" gap="sm">
+                  <Flex align="center" justify="flex-end" gap="sm">
                     <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
-                      question={questionWithCollectionId}
-                      setFieldValue={setFieldValue}
-                      validateForm={validateForm}
+                      question={submittableQuestion}
+                      onAccept={nextValues =>
+                        setValues({ ...values, ...nextValues })
+                      }
                     />
                     <Modal.CloseButton />
                   </Flex>

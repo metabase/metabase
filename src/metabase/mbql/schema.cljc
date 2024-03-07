@@ -1201,9 +1201,6 @@
    [:map
     [:type TemplateTag:RawValue:Type]]])
 
-;; TODO -- if we were using core.spec here I would make this a multimethod-based spec instead and have it dispatch off
-;; of `:type`. Then we could make it possible to add new types dynamically
-
 (mr/def ::TemplateTag
   [:multi
    {:dispatch :type}
@@ -1276,7 +1273,7 @@
   This metadata automatically gets added for all source queries that are referenced via the `card__id` `:source-table`
   form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
   `:source-query`s."
-  ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
+  ;; TODO - there is a very similar schema in `metabase.analyze.query-results`; see if we can merge them
   [:map
    [:name         NonBlankString]
    [:base_type    BaseType]
@@ -1303,7 +1300,7 @@
   "Valid values of the `:strategy` key in a join map."
   #{:left-join :right-join :inner-join :full-join})
 
-(def ^:private JoinStrategy
+(def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
   driver supports `:full-join` before generating a Join clause using that strategy."
@@ -1751,7 +1748,7 @@
    [:pulse-id                  {:optional true} [:maybe PositiveInt]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
-   [:metadata/dataset-metadata {:optional true} [:maybe [:sequential [:map-of :any :any]]]]
+   [:metadata/model-metadata   {:optional true} [:maybe [:sequential [:map-of :any :any]]]]
    ;; `:hash` gets added automatically for userland queries (see [[metabase.query-processor/userland-query]]), so
    ;; don't try passing these in yourself. In fact, I would like this a lot better if we could take these keys xout of
    ;; `:info` entirely and have the code that saves QueryExceutions figure out their values when it goes to save them
@@ -1835,7 +1832,7 @@
 (mr/def ::Query
   (-> [:map
        [:database DatabaseID]
-       ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
+       ;; Type of query. `:query` = MBQL; `:native` = native.
        [:type [:enum :query :native]]
        [:native     {:optional true} NativeQuery]
        [:query      {:optional true} MBQLQuery]

@@ -109,7 +109,7 @@
     (t2/select-one :model/Table (:id table))))
 
 (deftest type-detection-and-parse-test
-  (doseq [[string-value  expected-value expected-type seps]
+  (doseq [[string-value expected-value expected-type seps]
           ;; Number-related
           [["0.0"        0              float-type "."]
            ["0.0"        0              float-type ".,"]
@@ -226,11 +226,12 @@
            [" 2022-01-01T01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01t01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01 01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]]]
-    (let [settings   {:number-separators (or seps ".,")}
-          value-type (#'upload/value->type string-value settings)
+    (let [settings    {:number-separators (or seps ".,")}
+          type->check (#'upload/settings->type->check settings)
+          value-type  (#'upload/value->type type->check string-value)
           ;; get the type of the column, if it were filled with only that value
-          col-type   (first (upload/column-types-from-rows settings 1 [[string-value]]))
-          parser     (upload-parsing/upload-type->parser col-type settings)]
+          col-type    (first (upload/column-types-from-rows settings 1 [[string-value]]))
+          parser      (upload-parsing/upload-type->parser col-type settings)]
       (testing (format "\"%s\" is a %s" string-value type)
         (is (= expected-type
                value-type)))
@@ -267,7 +268,7 @@
            [datetime-type    text-type        text-type]
            [offset-dt-type   text-type        text-type]
            [vchar-type       text-type        text-type]]]
-    (is (= expected (#'upload/lowest-common-ancestor type-a type-b))
+    (is (= expected (#'upload/most-specific-common-ancestor type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
 (defn csv-file-with
@@ -1281,7 +1282,7 @@
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
     (testing "The CSV file must not be empty"
-      (is (= {:message "The CSV file is missing columns that are in the table: \"name\".",
+      (is (= {:message "The CSV file is missing columns that are in the table:\n- name",
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
@@ -1312,19 +1313,34 @@
                      (rows-for-table table))))
             (io/delete-file file)))))))
 
+(defn- trim-lines [s]
+  (->> (str/split-lines s)
+       (map str/trim)
+       (str/join "\n")))
+
 (deftest append-column-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should fail if there are extra or missing columns in the CSV file"
         (doseq [[csv-rows error-message]
                 {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
+                 (trim-lines "The CSV file contains extra columns that are not in the table:
+                              - extra_column_two
+                              - extra_column_one")
 
                  [""]
-                 "The CSV file is missing columns that are in the table: \"id\", \"name\"."
+                 (trim-lines "The CSV file is missing columns that are in the table:
+                              - id
+                              - name")
 
                  ["_mb_row_id,extra 1, extra 2"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]
+                 (trim-lines "The CSV file contains extra columns that are not in the table:
+                              - extra_2
+                              - extra_1
+
+                              The CSV file is missing columns that are in the table:
+                              - id
+                              - name")}]
           (with-upload-table!
             [table (create-upload-table!
                     {:col->upload-type (ordered-map/ordered-map
@@ -1634,11 +1650,12 @@
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
                   [{:upload-type ::upload/int,     :uncoerced "2.1", :fail-msg "'2.1' is not an integer"}
-                   {:upload-type ::upload/int,     :uncoerced "2.0", :coerced 2}
-                   {:upload-type ::upload/float,   :uncoerced "2",   :coerced 2.0}
-                   {:upload-type ::upload/boolean, :uncoerced "0",   :coerced false}
-                   {:upload-type ::upload/boolean, :uncoerced "1.0", :fail-msg "'1.0' is not a recognizable boolean"}
-                   {:upload-type ::upload/boolean, :uncoerced "0.0", :fail-msg "'0.0' is not a recognizable boolean"}]]
+                   {:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2}
+                   {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
+                   {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
+                   {:upload-type ::upload/boolean, :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
+                   {:upload-type ::upload/boolean, :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}
+                   {:upload-type ::upload/int,     :uncoerced "01/01/2012", :fail-msg "'01/01/2012' is not a recognizable number"}]]
             (with-upload-table!
               [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
                                                                upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
@@ -1664,3 +1681,27 @@
                           (re-pattern (str "^" fail-msg "$"))
                           (append!)))))
                 (io/delete-file file)))))))))
+
+(defn- first-non-abstract-first-parent [value-type]
+  (cond (nil? value-type) nil
+
+        (#'upload/abstract->concrete value-type)
+        (recur (first (parents @#'upload/h value-type)))
+
+        :else value-type))
+
+(deftest column-type-test
+  (let [column-type #'upload/column-type]
+    (testing "Unknown value types are treated as text"
+      (is (= ::upload/text (column-type nil))))
+    (testing "Non-abstract value types resolve to themselves"
+      (let [ts @#'upload/column-types]
+        (is (= (zipmap ts ts)
+               (zipmap (map column-type ts) ts)))))
+    (testing "Abstract values are resolved using an explicit map, which is consistent with the hierarchy"
+      (doseq [[value-type expected-column-type] @#'upload/abstract->concrete]
+        (is (= expected-column-type (column-type value-type)))
+        ;; Strictly speaking we only require that there is a route from each abstract node to its column type which only
+        ;; traverses through abstract nodes, but it's much simpler to enforce this convention. This consistency also
+        ;; keeps the graph easier to reason about and may save us from future foot guns.
+        (is (= expected-column-type (first-non-abstract-first-parent value-type)))))))

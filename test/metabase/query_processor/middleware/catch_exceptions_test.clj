@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -143,24 +143,24 @@
 
 (deftest permissions-test
   (mt/with-temp-copy-of-db
-    (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-    (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
-    (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
-                  "the query in the error response")
-      (is (=? {:native nil, :preprocessed map?}
-              (test.users/with-test-user :rasta
-                (qp/process-query
-                 (qp/userland-query
-                  (mt/mbql-query venues {:fields [!month.id]})))))))
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :unrestricted)
+      (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
+                    "the query in the error response")
+        (is (=? {:native nil, :preprocessed map?}
+                (test.users/with-test-user :rasta
+                  (qp/process-query
+                   (qp/userland-query
+                    (mt/mbql-query venues {:fields [!month.id]})))))))
 
-    (testing "They should see it if they have ad-hoc native query perms"
-      (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id))
-      ;; this is not actually a valid query
-      (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
-                                           " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
-                              :params nil}
-               :preprocessed map?}
-              (test.users/with-test-user :rasta
-                (qp/process-query
-                 (qp/userland-query
-                  (mt/mbql-query venues {:fields [!month.id]})))))))))
+      (testing "They should see it if they have ad-hoc native query perms"
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/native-query-editing :yes)
+        ;; this is not actually a valid query
+        (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
+                                             " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
+                                :params nil}
+                 :preprocessed map?}
+                (test.users/with-test-user :rasta
+                  (qp/process-query
+                   (qp/userland-query
+                    (mt/mbql-query venues {:fields [!month.id]}))))))))))

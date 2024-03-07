@@ -150,17 +150,17 @@ export function DashCardCardParameterMapper({
     }
 
     // virtual or action dashcard
-    if (!question) {
+    if (!isQuestionDashCard(dashcard)) {
       return true;
     }
 
-    if (!card.dataset_query) {
+    if (!question || !card.dataset_query) {
       return false;
     }
 
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     return isEditable;
-  }, [isVirtual, card.dataset_query, question]);
+  }, [isVirtual, dashcard, card.dataset_query, question]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
     useMemo(() => {

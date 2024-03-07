@@ -10,6 +10,7 @@
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt])
   (:import
+   (io.github.resilience4j.retry Retry)
    (java.io IOException)))
 
 (set! *warn-on-reflection* true)
@@ -110,7 +111,7 @@
         (is (vector? emails))
         (is (map? (first emails)))))))
 
-(defn- get-positive-retry-metrics [retry]
+(defn- get-positive-retry-metrics [^Retry retry]
   (let [metrics (bean (.getMetrics retry))]
     (into {}
           (map (fn [field]
