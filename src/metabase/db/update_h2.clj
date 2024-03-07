@@ -86,24 +86,17 @@
   (log/info "Backup restored into H2 v2 database. Update complete!"))
 
 (def ^:private h2-lock (Object.))
-(def ^{:private true
-       :doc     "Used to ensure that we only do the check once per instance."}
-  h2-update-checked (atom false))
 
 (defn update-if-needed!
   "Updates H2 database at db-path from version 1.x to 2.x if jdbc-url points
   to version 1 H2 database."
   [jdbc-url]
-  (when-not @h2-update-checked
-    (when (h2-base-path jdbc-url)
-      (locking h2-lock
-        ;; makes sure it's still not checked after waiting for locks
-        (when-not @h2-update-checked
-          (when (= 1 (db-version! jdbc-url))
-            (log/info "H2 v1 database detected, updating...")
-            (try
-             (update! jdbc-url)
-             (catch Exception e
-               (log/error "Failed to update H2 database:" e)
-               (throw e)))))))
-    (reset! h2-update-checked true)))
+  (when (h2-base-path jdbc-url)
+    (locking h2-lock
+      (when (= 1 (db-version! jdbc-url))
+        (log/info "H2 v1 database detected, updating...")
+        (try
+         (update! jdbc-url)
+         (catch Exception e
+           (log/error "Failed to update H2 database:" e)
+           (throw e)))))))
