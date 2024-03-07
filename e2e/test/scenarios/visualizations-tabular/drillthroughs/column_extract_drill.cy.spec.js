@@ -1,5 +1,13 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openOrdersTable, popover, restore } from "e2e/support/helpers";
+import {
+  enterCustomColumnDetails,
+  getNotebookStep,
+  openNotebook,
+  openOrdersTable,
+  popover,
+  restore,
+  visualize,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -63,6 +71,20 @@ describe("extract action", () => {
           cy.wait("@dataset");
           extractColumnAndCheck("Created At", option, value);
         });
+      });
+
+      it("should be able to modify the expression in the notebook editor", () => {
+        openOrdersTable({ limit: 1 });
+        cy.wait("@dataset");
+        extractColumnAndCheck("Created At", "Year", "2,025");
+        cy.wait("@dataset");
+        openNotebook();
+        getNotebookStep("expression").findByText("Year").click();
+        enterCustomColumnDetails({ formula: "+ 2" });
+        popover().button("Update").click();
+        visualize();
+        cy.wait("@dataset");
+        cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
       });
     });
 
