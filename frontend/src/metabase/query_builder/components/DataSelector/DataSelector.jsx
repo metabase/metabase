@@ -330,7 +330,6 @@ export class UnconnectedDataSelector extends Component {
       fetchFields,
       fetchQuestion,
       selectedDataBucketId,
-      selectedQuestion,
       selectedTableId: sourceId,
     } = this.props;
 
@@ -345,10 +344,10 @@ export class UnconnectedDataSelector extends Component {
     if (sourceId) {
       await fetchFields(sourceId);
       if (this.isSavedEntitySelected()) {
-        fetchQuestion(sourceId);
+        await fetchQuestion(sourceId);
 
         this.showSavedEntityPicker({
-          entityType: selectedQuestion?.type(),
+          entityType: this.props.selectedQuestion?.type(),
         });
       }
     }
