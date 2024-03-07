@@ -1259,4 +1259,7 @@
 (defn ^:export can-run
   "Returns true if the query is runnable."
   [a-query]
-  (lib.core/can-run a-query))
+  (lib.cache/side-channel-cache
+    :can-run a-query
+    (fn [_]
+      (lib.core/can-run a-query))))
