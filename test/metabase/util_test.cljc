@@ -2,7 +2,6 @@
   "Tests for functions in `metabase.util`."
   (:require
    #?@(:clj [[metabase.test :as mt]])
-   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
@@ -472,20 +471,27 @@
     (is (= [:c :e] (u/conflicting-keys {:a 1 :b 2 :c 3 :e nil}
                                        {:b 2 :c 4 :d 5 :e 6})))))
 
-(defn- join [& crumbs] (str/join ":" crumbs))
-
 (deftest map-all-test
   (testing "map-all with 1 collection is just map"
-    (is (= ["0" "1" "2" "3" "4"] (u/map-all join (range 5)))))
+    (is (= [[0] [1] [2] [3] [4]] (u/map-all vector (range 5)))))
   (testing "map-all works with 3 collections"
-    (is (= ["0:0" "1:1" "2:2" "3:" "4:"] (u/map-all join (range 5) (range 3)))))
+    (is (=  [[0 0] [1 1] [2 2] [3 nil] [4 nil]] (u/map-all vector (range 5) (range 3)))))
   (testing "map-all works with higher arity"
-    (is (= ["0:0:0" "1:1:1" "2:2:2" "3::3" "::4"] (u/map-all join (range 4) (range 3) (range 5))))))
+    (is (= [[0 0 0] [1 1 1] [2 2 2] [3 nil 3] [nil nil 4]] (u/map-all vector (range 4) (range 3) (range 5))))))
 
 #?(:clj
    (defspec map-all-returns-max-coll-input-size-test 1000
      (prop/for-all [xs (mg/generator [:sequential :int])
                     ys (mg/generator [:sequential :int])
                     zs (mg/generator [:sequential :int])]
-       (let [expected (u/map-all join xs ys zs)]
-         (= (count expected) (max (count xs) (count ys) (count zs)))))))
+       (let [total-result-count (count (u/map-all vector xs ys zs))]
+         (= total-result-count (max (count xs) (count ys) (count zs)))))))
+
+#?(:clj
+   (defspec map-all-consumes-all-lengths-of-inputs-test 1000
+     (prop/for-all [xs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
+                    ys (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
+                    zs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])]
+       (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
+             sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
+         (= expected sum)))))
