@@ -224,10 +224,9 @@
 (defn- type-relaxer
   "Given a map of {value-type -> predicate}, return a reducing fn which updates our inferred schema using the next row."
   [type->check]
-  (let [type->value->type (partial relax-type type->check)]
-    (fn [value-types row]
-      ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
-      (vec (u/map-all (partial relax-type type->check) value-types row))))
+  (fn [value-types row]
+    ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
+    (vec (u/map-all (partial relax-type type->check) value-types row))))
 
 (defn- relax-types [settings current-types rows]
   (let [type->check (settings->type->check settings)]
