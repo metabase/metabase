@@ -180,7 +180,7 @@
   [driver db-id table-name column-definitions]
   (let [sql (first (sql/format {:alter-table  (keyword table-name)
                                 :alter-column (map (fn [[column-name type-and-constraints]]
-                                                     (vec (cons column-name type-and-constraints)))
+                                                     (vec (cons column-name (cons :type type-and-constraints))))
                                                    column-definitions)}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
