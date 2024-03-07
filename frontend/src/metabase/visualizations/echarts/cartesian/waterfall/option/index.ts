@@ -17,15 +17,13 @@ import type {
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import {
   buildEChartsLabelOptions,
-  computeBarWidth,
+  computeContinuousScaleBarWidth,
   getDataLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/option/series";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
-  WATERFALL_END_2_KEY,
   WATERFALL_END_KEY,
   WATERFALL_LABELS_SERIES_ID,
-  WATERFALL_START_2_KEY,
   WATERFALL_START_KEY,
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
@@ -37,11 +35,12 @@ import type { TimelineEventsModel } from "../../timeline-events/types";
 import { getTimelineEventsSeries } from "../../timeline-events/option";
 import { buildAxes } from "../../option/axis";
 import { getSharedEChartsOptions } from "../../option";
+import { isCategoryAxis } from "../../model/guards";
 
 type WaterfallSeriesOptions =
   | RegisteredSeriesOption["line"]
   | RegisteredSeriesOption["bar"]
-  | RegisteredSeriesOption["candlestick"];
+  | RegisteredSeriesOption["custom"];
 
 const getLabelLayoutFn = (
   dataset: ChartDataset,
@@ -81,6 +80,25 @@ const getLabelLayoutFn = (
   };
 };
 
+const computeWaterfallBarWidth = (
+  chartModel: BaseCartesianChartModel,
+  boundaryWidth: number,
+) => {
+  if (isCategoryAxis(chartModel.xAxisModel)) {
+    return (
+      (boundaryWidth / chartModel.dataset.length + 2) *
+      CHART_STYLE.series.barWidth
+    );
+  }
+  return computeContinuousScaleBarWidth(
+    chartModel.xAxisModel,
+    boundaryWidth,
+    1,
+    1,
+    true,
+  );
+};
+
 export const buildEChartsWaterfallSeries = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -89,12 +107,9 @@ export const buildEChartsWaterfallSeries = (
 ): WaterfallSeriesOptions[] => {
   const { seriesModels, transformedDataset: dataset } = chartModel;
   const [seriesModel] = seriesModels;
-  const barWidth = computeBarWidth(
-    chartModel.xAxisModel,
-    chartMeasurements,
-    1,
-    1,
-    false,
+  const barWidth = computeWaterfallBarWidth(
+    chartModel,
+    chartMeasurements.boundaryWidth,
   );
 
   const buildLabelOption = (key: DataKey) => ({
@@ -118,34 +133,42 @@ export const buildEChartsWaterfallSeries = (
   const series: WaterfallSeriesOptions[] = [
     {
       id: seriesModel.dataKey,
-      type: "candlestick",
-      itemStyle: {
-        color: settings["waterfall.increase_color"],
-        color0: settings["waterfall.decrease_color"],
-        borderColor: "transparent",
-        borderColor0: "transparent",
-        borderColorDoji: "transparent",
-        borderWidth: 0,
-      },
+      type: "custom",
+      clip: true,
       animationDuration: 0,
-      barWidth,
-      dimensions: [
-        X_AXIS_DATA_KEY,
-        WATERFALL_START_KEY,
-        WATERFALL_END_KEY,
-        WATERFALL_START_2_KEY,
-        WATERFALL_END_2_KEY,
-      ],
+      dimensions: [X_AXIS_DATA_KEY, WATERFALL_START_KEY, WATERFALL_END_KEY],
       encode: {
         x: X_AXIS_DATA_KEY,
-        y: [
-          WATERFALL_START_KEY,
-          WATERFALL_END_KEY,
-          WATERFALL_START_2_KEY,
-          WATERFALL_END_2_KEY,
-        ],
+        y: [WATERFALL_START_KEY, WATERFALL_END_KEY],
       },
       z: CHART_STYLE.series.zIndex,
+      renderItem: (_params, api) => {
+        const dataIndex = api.value(0);
+        const barStart = api.value(1);
+        const barEnd = api.value(2);
+
+        const startCoord = api.coord([dataIndex, barStart]);
+        const endCoord = api.coord([dataIndex, barEnd]);
+        const rectHeight = startCoord[1] - endCoord[1];
+        const isIncrease = barEnd >= barStart;
+
+        const fill = isIncrease
+          ? settings["waterfall.increase_color"]
+          : settings["waterfall.decrease_color"];
+
+        return {
+          type: "rect",
+          shape: {
+            x: endCoord[0] - barWidth / 2,
+            y: endCoord[1],
+            width: barWidth,
+            height: rectHeight,
+          },
+          style: {
+            fill,
+          },
+        };
+      },
     },
     {
       id: WATERFALL_LABELS_SERIES_ID,

@@ -13,9 +13,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   WATERFALL_DATA_KEYS,
-  WATERFALL_END_2_KEY,
   WATERFALL_END_KEY,
-  WATERFALL_START_2_KEY,
   WATERFALL_START_KEY,
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
@@ -79,9 +77,6 @@ export const getWaterfallDataset = (
       [WATERFALL_VALUE_KEY]: end - getNumberOr(start, 0),
       [WATERFALL_START_KEY]: start,
       [WATERFALL_END_KEY]: end,
-      // Candlestick series which we use for Waterfall bars requires having four unique dimensions
-      [WATERFALL_START_2_KEY]: start,
-      [WATERFALL_END_2_KEY]: end,
     };
 
     transformedDataset.push(waterfallDatum);
