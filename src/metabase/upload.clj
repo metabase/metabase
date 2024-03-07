@@ -579,6 +579,19 @@
     :type/Date                   ::date
     :type/Text                   ::text))
 
+(defn- not-blank [s]
+  (when-not (str/blank? s)
+    s))
+
+(defn- extra-and-missing-error-markdown [extra missing]
+  (->> [[(tru "The CSV file contains extra columns that are not in the table:") extra]
+        [(tru "The CSV file is missing columns that are in the table:") missing]]
+       (keep (fn [[header columns]]
+               (when (seq columns)
+                 (str/join "\n" (cons header (map #(str "- " %) columns))))))
+       (str/join "\n\n")
+       (not-blank)))
+
 (defn- check-schema
   "Throws an exception if:
     - the CSV file contains duplicate column names
@@ -593,18 +606,7 @@
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
     (when (or extra missing)
-      (let [format-columns (fn [cols]
-                             (str/join ", " (map #(str "\"" % "\"") cols)))
-            error-message (cond
-                            (and extra missing)
-                            (tru "The CSV file contains extra columns that are not in the table: {0}. The CSV file is missing columns that are in the table: {1}."
-                                 (format-columns extra) (format-columns missing))
-                            extra
-                            (tru "The CSV file contains extra columns that are not in the table: {0}."
-                                 (format-columns extra))
-                            missing
-                            (tru "The CSV file is missing columns that are in the table: {0}."
-                                 (format-columns missing)))]
+      (let [error-message (extra-and-missing-error-markdown extra missing)]
         (throw (ex-info error-message {:status-code 422}))))))
 
 (defn- append-csv!*

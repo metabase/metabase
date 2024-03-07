@@ -1282,7 +1282,7 @@
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
     (testing "The CSV file must not be empty"
-      (is (= {:message "The CSV file is missing columns that are in the table: \"name\".",
+      (is (= {:message "The CSV file is missing columns that are in the table:\n- name",
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
@@ -1313,19 +1313,34 @@
                      (rows-for-table table))))
             (io/delete-file file)))))))
 
+(defn- trim-lines [s]
+  (->> (str/split-lines s)
+       (map str/trim)
+       (str/join "\n")))
+
 (deftest append-column-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should fail if there are extra or missing columns in the CSV file"
         (doseq [[csv-rows error-message]
                 {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
+                 (trim-lines "The CSV file contains extra columns that are not in the table:
+                              - extra_column_two
+                              - extra_column_one")
 
                  [""]
-                 "The CSV file is missing columns that are in the table: \"id\", \"name\"."
+                 (trim-lines "The CSV file is missing columns that are in the table:
+                              - id
+                              - name")
 
                  ["_mb_row_id,extra 1, extra 2"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]
+                 (trim-lines "The CSV file contains extra columns that are not in the table:
+                              - extra_2
+                              - extra_1
+
+                              The CSV file is missing columns that are in the table:
+                              - id
+                              - name")}]
           (with-upload-table!
             [table (create-upload-table!
                     {:col->upload-type (ordered-map/ordered-map
@@ -1635,11 +1650,12 @@
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
                   [{:upload-type ::upload/int,     :uncoerced "2.1", :fail-msg "'2.1' is not an integer"}
-                   {:upload-type ::upload/int,     :uncoerced "2.0", :coerced 2}
-                   {:upload-type ::upload/float,   :uncoerced "2",   :coerced 2.0}
-                   {:upload-type ::upload/boolean, :uncoerced "0",   :coerced false}
-                   {:upload-type ::upload/boolean, :uncoerced "1.0", :fail-msg "'1.0' is not a recognizable boolean"}
-                   {:upload-type ::upload/boolean, :uncoerced "0.0", :fail-msg "'0.0' is not a recognizable boolean"}]]
+                   {:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2}
+                   {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
+                   {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
+                   {:upload-type ::upload/boolean, :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
+                   {:upload-type ::upload/boolean, :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}
+                   {:upload-type ::upload/int,     :uncoerced "01/01/2012", :fail-msg "'01/01/2012' is not a recognizable number"}]]
             (with-upload-table!
               [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
                                                                upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
