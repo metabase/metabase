@@ -28,6 +28,7 @@ export const funnelToBarTransform: TransformSeries = (
         }),
         display: "bar",
         visualization_settings: {
+          "card.title": card.name,
           "graph.tooltip_type": "default",
           "stackable.stack_type": "stacked" as const,
           "graph.dimensions": [settings["funnel.dimension"]],
