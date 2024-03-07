@@ -13,11 +13,15 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
-(mu/defn ^:private mark-fk!
-  "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance
-   fk       :- i/FKMetadataEntry]
+(defn ^:private mark-fk-sql
+  "Returns [sql & params] for [[mark-fk!]] according to the application DB's dialect."
+  [{:keys [db-id
+           fk-table-name
+           fk-table-schema
+           fk-column-name
+           pk-table-name
+           pk-table-schema
+           pk-column-name]}]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
                          {:select [[[:min :f.id] :id]]
                           ;; Cal 2024-03-04: We use `min` to limit this subquery to one result (limit 1 isn't allowed
@@ -35,44 +39,62 @@
                                    [:not= :f.visibility_type "retired"]
                                    [:= :t.active true]
                                    [:= :t.visibility_type nil]]})
-        fk-field-id-query (field-id-query (:id database)
-                                          (:schema table)
-                                          (:name table)
-                                          (:fk-column-name fk))
-        pk-field-id-query (field-id-query (:id database)
-                                            (:schema (:dest-table fk))
-                                            (:name (:dest-table fk))
-                                            (:dest-column-name fk))
-        never-matching-id -100
+        fk-field-id-query (field-id-query db-id fk-table-schema fk-table-name fk-column-name)
+        pk-field-id-query (field-id-query db-id pk-table-schema pk-table-name pk-column-name)
         q (case (mdb.connection/db-type)
-            (:h2 :postgres)
-            {:update [:metabase_field :f]
-             :from [[fk-field-id-query :fk]]
-             :join [[pk-field-id-query :pk] true]
-             :set {:fk_target_field_id :pk.id
-                   :semantic_type      "type/FK"}
-             :where [:and
-                     [:= :fk.id :f.id]
-                     ;; Update if either:
-                     ;; - fk_target_field_id is NULL and the new value is not NULL
-                     ;; - fk_target_field_id is not NULL but the new value is different and not NULL
-                     [:not= :pk.id [:coalesce :f.fk_target_field_id never-matching-id]]]}
             :mysql
             {:update [:metabase_field :f]
-             :join [[fk-field-id-query :fk] [:= :fk.id :f.id]
-                    ;; Update if either:
-                    ;; - fk_target_field_id is NULL and the new value is not NULL
-                    ;; - fk_target_field_id is not NULL but the new value is different and not NULL
-                    [pk-field-id-query :pk] [:not= :pk.id [:coalesce :f.fk_target_field_id never-matching-id]]]
-             :set {:fk_target_field_id :pk.id
-                   :semantic_type      "type/FK"}})]
-    (u/prog1 (t2/query-one (sql/format q :dialect (mdb.connection/quoting-style (mdb.connection/db-type))))
-      (when (= <> 1)
-        (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
-                                  (sync-util/table-name-for-logging table)
-                                  (sync-util/field-name-for-logging :name (:fk-column-name fk))
-                                  (sync-util/table-name-for-logging (:dest-table fk))
-                                  (sync-util/field-name-for-logging :name (:dest-column-name fk))))))))
+             :join   [[fk-field-id-query :fk] [:= :fk.id :f.id]
+                      ;; Only update if either:
+                      ;; - fk_target_field_id is NULL and the new target is not NULL
+                      ;; - fk_target_field_id is not NULL but the new target is different and not NULL
+                      [pk-field-id-query :pk]
+                      [:or
+                       [:= :f.fk_target_field_id nil]
+                       [:not= :f.fk_target_field_id :pk.id]]]
+             :set    {:fk_target_field_id :pk.id
+                      :semantic_type      "type/FK"}}
+            :postgres
+            {:update [:metabase_field :f]
+             :from   [[fk-field-id-query :fk]]
+             :join   [[pk-field-id-query :pk] true]
+             :set    {:fk_target_field_id :pk.id
+                      :semantic_type      "type/FK"}
+             :where  [:and
+                      [:= :fk.id :f.id]
+                      [:or
+                       [:= :f.fk_target_field_id nil]
+                       [:not= :f.fk_target_field_id :pk.id]]]}
+            :h2
+            {:update [:metabase_field :f]
+             :set    {:fk_target_field_id pk-field-id-query
+                      :semantic_type      "type/FK"}
+             :where  [:and
+                      [:= :f.id fk-field-id-query]
+                      [:not= pk-field-id-query nil]
+                      [:or
+                       [:= :f.fk_target_field_id nil]
+                       [:not= :f.fk_target_field_id pk-field-id-query]]]})]
+    (sql/format q :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))))
+
+(mu/defn ^:private mark-fk!
+  "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
+  [database :- i/DatabaseInstance
+   table    :- i/TableInstance
+   fk       :- i/FKMetadataEntry]
+  (u/prog1 (t2/query-one (mark-fk-sql {:db-id           (:id database)
+                                       :fk-table-name   (:name table)
+                                       :fk-table-schema (:schema table)
+                                       :fk-column-name  (:fk-column-name fk)
+                                       :pk-table-name   (:name (:dest-table fk))
+                                       :pk-table-schema (:schema (:dest-table fk))
+                                       :pk-column-name  (:dest-column-name fk)}))
+    (when (= <> 1)
+      (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
+                                (sync-util/table-name-for-logging table)
+                                (sync-util/field-name-for-logging :name (:fk-column-name fk))
+                                (sync-util/table-name-for-logging (:dest-table fk))
+                                (sync-util/field-name-for-logging :name (:dest-column-name fk)))))))
 
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
