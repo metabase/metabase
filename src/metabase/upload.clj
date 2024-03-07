@@ -103,15 +103,17 @@
   We use an [[metabase.util.ordered-hierarchy]] for its topological sorting, which simplify writing efficient and
   consistent implementations for of our type inference, parsing, and relaxation."
   (make-hierarchy
-   [::text
-    [::varchar-255
-     [::boolean ::boolean-or-int]
-     [::float
-      [::float-or-int
-       [::explicit-int ::boolean-or-int ::auto-incrementing-int-pk]]
-      [::int ::explicit-int ::float-or-int]]
-     [::datetime ::date]
-     [::offset-datetime]]]))
+   ::varchar-255              [::text]
+   ::boolean                  [::varchar-255]
+   ::float                    [::varchar-255]
+   ::datetime                 [::varchar-255]
+   ::offset-datetime          [::varchar-255]
+   ::boolean-or-int           [::boolean ::explicit-int]
+   ::float-or-int             [::float ::int]
+   ::int                      [::float]
+   ::explicit-int             [::int ::float-or-int]
+   ::auto-incrementing-int-pk [::explicit-int]
+   ::date                     [::datetime]))
 
 (def ^:private abstract->concrete
   "Not all value types correspond to database types. For those that don't, this maps to their concrete ancestor."

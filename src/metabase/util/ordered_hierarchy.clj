@@ -26,6 +26,13 @@
            h
            children)))
 
+(defn- derive-parents [h child->parents]
+  (reduce
+   (fn [h [child parents]]
+     (reduce #(derive %1 child %2) h parents))
+   h
+   child->parents))
+
 (defn make-hierarchy
   "Similar to [[clojure.core/make-hierarchy]], but the returned hierarchy will supports ordered derivations.
 
@@ -37,7 +44,10 @@
    (-> (clojure.core/make-hierarchy)
        (with-meta {::ordered? true})))
   ([& roots]
-   (reduce derive-children (make-hierarchy) roots)))
+   (if (every? vector? roots)
+     (reduce derive-children (make-hierarchy) roots)
+     (derive-parents (make-hierarchy)
+                     (partition-all 2 roots)))))
 
 (defn ancestors
   "Returns the immediate and indirect parents of tag, as established via derive. Earlier derivations are shown first.
