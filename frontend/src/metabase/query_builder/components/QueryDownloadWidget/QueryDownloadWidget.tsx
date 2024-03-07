@@ -73,6 +73,7 @@ const QueryDownloadWidget = ({
             </Tooltip>
           ) : (
             <Tooltip tooltip={t`Download full results`}>
+              <h1>QueryDownloaDWidget.tsx</h1>
               <DownloadIcon
                 onClick={() => setIsPopoverOpen(!isPopoverOpen)}
                 name="download"

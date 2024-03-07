@@ -5,7 +5,7 @@ export function ShowVisualizationToggle({
   showVisualizationSelector,
 }) {
   return (
-    <div className="ShowVisualizationToggle--container">
+    <div className="ShowVisualizationToggle--container" classNames="flex">
       <button onClick={onClick} className="ShowVisualizationToggle--button">
         {showVisualizationSelector ? "←" : "→"}
       </button>

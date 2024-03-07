@@ -1,18 +1,21 @@
-import { Welcome } from "../Welcome";
-import { QuestionSearchDropdown } from "../QuestionSearchDropdown";
+import { InteractiveQuestionSdk } from "metabase-embedding-sdk";
 import { useState } from "react";
-import { QueryVisualizationSdk } from "metabase-embedding-sdk";
-import { FontSelector } from "../FontSelector";
-import { LogoutButton } from "../Logout";
+import { useParams } from "react-router-dom";
+import { QuestionSearchDropdown } from "../QuestionSearchDropdown";
 import { ShowVisualizationToggle } from "../ShowVisualizationToggle";
 
 import "./Page.css";
-import { StyleLeakFlag } from "../StyleLeakFlag/StyleLeakFlag";
 
 export const Page = () => {
-  const [question, setQuestion] = useState(null);
+  let { questionId } = useParams();
+
+  const [question, setQuestion] = useState(
+    questionId ? { id: questionId } : null,
+  );
   const [showVisualizationSelector, setShowVisualizationSelector] =
     useState(false);
+
+  console.log("question", question);
 
   return (
     <div className="tw-h-full tw-w-full tw-flex tw-flex-col">
@@ -23,6 +26,7 @@ export const Page = () => {
         />
       </div>
       <div className="tw-flex-1">
+        <h1>hello from host app</h1>
         {question ? (
           <div className="tw-w-full tw-h-full tw-flex tw-flex-col">
             <ShowVisualizationToggle
@@ -32,8 +36,8 @@ export const Page = () => {
               showVisualizationSelector={showVisualizationSelector}
               question={question}
             />
-            <QueryVisualizationSdk
-              showVisualizationSelector={showVisualizationSelector}
+            <InteractiveQuestionSdk
+              // showVisualizationSelector={showVisualizationSelector}
               questionId={question.id}
             />
           </div>

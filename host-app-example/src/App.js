@@ -1,4 +1,8 @@
-import { MetabaseProvider } from "metabase-embedding-sdk";
+import {
+  MetabaseProvider,
+  createPlugin,
+  SDKContext,
+} from "metabase-embedding-sdk";
 
 import { Outlet } from "react-router-dom";
 import { Welcome } from "./Welcome";
@@ -20,7 +24,7 @@ const config = {
 
 const App = () => {
   return (
-    <MetabaseProvider config={config}>
+    <MetabaseProvider config={config} plugins={plugins}>
       <div className="Page--container">
         <header className="Page--header">
           <Welcome />
@@ -42,3 +46,38 @@ const App = () => {
 };
 
 export default App;
+
+const addCustomShare = createPlugin({
+  questionFooterActions: (actions = [], ctx) => {
+    return [
+      ...actions,
+      {
+        name: "Share",
+        icon: "sharing-icon",
+        onClick: () => {
+          const filter = ctx.appState.qb.card.dataset_query.query.filter;
+
+          console.log("Sharing from the plugin", ctx);
+          alert("Sharing from the plugin\n" + JSON.stringify(filter, null, 2));
+        },
+      },
+    ];
+  },
+});
+
+const hideQuestionFooterPlugin = createPlugin({
+  questionFooterActions: () => [],
+});
+
+const hideAlerts = createPlugin({
+  questionFooterActions: (actions = []) => {
+    return actions.filter(action => action.key !== "alerts");
+  },
+});
+
+const plugins = [
+  //
+  hideQuestionFooterPlugin,
+  addCustomShare,
+  // hideAlerts,
+];

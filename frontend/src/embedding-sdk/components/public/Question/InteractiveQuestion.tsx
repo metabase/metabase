@@ -1,6 +1,14 @@
 import { useEffect } from "react";
 import type { CardId } from "metabase-types/api";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  initializeQB,
+  navigateToNewCardInsideQB,
+  updateQuestion,
+} from "metabase/query_builder/actions";
+import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/components";
 import {
   getCard,
   getFirstQueryResult,
@@ -8,18 +16,12 @@ import {
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import {
-  initializeQB,
-  navigateToNewCardInsideQB,
-  updateQuestion,
-} from "metabase/query_builder/actions";
-import { Group, Stack } from "metabase/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/components";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { Button, Group, Stack } from "metabase/ui";
 
-import { NotLoggedInBlock } from "../NotLoggedInBlock";
 import { useEmbeddingContext } from "../../../hooks/private/use-sdk-context";
+import type { SDKContext } from "../../../plugins";
+import { COMPUTED_SDK_PLUGINS } from "../../../plugins";
+import { NotLoggedInBlock } from "../NotLoggedInBlock";
 
 interface InteractiveQuestionProps {
   questionId: CardId;
@@ -53,6 +55,8 @@ export const InteractiveQuestionSdk = (
     dispatch(initializeQB(mockLocation, params));
   }, [dispatch, questionId]);
 
+  const appState = useSelector(state => state);
+
   if (!isInitialized) {
     return null;
   }
@@ -60,6 +64,30 @@ export const InteractiveQuestionSdk = (
   if (!isLoggedIn) {
     return <NotLoggedInBlock />;
   }
+
+  const defaultActions = [
+    {
+      key: "download",
+      label: "Download",
+      icon: "download [default]",
+      onClick: () => alert("Default download action"),
+    },
+    {
+      key: "alerts",
+      label: "Alerts",
+      icon: "Alerts [default]",
+      onClick: () => alert("Default alerts action"),
+    },
+  ];
+
+  const context: SDKContext = {
+    appState,
+  };
+
+  const actions =
+    // TODO: wrap in a hook
+    // it should calculate the context and pass it to the plugin
+    COMPUTED_SDK_PLUGINS.current.questionFooterActions(defaultActions, context);
 
   return (
     <LoadingAndErrorWrapper
@@ -74,7 +102,9 @@ export const InteractiveQuestionSdk = (
         }
 
         return (
-          <Stack h="100%">
+          <Stack h="100%" style={{ border: "1px solid red" }}>
+            <p>hello from the embed sdk</p>
+
             {FilterHeader.shouldRender({
               question,
               queryBuilderMode: uiControls.queryBuilderMode,
@@ -85,6 +115,18 @@ export const InteractiveQuestionSdk = (
                 question={question}
                 updateQuestion={(...args) => dispatch(updateQuestion(...args))}
               />
+            )}
+            {actions.length > 0 && (
+              <Group spacing="md">
+                {actions.map(action => (
+                  <Button
+                    key={action.label}
+                    onClick={() => action.onClick(question)}
+                  >
+                    {action.icon}
+                  </Button>
+                ))}
+              </Group>
             )}
             <Group h="100%" pos="relative" align="flex-start">
               <QueryVisualization

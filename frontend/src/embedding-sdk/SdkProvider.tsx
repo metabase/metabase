@@ -1,29 +1,34 @@
+import styled from "@emotion/styled";
 import type * as React from "react";
 import { memo, useEffect, useState } from "react";
 import { Provider } from "react-redux";
-import styled from "@emotion/styled";
-import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
-import { getStore } from "metabase/store";
-import reducers from "metabase/reducers-main";
 import { alpha, color } from "metabase/lib/colors";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
-import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
+import reducers from "metabase/reducers-main";
 import { setOptions } from "metabase/redux/embed";
+import { getStore } from "metabase/store";
+import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
+import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
-import { SdkEmotionCacheProvider } from "./SdkEmotionCacheProvider";
-import { EmbeddingContext } from "./context";
 import type { SDKConfigType } from "./config";
 import { SDK_CONTEXT_CLASS_NAME } from "./config";
+import { EmbeddingContext } from "./context";
+import { SdkEmotionCacheProvider } from "./SdkEmotionCacheProvider";
 
-import "./styles.css";
+import type { SDKPlugin } from "./plugins";
+import { COMPUTED_SDK_PLUGINS, mergePlugins } from "./plugins";
+
 import { useInitData } from "./hooks";
+import "./styles.css";
 
 const MetabaseProviderInternal = ({
   children,
   config,
+  plugins,
 }: {
   children: React.ReactNode;
   config: SDKConfigType;
+  plugins: SDKPlugin[];
 }): JSX.Element => {
   const store = getStore(reducers);
 
@@ -34,6 +39,11 @@ const MetabaseProviderInternal = ({
   }, [store]);
 
   const [font, setFont] = useState<string>(config.font ?? "Lato");
+
+  useEffect(() => {
+    // this should probably be saved in a context, not in a global variable
+    COMPUTED_SDK_PLUGINS.current = mergePlugins(plugins);
+  }, [plugins]);
 
   useEffect(() => {
     if (font) {

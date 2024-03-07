@@ -181,6 +181,7 @@ function EmbedFrame({
         <Body>{children}</Body>
       </ContentContainer>
       {showFooter && (
+        // this footer
         <Footer className="EmbedFrame-footer" variant={footerVariant}>
           {hasEmbedBranding && (
             <LogoBadge variant={footerVariant} dark={theme === "night"} />
