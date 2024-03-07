@@ -15,8 +15,8 @@
 
 (set! *warn-on-reflection* true)
 
-;; NOTE: do not create DataSource directly, used one of our helper function below to do that
-;; we want to make sure [[update-h2/update-if-needed!]] to be called on every data source
+;; NOTE: do not create DataSource directly, used one of our helper functions instead
+;; we want to make sure [[update-h2/update-if-needed!]] is called on every data source
 (p/deftype+ DataSource [^String url ^Properties properties]
   pretty/PrettyPrintable
   (pretty [_]
