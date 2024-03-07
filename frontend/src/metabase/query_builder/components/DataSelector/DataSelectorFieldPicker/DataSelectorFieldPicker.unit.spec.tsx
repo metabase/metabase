@@ -72,6 +72,7 @@ describe("DataSelectorFieldPicker", () => {
 
       expect(screen.getByText(tableDisplayName)).toBeInTheDocument();
       expect(screen.getByText("Product ID")).toBeInTheDocument();
+      expect(screen.getByLabelText("More info")).toBeInTheDocument();
     });
   });
 });

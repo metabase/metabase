@@ -1,85 +1,40 @@
-import PropTypes from "prop-types";
-import type { ReactElement } from "react";
-import { hideAll } from "tippy.js";
-
-import type { ITippyPopoverProps } from "metabase/components/Popover/TippyPopover";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
-import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
+import type { PopoverProps } from "../Popover";
+import { Popover } from "../Popover";
+import type { TableInfoProps } from "../TableInfo";
+import TableInfo from "../TableInfo";
 
-export const POPOVER_DELAY: [number, number] = [500, 300];
+export type TableInfoPopoverProps = Omit<PopoverProps, "content"> &
+  Omit<TableInfoProps, "tableId"> & {
+    table: {
+      id: string | number;
+      description?: string | null;
+    };
+  };
 
-interface TableSubset {
-  id: number | string;
-  description?: string;
-}
-
-const propTypes = {
-  table: PropTypes.shape({
-    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    description: PropTypes.string,
-  }).isRequired,
-  children: PropTypes.node,
-  placement: PropTypes.string,
-  offset: PropTypes.arrayOf(PropTypes.number),
-};
-
-type Props = {
-  table: TableSubset;
-  children: ReactElement;
-  placement: string;
-  offset: number[];
-} & Pick<ITippyPopoverProps, "children" | "placement" | "offset" | "delay">;
-
-const className = "table-info-popover";
-
-function isRealTable(id: number | string): id is number {
-  return !isVirtualCardId(id);
-}
-
-function TableInfoPopover({
-  table,
+export function TableInfoPopover({
   children,
-  placement,
-  offset,
-  delay = POPOVER_DELAY,
-}: Props) {
-  placement = placement || "left-start";
+  delay,
+  disabled,
+  position,
+  table,
+  ...rest
+}: TableInfoPopoverProps) {
+  const shouldHavePopover = table.description && !isVirtualCardId(table.id);
 
-  const { id, description } = table;
-  const hasDescription = !!description;
-  const showPopover = hasDescription && isRealTable(id);
+  if (!shouldHavePopover) {
+    return <>{children}</>;
+  }
 
-  return showPopover ? (
-    <TippyPopover
-      className={className}
+  return (
+    <Popover
+      position={position}
       delay={delay}
-      placement={placement}
-      offset={offset}
-      content={<WidthBoundTableInfo tableId={id} />}
-      onTrigger={instance => {
-        const dimensionInfoPopovers = document.querySelectorAll(
-          `.${className}[data-state~='visible']`,
-        );
-
-        // if a dimension info popover is already visible, hide it and show this one immediately
-        if (dimensionInfoPopovers.length > 0) {
-          hideAll({
-            exclude: instance,
-          });
-          instance.show();
-        }
-      }}
+      disabled={disabled}
+      content={<TableInfo tableId={table.id} {...rest} />}
     >
       {children}
-    </TippyPopover>
-  ) : (
-    children
+    </Popover>
   );
 }
-
-TableInfoPopover.propTypes = propTypes;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TableInfoPopover;

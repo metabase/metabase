@@ -27,6 +27,7 @@
             Table
             User]]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -34,6 +35,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.timeline-event :as timeline-event]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -41,6 +43,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
+   [metabase.test.util.public-settings]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.random :as u.random]
@@ -980,24 +983,21 @@
                                           :object permission-path}]
     (f)))
 
-(defn do-with-all-user-data-perms-graph
+(defn do-with-all-user-data-perms-graph!
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
-  (let [all-users-group-id  (u/the-id (perms-group/all-users))
-        current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
-    (try
-      (with-model-cleanup [Permissions]
-        (u/ignore-exceptions
-         (@#'perms/update-group-permissions! all-users-group-id graph))
-        (f))
-      (finally
-        (u/ignore-exceptions
-         (@#'perms/update-group-permissions! all-users-group-id current-graph))))))
+  (let [all-users-group-id  (u/the-id (perms-group/all-users))]
+    (metabase.test.util.public-settings/with-additional-premium-features #{:advanced-permissions}
+      (perms.test-util/with-no-data-perms-for-all-users!
+        (perms.test-util/with-restored-perms!
+          (perms.test-util/with-restored-data-perms!
+            (data-perms.graph/update-data-perms-graph!* {all-users-group-id graph})
+            (f)))))))
 
-(defmacro with-all-users-data-perms-graph
+(defmacro with-all-users-data-perms-graph!
   "Runs `body` with data perms for the All Users group temporarily set to the values in `graph`."
   [graph & body]
-  `(do-with-all-user-data-perms-graph ~graph (fn [] ~@body)))
+  `(do-with-all-user-data-perms-graph! ~graph (fn [] ~@body)))
 
 (defmacro with-all-users-permission
   "Run `body` with the ''All Users'' group being granted the permission

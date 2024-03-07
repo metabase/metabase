@@ -5530,6 +5530,232 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v50.2024-01-04T13:52:51
+      author: noahmoss
+      comment: Data permissions table
+      changes:
+        - createTable:
+            tableName: data_permissions
+            remarks: A table to store database and table permissions
+            columns:
+              - column:
+                  remarks: The ID of the permission
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The ID of the associated permission group
+                  name: group_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_permissions_ref_permissions_group
+                    deleteCascade: true
+              - column:
+                  remarks: The type of the permission (e.g. "data", "collection", "download"...)
+                  name: perm_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: A database ID, for DB and table-level permissions
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_permissions_ref_db_id
+                    deleteCascade: true
+              - column:
+                  remarks: A schema name, for table-level permissions
+                  name: schema_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: A table ID
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_permissions_ref_table_id
+                    deleteCascade: true
+              - column:
+                  remarks: The value this permission is set to.
+                  name: perm_value
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-01-09T13:52:21
+      author: noahmoss
+      comment: Index on data_permissions.table_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            columns:
+              - column:
+                  name: table_id
+            indexName: idx_data_permissions_table_id
+
+  - changeSet:
+      id: v50.2024-01-09T13:53:50
+      author: noahmoss
+      comment: Index on data_permissions.db_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            columns:
+              - column:
+                  name: db_id
+            indexName: idx_data_permissions_db_id
+
+  - changeSet:
+      id: v50.2024-01-09T13:53:54
+      author: noahmoss
+      comment: Index on data_permissions.group_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            columns:
+              - column:
+                  name: group_id
+            indexName: idx_data_permissions_group_id
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:29
+      author: noahmoss
+      comment: Drop foreign key constraint on sandboxes.permissions_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: sandboxes
+            constraintName: fk_sandboxes_ref_permissions
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:30
+      author: noahmoss
+      comment: Migrate data-access permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_data_access.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/rollback/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_data_access.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:31
+      author: noahmoss
+      comment: Migrate native-query-editing permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            path: permissions/native_query_editing.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: permissions/rollback/native_query_editing.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:32
+      author: noahmoss
+      comment: Migrate download-results permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_download_results.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/rollback/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_download_results.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:33
+      author: noahmoss
+      comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_manage_table_metadata.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/rollback/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_manage_table_metadata.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:34
+      author: noahmoss
+      comment: Migrate manage-database permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            path: permissions/manage_database.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: permissions/rollback/manage_database.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-02-19T21:32:04
+      author: noahmoss
+      comment: Clear data permission paths
+      changes:
+        - sql: >-
+            DELETE FROM permissions WHERE object LIKE '%/db/%';
+      rollback: # not needed; handled by the permission migrations above
+
+  - changeSet:
       id: v50.2024-02-20T19:21:04
       author: camsaul
       comment: Drop v1 version of v_content view since it references report_card.dataset which we are dropping in next migration
@@ -5597,7 +5823,6 @@ databaseChangeLog:
         - sql:
             sql: >-
               DROP VIEW IF EXISTS v_content;
-
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

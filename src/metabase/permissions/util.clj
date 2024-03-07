@@ -113,14 +113,8 @@
   somewhat readable."
   (u.regex/rx
    "^/" [:or
-         v1-data-permissions-rx
-         download-permissions-rx
-         data-model-permissions-rx
-         db-conn-details-permissions-rx
-         execute-permissions-rx
          collection-permissions-rx
          non-scoped-permissions-rx
-         block-permissions-rx
          admin-permissions-rx]
    "$"))
 
@@ -144,11 +138,7 @@
   - a block path like \"block/db/2/\""
   (u.regex/rx
    "^/" [:or
-         v2-data-permissions-rx
          v2-query-permissions-rx
-         download-permissions-rx
-         data-model-permissions-rx
-         db-conn-details-permissions-rx
          execute-permissions-rx
          collection-permissions-rx
          non-scoped-permissions-rx

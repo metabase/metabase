@@ -65,6 +65,7 @@
     :model/Card
     :model/CardBookmark
     :model/DashboardBookmark
+    :model/DataPermissions
     :model/CollectionBookmark
     :model/BookmarkOrdering
     :model/DashboardCard
