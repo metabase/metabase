@@ -215,12 +215,12 @@ interface AdminSettings {
   "active-users-count"?: number;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
-  "query-caching-ttl-ratio": number;
   "query-caching-min-ttl": number;
+  "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
-  "jwt-enabled"?: boolean;
   "jwt-configured"?: boolean;
+  "jwt-enabled"?: boolean;
   "premium-embedding-token": string | null;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
@@ -235,9 +235,9 @@ interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
   "ee-openai-api-key"?: string;
   "openai-api-key": string | null;
-  "openai-organization": string | null;
-  "openai-model": string | null;
   "openai-available-models"?: OpenAiModel[];
+  "openai-model": string | null;
+  "openai-organization": string | null;
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-files-channel": string | null;
