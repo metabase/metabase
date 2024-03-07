@@ -73,10 +73,7 @@
     card-or-id            :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     col                   :- :map]
    (let [col (-> col
-                 (update-keys u/->kebab-case-en)
-                 ;; ignore `:field-ref`, it's very likely a legacy field ref, and it's probably wrong either way. We
-                 ;; can always calculate a new one.
-                 (dissoc :field-ref))]
+                 (update-keys u/->kebab-case-en))]
      (cond-> (merge
               {:base-type :type/*, :lib/type :metadata/column}
               (when-let [field-id (:id col)]

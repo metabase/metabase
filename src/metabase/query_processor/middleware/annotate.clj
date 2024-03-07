@@ -423,6 +423,9 @@
           qp.store/->legacy-metadata))
    source-metadata-col
    col
+   ;; prefer display name from source metadata, for example if someone gives a column a custom name in a Model we should
+   ;; be propagating that.
+   (select-keys source-metadata-col [:display_name])
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
    ;; frontend will display the results correctly if bucketing was applied in the nested query, e.g. it will format
    ;; temporal values in results using that unit
