@@ -534,13 +534,12 @@
                                  1000.0)]
 
         (events/publish-event! :event/upload-create
-                               {:user-id (:id @api/*current-user*)
+                               {:user-id  (:id @api/*current-user*)
                                 :model-id (:id card)
-                                ;; details
-                                :db-id db-id
-                                :schema-name schema-name
-                                :table-name table-name
-                                :stats stats})
+                                :details  {:db-id       db-id
+                                           :schema-name schema-name
+                                           :table-name  table-name
+                                           :stats       stats}})
 
         (snowplow/track-event! ::snowplow/csv-upload-successful
                                api/*current-user-id*
@@ -661,7 +660,6 @@
       (try
         (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
         (catch Throwable e
-
           (throw (ex-info (ex-message e) {:status-code 422}))))
       (when create-auto-pk?
         (driver/add-columns! driver
