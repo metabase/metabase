@@ -80,14 +80,14 @@
   "This hierarchy defines a relationship between value types and their specializations.
   We use an [[metabase.util.ordered-hierarchy]] for its topological sorting, which simplify writing efficient and
   consistent implementations for of our type inference, parsing, and relaxation."
-  (-> (make-hierarchy
-       [::text
-        [::varchar-255
-         [::boolean ::boolean-or-int]
-         [::float
-          [::int ::boolean-or-int ::auto-incrementing-int-pk]]
-         [::datetime ::date]
-         [::offset-datetime]]])))
+  (make-hierarchy
+   [::text
+    [::varchar-255
+     [::boolean ::boolean-or-int]
+     [::float
+      [::int ::boolean-or-int ::auto-incrementing-int-pk]]
+     [::datetime ::date]
+     [::offset-datetime]]]))
 
 (def ^:private abstract->concrete
   "Not all value types correspond to database types. For those that don't, this maps to their concrete ancestor."
