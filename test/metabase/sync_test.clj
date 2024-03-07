@@ -231,8 +231,8 @@
 
 (deftest sync-table-test
   (binding [sync-util/*log-exceptions-and-continue?* false]
-    (mt/with-temp [Database db            {:engine ::sync-test}
-                   Table    table         {:name "movie", :schema "default", :db_id (u/the-id db)}
+    (mt/with-temp [Database db           {:engine ::sync-test}
+                   Table    table        {:name "movie", :schema "default", :db_id (u/the-id db)}
                    Table    studio-table {:name "studio", :schema nil, :db_id (u/the-id db)}]
       (sync/sync-table! studio-table)
       (sync/sync-table! table)
