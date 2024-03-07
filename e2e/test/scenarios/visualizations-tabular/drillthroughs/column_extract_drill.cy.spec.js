@@ -30,10 +30,12 @@ const DATE_CASES = [
   },
 ];
 
-const BREAKOUT_QUESTION = {
+const DATE_QUESTION = {
   query: {
     "source-table": ORDERS_ID,
-    aggregation: [["count"]],
+    aggregation: [
+      ["min", ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }]],
+    ],
     breakout: [
       [
         "field",
@@ -64,10 +66,17 @@ describe("extract action", () => {
       });
     });
 
+    describe("breakout column", () => {
+      it("should add an expression based on a breakout column", () => {
+        cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+        extractColumnAndCheck("Created At: Month", "Month of year", "Apr");
+      });
+    });
+
     describe("aggregation column", () => {
       it("should add an expression based on an aggregation column", () => {
-        cy.createQuestion(BREAKOUT_QUESTION, { visitQuestion: true });
-        extractColumnAndCheck("Created At: Month", "Month of year", "Apr");
+        cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+        extractColumnAndCheck("Min of Created At: Default", "Year", "2,022");
       });
     });
   });
