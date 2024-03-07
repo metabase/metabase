@@ -76,7 +76,7 @@ export const Archived = ({
 export const SmallGenericError = ({
   message = t`Something's gone wrong`,
 }: {
-  message: string;
+  message?: string;
 }) => (
   <ErrorPageRoot>
     <Icon
