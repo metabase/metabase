@@ -692,8 +692,9 @@
                                          :table-name  (:name table)
                                          :stats       {:num-rows          row-count
                                                        :num-columns       (count new-column-types)
-                                                       :generated-columns (- (count new-column-types)
-                                                                             (count old-column-types))
+                                                       :generated-columns (+ (- (count new-column-types)
+                                                                                (count old-column-types))
+                                                                             (if create-auto-pk? 1 0))
                                                        :size-mb           (file-size-mb file)
                                                        :upload-seconds    (check-timer-ms timer)}}})
 
