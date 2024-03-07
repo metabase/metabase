@@ -215,9 +215,9 @@ describe("scenarios > visualizations > table", () => {
       cy.get(".cellData").contains(column).realHover();
 
       // Add a delay here because there can be two popovers active for a very short time.
-      cy.wait(100);
+      cy.wait(200);
 
-      popover().within(() => {
+      hovercard().within(() => {
         test();
       });
 
@@ -238,9 +238,9 @@ describe("scenarios > visualizations > table", () => {
 
     // Make sure new table results loaded with Custom column and Count columns
     cy.get(".cellData").contains(ccName).realHover();
-    cy.wait(100);
+    cy.wait(200);
 
-    popover().within(() => {
+    hovercard().within(() => {
       cy.contains("No special type");
       cy.findByText("No description");
     });
@@ -254,6 +254,23 @@ describe("scenarios > visualizations > table", () => {
     hovercard().within(() => {
       cy.contains("Foreign Key");
       cy.contains("The product ID.");
+    });
+  });
+
+  it("should show field metadata in a hovercard when hovering over a table column in the summarize sidebar", () => {
+    openOrdersTable({ limit: 2 });
+
+    summarize();
+
+    cy.findAllByTestId("dimension-list-item")
+      .contains("ID")
+      .parents("[data-testid='dimension-list-item']")
+      .within(() => {
+        cy.findByLabelText("More info").realHover();
+      });
+
+    hovercard().within(() => {
+      cy.contains("Entity Key");
     });
   });
 

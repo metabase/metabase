@@ -66,8 +66,6 @@
 
 :global(.AdminList-search .Icon) {
   position: absolute;
-  margin-top: auto;
-  margin-bottom: auto;
   top: 0;
   bottom: 0;
   margin: auto;
@@ -123,6 +121,7 @@
   background-color: var(--color-bg-light);
   border: 1px solid transparent;
 }
+
 :global(.AdminInput:focus) {
   border-color: var(--color-brand);
   box-shadow: none;

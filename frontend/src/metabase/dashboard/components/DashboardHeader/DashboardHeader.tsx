@@ -20,6 +20,7 @@ import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
+  cancelEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
@@ -280,7 +281,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const onCancel = () => {
     onRevert();
-    onDoneEditing();
+    dispatch(cancelEditingDashboard());
   };
 
   const saveAsPDF = async () => {
@@ -589,6 +590,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
+            // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+            transitionDuration={0}
           />,
         );
       }

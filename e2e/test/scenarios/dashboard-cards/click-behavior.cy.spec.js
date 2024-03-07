@@ -30,6 +30,7 @@ import {
   createMockActionParameter,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
+const { PRODUCTS, SAMPLE_DB_ID } = SAMPLE_DATABASE;
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
@@ -1854,6 +1855,166 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         expect(search).to.equal(
           `?tab=${TAB_SLUG_MAP[TAB_2.name]}&${DASHBOARD_FILTER_TEXT.slug}=${1}`,
         );
+      });
+    });
+  });
+
+  it("should allow click behavior on left/top header rows on a pivot table (metabase#25203)", () => {
+    const QUESTION_NAME = "Cypress Pivot Table";
+    const DASHBOARD_NAME = "Pivot Table Dashboard";
+    const testQuery = {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            PEOPLE.SOURCE,
+            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+        ],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: QUESTION_NAME,
+        query: testQuery.query,
+        display: "pivot",
+      },
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+      },
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("targetDashboardId");
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+
+    getDashboardCard().realHover().icon("click").click();
+    addUrlDestination();
+
+    modal().within(() => {
+      const urlInput = cy.findAllByRole("textbox").eq(0);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        urlInput.type(
+          `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}&category={{category}}&count={{count}}`,
+          {
+            parseSpecialCharSequences: false,
+          },
+        );
+      });
+      cy.button("Done").click();
+    });
+
+    cy.get("aside").button("Done").click();
+
+    saveDashboard();
+
+    // test top header row
+    getDashboardCard().findByText("Doohickey").click();
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("?category=Doohickey&count=&source=");
+      });
+    });
+
+    // test left header row
+    getDashboardCard().findByText("Affiliate").click();
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("?category=&count=&source=Affiliate");
+      });
+    });
+  });
+
+  it("should allow click through on the pivot column of a regular table that has been pivoted (metabase#25203)", () => {
+    const QUESTION_NAME = "Cypress Table Pivoted";
+    const DASHBOARD_NAME = "Table Pivoted Dashboard";
+    const testQuery = {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            PEOPLE.SOURCE,
+            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+        ],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: QUESTION_NAME,
+        query: testQuery.query,
+        display: "table",
+      },
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+      },
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("targetDashboardId");
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+
+    getDashboardCard().realHover().icon("click").click();
+    cy.get("aside").findByText("User → Source").click();
+    addUrlDestination();
+
+    modal().within(() => {
+      const urlInput = cy.findAllByRole("textbox").eq(0);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        urlInput.type(
+          `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}`,
+          {
+            parseSpecialCharSequences: false,
+          },
+        );
+      });
+      cy.button("Done").click();
+    });
+
+    cy.get("aside").button("Done").click();
+
+    saveDashboard();
+
+    // test pivoted column
+    getDashboardCard().findByText("Organic").click();
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("?source=Organic");
       });
     });
   });

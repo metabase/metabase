@@ -9,9 +9,9 @@
    [metabase.http-client :as client]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Card Database Field FieldValues Table]]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :as table]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -141,9 +141,9 @@
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
       (mt/with-temp [Database {database-id :id} {}
                      Table    {table-id :id}    {:db_id database-id}]
-        (perms/revoke-data-perms! (perms-group/all-users) database-id)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "table/" table-id))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "table/" table-id)))))))))
 
 (defn- default-dimension-options []
   (as-> @#'api.table/dimension-options-for-response options
@@ -298,15 +298,15 @@
                      Field    table-1-id  {:table_id (u/the-id table-1), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
                      Field    _table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
                      Field    _table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]
-        ;; grant permissions only to table-2
-        (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
-        (perms/grant-permissions! (perms-group/all-users) (u/the-id db) (:schema table-2) (u/the-id table-2))
-        ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
-        (is (= #{{:name "id", :target false}
-                 {:name "fk", :target false}}
-               (set (for [field (:fields (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table-2))))]
-                      (-> (select-keys field [:name :target])
-                          (update :target boolean))))))))))
+        (perms.test-util/with-no-data-perms-for-all-users!
+          ;; grant permissions only to table-2
+          (perms.test-util/with-perm-for-group-and-table! (u/the-id (perms-group/all-users)) (u/the-id table-2) :perms/data-access :unrestricted
+            ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
+            (is (= #{{:name "id", :target false}
+                     {:name "fk", :target false}}
+                   (set (for [field (:fields (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table-2))))]
+                          (-> (select-keys field [:name :target])
+                              (update :target boolean))))))))))))
 
 (deftest update-table-test
   (testing "PUT /api/table/:id"

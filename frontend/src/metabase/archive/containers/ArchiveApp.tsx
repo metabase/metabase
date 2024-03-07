@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useSearchListQuery } from "metabase/common/hooks";
 import { ArchivedItem } from "metabase/components/ArchivedItem/ArchivedItem";
-import BulkActionBar from "metabase/components/BulkActionBar";
+import { BulkActionBar } from "metabase/components/BulkActionBar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
