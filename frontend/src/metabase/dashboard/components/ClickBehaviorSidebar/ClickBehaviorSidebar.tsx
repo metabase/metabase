@@ -110,7 +110,7 @@ export function ClickBehaviorSidebar({
   );
 
   const handleChangeSettings = useCallback(
-    nextClickBehavior => {
+    (nextClickBehavior?: Record<string, unknown> | null) => {
       const { id } = dashcard;
 
       if (selectedColumn == null) {
@@ -142,7 +142,7 @@ export function ClickBehaviorSidebar({
   );
 
   const handleColumnSelected = useCallback(
-    column => {
+    (column: DatasetColumn) => {
       const originalColumnVizSettings = getClickBehaviorForColumn(
         dashcard,
         column,

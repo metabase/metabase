@@ -95,7 +95,7 @@ const ChartTypeSidebar = ({
   );
 
   const handleClick = useCallback(
-    (display, e) => {
+    (display: string, e: React.MouseEvent) => {
       if (display === question.display()) {
         openChartSettings(e);
       } else {

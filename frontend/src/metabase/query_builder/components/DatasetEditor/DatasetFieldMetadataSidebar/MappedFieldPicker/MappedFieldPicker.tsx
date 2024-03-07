@@ -54,7 +54,7 @@ function MappedFieldPicker({
   }, []);
 
   const onFieldChange = useCallback(
-    fieldId => {
+    (fieldId: number | null) => {
       onChange(fieldId);
       selectButtonRef.current?.focus();
     },

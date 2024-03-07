@@ -81,7 +81,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     setActive();
   }, [setActive]);
 
-  const onTextChange = useCallback(e => {
+  const onTextChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value);
   }, []);
 
@@ -157,7 +157,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, [onChangeLocation, previousLocation, searchFilters, searchText]);
 
   const handleInputKeyPress = useCallback(
-    e => {
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter" && hasSearchText) {
         goToSearchApp();
       }

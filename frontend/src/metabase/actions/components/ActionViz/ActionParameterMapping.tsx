@@ -61,7 +61,8 @@ export const ActionParameterMappingForm = ({
   }, [action]);
 
   const handleParameterChange = useCallback(
-    (dashboardParameterId, target) => {
+    // FUTURE TODO: dashboardParameterId can be null but setParameterMapping expects ParameterId, casting to any for now
+    (dashboardParameterId: any, target: ParameterTarget) => {
       dispatch(
         setParameterMapping(
           dashboardParameterId,
