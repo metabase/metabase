@@ -1,6 +1,8 @@
 (ns metabase.sync.sync-metadata.fks
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
+   [honey.sql :as sql]
+   [metabase.db.connection :as mdb.connection]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -17,22 +19,22 @@
    table    :- i/TableInstance
    fk       :- i/FKMetadataEntry]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
-                             {:select [[[:min :f.id] :id]]
-                              ;; Cal 2024-03-04: We use `min` to limit this subquery to one result
-                              ;; because it's possible for schema, table, or column names to be non-unique when
-                              ;; lower-cased for some DBs. We have been doing case-insensitive matching since #39679
-                              ;; so this preserves behaviour to avoid possible regressions.
-                              :from   [[:metabase_field :f]]
-                              :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
-                              :where  [:and
-                                       [:= :t.db_id db-id]
-                                       [:= [:lower :f.name] (u/lower-case-en column-name)]
-                                       [:= [:lower :t.name] (u/lower-case-en table-name)]
-                                       [:= [:lower :t.schema] (some-> table-schema u/lower-case-en)]
-                                       [:= :f.active true]
-                                       [:not= :f.visibility_type "retired"]
-                                       [:= :t.active true]
-                                       [:= :t.visibility_type nil]]})
+                         {:select [[[:min :f.id] :id]]
+                          ;; Cal 2024-03-04: We use `min` to limit this subquery to one result (limit 1 isn't allowed
+                          ;; in subqueries in MySQL) because it's possible for schema, table, or column names to be
+                          ;; non-unique when lower-cased for some DBs. We have been doing case-insensitive matching
+                          ;; since #39679 so this preserves behaviour to avoid possible regressions.
+                          :from   [[:metabase_field :f]]
+                          :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
+                          :where  [:and
+                                   [:= :t.db_id db-id]
+                                   [:= [:lower :f.name] (u/lower-case-en column-name)]
+                                   [:= [:lower :t.name] (u/lower-case-en table-name)]
+                                   [:= [:lower :t.schema] (some-> table-schema u/lower-case-en)]
+                                   [:= :f.active true]
+                                   [:not= :f.visibility_type "retired"]
+                                   [:= :t.active true]
+                                   [:= :t.visibility_type nil]]})
         fk-field-id-query (field-id-query (:id database)
                                           (:schema table)
                                           (:name table)
@@ -42,17 +44,18 @@
                                             (:name (:dest-table fk))
                                             (:dest-column-name fk))
         never-matching-id -100]
-    (u/prog1 (t2/query-one {:update [:metabase_field :f]
-                            :set {:fk_target_field_id dest-field-id-query
-                                  :semantic_type      "type/FK"}
-                            :where [:and
-                                    [:= :f.id fk-field-id-query]
-                                    ;; Update if either:
-                                    ;; - fk_target_field_id is NULL and the new value is not NULL
-                                    ;; - fk_target_field_id is not NULL but the new value is different and not NULL
-                                    [:not=
-                                     [:coalesce :f.fk_target_field_id never-matching-id]
-                                     dest-field-id-query]]})
+    (u/prog1 (t2/query-one (sql/format
+                            {:update [:metabase_field :f]
+                             :join [[fk-field-id-query :fk] [:= :fk.id :f.id]
+                                     ;; Update if either:
+                                     ;; - fk_target_field_id is NULL and the new value is not NULL
+                                     ;; - fk_target_field_id is not NULL but the new value is different and not NULL
+                                    [dest-field-id-query :pk] [:not=
+                                                               [:coalesce :f.fk_target_field_id never-matching-id]
+                                                               :pk.id]]
+                             :set {:fk_target_field_id :pk.id
+                                   :semantic_type      "type/FK"}}
+                            :dialect (mdb.connection/quoting-style (mdb.connection/db-type))))
       (when (= <> 1)
         (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
                                   (sync-util/table-name-for-logging table)
