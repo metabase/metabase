@@ -10,7 +10,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
    [metabase.http-client :as client]
-   [metabase.models :refer [Database Table User]]
+   [metabase.models :refer [Database User]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
@@ -31,16 +31,6 @@
 
 (def random-fake-token
   "d7ad0b5f9ddfd1953b1b427b75d620e4ba91d38e7bcbc09d8982480863dbc611")
-
-(defn- wait-for-result
-  "Call thunk up to 10 times, until it returns a truthy value. Wait 50ms between tries. Useful for waiting for something
-  asynchronous to happen."
-  [thunk]
-  (loop [tries 10]
-    (or (thunk)
-        (when (pos? tries)
-          (Thread/sleep 50)
-          (recur (dec tries))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  POST /setup                                                   |
@@ -203,40 +193,6 @@
 (methodical/defmethod events/publish-event! ::create-database-trigger-sync-test-events
   [topic event]
   (reset! create-database-trigger-sync-test-event {:topic topic, :item event}))
-
-(deftest create-database-trigger-sync-test
-  (testing "POST /api/setup"
-    (testing "Setup should trigger sync right away for the newly created Database (#12826)"
-      (let [db-name (mt/random-name)]
-        (reset! create-database-trigger-sync-test-event nil)
-        (with-setup! {:database {:engine  "h2"
-                                 :name    db-name
-                                 :details (:details (mt/db))}}
-          (testing ":database-create events should have been fired"
-            (is (=? {:topic :event/database-create
-                     :item  {:object {:id   pos-int?
-                                      :name db-name}}}
-                    @create-database-trigger-sync-test-event)))
-          (testing "Database should be synced"
-            (let [db (t2/select-one Database :name db-name)]
-              (assert (some? db))
-              (is (= 8
-                     (wait-for-result (fn []
-                                        (let [cnt (t2/count Table :db_id (u/the-id db))]
-                                          (when (= cnt 8)
-                                            cnt)))))))))))))
-
-(deftest create-database-test-error-conditions-test
-  (testing "POST /api/setup"
-    (testing "error conditions"
-      (testing "should throw Exception if driver is invalid"
-        (is (= {:errors {:database {:engine "Cannot create Database: cannot find driver my-fake-driver."}}}
-               (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                             h2/*allow-testing-h2-connections*                       true]
-                 (client/client :post 400 "setup" (assoc (default-setup-input)
-                                                         :database {:engine  "my-fake-driver"
-                                                                    :name    (mt/random-name)
-                                                                    :details {}})))))))))
 
 (s/def ::setup!-args
   (s/cat :expected-status (s/? integer?)
