@@ -93,7 +93,11 @@
           card-stages  (get-in card [:dataset-query :stages])
           ;; this information is used by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]]
           first-stage' (-> first-stage
-                           (assoc :qp/stage-had-source-card (:id card))
+                           ;; these keys are used by the [[metabase.query-processor.middleware.annotate]] middleware to
+                           ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
+                           ;; the metadata associated with Fields themselves)
+                           (assoc :qp/stage-had-source-card (:id card)
+                                  :source-query/model?      (= (:type card) :model))
                            (dissoc :source-card))
           stages'      (into (vec card-stages)
                              cat
