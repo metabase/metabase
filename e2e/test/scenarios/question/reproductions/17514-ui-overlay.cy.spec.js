@@ -150,7 +150,12 @@ describe("issue 17514", () => {
       cy.findByText("Products").click();
 
       cy.button("Visualize").click();
+
+      // wait until view results are done rendering
       cy.wait("@dataset");
+      cy.findByTestId("query-builder-main").within(() => {
+        cy.findByText("Doing science...").should("not.exist");
+      });
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       openColumnOptions("Subtotal");
