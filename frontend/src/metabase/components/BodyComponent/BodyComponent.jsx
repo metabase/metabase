@@ -29,9 +29,13 @@ export default ComposedComponent =>
     }
 
     render() {
-      return ReactDOM.createPortal(
-        <ComposedComponent {...this.props} className={undefined} />,
-        this._element,
+      return (
+        <>
+          {ReactDOM.createPortal(
+            <ComposedComponent {...this.props} className={undefined} />,
+            this._element,
+          )}
+        </>
       );
     }
   };

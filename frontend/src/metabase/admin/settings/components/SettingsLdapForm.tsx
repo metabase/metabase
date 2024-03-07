@@ -87,7 +87,7 @@ export const SettingsLdapFormView = ({
   }, [settings, settingValues]);
 
   const handleSubmit = useCallback(
-    values => {
+    (values: any) => {
       return onSubmit({
         ...values,
         "ldap-port": values["ldap-port"]?.trim(),

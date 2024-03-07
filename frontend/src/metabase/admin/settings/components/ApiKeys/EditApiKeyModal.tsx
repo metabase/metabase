@@ -99,7 +99,7 @@ export const EditApiKeyModal = ({
   const [secretKey, setSecretKey] = useState<string>("");
 
   const handleSubmit = useCallback(
-    async vals => {
+    async (vals: { id: number; group_id: number; name: string }) => {
       await ApiKeysApi.edit({
         id: vals.id,
         group_id: vals.group_id,

@@ -23,16 +23,12 @@ import {
 } from "./SlackStatus.styled";
 
 export interface SlackStatusProps {
-  Form: ComponentType<React.PropsWithChildren<unknown>>;
+  Form: ComponentType;
   isValid?: boolean;
   onDelete: () => void;
 }
 
-const SlackStatus = ({
-  Form,
-  isValid,
-  onDelete,
-}: SlackStatusProps): JSX.Element => {
+const SlackStatus = ({ Form, isValid, onDelete }: SlackStatusProps) => {
   const [isOpened, setIsOpened] = useState(false);
 
   const handleOpen = useCallback(() => {

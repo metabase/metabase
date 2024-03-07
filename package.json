@@ -25,6 +25,7 @@
     "@snowplow/browser-tracker": "^3.1.6",
     "@tanstack/react-virtual": "^3.1.2",
     "@tippyjs/react": "^4.2.6",
+    "@types/react-router": "3.0.27",
     "@types/redux-auth-wrapper": "^2.0.16",
     "@visx/axis": "1.8.0",
     "@visx/clip-path": "^2.1.0",
@@ -204,7 +205,6 @@
     "@types/react-motion": "0.0.32",
     "@types/react-redux": "^7.1.24",
     "@types/react-resizable": "^3.0.4",
-    "@types/react-router": "3.0.28",
     "@types/react-router-redux": "^4.0.53",
     "@types/react-textarea-autosize": "^4.3.6",
     "@types/react-transition-group": "^4.4.5",
@@ -293,6 +293,8 @@
     "yaml-lint": "~1.6.0"
   },
   "resolutions": {
+    "@types/react": "~18.2.42",
+    "@types/react-dom": "~18.2.17",
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "ansi-regex": "5.0.1",
     "d3-color": "^3.1.0",
@@ -403,7 +405,5 @@
       "./bin/whitespace_lint_staged.sh"
     ]
   },
-  "browserslist": [
-    "defaults"
-  ]
+  "browserslist": ["defaults"]
 }
