@@ -104,10 +104,6 @@ export const XRayButton = styled(Button)<
   height: 2rem;
 `;
 
-export const DescriptionSection = styled(Box)`
-  margin-top: 0.5rem;
-`;
-
 export const DescriptionDivider = styled(Divider)`
   border-radius: ${({ theme }) => theme.radius.xs};
 `;
