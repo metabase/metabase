@@ -79,7 +79,7 @@ export function TypeSelector({
   }, []);
 
   const handleSelect = useCallback(
-    value => {
+    (value: any) => {
       if (value !== clickBehavior.type) {
         updateSettings(value === "actionMenu" ? undefined : { type: value });
       } else if (value !== "actionMenu") {
