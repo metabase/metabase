@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/addons";
 import type { ComponentStory } from "@storybook/react";
 
-import DateRelativeWidget from "./DateRelativeWidget";
+import { DateRelativeWidget } from "./DateRelativeWidget";
 
 export default {
   title: "Parameters/DateRelativeWidget",

@@ -565,7 +565,7 @@ class ExpressionEditorTextfield extends React.Component<
   ];
 
   render() {
-    const { helpTextTarget, width } = this.props;
+    const { helpTextTarget, width, query, stageIndex } = this.props;
     const {
       source,
       suggestions,
@@ -603,6 +603,8 @@ class ExpressionEditorTextfield extends React.Component<
             width="100%"
           />
           <ExpressionEditorSuggestions
+            query={query}
+            stageIndex={stageIndex}
             target={this.suggestionTarget.current}
             suggestions={suggestions}
             onSuggestionMouseDown={this.onSuggestionSelected}

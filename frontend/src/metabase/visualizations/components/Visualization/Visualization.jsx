@@ -64,6 +64,8 @@ const mapStateToProps = state => ({
   isRawTable: getIsShowingRawTable(state),
 });
 
+const SMALL_CARD_WIDTH_THRESHOLD = 150;
+
 class Visualization extends PureComponent {
   state = {
     hovered: null,
@@ -345,7 +347,7 @@ class Visualization extends PureComponent {
       onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
-    const small = width < 330;
+    const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;

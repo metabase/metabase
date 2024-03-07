@@ -402,8 +402,9 @@ describe("scenarios > dashboard > tabs", () => {
     });
   });
 
-  it("should only fetch cards on the current tab", { tags: "@flaky" }, () => {
+  it("should only fetch cards on the current tab", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -416,16 +417,22 @@ describe("scenarios > dashboard > tabs", () => {
     sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
+
+    cy.wait("@cardQuery");
+
     saveDashboard();
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
     });
 
+    // it's possible to have two requests firing (but first one is canceled before running second)
     cy.intercept(
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}/query`,
-      cy.spy().as("firstTabQuery"),
+      req => {
+        req.on("response", cy.spy().as("firstTabQuery"));
+      },
     );
 
     cy.get("@secondTabDashcardId").then(secondTabDashcardId => {

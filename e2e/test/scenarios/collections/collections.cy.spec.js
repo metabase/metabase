@@ -480,7 +480,7 @@ describe("scenarios > collection defaults", () => {
 
           cy.icon("check").should("not.exist");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.be.visible");
+          cy.findByText(/item(s)? selected/).should("not.exist");
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
@@ -498,7 +498,7 @@ describe("scenarios > collection defaults", () => {
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Our analytics").click();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.be.visible");
+          cy.findByText(/item(s)? selected/).should("not.exist");
         });
       });
 
@@ -516,7 +516,7 @@ describe("scenarios > collection defaults", () => {
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("not.exist");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.be.visible");
+          cy.findByText(/item(s)? selected/).should("not.exist");
         });
       });
 
@@ -539,7 +539,7 @@ describe("scenarios > collection defaults", () => {
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("not.exist");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.be.visible");
+          cy.findByText(/item(s)? selected/).should("not.exist");
 
           // Check that items were actually moved
           navigationSidebar().findByText("First collection").click();

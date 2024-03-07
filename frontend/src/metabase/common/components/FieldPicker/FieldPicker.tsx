@@ -2,14 +2,16 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Checkbox } from "metabase/ui";
+import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
   ToggleItem,
-  ColumnItem,
+  ItemList,
+  Label,
   ItemTitle,
   ItemIcon,
+  QueryColumnInfoIcon,
 } from "./FieldPicker.styled";
 
 interface FieldPickerProps {
@@ -63,9 +65,9 @@ export const FieldPicker = ({
   };
 
   return (
-    <ul data-testid={props["data-testid"]}>
+    <ItemList data-testid={props["data-testid"]}>
       <ToggleItem>
-        <label>
+        <Label as="label">
           <Checkbox
             variant="stacked"
             checked={isAll}
@@ -73,22 +75,33 @@ export const FieldPicker = ({
             onChange={handleLabelToggle}
           />
           <ItemTitle>{isAll ? t`Select none` : t`Select all`}</ItemTitle>
-        </label>
+        </Label>
       </ToggleItem>
-      {items.map((item, index) => (
-        <ColumnItem key={index}>
-          <label>
-            <Checkbox
-              checked={item.isSelected}
-              disabled={item.isSelected && isDisabledDeselection}
-              onChange={event => onToggle(item.column, event.target.checked)}
-            />
+      <DelayGroup>
+        {items.map(item => (
+          <li key={item.columnInfo.longDisplayName}>
+            <Label as="label">
+              <Checkbox
+                checked={isColumnSelected(item.column, item.columnInfo)}
+                disabled={
+                  isColumnSelected(item.column, item.columnInfo) &&
+                  isDisabledDeselection
+                }
+                onChange={event => onToggle(item.column, event.target.checked)}
+              />
 
-            <ItemIcon name={getColumnIcon(item.column)} size={18} />
-            <ItemTitle>{item.columnInfo.displayName}</ItemTitle>
-          </label>
-        </ColumnItem>
-      ))}
-    </ul>
+              <ItemIcon name={getColumnIcon(item.column)} size={18} />
+              <ItemTitle>{item.columnInfo.displayName}</ItemTitle>
+              <QueryColumnInfoIcon
+                query={query}
+                stageIndex={stageIndex}
+                column={item.column}
+                position="right"
+              />
+            </Label>
+          </li>
+        ))}
+      </DelayGroup>
+    </ItemList>
   );
 };
