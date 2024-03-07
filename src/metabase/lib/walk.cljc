@@ -20,6 +20,22 @@
      init
      xs)))
 
+(defn- walk-items* [query path-to-items walk-item-fn f]
+  ;; negative-item-offset below is a negative index e.g. [-3 -2 -1] rather than normal positive index e.g. [0 1 2] to
+  ;; handle splicing in additional stages/joins if the walk function `f` returns more than one stage/join. The total
+  ;; number of stages/joins might change, but for walking purposes the negative indexes will refer to the same things
+  ;; regardless of how many things we splice in front of it. This way the path always is correct even if the number of
+  ;; items change. See [[metabase.lib.walk/return-multiple-stages-test]]
+  ;; and [[metabase.lib.walk/return-multiple-joins-test]]
+  (reduce-preserving-reduced
+   (fn [query negative-item-offset]
+     (let [items                (get-in query path-to-items)
+           absolute-item-number (+ negative-item-offset (count items)) ; e.g. [-3 -2 1] => [0 1 2]
+           path-to-item         (conj (vec path-to-items) absolute-item-number)]
+       (walk-item-fn query path-to-item f)))
+   query
+   (range (- (count (get-in query path-to-items []))) 0 1)))
+
 (defn- walk-join* [query path-to-join f]
   (let [path-to-join-stages (conj (vec path-to-join) :stages)
         query'              (walk-stages* query path-to-join-stages f)]
@@ -28,12 +44,7 @@
       (f query' :lib.walk/join path-to-join))))
 
 (defn- walk-joins* [query path-to-joins f]
-  (reduce-preserving-reduced
-   (fn [query join-number]
-     (let [path-to-join (conj (vec path-to-joins) join-number)]
-       (walk-join* query path-to-join f)))
-   query
-   (range (count (get-in query path-to-joins [])))))
+  (walk-items* query path-to-joins walk-join* f))
 
 (defn- walk-stage* [query path-to-stage f]
   (let [stage         (get-in query path-to-stage)
@@ -49,15 +60,30 @@
       (f query' :lib.walk/stage path-to-stage))))
 
 (defn- walk-stages* [query path-to-stages f]
-  (reduce-preserving-reduced
-   (fn [query stage-number]
-     (let [path-to-stage (conj (vec path-to-stages) stage-number)]
-       (walk-stage* query path-to-stage f)))
-   query
-   (range (count (get-in query path-to-stages [])))))
+  (walk-items* query path-to-stages walk-stage* f))
 
 (defn- walk-query* [query f]
   (walk-stages* query [:stages] f))
+
+(defn- splice-at-point
+  "Splice multiple `new-items` into `m` at `path`.
+
+    ;; replace item at [:stages 2] -- {:n 2} -- with three new items
+    (#'metabase.lib.walk/splice-at-point
+                        {:stages [{:n 0} {:n 1} {:n 2} {:n 3} {:n 4}]}
+                        [:stages 2]
+                        [{:x 1}
+                         {:x 2}
+                         {:x 3}])
+    ;; =>
+    {:stages [{:n 0} {:n 1} {:x 1} {:x 2} {:x 3} {:n 3} {:n 4}]}"
+  [m path new-items]
+  (update-in m (butlast path) (fn [coll]
+                                (let [[before after] (split-at (last path) coll)
+                                      after          (rest after)]
+                                  (into []
+                                        cat
+                                        [before new-items after])))))
 
 (defn walk
   "Depth-first recursive walk and replace for a `query`; call
@@ -77,6 +103,8 @@
        (fn [_query path-type _path stage-or-join]
          (when (= path-type :lib.walk/stage)
            (merge {:limit 1000} stage-or-join)))))
+
+  You can replace a single stage or join with multiple by returning a vector of maps rather than a single map. Cool!
 
   To return a value right away, wrap it in [[reduced]], and subsequent walk calls will be skipped:
 
@@ -98,6 +126,7 @@
         (cond
           (reduced? stage-or-join')                 stage-or-join'
           (identical? stage-or-join' stage-or-join) query
+          (sequential? stage-or-join')              (splice-at-point query path stage-or-join')
           :else                                     (assoc-in query path stage-or-join')))))))
 
 (defn walk-stages

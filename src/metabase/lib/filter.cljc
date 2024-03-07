@@ -300,7 +300,7 @@
   (if-not new-filter
     stage
     (let [existing-filter? (some (fn [existing-filter]
-                                   (lib.equality/clauses-equal-ignoring-lib-uuids? existing-filter new-filter))
+                                   (lib.equality/= existing-filter new-filter))
                                  (:filters stage))]
       (if existing-filter?
         stage
