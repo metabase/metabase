@@ -1,6 +1,7 @@
 (ns metabase.query-processor.preprocess
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
@@ -91,6 +92,7 @@
   "Fully preprocess a query, but do not compile it to a native query or execute it."
   [query :- :map]
   (qp.setup/with-qp-setup [query query]
+    (qp.debug/debug> (list `preprocess query))
     (transduce
      identity
      (fn
@@ -100,8 +102,11 @@
        ([query middleware-fn]
         (try
           (assert (ifn? middleware-fn))
-          ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
           (u/prog1 (middleware-fn query)
+            (qp.debug/debug>
+              (when-not (= <> query)
+                (list middleware-fn '=> <>)))
+            ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
             (when-not (map? <>)
               (throw (ex-info (format "Middleware did not return a valid query.")
                               {:fn middleware-fn, :query query, :type qp.error-type/qp}))))

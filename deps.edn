@@ -232,7 +232,7 @@
     clj-kondo/clj-kondo          {:mvn/version "2023.12.15"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
-    djblue/portal                {:mvn/version "0.51.0"}                    ; ui for inspecting values
+    djblue/portal                {:mvn/version "0.52.2"}                    ; ui for inspecting values
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:sha "59cba703e757bd94c0cc698dbf5338bf36276991"}

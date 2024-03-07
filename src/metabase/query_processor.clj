@@ -10,6 +10,7 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.execute :as qp.execute]
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -58,6 +59,7 @@
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
 (defn- process-query** [query rff]
+  (qp.debug/debug> (list `process-query query))
   (let [preprocessed (qp.preprocess/preprocess query)
         compiled     (assoc preprocessed :native (qp.compile/compile-preprocessed preprocessed))
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]
