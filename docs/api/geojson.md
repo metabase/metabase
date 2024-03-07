@@ -15,11 +15,11 @@ Load a custom GeoJSON file based on a URL or file path provided as a query param
 
 ### PARAMS:
 
-*  **`url`** value must be a non-blank string.
+-  **`url`** value must be a non-blank string.
 
-*  **`respond`** 
+-  **`respond`** 
 
-*  **`raise`**
+-  **`raise`**
 
 ## `GET /api/geojson/:key`
 
@@ -28,11 +28,11 @@ Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This ju
 
 ### PARAMS:
 
-*  **`key`** value must be a non-blank string.
+-  **`key`** value must be a non-blank string.
 
-*  **`respond`** 
+-  **`respond`** 
 
-*  **`raise`**
+-  **`raise`**
 
 ---
 

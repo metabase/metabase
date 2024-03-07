@@ -22,9 +22,9 @@ Update Slack related settings. You must be a superuser to do this. Also updates 
 
 ### PARAMS:
 
-*  **`slack-app-token`** nullable value must be a non-blank string.
+-  **`slack-app-token`** nullable value must be a non-blank string.
 
-*  **`slack-files-channel`** nullable value must be a non-blank string.
+-  **`slack-files-channel`** nullable value must be a non-blank string.
 
 ---
 

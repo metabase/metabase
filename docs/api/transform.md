@@ -14,11 +14,11 @@ Look up a database schema transform.
 
 ### PARAMS:
 
-*  **`db-id`** value must be an integer greater than zero.
+-  **`db-id`** value must be an integer greater than zero.
 
-*  **`schema`** value must be a non-blank string.
+-  **`schema`** value must be a non-blank string.
 
-*  **`transform-name`** value must be a non-blank string.
+-  **`transform-name`** value must be a non-blank string.
 
 ---
 

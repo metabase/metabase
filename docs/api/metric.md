@@ -14,9 +14,9 @@ Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`revision_message`** value must be a non-blank string.
+-  **`revision_message`** value must be a non-blank string.
 
 ## `GET /api/metric/`
 
@@ -28,7 +28,7 @@ Fetch `Metric` with ID.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/metric/:id/related`
 
@@ -36,7 +36,7 @@ Return related entities.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/metric/:id/revisions`
 
@@ -44,7 +44,7 @@ Fetch `Revisions` for `Metric` with ID.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/metric/`
 
@@ -52,13 +52,13 @@ Create a new `Metric`.
 
 ### PARAMS:
 
-*  **`name`** value must be a non-blank string.
+-  **`name`** value must be a non-blank string.
 
-*  **`description`** nullable string
+-  **`description`** nullable string.
 
-*  **`table_id`** value must be an integer greater than zero.
+-  **`table_id`** value must be an integer greater than zero.
 
-*  **`definition`** map
+-  **`definition`** map.
 
 ## `POST /api/metric/:id/revert`
 
@@ -66,9 +66,9 @@ Revert a `Metric` to a prior `Revision`.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`revision_id`** value must be an integer greater than zero.
+-  **`revision_id`** value must be an integer greater than zero.
 
 ## `PUT /api/metric/:id`
 
@@ -76,25 +76,25 @@ Update a `Metric` with ID.
 
 ### PARAMS:
 
-*  **`points_of_interest`** nullable string
+-  **`points_of_interest`** nullable string.
 
-*  **`description`** nullable string
+-  **`description`** nullable string.
 
-*  **`archived`** nullable boolean
+-  **`archived`** nullable boolean.
 
-*  **`definition`** nullable map
+-  **`definition`** nullable map.
 
-*  **`revision_message`** value must be a non-blank string.
+-  **`revision_message`** value must be a non-blank string.
 
-*  **`show_in_getting_started`** nullable boolean
+-  **`show_in_getting_started`** nullable boolean.
 
-*  **`name`** nullable value must be a non-blank string.
+-  **`name`** nullable value must be a non-blank string.
 
-*  **`caveats`** nullable string
+-  **`caveats`** nullable string.
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`how_is_this_calculated`** nullable string
+-  **`how_is_this_calculated`** nullable string.
 
 ## `PUT /api/metric/:id/important_fields`
 
@@ -105,9 +105,9 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`important_field_ids`** sequence of value must be an integer greater than zero.
+-  **`important_field_ids`** sequence of value must be an integer greater than zero.
 
 ---
 
