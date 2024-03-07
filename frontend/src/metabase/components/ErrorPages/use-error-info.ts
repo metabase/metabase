@@ -7,7 +7,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { UtilApi, MetabaseApi, SessionApi } from "metabase/services";
 
 import type { ErrorPayload, ReportableEntityName } from "./types";
-import { getEntityDetails } from "./utils";
+import { getEntityDetails, hasQueryData } from "./utils";
 
 export const useErrorInfo = (
   { enabled }: { enabled?: boolean } = { enabled: true },
@@ -30,7 +30,9 @@ export const useErrorInfo = (
       | undefined;
     const id = matches?.[2] ?? "";
 
-    const entityInfoRequest = getEntityDetails({ entity, id });
+    const isAdHoc = entity === "question" && window.location.href.includes("#");
+
+    const entityInfoRequest = getEntityDetails({ entity, id, isAdHoc });
     const bugReportDetailsRequest = isAdmin
       ? UtilApi.bug_report_details().catch(nullOnCatch)
       : Promise.resolve(null);
@@ -42,7 +44,7 @@ export const useErrorInfo = (
 
     /* eslint-disable no-console */
     // @ts-expect-error I'm sorry
-    const frontendErrors = console.errorBuffer;
+    const frontendErrors = console?.errorBuffer?.map?.(err => err.join(""));
     /* eslint-enable no-console */
 
     const settledPromises = await Promise.allSettled([
@@ -55,9 +57,16 @@ export const useErrorInfo = (
     const [entityInfo, bugReportDetails, sessionProperties, logs] =
       settledPromises.map((promise: any) => promise.value);
     const queryResults =
-      entity === "question" &&
+      hasQueryData(entity) &&
       entityInfo?.dataset_query &&
       (await MetabaseApi.dataset(entityInfo.dataset_query).catch(nullOnCatch));
+
+    // if this is an ad-hoc exploration on top of a saved question, fetch the original card
+    entityInfo.originalCard =
+      !!entity &&
+      hasQueryData(entity) &&
+      entityInfo?.original_card_id &&
+      (await getEntityDetails({ entity, id: entityInfo.original_card_id }));
 
     const filteredLogs = logs?.slice?.(0, 100);
     const backendErrors = logs?.filter?.((log: any) => log.level === "ERROR");

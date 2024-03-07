@@ -41,6 +41,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
+import { captureConsoleErrors } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -109,16 +110,4 @@ export function init(...args) {
   }
 }
 
-// **** Logging hook ****
-/* eslint-disable no-console */
-const MAX_LOGS = 20;
-console.stderr = console.log.bind(console);
-console.errorBuffer = [];
-
-console.error = function () {
-  if (console.errorBuffer.length > MAX_LOGS) {
-    console.errorBuffer.pop();
-  }
-  console.errorBuffer.unshift(Array.from(arguments));
-  console.stderr.apply(console, arguments);
-};
+captureConsoleErrors();

@@ -18,9 +18,16 @@ export function downloadObjectAsJson(
   downloadAnchorNode.remove();
 }
 
-export const getEntityDetails = ({ entity, id }: any) => {
-  const isAdHoc = entity === "question" && window.location.href.includes("#");
-  if (!id) {
+export const getEntityDetails = ({
+  entity,
+  id,
+  isAdHoc,
+}: {
+  entity?: ReportableEntityName;
+  id?: string;
+  isAdHoc?: boolean;
+}) => {
+  if (!id || !entity) {
     return Promise.resolve(null);
   }
 
