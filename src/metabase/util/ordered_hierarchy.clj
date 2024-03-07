@@ -7,15 +7,24 @@
 
 (declare derive)
 
+(defn- assert-no-child-repeats [visited-children [parent & children]]
+  (when (contains? @visited-children parent)
+    (assert (empty? children) (format "You must only list the children of %s at its first occurrence." parent))
+    (swap! visited-children conj parent)))
+
 (defn- derive-children
-  [h [parent & children]]
-  (reduce (fn [h child]
-            (if (keyword? child)
-              (derive h child parent)
-              (derive-children (derive h (first child) parent)
-                               child)))
-          h
-          children))
+  ([h root]
+   (derive-children (atom #{}) h root))
+  ([visited-children h [parent & children]]
+   (reduce (fn [h child]
+             (if (keyword? child)
+               (derive h child parent)
+               (do (assert-no-child-repeats visited-children child)
+                   (derive-children visited-children
+                                    (derive h (first child) parent)
+                                    child))))
+           h
+           children)))
 
 (defn make-hierarchy
   "Similar to [[clojure.core/make-hierarchy]], but the returned hierarchy will supports ordered derivations.
