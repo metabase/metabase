@@ -1,4 +1,6 @@
+import { createMockMetadata } from "__support__/metadata";
 import { resolve } from "metabase-lib/expressions/resolver";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 describe("metabase-lib/expressions/resolve", () => {
   function collect(expr, startRule = "expression") {
@@ -347,5 +349,20 @@ describe("metabase-lib/expressions/resolve", () => {
 
   it("should reject unknown function", () => {
     expect(() => resolve(["foobar", 42])).toThrow();
+  });
+
+  it("should reject unsupported function (metabase#39773)", () => {
+    const database = createMockMetadata({
+      databases: [
+        createSampleDatabase({
+          id: 1,
+          features: ["foreign-keys"],
+        }),
+      ],
+    }).database(1);
+
+    expect(() =>
+      resolve(["percentile", 1, 2], "aggregation", undefined, database),
+    ).toThrow("Unsupported function percentile");
   });
 });
