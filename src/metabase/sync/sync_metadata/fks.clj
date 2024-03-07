@@ -39,23 +39,34 @@
                                           (:schema table)
                                           (:name table)
                                           (:fk-column-name fk))
-        dest-field-id-query (field-id-query (:id database)
+        pk-field-id-query (field-id-query (:id database)
                                             (:schema (:dest-table fk))
                                             (:name (:dest-table fk))
                                             (:dest-column-name fk))
-        never-matching-id -100]
-    (u/prog1 (t2/query-one (sql/format
-                            {:update [:metabase_field :f]
-                             :join [[fk-field-id-query :fk] [:= :fk.id :f.id]
-                                     ;; Update if either:
-                                     ;; - fk_target_field_id is NULL and the new value is not NULL
-                                     ;; - fk_target_field_id is not NULL but the new value is different and not NULL
-                                    [dest-field-id-query :pk] [:not=
-                                                               [:coalesce :f.fk_target_field_id never-matching-id]
-                                                               :pk.id]]
-                             :set {:fk_target_field_id :pk.id
-                                   :semantic_type      "type/FK"}}
-                            :dialect (mdb.connection/quoting-style (mdb.connection/db-type))))
+        never-matching-id -100
+        q (case (mdb.connection/db-type)
+            (:h2 :postgres)
+            {:update [:metabase_field :f]
+             :from [[fk-field-id-query :fk]]
+             :join [[pk-field-id-query :pk] true]
+             :set {:fk_target_field_id :pk.id
+                   :semantic_type      "type/FK"}
+             :where [:and
+                     [:= :fk.id :f.id]
+                     ;; Update if either:
+                     ;; - fk_target_field_id is NULL and the new value is not NULL
+                     ;; - fk_target_field_id is not NULL but the new value is different and not NULL
+                     [:not= :pk.id [:coalesce :f.fk_target_field_id never-matching-id]]]}
+            :mysql
+            {:update [:metabase_field :f]
+             :join [[fk-field-id-query :fk] [:= :fk.id :f.id]
+                    ;; Update if either:
+                    ;; - fk_target_field_id is NULL and the new value is not NULL
+                    ;; - fk_target_field_id is not NULL but the new value is different and not NULL
+                    [pk-field-id-query :pk] [:not= :pk.id [:coalesce :f.fk_target_field_id never-matching-id]]]
+             :set {:fk_target_field_id :pk.id
+                   :semantic_type      "type/FK"}})]
+    (u/prog1 (t2/query-one (sql/format q :dialect (mdb.connection/quoting-style (mdb.connection/db-type))))
       (when (= <> 1)
         (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
                                   (sync-util/table-name-for-logging table)
