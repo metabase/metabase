@@ -1,6 +1,10 @@
 import type {
   AxisBaseOption,
   AxisBaseOptionCommon,
+  CategoryAxisBaseOption,
+  LogAxisBaseOption,
+  TimeAxisBaseOption,
+  ValueAxisBaseOption,
 } from "echarts/types/src/coord/axisCommonTypes";
 import type { CartesianAxisOption } from "echarts/types/src/coord/cartesian/AxisModel";
 import type {
@@ -9,15 +13,17 @@ import type {
 } from "metabase/visualizations/types";
 import type {
   BaseCartesianChartModel,
+  CategoryXAxisModel,
   Extent,
+  NumericXAxisModel,
+  TimeSeriesXAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
-import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type { ChartMeasurements } from "../chart-measurements/types";
-import { isTimeSeriesAxis } from "../model/guards";
+import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 import { getTimeSeriesIntervalDuration } from "../utils/timeseries";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
@@ -90,6 +96,17 @@ export const getTicksDefaultOption = ({
   };
 };
 
+export const getDimensionTicksDefaultOption = (
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) => {
+  return {
+    ...getTicksDefaultOption(renderingContext),
+    show: !!settings["graph.x_axis.axis_enabled"],
+    rotate: getRotateAngle(settings),
+  };
+};
+
 const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   switch (settings["graph.x_axis.axis_enabled"]) {
     case "rotate-45":
@@ -101,28 +118,15 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   }
 };
 
-export const buildDimensionAxis = (
-  chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
+const getCommonDimensionAxisOptions = (
   chartMeasurements: ChartMeasurements,
-  hasTimelineEvents: boolean,
+  settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): AxisBaseOption => {
-  const { getColor } = renderingContext;
-  const xAxisModel = chartModel.xAxisModel;
-  const { axisType, formatter } = xAxisModel;
-
-  const boundaryGap =
-    axisType === "value" || axisType === "log"
-      ? undefined
-      : ([0.02, 0.02] as [number, number]);
-
+) => {
   const nameGap = getAxisNameGap(
     chartMeasurements.ticksDimensions.xTicksHeight,
   );
-  const valueGetter = getDimensionDisplayValueGetter(chartModel, settings);
-  const isTimeSeries = isTimeSeriesAxis(xAxisModel);
-
+  const { getColor } = renderingContext;
   return {
     ...getAxisNameDefaultOption(
       renderingContext,
@@ -134,26 +138,8 @@ export const buildDimensionAxis = (
     axisTick: {
       show: false,
     },
-    boundaryGap,
     splitLine: {
       show: false,
-    },
-    type: axisType,
-    axisLabel: {
-      margin:
-        CHART_STYLE.axisTicksMarginX +
-        (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0),
-      show: !!settings["graph.x_axis.axis_enabled"],
-      rotate: getRotateAngle(settings),
-      ...getTicksDefaultOption(renderingContext),
-      // Value is always converted to a string by ECharts
-      formatter: (rawValue: string) => {
-        const value = valueGetter(rawValue);
-        if (xAxisModel.tickRenderPredicate?.(value) ?? true) {
-          return ` ${formatter(value)} `; // spaces force padding between ticks
-        }
-        return false;
-      },
     },
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
@@ -161,23 +147,154 @@ export const buildDimensionAxis = (
         color: getColor("border"),
       },
     },
-    ...(isTimeSeries
+  };
+};
+
+export const buildDimensionAxis = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  chartMeasurements: ChartMeasurements,
+  hasTimelineEvents: boolean,
+  renderingContext: RenderingContext,
+): AxisBaseOption => {
+  const xAxisModel = chartModel.xAxisModel;
+
+  if (isNumericAxis(xAxisModel)) {
+    return buildNumericDimensionAxis(
+      xAxisModel,
+      settings,
+      chartMeasurements,
+      renderingContext,
+    );
+  }
+
+  if (isTimeSeriesAxis(xAxisModel)) {
+    return buildTimeSeriesDimensionAxis(
+      xAxisModel,
+      hasTimelineEvents,
+      settings,
+      chartMeasurements,
+      renderingContext,
+    );
+  }
+
+  return buildCategoricalDimensionAxis(
+    xAxisModel,
+    settings,
+    chartMeasurements,
+    renderingContext,
+  );
+};
+
+export const buildNumericDimensionAxis = (
+  xAxisModel: NumericXAxisModel,
+  settings: ComputedVisualizationSettings,
+  chartMeasurements: ChartMeasurements,
+  renderingContext: RenderingContext,
+): ValueAxisBaseOption | LogAxisBaseOption => {
+  const {
+    fromEChartsAxisValue: fromAxisValue,
+    isPadded,
+    extent,
+    interval,
+    ticksMaxInterval,
+    formatter,
+  } = xAxisModel;
+
+  const [min, max] = extent;
+  const axisPadding = interval / 2;
+
+  return {
+    ...getCommonDimensionAxisOptions(
+      chartMeasurements,
+      settings,
+      renderingContext,
+    ),
+    type: "value",
+    scale: true,
+    axisLabel: {
+      margin: CHART_STYLE.axisTicksMarginX,
+      ...getDimensionTicksDefaultOption(settings, renderingContext),
+      formatter: (rawValue: number) => {
+        if (isPadded && (rawValue < min || rawValue > max)) {
+          return "";
+        }
+        return ` ${formatter(fromAxisValue(rawValue))} `;
+      },
+    },
+    ...(isPadded
       ? {
-          min: range => {
-            return (
-              range.min - getTimeSeriesIntervalDuration(xAxisModel.interval) / 2
-            );
-          },
-          max: range => {
-            return (
-              range.max + getTimeSeriesIntervalDuration(xAxisModel.interval) / 2
-            );
-          },
-          minInterval: xAxisModel.ticksMinInterval,
-          maxInterval: xAxisModel.ticksMaxInterval,
+          min: () => min - axisPadding,
+          max: () => max + axisPadding,
         }
       : {}),
-  } as AxisBaseOption;
+    maxInterval: ticksMaxInterval,
+  };
+};
+
+export const buildTimeSeriesDimensionAxis = (
+  xAxisModel: TimeSeriesXAxisModel,
+  hasTimelineEvents: boolean,
+  settings: ComputedVisualizationSettings,
+  chartMeasurements: ChartMeasurements,
+  renderingContext: RenderingContext,
+): TimeAxisBaseOption => {
+  const { formatter } = xAxisModel;
+
+  return {
+    ...getCommonDimensionAxisOptions(
+      chartMeasurements,
+      settings,
+      renderingContext,
+    ),
+    type: "time",
+    axisLabel: {
+      margin:
+        CHART_STYLE.axisTicksMarginX +
+        (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0),
+      ...getDimensionTicksDefaultOption(settings, renderingContext),
+      formatter: (rawValue: number) => {
+        const value = xAxisModel.fromAxisValue(rawValue);
+        if (xAxisModel.tickRenderPredicate?.(value) ?? true) {
+          return ` ${formatter(value.format("YYYY-MM-DDTHH:mm:ss"))} `; // spaces force padding between ticks
+        }
+        return "";
+      },
+    },
+    min: range => {
+      return range.min - getTimeSeriesIntervalDuration(xAxisModel.interval) / 2;
+    },
+    max: range => {
+      return range.max + getTimeSeriesIntervalDuration(xAxisModel.interval) / 2;
+    },
+    minInterval: xAxisModel.ticksMinInterval,
+    maxInterval: xAxisModel.ticksMaxInterval,
+  };
+};
+
+export const buildCategoricalDimensionAxis = (
+  xAxisModel: CategoryXAxisModel,
+  settings: ComputedVisualizationSettings,
+  chartMeasurements: ChartMeasurements,
+  renderingContext: RenderingContext,
+): CategoryAxisBaseOption => {
+  const { formatter } = xAxisModel;
+
+  return {
+    ...getCommonDimensionAxisOptions(
+      chartMeasurements,
+      settings,
+      renderingContext,
+    ),
+    type: "category",
+    axisLabel: {
+      margin: CHART_STYLE.axisTicksMarginX,
+      ...getDimensionTicksDefaultOption(settings, renderingContext),
+      formatter: (value: string) => {
+        return ` ${formatter(value)} `; // spaces force padding between ticks
+      },
+    },
+  };
 };
 
 export const buildMetricAxis = (
