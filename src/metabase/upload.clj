@@ -368,7 +368,7 @@
       (map (partial remove-indices auto-pk-indices)))))
 
 (defn- file-size-mb [csv-file]
-  (/ (.length csv-file) 1048576.0))
+  (/ (.length ^File csv-file) 1048576.0))
 
 (defn- load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
@@ -464,6 +464,10 @@
   [db schema-name]
   (nil? (can-create-upload-error db schema-name)))
 
+(defn- start-timer [] (System/nanoTime))
+
+(defn- check-timer-ms [timer] (/ (- (System/nanoTime) timer) 1e6))
+
 ;;; +-----------------------------------------
 ;;; |  public interface for creating CSV table
 ;;; +-----------------------------------------
@@ -504,7 +508,7 @@
     (check-can-create-upload database schema-name)
     (collection/check-write-perms-for-collection collection-id)
     (try
-      (let [start-time        (System/currentTimeMillis)
+      (let [timer             (start-timer)
             driver            (driver.u/database->driver database)
             filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                                   filename)
@@ -532,8 +536,8 @@
                                 :name                   (humanization/name->human-readable-name filename-prefix)
                                 :visualization_settings {}}
                                @api/*current-user*)
-            upload-seconds    (/ (- (System/currentTimeMillis) start-time)
-                                 1000.0)]
+            upload-seconds    (/ (check-timer-ms timer) 1e3)
+            stats             (assoc stats :upload-seconds upload-seconds)]
 
         (events/publish-event! :event/upload-create
                                {:user-id  (:id @api/*current-user*)
@@ -542,15 +546,12 @@
                                 :details  {:db-id       db-id
                                            :schema-name schema-name
                                            :table-name  table-name
-                                           :card-id     (:id card)
+                                           :model-id    (:id card)
                                            :stats       stats}})
 
         (snowplow/track-event! ::snowplow/csv-upload-successful
                                api/*current-user-id*
-                               (merge
-                                {:model-id       (:id card)
-                                 :upload-seconds upload-seconds}
-                                stats))
+                               (assoc stats :model-id (:id card)))
         card)
       (catch Throwable e
         (let [fail-stats (with-open [reader (bom/bom-reader file)]
@@ -636,7 +637,8 @@
 (defn- append-csv!*
   [database table file]
   (with-open [reader (bom/bom-reader file)]
-    (let [[header & rows]    (without-auto-pk-columns (csv/read-csv reader))
+    (let [timer              (start-timer)
+          [header & rows]    (without-auto-pk-columns (csv/read-csv reader))
           driver             (driver.u/database->driver database)
           normed-name->field (m/index-by (comp normalize-column-name :name)
                                          (t2/select :model/Field :table_id (:id table) :active true))
@@ -692,7 +694,8 @@
                                                        :num-columns       (count new-column-types)
                                                        :generated-columns (- (count new-column-types)
                                                                              (count old-column-types))
-                                                       :size-mb           (file-size-mb file)}}})
+                                                       :size-mb           (file-size-mb file)
+                                                       :upload-seconds    (check-timer-ms timer)}}})
 
       {:row-count row-count})))
 
