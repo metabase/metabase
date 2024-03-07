@@ -1411,26 +1411,12 @@
 (declare apply-clauses)
 
 (defn- apply-source-query
-  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
-  source queries are aliased as `source`."
+  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query.
+   If the source query has ambiguous column names, use a `WITH` statement to rename the source columns.
+   At the time of this writing, all source queries are aliased as `source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
                          source-metadata :source-metadata :as _x}]
-  (let [alias-info (mapv (fn [{[_ ref-name] :field_ref source-name :name}]
-                              [source-name ref-name])
-                            source-metadata)
-        source-aliases (mapv first alias-info)
-        field-aliases (mapv second alias-info)
-        table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
-        needs-columns? (and
-                         (seq field-aliases)
-                         (> (count field-aliases) 1)
-                         (not (apply distinct? source-aliases))
-                         (apply distinct? field-aliases)
-                         (every? some? field-aliases)
-                         (every? string? field-aliases))
-        table-alias-and-columns (cond-> [source-query-alias]
-                                  needs-columns?
-                                  (conj {:columns (mapv #(h2x/identifier :field %) field-aliases)}))
+  (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
         source-clause (cond
                         persisted
                         (sql-source-query persisted nil)
@@ -1439,11 +1425,28 @@
                         (sql-source-query native params)
 
                         :else
-                        (apply-clauses driver {} source-query))]
+                        (apply-clauses driver {} source-query))
+        ;; TODO: Use MLv2 here to get source and desired-aliases
+        alias-info (mapv (fn [{[_ desired-ref-name] :field_ref source-name :name}]
+                           [source-name desired-ref-name])
+                         source-metadata)
+        source-aliases (mapv first alias-info)
+        desired-aliases (mapv second alias-info)
+        duplicate-source-aliases? (not (apply distinct? source-aliases))
+        needs-columns? (and
+                         (seq desired-aliases)
+                         (> (count desired-aliases) 1)
+                         duplicate-source-aliases?
+                         (apply distinct? desired-aliases)
+                         (every? some? desired-aliases)
+                         (every? string? desired-aliases))]
     (merge
       honeysql-form
       (if needs-columns?
-        {:with [[table-alias-and-columns source-clause]]
+        ;; HoneySQL cannot expand [::h2x/identifier :table "source"] in the with alias.
+        ;; This is ok since we control the alias.
+        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
+                 source-clause]]
          :from [[table-alias]]}
         {:from [[source-clause [table-alias]]]}))))
 
