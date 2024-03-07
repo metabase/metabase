@@ -29,6 +29,7 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   ModalHeader: {
     defaultProps: {
       p: DEFAULT_MODAL_SPACING,
+      pb: "sm",
     },
   },
   ModalBody: {
