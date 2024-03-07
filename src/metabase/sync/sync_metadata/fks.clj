@@ -17,7 +17,11 @@
    table    :- i/TableInstance
    fk       :- i/FKMetadataEntry]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
-                             {:select [:f.id]
+                             {:select [[[:min :f.id] :id]]
+                              ;; Cal 2024-03-04: We use `min` to limit this subquery to one result
+                              ;; because it's possible for schema, table, or column names to be non-unique when
+                              ;; lower-cased for some DBs. We have been doing case-insensitive matching since #39679
+                              ;; so this preserves behaviour to avoid possible regressions.
                               :from   [[:metabase_field :f]]
                               :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
                               :where  [:and
@@ -27,13 +31,8 @@
                                        [:= [:lower :t.schema] (some-> table-schema u/lower-case-en)]
                                        [:= :f.active true]
                                        [:not= :f.visibility_type "retired"]
-                                       [:= :t.active nil]
-                                       [:= :t.visibility_type nil]]
-                              ;; Cal 2024-03-04: We need to limit to 1 because it's possible for schema, table, or
-                              ;; column names to be non-unique when lower-cased. We have been doing case-insensitive
-                              ;; matching since #39679 (2017), and so let's preserves this behaviour for now to avoid
-                              ;; regressions.
-                              :limit  1})
+                                       [:= :t.active true]
+                                       [:= :t.visibility_type nil]]})
         fk-field-id-query (field-id-query (:id database)
                                           (:schema table)
                                           (:name table)
