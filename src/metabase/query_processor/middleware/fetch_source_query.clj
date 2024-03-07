@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.fetch-source-query
   (:require
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.card :as lib.card]
    [metabase.lib.metadata :as lib.metadata]
@@ -20,6 +21,55 @@
    [metabase.util.malli.schema :as ms]
    [weavejester.dependency :as dep]))
 
+(defn- fix-mongodb-first-stage
+  "MongoDB native queries consist of a collection and a pipelne (query).
+
+  TODO -- it's not great that this code lives here. This should be part of the MongoDB driver. We should NOT be
+  hardcoding driver-specific behavior in generic QP middleware."
+  [[first-stage & more]]
+  (let [first-stage (cond-> first-stage
+                      (= driver/*driver* :mongo)
+                      (update :native (fn [x]
+                                        (if (map? x)
+                                          x
+                                          {:collection  (:collection first-stage)
+                                           :projections (:projections first-stage)
+                                           :query       x}))))]
+    (cons first-stage more)))
+
+(defn- normalize-card-query
+  "Convert Card's query (`:datasaet-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
+  [metadata-providerable {card-id :id, :as card}]
+  (let [persisted-info (:lib/persisted-info card)
+        persisted?     (qp.persisted/can-substitute? card persisted-info)]
+    (when persisted?
+      (log/infof "Found substitute cached query for card %s from %s.%s"
+                 card-id
+                 (ddl.i/schema-name {:id (:database-id card)} (public-settings/site-uuid))
+                 (:table-name persisted-info)))
+    (letfn [(update-stages [stages]
+              (let [stages        (fix-mongodb-first-stage stages)
+                    stages        (for [stage stages]
+                                    ;; this is for detecting circular refs below.
+                                    (assoc stage :qp/stage-is-from-source-card card-id))
+                    card-metadata (lib.card/card-metadata-columns metadata-providerable card)
+                    last-stage    (cond-> (last stages)
+                                    (seq card-metadata) (assoc-in [:lib/stage-metadata :columns] card-metadata)
+                                    ;; This will be applied, if still appropriate, by
+                                    ;; the [[metabase.query-processor.middleware.persistence]] middleware
+                                    ;;
+                                    ;; TODO -- not 100% sure I did this right, there are almost no tests for this
+                                    persisted? (assoc :persisted-info/native
+                                                      (qp.persisted/persisted-info-native-query
+                                                       (:database-id card)
+                                                       persisted-info)))]
+                (conj (vec (butlast stages)) last-stage)))
+            (update-query [query]
+              (println "(pr-str query):" (pr-str query)) ; NOCOMMIT
+              (-> (lib.query/query metadata-providerable query)
+                  (update :stages update-stages)))]
+      (update card :dataset-query update-query))))
+
 (mu/defn ^:private card :- ::lib.schema.metadata/card
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
@@ -37,34 +87,7 @@
                         {:type               qp.error-type/invalid-query
                          :source-database-id source-database-id
                          :card-database-id   (:database-id card)}))))
-    (let [persisted-info (:lib/persisted-info card)
-          persisted?     (qp.persisted/can-substitute? card persisted-info)]
-      (when persisted?
-        (log/infof "Found substitute cached query for card %s from %s.%s"
-                   card-id
-                   (ddl.i/schema-name {:id (:database-id card)} (public-settings/site-uuid))
-                   (:table-name persisted-info)))
-      ;; convert Card's query to pMBQL as needed; splice in stage metadata and some extra keys
-      (letfn [(update-stages [stages]
-                (let [stages        (for [stage stages]
-                                      ;; this is for detecting circular refs below.
-                                      (assoc stage :qp/stage-is-from-source-card card-id))
-                      card-metadata (lib.card/card-metadata-columns metadata-providerable card)
-                      last-stage    (cond-> (last stages)
-                                      (seq card-metadata) (assoc-in [:lib/stage-metadata :columns] card-metadata)
-                                      ;; This will be applied, if still appropriate, by
-                                      ;; the [[metabase.query-processor.middleware.persistence]] middleware
-                                      ;;
-                                      ;; TODO -- not 100% sure I did this right, there are almost no tests for this
-                                      persisted? (assoc :persisted-info/native
-                                                        (qp.persisted/persisted-info-native-query
-                                                         (:database-id card)
-                                                         persisted-info)))]
-                  (conj (vec (butlast stages)) last-stage)))
-              (update-query [query]
-                (-> (lib.query/query metadata-providerable query)
-                    (update :stages update-stages)))]
-        (update card :dataset-query update-query)))))
+    (normalize-card-query metadata-providerable card)))
 
 (mu/defn ^:private resolve-source-cards-in-stage :- [:maybe ::lib.schema/stages]
   [query     :- ::lib.schema/query

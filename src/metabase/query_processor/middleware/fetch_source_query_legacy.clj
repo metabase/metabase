@@ -86,7 +86,7 @@
      (when-some [native-query (set/rename-keys native-query {:query :native})]
        (let [mongo? (= (driver.u/database->driver db-id) :mongo)]
          (cond-> native-query
-           ;; MongoDB native  queries consist of a collection and a pipelne (query)
+           ;; MongoDB native queries consist of a collection and a pipelne (query)
            mongo? (update :native (fn [pipeline] {:collection (:collection native-query)
                                                   :query      pipeline}))
            (empty? template-tags) (dissoc :template-tags))))
