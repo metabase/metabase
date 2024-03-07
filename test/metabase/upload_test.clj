@@ -23,6 +23,7 @@
    [metabase.upload :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
+   [metabase.util.ordered-hierarchy :as ordered-hierarchy]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -268,7 +269,7 @@
            [datetime-type    text-type        text-type]
            [offset-dt-type   text-type        text-type]
            [vchar-type       text-type        text-type]]]
-    (is (= expected (#'upload/most-specific-common-ancestor type-a type-b))
+    (is (= expected (#'ordered-hierarchy/first-common-ancestor @#'upload/h type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
 (defn csv-file-with
