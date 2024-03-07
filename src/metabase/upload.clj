@@ -226,7 +226,7 @@
   [type->check]
   (let [type->value->type (partial relax-type type->check)]
     (fn [value-types row]
-      ;; It's important to realise this lazy sequence, because otherwise we can build a huge stack and overflow.
+      ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
       (vec (u/map-all type->value->type value-types row)))))
 
 (defn- relax-types [settings current-types rows]
