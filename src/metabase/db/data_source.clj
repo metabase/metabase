@@ -15,9 +15,10 @@
 
 (set! *warn-on-reflection* true)
 
-;; NOTE: do not create DataSource directly, used one of our helper functions instead
-;; we want to make sure [[update-h2/update-if-needed!]] is called on every data source
-(p/deftype+ DataSource [^String url ^Properties properties]
+;; NOTE: Never instantiate a DataSource directly
+;; Use one of our helper functions below to ensure [[update-h2/update-if-needed!]] is called
+;; You can use [[raw-connection-string->DataSource]] or [[broken-out-details->DataSource]]
+(p/deftype+ ^:private DataSource [^String url ^Properties properties]
   pretty/PrettyPrintable
   (pretty [_]
     ;; in dev we can actually print out the details, it's useful in debugging. Everywhere else we should obscure them
