@@ -465,6 +465,16 @@
   [query]
   (-> query :stages first :source-card))
 
+(defn first-stage-type
+  "Type of the first query stage."
+  [query]
+  (:lib/type (query-stage query 0)))
+
+(defn first-stage-is-native?
+  "Whether the first stage of the query is a native query stage."
+  [query]
+  (= (first-stage-type query) :mbql.stage/native))
+
 (mu/defn unique-name-generator :- [:=>
                                    [:cat ::lib.schema.common/non-blank-string]
                                    ::lib.schema.common/non-blank-string]

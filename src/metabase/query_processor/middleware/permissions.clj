@@ -152,7 +152,9 @@
 
 (mu/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
-  [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
+  [{database-id :database, :as outer-query} :- [:map
+                                                [:database ::lib.schema.id/database]
+                                                [:type [:enum :query :native]]]]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (check-card-read-perms database-id *card-id*))

@@ -3,7 +3,6 @@
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -21,11 +20,7 @@
   query-type)
 
 (defn- normalize-legacy-query [query]
-  (->> query
-       ;; normalize using legacy normalization code
-       mbql.normalize/normalize
-       ;; now convert to a pMBQL query and attach metadata provider
-       (lib/query (qp.store/metadata-provider))))
+  (lib/query (qp.store/metadata-provider) query))
 
 (defmethod normalize* :query  [query] (normalize-legacy-query query))
 (defmethod normalize* :native [query] (normalize-legacy-query query))
@@ -69,11 +64,3 @@
                       {:type  qp.error-type/qp
                        :query query}
                       e)))))
-
-(defn normalize-around-middleware
-  "Middleware that converts a query into a normalized, canonical form, including things like converting all identifiers
-  into standard `lisp-case` ones, removing/rewriting legacy clauses, removing empty ones, etc. This is done to
-  simplifiy the logic in the QP steps following this."
-  [qp]
-  (fn [query rff]
-    (qp (normalize-preprocessing-middleware query) rff)))

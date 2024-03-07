@@ -62,10 +62,9 @@
        ;; now recursively expand any remaining maps that contain `:parameters`
        (expand-all outer-query expanded)))))
 
-(defn- move-top-level-params-to-inner-query
+(mu/defn ^:private move-top-level-params-to-inner-query
   "Move any top-level parameters to the same level (i.e., 'inner query') as the query they affect."
-  [{:keys [parameters], query-type :type, :as outer-query}]
-  {:pre [(#{:query :native} query-type)]}
+  [{:keys [parameters], query-type :type, :as outer-query} :- [:map [:type [:enum :query :native]]]]
   (cond-> (set/rename-keys outer-query {:parameters :user-parameters})
     (seq parameters)
     (assoc-in [query-type :parameters] parameters)))
