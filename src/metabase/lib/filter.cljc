@@ -353,7 +353,7 @@
      (recur query stage-number (lib.ref/ref boolean-expression))
      (let [stage-number (clojure.core/or stage-number -1)
            new-filter (lib.common/->op-arg boolean-expression)]
-       (lib.util/update-query-stage query stage-number update :filters add-filter-to-stage new-filter)))))
+       (lib.util/update-query-stage query stage-number add-filter-to-stage new-filter)))))
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
   "Returns the current filters in stage with `stage-number` of `query`.

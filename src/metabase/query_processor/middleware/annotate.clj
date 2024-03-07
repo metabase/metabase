@@ -219,19 +219,20 @@
     :field_ref       clause}))
 
 (mu/defn ^:private col-info-for-field-clause*
-  [{:keys [source-metadata source-card-id], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
-  (let [join                      (when (:join-alias opts)
-                                    (join-with-alias inner-query (:join-alias opts)))
-        join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
+  [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
+  (let [stage-is-from-source-card? (:qp/stage-had-source-card inner-query)
+        join                       (when (:join-alias opts)
+                                     (join-with-alias inner-query (:join-alias opts)))
+        join-is-at-current-level?  (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
         ;; record additional information that may have been added by middleware. Sometimes pre-processing middleware
         ;; needs to add extra info to track things that it did (e.g. the
         ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to
         ;; track which Fields it adds or needs to remap, and then the post-processing middleware does the actual
         ;; remapping based on that info)
-        namespaced-options        (not-empty (into {}
-                                                   (filter (fn [[k _v]]
-                                                             (and (keyword? k) (namespace k))))
-                                                   opts))]
+        namespaced-options         (not-empty (into {}
+                                                    (filter (fn [[k _v]]
+                                                              (and (keyword? k) (namespace k))))
+                                                    opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
     (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
@@ -295,7 +296,7 @@
       ;; If the source query is from a saved question, remove the join alias as the caller should not be aware of joins
       ;; happening inside the saved question. The `not join-is-at-current-level?` check is to ensure that we are not
       ;; removing `:join-alias` from fields from the right side of the join.
-      (and source-card-id
+      (and stage-is-from-source-card?
            (not join-is-at-current-level?))
       (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
 

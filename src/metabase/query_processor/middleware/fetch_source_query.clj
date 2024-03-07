@@ -48,7 +48,7 @@
       (letfn [(update-stages [stages]
                 (let [stages        (for [stage stages]
                                       ;; this is for detecting circular refs below.
-                                      (assoc stage ::stage-is-from-source-card card-id))
+                                      (assoc stage :qp/stage-is-from-source-card card-id))
                       card-metadata (lib.card/card-metadata-columns metadata-providerable card)
                       last-stage    (cond-> (last stages)
                                       (seq card-metadata) (assoc-in [:lib/stage-metadata :columns] card-metadata)
@@ -82,17 +82,18 @@
     ;; If the first stage came from a different source card (i.e., we are doing recursive resolution) record the
     ;; dependency of the previously-resolved source card on the one we're about to resolve. We can check for circular
     ;; dependencies this way.
-    (when (::stage-is-from-source-card first-stage)
+    (when (:qp/stage-is-from-source-card first-stage)
       (u/prog1 (swap! dep-graph
                       dep/depend
-                      (tru "Card {0}" (::stage-is-from-source-card first-stage))
+                      (tru "Card {0}" (:qp/stage-is-from-source-card first-stage))
                       (tru "Card {0}" (:source-card first-stage)))
         ;; This will throw if there's a cycle
         (dep/topo-sort <>)))
     (let [card         (card query (:source-card first-stage))
           card-stages  (get-in card [:dataset-query :stages])
+          ;; this information is used by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]]
           first-stage' (-> first-stage
-                           (assoc ::stage-had-source-card-id (:id card))
+                           (assoc :qp/stage-had-source-card (:id card))
                            (dissoc :source-card))
           stages'      (into (vec card-stages)
                              cat
@@ -114,14 +115,17 @@
 (def ^:private max-recursion-depth 50)
 
 (defn- resolve-source-cards* [original-query recursion-depth dep-graph]
-  ;; this is mostly to catch programmer bugs and avoid infinite loops, thus not i18n'ed
+  ;; this is mostly to catch programmer bugs and avoid infinite loops, thus not i18n'ed. Dep graph should circular
+  ;; dependencies if they occur
   (assert (<= recursion-depth max-recursion-depth)
           (format "Source Cards not fully resolved after %d iterations." max-recursion-depth))
   (let [updated-query                              (resolve-source-cards-in-joins original-query dep-graph)
         {updated-stages :stages, card-id :card-id} (resolve-source-cards-in-stages updated-query (:stages updated-query) dep-graph)
+        ;; `:qp/source-card-id` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]] to
+        ;; decide whether to record metadata as well as by the [[add-dataset-info]] post-processing middleware.
         updated-query                              (cond-> updated-query
                                                      updated-stages (assoc :stages updated-stages)
-                                                     card-id        (update ::source-card-id #(or % card-id))
+                                                     card-id        (update :qp/source-card-id #(or % card-id))
                                                      card-id        (update-in [:info :card-id] #(or % card-id)))]
     (if (= updated-query original-query)
       original-query
@@ -131,7 +135,7 @@
 (mu/defn resolve-source-cards :- ::lib.schema/query
   "If a stage has a `:source-card`, fetch the Card and prepend its underlying stages to the pipeline."
   [query :- ::lib.schema/query]
-  (let [query (dissoc query ::source-card-id)]
+  (let [query (dissoc query :source-card-id :qp/source-card-id)] ; `:source-card-id` was the old key
     (resolve-source-cards* query 0 (atom (dep/graph)))))
 
 (defn add-dataset-info
@@ -140,7 +144,7 @@
 
   TODO -- we should remove remove the `:dataset` key and make sure nothing breaks, and make sure everything is looking
   at `:model` instead."
-  [{::keys [source-card-id], :as _preprocessed-query} rff]
+  [{:qp/keys [source-card-id], :as _preprocessed-query} rff]
   (if-not source-card-id
     rff
     (let [model? (= (:type (lib.metadata.protocols/card (qp.store/metadata-provider) source-card-id)) :model)]

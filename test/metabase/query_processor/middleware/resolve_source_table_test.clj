@@ -60,12 +60,15 @@
          (resolve-and-return-store-contents
           {:database (mt/id)
            :type     :query
-           :query    {:source-table "ABC"}})))
+           :query    {:source-table "ABC"}})))))
+
+(deftest ^:parallel validate-source-table-test-2
+  (testing "Should throw an Exception if there's a `:source-table` in the query that IS NOT a positive int"
     ;; TODO -- a little weird that this triggers a schema validation error while the string Table ID gets a more
     ;; useful error message
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Invalid output:.*value must be an integer greater than zero"
+         #"Invalid output:.*should be a positive int, got: 0"
          (resolve-and-return-store-contents
           {:database (mt/id)
            :type     :query

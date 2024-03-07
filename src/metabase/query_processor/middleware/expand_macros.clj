@@ -153,7 +153,7 @@
   [macro-type       :- ::macro-type
    query            :- ::lib.schema/query
    legacy-macro-ids :- [:maybe [:set {:min 1} pos-int?]]]
-  (log/tracef "Resolving legacy %s macros with IDs %s" macro-type legacy-macro-ids)
+  (log/debugf "Resolving legacy %s macros with IDs %s" macro-type legacy-macro-ids)
   (let [id->legacy-macro (fetch-legacy-macros macro-type query legacy-macro-ids)]
     (lib.walk/walk-stages
      query

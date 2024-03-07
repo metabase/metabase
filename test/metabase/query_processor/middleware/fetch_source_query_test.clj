@@ -65,7 +65,7 @@
                       {:source-query {:source-table (meta/id :venues)}}
                       (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
                      :info {:card-id 1}
-                     ::fetch-source-query/source-card-id 1)
+                     :qp/source-card-id 1)
               (resolve-source-cards
                (wrap-inner-query
                 {:source-table "card__1"})))))))
@@ -80,7 +80,7 @@
                          :source-query {:source-table (meta/id :venues)}}
                         (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
                        :info {:card-id 1}
-                       ::fetch-source-query/source-card-id 1)
+                       :qp/source-card-id 1)
                 (resolve-source-cards
                  (wrap-inner-query
                   {:source-table "card__1"
@@ -96,7 +96,7 @@
                          :filter       [:between [:field "date" {:base-type :type/Date}] "2015-01-01" "2015-02-01"]}
                         (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query checkins)))
                        :info {:card-id 2}
-                       ::fetch-source-query/source-card-id 2)
+                       :qp/source-card-id 2)
                 (resolve-source-cards
                  (wrap-inner-query
                   {:source-table "card__2"
@@ -132,7 +132,7 @@
                        :source-query {:native "SELECT * FROM venues"}}
                       nil)
                      :info {:card-id 1}
-                     ::fetch-source-query/source-card-id 1)
+                     :qp/source-card-id 1)
               (resolve-source-cards
                (wrap-inner-query
                 {:source-table "card__1"
@@ -162,7 +162,7 @@
                             (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
                               (dissoc col :field_ref)))
                   (assoc :info {:card-id 2}
-                         ::fetch-source-query/source-card-id 2))
+                         :qp/source-card-id 2))
               (resolve-source-cards
                (wrap-inner-query
                 {:source-table "card__2", :limit 25})))))))
@@ -362,7 +362,7 @@
                           :source-metadata (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
                                              (dissoc col :field_ref))})
                        :info {:card-id Integer/MAX_VALUE}
-                       ::fetch-source-query/source-card-id 1)
+                       :qp/source-card-id 1)
                 (resolve-source-cards query)))))))
 
 (deftest ^:parallel card-id->source-query-and-metadata-test
@@ -379,14 +379,16 @@
       (qp.store/with-metadata-provider (-> meta/metadata-provider
                                            (lib.tu/merged-mock-metadata-provider {:database {:engine :mongo}})
                                            (lib.tu/metadata-provider-with-cards-for-queries [query]))
-        (is (=? {:stages [{:lib/type    :mbql.stage/native
-                           :projections ["_id" "user_id" "venue_id"]
-                           :collection  "checkins"
-                           :mbql?       true
-                           :native      [{:$project {:_id "$_id"}} {:$limit 1048575}]}
-                          {:lib/type :mbql.stage/mbql}]
-                 ::fetch-source-query/source-card-id 1
-                 :info                               {:card-id 1}}
+        (is (=? {:stages            [{:lib/type                     :mbql.stage/native
+                                      :projections                  ["_id" "user_id" "venue_id"]
+                                      :collection                   "checkins"
+                                      :mbql?                        true
+                                      :native                       [{:$project {:_id "$_id"}} {:$limit 1048575}]
+                                      :qp/stage-is-from-source-card 1}
+                                     {:lib/type                 :mbql.stage/mbql
+                                      :qp/stage-had-source-card 1}]
+                 :qp/source-card-id 1
+                 :info              {:card-id 1}}
                 (resolve-source-cards (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1)))))))))
 
 (deftest ^:parallel card-id->source-query-and-metadata-test-2
@@ -411,7 +413,7 @@
                 (resolve-source-cards (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1)))))))))
 
 (deftest ^:parallel remove-card-id-key-test
-  (testing "Strip out the ::fetch-source-query/source-card-id key for queries that don't have a source card"
+  (testing "Strip out the :qp/source-card-id key for queries that don't have a source card"
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:database (meta/id)
               :type     :query
@@ -420,4 +422,4 @@
               {:database                           (meta/id)
                :type                               :query
                :query                              {:source-table (meta/id :venues)}
-               ::fetch-source-query/source-card-id 1}))))))
+               :qp/source-card-id 1}))))))

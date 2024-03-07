@@ -1123,4 +1123,5 @@
         (let [query (:dataset_query card)]
           (process-userland-query-test/with-query-execution [qe query]
             (qp/process-query (qp/userland-query query))
-            (is (:is_sandboxed (qe)))))))))
+            (is (=? {:is_sandboxed true}
+                    (qe)))))))))

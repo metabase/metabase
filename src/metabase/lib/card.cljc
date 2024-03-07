@@ -117,13 +117,14 @@
   [:maybe [:sequential {:min 1} CardColumnMetadata]])
 
 (def ^:private ^:dynamic *card-metadata-columns-card-ids*
+  "Used to track the ID of Cards we're resolving columns for, to avoid inifinte recursion for Cards that have circular
+  references between one another."
   #{})
 
 (mu/defn card-metadata-columns :- CardColumns
   "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card                  :- Card]
-  ;; avoid inifinte recursion for Cards that have circular references between one another.
   (when-not (contains? *card-metadata-columns-card-ids* (:id card))
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
       (when-let [result-metadata (or (:fields card)
