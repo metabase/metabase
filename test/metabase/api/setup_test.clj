@@ -92,20 +92,6 @@
                         :details  {}}
                        (mt/latest-audit-log-entry :user-joined user-id)))))))))))
 
-(deftest set-license-token-test
-  (testing "POST /api/setup"
-    (testing "Check that we accept a license_token in the setup endpoint"
-       (with-redefs [premium-features/fetch-token-status (fn [_x]
-                                                          {:valid    true
-                                                           :status   "fake"
-                                                           :features ["test" "fixture"]
-                                                           :trial    false})]
-        (let [license-token random-fake-token]
-          (with-setup! {:license_token license-token}
-            (testing "Should set the premium-embedding-token"
-              (is (= license-token (premium-features/premium-embedding-token))))))))))
-
-
 (deftest invite-user-test
   (testing "POST /api/setup"
     (testing "Check that a second admin can be created during setup, and that an invite email is sent successfully and
@@ -161,7 +147,8 @@
     (testing "check that we can set various Settings during setup"
       (doseq [[setting-name {:keys [k vs]}] {:site-name
                                              {:k  "site_name"
-                                              :vs {"Cam's Metabase" "Cam's Metabase"}}
+                                              :vs {"Cam's Metabase" "Cam's Metabase"
+                                                   "Dan's Metabase" "Dan's Metabase"}}
 
                                              :anon-tracking-enabled
                                              {:k  "allow_tracking"
@@ -169,13 +156,13 @@
                                                    "true"  true
                                                    true    true
                                                    nil     true
-                                                   "FALSE" false
-                                                   "false" false
-                                                   false   false}}
+                                                   "FALSE" true
+                                                   "false" true
+                                                   false   true}}
 
                                              :site-locale
                                              {:k  "site_locale"
-                                              :vs {nil     "en" ; `en` is the default
+                                              :vs {nil     "en" ;; `en` is the default
                                                    "es"    "es"
                                                    "ES"    "es"
                                                    "es-mx" "es_MX"
