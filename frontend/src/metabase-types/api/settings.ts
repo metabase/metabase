@@ -203,7 +203,6 @@ interface InstanceSettings {
   "show-homepage-xrays": boolean;
   "site-uuid": string;
   "subscription-allowed-domains": string | null;
-  "user-locale": string | null;
   "uploads-enabled": boolean;
   "uploads-database-id": number | null;
   "uploads-schema-name": string | null;
