@@ -44,6 +44,10 @@
     (clojure.core.logic/run)
     (clojure.test/is [query= =? malli=])
     (clojure.tools.macro/macrolet)
+    (etaoin.api/with-chrome)
+    (etaoin.api/with-chrome-headless)
+    (etaoin.api/with-firefox)
+    (etaoin.api/with-firefox-headless)
     instaparse.core/transform
     (metabase.async.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)

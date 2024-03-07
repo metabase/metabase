@@ -507,7 +507,6 @@
                       (File/createTempFile "dashboard" ".pdf")
                       .deleteOnExit)]
       (e/with-firefox-headless {}
-        #_{:clj-kondo/ignore [:unresolved-symbol]}
         driver
         (e/go driver (format "%s/subscriptions_dashboard" (public-settings/site-url)))
         (e/js-execute driver
