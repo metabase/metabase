@@ -1,16 +1,16 @@
 /* eslint-disable no-console */
-const MAX_LOGS = 20;
+export const MAX_ERROR_LOGS = 20;
 
 export function captureConsoleErrors() {
   console.errorBuffer = [];
 
   const originalError = console.error;
 
-  console.error = function () {
-    if (console.errorBuffer.length > MAX_LOGS) {
+  console.error = function (...args) {
+    if (console.errorBuffer.length >= MAX_ERROR_LOGS) {
       console.errorBuffer.pop();
     }
-    console.errorBuffer.unshift(Array.from(arguments));
-    originalError(...arguments);
+    console.errorBuffer.unshift(Array.from(args));
+    originalError(...args);
   };
 }
