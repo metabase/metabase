@@ -14,6 +14,7 @@ import type {
   SeriesModel,
   Datum,
   BaseCartesianChartModel,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -27,7 +28,8 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
+import { isMetric } from "metabase-lib/types/utils/isa";
+import { isNumericAxis } from "./guards";
 
 /**
  * Sums two metric column values.
@@ -292,6 +294,7 @@ export const applySquareRootScaling = (value: RowValue): RowValue => {
  */
 export const applyVisualizationSettingsDataTransformations = (
   dataset: ChartDataset,
+  xAxisModel: XAxisModel,
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
 ): ChartDataset => {
@@ -308,11 +311,12 @@ export const applyVisualizationSettingsDataTransformations = (
       fn: getKeyBasedDatasetTransform(seriesDataKeys, applySquareRootScaling),
     },
     {
-      condition: settings["graph.x_axis.scale"] === "pow",
-      fn: getKeyBasedDatasetTransform(
-        [X_AXIS_DATA_KEY],
-        applySquareRootScaling,
-      ),
+      condition: isNumericAxis(xAxisModel),
+      fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
+        return isNumericAxis(xAxisModel)
+          ? xAxisModel.toEChartsAxisValue(value)
+          : value;
+      }),
     },
     {
       condition: settings["stackable.stack_type"] === "stacked",
@@ -367,30 +371,15 @@ const sortByDimension = (
   });
 };
 
-export function getDimensionDisplayValueGetter(
+export function getNumericDisplayValueGetter(
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
 ) {
-  const { axisType } = chartModel.xAxisModel;
   const isPowerScale = settings["graph.x_axis.scale"] === "pow";
 
-  return (value: string) => {
+  return (value: number) => {
     if (isPowerScale) {
-      return typeof value === "number" ? Math.pow(value, 2) : value;
-    }
-    if (axisType === "time") {
-      // ECharts for ticks ECharts uses UTC time, so we need to adjust the time to the timezone of the dataset
-      const offsetMinues =
-        dayjs(value).utcOffset() -
-        dayjs(value).tz(chartModel.xAxisModel.timezone).utcOffset();
-
-      return dayjs(value)
-        .add(offsetMinues, "minute")
-        .format("YYYY-MM-DDTHH:mm:ss");
-    }
-    if (isNumeric(chartModel.dimensionModel.column)) {
-      const parsedNumber = parseInt(value, 10);
-      return isNaN(parsedNumber) ? value : parsedNumber;
+      return Math.pow(value, 2);
     }
     return value;
   };
@@ -484,34 +473,39 @@ export const getDatasetExtents = (
   keys: DataKey[],
   dataset: ChartDataset,
 ): SeriesExtents => {
-  const extents: SeriesExtents = {};
+  return keys.reduce((acc, key) => {
+    const extent = getSeriesExtent(dataset, key);
+    if (extent != null) {
+      acc[key] = extent;
+    }
+    return acc;
+  }, {} as SeriesExtents);
+};
 
-  dataset.forEach(item => {
-    keys.forEach(key => {
-      const value = item[key];
+export const getSeriesExtent = (dataset: ChartDataset, key: DataKey) => {
+  let extent: Extent | null = null;
 
-      if (typeof value !== "number" || !Number.isFinite(value)) {
-        return;
-      }
+  dataset.forEach(datum => {
+    const value = datum[key];
 
-      const extent = extents[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return;
+    }
 
-      if (!extent) {
-        extents[key] = [value, value];
-        return;
-      }
+    if (extent == null) {
+      extent = [value, value];
+    }
 
-      if (value < extent[0]) {
-        extent[0] = value;
-      }
+    if (value < extent[0]) {
+      extent[0] = value;
+    }
 
-      if (value > extent[1]) {
-        extent[1] = value;
-      }
-    });
+    if (value > extent[1]) {
+      extent[1] = value;
+    }
   });
 
-  return extents;
+  return extent;
 };
 
 export const getCardColumnByDataKeyMap = (
