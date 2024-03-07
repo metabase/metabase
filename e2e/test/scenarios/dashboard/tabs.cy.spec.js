@@ -415,15 +415,20 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
+    getDashboardCard().findByText("User ID");
+
     // Visit second tab and confirm only second card was queried
     goToTab("Tab 2");
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
 
+    getDashboardCard().findByText("Count");
     // Go back to first tab, expect no additional queries
     goToTab("Tab 1");
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
+
+    getDashboardCard().findByText("User ID");
 
     // Go to public dashboard
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
