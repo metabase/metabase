@@ -3,11 +3,11 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useBooleanOperatorFilter } from "metabase/querying/hooks/use-boolean-operator-filter";
-import { Icon, Checkbox, Flex, Grid, Group } from "metabase/ui";
+import { Checkbox, Grid, Group } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
 export function BooleanFilterEditor({
@@ -54,45 +54,46 @@ export function BooleanFilterEditor({
   };
 
   return (
-    <Grid grow>
-      <Grid.Col span="auto">
-        <Flex h="100%" align="center" gap="sm">
-          <Icon name={columnIcon} />
-          <FilterColumnName
+    <HoverParent>
+      <Grid grow>
+        <Grid.Col span="auto">
+          <FilterTitle
             query={query}
             stageIndex={stageIndex}
             column={column}
+            columnIcon={columnIcon}
             isSearching={isSearching}
-          />
-          {isExpanded && (
-            <FilterOperatorPicker
-              value={operator}
-              options={availableOptions}
-              onChange={handleOperatorChange}
+          >
+            {isExpanded && (
+              <FilterOperatorPicker
+                value={operator}
+                options={availableOptions}
+                onChange={handleOperatorChange}
+              />
+            )}
+          </FilterTitle>
+        </Grid.Col>
+        <Grid.Col span={4}>
+          <Group spacing="md">
+            <Checkbox
+              label={t`True`}
+              checked={values.length > 0 ? values[0] : false}
+              indeterminate={valueCount === 0}
+              onChange={event =>
+                handleValuesChange(event.target.checked ? [true] : [])
+              }
             />
-          )}
-        </Flex>
-      </Grid.Col>
-      <Grid.Col span={4}>
-        <Group spacing="md">
-          <Checkbox
-            label={t`True`}
-            checked={values.length > 0 ? values[0] : false}
-            indeterminate={valueCount === 0}
-            onChange={event =>
-              handleValuesChange(event.target.checked ? [true] : [])
-            }
-          />
-          <Checkbox
-            label={t`False`}
-            checked={values.length > 0 ? !values[0] : false}
-            indeterminate={valueCount === 0}
-            onChange={event =>
-              handleValuesChange(event.target.checked ? [false] : [])
-            }
-          />
-        </Group>
-      </Grid.Col>
-    </Grid>
+            <Checkbox
+              label={t`False`}
+              checked={values.length > 0 ? !values[0] : false}
+              indeterminate={valueCount === 0}
+              onChange={event =>
+                handleValuesChange(event.target.checked ? [false] : [])
+              }
+            />
+          </Group>
+        </Grid.Col>
+      </Grid>
+    </HoverParent>
   );
 }

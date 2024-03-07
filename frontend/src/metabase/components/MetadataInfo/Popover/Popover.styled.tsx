@@ -1,9 +1,8 @@
 import styled from "@emotion/styled";
 
-import FieldInfo from "metabase/components/MetadataInfo/FieldInfo";
 import { HoverCard } from "metabase/ui";
 
-export const WidthBoundFieldInfo = styled(FieldInfo)`
+export const WidthBound = styled.div`
   width: 300px;
   font-size: 14px;
 `;
@@ -14,7 +13,7 @@ export const Dropdown = styled(HoverCard.Dropdown)`
 
 export const Target = styled.div`
   position: absolute;
-  width: 100%;
+  width: calc(100% + 20px);
   left: -10px;
   right: -10px;
   top: -10px;
