@@ -49,9 +49,10 @@
                       ;; - fk_target_field_id is NULL and the new target is not NULL
                       ;; - fk_target_field_id is not NULL but the new target is different and not NULL
                       [pk-field-id-query :pk]
-                      [:or
-                       [:= :f.fk_target_field_id nil]
-                       [:not= :f.fk_target_field_id :pk.id]]]
+                      [:and
+                       [:or
+                        [:= :f.fk_target_field_id nil]
+                        [:not= :f.fk_target_field_id :pk.id]]]]
              :set    {:fk_target_field_id :pk.id
                       :semantic_type      "type/FK"}}
             :postgres
