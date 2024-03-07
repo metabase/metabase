@@ -106,6 +106,11 @@ function EntityItemMenu({
   const actions = useMemo(
     () =>
       [
+        onToggleBookmark && {
+          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
+          icon: "bookmark",
+          action: onToggleBookmark,
+        },
         onPin && {
           title: isPinned ? t`Unpin` : t`Pin this`,
           icon: isPinned ? "unpin" : "pin",
@@ -146,11 +151,6 @@ function EntityItemMenu({
           title: t`Archive`,
           icon: "archive",
           action: onArchive,
-        },
-        onToggleBookmark && {
-          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
-          icon: "bookmark",
-          action: onToggleBookmark,
         },
       ].filter(action => action),
     [
