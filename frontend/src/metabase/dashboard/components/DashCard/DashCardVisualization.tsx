@@ -7,6 +7,7 @@ import { t } from "ttag";
 import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";
 import {
   getVirtualCardType,
+  isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import type { IconName, IconProps } from "metabase/ui";
@@ -127,7 +128,9 @@ export function DashCardVisualization({
   onUpdateVisualizationSettings,
 }: DashCardVisualizationProps) {
   const question = useMemo(() => {
-    return new Question(dashcard.card, metadata);
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
   }, [dashcard.card, metadata]);
 
   const renderVisualizationOverlay = useCallback(() => {
@@ -185,8 +188,11 @@ export function DashCardVisualization({
   ]);
 
   const renderActionButtons = useCallback(() => {
-    const mainSeries = series[0] as unknown as Dataset;
+    if (!question) {
+      return null;
+    }
 
+    const mainSeries = series[0] as unknown as Dataset;
     const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
       question,
       result: mainSeries,
