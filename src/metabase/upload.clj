@@ -367,6 +367,9 @@
       auto-pk-indices
       (map (partial remove-indices auto-pk-indices)))))
 
+(defn- file-size-mb [csv-file]
+  (/ (.length csv-file) 1048576.0))
+
 (defn- load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
@@ -390,8 +393,7 @@
         {:num-rows          (count rows)
          :num-columns       (count extant-columns)
          :generated-columns (count generated-columns)
-         :size-mb           (/ (.length csv-file)
-                               1048576.0)}
+         :size-mb           (file-size-mb csv-file)}
         (catch Throwable e
           (driver/drop-table! driver db-id table-name)
           (throw (ex-info (ex-message e) {:status-code 400})))))))
@@ -535,10 +537,12 @@
 
         (events/publish-event! :event/upload-create
                                {:user-id  (:id @api/*current-user*)
-                                :model-id (:id card)
+                                :model-id (:id table)
+                                :model    :model/Table
                                 :details  {:db-id       db-id
                                            :schema-name schema-name
                                            :table-name  table-name
+                                           :card-id     (:id card)
                                            :stats       stats}})
 
         (snowplow/track-event! ::snowplow/csv-upload-successful
@@ -656,22 +660,41 @@
                                  (->> (changed-field->new-type fields old-column-types relaxed-types)
                                       (alter-columns! driver database table))))
           ;; this will fail if any of our required relaxations were rejected.
-          parsed-rows        (parse-rows settings new-column-types rows)]
+          parsed-rows        (parse-rows settings new-column-types rows)
+          row-count          (count parsed-rows)]
+
       (try
         (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
         (catch Throwable e
           (throw (ex-info (ex-message e) {:status-code 422}))))
+
       (when create-auto-pk?
         (driver/add-columns! driver
                              (:id database)
                              (table-identifier table)
                              {auto-pk-column-keyword (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}
                              :primary-key [auto-pk-column-keyword]))
+
       (scan-and-sync-table! database table)
+
       (when create-auto-pk?
         (let [auto-pk-field (table-id->auto-pk-column (:id table))]
           (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
-      {:row-count (count parsed-rows)})))
+
+      (events/publish-event! :event/upload-append
+                             {:user-id  (:id @api/*current-user*)
+                              :model-id (:id table)
+                              :model    :model/Table
+                              :details  {:db-id       (:id database)
+                                         :schema-name (:schema table)
+                                         :table-name  (:name table)
+                                         :stats       {:num-rows          row-count
+                                                       :num-columns       (count new-column-types)
+                                                       :generated-columns (- (count new-column-types)
+                                                                             (count old-column-types))
+                                                       :size-mb           (file-size-mb file)}}})
+
+      {:row-count row-count})))
 
 (defn- can-append-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
