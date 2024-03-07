@@ -749,7 +749,6 @@ class TableInteractive extends Component {
         }}
       >
         <HeaderCell
-          data-testid={isVirtual ? undefined : "header-cell"}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
@@ -772,6 +771,9 @@ class TableInteractive extends Component {
               "justify-end": isRightAligned,
             },
           )}
+          role="columnheader"
+          aria-label={columnTitle}
+          data-testid={isVirtual ? undefined : "header-cell"}
           onClick={
             // only use the onClick if not draggable since it's also handled in Draggable's onStop
             isClickable && !isDraggable
