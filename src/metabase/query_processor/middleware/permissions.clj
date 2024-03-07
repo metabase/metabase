@@ -13,11 +13,8 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.fetch-source-query
-    :as fetch-source-query]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.tag-referenced-cards
-    :as qp.u.tag-referenced-cards]
+   [metabase.query-processor.util.tag-referenced-cards :as qp.u.tag-referenced-cards]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -115,7 +112,7 @@
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (when (= perms/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
-    (let [card-id (or *card-id* (::fetch-source-query/source-card-id outer-query))]
+    (let [card-id (or *card-id* (:qp/source-card-id outer-query))]
       (cond
         card-id
         (do

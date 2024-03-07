@@ -340,7 +340,7 @@
       (seq (:filters stage)) (update :filters flatten-filters))))
 
 (mu/defn filter :- :metabase.lib.schema/query
-  "Sets `boolean-expression` as a filter on `query`."
+  "Sets `boolean-expression` as a filter on `query`. Ignores duplicate filters (ignoring :lib/uuid)."
   ([query :- :metabase.lib.schema/query
     boolean-expression]
    (metabase.lib.filter/filter query nil boolean-expression))

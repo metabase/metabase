@@ -122,7 +122,8 @@
   (let [updated-query                              (resolve-source-cards-in-joins original-query dep-graph)
         {updated-stages :stages, card-id :card-id} (resolve-source-cards-in-stages updated-query (:stages updated-query) dep-graph)
         ;; `:qp/source-card-id` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]] to
-        ;; decide whether to record metadata as well as by the [[add-dataset-info]] post-processing middleware.
+        ;; decide whether to record metadata as well as by the [[add-dataset-info]] post-processing middleware, and
+        ;; by [[metabase.query-processor.middleware.permissions/check-query-permissions*]]
         updated-query                              (cond-> updated-query
                                                      updated-stages (assoc :stages updated-stages)
                                                      card-id        (update :qp/source-card-id #(or % card-id))

@@ -179,7 +179,7 @@
 
 (deftest ^:parallel convert-from-legacy-remove-type-test
   (testing "legacy keys like :type and :query should get removed"
-    (is (= {:database     74001
+    (is (= {:database     (meta/id)
             :lib/type     :mbql/query
             :lib/metadata meta/metadata-provider
             :stages       [{:lib/type :mbql.stage/mbql, :source-table 74040}]}

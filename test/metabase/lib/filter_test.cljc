@@ -13,6 +13,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.matrix :as matrix]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -418,9 +419,8 @@
         (let [filter-clause (assoc first-filter 2 43)]
           (is (nil? (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
       (testing "ambiguous match"
-        (let [query (lib/filter query (-> first-filter
-                                          (assoc-in [1 :lib/uuid] (str (random-uuid)))
-                                          (assoc-in [2 1 :lib/uuid] (str (random-uuid)))))]
+        ;; don't use lib/filter because it will ignore duplicate filters.
+        (let [query (lib.util/update-query-stage query -1 update :filters conj (lib.util/fresh-uuids first-filter))]
           (is (thrown-with-msg?
                #?(:clj Exception :cljs :default) #"Multiple matching filters found"
                (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
