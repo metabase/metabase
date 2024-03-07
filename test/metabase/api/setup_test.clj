@@ -49,7 +49,8 @@
 
 (defn- default-setup-input []
   {:token (setup/create-token!)
-   :prefs {:site_name "Metabase Test"}
+   :prefs {:site_name "Metabase Test"
+           :site_locale "en"}
    :user  {:first_name (mt/random-name)
            :last_name  (mt/random-name)
            :email      (mt/random-email)
@@ -273,9 +274,8 @@
     (testing "Make sure setup completes successfully if Settings cache needs to be restored"
       (setting.cache-test/reset-last-update-check!)
       (setting.cache-test/clear-cache!)
-      (let [db-name (mt/random-name)]
-        (with-setup! {:database {:details (:details (mt/db)), :engine "h2", :name db-name}}
-          (is (t2/exists? Database :name db-name)))))))
+      (with-setup! {:user {:email "setupper@setup.net"}}
+        (is (= "setupper@setup.net" (t2/select-one-fn :email :model/User :email "setupper@setup.net")))))))
 
 (deftest has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
@@ -517,9 +517,8 @@
 ;;; |                                         GET /api/setup/token-check                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
 (deftest token-check-valid
-  (testing "GET /api/token-check"
+  (testing "GET /api/setup/token-check"
     (testing "Check that returns {valid: true} for valid token"
       (mt/with-temporary-setting-values [has-user-setup false]
         (with-redefs [premium-features/fetch-token-status (fn [_x]
@@ -528,13 +527,13 @@
                                                              :features ["test" "fixture"]
                                                              :trial    false})]
           (is (= {:valid true}
-                 (client/client :get (str "setup/token-check?license_token=" random-fake-token)))))
+                 (mt/user-http-request :crowberto :get 200 (str "setup/token-check?license_token=" random-fake-token)))))
         (testing "Check that returns {valid: false} for invalid token"
           (mt/with-temporary-setting-values [has-user-setup false]
             (with-redefs [premium-features/fetch-token-status (fn [_x] {:valid false})]
               (is (= {:valid false}
-                     (client/client :get (str "setup/token-check?license_token=" random-fake-token)))))))
-        (testing "Check that returns {valid: false} for invalid token"
+                     (mt/user-http-request :crowberto :get 200 (str "setup/token-check?license_token=" (random-uuid))))))))
+        (testing "Non-admins cannot access the endpoint"
           (mt/with-temporary-setting-values [has-user-setup true]
-            (is (= "This endpoint can only be used before the initial setup."
+            (is (= "You don't have permissions to do that."
                    (client/client :get (str "setup/token-check?license_token=" random-fake-token))))))))))
