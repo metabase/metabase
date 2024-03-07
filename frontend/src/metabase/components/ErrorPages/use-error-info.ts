@@ -56,17 +56,19 @@ export const useErrorInfo = (
 
     const [entityInfo, bugReportDetails, sessionProperties, logs] =
       settledPromises.map((promise: any) => promise.value);
+
     const queryResults =
       hasQueryData(entity) &&
       entityInfo?.dataset_query &&
       (await MetabaseApi.dataset(entityInfo.dataset_query).catch(nullOnCatch));
 
     // if this is an ad-hoc exploration on top of a saved question, fetch the original card
-    entityInfo.originalCard =
-      !!entity &&
-      hasQueryData(entity) &&
-      entityInfo?.original_card_id &&
-      (await getEntityDetails({ entity, id: entityInfo.original_card_id }));
+    if (hasQueryData(entity) && entityInfo?.original_card_id) {
+      entityInfo.originalCard = await getEntityDetails({
+        entity,
+        id: entityInfo.original_card_id,
+      });
+    }
 
     const filteredLogs = logs?.slice?.(0, 100);
     const backendErrors = logs?.filter?.((log: any) => log.level === "ERROR");

@@ -87,7 +87,7 @@ export const ErrorDiagnosticModal = ({
           </Text>
           <Stack spacing="md" my="lg">
             {canIncludeQueryData && (
-              <FormCheckbox name="queryData" label={t`Query results`} />
+              <FormCheckbox name="queryResults" label={t`Query results`} />
             )}
             {!!errorInfo.localizedEntityName && (
               <FormCheckbox
