@@ -5,10 +5,16 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (comment
   caching.api/keep-me)
+
+(defn last-audit-event []
+  (t2/select-one [:model/AuditLog :topic :user_id :model :details]
+                 :topic :caching-update
+                 {:order-by [[:id :desc]]}))
 
 (deftest cache-config-test
   (mt/discard-setting-changes [enable-query-caching]
@@ -19,7 +25,7 @@
           (is (= "Caching is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :get 402 "ee/caching/")))))
       (testing "Caching API"
-        (mt/with-premium-features #{:cache-granular-controls}
+        (mt/with-premium-features #{:cache-granular-controls :audit-app}
           (mt/with-temp [:model/Database      db     {}
                          :model/Collection    col1   {:name "col1"}
                          :model/Dashboard     dash1  {:name          "dash1"
@@ -42,7 +48,17 @@
                                          :model_id 0
                                          :strategy {:type "nocache" :name "root"}}))
               (is (=? {:items [{:model "root" :model_id 0}]}
-                      (mt/user-http-request :crowberto :get 200 "ee/caching/"))))
+                      (mt/user-http-request :crowberto :get 200 "ee/caching/")))
+              (testing "Is audited"
+                (is (=? {:topic   :caching-update
+                         :user_id (:id (mt/fetch-user :crowberto))
+                         :model   "CacheConfig"
+                         :details {:id             int?
+                                   :model          "root"
+                                   :model_id       0
+                                   :previous-value nil
+                                   :next-value     {:strategy "nocache" :config {:name "root"}}}}
+                        (last-audit-event)))))
 
             (testing "Can configure others"
               (is (mt/user-http-request :crowberto :put 200 "ee/caching/"

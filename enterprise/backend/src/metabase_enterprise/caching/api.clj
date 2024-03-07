@@ -4,6 +4,8 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events :as events]
+   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -20,12 +22,23 @@
                                     "question"  :model/Card)
                                   :id [:in ids]))))
 
+(defn- audit-caching-change! [id target prev new]
+  (events/publish-event!
+   :event/caching-update
+   {:user-id api/*current-user-id*
+    :model   :model/CacheConfig
+    :details {:id             id
+              :model          (:model target)
+              :model_id       (:model_id target)
+              :previous-value prev
+              :next-value     new}}))
+
 (api/defendpoint GET "/"
   "Return cache configuration."
   [:as {{:strs [model collection]
          :or   {model "root"}}
         :query-params}]
-  {model      (ms/QuerySetOf [:enum "root" "database" "dashboard" "question"])
+  {model      (ms/QueryVectorOf [:enum "root" "database" "dashboard" "question"])
    collection [:maybe ms/PositiveInt]}
   (validation/check-has-application-permission :setting)
   (let [items (t2/select :model/CacheConfig
@@ -76,12 +89,16 @@
                           [:schedule u.cron/CronScheduleString]]]]]}
   (validation/check-has-application-permission :setting)
   (assert-valid-models model [model_id])
-  (let [data {:model    model
-              :model_id model_id
-              :strategy (:type strategy)
-              :config   (dissoc strategy :type)}]
-    {:id (or (first (t2/update-returning-pks! :model/CacheConfig {:model model :model_id model_id} data))
-             (t2/insert-returning-pk! :model/CacheConfig data))}))
+  (t2/with-transaction [_tx]
+    (let [criteria {:model    model
+                    :model_id model_id}
+          data     {:strategy (:type strategy)
+                    :config   (dissoc strategy :type)}
+          current  (t2/select-one :model/CacheConfig :model model :model_id model_id {:for :update})]
+      {:id (u/prog1 (if current
+                      (first (t2/update-returning-pks! :model/CacheConfig criteria data))
+                      (t2/insert-returning-pk! :model/CacheConfig (merge criteria data)))
+             (audit-caching-change! <> criteria current data))})))
 
 (api/defendpoint DELETE "/"
   [:as {{:keys [model model_id]} :body}]
@@ -89,7 +106,13 @@
    model_id (ms/QueryVectorOf ms/PositiveInt)}
   (validation/check-has-application-permission :setting)
   (assert-valid-models model model_id)
-  (t2/delete! :model/CacheConfig :model model :model_id [:in model_id])
+  (let [current (t2/select :model/CacheConfig :model model :model_id [:in model_id])]
+    (t2/delete! :model/CacheConfig :model model :model_id [:in model_id])
+    (doseq [item current]
+      (audit-caching-change! (:id item)
+                             (select-keys item [:model :model_id])
+                             (select-keys item [:strategy :config])
+                             nil)))
   nil)
 
 (api/define-routes +auth)
