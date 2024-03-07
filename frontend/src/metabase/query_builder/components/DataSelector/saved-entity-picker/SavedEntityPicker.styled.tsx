@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
-export const SavedQuestionPickerRoot = styled.div`
+export const SavedEntityPickerRoot = styled.div`
   display: flex;
   width: 620px;
   overflow: hidden;
