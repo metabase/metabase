@@ -57,13 +57,15 @@ class EntityMenu extends Component {
       renderTrigger,
       triggerAriaLabel,
       tooltipPlacement,
+      transitionDuration = 150,
     } = this.props;
     const { open, menuItemContent } = this.state;
+
     return (
       <Popover
         opened={open}
         className={cx(className, open ? openClassNames : closedClassNames)}
-        transitionProps={{ transition: "fade" }}
+        transitionProps={{ duration: transitionDuration }}
         onChange={() => this.toggleMenu()}
         position="bottom-end"
       >
