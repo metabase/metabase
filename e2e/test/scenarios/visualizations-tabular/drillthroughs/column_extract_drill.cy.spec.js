@@ -64,7 +64,7 @@ describe("extract action", () => {
   });
 
   describe("date columns", () => {
-    describe("field column", () => {
+    describe("date options", () => {
       DATE_CASES.forEach(({ option, value }) => {
         it(option, () => {
           openOrdersTable({ limit: 1 });
@@ -72,34 +72,39 @@ describe("extract action", () => {
           extractColumnAndCheck("Created At", option, value);
         });
       });
-
-      it("should be able to modify the expression in the notebook editor", () => {
-        openOrdersTable({ limit: 1 });
-        cy.wait("@dataset");
-        extractColumnAndCheck("Created At", "Year", "2,025");
-        cy.wait("@dataset");
-        openNotebook();
-        getNotebookStep("expression").findByText("Year").click();
-        enterCustomColumnDetails({ formula: "+ 2" });
-        popover().button("Update").click();
-        visualize();
-        cy.wait("@dataset");
-        cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
-      });
     });
 
-    describe("breakout column", () => {
-      it("should add an expression based on a breakout column", () => {
-        cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
-        extractColumnAndCheck("Created At: Month", "Month of year", "Apr");
-      });
+    it("should add an expression based on a breakout column", () => {
+      cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+      extractColumnAndCheck("Created At: Month", "Month of year", "Apr");
     });
 
-    describe("aggregation column", () => {
-      it("should add an expression based on an aggregation column", () => {
-        cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
-        extractColumnAndCheck("Min of Created At: Default", "Year", "2,022");
+    it("should add an expression based on an aggregation column", () => {
+      cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+      extractColumnAndCheck("Min of Created At: Default", "Year", "2,022");
+    });
+
+    it("should be able to modify the expression in the notebook editor", () => {
+      openOrdersTable({ limit: 1 });
+      cy.wait("@dataset");
+      extractColumnAndCheck("Created At", "Year", "2,025");
+      cy.wait("@dataset");
+      openNotebook();
+      getNotebookStep("expression").findByText("Year").click();
+      enterCustomColumnDetails({ formula: "+ 2" });
+      popover().button("Update").click();
+      visualize();
+      cy.wait("@dataset");
+      cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
+    });
+
+    it("should use current user locale for string expressions", () => {
+      cy.request("GET", "/api/user/current").then(({ body: user }) => {
+        cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
       });
+      openOrdersTable({ limit: 1 });
+      cy.wait("@dataset");
+      extractColumnAndCheck("Created At", "Tag der Woche", "Dienstag");
     });
   });
 });
