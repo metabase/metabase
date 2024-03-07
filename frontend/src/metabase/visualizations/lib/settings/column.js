@@ -530,19 +530,17 @@ export const buildTableColumnSettings = ({
     // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    getValue: ([{ card, data }], vizSettings) => {
-      const cols = data.cols.filter(col => col.remapped_from == null);
-
-      function isValid(columnSettings) {
+    getValue: (series, vizSettings) => {
+      function isValid([{ card, data }], columnSettings) {
         const columnIndexes = findColumnIndexesForColumnSettings(
-          cols,
+          data.cols,
           columnSettings.filter(({ enabled }) => enabled),
         );
         return columnIndexes.every(columnIndex => columnIndex >= 0);
       }
 
-      function getDefault() {
-        return cols.map(col => ({
+      function getDefault([{ data }]) {
+        return data.cols.map(col => ({
           name: col.name,
           key: getColumnKey(col),
           enabled: getIsColumnVisible(col),
@@ -558,8 +556,8 @@ export const buildTableColumnSettings = ({
       }
 
       const columnSettings = vizSettings["table.columns"];
-      if (!columnSettings || !isValid(columnSettings)) {
-        return getDefault();
+      if (!columnSettings || !isValid(series, columnSettings)) {
+        return getDefault(series);
       } else {
         return getValue(columnSettings);
       }
