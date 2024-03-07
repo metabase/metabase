@@ -2,12 +2,15 @@
   --form-field-border-color: var(--color-border);
   --input-border-radius: 8px;
 }
+
 ::-webkit-input-placeholder {
   color: var(--color-text-light);
 }
+
 :-moz-placeholder {
   color: var(--color-text-light);
 }
+
 :-ms-input-placeholder {
   color: var(--color-text-light);
 }
@@ -36,9 +39,6 @@
   color: var(--color-text-dark);
   background-color: var(--color-bg-white);
   padding: 0.75em;
-}
-
-:global(.Form-input) {
   border: 1px solid var(--form-field-border-color);
   border-radius: var(--input-border-radius);
   outline: none;

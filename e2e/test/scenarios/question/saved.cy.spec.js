@@ -16,6 +16,7 @@ import {
   appBar,
   queryBuilderHeader,
   openNotebook,
+  hovercard,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -206,9 +207,10 @@ describe("scenarios > question > saved", () => {
 
   it("should show table name in header with a table info popover on hover", () => {
     visitQuestion(ORDERS_QUESTION_ID);
-    cy.findByTestId("question-table-badges").trigger("mouseenter");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("9 columns");
+    cy.findByTestId("question-table-badges").within(() => {
+      cy.findByLabelText("More info").realHover();
+    });
+    hovercard().contains("9 columns");
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {

@@ -12,10 +12,9 @@
    [metabase.models.params :as params]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
-(s/defn ^:private operator-arity :- (s/maybe (s/enum :unary :binary :variadic))
+(mu/defn ^:private operator-arity :- [:maybe [:enum :unary :binary :variadic]]
   [param-type]
   (get-in mbql.s/parameter-types [param-type :operator]))
 
@@ -24,7 +23,7 @@
   [param-type]
   (boolean (operator-arity param-type)))
 
-(s/defn ^:private verify-type-and-arity
+(mu/defn ^:private verify-type-and-arity
   [field param-type param-value]
   (letfn [(maybe-arity-error [n]
             (when (not= n (count param-value))

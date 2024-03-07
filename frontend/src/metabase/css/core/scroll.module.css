@@ -2,6 +2,7 @@
 .scroll-y {
   overflow-y: auto;
 }
+
 :global(.scroll-x) {
   overflow-x: auto;
 }
@@ -14,6 +15,7 @@
 :global(.scroll-show--hover::-webkit-scrollbar) {
   display: none;
 }
+
 :global(.scroll-show--hover:hover::-webkit-scrollbar) {
   display: inherit;
 }
@@ -30,6 +32,7 @@
   height: 0;
   display: none;
 }
+
 :global(.scroll-show::-webkit-scrollbar-corner) {
   background-color: transparent;
 }
@@ -37,10 +40,12 @@
 :global(.scroll-show:hover::-webkit-scrollbar-thumb) {
   background-color: var(--color-bg-dark);
 }
+
 :global(.scroll-show::-webkit-scrollbar-thumb:horizontal:hover),
 :global(.scroll-show::-webkit-scrollbar-thumb:vertical:hover) {
   background-color: var(--color-bg-dark);
 }
+
 :global(.scroll-show::-webkit-scrollbar-thumb:horizontal:active),
 :global(.scroll-show::-webkit-scrollbar-thumb:vertical:active) {
   background-color: var(--color-bg-dark);
@@ -63,6 +68,7 @@
   -ms-overflow-style: none; /* IE 10+ */
   overflow: -moz-scrollbars-none; /* Firefox */
 }
+
 :global(.scroll-hide::-webkit-scrollbar) {
   display: none; /* Safari and Chrome */
 }
@@ -73,6 +79,7 @@
   overflow: -moz-scrollbars-none; /* Firefox */
   scrollbar-width: none; /* Firefox */
 }
+
 :global(.scroll-hide-all::-webkit-scrollbar),
 :global(.scroll-hide-all *::-webkit-scrollbar) {
   display: none; /* Safari and Chrome */

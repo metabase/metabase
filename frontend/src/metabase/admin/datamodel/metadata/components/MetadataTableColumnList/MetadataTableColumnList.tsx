@@ -1,5 +1,8 @@
+import type { UniqueIdentifier } from "@dnd-kit/core";
+import { useSensor, PointerSensor } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -7,12 +10,8 @@ import _ from "underscore";
 
 import Grabber from "metabase/components/Grabber";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import {
-  SortableContainer,
-  SortableElement,
-  SortableHandle,
-} from "metabase/components/sortable";
 import AccordionList from "metabase/core/components/AccordionList";
+import { SortableList } from "metabase/core/components/Sortable";
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/ui";
 import type Field from "metabase-lib/metadata/Field";
@@ -45,17 +44,14 @@ interface DispatchProps {
   onUpdateFieldOrder: (table: Table, fieldOrder: FieldId[]) => void;
 }
 
-interface DragProps {
-  oldIndex: number;
-  newIndex: number;
-}
-
 type MetadataTableColumnListProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onUpdateTable: Tables.actions.updateProperty,
   onUpdateFieldOrder: Tables.actions.setFieldOrder,
 };
+
+const getId = (field: Field) => field.getId();
 
 const MetadataTableColumnList = ({
   table,
@@ -67,23 +63,31 @@ const MetadataTableColumnList = ({
   const { fields = [], visibility_type } = table;
   const isHidden = visibility_type != null;
 
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 0 },
+  });
+
   const sortedFields = useMemo(
     () => _.sortBy(fields, field => field.position),
     [fields],
   );
 
-  const handleSortStart = useCallback(() => {
-    document.body.classList.add("grabbing");
-  }, []);
-
   const handleSortEnd = useCallback(
-    ({ oldIndex, newIndex }: DragProps) => {
-      document.body.classList.remove("grabbing");
-
-      const fieldOrder = updateFieldOrder(sortedFields, oldIndex, newIndex);
+    ({ itemIds: fieldOrder }) => {
       onUpdateFieldOrder(table, fieldOrder);
     },
-    [table, sortedFields, onUpdateFieldOrder],
+    [table, onUpdateFieldOrder],
+  );
+
+  const renderItem = ({ item, id }: { item: Field; id: string | number }) => (
+    <SortableColumn
+      key={`sortable-${id}`}
+      id={id}
+      field={item}
+      idFields={idFields}
+      table={table}
+      selectedSchemaId={selectedSchemaId}
+    />
   );
 
   return (
@@ -108,39 +112,18 @@ const MetadataTableColumnList = ({
           </SortButtonContainer>
         </div>
       </div>
-      <SortableColumnList
-        helperClass="ColumnSortHelper"
-        useDragHandle={true}
-        onSortStart={handleSortStart}
-        onSortEnd={handleSortEnd}
-      >
-        {sortedFields.map((field, index) => (
-          <SortableColumn
-            key={field.getId()}
-            index={index}
-            field={field}
-            idFields={idFields}
-            selectedDatabaseId={table.db_id}
-            selectedSchemaId={selectedSchemaId}
-            selectedTableId={table.id}
-            dragHandle={<SortableColumnHandle />}
-          />
-        ))}
-      </SortableColumnList>
+      <div>
+        <SortableList
+          items={sortedFields}
+          renderItem={renderItem}
+          getId={getId}
+          onSortEnd={handleSortEnd}
+          sensors={[pointerSensor]}
+          useDragOverlay={false}
+        />
+      </div>
     </div>
   );
-};
-
-interface ColumnListProps {
-  children?: ReactNode;
-}
-
-const ColumnList = ({ children, ...props }: ColumnListProps) => {
-  return <div {...props}>{children}</div>;
-};
-
-const ColumnGrabber = () => {
-  return <Grabber style={{ width: 10 }} />;
 };
 
 interface TableFieldOrderOption {
@@ -191,31 +174,56 @@ const TableFieldOrderDropdown = ({
   );
 };
 
-const SortableColumn = SortableElement(MetadataTableColumn);
-const SortableColumnList = SortableContainer(ColumnList);
-const SortableColumnHandle = SortableHandle(ColumnGrabber);
+interface SortableColumnProps {
+  id: UniqueIdentifier;
+  field: Field;
+  idFields: Field[];
+  table: Table;
+  selectedSchemaId: SchemaId;
+}
 
-const updateFieldOrder = (
-  fields: Field[],
-  oldIndex: number,
-  newIndex: number,
-) => {
-  const fieldOrder = new Array<FieldId>(fields.length);
-
-  fields.forEach((field, prevIndex) => {
-    const nextIndex =
-      newIndex <= prevIndex && prevIndex < oldIndex
-        ? prevIndex + 1 // shift down
-        : oldIndex < prevIndex && prevIndex <= newIndex
-        ? prevIndex - 1 // shift up
-        : prevIndex === oldIndex
-        ? newIndex // move dragged column to new location
-        : prevIndex; // otherwise, leave it where it is
-
-    fieldOrder[nextIndex] = Number(field.id);
+const SortableColumn = ({
+  id,
+  field,
+  table,
+  idFields,
+  selectedSchemaId,
+}: SortableColumnProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id,
   });
 
-  return fieldOrder;
+  const dragHandle = (
+    <Grabber style={{ width: 10 }} {...attributes} {...listeners} />
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        position: "relative",
+        zIndex: isDragging ? 100 : 1,
+      }}
+    >
+      <MetadataTableColumn
+        field={field}
+        idFields={idFields}
+        selectedDatabaseId={table.db_id}
+        selectedSchemaId={selectedSchemaId}
+        selectedTableId={table.id}
+        dragHandle={dragHandle}
+      />
+    </div>
+  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

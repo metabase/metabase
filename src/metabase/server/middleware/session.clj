@@ -28,6 +28,7 @@
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.api-key :as api-key]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
@@ -38,13 +39,11 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]
    [ring.util.response :as response]
-   [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline])
-  (:import
-   (java.util UUID)))
+   [toucan2.pipeline :as t2.pipeline]))
 
 (def ^String metabase-session-cookie
   "Where the session cookie goes."                      "metabase.SESSION")
@@ -176,13 +175,15 @@
     ;; Otherwise check whether the user selected "remember me" during login
     (get-in request [:body :remember])))
 
-(s/defn set-session-cookies
+(mu/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."
   [request
    response
    {session-uuid :id
     session-type :type
-    anti-csrf-token :anti_csrf_token} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}
+    anti-csrf-token :anti_csrf_token} :- [:map [:id [:or
+                                                     uuid?
+                                                     [:re u/uuid-regex]]]]
    request-time]
   (let [cookie-options (merge
                         (default-session-cookie-attributes session-type request)
@@ -414,7 +415,8 @@
                                              (delay (atom (or settings
                                                               (user/user-local-settings metabase-user-id)))))
             *user-local-values-user-id*    metabase-user-id]
-    (thunk)))
+    (data-perms/with-relevant-permissions-for-user metabase-user-id
+      (thunk))))
 
 (defmacro ^:private with-current-user-for-request
   [request & body]

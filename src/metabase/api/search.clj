@@ -9,6 +9,8 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
@@ -283,19 +285,9 @@
         has-perm-clause (fn [x y z] [:in (build-path x y z) current-user-perms])]
     (if (contains? current-user-perms "/")
       query
-      ;; Select indexed rows if user has /db/:id/ OR (/db/:id/native/ AND /db/:id/schema/) - aka full access to the database
-      ;; in at least one group. (Access to only a subset of tables isn't enough, since models can be based on native
-      ;; queries.)
-      ;; AND
-      ;; User has /collection/:id/ or /collection/:id/read/ for the collection the model is in.
-      (let [data-perm-clause
-            [:or
-             (has-perm-clause "/db/" :model.database_id "/")
-             [:and
-              (has-perm-clause "/db/" :model.database_id "/native/")
-              (has-perm-clause "/db/" :model.database_id "/schema/")]]
-
-            has-root-access?
+      ;; User has /collection/:id/ or /collection/:id/read/ for the collection the model is in. We will check
+      ;; permissions on the database after the query is complete, in `check-permissions-for-model`
+      (let [has-root-access?
             (or (contains? current-user-perms "/collection/root/")
                 (contains? current-user-perms "/collection/root/read/"))
 
@@ -309,7 +301,7 @@
                (has-perm-clause "/collection/" :model.collection_id "/read/")]]]]
         (sql.helpers/where
          query
-         [:and data-perm-clause collection-perm-clause])))))
+         collection-perm-clause)))))
 
 (defmethod search-query-for-model "indexed-entity"
   [model {:keys [current-user-perms] :as search-ctx}]
@@ -330,27 +322,7 @@
   (when (seq current-user-perms)
     (let [base-query (base-query-for-model model search-ctx)]
       (add-table-db-id-clause
-       (if (contains? current-user-perms "/")
-         base-query
-         (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
-           {:select (:select base-query)
-            :from   [[(merge
-                       base-query
-                       {:select [:id :schema :db_id :name :description :display_name :created_at :updated_at :initial_sync_status
-                                 [(h2x/concat (h2x/literal "/db/")
-                                              :db_id
-                                              (h2x/literal "/schema/")
-                                              [:case
-                                               [:not= :schema nil] :schema
-                                               :else               (h2x/literal "")]
-                                              (h2x/literal "/table/") :id
-                                              (h2x/literal "/read/"))
-                                  :path]]})
-                      :table]]
-            :where  (if (seq data-perms)
-                      (into [:or] (for [path data-perms]
-                                    [:like :path (str path "%")]))
-                      [:inline [:= 0 1]])}))
+       base-query
        table-db-id))))
 
 (defn order-clause
@@ -378,6 +350,22 @@
     (mi/can-write? instance)
     ;; We filter what we can (ie. everything that is in a collection) out already when querying
     true))
+
+(defmethod check-permissions-for-model :table
+  [_archived instance]
+  ;; we've already filtered out tables w/o collection permissions in the query itself.
+  (data-perms/user-has-permission-for-table?
+   api/*current-user-id*
+   :perms/data-access
+   :unrestricted
+   (database/table-id->database-id (:id instance))
+   (:id instance)))
+
+(defmethod check-permissions-for-model :indexed-entity
+  [_archived? instance]
+  (and
+   (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/native-query-editing :yes (:database_id instance))
+   (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id* :perms/data-access (:database_id instance)))))
 
 (defmethod check-permissions-for-model :metric
   [archived? instance]

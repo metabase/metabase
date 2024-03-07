@@ -22,6 +22,7 @@ import {
   collectionOnTheGoModal,
   modal,
   pickEntity,
+  hovercard,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -190,6 +191,18 @@ describe("scenarios > question > new", () => {
         cy.findByText("Personal question").click();
       });
       visualize();
+    });
+
+    it("should allow clicking linked tables in table info popover", () => {
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByLabelText("People").findByLabelText("More info").realHover();
+      });
+
+      hovercard().findByText("Orders").click();
+
+      cy.url().should("include", "question#");
     });
   });
 
