@@ -9,7 +9,7 @@ import {
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-describe("issue 39102", () => {
+describe("issue 39795", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -22,7 +22,7 @@ describe("issue 39102", () => {
     });
   });
 
-  it("should allow me to re-order even when a field is set with a different display value", () => {
+  it("should allow me to re-order even when a field is set with a different display value (metabase#39795)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
