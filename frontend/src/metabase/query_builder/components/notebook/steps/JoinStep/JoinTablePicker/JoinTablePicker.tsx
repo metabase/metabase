@@ -141,7 +141,7 @@ function getSelectedDataBucketId(
     return undefined;
   }
   if (isModelDataSource) {
-    return DATA_BUCKET.DATASETS;
+    return DATA_BUCKET.MODELS;
   }
   return undefined;
 }

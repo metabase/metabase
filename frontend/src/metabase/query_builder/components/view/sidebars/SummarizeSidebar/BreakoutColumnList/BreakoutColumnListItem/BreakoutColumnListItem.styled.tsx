@@ -1,24 +1,11 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { BucketPickerPopover as BaseBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import { QueryColumnInfoIcon as BaseQueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
 import { color, alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
-
-const triggerButtonStyle = css`
-  border-color: transparent;
-  visibility: hidden;
-  border-left-width: 1px;
-`;
-
-export const BucketPickerPopover = styled(BaseBucketPickerPopover)`
-  ${BaseBucketPickerPopover.TriggerButton} {
-    ${triggerButtonStyle}
-  }
-`;
-
-BucketPickerPopover.defaultProps = { color: "summarize" };
 
 export const Content = styled.div`
   display: flex;
@@ -31,7 +18,7 @@ export const TitleContainer = styled.div`
   display: flex;
   align-items: center;
   margin-left: 0.5rem;
-  padding: 0.5rem 0;
+  padding: 0;
   flex-grow: 1;
 `;
 
@@ -79,27 +66,43 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
+export const QueryColumnInfoIcon = styled(BaseQueryColumnInfoIcon)`
+  margin-left: auto;
+`;
+
 const selectedStyle = css`
   ${Content},
-  ${ColumnTypeIcon} {
+  ${ColumnTypeIcon},
+  ${QueryColumnInfoIcon} {
     background-color: ${color("summarize")};
     color: ${color("white")};
   }
 
-  ${BaseBucketPickerPopover.TriggerButton} {
-    visibility: visible;
-    color: ${alpha("white", 0.5)};
-    border-color: ${alpha("text-dark", 0.1)};
-    border-left-width: 1px;
+  ${BucketPickerPopover.TriggerButton} {
+    opacity: 1;
+    color: ${alpha("white", 0.65)};
+    padding-left: 0;
+    border-left: 0;
   }
 
-  ${BaseBucketPickerPopover.TriggerButton}:hover {
+  ${BucketPickerPopover.TriggerButton}:hover {
     color: ${color("white")};
-    border-left-width: 1px;
+    opacity: 1;
   }
 `;
 
 const unselectedStyle = css`
+  ${BucketPickerPopover.TriggerButton} {
+    opacity: 0;
+    color: ${color("text-light")};
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  ${QueryColumnInfoIcon} {
+    color: ${color("text-light")};
+  }
+
   &:hover {
     ${Content},
     ${ColumnTypeIcon},
@@ -112,16 +115,13 @@ const unselectedStyle = css`
       background-color: ${color("bg-medium")};
     }
 
-    ${BaseBucketPickerPopover.TriggerButton} {
-      visibility: visible;
+    ${BucketPickerPopover.TriggerButton} {
+      opacity: 1;
       color: ${color("text-light")};
-      border-color: ${alpha("text-dark", 0.1)};
-      border-left-width: 1px;
     }
 
-    ${BaseBucketPickerPopover.TriggerButton}:hover {
+    ${BucketPickerPopover.TriggerButton}:hover {
       color: ${color("text-medium")};
-      border-left-width: 1px;
     }
   }
 `;
@@ -132,6 +132,7 @@ export const Root = styled.li<{ isSelected: boolean }>`
   cursor: pointer;
   margin: 0.25rem 0;
   min-height: 34px;
+  position: relative;
 
   ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
 `;

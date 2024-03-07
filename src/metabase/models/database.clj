@@ -1,19 +1,24 @@
 (ns metabase.models.database
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -45,32 +50,36 @@
 
 (doto :model/Database
   (derive :metabase/model)
-  (derive ::mi/read-policy.partial-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?))
 
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
   [database-id]
-  (and (not (premium-features/enable-audit-app?)) (= database-id perms/audit-db-id)))
+  (and (not (premium-features/enable-audit-app?)) (= database-id config/audit-db-id)))
 
 (defmethod mi/can-read? Database
   ([instance]
-   (if (should-read-audit-db? (:id instance))
-     false
-     (mi/current-user-has-partial-permissions? :read instance)))
-  ([model pk]
+   (mi/can-read? :model/Database (u/the-id instance)))
+  ([_model pk]
    (if (should-read-audit-db? pk)
      false
-     (mi/current-user-has-partial-permissions? :read model pk))))
+     (= :unrestricted (data-perms/most-permissive-database-permission-for-user
+                       api/*current-user-id*
+                       :perms/data-access
+                       pk)))))
+
+(defenterprise current-user-can-write-db?
+  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  metabase-enterprise.advanced-permissions.common
+  [_db-id]
+  (mi/superuser?))
 
 (defmethod mi/can-write? :model/Database
   ([instance]
-   (and (not= (u/the-id instance) perms/audit-db-id)
-        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) instance)))
-  ([model pk]
-   (and (not= pk perms/audit-db-id)
-        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) model pk))))
+   (mi/can-write? :model/Database (u/the-id instance)))
+  ([_model pk]
+   (and (not= pk config/audit-db-id)
+        (current-user-can-write-db? pk))))
 
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -94,13 +103,37 @@
     (catch Throwable e
       (log/error e (trs "Error unscheduling tasks for DB.")))))
 
+(defn- set-new-database-permissions!
+  [database]
+  (t2/with-transaction [_conn]
+    (let [all-users-group  (perms-group/all-users)
+          non-magic-groups (perms-group/non-magic-groups)
+          non-admin-groups (conj non-magic-groups all-users-group)]
+      ;; We only set native-query-editing and manage-database permissions here, because they are only ever set at the
+      ;; database-level. Perms which can have table-level granularity are set in the `define-after-insert` hook for
+      ;; tables.
+      (if (:is_audit database)
+        (doseq [group non-admin-groups]
+          (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
+          (data-perms/set-database-permission! group database :perms/native-query-editing :no)
+          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows))
+        (do
+          (data-perms/set-database-permission! all-users-group database :perms/data-access :unrestricted)
+          (data-perms/set-database-permission! all-users-group database :perms/native-query-editing :yes)
+          (data-perms/set-database-permission! all-users-group database :perms/download-results :one-million-rows)
+          (doseq [group non-magic-groups]
+            (data-perms/set-database-permission! group database :perms/download-results :no)
+            (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! group database :perms/native-query-editing :no))))
+
+      (doseq [group non-admin-groups]
+        (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
+        (data-perms/set-database-permission! group database :perms/manage-database :no)))))
+
 (t2/define-after-insert :model/Database
   [database]
   (u/prog1 database
-    ;; add this database to the All Users permissions group
-    (perms/grant-full-data-permissions! (perms-group/all-users) database)
-    ;; give full download perms for this database to the All Users permissions group
-    (perms/grant-full-download-permissions! (perms-group/all-users) database)
+    (set-new-database-permissions! database)
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! (t2.realize/realize database))))
 
@@ -149,8 +182,6 @@
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (t2/query-one {:delete-from :permissions
-                 :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
@@ -261,12 +292,6 @@
         (not details)             (assoc :details {})
         (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
       handle-secrets-changes))
-
-(defmethod mi/perms-objects-set :model/Database
-  [{db-id :id} read-or-write]
-  #{(case read-or-write
-      :read  (perms/data-perms-path db-id)
-      :write (perms/db-details-write-perms-path db-id))})
 
 (defmethod serdes/hash-fields :model/Database
   [_database]
@@ -395,3 +420,10 @@
 (defmethod audit-log/model-details Database
   [database _event-type]
   (select-keys database [:id :name :engine]))
+
+(def ^{:arglists '([table-id])} table-id->database-id
+  "Retrieve the `Database` ID for the given table-id."
+  (mdb.connection/memoize-for-application-db
+   (fn [table-id]
+     {:pre [(integer? table-id)]}
+     (t2/select-one-fn :db_id :model/Table, :id table-id))))

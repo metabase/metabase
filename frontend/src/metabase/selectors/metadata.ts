@@ -339,10 +339,8 @@ function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
 function hydrateTableForeignKeys(
   table: Table,
   metadata: Metadata,
-): ForeignKey[] {
-  const fks = table.getPlainObject().fks ?? [];
-
-  return fks.map(fk => {
+): ForeignKey[] | undefined {
+  return table.getPlainObject().fks?.map(fk => {
     const instance = createForeignKey(fk, metadata);
     instance.origin = metadata.field(fk.origin_id) ?? undefined;
     instance.destination = metadata.field(fk.destination_id) ?? undefined;

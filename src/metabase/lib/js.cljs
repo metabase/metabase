@@ -83,14 +83,26 @@
     (js.metadata/metadata-provider database-id metadata)))
 
 (defn ^:export query
-  "Coerce a plain map `query` to an actual query object that you can use with MLv2."
+  "Coerce a plain map `query` to an actual query object that you can use with MLv2.
+
+  Attaches a cache to `metadata-provider` so that subsequent calls with the same `database-id` and `query-map` return
+  the same query object."
   ([metadata-provider table-or-card-metadata]
    (lib.core/query metadata-provider table-or-card-metadata))
 
-  ([database-id metadata query-map]
-   (let [query-map (lib.convert/js-legacy-query->pMBQL query-map)]
-     (log/debugf "query map: %s" (pr-str query-map))
-     (lib.core/query (metadataProvider database-id metadata) query-map))))
+  ([database-id metadata-provider query-map]
+   ;; Since the query-map is possibly `Object.freeze`'d, we can't mutate it to attach the query.
+   ;; Therefore, we attach a two-level cache to the metadata-provider:
+   ;; The outer key is the database-id; the inner one i a weak ref to the legacy query-map (a JS object).
+   ;; This should achieve efficient caching of legacy queries without retaining garbage.
+   ;; (Except possibly for a few empty WeakMaps, if queries are cached and then GC'd.)
+   ;; If the metadata changes, the metadata-provider is replaced, so all these caches are destroyed.
+   (lib.cache/side-channel-cache-weak-refs
+     (str database-id) metadata-provider query-map
+     #(->> %
+           lib.convert/js-legacy-query->pMBQL
+           (lib.core/query metadata-provider))
+     {:force? true})))
 
 (defn- fix-namespaced-values
   "This converts namespaced keywords to strings as `\"foo/bar\"`.
@@ -1288,4 +1300,7 @@
 (defn ^:export can-run
   "Returns true if the query is runnable."
   [a-query]
-  (lib.core/can-run a-query))
+  (lib.cache/side-channel-cache
+    :can-run a-query
+    (fn [_]
+      (lib.core/can-run a-query))))

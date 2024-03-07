@@ -8,6 +8,6 @@
 
 (p/import-vars
  [sandbox.tu
-  with-gtaps
-  with-gtaps-for-user
+  with-gtaps!
+  with-gtaps-for-user!
   with-user-attributes])
