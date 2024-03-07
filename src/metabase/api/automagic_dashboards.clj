@@ -5,16 +5,17 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
-   [metabase.automagic-dashboards.core :as magic
+   [metabase.automagic-dashboards.core
+    :as magic
     :refer [automagic-analysis candidate-tables]]
-   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+   [metabase.automagic-dashboards.dashboard-templates
+    :as dashboard-templates]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
-   [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.segment :refer [Segment]]
@@ -72,9 +73,10 @@
 
 (defn- adhoc-query-read-check
   [query]
-  (api/check-403 (perms/set-has-partial-permissions-for-set?
-                   @api/*current-user-permissions-set*
-                   (query-perms/perms-set (:dataset_query query), :throw-exceptions? true)))
+  (api/check-403
+   (query-perms/check-data-perms (:dataset_query query)
+                                 (query-perms/required-perms (:dataset_query query))
+                                 :throw-exceptions? false))
   query)
 
 (defn- ensure-int

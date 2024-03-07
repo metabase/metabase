@@ -28,6 +28,7 @@
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.api-key :as api-key]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
@@ -414,7 +415,8 @@
                                              (delay (atom (or settings
                                                               (user/user-local-settings metabase-user-id)))))
             *user-local-values-user-id*    metabase-user-id]
-    (thunk)))
+    (data-perms/with-relevant-permissions-for-user metabase-user-id
+      (thunk))))
 
 (defmacro ^:private with-current-user-for-request
   [request & body]
