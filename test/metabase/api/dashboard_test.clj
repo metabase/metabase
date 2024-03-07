@@ -3568,11 +3568,11 @@
                                                     {:parameters {"id" 1}})))
                 (is (= [1 "Shop"]
                        (mt/first-row
-                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
+                        (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Missing required parameter according to the template tag"
-                (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
-                              (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters {"name" "Bird"}})))
+                (is (=? {:message #"Error executing Action: .* Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
+                        (mt/user-http-request :crowberto :post 500 execute-path
+                                              {:parameters {"name" "Bird"}})))
                 (is (= [1 "Shop"]
                        (mt/first-row
                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
@@ -3582,7 +3582,7 @@
                                                     {:parameters {"id" 1 "name" "Bird"}})))
                 (is (= [1 "Bird Shop"]
                        (mt/first-row
-                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
+                        (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Should affect 0 rows if id is out of range"
                 (is (= {:rows-affected 0}
                        (mt/user-http-request :crowberto :post 200 execute-path

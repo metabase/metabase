@@ -114,7 +114,8 @@
   ;; convert to pMBQL first if this is a legacy query.
   (let [query (try
                 (cond-> query
-                  (#{:query :native} (:type query)) lib.convert/->pMBQL)
+                  (#{"query" "native"} (:type query)) (#(lib.convert/->pMBQL (mbql.normalize/normalize %)))
+                  (#{:query :native} (:type query))   lib.convert/->pMBQL)
                 (catch Throwable e
                   (throw (ex-info "Error hashing query. Is this a valid query?"
                                   {:query query}

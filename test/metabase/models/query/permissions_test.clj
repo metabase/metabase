@@ -215,12 +215,9 @@
              :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}
             :throw-exceptions? true)))))
 
-
-;;; --------------------------------------------- invalid/legacy queries ---------------------------------------------
-
 (deftest ^:parallel invalid-queries-test
-  (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
-    (is (= {:perms/data-access {0 :unrestricted}}
+  (testing "invalid/legacy queries should remove invalid clauses and calculate permissions based on valid parts of the query"
+    (is (= {:perms/data-access {(mt/id :venues) :unrestricted}}
            (query-perms/required-perms
             (mt/mbql-query venues
               {:filter [:WOW 100 200]}))))))
