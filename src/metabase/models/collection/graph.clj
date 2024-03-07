@@ -72,16 +72,34 @@
                                                  [:not [:like :location (h2x/literal (format "/%d/%%" collection-id))]]))}]
     (set (map :id (mdb.query/query honeysql-form)))))
 
+(mu/defn ^:private descendant-collection-ids :- [:set ms/PositiveInt]
+  "Return a set of IDs of Collections that are descendants of a given Collection, including the Collection itself."
+  [collection-namespace :- [:maybe ms/KeywordOrString]
+   root-collection-id :- ms/PositiveInt]
+  (let [honeysql-form {:select [[:id :id]]
+                       :from   [:collection]
+                       :where  [:and
+                                (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
+                                [:= :personal_owner_id nil]
+                                [:like :location (h2x/literal (format "%%/%d/%%" root-collection-id))]]}
+        descendant-ids (set (map :id (mdb.query/query honeysql-form)))]
+    (conj descendant-ids root-collection-id)))
+
 (defn- collection-permission-graph
-  "Return the permission graph for the collections with id in `collection-ids` and the root collection."
+  "Return the permission graph for the collections with id in `collection-ids` and the root collection.
+   If `group-id` is provided, only return the permission graph for that group."
   ([collection-ids] (collection-permission-graph collection-ids nil))
-  ([collection-ids collection-namespace]
-   (let [group-id->perms (group-id->permissions-set)]
+  ([collection-ids collection-namespace] (collection-permission-graph collection-ids collection-namespace nil))
+  ([collection-ids collection-namespace group-id]
+   (let [group-id->perms (group-id->permissions-set)
+         groups-to-process (if group-id
+                             [group-id]
+                             (t2/select-pks-set PermissionsGroup))]
      {:revision (c-perm-revision/latest-id)
-      :groups   (into {} (for [group-id (t2/select-pks-set PermissionsGroup)]
-                           {group-id (group-permissions-graph collection-namespace
-                                                              (group-id->perms group-id)
-                                                              collection-ids)}))})))
+      :groups   (into {} (for [gid groups-to-process]
+                           {gid (group-permissions-graph collection-namespace
+                                                         (group-id->perms gid)
+                                                         collection-ids)}))})))
 
 (defn- modify-instance-analytics-for-admins
   "In the graph, override the instance analytics collection within the admin group to read."
@@ -105,14 +123,24 @@
   inherited (e.g. full `:read` perms for a Database implies `:read` perms for all its schemas); a 'child' object (e.g.
   schema) *cannot* have more restrictive permissions than its parent (e.g. Database). Child Collections *can* have
   more restrictive permissions than their parent."
-  ([]
-   (graph nil))
+  ([] (graph nil nil nil))
 
-  ([collection-namespace :- [:maybe ms/KeywordOrString]]
+  ([collection-namespace :- [:maybe ms/KeywordOrString]] (graph collection-namespace nil nil))
+
+  ([collection-namespace :- [:maybe ms/KeywordOrString]
+    group-id             :- [:maybe ms/PositiveInt]]
+   (graph collection-namespace group-id nil))
+
+  ([collection-namespace :- [:maybe ms/KeywordOrString]
+    group-id             :- [:maybe ms/PositiveInt]
+    root-collection-id   :- [:maybe ms/PositiveInt]]
+
    (t2/with-transaction [_conn]
      (-> collection-namespace
-         non-personal-collection-ids
-         (collection-permission-graph collection-namespace)
+         (#(if root-collection-id
+           (descendant-collection-ids % root-collection-id)
+           (non-personal-collection-ids %)))
+         (collection-permission-graph collection-namespace group-id)
          modify-instance-analytics-for-admins))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------

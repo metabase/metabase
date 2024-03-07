@@ -977,10 +977,12 @@
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Collection Permissions."
-  [namespace]
-  {namespace [:maybe ms/NonBlankString]}
+  [namespace group_id root_collection_id]
+  {namespace [:maybe ms/NonBlankString]
+   group_id  [:maybe ms/PositiveInt]
+   root_collection_id [:maybe ms/PositiveInt]}
   (api/check-superuser)
-  (graph/graph namespace))
+  (graph/graph namespace group_id root_collection_id))
 
 (def CollectionID "an id for a [[Collection]]."
   [pos-int? {:title "Collection ID"}])
