@@ -9,7 +9,6 @@ import type {
   BaseCartesianChartModel,
   ChartDataset,
   DataKey,
-  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -18,6 +17,7 @@ import type {
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import {
   buildEChartsLabelOptions,
+  computeBarWidth,
   getDataLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/option/series";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -37,17 +37,11 @@ import type { TimelineEventsModel } from "../../timeline-events/types";
 import { getTimelineEventsSeries } from "../../timeline-events/option";
 import { buildAxes } from "../../option/axis";
 import { getSharedEChartsOptions } from "../../option";
-import { isTimeSeriesAxis } from "../../model/guards";
 
 type WaterfallSeriesOptions =
   | RegisteredSeriesOption["line"]
   | RegisteredSeriesOption["bar"]
   | RegisteredSeriesOption["candlestick"];
-
-const DEFAULT_BAR_WIDTH = `60%`;
-
-// Ensures bars are not too wide when there are just a few
-const getBarWidthPercent = (barsCount: number) => 1 / (1.4 * barsCount);
 
 const getLabelLayoutFn = (
   dataset: ChartDataset,
@@ -87,26 +81,6 @@ const getLabelLayoutFn = (
   };
 };
 
-const getBarWidth = (
-  xAxisModel: XAxisModel,
-  chartMeasurements: ChartMeasurements,
-  settings: ComputedVisualizationSettings,
-) => {
-  if (!isTimeSeriesAxis(xAxisModel)) {
-    return DEFAULT_BAR_WIDTH;
-  }
-
-  let dataPointsCount = xAxisModel.lengthInIntervals + 1;
-  if (settings["waterfall.show_total"]) {
-    dataPointsCount += 1;
-  }
-  return Math.max(
-    1,
-    (chartMeasurements.bounds.right - chartMeasurements.bounds.left) *
-      getBarWidthPercent(dataPointsCount),
-  );
-};
-
 export const buildEChartsWaterfallSeries = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -115,10 +89,12 @@ export const buildEChartsWaterfallSeries = (
 ): WaterfallSeriesOptions[] => {
   const { seriesModels, transformedDataset: dataset } = chartModel;
   const [seriesModel] = seriesModels;
-  const barWidth = getBarWidth(
+  const barWidth = computeBarWidth(
     chartModel.xAxisModel,
     chartMeasurements,
-    settings,
+    1,
+    1,
+    false,
   );
 
   const buildLabelOption = (key: DataKey) => ({
