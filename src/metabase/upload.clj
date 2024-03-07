@@ -210,34 +210,29 @@
            first))))
 
 (defn- relax-type
-  "Given an existing column type, and a value to insert into it, relax the type until it can parse the value."
+  "Given an existing column type, and a new value, relax the type until it includes the value."
   [type->check current-type value]
   (cond (nil? value) current-type
         (nil? current-type) (value->type type->check value)
         :else (let [trimmed (str/trim value)]
-                (->> (cons current-type (ancestors h current-type))
-                     (filter #((type->check %) trimmed))
-                     first))))
+                (if (str/blank? trimmed)
+                  current-type
+                  (->> (cons current-type (ancestors h current-type))
+                       (filter #((type->check %) trimmed))
+                       first)))))
 
-(defn- row->value-types
-  [type->check row]
-  (map (partial value->type type->check) row))
+(defn- type-relaxer
+  "Given a map of {value-type -> predicate}, return a reducing fn which updates our inferred schema using the next row."
+  [type->check]
+  (let [type->value->type (partial relax-type type->check)]
+    (fn [value-types row]
+      ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
+      (vec (u/map-all (partial relax-type type->check) value-types row))))
 
-(defn- most-specific-common-ancestor
-  "Return the first \"ancestor\" of `base-type` which is also an \"ancestor\" of `new-type`.
-  We use a more relaxed definition of \"ancestor\" here than usual, which includes the tag itself."
-  [base-type new-type]
-  (when (or base-type new-type)
-    (or (ordered-hierarchy/first-common-ancestor h base-type new-type)
-        (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}"
-                                               base-type
-                                               new-type))))))
-
-(defn- coalesce-types
-  "Given two collections of type tags, find the most specific common ancestor for each pair.
-  If one of the collections is longer, we return its existing tags for the remaining length."
-  [types-a types-b]
-  (u/map-all most-specific-common-ancestor types-a types-b))
+(defn- relax-types [settings current-types rows]
+  (let [type->check (settings->type->check settings)]
+    (->> (reduce (type-relaxer type->check) current-types rows)
+         (map column-type))))
 
 (defn- normalize-column-name
   [raw-name]
@@ -261,11 +256,7 @@
 (mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
   "Returns a sequence of types, given the unparsed rows in the CSV file"
   [settings column-count rows]
-  (let [type->check (settings->type->check settings)]
-    (->> rows
-         (map (partial row->value-types type->check))
-         (reduce coalesce-types (repeat column-count nil))
-         (map column-type))))
+  (relax-types settings (repeat column-count nil) rows))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
@@ -652,8 +643,7 @@
           ;; in the happy, and most common, case all the values will match the existing types
           ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
           ;; we can come back and optimize this to an optimistic-with-fallback approach later.
-          type->value->type  (partial relax-type (settings->type->check settings))
-          relaxed-types      (map column-type (reduce #(u/map-all type->value->type %1 %2) old-column-types rows))
+          relaxed-types      (relax-types settings old-column-types rows)
           new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types relaxed-types)
           _                  (when (and (not= old-column-types new-column-types)
                                         ;; if we cannot coerce all the columns, don't bother coercing any of them
