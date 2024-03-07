@@ -1,7 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
 
-import type LegacyMetadata from "./metadata/Metadata";
 import type {
   CardMetadata,
   Clause,
@@ -16,10 +15,10 @@ import type {
 
 export function fromLegacyQuery(
   databaseId: DatabaseId | null,
-  metadata: MetadataProvider | LegacyMetadata,
+  metadataProvider: MetadataProvider,
   datasetQuery: DatasetQuery,
 ): Query {
-  return ML.query(databaseId, metadata, datasetQuery);
+  return ML.query(databaseId, metadataProvider, datasetQuery);
 }
 
 /**
