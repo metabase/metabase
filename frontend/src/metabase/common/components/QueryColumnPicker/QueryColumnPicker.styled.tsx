@@ -22,7 +22,7 @@ export const NameAndBucketing = styled.div`
   ${TriggerButton} {
     height: 100%;
     padding: 0;
-    flex-shrink: 2;
+    flex-shrink: 1;
   }
 `;
 
