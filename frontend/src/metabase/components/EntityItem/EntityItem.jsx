@@ -106,18 +106,24 @@ function EntityItemMenu({
   const actions = useMemo(() => {
     const result = [];
 
-    if (onToggleBookmark) {
-      result.push({
-        title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
-        icon: "bookmark",
-        action: onToggleBookmark,
-      });
-    }
+    const bookmarkAction = {
+      title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
+      icon: "bookmark",
+      action: onToggleBookmark,
+    };
 
-    if (onPin) {
+    if (isPinned) {
       result.push({
-        title: isPinned ? t`Unpin` : t`Pin this`,
-        icon: isPinned ? "unpin" : "pin",
+        title: t`Unpin`,
+        icon: "unpin",
+        action: onPin,
+      });
+      result.push(bookmarkAction);
+    } else {
+      result.push(bookmarkAction);
+      result.push({
+        title: t`Pin this`,
+        icon: "pin",
         action: onPin,
       });
     }
