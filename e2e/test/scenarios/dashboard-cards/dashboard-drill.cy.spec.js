@@ -663,12 +663,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
       ({ body: { id: DASHBOARD_ID } }) => {
         visitDashboard(DASHBOARD_ID);
 
-        // click the first bar on the card's graph
+        // click the first bar on the card's graph and do a zoom drill-through
         cy.get(".bar").eq(0).click({ force: true });
+        cy.findByText("See this month by week").click();
 
         // intercept the POST to question's query via api dataset
         cy.intercept("POST", "/api/dataset").as("dataset");
-        cy.findByText("See this month by week").click();
         cy.wait("@dataset");
 
         // check that the display is still a bar chart by checking that a .bar element exists
