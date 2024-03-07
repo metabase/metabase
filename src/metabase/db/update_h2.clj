@@ -90,14 +90,6 @@
        :doc     "Used to ensure that we only do the check once per instance."}
   h2-update-checked (atom false))
 
-#_(time
-   (dotimes [_ 10000]
-    (h2-base-path "jdbc:postgres:fdsjfdsjflkdsjfl")))
-
-#_(time
-   (dotimes [_ 10000]
-    @h2-update-checked))
-
 (defn update-if-needed!
   "Updates H2 database at db-path from version 1.x to 2.x if jdbc-url points
   to version 1 H2 database."
