@@ -343,10 +343,12 @@
   (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/perms` in the query"
     (binding [api/*current-user-id* (mt/user->id :rasta)]
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/data-access :no-self-service)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (letfn [(process-query []
                   (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                           ::query-perms/perms {:gtaps {:perms/data-access {(mt/id :venues) :unrestricted}}})))]
+                                           ::query-perms/perms {:gtaps {:perms/view-data :unrestricted
+                                                                        :perms/create-queries {(mt/id :venues) :query-builder}}})))]
           (testing "Make sure the middleware is actually preventing something by disabling it"
             (with-redefs [qp.perms/remove-permissions-key identity]
               (is (partial= {:status :completed}

@@ -775,7 +775,8 @@
                         {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
                          :attributes {"user_id" 1}})
         ;; grant full data perms for products
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/data-access :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (mt/with-test-user :rasta
           (testing "Sanity check: should be able to query products"
             (is (=? {:status :completed}
@@ -900,7 +901,8 @@
                         {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
                          :attributes {:user_id "1"}})
         ;; make sure the sandboxed group can still access the Products table, which is referenced below.
-        (data-perms/set-table-permission! &group (mt/id :products) :perms/data-access :unrestricted)
+        (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :query-builder)
         (letfn [(do-tests []
                   ;; create a query based on the sandboxed Table
                   (testing "should be able to run the query. Results should come back with correct metadata"
@@ -1014,7 +1016,8 @@
                                        {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                         :products {:remappings {:user_cat [:dimension $products.category]}}})
                          :attributes {:user_id 1, :user_cat "Widget"}}
-          (data-perms/set-table-permission! &group (mt/id :people) :perms/data-access :unrestricted)
+          (data-perms/set-table-permission! &group (mt/id :people) :perms/create-queries :query-builder)
+          (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
           (is (= (->> [["Twitter" nil      0 401.51]
                        ["Twitter" "Widget" 0 498.59]
                        [nil       nil      1 401.51]
