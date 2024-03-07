@@ -31,6 +31,8 @@ export interface FormCollectionPickerProps
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   zIndex?: number;
+  className?: string | undefined;
+  style?: React.CSSProperties | undefined;
 }
 
 function ItemName({
