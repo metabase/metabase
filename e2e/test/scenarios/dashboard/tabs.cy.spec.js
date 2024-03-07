@@ -377,6 +377,7 @@ describe("scenarios > dashboard > tabs", () => {
 
   it("should only fetch cards on the current tab", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -389,6 +390,9 @@ describe("scenarios > dashboard > tabs", () => {
     sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
+
+    cy.wait("@cardQuery");
+
     saveDashboard();
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
@@ -415,6 +419,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
+    // Ensure the card in the first tab is loaded
     getDashboardCard().findByText("User ID");
 
     // Visit second tab and confirm only second card was queried
@@ -422,13 +427,13 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
 
+    // Ensure the card in the second tab is loaded
     getDashboardCard().findByText("Count");
+
     // Go back to first tab, expect no additional queries
     goToTab("Tab 1");
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
-
-    getDashboardCard().findByText("User ID");
 
     // Go to public dashboard
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
