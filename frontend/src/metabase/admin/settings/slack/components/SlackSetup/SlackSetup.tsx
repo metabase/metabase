@@ -19,7 +19,7 @@ import {
 } from "./SlackSetup.styled";
 
 export interface SlackSetupProps {
-  Form: ComponentType;
+  Form: ComponentType<React.PropsWithChildren<unknown>>;
   manifest?: string;
   isBot?: boolean;
   isValid?: boolean;
@@ -112,7 +112,7 @@ const CreateAppSection = ({ manifest }: CreateAppSectionProps): JSX.Element => {
 };
 
 interface ActivateAppSectionProps {
-  Form: ComponentType;
+  Form: ComponentType<React.PropsWithChildren<unknown>>;
 }
 
 const ActivateAppSection = ({ Form }: ActivateAppSectionProps): JSX.Element => {

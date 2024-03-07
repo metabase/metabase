@@ -87,4 +87,6 @@ type OwnProps = Omit<
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(ObjectDetailWrapper) as unknown as React.ComponentType<OwnProps>;
+)(ObjectDetailWrapper) as unknown as React.ComponentType<
+  React.PropsWithChildren<OwnProps>
+>;

@@ -11,7 +11,10 @@ export function isReactDOMTypeElement(
 
 export function isReactComponent(
   component: any,
-): component is React.FC | React.Component | React.ExoticComponent {
+): component is
+  | React.FC<React.PropsWithChildren<unknown>>
+  | React.Component
+  | React.ExoticComponent {
   return (
     typeof component === "function" ||
     // Checking for "Exotic" components such as ones returned by memo, forwardRef

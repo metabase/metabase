@@ -22,7 +22,9 @@ export type StepUIItem = {
   transparent?: boolean;
   compact?: boolean;
   getColor: () => string;
-  component: React.ComponentType<NotebookStepUiComponentProps>;
+  component: React.ComponentType<
+    React.PropsWithChildren<NotebookStepUiComponentProps>
+  >;
 };
 
 export const STEP_UI: Record<string, StepUIItem> = {

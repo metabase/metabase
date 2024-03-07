@@ -20,5 +20,5 @@ export interface TreeNodeProps {
 }
 
 export type TreeNodeComponent = React.ComponentType<
-  TreeNodeProps & React.RefAttributes<HTMLLIElement>
+  React.PropsWithChildren<TreeNodeProps & React.RefAttributes<HTMLLIElement>>
 >;

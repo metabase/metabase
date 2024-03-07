@@ -23,7 +23,7 @@ import {
 } from "./SlackStatus.styled";
 
 export interface SlackStatusProps {
-  Form: ComponentType;
+  Form: ComponentType<React.PropsWithChildren<unknown>>;
   isValid?: boolean;
   onDelete: () => void;
 }

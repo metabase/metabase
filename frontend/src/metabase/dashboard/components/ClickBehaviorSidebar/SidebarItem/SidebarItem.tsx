@@ -35,7 +35,7 @@ function CloseIcon({
 }
 
 interface SidebarItemProps extends React.HTMLAttributes<HTMLDivElement> {
-  as?: React.ComponentType<any>;
+  as?: React.ComponentType<React.PropsWithChildren<any>>;
   disabled?: boolean;
   padded?: boolean;
   children: React.ReactNode;

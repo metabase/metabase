@@ -141,7 +141,10 @@ export const PLUGIN_SELECTORS = {
   getDashboardOverviewId: (_state: State) => undefined,
 };
 
-export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
+export const PLUGIN_FORM_WIDGETS: Record<
+  string,
+  ComponentType<React.PropsWithChildren<any>>
+> = {};
 
 // snippet sidebar
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
@@ -195,21 +198,27 @@ export const PLUGIN_COLLECTIONS = {
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<
-  Omit<IconProps, "name" | "tooltip"> & {
-    collection: Pick<Collection, "authority_level">;
-    tooltip?: "default" | "belonging";
-  }
+  React.PropsWithChildren<
+    Omit<IconProps, "name" | "tooltip"> & {
+      collection: Pick<Collection, "authority_level">;
+      tooltip?: "default" | "belonging";
+    }
+  >
 >;
 
 type CollectionInstanceAnalyticsIcon = React.ComponentType<
-  Omit<IconProps, "name"> & {
-    collection: Collection;
-    entity: "collection" | "question" | "model" | "dashboard";
-  }
+  React.PropsWithChildren<
+    Omit<IconProps, "name"> & {
+      collection: Collection;
+      entity: "collection" | "question" | "model" | "dashboard";
+    }
+  >
 >;
 
 type FormCollectionAuthorityLevelPicker = React.ComponentType<
-  HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
+  React.PropsWithChildren<
+    HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
+  >
 >;
 
 export const PLUGIN_COLLECTION_COMPONENTS = {
@@ -340,7 +349,9 @@ export const PLUGIN_EMBEDDING = {
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
   availableModelFilters: {} as AvailableModelFilters,
-  ModelFilterControls: (() => null) as ComponentType<ModelFilterControlsProps>,
+  ModelFilterControls: (() => null) as ComponentType<
+    React.PropsWithChildren<ModelFilterControlsProps>
+  >,
   sortModelsByVerification: (_a: SearchResult, _b: SearchResult) => 0,
   sortCollectionsByVerification: (
     _a: CollectionEssentials,

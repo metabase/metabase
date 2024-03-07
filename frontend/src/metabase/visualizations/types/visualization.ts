@@ -94,7 +94,7 @@ export interface VisualizationProps {
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   title?: string;
   hint?: string;
-  widget?: string | React.ComponentType<any>;
+  widget?: string | React.ComponentType<React.PropsWithChildren<any>>;
   default?: TValue;
   props?: TProps;
   inline?: boolean;
@@ -113,7 +113,7 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   section?: string;
   title?: string;
   group?: string;
-  widget?: string | React.ComponentType<TProps>;
+  widget?: string | React.ComponentType<React.PropsWithChildren<TProps>>;
   isValid?: (series: Series, settings: VisualizationSettings) => boolean;
   getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
   getDefault?: (series: Series, settings: VisualizationSettings) => TValue;
@@ -149,7 +149,9 @@ export type VisualizationGridSize = {
 };
 
 // TODO: add component property for the react component instead of the intersection
-export type Visualization = React.ComponentType<VisualizationProps> & {
+export type Visualization = React.ComponentType<
+  React.PropsWithChildren<VisualizationProps>
+> & {
   name: string;
   noun: string;
   uiName: string;

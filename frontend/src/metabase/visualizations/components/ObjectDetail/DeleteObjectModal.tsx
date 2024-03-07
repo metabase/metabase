@@ -18,12 +18,9 @@ interface Props {
   onSuccess: () => void;
 }
 
-export const DeleteObjectModal: FunctionComponent<Props> = ({
-  actionId,
-  objectId,
-  onClose,
-  onSuccess,
-}) => {
+export const DeleteObjectModal: FunctionComponent<
+  React.PropsWithChildren<Props>
+> = ({ actionId, objectId, onClose, onSuccess }) => {
   const dispatch = useDispatch();
 
   const handleSubmit = async () => {
