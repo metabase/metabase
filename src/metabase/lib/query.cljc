@@ -101,8 +101,8 @@
   "Create a pMBQL query from either an existing pMBQL query (attaching metadata provider as needed), or from a legacy MBQL
   query (converting it to pMBQL)."
   [metadata-providerable :- lib.metadata/MetadataProviderable
-   query                 :- lib.util/LegacyOrPMBQLQuery]
-  (let [f (if (or (:type query) (get query "type"))
+   query                 :- :map]
+  (let [f (if (some #(get query %) [:type "type"])
             query-from-legacy-query
             query-from-unknown-query)]
     (f metadata-providerable query)))

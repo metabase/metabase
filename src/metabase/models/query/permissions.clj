@@ -43,7 +43,7 @@
 ;; `table-sandboxed-query-path`. `perms-set` will require full access to the tables, `segmented-perms-set` will only
 ;; require segmented access
 
-(mu/defn query->source-table-ids :- [:set [:or [:= ::native] ms/PositiveInt]]
+(mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
   "Return a sequence of all Table IDs referenced by `query`."
   [query]
   (set

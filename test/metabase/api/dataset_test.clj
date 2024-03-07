@@ -174,7 +174,7 @@
       (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
                                                             "query_result_<timestamp>$1")))))
 
-(deftest download-response-headers-test
+(deftest ^:parallel download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
     (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
             "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.csv\""
@@ -278,7 +278,7 @@
                   (mt/user-http-request :rasta :post "dataset"
                                         (mt/mbql-query venues {:limit 1})))))))
 
-(deftest compile-test
+(deftest ^:parallel compile-test
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
       (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
@@ -287,8 +287,11 @@
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
-                                     :pretty false))))
+                                     :pretty false)))))))
 
+(deftest ^:parallel compile-test-2
+  (testing "POST /api/dataset/native"
+    (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "\nMake sure parameters are spliced correctly"
         (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
                              "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z')"
@@ -299,8 +302,11 @@
                                      (assoc (mt/mbql-query checkins
                                                            {:fields [$id]
                                                             :filter [:= $date "2015-11-13"]})
-                                       :pretty false)))))
+                                       :pretty false))))))))
 
+(deftest compile-test-3
+  (testing "POST /api/dataset/native"
+    (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
         (mt/with-temp-copy-of-db
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
@@ -311,7 +317,10 @@
                        [:message            [:= "You do not have permissions to run this query."]]]
                       (mt/user-http-request :rasta :post "dataset/native"
                                             (mt/mbql-query venues
-                                                           {:fields [$id $name]})))))))
+                                                           {:fields [$id $name]})))))))))
+
+(deftest ^:parallel compile-test-4
+  (testing "POST /api/dataset/native"
     (testing "We should be able to format the resulting SQL query if desired"
       ;; Note that the following was tested against all driver branches of format-sql and all results were identical.
       (is (= {:query  (str "SELECT\n"
@@ -325,7 +334,10 @@
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (assoc
                                     (mt/mbql-query venues {:fields [$id $name]})
-                                    :pretty true)))))
+                                    :pretty true)))))))
+
+(deftest ^:parallel compile-test-5
+  (testing "POST /api/dataset/native"
     (testing "The default behavior is to format the SQL"
       (is (= {:query  (str "SELECT\n"
                            "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
@@ -336,7 +348,10 @@
                            "  1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
-                                   (mt/mbql-query venues {:fields [$id $name]})))))
+                                   (mt/mbql-query venues {:fields [$id $name]})))))))
+
+(deftest ^:parallel compile-test-6
+  (testing "POST /api/dataset/native"
     (testing "`:now` is usable inside `:case` with mongo (#32216)"
       (mt/test-driver :mongo
         (is (= {:$switch
