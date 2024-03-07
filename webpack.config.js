@@ -85,7 +85,30 @@ const config = (module.exports = {
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: {
+          loader: "swc-loader",
+          options: {
+            jsc: {
+              transform: {
+                react: {
+                  runtime: "automatic",
+                  pragma: "React.createElement",
+                  pragmaFrag: "React.Fragment",
+                  throwIfNamespace: true,
+                  refresh: true,
+                },
+              },
+              parser: {
+                syntax: "typescript",
+                tsx: true,
+              },
+              loose: true,
+              experimental: {
+                plugins: [["@swc/plugin-emotion", {}]],
+              },
+            },
+          },
+        },
       },
       ...(shouldUseEslint
         ? [
@@ -277,19 +300,19 @@ if (WEBPACK_BUNDLE === "hot") {
   config.output.publicPath =
     "http://localhost:8080/" + config.output.publicPath;
 
-  config.module.rules.unshift({
-    test: /\.(tsx?|jsx?)$/,
-    exclude: /node_modules|cljs/,
-    use: [
-      {
-        loader: "babel-loader",
-        options: {
-          ...BABEL_CONFIG,
-          plugins: ["@emotion", "react-refresh/babel"],
-        },
-      },
-    ],
-  });
+  // config.module.rules.unshift({
+  //   test: /\.(tsx?|jsx?)$/,
+  //   exclude: /node_modules|cljs/,
+  //   use: [
+  //     {
+  //       loader: "babel-loader",
+  //       options: {
+  //         ...BABEL_CONFIG,
+  //         plugins: ["@emotion", "react-refresh/babel"],
+  //       },
+  //     },
+  //   ],
+  // });
 
   config.devServer = {
     hot: true,
@@ -302,7 +325,7 @@ if (WEBPACK_BUNDLE === "hot") {
     },
     // tweak stats to make the output in the console more legible
     devMiddleware: {
-      stats: "errors-warnings",
+      stats: "normal",
       writeToDisk: true,
     },
     // if webpack doesn't reload UI after code change in development

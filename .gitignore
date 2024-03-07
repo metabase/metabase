@@ -106,3 +106,5 @@ modules/drivers/*/.lsp/*
 .clj-kondo/metosin/malli-types-clj
 
 .github/static-viz-sources.yaml
+
+.swc/
