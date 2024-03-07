@@ -38,16 +38,17 @@ const getPreviewQuestion = step => {
 };
 
 const NotebookStepPreview = ({ step, onClose }) => {
-  const [question, setQuestion] = useState(getPreviewQuestion(step));
+  const previewQuestion = useMemo(() => getPreviewQuestion(step), [step]);
+  const [activeQuestion, setActiveQuestion] = useState(previewQuestion);
 
   const refresh = () => {
-    setQuestion(getPreviewQuestion(step));
+    setActiveQuestion(previewQuestion);
   };
 
-  const isDirty = useMemo(() => {
-    const newQuestion = getPreviewQuestion(step);
-    return !_.isEqual(newQuestion.card(), question.card());
-  }, [step, question]);
+  const isDirty = useMemo(
+    () => activeQuestion.isDirtyComparedTo(previewQuestion),
+    [activeQuestion, previewQuestion],
+  );
 
   return (
     <PreviewRoot data-testid="preview-root">
@@ -66,7 +67,7 @@ const NotebookStepPreview = ({ step, onClose }) => {
           <Button onClick={refresh}>{t`Refresh`}</Button>
         </PreviewButtonContainer>
       ) : (
-        <QuestionResultLoader question={question}>
+        <QuestionResultLoader question={activeQuestion}>
           {({ rawSeries, result }) => (
             <VisualizationPreview rawSeries={rawSeries} result={result} />
           )}
