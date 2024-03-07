@@ -1649,8 +1649,8 @@
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2}
-                   {:upload-type ::upload/int,     :uncoerced "2.1",        :coerced 2.1}
+                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2.0} ;; column is promoted to float
+                   {:upload-type ::upload/int,     :uncoerced "2.1",        :coerced 2.1} ;; column is promoted to float
                    {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
                    {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
                    {:upload-type ::upload/boolean, :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
