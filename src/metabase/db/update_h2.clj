@@ -87,13 +87,18 @@
 
 (def ^:private h2-lock (Object.))
 
+(defn- update-needed?
+  [jdbc-url]
+  (= 1 (db-version! jdbc-url)))
+
 (defn update-if-needed!
   "Updates H2 database at db-path from version 1.x to 2.x if jdbc-url points
   to version 1 H2 database."
   [jdbc-url]
-  (when (h2-base-path jdbc-url)
+  (when (and (h2-base-path jdbc-url) (update-needed? jdbc-url))
     (locking h2-lock
-      (when (= 1 (db-version! jdbc-url))
+      ;; the database may have been upgraded while we waited for the lock
+      (when (update-needed? jdbc-url)
         (log/info "H2 v1 database detected, updating...")
         (try
          (update! jdbc-url)
