@@ -7,6 +7,7 @@ import { t } from "ttag";
 import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";
 import {
   getVirtualCardType,
+  isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import type { IconName, IconProps } from "metabase/ui";
@@ -60,6 +61,7 @@ interface DashCardVisualizationProps {
   expectedDuration: number;
   isSlow: CardSlownessStatus;
 
+  isAction: boolean;
   isPreviewing: boolean;
   isEmbed: boolean;
   isClickBehaviorSidebarOpen: boolean;
@@ -106,6 +108,7 @@ export function DashCardVisualization({
   expectedDuration,
   error,
   headerIcon,
+  isAction,
   isSlow,
   isPreviewing,
   isEmbed,
@@ -125,7 +128,9 @@ export function DashCardVisualization({
   onUpdateVisualizationSettings,
 }: DashCardVisualizationProps) {
   const question = useMemo(() => {
-    return new Question(dashcard.card, metadata);
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
   }, [dashcard.card, metadata]);
 
   const renderVisualizationOverlay = useCallback(() => {
@@ -183,8 +188,11 @@ export function DashCardVisualization({
   ]);
 
   const renderActionButtons = useCallback(() => {
-    const mainSeries = series[0] as unknown as Dataset;
+    if (!question) {
+      return null;
+    }
 
+    const mainSeries = series[0] as unknown as Dataset;
     const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
       question,
       result: mainSeries,
@@ -243,6 +251,7 @@ export function DashCardVisualization({
       error={error?.message}
       errorIcon={error?.icon}
       showTitle
+      isAction={isAction}
       isDashboard
       isSlow={isSlow}
       isFullscreen={isFullscreen}

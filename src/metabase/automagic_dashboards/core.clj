@@ -173,7 +173,6 @@
    [metabase.util.i18n :as i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
@@ -446,7 +445,7 @@
                                         (assoc field :db db)))))]
         (constantly source-fields)))))
 
-(s/defn ^:private make-base-context
+(defn- make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
 
   This is applicable to all dashboard templates."
@@ -580,9 +579,9 @@
       (update :fields (partial remove magic.util/key-col?))
       (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
-(s/defn ^:private indepth
+(mu/defn ^:private indepth
   [{:keys [dashboard-templates-prefix url] :as root}
-   {:keys [dashboard-template-name]} :- (s/maybe dashboard-templates/DashboardTemplate)]
+   {:keys [dashboard-template-name]} :- [:maybe dashboard-templates/DashboardTemplate]]
   (let [base-context (make-base-context root)]
     (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
          (keep (fn [{indepth-template-name :dashboard-template-name
@@ -724,12 +723,12 @@
               :related  [sideways sideways sideways]
               :compare  [compare compare]})})
 
-(s/defn ^:private related
+(mu/defn ^:private related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
    root type individually via `related-selectors`. That recipe is then filled round-robin style."
   [root
    available-dimensions
-   dashboard-template :- (s/maybe dashboard-templates/DashboardTemplate)]
+   dashboard-template :- [:maybe dashboard-templates/DashboardTemplate]]
   (->> (merge (indepth root dashboard-template)
               (drilldown-fields root available-dimensions)
               (related-entities root)

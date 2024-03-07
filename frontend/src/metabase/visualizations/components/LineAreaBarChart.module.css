@@ -35,6 +35,7 @@
   fill: var(--color-text-medium);
   font-weight: 700;
 }
+
 :global(.LineAreaBarChart .dc-chart g.row text.inside) {
   fill: white;
   font-weight: bold;
@@ -124,6 +125,7 @@
 :global(.LineAreaBarChart .dc-chart .line) {
   stroke-width: 2px;
 }
+
 :global(.LineAreaBarChart .dc-chart .dc-tooltip .dot) {
   r: 3px !important;
   stroke-width: 2px;
@@ -133,6 +135,7 @@
 :global(.LineAreaBarChart .dc-chart .line--medium .line) {
   stroke-width: 3px;
 }
+
 :global(.LineAreaBarChart .dc-chart .line--medium .dc-tooltip .dot) {
   r: 3px !important;
   stroke-width: 2px;
@@ -142,6 +145,7 @@
 :global(.LineAreaBarChart .dc-chart .line--heavy .line) {
   stroke-width: 4px;
 }
+
 :global(.LineAreaBarChart .dc-chart .line--heavy .dc-tooltip .dot) {
   r: 3.5px !important;
   stroke-width: 3px;
@@ -168,6 +172,7 @@
 :global(.LineAreaBarChart .dc-chart .dc-tooltip .dot.deselected) {
   opacity: 0;
 }
+
 :global(.LineAreaBarChart .dc-chart .line.deselected) {
   color: var(--color-text-light);
 }
@@ -188,11 +193,7 @@
   transition: opacity 0.25s linear;
 }
 
-:global(.LineAreaBarChart .dc-chart .event-line) {
-  transition: stroke 0.15s linear;
-}
-
-/* :global .mute-* selectors dynamically generated in LineAreaBarChart.js*/
+/* :global .mute-* selectors dynamically generated in LineAreaBarChart.js */
 
 :global(.LineAreaBarChart.mute-yl .dc-chart .axis.y),
 :global(.LineAreaBarChart.mute-yl .dc-chart .y-axis-label.y-label) {
@@ -234,9 +235,6 @@
 
 :global(text.value-label) {
   pointer-events: none;
-}
-
-:global(text.value-label) {
   fill: var(--color-text-dark);
   font-size: 12px;
   font-weight: 800;
@@ -286,6 +284,7 @@
 }
 
 :global(.LineAreaBarChart .dc-chart .event-line) {
+  transition: stroke 0.15s linear;
   stroke: color-mod(var(--color-text-medium) alpha(-80%));
   stroke-width: 2;
   pointer-events: none;

@@ -34,7 +34,7 @@ export const NotebookCellItemContainer = styled.div<{
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
 
   cursor: ${props =>
-    !props.inactive && !props.readOnly && !props.disabled
+    (!props.inactive || props.onClick) && !props.readOnly && !props.disabled
       ? "pointer"
       : "default"};
 

@@ -9,7 +9,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def statuses
@@ -24,12 +23,12 @@
 (comment
   (def ReviewChanges
     "Schema for a ModerationReview that's being updated (so most keys are optional)"
-    {(s/optional-key :id)                  mu/IntGreaterThanZero
-     (s/optional-key :moderated_item_id)   mu/IntGreaterThanZero
-     (s/optional-key :moderated_item_type) moderation/moderated-item-types
-     (s/optional-key :status)              Statuses
-     (s/optional-key :text)                [:maybe :string]
-     s/Any                                 :any}))
+    [:map
+     [:id                  {:optional true} mu/IntGreaterThanZero]
+     [:moderated_item_id   {:optional true} mu/IntGreaterThanZero]
+     [:moderated_item_type {:optional true} moderation/moderated-item-types]
+     [:status              {:optional true} Statuses]
+     [:text                {:optional true} [:maybe :string]]]))
 
 (def ModerationReview
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
@@ -51,10 +50,11 @@
   "The amount of moderation reviews we will keep on hand."
   10)
 
-(s/defn delete-extra-reviews!
+(mu/defn delete-extra-reviews!
   "Delete extra reviews to maintain an invariant of only `max-moderation-reviews`. Called before inserting so actuall
   insures there are one fewer than that so you can add afterwards."
-  [item-id :- s/Int item-type :- s/Str]
+  [item-id   :- :int
+   item-type :- :string]
   (let [ids (into #{} (comp (map :id)
                             (drop (dec max-moderation-reviews)))
                   (mdb.query/query {:select   [:id]

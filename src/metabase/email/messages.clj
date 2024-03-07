@@ -16,6 +16,7 @@
    [metabase.email :as email]
    [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -214,25 +215,22 @@
    If ee that also means users with monitoring and details permissions."
   [database-id]
   (let [monitoring (perms/application-perms-path :monitoring)
-        db-details (perms/feature-perms-path :details :yes database-id)
-        user-ids (when (premium-features/enable-advanced-permissions?)
-                   (->> {:select   [:pgm.user_id]
-                         :from     [[:permissions_group_membership :pgm]]
-                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
-                         :where    [:and
-                                    [:exists {:select [1]
-                                              :from [[:permissions :p]]
-                                              :where [:and
-                                                      [:= :p.group_id :pg.id]
-                                                      [:= :p.object monitoring]]}]
-                                    [:exists {:select [1]
-                                              :from [[:permissions :p]]
-                                              :where [:and
-                                                      [:= :p.group_id :pg.id]
-                                                      [:= :p.object db-details]]}]]
-                         :group-by [:pgm.user_id]}
-                        mdb.query/query
-                        (mapv :user_id)))]
+        user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)
+                                   (->> {:select   [:pgm.user_id]
+                                         :from     [[:permissions_group_membership :pgm]]
+                                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                                         :where    [:and
+                                                    [:exists {:select [1]
+                                                              :from [[:permissions :p]]
+                                                              :where [:and
+                                                                      [:= :p.group_id :pg.id]
+                                                                      [:= :p.object monitoring]]}]]
+                                         :group-by [:pgm.user_id]}
+                                        mdb.query/query
+                                        (mapv :user_id)))
+        user-ids (filter
+                  #(data-perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
+                  user-ids-with-monitoring)]
     (into
       []
       (distinct)
@@ -389,7 +387,10 @@
   (let [{:keys [content-type]} (qp.si/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
-     :file-name    (format "%s.%s" card-name (name export-type))
+     :file-name    (format "%s_%s.%s"
+                           (or (u/slugify card-name) "query_result")
+                           (u.date/format (t/zoned-date-time))
+                           (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 

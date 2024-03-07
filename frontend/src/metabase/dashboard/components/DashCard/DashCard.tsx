@@ -299,6 +299,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
+          isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
           isEditing={isEditing}
