@@ -228,7 +228,7 @@
       (vec (u/map-all type->value->type value-types row)))))
 
 (defn- relax-types [settings current-types rows]
-  (let [type->check       (settings->type->check settings)]
+  (let [type->check (settings->type->check settings)]
     (->> (reduce (type-relaxer type->check) current-types rows)
          (map column-type))))
 
