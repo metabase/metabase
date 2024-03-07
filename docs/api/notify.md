@@ -19,15 +19,15 @@ Notification about a potential schema change to one of our `Databases`.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`table_id`** nullable value must be an integer greater than zero.
+-  **`table_id`** nullable value must be an integer greater than zero.
 
-*  **`table_name`** nullable value must be a non-blank string.
+-  **`table_name`** nullable value must be a non-blank string.
 
-*  **`scan`** nullable enum of full, schema
+-  **`scan`** nullable enum of full, schema.
 
-*  **`synchronous?`**
+-  **`synchronous?`**
 
 ## `POST /api/notify/db/:id/new-table`
 
@@ -36,11 +36,11 @@ Sync a new table without running a full database sync. Requires `schema_name` an
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`schema_name`** value must be a non-blank string.
+-  **`schema_name`** value must be a non-blank string.
 
-*  **`table_name`** value must be a non-blank string.
+-  **`table_name`** value must be a non-blank string.
 
 ---
 

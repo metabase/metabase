@@ -16,7 +16,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/ee/advanced-permissions/impersonation/`
 
@@ -27,9 +27,9 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`group_id`** nullable value must be an integer greater than zero.
+-  **`group_id`** nullable value must be an integer greater than zero.
 
-*  **`db_id`** nullable value must be an integer greater than zero.
+-  **`db_id`** nullable value must be an integer greater than zero.
 
 ---
 

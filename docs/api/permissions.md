@@ -14,7 +14,7 @@ Delete a specific `PermissionsGroup`.
 
 ### PARAMS:
 
-*  **`group-id`** value must be an integer greater than zero.
+-  **`group-id`** value must be an integer greater than zero.
 
 ## `DELETE /api/permissions/membership/:id`
 
@@ -22,7 +22,7 @@ Remove a User from a PermissionsGroup (delete their membership).
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/permissions/execution/graph`
 
@@ -50,7 +50,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`db-id`** value must be an integer greater than zero.
+-  **`db-id`** value must be an integer greater than zero.
 
 ## `GET /api/permissions/graph/group/:group-id`
 
@@ -60,7 +60,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`group-id`** value must be an integer greater than zero.
+-  **`group-id`** value must be an integer greater than zero.
 
 ## `GET /api/permissions/group`
 
@@ -75,7 +75,7 @@ Fetch the details for a certain permissions group.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/permissions/membership`
 
@@ -94,7 +94,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`name`** value must be a non-blank string.
+-  **`name`** value must be a non-blank string.
 
 ## `POST /api/permissions/membership`
 
@@ -102,11 +102,11 @@ Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging 
 
 ### PARAMS:
 
-*  **`group_id`** value must be an integer greater than zero.
+-  **`group_id`** value must be an integer greater than zero.
 
-*  **`user_id`** value must be an integer greater than zero.
+-  **`user_id`** value must be an integer greater than zero.
 
-*  **`is_group_manager`** nullable boolean
+-  **`is_group_manager`** nullable boolean.
 
 ## `PUT /api/permissions/execution/graph`
 
@@ -121,7 +121,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`body`** map
+-  **`body`** map.
 
 ## `PUT /api/permissions/graph`
 
@@ -145,9 +145,9 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`skip-graph`** nullable boolean
+-  **`skip-graph`** nullable boolean.
 
-*  **`body`** map
+-  **`body`** map.
 
 ## `PUT /api/permissions/group/:group-id`
 
@@ -155,9 +155,9 @@ Update the name of a `PermissionsGroup`.
 
 ### PARAMS:
 
-*  **`group-id`** value must be an integer greater than zero.
+-  **`group-id`** value must be an integer greater than zero.
 
-*  **`name`** value must be a non-blank string.
+-  **`name`** value must be a non-blank string.
 
 ## `PUT /api/permissions/membership/:group-id/clear`
 
@@ -165,7 +165,7 @@ Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the
 
 ### PARAMS:
 
-*  **`group-id`** value must be an integer greater than zero.
+-  **`group-id`** value must be an integer greater than zero.
 
 ## `PUT /api/permissions/membership/:id`
 
@@ -173,9 +173,9 @@ Update a Permission Group membership. Returns the updated record.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`is_group_manager`** boolean
+-  **`is_group_manager`** boolean.
 
 ---
 

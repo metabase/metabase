@@ -19,7 +19,7 @@ Returns object containing default user details for initial setup, if configured,
 
 ### PARAMS:
 
-*  **`token`**
+-  **`token`**
 
 ## `POST /api/setup/`
 
@@ -29,41 +29,41 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 
 ### PARAMS:
 
-*  **`engine`** 
+-  **`engine`** 
 
-*  **`schedules`** nullable :metabase.sync.schedules/ExpandedSchedulesMap
+-  **`schedules`** nullable :metabase.sync.schedules/ExpandedSchedulesMap.
 
-*  **`allow_tracking`** nullable boolean, or value must be a valid boolean string ('true' or 'false').
+-  **`allow_tracking`** nullable boolean, or value must be a valid boolean string ('true' or 'false').
 
-*  **`invited_last_name`** nullable value must be a non-blank string.
+-  **`invited_last_name`** nullable value must be a non-blank string.
 
-*  **`site_locale`** nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
+-  **`site_locale`** nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
 
-*  **`email`** value must be a valid email address.
+-  **`email`** value must be a valid email address.
 
-*  **`first_name`** nullable value must be a non-blank string.
+-  **`first_name`** nullable value must be a non-blank string.
 
-*  **`request`** 
+-  **`request`** 
 
-*  **`auto_run_queries`** nullable boolean
+-  **`auto_run_queries`** nullable boolean.
 
-*  **`password`** password is too common.
+-  **`password`** password is too common.
 
-*  **`name`** 
+-  **`name`** 
 
-*  **`invited_email`** nullable value must be a valid email address.
+-  **`invited_email`** nullable value must be a valid email address.
 
-*  **`invited_first_name`** nullable value must be a non-blank string.
+-  **`invited_first_name`** nullable value must be a non-blank string.
 
-*  **`site_name`** value must be a non-blank string.
+-  **`site_name`** value must be a non-blank string.
 
-*  **`token`** Token does not match the setup token.
+-  **`token`** Token does not match the setup token.
 
-*  **`details`** 
+-  **`details`** 
 
-*  **`database`** 
+-  **`database`** 
 
-*  **`last_name`** nullable value must be a non-blank string.
+-  **`last_name`** nullable value must be a non-blank string.
 
 ## `POST /api/setup/validate`
 
@@ -71,11 +71,11 @@ Validate that we can connect to a database given a set of details.
 
 ### PARAMS:
 
-*  **`engine`** value must be a valid database engine.
+-  **`engine`** value must be a valid database engine.
 
-*  **`details`** 
+-  **`details`** 
 
-*  **`token`** Token does not match the setup token.
+-  **`token`** Token does not match the setup token.
 
 ---
 
