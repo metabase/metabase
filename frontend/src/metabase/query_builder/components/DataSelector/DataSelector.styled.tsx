@@ -4,7 +4,7 @@ import { t } from "ttag";
 import SelectList from "metabase/components/SelectList";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import { Icon, Text } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 export const DataSelectorSection = styled.section`
   width: 300px;
@@ -115,12 +115,4 @@ export const TriggerContainerIcon = styled.div`
   top: 0;
   width: 2.5rem;
   height: 100%;
-`;
-
-export const TextSchema = styled(Text)`
-  font-size: 0.75em;
-  color: ${color("text-light")};
-  line-height: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 `;

@@ -2,16 +2,13 @@ import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { color } from "metabase/lib/colors";
 import { Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 import type Field from "metabase-lib/metadata/Field";
 import type Table from "metabase-lib/metadata/Table";
 
-import {
-  TextSchema,
-  TriggerContainer,
-  TriggerContainerIcon,
-} from "./DataSelector.styled";
+import { TriggerContainer, TriggerContainerIcon } from "./DataSelector.styled";
 
 export function Trigger({
   className,
@@ -69,10 +66,16 @@ export function FieldTrigger({
 
   return (
     <div>
-      <TextSchema>
+      <Text
+        fz="0.75rem"
+        c={color("text-light")}
+        lh="0.75rem"
+        tt="uppercase"
+        lts="0.06em"
+      >
         {hasMultipleSchemas && field.table.schema_name + " > "}
         {field.table.display_name}
-      </TextSchema>
+      </Text>
       <Text lh="1.2rem">{field.display_name}</Text>
     </div>
   );
