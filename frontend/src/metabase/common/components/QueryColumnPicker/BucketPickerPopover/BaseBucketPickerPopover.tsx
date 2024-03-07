@@ -70,10 +70,13 @@ function _BaseBucketPickerPopover({
     [items],
   );
 
-  const handleExpand = useCallback(evt => {
-    evt.stopPropagation();
-    setIsExpanded(true);
-  }, []);
+  const handleExpand = useCallback(
+    (evt: React.MouseEvent<HTMLButtonElement>) => {
+      evt.stopPropagation();
+      setIsExpanded(true);
+    },
+    [],
+  );
 
   const handlePopoverClose = useCallback(() => {
     const nextState = isInitiallyExpanded(
