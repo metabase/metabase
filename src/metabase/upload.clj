@@ -221,17 +221,6 @@
                        (filter #((type->check %) trimmed))
                        first)))))
 
-(defn- type-relaxer
-  "Given a map of {value-type -> predicate}, return a reducing fn which updates our inferred schema using the next row."
-  [type->check]
-  (fn [value-types row]
-    ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
-    (vec (u/map-all (partial relax-type type->check) value-types row))))
-
-(defn- relax-types [settings current-types rows]
-  (let [type->check (settings->type->check settings)]
-    (reduce (type-relaxer type->check) current-types rows)))
-
 (defn- normalize-column-name
   [raw-name]
   (if (str/blank? raw-name)
@@ -251,10 +240,18 @@
                    (= (normalize-column-name (:name field)) auto-pk-column-name))
                  (t2/select :model/Field :table_id table-id :active true))))
 
+(defn- type-relaxer
+  "Given a map of {value-type -> predicate}, return a reducing fn which updates our inferred schema using the next row."
+  [settings]
+  (let [relax (partial relax-type (settings->type->check settings))]
+    (fn [value-types row]
+      ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
+      (vec (u/map-all relax value-types row)))))
+
 (mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
   "Given the types of the existing columns (if there are any), and rows to be added, infer the best supporting types."
-  [settings existing-current-types rows]
-  (map column-type (relax-types settings existing-current-types rows)))
+  [settings existing-types rows]
+  (map column-type (reduce (type-relaxer settings) existing-types rows)))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
