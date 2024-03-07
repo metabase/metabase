@@ -1282,7 +1282,7 @@
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
     (testing "The CSV file must not be empty"
-      (is (= {:message "The CSV file is missing columns that are in the table: \"name\".",
+      (is (= {:message "The CSV file is missing columns that are in the table:\n- name",
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
@@ -1313,19 +1313,34 @@
                      (rows-for-table table))))
             (io/delete-file file)))))))
 
+(defn- trim-lines [s]
+  (->> (str/split-lines s)
+       (map str/trim)
+       (str/join "\n")))
+
 (deftest append-column-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should fail if there are extra or missing columns in the CSV file"
         (doseq [[csv-rows error-message]
                 {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
+                 (trim-lines "The CSV file contains extra columns that are not in the table:
+                              - extra_column_two
+                              - extra_column_one")
 
                  [""]
-                 "The CSV file is missing columns that are in the table: \"id\", \"name\"."
+                 (trim-lines "The CSV file is missing columns that are in the table:
+                              - id
+                              - name")
 
                  ["_mb_row_id,extra 1, extra 2"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]
+                 (trim-lines "The CSV file contains extra columns that are not in the table:
+                              - extra_2
+                              - extra_1
+
+                              The CSV file is missing columns that are in the table:
+                              - id
+                              - name")}]
           (with-upload-table!
             [table (create-upload-table!
                     {:col->upload-type (ordered-map/ordered-map

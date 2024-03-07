@@ -1,11 +1,16 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import {
+  HoverParent,
+  TableInfoIcon,
+} from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+import { Icon, DelayGroup } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
@@ -98,6 +103,13 @@ const DataSelectorTablePicker = ({
     const renderItemIcon = ({ table }: { table: Table }) =>
       table ? <Icon name="table" /> : null;
 
+    const renderItemExtra = ({ table }: { table: Table }) =>
+      table && <TableInfoIcon table={table} position="right" />;
+
+    const renderItemWrapper = (content: ReactNode) => (
+      <HoverParent>{content}</HoverParent>
+    );
+
     const showSpinner = ({ table }: { table: Table }) =>
       Boolean(table && !isSyncCompleted(table));
 
@@ -106,28 +118,32 @@ const DataSelectorTablePicker = ({
     const isSearchable = hasFiltering && tables.length >= minTablesToShowSearch;
 
     return (
-      <Container>
-        <AccordionList
-          id="TablePicker"
-          key="tablePicker"
-          className="text-brand"
-          hasInitialFocus={hasInitialFocus}
-          sections={sections}
-          maxHeight={Infinity}
-          width="100%"
-          searchable={isSearchable}
-          onChange={handleChange}
-          showSpinner={showSpinner}
-          itemIsSelected={checkIfItemIsSelected}
-          itemIsClickable={checkIfItemIsClickable}
-          renderItemIcon={renderItemIcon}
-          showItemArrows={hasNextStep}
-        />
+      <DelayGroup>
+        <Container>
+          <AccordionList
+            id="TablePicker"
+            key="tablePicker"
+            className="text-brand"
+            hasInitialFocus={hasInitialFocus}
+            sections={sections}
+            maxHeight={Infinity}
+            width="100%"
+            searchable={isSearchable}
+            onChange={handleChange}
+            showSpinner={showSpinner}
+            itemIsSelected={checkIfItemIsSelected}
+            itemIsClickable={checkIfItemIsClickable}
+            renderItemExtra={renderItemExtra}
+            renderItemIcon={renderItemIcon}
+            renderItemWrapper={renderItemWrapper}
+            showItemArrows={hasNextStep}
+          />
 
-        {isSavedQuestionList && (
-          <LinkToDocsOnReferencingSavedQuestionsInQueries />
-        )}
-      </Container>
+          {isSavedQuestionList && (
+            <LinkToDocsOnReferencingSavedQuestionsInQueries />
+          )}
+        </Container>
+      </DelayGroup>
     );
   } else {
     return (

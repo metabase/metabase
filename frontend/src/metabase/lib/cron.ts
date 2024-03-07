@@ -60,9 +60,7 @@ export function validateCronExpression(
 export function explainCronExpression(cronExpression: string) {
   return cronstrue.toString(cronExpression, {
     verbose: false,
-    locale:
-      MetabaseSettings.get("user-locale") ||
-      MetabaseSettings.get("site-locale"),
+    locale: MetabaseSettings.get("site-locale"),
     use24HourTimeFormat: has24HourModeSetting(),
   });
 }

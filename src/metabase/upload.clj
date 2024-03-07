@@ -18,9 +18,9 @@
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.table :as table]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -456,8 +456,10 @@
              (driver/database-supports? (driver.u/database->driver db) :schemas db))
         (ex-info (tru "A schema has not been set.")
                  {:status-code 422})
-        (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                              (perms/data-perms-path (u/the-id db) schema-name)))
+        (not= :unrestricted (data-perms/full-schema-permission-for-user api/*current-user-id*
+                                                                        :perms/data-access
+                                                                        (u/the-id db)
+                                                                        schema-name))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
@@ -579,6 +581,19 @@
     :type/Date                   ::date
     :type/Text                   ::text))
 
+(defn- not-blank [s]
+  (when-not (str/blank? s)
+    s))
+
+(defn- extra-and-missing-error-markdown [extra missing]
+  (->> [[(tru "The CSV file contains extra columns that are not in the table:") extra]
+        [(tru "The CSV file is missing columns that are in the table:") missing]]
+       (keep (fn [[header columns]]
+               (when (seq columns)
+                 (str/join "\n" (cons header (map #(str "- " %) columns))))))
+       (str/join "\n\n")
+       (not-blank)))
+
 (defn- check-schema
   "Throws an exception if:
     - the CSV file contains duplicate column names
@@ -593,18 +608,7 @@
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
     (when (or extra missing)
-      (let [format-columns (fn [cols]
-                             (str/join ", " (map #(str "\"" % "\"") cols)))
-            error-message (cond
-                            (and extra missing)
-                            (tru "The CSV file contains extra columns that are not in the table: {0}. The CSV file is missing columns that are in the table: {1}."
-                                 (format-columns extra) (format-columns missing))
-                            extra
-                            (tru "The CSV file contains extra columns that are not in the table: {0}."
-                                 (format-columns extra))
-                            missing
-                            (tru "The CSV file is missing columns that are in the table: {0}."
-                                 (format-columns missing)))]
+      (let [error-message (extra-and-missing-error-markdown extra missing)]
         (throw (ex-info error-message {:status-code 422}))))))
 
 (defn- append-csv!*

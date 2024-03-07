@@ -10,11 +10,10 @@
    [metabase.models.collection :refer [Collection]]
    [metabase.models.collection.graph :refer [update-graph!]]
    [metabase.models.collection.graph-test :refer [graph]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions
-    :as perms
-    :refer [Permissions table-query-path]]
+   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
@@ -106,9 +105,9 @@
       (with-redefs [perms/audit-db-id                 database-id
                     audit-db/default-audit-collection (constantly collection)]
         (testing "Adding instance analytics adds audit db permissions"
+          (is (= :no-self-service (data-perms/table-permission-for-group group-id :perms/data-access database-id (:id view-table))))
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
-          (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]
-            (is (contains? new-perms (table-query-path view-table)))))
+          (is (= :unrestricted (data-perms/table-permission-for-group group-id :perms/data-access database-id (:id view-table)))))
         (testing "Unable to update instance analytics to writable"
           (is (thrown-with-msg?
                Exception
