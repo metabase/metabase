@@ -267,16 +267,11 @@
    The value of `extant-columns` and `generated-columns` is an ordered map of normalized-column-name -> type for the
    given CSV file. Supported types include `::int`, `::datetime`, etc. A column that is completely blank is assumed to
    be of type `::text`."
-  [header rows]
-  (let [normalized-header (->> header
-                               (map normalize-column-name))
-        unique-header     (->> normalized-header
-                               mbql.u/uniquify-names
-                               (map keyword))
-        column-count      (count normalized-header)
-        settings          (upload-parsing/get-settings)
-        col-name+type-pairs (->> rows
-                                 (column-types-from-rows settings column-count)
+  [settings header rows]
+  (let [normalized-header   (map normalize-column-name header)
+        unique-header       (map keyword (mbql.u/uniquify-names normalized-header))
+        column-count        (count normalized-header)
+        col-name+type-pairs (->> (column-types-from-rows settings column-count rows)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
      :generated-columns (ordered-map/ordered-map auto-pk-column-keyword ::auto-incrementing-int-pk)}))
@@ -335,14 +330,12 @@
 (defn- parse-rows
   "Returns a lazy seq of parsed rows, given a sequence of upload types for each column.
   Empty strings are parsed as nil."
-  ([col-upload-types rows]
-   (parse-rows (upload-parsing/get-settings) col-upload-types rows))
-  ([settings col-upload-types rows]
-   (let [parsers (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
-     (for [row rows]
-       (for [[value parser] (u/map-all vector row parsers)]
-         (when-not (str/blank? value)
-           (parser value)))))))
+  [settings col-upload-types rows]
+  (let [parsers (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
+    (for [row rows]
+      (for [[value parser] (u/map-all vector row parsers)]
+        (when-not (str/blank? value)
+          (parser value))))))
 
 (defn- remove-indices
   "Removes the elements at the given indices from the collection. Indices is a set."
@@ -379,12 +372,13 @@
   [driver db-id table-name ^File csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows]         (without-auto-pk-columns (csv/read-csv reader))
-          {:keys [extant-columns generated-columns]} (detect-schema header rows)
+          settings                (upload-parsing/get-settings)
+          {:keys [extant-columns generated-columns]} (detect-schema settings header rows)
           cols->upload-type       (merge generated-columns extant-columns)
           col-definitions         (column-definitions driver cols->upload-type)
           csv-col-names           (keys extant-columns)
           col-upload-types        (vals extant-columns)
-          parsed-rows             (vec (parse-rows col-upload-types rows))]
+          parsed-rows             (vec (parse-rows settings col-upload-types rows))]
       (driver/create-table! driver
                             db-id
                             table-name
