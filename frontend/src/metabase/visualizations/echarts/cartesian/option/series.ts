@@ -15,7 +15,6 @@ import type {
   ChartDataset,
   Datum,
   XAxisModel,
-  TimeSeriesXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -27,10 +26,7 @@ import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/car
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { getObjectValues } from "metabase/lib/objects";
-import type {
-  ChartMeasurements,
-  EChartsSeriesOption,
-} from "metabase/visualizations/echarts/cartesian/option/types";
+import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
@@ -38,7 +34,12 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { buildEChartsScatterSeries } from "../scatter/series";
-import { isTimeSeriesAxis } from "../model/guards";
+import {
+  isCategoryAxis,
+  isNumericAxis,
+  isTimeSeriesAxis,
+} from "../model/guards";
+import type { ChartMeasurements } from "../chart-measurements/types";
 import { getSeriesYAxisIndex } from "./utils";
 
 export const getBarLabelLayout =
@@ -96,26 +97,6 @@ export function getDataLabelFormatter(
   };
 }
 
-const getTimeSeriesBarCategoryGap = (
-  dataset: ChartDataset,
-  xAxisModel: TimeSeriesXAxisModel,
-) => {
-  // ECharts calculates category width based on the number of values in the dataset. However, for time series,
-  // we want category width be based on the computed interval of data and the number of units within the extent.
-  // For example, if data consists of only two points 1st and 20th days and the unit is day, then we want
-  // the bar category to have the width of the single day on the axis.
-  if (dataset.length < xAxisModel.lengthInIntervals + 1) {
-    const fullBarGroupWidthPercent =
-      dataset.length / (xAxisModel.lengthInIntervals + 1);
-    // Assume 20% padding
-    const barCategoryGapPercent = 1 - fullBarGroupWidthPercent * 0.8;
-
-    return `${barCategoryGapPercent * 100}%`;
-  }
-
-  return undefined;
-};
-
 export const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
@@ -142,34 +123,54 @@ export const buildEChartsLabelOptions = (
   };
 };
 
+export const computeBarWidth = (
+  xAxisModel: XAxisModel,
+  chartMeasurements: ChartMeasurements,
+  barSeriesCount: number,
+  yAxisWithBarSeriesCount: number,
+  isStacked: boolean,
+) => {
+  let barWidth: string | number | undefined = undefined;
+  const stackedOrSingleSeries = isStacked || barSeriesCount === 1;
+  const isNumericOrTimeSeries =
+    isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel);
+
+  if (isNumericOrTimeSeries) {
+    barWidth =
+      (chartMeasurements.boundaryWidth / (xAxisModel.intervalsCount + 2)) *
+      CHART_STYLE.series.barWidth;
+
+    if (!stackedOrSingleSeries) {
+      barWidth /= barSeriesCount;
+    }
+
+    barWidth /= yAxisWithBarSeriesCount;
+  }
+
+  if (isCategoryAxis(xAxisModel) && xAxisModel.isHistogram) {
+    const barWidthPercent = stackedOrSingleSeries
+      ? CHART_STYLE.series.histogramBarWidth
+      : CHART_STYLE.series.histogramBarWidth / barSeriesCount;
+    barWidth = `${barWidthPercent * 100}%`;
+  }
+
+  return barWidth;
+};
+
 const buildEChartsBarSeries = (
   dataset: ChartDataset,
   xAxisModel: XAxisModel,
+  chartMeasurements: ChartMeasurements,
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   barSeriesCount: number,
+  yAxisWithBarSeriesCount: number,
   hasMultipleSeries: boolean,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["bar"] => {
   const stackName =
     settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
-
-  const isHistogram = settings["graph.x_axis.scale"] === "histogram";
-  const stackedOrSingleSeries = stackName !== undefined || barSeriesCount === 1;
-
-  let barWidth: string | number | undefined = undefined;
-  let barCategoryGap: string | number | undefined = undefined;
-
-  if (isHistogram) {
-    if (stackedOrSingleSeries) {
-      barWidth = "99.5%"; // a tiny gap looks better than 100%
-    } else {
-      barWidth = `${99.5 / barSeriesCount}%`;
-    }
-  } else if (isTimeSeriesAxis(xAxisModel)) {
-    barCategoryGap = getTimeSeriesBarCategoryGap(dataset, xAxisModel);
-  }
 
   return {
     id: seriesModel.dataKey,
@@ -192,8 +193,13 @@ const buildEChartsBarSeries = (
     yAxisIndex,
     barGap: 0,
     stack: stackName,
-    barCategoryGap,
-    barWidth,
+    barWidth: computeBarWidth(
+      xAxisModel,
+      chartMeasurements,
+      barSeriesCount,
+      yAxisWithBarSeriesCount,
+      !!stackName,
+    ),
     encode: {
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
@@ -442,6 +448,33 @@ export const buildEChartsSeries = (
     {} as Record<DataKey, SeriesSettings>,
   );
 
+  const seriesYAxisIndexByDataKey = chartModel.seriesModels.reduce(
+    (acc, seriesModel) => {
+      acc[seriesModel.dataKey] = getSeriesYAxisIndex(seriesModel, chartModel);
+      return acc;
+    },
+    {} as Record<DataKey, number>,
+  );
+
+  const barSeriesCountByYAxisIndex = chartModel.seriesModels.reduce(
+    (acc, seriesModel) => {
+      const isBar =
+        seriesSettingsByDataKey[seriesModel.dataKey].display === "bar";
+
+      if (isBar) {
+        const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
+        acc[yAxisIndex] = (acc[yAxisIndex] ?? 0) + 1;
+      }
+
+      return acc;
+    },
+    {} as Record<number, number>,
+  );
+
+  const yAxisWithBarSeriesCount = Object.keys(
+    barSeriesCountByYAxisIndex,
+  ).length;
+
   const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
     seriesSettings => seriesSettings.display === "bar",
   ).length;
@@ -451,7 +484,7 @@ export const buildEChartsSeries = (
   const series = chartModel.seriesModels
     .map(seriesModel => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
-      const yAxisIndex = getSeriesYAxisIndex(seriesModel, chartModel);
+      const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
 
       switch (seriesSettings.display) {
         case "line":
@@ -470,10 +503,12 @@ export const buildEChartsSeries = (
           return buildEChartsBarSeries(
             chartModel.transformedDataset,
             chartModel.xAxisModel,
+            chartMeasurements,
             seriesModel,
             settings,
             yAxisIndex,
             barSeriesCount,
+            yAxisWithBarSeriesCount,
             hasMultipleSeries,
             renderingContext,
           );

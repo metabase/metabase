@@ -45,6 +45,8 @@ import longDimensionNameCutOff37420 from "./long-dimension-name-cut-off-37420.js
 import compactXAxisDoesNotWork38917 from "./compact-x-axis-does-not-work-38917.json";
 import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short-range.json";
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
+import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
+import areaStackLinearXAxis from "./area-stack-linear-x-axis.json";
 
 export const data = {
   lineLinearXScale,
@@ -94,4 +96,6 @@ export const data = {
   numericXAxisIncludesZero37082,
   ticksNativeWeekWithGapShortRange,
   ticksNativeWeekWithGapLongRange,
+  barStackLinearXAxis,
+  areaStackLinearXAxis,
 };

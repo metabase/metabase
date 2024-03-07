@@ -1,7 +1,7 @@
 import d3 from "d3";
 import _ from "underscore";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
-import type { OpUnitType, QUnitType } from "dayjs";
+import type { Dayjs, OpUnitType, QUnitType } from "dayjs";
 import dayjs from "dayjs";
 import type {
   AxisFormatter,
@@ -17,22 +17,27 @@ import type {
   DateRange,
   TimeSeriesXAxisModel,
   CartesianChartDateTimeAbsoluteUnit,
+  NumericXAxisModel,
+  NumericAxisScaleTransforms,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type {
-  SeriesSettings,
-  StackType,
-  DatasetColumn,
-  RowValue,
-  RawSeries,
+import {
+  type SeriesSettings,
+  type StackType,
+  type DatasetColumn,
+  type RowValue,
+  type RawSeries,
+  type NumericScale,
+  numericScale,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull, isNumber } from "metabase/lib/types";
 import {
   getDatasetExtents,
   getMetricDisplayValueGetter,
+  getSeriesExtent,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getObjectEntries,
@@ -51,10 +56,8 @@ import {
   TICKS_INTERVAL_THRESHOLD,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import {
-  isAbsoluteDateTimeUnit,
-  isRelativeDateTimeUnit,
-} from "metabase-types/guards/date-time";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 const KEYS_TO_COMPARE = new Set([
@@ -501,8 +504,7 @@ export const getXAxisEChartsType = (
 const getTickWithinRangePredicate = (range: DateRange) => {
   const [minDate, maxDate] = range;
 
-  const isWidthinDataRange = (tickDateRaw: string | number) => {
-    const tickDate = dayjs(tickDateRaw);
+  const isWidthinDataRange = (tickDate: Dayjs) => {
     if (minDate.isSame(maxDate)) {
       return tickDate.isSame(minDate, "day");
     }
@@ -561,7 +563,7 @@ export function getTimeSeriesXAxisModel(
     rawSeries,
     dimensionModel,
   );
-  const { interval: dataTimeSeriesInterval, range } = timeSeriesInfo;
+  const { interval: dataTimeSeriesInterval, range, timezone } = timeSeriesInfo;
   const minDate = timeSeriesInfo.range[0];
 
   // Based on the range compute an optimal interval for ticks
@@ -641,6 +643,13 @@ export function getTimeSeriesXAxisModel(
     }
   }
 
+  const fromAxisValue = (rawValue: number) => {
+    // ECharts for ticks ECharts uses UTC time, so we need to adjust the time to the timezone of the dataset
+    const offsetMinues =
+      dayjs(rawValue).utcOffset() - dayjs(rawValue).tz(timezone).utcOffset();
+    return dayjs(rawValue).add(offsetMinues, "minute");
+  };
+
   return {
     label,
     formatter,
@@ -649,9 +658,103 @@ export function getTimeSeriesXAxisModel(
     ticksMinInterval,
     effectiveTickUnit,
     tickRenderPredicate,
+    fromAxisValue,
     ...timeSeriesInfo,
   };
 }
+
+const getSign = (value: number) => (value >= 0 ? 1 : -1);
+
+const getAxisTransforms = (scale: NumericScale): NumericAxisScaleTransforms => {
+  if (scale === "pow") {
+    return {
+      toEChartsAxisValue: value => {
+        if (!isNumber(value)) {
+          return null;
+        }
+        return Math.sqrt(Math.abs(value)) * getSign(value);
+      },
+      fromEChartsAxisValue: value => {
+        return Math.pow(value, 2) * getSign(value);
+      },
+    };
+  }
+
+  if (scale === "log") {
+    return {
+      toEChartsAxisValue: value => {
+        if (!isNumber(value)) {
+          return null;
+        }
+        return Math.log10(Math.abs(value)) * getSign(value);
+      },
+      fromEChartsAxisValue: value => {
+        return Math.pow(10, Math.abs(value)) * getSign(value);
+      },
+    };
+  }
+
+  return {
+    toEChartsAxisValue: value => {
+      if (!isNumber(value)) {
+        return null;
+      }
+      return value;
+    },
+    fromEChartsAxisValue: value => value,
+  };
+};
+
+function getNumericXAxisModel(
+  dimensionModel: DimensionModel,
+  dataset: ChartDataset,
+  scale: NumericScale,
+  settings: ComputedVisualizationSettings,
+  label: string | undefined,
+  isPadded: boolean,
+  renderingContext: RenderingContext,
+): NumericXAxisModel {
+  const axisTransforms = getAxisTransforms(scale);
+  const dimensionColumn = dimensionModel.column;
+  const rawExtent = getSeriesExtent(dataset, X_AXIS_DATA_KEY) ?? [0, 0];
+  const extent: Extent = [
+    axisTransforms.toEChartsAxisValue(rawExtent[0]) ?? 0,
+    axisTransforms.toEChartsAxisValue(rawExtent[1]) ?? 0,
+  ];
+
+  const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
+  const interval =
+    dimensionColumn.binning_info?.bin_width ??
+    computeNumericDataInverval(xValues);
+
+  const formatter = (value: RowValue) =>
+    renderingContext.formatValue(value, {
+      column: dimensionColumn,
+      ...(settings.column?.(dimensionColumn) ?? {}),
+      compact: settings["graph.x_axis.axis_enabled"] === "compact",
+    });
+
+  const intervalsCount = (extent[1] - extent[0]) / interval;
+  const ticksMaxInterval = dimensionColumn.binning_info?.bin_width;
+
+  return {
+    label,
+    isPadded,
+    formatter,
+    axisType: "value",
+    extent,
+    interval,
+    intervalsCount,
+    ticksMaxInterval,
+    ...axisTransforms,
+  };
+}
+
+export const isNumeric = (
+  scale: ComputedVisualizationSettings["graph.x_axis.scale"],
+): scale is NumericScale => {
+  return numericScale.includes(scale as NumericScale);
+};
 
 export function getXAxisModel(
   dimensionModel: DimensionModel,
@@ -664,7 +767,9 @@ export function getXAxisModel(
     ? settings["graph.x_axis.title_text"]
     : undefined;
 
-  if (settings["graph.x_axis.scale"] === "timeseries") {
+  const xAxisScale = settings["graph.x_axis.scale"];
+
+  if (xAxisScale === "timeseries") {
     return getTimeSeriesXAxisModel(
       dimensionModel,
       rawSeries,
@@ -675,8 +780,20 @@ export function getXAxisModel(
     );
   }
 
-  const dimensionColumn = dimensionModel.column;
+  if (isNumeric(xAxisScale)) {
+    return getNumericXAxisModel(
+      dimensionModel,
+      dataset,
+      xAxisScale,
+      settings,
+      label,
+      rawSeries[0].card.display !== "scatter",
+      renderingContext,
+    );
+  }
+
   const isHistogram = settings["graph.x_axis.scale"] === "histogram";
+  const dimensionColumn = dimensionModel.column;
 
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
@@ -686,27 +803,11 @@ export function getXAxisModel(
       noRange: isHistogram,
     });
 
-  const axisBaseModel = {
+  return {
     formatter,
     label,
     isHistogram,
-  };
-
-  if (
-    settings["graph.x_axis.scale"] === "ordinal" ||
-    isHistogram ||
-    isRelativeDateTimeUnit(dimensionColumn.unit)
-  ) {
-    return {
-      ...axisBaseModel,
-      axisType: "category",
-    };
-  }
-
-  return {
-    ...axisBaseModel,
-    // TODO: will be replaced by the category scale
-    axisType: settings["graph.x_axis.scale"] === "log" ? "log" : "value",
+    axisType: "category",
   };
 }
 
@@ -769,16 +870,16 @@ function getTimeSeriesXAxisInfo(
     throw new Error("Missing range");
   }
 
-  let lengthInIntervals = 0;
+  let intervalsCount = 0;
 
   if (range) {
     const [min, max] = range;
     // A single date counts as one interval
-    lengthInIntervals = Math.max(
+    intervalsCount = Math.max(
       1,
       Math.ceil(max.diff(min, interval.unit) / interval.count),
     );
   }
 
-  return { interval, timezone, lengthInIntervals, range, unit };
+  return { interval, timezone, intervalsCount, range, unit };
 }

@@ -351,6 +351,20 @@ TicksNativeWeekWithGapLongRange.args = {
   renderingContext,
 };
 
+export const BarStackLinearXAxis = Template.bind({});
+BarStackLinearXAxis.args = {
+  rawSeries: data.barStackLinearXAxis as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const AreaStackLinearXAxis = Template.bind({});
+AreaStackLinearXAxis.args = {
+  rawSeries: data.areaStackLinearXAxis as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
