@@ -204,8 +204,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     it("when set as the default value for a required filter", () => {
       SQLFilter.toggleRequired();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Select a default value…").click();
+      cy.findByTestId("sidebar-content")
+        .findByPlaceholderText("Select a default value…")
+        .click();
       popover().within(() => {
         cy.findByText("15").click();
         cy.findByText("Add filter").click();
@@ -220,7 +221,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     function setDefaultDate(year = "2024", month = "01", day = "22") {
       cy.findByTestId("sidebar-content")
-        .findByText("Select a default value…")
+        .findByPlaceholderText("Select a default value…")
         .click();
       popover().within(() => {
         DateFilter.setSingleDate(`${month}/${day}/${year}`);
