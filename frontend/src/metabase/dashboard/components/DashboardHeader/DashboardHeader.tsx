@@ -590,6 +590,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
+            // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+            transitionDuration={0}
           />,
         );
       }
