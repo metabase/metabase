@@ -103,7 +103,7 @@ function SnippetCollectionForm({
   );
 
   const handleSubmit = useCallback(
-    async values => {
+    async (values: any) => {
       const nextCollection = isEditing
         ? await handleUpdate({ id: collection.id as CollectionId, ...values })
         : await handleCreate(values);
