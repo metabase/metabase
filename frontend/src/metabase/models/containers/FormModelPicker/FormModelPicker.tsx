@@ -1,5 +1,6 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
+import type React from "react";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { t } from "ttag";
 
@@ -15,6 +16,8 @@ export interface FormModelPickerProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
   placeholder?: string;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 function FormModelPicker({
@@ -43,7 +46,7 @@ function FormModelPicker({
   }, []);
 
   const renderTrigger = useCallback(
-    ({ onClick: handleShowPopover }) => (
+    ({ onClick: handleShowPopover }: { onClick: () => void }) => (
       <FormField
         className={className}
         style={style}
@@ -71,7 +74,7 @@ function FormModelPicker({
   );
 
   const renderContent = useCallback(
-    ({ closePopover }) => {
+    ({ closePopover }: { closePopover: () => void }) => {
       return (
         <PopoverItemPicker
           value={{ id: value, model: "dataset" }}
