@@ -36,6 +36,11 @@ export const getCanonicalVersion = (
     : getOSSVersion(versionString);
 };
 
+export const getGenericVersion = (versionString: string) => {
+  // turn v0.88.0 into 88.0
+  return getOSSVersion(versionString).replace(/v0\./, "");
+};
+
 export const getVersionType = (versionString: string) => {
   if (!isValidVersionString(versionString)) {
     throw new Error(`Invalid version string: ${versionString}`);

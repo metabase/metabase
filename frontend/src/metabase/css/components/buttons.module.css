@@ -56,6 +56,10 @@
   font-weight: normal;
 }
 
+:global(.Button--round) {
+  border-radius: 99px;
+}
+
 :global(.Button--primary) {
   color: var(--color-text-white);
   background: var(--color-brand);
@@ -95,6 +99,7 @@
   background: transparent;
   color: var(--color-text-medium);
 }
+
 :global(.Button--borderless:hover) {
   border-color: transparent;
   color: var(--color-text-medium);
@@ -171,6 +176,7 @@
   border-color: var(--color-success);
   color: var(--color-text-white);
 }
+
 :global(.Button--success:hover) {
   background-color: var(--color-success);
   border-color: var(--color-success);

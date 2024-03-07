@@ -3,7 +3,6 @@
   --padding-2: 1rem;
   --padding-3: 1.5rem;
   --padding-4: 2rem;
-
   --margin-1: 0.5rem;
   --margin-2: 1rem;
   --margin-3: 1.5rem;
@@ -14,13 +13,16 @@
 .ml-auto {
   margin-left: auto;
 }
+
 :global(.mr-auto),
 .mr-auto {
   margin-right: auto;
 }
+
 :global(.mt-auto) {
   margin-top: auto;
 }
+
 :global(.mb-auto) {
   margin-bottom: auto;
 }
@@ -32,18 +34,22 @@
 .p0 {
   padding: 0;
 }
+
 :global(.pt0),
 .pt0 {
   padding-top: 0;
 }
+
 :global(.pb0),
 .pb0 {
   padding-bottom: 0;
 }
+
 :global(.pl0),
 .pl0 {
   padding-left: 0;
 }
+
 :global(.pr0),
 .pr0 {
   padding-right: 0;
@@ -71,14 +77,17 @@
 .pt1 {
   padding-top: var(--padding-1);
 }
+
 :global(.pb1),
 .pb1 {
   padding-bottom: var(--padding-1);
 }
+
 :global(.pl1),
 .pl1 {
   padding-left: var(--padding-1);
 }
+
 :global(.pr1),
 .pr1 {
   padding-right: var(--padding-1);
@@ -107,14 +116,17 @@
 .pt2 {
   padding-top: var(--padding-2);
 }
+
 :global(.pb2),
 .pb2 {
   padding-bottom: var(--padding-2);
 }
+
 :global(.pl2),
 .pl2 {
   padding-left: var(--padding-2);
 }
+
 :global(.pr2),
 .pr2 {
   padding-right: var(--padding-2);
@@ -143,14 +155,17 @@
 .pt3 {
   padding-top: var(--padding-3);
 }
+
 :global(.pb3),
 .pb3 {
   padding-bottom: var(--padding-3);
 }
+
 :global(.pl3),
 .pl3 {
   padding-left: var(--padding-3);
 }
+
 :global(.pr3),
 .pr3 {
   padding-right: var(--padding-3);
@@ -179,14 +194,17 @@
 .pt4 {
   padding-top: var(--padding-4);
 }
+
 :global(.pb4),
 .pb4 {
   padding-bottom: var(--padding-4);
 }
+
 :global(.pl4),
 .pl4 {
   padding-left: var(--padding-4);
 }
+
 :global(.pr4),
 .pr4 {
   padding-right: var(--padding-4);
@@ -199,18 +217,22 @@
 .m0 {
   margin: 0;
 }
+
 :global(.mt0),
 .mt0 {
   margin-top: 0;
 }
+
 :global(.mb0),
 .mb0 {
   margin-bottom: 0;
 }
+
 :global(.ml0),
 .ml0 {
   margin-left: 0;
 }
+
 :global(.mr0),
 .mr0 {
   margin-right: 0;
@@ -238,14 +260,17 @@
 .mt1 {
   margin-top: var(--margin-1);
 }
+
 :global(.mb1),
 .mb1 {
   margin-bottom: var(--margin-1);
 }
+
 :global(.ml1),
 .ml1 {
   margin-left: var(--margin-1);
 }
+
 :global(.mr1),
 .mr1 {
   margin-right: var(--margin-1);
@@ -274,14 +299,17 @@
 .mt2 {
   margin-top: var(--margin-2);
 }
+
 :global(.mb2),
 .mb2 {
   margin-bottom: var(--margin-2);
 }
+
 :global(.ml2),
 .ml2 {
   margin-left: var(--margin-2);
 }
+
 :global(.mr2),
 .mr2 {
   margin-right: var(--margin-2);
@@ -310,14 +338,17 @@
 .mt3 {
   margin-top: var(--margin-3);
 }
+
 :global(.mb3),
 .mb3 {
   margin-bottom: var(--margin-3);
 }
+
 :global(.ml3),
 .ml3 {
   margin-left: var(--margin-3);
 }
+
 :global(.mr3),
 .mr3 {
   margin-right: var(--margin-3);
@@ -346,14 +377,17 @@
 .mt4 {
   margin-top: var(--margin-4);
 }
+
 :global(.mb4),
 .mb4 {
   margin-bottom: var(--margin-4);
 }
+
 :global(.ml4),
 .ml4 {
   margin-left: var(--margin-4);
 }
+
 :global(.mr4),
 .mr4 {
   margin-right: var(--margin-4);
@@ -363,12 +397,15 @@
 :global(.mln1) {
   margin-left: calc(-1 * var(--margin-1));
 }
+
 :global(.mln2) {
   margin-left: calc(-1 * var(--margin-2));
 }
+
 :global(.mln3) {
   margin-left: calc(-1 * var(--margin-3));
 }
+
 :global(.mln4) {
   margin-left: calc(-1 * var(--margin-4));
 }
@@ -376,12 +413,15 @@
 :global(.mbn1) {
   margin-bottom: calc(-1 * var(--margin-1));
 }
+
 :global(.mbn2) {
   margin-bottom: calc(-1 * var(--margin-2));
 }
+
 :global(.mbn3) {
   margin-bottom: calc(-1 * var(--margin-3));
 }
+
 :global(.mbn4) {
   margin-bottom: calc(-1 * var(--margin-4));
 }
@@ -395,15 +435,19 @@
   :global(.sm-p0) {
     padding: 0;
   }
+
   :global(.sm-pt0) {
     padding-top: 0;
   }
+
   :global(.sm-pb0) {
     padding-bottom: 0;
   }
+
   :global(.sm-pl0) {
     padding-left: 0;
   }
+
   :global(.sm-pr0) {
     padding-right: 0;
   }
@@ -426,12 +470,15 @@
   :global(.sm-pt1) {
     padding-top: var(--padding-1);
   }
+
   :global(.sm-pb1) {
     padding-bottom: var(--padding-1);
   }
+
   :global(.sm-pl1) {
     padding-left: var(--padding-1);
   }
+
   :global(.sm-pr1) {
     padding-right: var(--padding-1);
   }
@@ -455,12 +502,15 @@
   :global(.sm-pt2) {
     padding-top: var(--padding-2);
   }
+
   :global(.sm-pb2) {
     padding-bottom: var(--padding-2);
   }
+
   :global(.sm-pl2) {
     padding-left: var(--padding-2);
   }
+
   :global(.sm-pr2) {
     padding-right: var(--padding-2);
   }
@@ -484,12 +534,15 @@
   :global(.sm-pt3) {
     padding-top: var(--padding-3);
   }
+
   :global(.sm-pb3) {
     padding-bottom: var(--padding-3);
   }
+
   :global(.sm-pl3) {
     padding-left: var(--padding-3);
   }
+
   :global(.sm-pr3) {
     padding-right: var(--padding-3);
   }
@@ -513,12 +566,15 @@
   :global(.sm-pt4) {
     padding-top: var(--padding-4);
   }
+
   :global(.sm-pb4) {
     padding-bottom: var(--padding-4);
   }
+
   :global(.sm-pl4) {
     padding-left: var(--padding-4);
   }
+
   :global(.sm-pr4) {
     padding-right: var(--padding-4);
   }
@@ -529,15 +585,19 @@
   :global(.sm-m0) {
     margin: 0;
   }
+
   :global(.sm-mt0) {
     margin-top: 0;
   }
+
   :global(.sm-mb0) {
     margin-bottom: 0;
   }
+
   :global(.sm-ml0) {
     margin-left: 0;
   }
+
   :global(.sm-mr0) {
     margin-right: 0;
   }
@@ -560,12 +620,15 @@
   :global(.sm-mt1) {
     margin-top: var(--margin-1);
   }
+
   :global(.sm-mb1) {
     margin-bottom: var(--margin-1);
   }
+
   :global(.sm-ml1) {
     margin-left: var(--margin-1);
   }
+
   :global(.sm-mr1) {
     margin-right: var(--margin-1);
   }
@@ -589,12 +652,15 @@
   :global(.sm-mt2) {
     margin-top: var(--margin-2);
   }
+
   :global(.sm-mb2) {
     margin-bottom: var(--margin-2);
   }
+
   :global(.sm-ml2) {
     margin-left: var(--margin-2);
   }
+
   :global(.sm-mr2) {
     margin-right: var(--margin-2);
   }
@@ -618,12 +684,15 @@
   :global(.sm-mt3) {
     margin-top: var(--margin-3);
   }
+
   :global(.sm-mb3) {
     margin-bottom: var(--margin-3);
   }
+
   :global(.sm-ml3) {
     margin-left: var(--margin-3);
   }
+
   :global(.sm-mr3) {
     margin-right: var(--margin-3);
   }
@@ -647,12 +716,15 @@
   :global(.sm-mt4) {
     margin-top: var(--margin-4);
   }
+
   :global(.sm-mb4) {
     margin-bottom: var(--margin-4);
   }
+
   :global(.sm-ml4) {
     margin-left: var(--margin-4);
   }
+
   :global(.sm-mr4) {
     margin-right: var(--margin-4);
   }
@@ -665,15 +737,19 @@
   :global(.md-p0) {
     padding: 0;
   }
+
   :global(.md-pt0) {
     padding-top: 0;
   }
+
   :global(.md-pb0) {
     padding-bottom: 0;
   }
+
   :global(.md-pl0) {
     padding-left: 0;
   }
+
   :global(.md-pr0) {
     padding-right: 0;
   }
@@ -696,12 +772,15 @@
   :global(.md-pt1) {
     padding-top: var(--padding-1);
   }
+
   :global(.md-pb1) {
     padding-bottom: var(--padding-1);
   }
+
   :global(.md-pl1) {
     padding-left: var(--padding-1);
   }
+
   :global(.md-pr1) {
     padding-right: var(--padding-1);
   }
@@ -725,12 +804,15 @@
   :global(.md-pt2) {
     padding-top: var(--padding-2);
   }
+
   :global(.md-pb2) {
     padding-bottom: var(--padding-2);
   }
+
   :global(.md-pl2) {
     padding-left: var(--padding-2);
   }
+
   :global(.md-pr2) {
     padding-right: var(--padding-2);
   }
@@ -754,12 +836,15 @@
   :global(.md-pt3) {
     padding-top: var(--padding-3);
   }
+
   :global(.md-pb3) {
     padding-bottom: var(--padding-3);
   }
+
   :global(.md-pl3) {
     padding-left: var(--padding-3);
   }
+
   :global(.md-pr3) {
     padding-right: var(--padding-3);
   }
@@ -783,12 +868,15 @@
   :global(.md-pt4) {
     padding-top: var(--padding-4);
   }
+
   :global(.md-pb4) {
     padding-bottom: var(--padding-4);
   }
+
   :global(.md-pl4) {
     padding-left: var(--padding-4);
   }
+
   :global(.md-pr4) {
     padding-right: var(--padding-4);
   }
@@ -799,15 +887,19 @@
   :global(.md-m0) {
     margin: 0;
   }
+
   :global(.md-mt0) {
     margin-top: 0;
   }
+
   :global(.md-mb0) {
     margin-bottom: 0;
   }
+
   :global(.md-ml0) {
     margin-left: 0;
   }
+
   :global(.md-mr0) {
     margin-right: 0;
   }
@@ -830,12 +922,15 @@
   :global(.md-mt1) {
     margin-top: var(--margin-1);
   }
+
   :global(.md-mb1) {
     margin-bottom: var(--margin-1);
   }
+
   :global(.md-ml1) {
     margin-left: var(--margin-1);
   }
+
   :global(.md-mr1) {
     margin-right: var(--margin-1);
   }
@@ -859,12 +954,15 @@
   :global(.md-mt2) {
     margin-top: var(--margin-2);
   }
+
   :global(.md-mb2) {
     margin-bottom: var(--margin-2);
   }
+
   :global(.md-ml2) {
     margin-left: var(--margin-2);
   }
+
   :global(.md-mr2) {
     margin-right: var(--margin-2);
   }
@@ -888,12 +986,15 @@
   :global(.md-mt3) {
     margin-top: var(--margin-3);
   }
+
   :global(.md-mb3) {
     margin-bottom: var(--margin-3);
   }
+
   :global(.md-ml3) {
     margin-left: var(--margin-3);
   }
+
   :global(.md-mr3) {
     margin-right: var(--margin-3);
   }
@@ -917,12 +1018,15 @@
   :global(.md-mt4) {
     margin-top: var(--margin-4);
   }
+
   :global(.md-mb4) {
     margin-bottom: var(--margin-4);
   }
+
   :global(.md-ml4) {
     margin-left: var(--margin-4);
   }
+
   :global(.md-mr4) {
     margin-right: var(--margin-4);
   }
@@ -935,15 +1039,19 @@
   :global(.lg-p0) {
     padding: 0;
   }
+
   :global(.lg-pt0) {
     padding-top: 0;
   }
+
   :global(.lg-pb0) {
     padding-bottom: 0;
   }
+
   :global(.lg-pl0) {
     padding-left: 0;
   }
+
   :global(.lg-pr0) {
     padding-right: 0;
   }
@@ -966,12 +1074,15 @@
   :global(.lg-pt1) {
     padding-top: var(--padding-1);
   }
+
   :global(.lg-pb1) {
     padding-bottom: var(--padding-1);
   }
+
   :global(.lg-pl1) {
     padding-left: var(--padding-1);
   }
+
   :global(.lg-pr1) {
     padding-right: var(--padding-1);
   }
@@ -995,12 +1106,15 @@
   :global(.lg-pt2) {
     padding-top: var(--padding-2);
   }
+
   :global(.lg-pb2) {
     padding-bottom: var(--padding-2);
   }
+
   :global(.lg-pl2) {
     padding-left: var(--padding-2);
   }
+
   :global(.lg-pr2) {
     padding-right: var(--padding-2);
   }
@@ -1024,12 +1138,15 @@
   :global(.lg-pt3) {
     padding-top: var(--padding-3);
   }
+
   :global(.lg-pb3) {
     padding-bottom: var(--padding-3);
   }
+
   :global(.lg-pl3) {
     padding-left: var(--padding-3);
   }
+
   :global(.lg-pr3) {
     padding-right: var(--padding-3);
   }
@@ -1053,12 +1170,15 @@
   :global(.lg-pt4) {
     padding-top: var(--padding-4);
   }
+
   :global(.lg-pb4) {
     padding-bottom: var(--padding-4);
   }
+
   :global(.lg-pl4) {
     padding-left: var(--padding-4);
   }
+
   :global(.lg-pr4) {
     padding-right: var(--padding-4);
   }
@@ -1069,15 +1189,19 @@
   :global(.lg-m0) {
     margin: 0;
   }
+
   :global(.lg-mt0) {
     margin-top: 0;
   }
+
   :global(.lg-mb0) {
     margin-bottom: 0;
   }
+
   :global(.lg-ml0) {
     margin-left: 0;
   }
+
   :global(.lg-mr0) {
     margin-right: 0;
   }
@@ -1100,12 +1224,15 @@
   :global(.lg-mt1) {
     margin-top: var(--margin-1);
   }
+
   :global(.lg-mb1) {
     margin-bottom: var(--margin-1);
   }
+
   :global(.lg-ml1) {
     margin-left: var(--margin-1);
   }
+
   :global(.lg-mr1) {
     margin-right: var(--margin-1);
   }
@@ -1129,12 +1256,15 @@
   :global(.lg-mt2) {
     margin-top: var(--margin-2);
   }
+
   :global(.lg-mb2) {
     margin-bottom: var(--margin-2);
   }
+
   :global(.lg-ml2) {
     margin-left: var(--margin-2);
   }
+
   :global(.lg-mr2) {
     margin-right: var(--margin-2);
   }
@@ -1158,12 +1288,15 @@
   :global(.lg-mt3) {
     margin-top: var(--margin-3);
   }
+
   :global(.lg-mb3) {
     margin-bottom: var(--margin-3);
   }
+
   :global(.lg-ml3) {
     margin-left: var(--margin-3);
   }
+
   :global(.lg-mr3) {
     margin-right: var(--margin-3);
   }
@@ -1187,12 +1320,15 @@
   :global(.lg-mt4) {
     margin-top: var(--margin-4);
   }
+
   :global(.lg-mb4) {
     margin-bottom: var(--margin-4);
   }
+
   :global(.lg-ml4) {
     margin-left: var(--margin-4);
   }
+
   :global(.lg-mr4) {
     margin-right: var(--margin-4);
   }
@@ -1205,15 +1341,19 @@
   :global(.xl-p0) {
     padding: 0;
   }
+
   :global(.xl-pt0) {
     padding-top: 0;
   }
+
   :global(.xl-pb0) {
     padding-bottom: 0;
   }
+
   :global(.xl-pl0) {
     padding-left: 0;
   }
+
   :global(.xl-pr0) {
     padding-right: 0;
   }
@@ -1236,12 +1376,15 @@
   :global(.xl-pt1) {
     padding-top: var(--padding-1);
   }
+
   :global(.xl-pb1) {
     padding-bottom: var(--padding-1);
   }
+
   :global(.xl-pl1) {
     padding-left: var(--padding-1);
   }
+
   :global(.xl-pr1) {
     padding-right: var(--padding-1);
   }
@@ -1265,12 +1408,15 @@
   :global(.xl-pt2) {
     padding-top: var(--padding-2);
   }
+
   :global(.xl-pb2) {
     padding-bottom: var(--padding-2);
   }
+
   :global(.xl-pl2) {
     padding-left: var(--padding-2);
   }
+
   :global(.xl-pr2) {
     padding-right: var(--padding-2);
   }
@@ -1294,12 +1440,15 @@
   :global(.xl-pt3) {
     padding-top: var(--padding-3);
   }
+
   :global(.xl-pb3) {
     padding-bottom: var(--padding-3);
   }
+
   :global(.xl-pl3) {
     padding-left: var(--padding-3);
   }
+
   :global(.xl-pr3) {
     padding-right: var(--padding-3);
   }
@@ -1323,12 +1472,15 @@
   :global(.xl-pt4) {
     padding-top: var(--padding-4);
   }
+
   :global(.xl-pb4) {
     padding-bottom: var(--padding-4);
   }
+
   :global(.xl-pl4) {
     padding-left: var(--padding-4);
   }
+
   :global(.xl-pr4) {
     padding-right: var(--padding-4);
   }
@@ -1339,15 +1491,19 @@
   :global(.xl-m0) {
     margin: 0;
   }
+
   :global(.xl-mt0) {
     margin-top: 0;
   }
+
   :global(.xl-mb0) {
     margin-bottom: 0;
   }
+
   :global(.xl-ml0) {
     margin-left: 0;
   }
+
   :global(.xl-mr0) {
     margin-right: 0;
   }
@@ -1370,12 +1526,15 @@
   :global(.xl-mt1) {
     margin-top: var(--margin-1);
   }
+
   :global(.xl-mb1) {
     margin-bottom: var(--margin-1);
   }
+
   :global(.xl-ml1) {
     margin-left: var(--margin-1);
   }
+
   :global(.xl-mr1) {
     margin-right: var(--margin-1);
   }
@@ -1399,12 +1558,15 @@
   :global(.xl-mt2) {
     margin-top: var(--margin-2);
   }
+
   :global(.xl-mb2) {
     margin-bottom: var(--margin-2);
   }
+
   :global(.xl-ml2) {
     margin-left: var(--margin-2);
   }
+
   :global(.xl-mr2) {
     margin-right: var(--margin-2);
   }
@@ -1428,12 +1590,15 @@
   :global(.xl-mt3) {
     margin-top: var(--margin-3);
   }
+
   :global(.xl-mb3) {
     margin-bottom: var(--margin-3);
   }
+
   :global(.xl-ml3) {
     margin-left: var(--margin-3);
   }
+
   :global(.xl-mr3) {
     margin-right: var(--margin-3);
   }
@@ -1457,12 +1622,15 @@
   :global(.xl-mt4) {
     margin-top: var(--margin-4);
   }
+
   :global(.xl-mb4) {
     margin-bottom: var(--margin-4);
   }
+
   :global(.xl-ml4) {
     margin-left: var(--margin-4);
   }
+
   :global(.xl-mr4) {
     margin-right: var(--margin-4);
   }

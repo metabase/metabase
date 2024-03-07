@@ -26,6 +26,7 @@ export const AccordionListCell = ({
   alwaysExpanded,
   toggleSection,
   renderSectionIcon,
+  renderItemLabel,
   renderItemName,
   renderItemDescription,
   renderItemIcon,
@@ -124,10 +125,11 @@ export const AccordionListCell = ({
     const name = renderItemName(item);
     const description = renderItemDescription(item);
     const extra = renderItemExtra(item, isSelected);
+    const label = renderItemLabel ? renderItemLabel(item) : name;
     content = (
       <ListCellItem
         data-testid={itemTestId}
-        aria-label={name}
+        aria-label={label}
         role="option"
         aria-selected={isSelected}
         aria-disabled={!isClickable}
@@ -153,7 +155,7 @@ export const AccordionListCell = ({
               {icon}
             </span>
           )}
-          <div>
+          <div className="List-item-content">
             {name && <h4 className="List-item-title ml1 text-wrap">{name}</h4>}
             {description && (
               <p className="List-item-description ml1 text-wrap">

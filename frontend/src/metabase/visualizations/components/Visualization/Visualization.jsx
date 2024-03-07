@@ -47,6 +47,7 @@ import {
 const defaultProps = {
   errorMessageOverride: undefined,
   showTitle: false,
+  isAction: false,
   isDashboard: false,
   isEditing: false,
   isSettings: false,
@@ -62,6 +63,8 @@ const mapStateToProps = state => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
 });
+
+const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
 class Visualization extends PureComponent {
   state = {
@@ -335,6 +338,7 @@ class Visualization extends PureComponent {
       height,
       headerIcon,
       errorIcon,
+      isAction,
       isSlow,
       isMobile,
       expectedDuration,
@@ -343,7 +347,7 @@ class Visualization extends PureComponent {
       onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
-    const small = width < 330;
+    const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
@@ -457,7 +461,7 @@ class Visualization extends PureComponent {
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      (replacementContent && (dashcard.size_y !== 1 || isMobile));
+      (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
     return (
       <ErrorBoundary>

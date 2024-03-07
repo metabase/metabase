@@ -103,72 +103,101 @@ function EntityItemMenu({
   const isXrayShown = isModel && isXrayEnabled;
   const isMetabotShown = isModel && canUseMetabot;
 
-  const actions = useMemo(
-    () =>
-      [
-        onPin && {
-          title: isPinned ? t`Unpin` : t`Pin this`,
-          icon: isPinned ? "unpin" : "pin",
-          action: onPin,
-        },
-        isMetabotShown && {
-          title: t`Ask Metabot`,
-          link: Urls.modelMetabot(item.id),
-          icon: "insight",
-        },
-        isXrayShown && {
-          title: t`X-ray this`,
-          link: Urls.xrayModel(item.id),
-          icon: "bolt",
-        },
-        onTogglePreview && {
-          title: isPreviewed
-            ? t`Don’t show visualization`
-            : t`Show visualization`,
-          icon: isPreviewed ? "eye_crossed_out" : "eye",
-          action: onTogglePreview,
-          tooltip: !isParameterized
-            ? t`Open this question and fill in its variables to see it.`
-            : undefined,
-          disabled: !isParameterized,
-        },
-        onMove && {
-          title: t`Move`,
-          icon: "move",
-          action: onMove,
-        },
-        onCopy && {
-          title: t`Duplicate`,
-          icon: "clone",
-          action: onCopy,
-        },
-        onArchive && {
-          title: t`Archive`,
-          icon: "archive",
-          action: onArchive,
-        },
-        onToggleBookmark && {
-          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
-          icon: "bookmark",
-          action: onToggleBookmark,
-        },
-      ].filter(action => action),
-    [
-      item.id,
-      isPinned,
-      isXrayShown,
-      isMetabotShown,
-      isPreviewed,
-      isParameterized,
-      isBookmarked,
-      onPin,
-      onMove,
-      onCopy,
-      onArchive,
-      onTogglePreview,
-      onToggleBookmark,
-    ],
-  );
+  const actions = useMemo(() => {
+    const result = [];
+
+    const bookmarkAction = {
+      title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
+      icon: "bookmark",
+      action: onToggleBookmark,
+    };
+
+    if (isPinned) {
+      result.push({
+        title: t`Unpin`,
+        icon: "unpin",
+        action: onPin,
+      });
+      result.push(bookmarkAction);
+    } else {
+      result.push(bookmarkAction);
+      result.push({
+        title: t`Pin this`,
+        icon: "pin",
+        action: onPin,
+      });
+    }
+
+    if (isMetabotShown) {
+      result.push({
+        title: t`Ask Metabot`,
+        link: Urls.modelMetabot(item.id),
+        icon: "insight",
+      });
+    }
+
+    if (isXrayShown) {
+      result.push({
+        title: t`X-ray this`,
+        link: Urls.xrayModel(item.id),
+        icon: "bolt",
+      });
+    }
+
+    if (onTogglePreview) {
+      result.push({
+        title: isPreviewed
+          ? t`Don’t show visualization`
+          : t`Show visualization`,
+        icon: isPreviewed ? "eye_crossed_out" : "eye",
+        action: onTogglePreview,
+        tooltip: !isParameterized
+          ? t`Open this question and fill in its variables to see it.`
+          : undefined,
+        disabled: !isParameterized,
+      });
+    }
+
+    if (onMove) {
+      result.push({
+        title: t`Move`,
+        icon: "move",
+        action: onMove,
+      });
+    }
+
+    if (onCopy) {
+      result.push({
+        title: t`Duplicate`,
+        icon: "clone",
+        action: onCopy,
+      });
+    }
+
+    if (onArchive) {
+      result.push({
+        title: t`Archive`,
+        icon: "archive",
+        action: onArchive,
+      });
+    }
+
+    return result;
+  }, [
+    item.id,
+    isPinned,
+    isXrayShown,
+    isMetabotShown,
+    isPreviewed,
+    isParameterized,
+    isBookmarked,
+    onPin,
+    onMove,
+    onCopy,
+    onArchive,
+    onTogglePreview,
+    onToggleBookmark,
+  ]);
   if (actions.length === 0) {
     return null;
   }

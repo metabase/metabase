@@ -27,7 +27,7 @@ import type {
   State,
 } from "metabase-types/store";
 
-import { isQuestionDashCard } from "./utils";
+import { isQuestionCard, isQuestionDashCard } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -46,7 +46,7 @@ function isEditParameterSidebar(
 const createDeepEqualSelector = createSelectorCreator(lruMemoize, _.isEqual);
 
 export const getDashboardBeforeEditing = (state: State) =>
-  state.dashboard.isEditing;
+  state.dashboard.editingDashboard;
 
 export const getIsEditing = (state: State) =>
   Boolean(getDashboardBeforeEditing(state));
@@ -313,7 +313,10 @@ export const getQuestions = (state: State) => {
         const cards = [dashcard.card, ...(dashcard.series ?? [])];
 
         for (const card of cards) {
-          acc[card.id] = getQuestionByCard(state, { card });
+          const question = getQuestionByCard(state, { card });
+          if (question) {
+            acc[card.id] = question;
+          }
         }
       }
 
@@ -366,7 +369,7 @@ export const getMissingRequiredParameters = createSelector(
 export const getQuestionByCard = createCachedSelector(
   [(_state: State, props: { card: Card }) => props.card, getMetadata],
   (card, metadata) => {
-    return new Question(card, metadata);
+    return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },
 )((_state, props) => {
   return props.card.id;

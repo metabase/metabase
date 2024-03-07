@@ -40,7 +40,7 @@ export const updateUserSetting = createThunkAction(
   UPDATE_USER_SETTING,
   function <K extends keyof UserSettings>(setting: {
     key: K;
-    value: UserSettings[K];
+    value: Exclude<UserSettings[K], undefined>;
   }) {
     return async function (dispatch) {
       try {

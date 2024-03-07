@@ -18,7 +18,7 @@
 ;; themselves. This test checks that GET /api/user for a segmented user only returns themselves
 (deftest segmented-user-list-test
   (testing "GET /api/user for a segmented user should not return data."
-    (met/with-gtaps {:gtaps {:venues {}}}
+    (met/with-gtaps! {:gtaps {:venues {}}}
       ;; Now do the request
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "user")))

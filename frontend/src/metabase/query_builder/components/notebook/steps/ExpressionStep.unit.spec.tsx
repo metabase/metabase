@@ -93,4 +93,20 @@ describe("Notebook Editor > Expression Step", () => {
 
     expect(Lib.expressions(getRecentQuery(), 0)).toHaveLength(0);
   });
+
+  it("should handle expressions named as existing columns (metabase#39508)", async () => {
+    const { getRecentQuery } = setup();
+
+    userEvent.click(screen.getByRole("img", { name: "add icon" }));
+
+    userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
+    userEvent.type(screen.getByLabelText("Name"), "Total{enter}");
+
+    const recentQuery = getRecentQuery();
+    const expressions = Lib.expressions(recentQuery, 0);
+    expect(expressions).toHaveLength(1);
+    expect(Lib.displayInfo(recentQuery, 0, expressions[0]).displayName).toBe(
+      "Total",
+    );
+  });
 });

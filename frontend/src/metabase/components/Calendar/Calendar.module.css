@@ -38,14 +38,11 @@
 
 :global(.Calendar-day-name) {
   cursor: inherit;
+  color: inherit !important;
 }
 
 :global(.Calendar-day--this-month) {
   color: currentcolor;
-}
-
-:global(.Calendar-day-name) {
-  color: inherit !important;
 }
 
 :global(.Calendar--range .Calendar-day--selected) {

@@ -43,6 +43,7 @@
 .sectionTitle.selected {
   color: var(--color-brand);
 }
+
 .item.selected,
 .sectionTitle.selected {
   background-color: rgba(80, 158, 227, 0.15);

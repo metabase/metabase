@@ -827,25 +827,31 @@
                   (filter-clause (::target fk) fk))
                 fks)))))))
 
-(defn- add-join-alias-to-joinable-columns [cols a-join]
-  (let [join-alias     (lib.join.util/current-join-alias a-join)
-        unique-name-fn (lib.util/unique-name-generator)]
-    (mapv (fn [col]
-            (as-> col col
-              (with-join-alias col join-alias)
-              (add-source-and-desired-aliases a-join unique-name-fn col)))
-          cols)))
+(defn- xform-add-join-alias [a-join]
+  (let [join-alias (lib.join.util/current-join-alias a-join)]
+    (fn [xf]
+      (let [unique-name-fn (lib.util/unique-name-generator)]
+        (fn
+          ([] (xf))
+          ([result] (xf result))
+          ([result input]
+           (as-> input col
+             (with-join-alias col join-alias)
+             (assoc col :source-alias join-alias)
+             (add-source-and-desired-aliases a-join unique-name-fn col)
+             (xf result col))))))))
 
-(defn- mark-selected-joinable-columns
+(defn- xform-mark-selected-joinable-columns
   "Mark the column metadatas in `cols` as `:selected` if they appear in `a-join`'s `:fields`."
-  [cols a-join]
+  [a-join]
   (let [j-fields (join-fields a-join)]
     (case j-fields
-      :all        (mapv #(assoc % :selected? true)
-                        cols)
-      (:none nil) (mapv #(assoc % :selected? false)
-                        cols)
-      (lib.equality/mark-selected-columns cols j-fields))))
+      :all        (map #(assoc % :selected? true))
+      (:none nil) (map #(assoc % :selected? false))
+      (mapcat #(lib.equality/mark-selected-columns [%] j-fields)))))
+
+(def ^:private xform-fix-source-for-joinable-columns
+  (map #(assoc % :lib/source :source/joins)))
 
 (mu/defn joinable-columns :- [:sequential ::lib.schema.metadata/column]
   "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
@@ -860,9 +866,13 @@
                  (joined-thing query join-or-joinable)
                  join-or-joinable)
         cols   (lib.metadata.calculation/returned-columns query stage-number source)]
-    (cond-> cols
-      a-join (add-join-alias-to-joinable-columns a-join)
-      a-join (mark-selected-joinable-columns a-join))))
+    (into []
+          (if a-join
+            (comp xform-fix-source-for-joinable-columns
+                  (xform-add-join-alias a-join)
+                  (xform-mark-selected-joinable-columns a-join))
+            identity)
+          cols)))
 
 (defn- join-lhs-display-name-from-condition-lhs
   [query stage-number join-or-joinable condition-lhs-column-or-nil]

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
+   [metabase-enterprise.serialization.serialize :as serialize]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
@@ -181,7 +182,7 @@
 
 (defn v1-dump!
   "Legacy Metabase app data dump"
-  [path {:keys [state user] :or {state :active} :as opts}]
+  [path {:keys [state user include-entity-id] :or {state :active} :as opts}]
   (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
   (mdb/setup-db!)
   (check-premium-token!)
@@ -206,18 +207,19 @@
                       (t2/select Metric :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
                       (t2/select Metric))
         collections (select-collections users state)]
-    (dump/dump! path
-               databases
-               tables
-               (mapcat field/with-values (u/batches-of 32000 fields))
-               metrics
-               (select-segments-in-tables tables state)
-               collections
-               (select-entities-in-collections NativeQuerySnippet collections state)
-               (select-entities-in-collections Card collections state)
-               (select-entities-in-collections Dashboard collections state)
-               (select-entities-in-collections Pulse collections state)
-               users))
+    (binding [serialize/*include-entity-id* (boolean include-entity-id)]
+      (dump/dump! path
+                  databases
+                  tables
+                  (mapcat field/with-values (u/batches-of 32000 fields))
+                  metrics
+                  (select-segments-in-tables tables state)
+                  collections
+                  (select-entities-in-collections NativeQuerySnippet collections state)
+                  (select-entities-in-collections Card collections state)
+                  (select-entities-in-collections Dashboard collections state)
+                  (select-entities-in-collections Pulse collections state)
+                  users)))
   (dump/dump-settings! path)
   (dump/dump-dimensions! path)
   (log/info (trs "END DUMP to {0} via user {1}" path user)))

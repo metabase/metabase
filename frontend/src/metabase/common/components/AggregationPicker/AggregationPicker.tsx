@@ -233,7 +233,7 @@ export function AggregationPicker({
           columnGroups={columnGroups}
           hasTemporalBucketing
           color="summarize"
-          checkIsColumnSelected={checkColumnSelected}
+          checkIsColumnSelected={checkIsColumnSelected}
           onSelect={handleColumnSelect}
           onClose={onClose}
         />
@@ -349,6 +349,6 @@ function getMetricListItem(
   };
 }
 
-function checkColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
+function checkIsColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
   return !!columnInfo.selected;
 }

@@ -400,7 +400,7 @@
   {:pre [(map? query)]}
   (when-not (query-perms/can-run-query? query)
     (let [required-perms (try
-                           (query-perms/perms-set query :throw-exceptions? true)
+                           (query-perms/required-perms query :throw-exceptions? true)
                            (catch Throwable e
                              e))]
       (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
