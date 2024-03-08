@@ -692,6 +692,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     const questionDetails = {
       query: {
         "source-table": ORDERS_ID,
+        expressions: {
+          E1: ["+", ["field", ORDERS.ID, null], 1],
+          E2: ["+", ["field", ORDERS.ID, null], 2],
+        },
         filter: [
           "and",
           ["=", ["field", ORDERS.ID, null], 1],
@@ -713,6 +717,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     };
     cy.createQuestion(questionDetails, { visitQuestion: true });
     openNotebook();
+    getNotebookStep("expression").within(() => {
+      moveItem({ name: "E1", horizontal: 100, index: 1 });
+    });
     getNotebookStep("filter").within(() => {
       moveItem({ name: "ID is 2", horizontal: -100, index: 0 });
     });
