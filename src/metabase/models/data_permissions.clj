@@ -651,15 +651,21 @@
             (when (not= values #{existing-db-perm-value})
               ;; If we're setting any table permissions to a value that is different from the database-level permission,
               ;; we need to replace it with individual permission rows for every table in the database instead.
-              ;; If the database-level permission was previously `:block`, we set the tables to `:no-self-service`.
               (let [other-tables    (t2/select :model/Table {:where [:and
                                                                      [:= :db_id db-id]
                                                                      [:not [:in :id table-ids]]]})
                     other-new-perms (map (fn [table]
                                            {:perm_type   perm-type
                                             :group_id    group-id
-                                            :perm_value  (if (= :block existing-db-perm-value)
-                                                           :no-self-service
+                                            :perm_value  (case existing-db-perm-value
+                                                           ;; this will be removed when `:perms/data-access` goes away
+                                                           :block                    :no-self-service
+                                                           ;; `:query-builder-and-native` can only be set at the
+                                                           ;; database level. So if we're setting a particular table
+                                                           ;; to something other than `:query-builder-and-native` when
+                                                           ;; the *database* had that permission, the db-level
+                                                           ;; permission needs to be dropped to `:query-builder`.
+                                                           :query-builder-and-native :query-builder
                                                            existing-db-perm-value)
                                             :db_id       db-id
                                             :table_id    (:id table)

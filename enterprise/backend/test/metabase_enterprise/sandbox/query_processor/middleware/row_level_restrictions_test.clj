@@ -376,7 +376,8 @@
                        Card       card        {:collection_id (u/the-id collection)}]
           (mt/with-group [group]
             (mt/with-no-data-perms-for-all-users!
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (perms/grant-collection-read-permissions! group collection)
               (mt/with-test-user :rasta
                 (binding [qp.perms/*card-id* (u/the-id card)]

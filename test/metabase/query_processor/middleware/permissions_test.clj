@@ -269,7 +269,8 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
           (t2.with-temp/with-temp [Collection collection]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (doseq [[card-1-query-type card-1-query] {"MBQL"   (mt/mbql-query venues
