@@ -90,11 +90,11 @@
    If `group-id` is provided, only return the permission graph for that group."
   ([collection-ids] (collection-permission-graph collection-ids nil))
   ([collection-ids collection-namespace] (collection-permission-graph collection-ids collection-namespace nil))
-  ([collection-ids collection-namespace group-id]
+  ([collection-ids collection-namespace group-ids]
    (let [group-id->perms (group-id->permissions-set)
-         groups-to-process (if group-id
-                             [group-id]
-                             (t2/select-pks-set PermissionsGroup))]
+         groups-to-process (if group-ids
+                               (t2/select-pks-set PermissionsGroup {:where [:in :id (set group-ids)]})
+                               (t2/select-pks-set PermissionsGroup))]
      {:revision (c-perm-revision/latest-id)
       :groups   (into {} (for [gid groups-to-process]
                            {gid (group-permissions-graph collection-namespace
@@ -128,11 +128,11 @@
   ([collection-namespace :- [:maybe ms/KeywordOrString]] (graph collection-namespace nil nil))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString]
-    group-id             :- [:maybe ms/PositiveInt]]
-   (graph collection-namespace group-id nil))
+    group-ids            :- [:maybe [:sequential ms/PositiveInt]]]
+   (graph collection-namespace group-ids nil))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString]
-    group-id             :- [:maybe ms/PositiveInt]
+    group-ids            :- [:maybe [:sequential ms/PositiveInt]]
     root-collection-id   :- [:maybe ms/PositiveInt]]
 
    (t2/with-transaction [_conn]
@@ -140,7 +140,7 @@
          (#(if root-collection-id
            (descendant-collection-ids % root-collection-id)
            (non-personal-collection-ids %)))
-         (collection-permission-graph collection-namespace group-id)
+         (collection-permission-graph collection-namespace group-ids)
          modify-instance-analytics-for-admins))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
@@ -182,9 +182,11 @@
    (update-graph! nil new-graph))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString], new-graph :- PermissionsGraph]
-   (let [old-graph          (graph collection-namespace)
+   (let [new-perms          (:groups new-graph)
+         updated-groups     (keys new-perms)
+         ;; filter out groups not in update
+         old-graph          (graph collection-namespace updated-groups)
          old-perms          (:groups old-graph)
-         new-perms          (:groups new-graph)
          ;; filter out any groups not in the old graph
          new-perms          (select-keys new-perms (keys old-perms))
          ;; filter out any collections not in the old graph
