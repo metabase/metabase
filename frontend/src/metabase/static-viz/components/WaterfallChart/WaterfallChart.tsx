@@ -44,6 +44,7 @@ export function WaterfallChart({
     null,
     [],
     computedVisualizationSettings,
+    false,
     renderingContext,
   );
 
