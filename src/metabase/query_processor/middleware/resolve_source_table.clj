@@ -4,8 +4,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.walk :as lib.walk]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (mu/defn  ^:private query->source-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
