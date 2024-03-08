@@ -136,7 +136,10 @@ interface ClauseStepItemProps {
 
 function ClauseStepItem({ id, children }: ClauseStepItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id });
+    useSortable({
+      id,
+      animateLayoutChanges: () => false,
+    });
 
   return (
     <div
