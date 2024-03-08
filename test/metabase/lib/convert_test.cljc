@@ -205,7 +205,7 @@
     (is (=? {:type  :query
              :query {:source-table 1
                      :aggregation  [[:sum [:field 1 nil]]]
-                     :breakout     [[:aggregation-options [:aggregation 0] {:display-name "Revenue"}]]}}
+                     :breakout     [[:aggregation 0 {:display-name "Revenue"}]]}}
             (let [ag-uuid (str (random-uuid))]
               (lib.convert/->legacy-MBQL
                {:lib/type :mbql/query
