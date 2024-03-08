@@ -23,6 +23,7 @@
    [metabase.upload :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
+   [metabase.util.ordered-hierarchy :as ordered-hierarchy]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -268,7 +269,7 @@
            [datetime-type    text-type        text-type]
            [offset-dt-type   text-type        text-type]
            [vchar-type       text-type        text-type]]]
-    (is (= expected (#'upload/most-specific-common-ancestor type-a type-b))
+    (is (= expected (#'ordered-hierarchy/first-common-ancestor @#'upload/h type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
 (defn csv-file-with
@@ -295,7 +296,7 @@
   [rows]
   (with-open [reader (io/reader (csv-file-with rows))]
     (let [[header & rows] (csv/read-csv reader)]
-      (#'upload/detect-schema header rows))))
+      (#'upload/detect-schema (upload-parsing/get-settings) header rows))))
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1649,8 +1650,8 @@
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                  [{:upload-type ::upload/int,     :uncoerced "2.1", :fail-msg "'2.1' is not an integer"}
-                   {:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2}
+                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2.0} ;; column is promoted to float
+                   {:upload-type ::upload/int,     :uncoerced "2.1",        :coerced 2.1} ;; column is promoted to float
                    {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
                    {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
                    {:upload-type ::upload/boolean, :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
