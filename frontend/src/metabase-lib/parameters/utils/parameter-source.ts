@@ -1,6 +1,5 @@
 import type Field from "metabase-lib/metadata/Field";
 import { isFuzzyOperator } from "metabase-lib/operators/utils";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import type {
   Parameter,
   ValuesQueryType,
@@ -10,6 +9,7 @@ import type {
 
 import type { ParameterWithTemplateTagTarget } from "../types";
 
+import { deriveFieldOperatorFromParameter } from "./operators";
 import { getFields } from "./parameter-fields";
 import { getParameterType } from "./parameter-type";
 
