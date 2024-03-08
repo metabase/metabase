@@ -565,8 +565,7 @@
 
 (t2/define-before-update :model/DataPermissions
   [permission]
-  (assert-valid-permission permission)
-  permission)
+  (throw (Exception. (tru "You cannot update a permissions entry! Delete it and create a new one."))))
 
 (def ^:private TheIdable
   "An ID, or something with an ID."
