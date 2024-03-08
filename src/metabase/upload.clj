@@ -466,7 +466,7 @@
 
 (defn- start-timer [] (System/nanoTime))
 
-(defn- check-timer-ms [timer] (/ (- (System/nanoTime) timer) 1e6))
+(defn- since-ms [timer] (/ (- (System/nanoTime) timer) 1e6))
 
 ;;; +-----------------------------------------
 ;;; |  public interface for creating CSV table
@@ -536,7 +536,7 @@
                                 :name                   (humanization/name->human-readable-name filename-prefix)
                                 :visualization_settings {}}
                                @api/*current-user*)
-            upload-seconds    (/ (check-timer-ms timer) 1e3)
+            upload-seconds    (/ (since-ms timer) 1e3)
             stats             (assoc stats :upload-seconds upload-seconds)]
 
         (events/publish-event! :event/upload-create
@@ -696,7 +696,7 @@
                                                                                 (count old-column-types))
                                                                              (if create-auto-pk? 1 0))
                                                        :size-mb           (file-size-mb file)
-                                                       :upload-seconds    (check-timer-ms timer)}}})
+                                                       :upload-seconds    (since-ms timer)}}})
 
       {:row-count row-count})))
 
