@@ -353,8 +353,7 @@
   Takes keyword arguments to narrow down the results to a set of `schema-names` or `table-names`.
 
   Results match [[metabase.sync.interface/FastFKMetadataEntry]].
-  Results are ordered by fk-table-schema, fk-table-name, and fk-column-name.
-  Results are optionally filtered by the `schema-names` and `table-names` provided.
+  Results are optionally filtered by `schema-names` and `table-names` provided.
 
   Required for drivers that support `:fast-sync-fks`."
   {:added "0.50.0" :arglists '([driver database & {:keys [schema-names table-names]}])}

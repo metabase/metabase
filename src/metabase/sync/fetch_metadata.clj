@@ -23,8 +23,7 @@
   (driver/describe-table (driver.u/database->driver database) database table))
 
 (mu/defn fk-metadata
-  "Returns a reducible collection of maps [[i/FastFKMetadataEntry]] representing foreign key relationships of `database`.
-  Only supported for databases that support `fast-sync-fks`."
+  "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema."
   [database :- i/DatabaseInstance & {:as args}]
   (cond->> (driver/describe-fks (driver.u/database->driver database) database args)
     ;; Validate the output against the schema, except in prod.

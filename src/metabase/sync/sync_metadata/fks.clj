@@ -98,7 +98,8 @@
   "Sync the foreign keys for a specific `table`."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
-    (let [fk-metadata (fetch-metadata/fk-metadata database)]
+    (let [schema-names (sync-util/db->sync-schemas database)
+          fk-metadata (fetch-metadata/fk-metadata database :schema-names schema-names)]
       (transduce (map (fn [x]
                         (let [[updated failed] (try [(mark-fk! database x) 0]
                                                     (catch Exception e

@@ -344,6 +344,13 @@
   [database-or-id]
   (t2/reducible-select :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}))
 
+(defn db->sync-schemas
+  "Returns all the Schemas that have their metadata sync'd for `database-or-id`."
+  [database-or-id]
+  (vec (map :schema (t2/query {:select-distinct [:schema]
+                               :from            [:metabase_table]
+                               :where           [:and sync-tables-clause [:= :db_id (u/the-id database-or-id)]]}))))
+
 (defmulti name-for-logging
   "Return an appropriate string for logging an object in sync logging messages. Should be something like
 
