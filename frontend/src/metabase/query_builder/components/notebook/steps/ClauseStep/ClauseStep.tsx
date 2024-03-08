@@ -28,7 +28,7 @@ type RenderPopoverOpts<T> = {
   onClose: () => void;
 };
 
-export interface ClauseStepProps<T> {
+export type ClauseStepProps<T> = {
   color: string;
   items: T[];
   initialAddText?: string;
@@ -39,7 +39,7 @@ export interface ClauseStepProps<T> {
   onRemove: (item: T, index: number) => void;
   onReorder: (sourceItem: T, targetItem: T) => void;
   "data-testid"?: string;
-}
+};
 
 export const ClauseStep = <T,>({
   color,
