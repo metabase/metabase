@@ -6,7 +6,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [compojure.core :refer [GET POST PUT]]
+   [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -987,6 +987,21 @@
                                          :actor                    @api/*current-user*}))
   ;; finally, return the updated object
   (collection-detail (t2/select-one Collection :id id)))
+
+(api/defendpoint DELETE "/:id"
+  "Delete an empty collection"
+  [id]
+  {id ms/PositiveInt}
+  (api/check-superuser)
+  (let [collection (api/read-check Collection id)]
+    (binding [mw.offset-paging/*limit* 1]
+      (let [children (collection-children collection {:archived? false})
+            archived-children (collection-children collection {:archived? true})]
+        ;; only delete if the collection is empty to prevent corrupting location of descendants
+        (api/check-400 (and (zero? (:total children))
+                            (zero? (:total archived-children))))
+        (api/check-500 (t2/delete! Collection :id id))
+        {:success true}))))
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
