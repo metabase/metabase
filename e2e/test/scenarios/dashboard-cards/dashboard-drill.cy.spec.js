@@ -646,6 +646,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   it("should keep card's display when doing zoom drill-through from dashboard (metabase#38307)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
 
     const questionDetails = {
       name: "38307",
@@ -664,6 +667,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id: DASHBOARD_ID } }) => {
         visitDashboard(DASHBOARD_ID);
+        cy.wait("@dashcardQuery");
 
         // click the first bar on the card's graph and do a zoom drill-through
         cy.get(".bar").eq(0).click({ force: true });
