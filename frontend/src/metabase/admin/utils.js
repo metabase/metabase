@@ -1,5 +1,6 @@
 import { connect } from "react-redux";
 import { routerActions, replace } from "react-router-redux";
+import { useMount } from "react-use";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
@@ -31,10 +32,13 @@ export const createAdminRedirect = (adminPath, nonAdminPath) => {
     mapStateToProps,
     mapDispatchToProps,
   )(({ user, replace, location }) => {
-    const path = `${location.pathname}/${
-      user.is_superuser ? adminPath : nonAdminPath
-    }`;
-    replace(path);
+    useMount(() => {
+      const path = `${location.pathname}/${
+        user.is_superuser ? adminPath : nonAdminPath
+      }`;
+      replace(path);
+    });
+
     return null;
   });
 
