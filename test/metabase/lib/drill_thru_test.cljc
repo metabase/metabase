@@ -87,6 +87,10 @@
     (for [operator (:operators drill)]
       [(:name operator)])
 
+    :drill-thru/column-extract
+    (for [extraction (:extractions drill)]
+      [(:key extraction)])
+
     [nil]))
 
 (def ^:private test-drill-applications-max-depth 1)
@@ -202,7 +206,12 @@
                  {:lib/type     :metabase.lib.drill-thru/drill-thru
                   :type         :drill-thru/summarize-column
                   :column       (meta/field-metadata :orders :created-at)
-                  :aggregations [:distinct]}]
+                  :aggregations [:distinct]}
+                 {:lib/type     :metabase.lib.drill-thru/drill-thru
+                  :type         :drill-thru/column-extract
+                  :query        orders-query
+                  :stage-number -1
+                  :extractions  (partial mc/validate [:sequential [:map [:key keyword?]]])}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
 
@@ -701,7 +710,11 @@
     :expected    [{:type :drill-thru/column-filter, :initial-op nil}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
-                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
+                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}
+                  {:type        :drill-thru/column-extract
+                   :extractions (partial mc/validate [:sequential [:map
+                                                                   [:key          keyword?]
+                                                                   [:display-name string?]]])}]}))
 
 (deftest ^:parallel available-drill-thrus-test-9
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
