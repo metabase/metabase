@@ -198,7 +198,8 @@
     (str (t2/select-one-fn (fn [field]
                              (qualified-field-name (:parent_id field) (:name field)))
                            [:model/Field :parent_id :name]
-                           :id parent-id)
+                           :id parent-id
+                           :active true)
          \.
          field-name)
     field-name))
@@ -244,11 +245,11 @@
 
 (defn- copy-table-fields! [old-table-id new-table-id]
   (t2/insert! Field
-    (for [field (t2/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
+    (for [field (t2/select Field :table_id old-table-id {:order-by [[:id :asc]]} :active true)]
       (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
-  (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id)
-        new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
+  (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id :active true)
+        new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id :active true)
         old-field-values   (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
     (t2/insert! FieldValues
       (for [{old-field-id :field_id, :as field-values} old-field-values
@@ -273,8 +274,8 @@
   (doseq [{:keys [source-field source-table target-field target-table]}
           (mdb.query/query {:select    [[:source-field.name :source-field]
                                         [:source-table.name :source-table]
-                                        [:target-field.name   :target-field]
-                                        [:target-table.name   :target-table]]
+                                        [:target-field.name :target-field]
+                                        [:target-table.name :target-table]]
                             :from      [[:metabase_field :source-field]]
                             :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
                                         [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
