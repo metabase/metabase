@@ -5,7 +5,9 @@
 }
 
 .formulaHeader {
-  composes: flex align-center text-brand py1 px2 from "style";
+  composes: text-brand py1 px2 from "style";
+  align-items: center;
+  display: flex;
 }
 
 .formulaTitle {
@@ -22,17 +24,20 @@
 }
 
 :global(.formulaDefinition-enter) {
-  max-height: 0px;
+  max-height: 0;
 }
+
 :global(.formulaDefinition-enter.formulaDefinition-enter-active) {
   /* using 100% max-height breaks the transition */
   max-height: 150px;
   transition: max-height 300ms ease-out;
 }
+
 :global(.formulaDefinition-exit) {
   max-height: 150px;
 }
+
 :global(.formulaDefinition-exit.formulaDefinition-exit-active) {
-  max-height: 0px;
+  max-height: 0;
   transition: max-height 300ms ease-out;
 }

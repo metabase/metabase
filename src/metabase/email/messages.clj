@@ -159,7 +159,7 @@
                                                  :joinedUserName    (or (:first_name new-user) (:email new-user))
                                                  :joinedViaSSO      google-auth?
                                                  :joinedUserEmail   (:email new-user)
-                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
                                                  :adminEmail        (first recipients)
                                                  :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
 
@@ -389,7 +389,10 @@
   (let [{:keys [content-type]} (qp.si/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
-     :file-name    (format "%s.%s" card-name (name export-type))
+     :file-name    (format "%s_%s.%s"
+                           (or (u/slugify card-name) "query_result")
+                           (u.date/format (t/zoned-date-time))
+                           (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 

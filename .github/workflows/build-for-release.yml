@@ -13,6 +13,34 @@ on:
         required: true
 
 jobs:
+  start-message:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send build start message
+        uses: actions/github-script@v6
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendReleaseMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            await sendReleaseMessage({
+              stage: 'build-start',
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
+              releaseSha: '${{ inputs.commit }}',
+            }).catch(console.error);
+
   check-version:
     runs-on: ubuntu-22.04
     timeout-minutes: 10

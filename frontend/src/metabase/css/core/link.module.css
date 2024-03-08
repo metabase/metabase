@@ -13,10 +13,6 @@
   text-decoration: underline;
 }
 
-:global(.link--nohover:hover) {
-  text-decoration: none;
-}
-
 :global(.link:focus) {
   outline: 2px solid var(--color-focus);
 }
@@ -27,16 +23,4 @@
 
 :global(.link--wrappable) {
   word-break: break-all;
-}
-
-:global(.link--icon) {
-  line-height: initial;
-}
-
-:global(.expand-clickable) {
-  display: inline-block;
-  position: relative;
-  z-index: 1;
-  padding: 0.5em;
-  margin: -0.5em;
 }

@@ -14,7 +14,7 @@
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -54,10 +54,10 @@
 (deftest user-list-authentication-test
   (testing "authentication"
     (testing "GET /api/user"
-      (is (= (get mw.util/response-unauthentic :body)
+      (is (= (get req.util/response-unauthentic :body)
              (client/client :get 401 "user"))))
     (testing "GET /api/user/current"
-      (is (= (get mw.util/response-unauthentic :body)
+      (is (= (get req.util/response-unauthentic :body)
              (client/client :get 401 "user/current"))))))
 
 (deftest user-list-test

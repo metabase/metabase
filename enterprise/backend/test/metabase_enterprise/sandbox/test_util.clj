@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.test-util
   "Shared test utilities for sandbox tests."
   (:require
+   [malli.core :as mc]
    [mb.hawk.parallel]
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.models.card :refer [Card]]
@@ -15,7 +16,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -55,13 +55,12 @@
 
 (def ^:private WithGTAPsArgs
   "Schema for valid arguments to `with-gtaps`."
-  {:gtaps
-   {(s/named s/Keyword "Table") (s/maybe
-                                 {(s/optional-key :query)      (s/pred map?)
-                                  (s/optional-key :remappings) (s/pred map?)})}
-
-   (s/optional-key :attributes)
-   (s/pred map?)})
+  [:map
+   [:gtaps [:map-of :keyword [:maybe
+                              [:map
+                               [:query      {:optional true} :map]
+                               [:remappings {:optional true} :map]]]]]
+   [:attributes {:optional true} :map]])
 
 (defn do-with-gtaps-for-user [args-fn test-user-name-or-user-id f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user")
@@ -70,7 +69,7 @@
             (perms/revoke-data-perms! (perms-group/all-users) (data/db))
             ;; create new perms group
             (test.users/with-group-for-user [group test-user-name-or-user-id]
-              (let [{:keys [gtaps attributes]} (s/validate WithGTAPsArgs (args-fn))]
+              (let [{:keys [gtaps attributes]} (mc/assert WithGTAPsArgs (args-fn))]
                 ;; set user login_attributes
                 (with-user-attributes test-user-name-or-user-id attributes
                   (mt/with-additional-premium-features #{:sandboxes}

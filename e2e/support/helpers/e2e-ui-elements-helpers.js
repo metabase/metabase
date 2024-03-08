@@ -33,6 +33,14 @@ export function modal() {
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
+export function entityPickerModal() {
+  return cy.findByTestId("entity-picker-modal");
+}
+
+export function collectionOnTheGoModal() {
+  return cy.findByTestId("create-collection-on-the-go");
+}
+
 export function sidebar() {
   return cy.get("main aside");
 }
@@ -158,6 +166,34 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mousemove", 5, 5, { force: true })
     .trigger("mousemove", 0, distance * 50, { force: true })
     .trigger("mouseup", 0, distance * 50, { force: true });
+};
+
+export const moveDnDKitColumnVertical = (column, distance) => {
+  column
+    .trigger("pointerdown", 0, 0, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", 5, 5, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", 0, distance, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointerup", 0, distance, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
 };
 
 export const queryBuilderMain = () => {

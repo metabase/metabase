@@ -333,6 +333,17 @@
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))
    (lib.core/normalize (js->clj new-clause :keywordize-keys true))))
 
+(defn ^:export swap-clauses
+  "Exchanges the positions of two clauses in a list. Can be used for filters, aggregations, breakouts, and expressions.
+
+  Returns the updated query. If it can't find both clauses in a single list (therefore also in the same stage), emits a
+  warning and returns the query unchanged."
+  [a-query stage-number source-clause target-clause]
+  (lib.core/swap-clauses
+   a-query stage-number
+   (lib.core/normalize (js->clj source-clause :keywordize-keys true))
+   (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
+
 (defn- prep-query-for-equals [a-query field-ids]
   (-> a-query
       mbql.js/normalize-cljs
@@ -739,7 +750,7 @@
 
 (defn ^:export available-join-strategies
   "Get available join strategies for the current Database (based on the Database's
-  supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
+  supported [[metabase.driver/features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
   (to-array (lib.core/available-join-strategies a-query stage-number)))
 

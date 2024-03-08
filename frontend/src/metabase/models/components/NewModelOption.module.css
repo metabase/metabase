@@ -1,4 +1,4 @@
-.link-wrapper {
+.linkWrapper {
   text-decoration: none;
   display: block;
   background-color: var(--color-bg-white);
@@ -12,6 +12,6 @@
   transition: all 0.2s linear;
 }
 
-.model-title {
+.modelTitle {
   transition: all 0.2s linear;
 }

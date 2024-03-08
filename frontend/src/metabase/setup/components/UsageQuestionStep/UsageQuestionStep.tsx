@@ -6,12 +6,9 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Divider, Radio, Stack, Text } from "metabase/ui";
 import type { UsageReason } from "metabase-types/api";
 
-import { selectStep, submitUsageReason } from "../../actions";
-import {
-  getIsSetupCompleted,
-  getIsStepActive,
-  getIsStepCompleted,
-} from "../../selectors";
+import { submitUsageReason } from "../../actions";
+import { getIsSetupCompleted } from "../../selectors";
+import { useStep } from "../../useStep";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
@@ -24,22 +21,14 @@ const COMPLETED_STEP_TITLE: Record<UsageReason, string> = {
 };
 
 export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
+  const { isStepActive, isStepCompleted, handleStepSelect } =
+    useStep("usage_question");
   const [usageReason, setUsageReason] = useState<UsageReason>(
     "self-service-analytics",
   );
 
-  const isStepActive = useSelector(state =>
-    getIsStepActive(state, "usage_question"),
-  );
-  const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, "usage_question"),
-  );
   const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
-
-  const handleStepSelect = () => {
-    dispatch(selectStep("usage_question"));
-  };
 
   const handleSubmit = () => {
     dispatch(submitUsageReason(usageReason));

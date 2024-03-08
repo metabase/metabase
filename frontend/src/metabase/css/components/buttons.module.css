@@ -11,7 +11,6 @@
   border: 1px solid color-mod(var(--color-border) blackness(5%));
   color: var(--color-text-dark);
   cursor: pointer;
-  text-decoration: none;
   font-weight: bold;
   font-family: var(--default-font-family), sans-serif;
   border-radius: var(--default-button-border-radius);
@@ -100,6 +99,7 @@
   background: transparent;
   color: var(--color-text-medium);
 }
+
 :global(.Button--borderless:hover) {
   border-color: transparent;
   color: var(--color-text-medium);
@@ -139,19 +139,6 @@
   border-left: none;
 }
 
-:global(.Button-group--blue) {
-  border-color: var(--color-border);
-}
-
-:global(.Button-group--blue .Button) {
-  color: var(--color-text-medium);
-}
-
-:global(.Button-group--blue .Button--active) {
-  background-color: var(--color-bg-medium);
-  color: var(--color-brand);
-}
-
 :global(.Button-group--brand) {
   border-color: white;
 }
@@ -172,12 +159,6 @@
   cursor: not-allowed;
 }
 
-:global(.Button--selected),
-:global(.Button--selected:hover) {
-  box-shadow: inset 0 1px 1px var(--color-shadow);
-  background-color: var(--color-bg-light);
-}
-
 :global(.Button--danger) {
   background-color: var(--color-error);
   border-color: var(--color-error);
@@ -195,14 +176,11 @@
   border-color: var(--color-success);
   color: var(--color-text-white);
 }
+
 :global(.Button--success:hover) {
   background-color: var(--color-success);
   border-color: var(--color-success);
   color: var(--color-text-white);
-}
-
-:global(.Button--withIcon) {
-  line-height: 1;
 }
 
 :global(.Button--fullWidth) {

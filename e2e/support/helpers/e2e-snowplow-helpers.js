@@ -1,10 +1,13 @@
-import _ from "underscore";
+import { isEE } from "e2e/support/helpers";
+
 const HAS_SNOWPLOW = Cypress.env("HAS_SNOWPLOW_MICRO");
 const SNOWPLOW_URL = Cypress.env("SNOWPLOW_MICRO_URL");
 const SNOWPLOW_INTERVAL = 100;
 const SNOWPLOW_TIMEOUT = 1000;
 
 export const describeWithSnowplow = HAS_SNOWPLOW ? describe : describe.skip;
+export const describeWithSnowplowEE =
+  HAS_SNOWPLOW && isEE ? describe : describe.skip;
 
 export const enableTracking = () => {
   cy.request("PUT", "/api/setting/anon-tracking-enabled", { value: true });

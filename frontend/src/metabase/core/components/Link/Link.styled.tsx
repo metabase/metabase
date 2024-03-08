@@ -8,7 +8,7 @@ import { color as metabaseColor } from "metabase/lib/colors";
 
 import type { LinkProps } from "./types";
 
-const isLinkPropValid = (propName: PropertyKey) => {
+const isLinkPropValid = (propName: string) => {
   return isPropValid(propName) || propName === "activeClassName";
 };
 

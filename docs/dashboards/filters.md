@@ -19,9 +19,11 @@ Instead of creating duplicate dashboards, you can add filter widgets to let peop
 - Click the **pencil icon** to enter dashboard editing mode.
 - Click the **filter icon** that appears in the top-right to add a filter.
 - Select a [filter type](#filter-types).
-- [Connect your filter](#connecting-a-filter-to-dashboard-cards) to one or more dashboard cards.
+- [Connect your filter](#connecting-a-filter-to-dashboard-cards) to one or more dashboard cards on any or all tabs.
 - [Configure your filter](#editing-a-filter).
 - **Save** your changes.
+
+Metabase will display the filter only if the filter is connected to a card on the current dashboard tab.
 
 ## Filter types
 
@@ -33,7 +35,7 @@ You can choose from a number of filter types:
 - [Number](#number-filter)
 - [Text or categories](#text-or-category-filter)
 
-The type of filter you choose will determine how the filter works, as well as which fields you’ll be able to filter your cards by:
+The type of filter you choose will determine how the filter works, as well as which fields you’ll be able to filter your cards by.
 
 ### Time filters
 
@@ -94,7 +96,7 @@ Here we've wired up a Text filter to the "Event types" card, telling Metabase th
 
 ## Auto-connecting filters to cards
 
-If there are other cards that also have the field you select, Metabase will automatically connect the filter to those cards too (including cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
+If there are other cards that also have the field you select, Metabase will automatically connect the filter to those cards too (including to relevant cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
 
 To undo this auto-connecting of cards, click on the toast that pops up when Metabase auto-connects the cards, or manually disconnect the cards by clicking on the "X" next to the connected field.
 

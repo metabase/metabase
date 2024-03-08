@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
@@ -459,7 +460,21 @@
     0 1250.0))
 
 (deftest conflicting-keys-test
-  (is (= [] (u/conflicting-keys {:a 1 :b 2}
-                                {:b 2 :c 3})))
-  (is (= [:c :e] (u/conflicting-keys {:a 1 :b 2 :c 3 :e nil}
-                                     {:b 2 :c 4 :d 5 :e 6}))))
+  (testing "non intersecting maps should not return any conflicts"
+    (is (= [] (u/conflicting-keys {:a 1 :b 2}
+                                  {:c 3 :d 4}))))
+  (testing "consistent maps should not return any conflicts"
+    (is (= [] (u/conflicting-keys {:a 1 :b 2}
+                                  {:b 2 :c 3}))))
+  (testing "conflicting maps should return the correct conflicts"
+    (is (= [:c :e] (u/conflicting-keys {:a 1 :b 2 :c 3 :e nil}
+                                       {:b 2 :c 4 :d 5 :e 6})))))
+
+(deftest map-all-test
+  (let [join (fn [& crumbs] (str/join ":" crumbs))]
+    (testing "map-all with 1 collection is just map"
+      (is (= ["0" "1" "2" "3" "4"] (u/map-all join (range 5)))))
+    (testing "map-all works with 3 collections"
+      (is (= ["0:0" "1:1" "2:2" "3:" "4:"] (u/map-all join (range 5) (range 3)))))
+    (testing "map-all works with higher arity"
+      (is (= ["0:0:0" "1:1:1" "2:2:2" "3::3" "::4"] (u/map-all join (range 4) (range 3) (range 5)))))))

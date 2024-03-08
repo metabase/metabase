@@ -46,7 +46,10 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").click();
     });
     cy.findByTestId("save-question-modal").within(() => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+      cy.findByLabelText(/Which collection should this go in/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 

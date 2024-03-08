@@ -46,7 +46,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -173,7 +173,7 @@
 ;; authentication test on every single individual endpoint
 
 (deftest auth-test
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :get 401 "dashboard")
          (client/client :put 401 "dashboard/13"))))
 
@@ -442,8 +442,10 @@
                                                                                         :visualization_settings {}
                                                                                         :result_metadata        nil})
                                                     :series                     []}]})
-                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
+                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
 
+(deftest fetch-dashboard-test-2
+  (testing "GET /api/dashboard/:id"
     (testing "a dashboard that has link cards on it"
       (let [link-card-info-from-resp
             (fn [resp]
@@ -480,8 +482,10 @@
               (perms/revoke-data-perms! (perms-group/all-users) database-id)
               (is (= #{{:restricted true} {:url "https://metabase.com"}}
                      (set (link-card-info-from-resp
-                           (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))
+                           (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))))
 
+(deftest fetch-dashboard-test-3
+  (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard with a param in it"
       (mt/with-temp [Table         {table-id :id} {}
                      Field         {field-id :id display-name :display_name} {:table_id table-id}
@@ -537,7 +541,10 @@
                                                                                            :visualization_settings {}
                                                                                            :result_metadata        nil})
                                                        :series                     []}]})
-                 (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
+                 (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
+
+(deftest fetch-dashboard-test-4
+  (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard from an official collection includes the collection type"
       (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
                      Card          {card-id :id}      {:name "Dashboard Test Card"}

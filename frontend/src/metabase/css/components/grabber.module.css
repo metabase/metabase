@@ -17,6 +17,7 @@
 :global(.grabbing) {
   cursor: grabbing;
 }
+
 :global(.grabbing *) {
   cursor: grabbing;
 }

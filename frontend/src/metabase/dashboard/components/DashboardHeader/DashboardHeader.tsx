@@ -1,12 +1,14 @@
-import type { Location, LocationDescriptor } from "history";
-import type { MouseEvent } from "react";
-import { Component, Fragment } from "react";
-import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import type { Location } from "history";
+import { type MouseEvent, type ReactNode, useState, Fragment } from "react";
+import { useMount } from "react-use";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import {
+  useBookmarkListQuery,
+  useCollectionQuery,
+} from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
 import EntityMenu from "metabase/components/EntityMenu";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
@@ -14,13 +16,11 @@ import Modal from "metabase/components/Modal";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link/Link";
-import type {
-  AddSectionOpts,
-  NewDashCardOpts,
-} from "metabase/dashboard/actions";
+import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
+  cancelEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
@@ -31,20 +31,20 @@ import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/Tex
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { layoutOptions } from "metabase/dashboard/sections";
 import {
-  getIsBookmarked,
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
+import type { FetchDashboardResult } from "metabase/dashboard/types";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import Bookmark from "metabase/entities/bookmarks";
-import Collections from "metabase/entities/collections/collections";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
 import { getPulseFormInput } from "metabase/pulse/selectors";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon, Menu, Tooltip } from "metabase/ui";
+import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import type {
@@ -52,9 +52,6 @@ import type {
   DashboardId,
   DashboardTabId,
   Dashboard,
-  ActionDisplayType,
-  WritebackAction,
-  Collection,
   DatabaseId,
   Database,
   CardId,
@@ -63,26 +60,24 @@ import type {
 import type {
   DashboardSidebarName,
   DashboardSidebarState,
-  State,
 } from "metabase-types/store";
 
-import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
+import { SIDEBAR_NAME } from "../../constants";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
+  SectionMenuItem,
 } from "./DashboardHeader.styled";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import { SectionLayoutPreview } from "./SectionLayoutPreview";
 
-interface OwnProps {
+interface DashboardHeaderProps {
   dashboardId: DashboardId;
   dashboard: Dashboard;
   dashboardBeforeEditing?: Dashboard | null;
-  bookmarks: IBookmark[];
   databases: Record<DatabaseId, Database>;
-  collection: Collection;
   sidebar: DashboardSidebarState;
   location: Location;
   refreshPeriod: number | null;
@@ -95,6 +90,7 @@ interface OwnProps {
   isAddParameterPopoverOpen: boolean;
   canManageSubscriptions: boolean;
   hasNightModeToggle: boolean;
+  parametersWidget?: ReactNode;
 
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -104,7 +100,6 @@ interface OwnProps {
   addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
-  addSectionToDashboard: (opts: AddSectionOpts) => void;
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
@@ -113,19 +108,19 @@ interface OwnProps {
       clearCache?: boolean;
       preserveParameters?: boolean;
     };
-  }) => Promise<void>;
+  }) => Promise<FetchDashboardResult>;
   setDashboardAttribute: <Key extends keyof Dashboard>(
     key: Key,
     value: Dashboard[Key],
   ) => void;
-  setRefreshElapsedHook: (hook: (elapsed: number) => void) => void;
+  setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
   updateDashboardAndCards: () => void;
 
   addParameter: (option: ParameterMappingOptions) => void;
   showAddParameterPopover: () => void;
   hideAddParameterPopover: () => void;
 
-  onEditingChange: (arg: Dashboard | boolean) => void;
+  onEditingChange: (arg: Dashboard | null) => void;
   onRefreshPeriodChange: (period: number | null) => void;
   onFullscreenChange: (
     isFullscreen: boolean,
@@ -138,169 +133,182 @@ interface OwnProps {
   closeSidebar: () => void;
 }
 
-interface StateProps {
-  formInput: unknown;
-  selectedTabId: DashboardTabId | null;
-  isBookmarked: boolean;
-  isNavBarOpen: boolean;
-  isShowingDashboardInfoSidebar: boolean;
-  isHomepageDashboard: boolean;
-  missingRequiredParameters: UiParameter[];
-}
+export const DashboardHeader = (props: DashboardHeaderProps) => {
+  const {
+    onEditingChange,
+    addMarkdownDashCardToDashboard,
+    addHeadingDashCardToDashboard,
+    addLinkDashCardToDashboard,
+    fetchDashboard,
+    updateDashboardAndCards,
+    dashboardBeforeEditing,
+    isDirty,
+    isEditing,
+    location,
+    dashboard,
+    parametersWidget,
+    isFullscreen,
+    onFullscreenChange,
+    sidebar,
+    setSidebar,
+    closeSidebar,
+    databases,
+    isAddParameterPopoverOpen,
+    showAddParameterPopover,
+    hideAddParameterPopover,
+    addParameter,
+    isAdditionalInfoVisible,
+    setDashboardAttribute,
+  } = props;
 
-interface DispatchProps {
-  createBookmark: (args: { id: DashboardId }) => void;
-  deleteBookmark: (args: { id: DashboardId }) => void;
-  fetchPulseFormInput: () => void;
-  toggleSidebar: (sidebarName: DashboardSidebarName) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
-  addActionToDashboard: (
-    opts: NewDashCardOpts & {
-      action: Partial<WritebackAction>;
-      displayType: ActionDisplayType;
-    },
-  ) => void;
-  dismissAllUndo: () => void;
-}
+  const [showCancelWarning, setShowCancelWarning] = useState(false);
 
-type DashboardHeaderProps = OwnProps & StateProps & DispatchProps;
+  useMount(() => {
+    dispatch(fetchPulseFormInput());
+  });
 
-const mapStateToProps = (state: State, props: OwnProps): StateProps => {
-  return {
-    formInput: getPulseFormInput(state),
-    isBookmarked: getIsBookmarked(state, props),
-    isNavBarOpen: getIsNavbarOpen(state),
-    isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
-    selectedTabId: state.dashboard.selectedTabId,
-    isHomepageDashboard:
+  const dispatch = useDispatch();
+
+  const formInput = useSelector(getPulseFormInput);
+  const isNavBarOpen = useSelector(getIsNavbarOpen);
+  const isShowingDashboardInfoSidebar = useSelector(
+    getIsShowDashboardInfoSidebar,
+  );
+  const selectedTabId = useSelector(state => state.dashboard.selectedTabId);
+  const isHomepageDashboard = useSelector(
+    state =>
       getSetting(state, "custom-homepage") &&
-      getSetting(state, "custom-homepage-dashboard") === props.dashboard?.id,
-    missingRequiredParameters: getMissingRequiredParameters(state),
-  };
-};
+      getSetting(state, "custom-homepage-dashboard") === dashboard?.id,
+  );
+  const missingRequiredParameters = useSelector(getMissingRequiredParameters);
 
-const mapDispatchToProps = {
-  createBookmark: ({ id }: { id: DashboardId }) =>
-    Bookmark.actions.create({ id, type: "dashboard" }),
-  deleteBookmark: ({ id }: { id: DashboardId }) =>
-    Bookmark.actions.delete({ id, type: "dashboard" }),
-  fetchPulseFormInput,
-  onChangeLocation: push,
-  toggleSidebar,
-  addActionToDashboard,
-  addSectionToDashboard,
-  dismissAllUndo,
-};
+  const { data: collection, isLoading: isLoadingCollection } =
+    useCollectionQuery({ id: dashboard.collection_id || "root" });
 
-class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
-  state = {
-    showCancelWarning: false,
+  const { data: bookmarks = [] } = useBookmarkListQuery();
+
+  const isBookmarked = getIsBookmarked({
+    dashboardId: dashboard.id,
+    bookmarks,
+  });
+
+  const handleEdit = (dashboard: Dashboard) => {
+    onEditingChange(dashboard);
   };
 
-  componentDidMount() {
-    this.props.fetchPulseFormInput();
-  }
-
-  handleEdit(dashboard: Dashboard) {
-    this.props.onEditingChange(dashboard);
-  }
-
-  handleCancelWarningClose = () => {
-    this.setState({ showCancelWarning: false });
+  const handleCancelWarningClose = () => {
+    setShowCancelWarning(false);
   };
 
-  onAddMarkdownBox() {
-    this.props.addMarkdownDashCardToDashboard({
-      dashId: this.props.dashboard.id,
-      tabId: this.props.selectedTabId,
+  const handleCreateBookmark = ({ id }: { id: DashboardId }) => {
+    dispatch(Bookmark.actions.create({ id, type: "dashboard" }));
+  };
+
+  const handleDeleteBookmark = ({ id }: { id: DashboardId }) => {
+    dispatch(Bookmark.actions.delete({ id, type: "dashboard" }));
+  };
+
+  const onAddMarkdownBox = () => {
+    addMarkdownDashCardToDashboard({
+      dashId: dashboard.id,
+      tabId: selectedTabId,
     });
-  }
+  };
 
-  onAddHeading() {
-    this.props.addHeadingDashCardToDashboard({
-      dashId: this.props.dashboard.id,
-      tabId: this.props.selectedTabId,
+  const onAddHeading = () => {
+    addHeadingDashCardToDashboard({
+      dashId: dashboard.id,
+      tabId: selectedTabId,
     });
-  }
+  };
 
-  onAddLinkCard() {
-    this.props.addLinkDashCardToDashboard({
-      dashId: this.props.dashboard.id,
-      tabId: this.props.selectedTabId,
+  const onAddLinkCard = () => {
+    addLinkDashCardToDashboard({
+      dashId: dashboard.id,
+      tabId: selectedTabId,
     });
-  }
+  };
 
-  onAddSection(sectionLayout: SectionLayout) {
-    this.props.addSectionToDashboard({
-      dashId: this.props.dashboard.id,
-      tabId: this.props.selectedTabId,
-      sectionLayout,
-    });
-  }
+  const onAddSection = (sectionLayout: SectionLayout) => {
+    dispatch(
+      addSectionToDashboard({
+        dashId: dashboard.id,
+        tabId: selectedTabId,
+        sectionLayout,
+      }),
+    );
+  };
 
-  onAddAction() {
-    this.props.addActionToDashboard({
-      dashId: this.props.dashboard.id,
-      tabId: this.props.selectedTabId,
-      displayType: "button",
-      action: {},
-    });
-  }
+  const onAddAction = () => {
+    dispatch(
+      addActionToDashboard({
+        dashId: dashboard.id,
+        tabId: selectedTabId,
+        displayType: "button",
+        action: {},
+      }),
+    );
+  };
 
-  onDoneEditing() {
-    this.props.onEditingChange(false);
-  }
+  const onDoneEditing = () => {
+    onEditingChange(null);
+  };
 
-  onRevert() {
-    this.props.fetchDashboard({
-      dashId: this.props.dashboard.id,
-      queryParams: this.props.location.query,
+  const onRevert = () => {
+    fetchDashboard({
+      dashId: dashboard.id,
+      queryParams: location.query,
       options: { preserveParameters: true },
     });
-  }
+  };
 
-  async onSave() {
+  const onSave = async () => {
     // optimistically dismissing all the undos before the saving has finished
     // clicking on them wouldn't do anything at this moment anyway
-    this.props.dismissAllUndo();
-    await this.props.updateDashboardAndCards();
-    this.onDoneEditing();
-  }
+    dispatch(dismissAllUndo());
+    await updateDashboardAndCards();
 
-  onRequestCancel = () => {
-    const { isDirty, isEditing } = this.props;
+    onDoneEditing();
+  };
 
+  const onRequestCancel = () => {
     if (isDirty && isEditing) {
-      this.setState({ showCancelWarning: true });
+      setShowCancelWarning(true);
     } else {
-      this.onCancel();
+      onCancel();
     }
   };
 
-  onCancel = () => {
-    this.onRevert();
-    this.onDoneEditing();
+  const onCancel = () => {
+    onRevert();
+    dispatch(cancelEditingDashboard());
   };
 
-  getEditWarning(dashboard: Dashboard) {
+  const saveAsPDF = async () => {
+    const cardNodeSelector = "#Dashboard-Cards-Container";
+    await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
+      trackExportDashboardToPDF(dashboard.id);
+    });
+  };
+
+  const getEditWarning = (dashboard: Dashboard) => {
     if (dashboard.embedding_params) {
       const currentSlugs = Object.keys(dashboard.embedding_params);
       // are all of the original embedding params keys in the current
       // embedding params keys?
       if (
-        this.props.isEditing &&
-        this.props.dashboardBeforeEditing?.embedding_params &&
-        Object.keys(this.props.dashboardBeforeEditing.embedding_params).some(
+        isEditing &&
+        dashboardBeforeEditing?.embedding_params &&
+        Object.keys(dashboardBeforeEditing.embedding_params).some(
           slug => !currentSlugs.includes(slug),
         )
       ) {
         return t`You've updated embedded params and will need to update your embed code.`;
       }
     }
-  }
+  };
 
-  getEditingButtons() {
-    const { missingRequiredParameters } = this.props;
+  const getEditingButtons = () => {
     const disabledSaveTooltip = getDisabledSaveButtonTooltip(
       missingRequiredParameters,
     );
@@ -310,7 +318,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       <Button
         key="cancel"
         className="Button Button--small mr1"
-        onClick={this.onRequestCancel}
+        onClick={() => onRequestCancel()}
       >
         {t`Cancel`}
       </Button>,
@@ -321,7 +329,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       >
         <span>
           <ActionButton
-            actionFn={() => this.onSave()}
+            actionFn={() => onSave()}
             className="Button Button--primary Button--small"
             normalText={t`Save`}
             activeText={t`Saving…`}
@@ -332,27 +340,9 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         </span>
       </Tooltip>,
     ];
-  }
+  };
 
-  getHeaderButtons() {
-    const {
-      dashboard,
-      isBookmarked,
-      isEditing,
-      isFullscreen,
-      location,
-      onFullscreenChange,
-      createBookmark,
-      deleteBookmark,
-      sidebar,
-      setSidebar,
-      toggleSidebar,
-      isShowingDashboardInfoSidebar,
-      closeSidebar,
-      databases,
-      collection,
-    } = this.props;
-
+  const getHeaderButtons = () => {
     const canEdit = dashboard.can_write;
     const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
@@ -362,6 +352,10 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
 
     const buttons = [];
     const extraButtons = [];
+
+    if (isFullscreen && parametersWidget) {
+      buttons.push(parametersWidget);
+    }
 
     if (isEditing) {
       const activeSidebarName = sidebar.name;
@@ -375,7 +369,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           <DashboardHeaderButton
             icon="add"
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
-            onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
+            onClick={() => dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion))}
             aria-label={t`Add questions`}
           />
         </Tooltip>,
@@ -389,19 +383,20 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         >
           <span>
             <TextOptionsButton
-              onAddMarkdown={() => this.onAddMarkdownBox()}
-              onAddHeading={() => this.onAddHeading()}
+              onAddMarkdown={() => onAddMarkdownBox()}
+              onAddHeading={() => onAddHeading()}
             />
           </span>
         </Tooltip>,
       );
 
       // Add link card button
+      const addLinkLabel = t`Add link card`;
       buttons.push(
-        <Tooltip key="add-link-card" label={t`Add link card`}>
+        <Tooltip key="add-link-card" label={addLinkLabel}>
           <DashboardHeaderButton
-            aria-label={t`Add link card`}
-            onClick={() => this.onAddLinkCard()}
+            aria-label={addLinkLabel}
+            onClick={() => onAddLinkCard()}
           >
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
@@ -419,33 +414,22 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
               </Tooltip>
             </span>
           </Menu.Target>
-          <Menu.Dropdown>
-            {layoutOptions.map(layout => (
-              <Tooltip
-                key={layout.id}
-                label={<SectionLayoutPreview layout={layout} />}
-                position="left"
-              >
-                <span>
-                  <Menu.Item
-                    onClick={() => this.onAddSection(layout)}
-                    fw="bold"
-                  >
-                    {layout.label}
-                  </Menu.Item>
-                </span>
-              </Tooltip>
-            ))}
+          <Menu.Dropdown miw="100px">
+            <Flex direction="column" align="center" gap="md" p="12px">
+              {layoutOptions.map(layout => (
+                <SectionMenuItem
+                  key={layout.id}
+                  onClick={() => onAddSection(layout)}
+                  aria-label={layout.label}
+                  p="14px"
+                >
+                  <SectionLayoutPreview layout={layout} />
+                </SectionMenuItem>
+              ))}
+            </Flex>
           </Menu.Dropdown>
         </Menu>,
       );
-
-      const {
-        isAddParameterPopoverOpen,
-        showAddParameterPopover,
-        hideAddParameterPopover,
-        addParameter,
-      } = this.props;
 
       // Parameters
       buttons.push(
@@ -482,7 +466,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             <DashboardHeaderActionDivider />
             <Tooltip key="add-action-button" label={t`Add action button`}>
               <DashboardHeaderButton
-                onClick={() => this.onAddAction()}
+                onClick={() => onAddAction()}
                 aria-label={t`Add action`}
               >
                 <Icon name="click" size={18} />
@@ -499,13 +483,6 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           dashboard={dashboard}
         />,
       );
-
-      extraButtons.push({
-        title: t`Revision history`,
-        icon: "history",
-        link: `${location.pathname}/history`,
-        event: "Dashboard;Revisions",
-      });
     }
 
     if (isAnalyticsDashboard) {
@@ -526,7 +503,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
             key="edit"
             aria-label={t`Edit dashboard`}
             icon="pencil"
-            onClick={() => this.handleEdit(dashboard)}
+            onClick={() => handleEdit(dashboard)}
           />
         </Tooltip>,
       );
@@ -555,7 +532,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
         icon: "document",
         testId: "dashboard-export-pdf-button",
         action: () => {
-          this.saveAsPDF();
+          saveAsPDF();
         },
       });
 
@@ -578,7 +555,7 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       }
     }
 
-    buttons.push(...getDashboardActions(this, this.props));
+    buttons.push(...getDashboardActions({ ...props, formInput }));
 
     if (!isEditing) {
       buttons.push(
@@ -587,8 +564,8 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
           <DashboardBookmark
             key="dashboard-bookmark-button"
             dashboard={dashboard}
-            onCreateBookmark={createBookmark}
-            onDeleteBookmark={deleteBookmark}
+            onCreateBookmark={handleCreateBookmark}
+            onDeleteBookmark={handleDeleteBookmark}
             isBookmarked={isBookmarked}
           />,
           <Tooltip key="dashboard-info-button" label={t`More info`}>
@@ -630,68 +607,55 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
       );
     }
 
-    return buttons;
-  }
-
-  saveAsPDF = async () => {
-    const { dashboard } = this.props;
-    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-    await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
-      trackExportDashboardToPDF(dashboard.id);
-    });
+    return { buttons };
   };
 
-  render() {
-    const {
-      dashboard,
-      collection,
-      isEditing,
-      isFullscreen,
-      isNavBarOpen,
-      isAdditionalInfoVisible,
-      setDashboardAttribute,
-      setSidebar,
-      isHomepageDashboard,
-    } = this.props;
-    const { showCancelWarning } = this.state;
-    const hasLastEditInfo = dashboard["last-edit-info"] != null;
-
+  if (isLoadingCollection || !collection) {
     return (
-      <>
-        <DashboardHeaderComponent
-          headerClassName="wrapper"
-          location={this.props.location}
-          dashboard={dashboard}
-          collection={collection}
-          isEditing={isEditing}
-          isBadgeVisible={
-            !isEditing && !isFullscreen && isAdditionalInfoVisible
-          }
-          isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
-          isEditingInfo={isEditing}
-          isNavBarOpen={isNavBarOpen}
-          headerButtons={this.getHeaderButtons()}
-          editWarning={this.getEditWarning(dashboard)}
-          editingTitle={t`You're editing this dashboard.`.concat(
-            isHomepageDashboard
-              ? t` Remember that this dashboard is set as homepage.`
-              : "",
-          )}
-          editingButtons={this.getEditingButtons()}
-          setDashboardAttribute={setDashboardAttribute}
-          onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-        />
-
-        <Modal isOpen={showCancelWarning}>
-          <LeaveConfirmationModalContent
-            onAction={this.onCancel}
-            onClose={this.handleCancelWarningClose}
-          />
-        </Modal>
-      </>
+      <Flex justify="center" py="1.5rem">
+        <Loader size={29} />
+      </Flex>
     );
   }
-}
+
+  const hasLastEditInfo = dashboard["last-edit-info"] != null;
+
+  const { buttons: headerButtons } = getHeaderButtons();
+  const editingButtons = getEditingButtons();
+
+  return (
+    <>
+      <DashboardHeaderComponent
+        headerClassName="wrapper"
+        location={location}
+        dashboard={dashboard}
+        collection={collection}
+        isEditing={isEditing}
+        isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
+        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
+        isEditingInfo={isEditing}
+        isNavBarOpen={isNavBarOpen}
+        headerButtons={headerButtons}
+        editWarning={getEditWarning(dashboard)}
+        editingTitle={t`You're editing this dashboard.`.concat(
+          isHomepageDashboard
+            ? t` Remember that this dashboard is set as homepage.`
+            : "",
+        )}
+        editingButtons={editingButtons}
+        setDashboardAttribute={setDashboardAttribute}
+        onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
+      />
+
+      <Modal isOpen={showCancelWarning}>
+        <LeaveConfirmationModalContent
+          onAction={onCancel}
+          onClose={handleCancelWarningClose}
+        />
+      </Modal>
+    </>
+  );
+};
 
 function getDisabledSaveButtonTooltip(
   missingRequiredParams: UiParameter[],
@@ -711,11 +675,16 @@ function getDisabledSaveButtonTooltip(
   );
 }
 
-export const DashboardHeader = _.compose(
-  Bookmark.loadList(),
-  Collections.load({
-    id: (state: State, props: OwnProps) =>
-      props.dashboard.collection_id || "root",
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(DashboardHeaderContainer);
+type IsBookmarkedSelectorProps = {
+  bookmarks: IBookmark[];
+  dashboardId: DashboardId;
+};
+
+export const getIsBookmarked = ({
+  bookmarks,
+  dashboardId,
+}: IsBookmarkedSelectorProps) =>
+  bookmarks.some(
+    bookmark =>
+      bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
+  );

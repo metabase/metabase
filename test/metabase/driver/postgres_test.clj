@@ -22,6 +22,7 @@
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -474,6 +475,45 @@
                   "LIMIT"
                   "  1048575"]
                  (str/split-lines (driver/prettify-native-form :postgres (:query only-order))))))))))
+
+(def ^:private json-alias-in-model-mock-metadata-provider
+  (providers.mock/mock-metadata-provider
+    json-alias-mock-metadata-provider
+    {:cards [{:name          "Model with JSON"
+              :id            123
+              :database-id   (meta/id)
+              :dataset-query {:database (meta/id)
+                              :type     :query
+                              :query    {:source-table 1
+                                         :aggregation  [[:count]]
+                                         :breakout     [[:field 1 nil]]}}}]}))
+
+(deftest ^:parallel json-breakout-in-model-test
+  (mt/test-driver :postgres
+    (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
+      (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
+        (let [nested (qp.compile/compile
+                       {:database 1
+                        :type     :query
+                        :query    {:source-table "card__123"}})]
+          (is (= ["SELECT"
+                  "  \"json_alias_test\" AS \"json_alias_test\","
+                  "  \"source\".\"count\" AS \"count\""
+                  "FROM"
+                  "  ("
+                  "    SELECT"
+                  "      (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\","
+                  "      COUNT(*) AS \"count\""
+                  "    FROM"
+                  "      \"json_alias_test\""
+                  "    GROUP BY"
+                  "      \"json_alias_test\""
+                  "    ORDER BY"
+                  "      \"json_alias_test\" ASC"
+                  "  ) AS \"source\""
+                  "LIMIT"
+                  "  1048575"]
+                 (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
