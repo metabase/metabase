@@ -3758,9 +3758,9 @@
                  ;; Difference between h2 and postgres, in and out
                  {:field-name "adatetimetz" :base-type :type/DateTimeWithTZ #_#_::good "2020-02-02 14:39:59-0700" ::bad "not date"}]]
       (mt/with-temp-test-data
-        ["types"
-         (map #(dissoc % ::good ::bad) types)
-         [["init"]]]
+        [["types"
+          (map #(dissoc % ::good ::bad) types)
+          [["init"]]]]
         (mt/with-actions-enabled
           (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
                             {:keys [action-id]} {:type :implicit :kind "row/create"}]
