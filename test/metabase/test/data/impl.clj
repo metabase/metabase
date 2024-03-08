@@ -133,7 +133,8 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-fn->pk (juxt (constantly database-id) :name)
                     [:model/Table :id :name]
-                    :db_id database-id))
+                    :db_id  database-id
+                    :active true))
 
 (mu/defn ^:private build-field-lookup-map
   [table-id :- ::lib.schema.id/table]
@@ -169,7 +170,7 @@
 
 (defn- table-id-from-app-db
   [db-id table-name]
-  (t2/select-one-pk [Table :id] :db_id db-id, :name table-name))
+  (t2/select-one-pk [Table :id] :db_id db-id, :name table-name :active true))
 
 (defn- throw-unfound-table-error [db-id table-name]
   (let [{driver :engine, db-name :name} (t2/select-one [:model/Database :name :engine] :id db-id)]
@@ -263,7 +264,7 @@
             (update :human_readable_values not-empty))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
-  (let [old-tables    (t2/select Table :db_id old-db-id {:order-by [[:id :asc]]})
+  (let [old-tables    (t2/select Table :db_id old-db-id {:order-by [[:id :asc]]} :active true)
         new-table-ids (t2/insert-returning-pks! Table
                         (for [table old-tables]
                           (-> table (dissoc :id) (assoc :db_id new-db-id))))]
