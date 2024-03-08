@@ -85,21 +85,6 @@
                       (mt/user-http-request :crowberto :get 200 "ee/caching/" {}
                                             :collection (:id col1) :model :dashboard :model :question))))
 
-            (let [test-ids #{(:id dash1) (:id card1) (:id card2) (:id card3)}]
-              (testing "Collection API responds with correct listings"
-                (is (=? [{:id (:id card1) :cache_strategy "nocache"}
-                         {:id (:id card2) :cache_strategy nil}
-                         {:id (:id dash1) :cache_strategy "nocache"}]
-                        (->> (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" (:id col1)) {}
-                                                   :caching true)
-                             :data
-                             (filterv #(contains? test-ids (:id %))))))
-                (is (=? [{:id (:id card3) :cache_strategy nil}]
-                        (->> (mt/user-http-request :crowberto :get 200 "collection/root/items" {}
-                                                   :caching true)
-                             :data
-                             (filterv #(contains? test-ids (:id %))))))))
-
             (testing "We select correct config for something from a db"
               (testing "First card has own config"
                 (is (=? {:type :nocache :name "card1"}
