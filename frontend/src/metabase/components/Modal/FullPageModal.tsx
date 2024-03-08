@@ -99,11 +99,7 @@ export class FullPageModal extends Component<
                 handleDismissal={this.handleDismissal}
                 closeOnClickOutside={this.props.closeOnClickOutside}
               >
-                <div
-                  className="full-height relative scroll-y"
-                  // style={motionStyle}
-                  style={styles}
-                >
+                <div className="full-height relative scroll-y" style={styles}>
                   {getModalContent({
                     ...this.props,
                     fullPageModal: true,
