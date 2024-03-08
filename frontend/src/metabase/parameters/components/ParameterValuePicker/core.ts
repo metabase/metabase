@@ -1,3 +1,4 @@
+import { isFieldFilterUiParameter } from "metabase-lib/parameters/utils/parameter-fields";
 import {
   getParameterSubType,
   isNumberParameter,
@@ -7,8 +8,7 @@ import type { Parameter } from "metabase-types/api";
 export function shouldShowPlainInput(parameter: Parameter) {
   // TODO this is a way to distinguish a field selector from the others
   // isFieldFilterParameter or similar should be used here
-  const hasFields = Boolean((parameter as any).fields);
-  if (hasFields) {
+  if (isFieldFilterUiParameter(parameter)) {
     return false;
   }
 
@@ -24,6 +24,19 @@ export function shouldShowPlainInput(parameter: Parameter) {
     parameter.type === "category" &&
     (parameter.values_query_type == null ||
       parameter.values_query_type === "none")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function shouldShowListInput(parameter: Parameter) {
+  if (
+    parameter.type === "category" &&
+    parameter.values_source_type === "static-list" &&
+    parameter.values_source_config?.values &&
+    parameter.values_source_config.values.length > 0
   ) {
     return true;
   }

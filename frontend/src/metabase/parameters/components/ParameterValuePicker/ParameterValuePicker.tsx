@@ -1,19 +1,20 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter, TemplateTag } from "metabase-types/api";
 
+import { ListInput } from "./ListInput";
 import { OwnDatePicker } from "./OwnDatePicker";
 import { PlainValueInput } from "./PlainValueInput";
-import { shouldShowPlainInput } from "./core";
+import { shouldShowListInput, shouldShowPlainInput } from "./core";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
   parameter: Parameter;
   value: any;
   onValueChange: (value: any) => void;
-  placeholder?: string;
 }
 
 // TODO multiple value pickers
@@ -27,7 +28,8 @@ interface ParameterValuePickerProps {
  * without keeping its own state.
  */
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
-  const { tag, parameter, value, onValueChange, placeholder } = props;
+  const { tag, parameter, value, onValueChange } = props;
+  const clearValue = () => onValueChange(null);
 
   if (!parameter) {
     return null;
@@ -38,7 +40,20 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
       <PlainValueInput
         value={value}
         onChange={onValueChange}
-        placeholder={placeholder}
+        placeholder={t`Enter a default value…`}
+      />
+    );
+  }
+
+  if (shouldShowListInput(parameter)) {
+    return (
+      <ListInput
+        value={value}
+        values={parameter.values_source_config?.values as string[]}
+        onClear={clearValue}
+        onChange={onValueChange}
+        isSearchable={parameter.values_query_type === "search"}
+        placeholder={t`Select a default value…`}
       />
     );
   }

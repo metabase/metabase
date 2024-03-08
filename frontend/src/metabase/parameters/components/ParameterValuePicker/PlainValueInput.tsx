@@ -2,7 +2,7 @@ import type { ChangeEvent, KeyboardEvent } from "react";
 
 import { TextInput } from "metabase/ui";
 
-import { TextInputIcon } from "./ParameterValuePicker.styled";
+import { PickerIcon } from "./ParameterValuePicker.styled";
 
 interface PlainValueInputProps {
   value: string | null;
@@ -32,7 +32,7 @@ export function PlainValueInput(props: PlainValueInputProps) {
   };
 
   const icon = value ? (
-    <TextInputIcon name="close" onClick={() => onChange(null)} />
+    <PickerIcon name="close" onClick={() => onChange(null)} />
   ) : null;
 
   return (
