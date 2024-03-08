@@ -2,6 +2,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, forwardRef, Component } from "react";
+import { findDOMNode } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
