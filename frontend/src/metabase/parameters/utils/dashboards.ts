@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isQuestionDashCard } from "metabase/dashboard/utils";
+import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { slugify } from "metabase/lib/formatting";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import Question from "metabase-lib/Question";
@@ -166,8 +166,14 @@ function buildFieldFilterUiParameter(
 
   const mappedFields = uniqueMappingsForParameters.map(mapping => {
     const { target, card } = mapping;
-    const question = questions[card.id] ?? new Question(card, metadata);
+    if (!isQuestionCard(card)) {
+      return {
+        field: null,
+        shouldResolveFkField: false,
+      };
+    }
 
+    const question = questions[card.id] ?? new Question(card, metadata);
     try {
       const field = getParameterTargetField(target, question);
 

@@ -176,6 +176,7 @@
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.config :as config]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision
@@ -627,12 +628,6 @@
             {}
             permissions)))
 
-(defenterprise add-impersonations-to-permissions-graph
-  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.advanced-permissions.models.connection-impersonation
-  [graph]
-  graph)
-
 (defn- post-process-graph [graph]
   (->>
    graph
@@ -650,7 +645,8 @@
               (all-permissions db-ids)
               (:db permissions-graph)))))
        post-process-graph
-       add-impersonations-to-permissions-graph))
+       data-perms.graph/add-sandboxes-to-permissions-graph
+       data-perms.graph/add-impersonations-to-permissions-graph))
 
 (defn ->v1-paths
   "keep v1 paths, implicitly remove v2"
@@ -661,43 +657,22 @@
 
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
-  See [[metabase.models.collection.graph]] for the Collection permissions graph code. Keeps v1 paths, hence implictly removes v2 paths.
-
-  What are v1 and v2 permissions? see: [[classify-path]]. In summary:
-
-         v1 permissions
-  |--------------------------------|
-  |                                |
-  v1-data, block | all-other-paths | v2-data, v2-query
-                 |                                   |
-                 |-----------------------------------|
-                           v2 permissions
-  "
+  See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [db-ids             (delay (t2/select-pks-set 'Database))
-        group-id->v1-paths (->> (permissions-by-group-ids [:or
-                                                           [:= :object (h2x/literal "/")]
-                                                           [:like :object (h2x/literal "%/db/%")]])
-                                ->v1-paths)]
-    {:revision (perms-revision/latest-id)
-     :groups   (generate-graph @db-ids group-id->v1-paths)}))
+  {:revision (perms-revision/latest-id)
+   :groups   (data-perms.graph/api-graph {})})
 
 (defn data-graph-for-db
   "Efficiently returns a data permissions graph, which has all the permissions info for `db-id`."
   [db-id]
-  (let [group-id->permissions (permissions-by-group-ids [:like :object (h2x/literal (str "%/db/" db-id "/%"))])
-        group-id->v1-paths (->v1-paths group-id->permissions)]
-    {:revision (perms-revision/latest-id)
-     :groups (generate-graph [db-id] group-id->v1-paths)}))
+  {:revision (perms-revision/latest-id)
+   :groups (data-perms.graph/api-graph {:db-id db-id})})
 
 (defn data-graph-for-group
   "Efficiently returns a data permissions graph, which has all the permissions info for the permission group at `group-id`."
   [group-id]
-  (let [db-ids (t2/select-pks-set :model/Database)
-        group-id->permissions (permissions-by-group-ids [:= :group_id group-id])
-        group-id->paths (select-keys (->v1-paths group-id->permissions) [group-id])]
-    {:revision (perms-revision/latest-id)
-     :groups (generate-graph db-ids group-id->paths)}))
+  {:revision (perms-revision/latest-id)
+   :groups (data-perms.graph/api-graph {:group-id group-id})})
 
 (defn data-perms-graph-v2
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
@@ -983,17 +958,6 @@
   (check-not-personal-collection-or-descendant collection-or-id)
   (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
 
-(defenterprise ^:private delete-gtaps-if-needed-after-permissions-change!
-  "Delete GTAPs (sandboxes) that are no longer needed after the permissions graph is updated. This is EE-specific --
-  OSS impl is a no-op, since sandboxes are an EE-only feature."
-  metabase-enterprise.sandbox.models.permissions.delete-sandboxes
-  [_])
-
-(defenterprise ^:private delete-impersonations-if-needed-after-permissions-change!
-  "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
-  EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
-  metabase-enterprise.advanced-permissions.models.connection-impersonation
-  [_])
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
@@ -1202,7 +1166,6 @@
   (doseq [[db-id new-db-perms] new-group-perms
           [perm-type new-perms] new-db-perms]
     (case perm-type
-
       :data
       (update-db-data-access-permissions! group-id db-id new-perms)
 
@@ -1278,20 +1241,21 @@
 
   Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
   ([new-graph :- api.permission-graph/StrictData]
-   (let [old-graph (data-perms-graph)
+   (let [old-graph (data-perms.graph/api-graph {})
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})
          new       (or new {})]
      (when (or (seq old) (seq new))
-       (log-permissions-changes old new)
-       (check-revision-numbers old-graph new-graph)
-       (check-audit-db-permissions new)
+       (data-perms.graph/log-permissions-changes old new)
+       (data-perms.graph/check-revision-numbers old-graph new-graph)
+       (data-perms.graph/check-audit-db-permissions new)
        (t2/with-transaction [_conn]
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))
-        (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
-        (delete-impersonations-if-needed-after-permissions-change! new)
-        (delete-gtaps-if-needed-after-permissions-change! new)))))
+        (data-perms.graph/update-data-perms-graph! new)
+        (data-perms.graph/save-perms-revision! PermissionsRevision (:revision old-graph) old new)
+        (data-perms.graph/delete-impersonations-if-needed-after-permissions-change! new)
+        (data-perms.graph/delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

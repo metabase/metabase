@@ -25,6 +25,7 @@
     "@snowplow/browser-tracker": "^3.1.6",
     "@tanstack/react-virtual": "^3.1.2",
     "@tippyjs/react": "^4.2.6",
+    "@types/redux-auth-wrapper": "^2.0.16",
     "@visx/axis": "1.8.0",
     "@visx/clip-path": "^2.1.0",
     "@visx/event": "^2.6.0",
@@ -105,7 +106,7 @@
     "react-virtualized": "^9.22.3",
     "reduce-reducers": "^1.0.4",
     "redux-actions": "^2.0.1",
-    "redux-auth-wrapper": "^1.0.0",
+    "redux-auth-wrapper": "^2.1.0",
     "redux-promise": "^0.5.0",
     "regenerator-runtime": "^0.14.1",
     "rehype-external-links": "^2.0.1",
@@ -209,7 +210,6 @@
     "@types/react-transition-group": "^4.4.5",
     "@types/react-virtualized": "^9.21.13",
     "@types/redux-actions": "^2.6.2",
-    "@types/redux-auth-wrapper": "^1.0.7",
     "@types/redux-logger": "^3.0.9",
     "@types/redux-promise": "^0.5.29",
     "@types/testing-library__jest-dom": "^5.14.5",
@@ -280,6 +280,9 @@
     "react-refresh": "^0.13.0",
     "shadow-cljs": "2.27.4",
     "source-map-loader": "^4.0.1",
+    "stylelint": "^16.2.1",
+    "stylelint-config-css-modules": "^4.4.0",
+    "stylelint-config-standard": "^36.0.0",
     "terser-webpack-plugin": "^5.3.9",
     "typescript": "^4.7.2",
     "webpack": "^5.85.0",
@@ -381,6 +384,7 @@
   },
   "lint-staged": {
     "+(frontend|enterprise/frontend|e2e)/**/*.css": [
+      "stylelint --fix",
       "prettier --write"
     ],
     "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [

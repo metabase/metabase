@@ -156,4 +156,4 @@ export interface TemplateTag {
   "snippet-name"?: string;
 }
 
-export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
+export type TemplateTags = Record<TemplateTagName, TemplateTag>;

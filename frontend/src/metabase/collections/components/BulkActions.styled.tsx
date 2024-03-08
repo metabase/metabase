@@ -6,14 +6,10 @@ import { alpha, color } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { space } from "metabase/styled-components/theme";
 
-export const BulkActionsToast = styled.div<{
-  isNavbarOpen: boolean;
-  translateY: number;
-}>`
+export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   position: fixed;
   bottom: 0;
   left: 50%;
-  transform: ${props => `translate(-50%, ${props.translateY}px)`};
   margin-left: ${props =>
     props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
   margin-bottom: ${space(2)};

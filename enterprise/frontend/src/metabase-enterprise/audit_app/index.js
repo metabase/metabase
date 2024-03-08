@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
 import {
-  PLUGIN_ADMIN_NAV_ITEMS,
-  PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_REDUCERS,
@@ -13,17 +11,10 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { InstanceAnalyticsButton } from "./components/InstanceAnalyticsButton/InstanceAnalyticsButton";
 import { auditInfo } from "./reducer";
-import getAuditRoutes, { getUserMenuRotes } from "./routes";
+import { getUserMenuRotes } from "./routes";
 import { getDashboardOverviewId, getQuestionOverviewId } from "./selectors";
 
 if (hasPremiumFeature("audit_app")) {
-  PLUGIN_ADMIN_NAV_ITEMS.push({
-    name: t`Audit`,
-    path: "/admin/audit",
-    key: "audit",
-  });
-  PLUGIN_ADMIN_ROUTES.push(getAuditRoutes);
-
   PLUGIN_ADMIN_USER_MENU_ITEMS.push(user => [
     {
       title: t`Unsubscribe from all subscriptions / alerts`,

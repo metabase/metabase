@@ -34,6 +34,8 @@ const ReferenceHeader = ({
         </Ellipsified>
 
         {headerLink && (
+          /* TODO: there is only L.headerButton, so either change to
+          L.headerButton or remove */
           <div key="2" className={cx("flex-full", S.headerButton)}>
             <Link
               to={headerLink}

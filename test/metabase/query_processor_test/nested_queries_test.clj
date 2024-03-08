@@ -16,6 +16,7 @@
    [metabase.models :refer [Field Table]]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -638,8 +639,8 @@
       (qp.store/with-metadata-provider (-> meta/metadata-provider
                                            (lib.tu/metadata-provider-with-cards-for-queries [{}])
                                            (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
-        (is (= #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}
-               (query-perms/perms-set (query-with-source-card 1 :aggregation [:count]))))))))
+        (is (= {:paths #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}}
+               (query-perms/required-perms (query-with-source-card 1 :aggregation [:count]))))))))
 
 (deftest ^:parallel card-perms-test-2
   (testing "perms for a Card with a SQL source query\n"
@@ -647,51 +648,52 @@
     (testing "should be able to save even if you don't have SQL write perms (#6845)"
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/native-query {:query "SELECT * FROM VENUES"})])
-        (is (= #{(perms/collection-read-path collection/root-collection)}
-               (query-perms/perms-set (query-with-source-card 1 :aggregation [:count]))))))))
+        (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
+               (query-perms/required-perms (query-with-source-card 1 :aggregation [:count]))))))))
 
 (deftest card-perms-test-3
   (testing "perms for Card -> Card -> MBQL Source query\n"
     (testing "You should be able to read a Card with a source Card if you can read that Card and their Collections (#12354)\n"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (mt/with-temp [Collection collection {}
-                         Card       card-1 {:collection_id (u/the-id collection)
-                                            :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
-                         Card       card-2 {:collection_id (u/the-id collection)
-                                            :dataset_query (mt/mbql-query nil
-                                                             {:source-table (format "card__%d" (u/the-id card-1))})}]
-            (testing "read perms for both Cards should be the same as reading the parent collection")
-            (is (= (mi/perms-objects-set collection :read)
-                   (mi/perms-objects-set card-1 :read)
-                   (mi/perms-objects-set card-2 :read)))
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+            (mt/with-temp [Collection collection {}
+                           Card       card-1 {:collection_id (u/the-id collection)
+                                              :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
+                           Card       card-2 {:collection_id (u/the-id collection)
+                                              :dataset_query (mt/mbql-query nil
+                                                               {:source-table (format "card__%d" (u/the-id card-1))})}]
+              (testing "read perms for both Cards should be the same as reading the parent collection")
+              (is (= (mi/perms-objects-set collection :read)
+                     (mi/perms-objects-set card-1 :read)
+                     (mi/perms-objects-set card-2 :read)))
 
-            (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
-              (doseq [[object-name object] {"Collection" collection
-                                            "Card 1"     card-1
-                                            "Card 2"     card-2}]
-                (mt/with-test-user :rasta
-                  (testing object-name
-                    (is (= false
-                           (mi/can-read? object)))))))
-
-            (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
-              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-              (mt/with-test-user :rasta
+              (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
                 (doseq [[object-name object] {"Collection" collection
                                               "Card 1"     card-1
                                               "Card 2"     card-2}]
-                  (testing object-name
-                    (is (= true
-                           (mi/can-read? object)))))
+                  (mt/with-test-user :rasta
+                    (testing object-name
+                      (is (= false
+                             (mi/can-read? object)))))))
 
-                (testing "\nshould be able to run the query"
-                  (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
-                          [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
-                         (mt/rows
-                          (binding [qp.perms/*card-id* (u/the-id card-2)]
-                            (qp/process-query (:dataset_query card-2)))))))))))))))
+              (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
+                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (mt/with-test-user :rasta
+                  (doseq [[object-name object] {"Collection" collection
+                                                "Card 1"     card-1
+                                                "Card 2"     card-2}]
+                    (testing object-name
+                      (is (= true
+                             (mi/can-read? object)))))
+
+                  (testing "\nshould be able to run the query"
+                    (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                            [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                           (mt/rows
+                            (binding [qp.perms/*card-id* (u/the-id card-2)]
+                              (qp/process-query (:dataset_query card-2))))))))))))))))
 
 ;; try this in an end-to-end fashion using the API and make sure we can save a Card if we have appropriate read
 ;; permissions for the source query

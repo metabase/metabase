@@ -191,52 +191,108 @@ export interface OpenAiModel {
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
 interface InstanceSettings {
-  "active-users-count"?: number;
   "admin-email": string;
-  "bcc-enabled?": boolean;
-  "deprecation-notice-version"?: string;
-  "ee-openai-api-key"?: string;
-  "embedding-secret-key"?: string;
   "enable-embedding": boolean;
   "enable-nested-queries": boolean;
   "enable-query-caching"?: boolean;
-  "query-caching-ttl-ratio": number;
-  "query-caching-min-ttl": number;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
-  "google-auth-auto-create-accounts-domain": string | null;
-  "google-auth-configured": boolean;
-  "jwt-enabled"?: boolean;
-  "jwt-configured"?: boolean;
-  "openai-api-key": string | null;
-  "openai-organization": string | null;
-  "openai-model": string | null;
-  "openai-available-models"?: OpenAiModel[];
-  "premium-embedding-token": string | null;
-  "saml-configured"?: boolean;
-  "saml-enabled"?: boolean;
   "search-typeahead-enabled": boolean;
-  "session-cookie-samesite": SessionCookieSameSite;
-  "show-database-syncing-modal": boolean;
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;
   "show-homepage-xrays": boolean;
   "site-uuid": string;
-  "slack-app-token": string | null;
-  "slack-files-channel": string | null;
-  "slack-token": string | null;
-  "slack-token-valid?": boolean;
   "subscription-allowed-domains": string | null;
-  "token-status": TokenStatus | null;
-  "user-locale": string | null;
-  "version-info": VersionInfo | null;
   "uploads-enabled": boolean;
   "uploads-database-id": number | null;
   "uploads-schema-name": string | null;
   "uploads-table-prefix": string | null;
   "user-visibility": string | null;
+}
+
+interface AdminSettings {
+  "active-users-count"?: number;
+  "deprecation-notice-version"?: string;
+  "embedding-secret-key"?: string;
+  "query-caching-min-ttl": number;
+  "query-caching-ttl-ratio": number;
+  "google-auth-auto-create-accounts-domain": string | null;
+  "google-auth-configured": boolean;
+  "jwt-configured"?: boolean;
+  "jwt-enabled"?: boolean;
+  "premium-embedding-token": string | null;
+  "saml-configured"?: boolean;
+  "saml-enabled"?: boolean;
+  "show-database-syncing-modal": boolean;
+  "token-status": TokenStatus | null;
+  "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
+}
+
+interface SettingsManagerSettings {
+  "bcc-enabled?": boolean;
+  "ee-openai-api-key"?: string;
+  "openai-api-key": string | null;
+  "openai-available-models"?: OpenAiModel[];
+  "openai-model": string | null;
+  "openai-organization": string | null;
+  "session-cookie-samesite": SessionCookieSameSite;
+  "slack-app-token": string | null;
+  "slack-files-channel": string | null;
+  "slack-token": string | null;
+  "slack-token-valid?": boolean;
+}
+
+type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
+
+interface PublicSettings {
+  "anon-tracking-enabled": boolean;
+  "application-font": string;
+  "application-font-files": FontFile[] | null;
+  "application-name": string;
+  "available-fonts": string[];
+  "available-locales": LocaleData[] | null;
+  "cloud-gateway-ips": string[] | null;
+  "custom-formatting": FormattingSettings;
+  "custom-homepage": boolean;
+  "custom-homepage-dashboard": number | null;
+  "email-configured?": boolean;
+  "embedding-app-origin": string;
+  "enable-enhancements?": boolean;
+  "enable-password-login": boolean;
+  engines: Record<string, Engine>;
+  "ga-enabled": boolean;
+  "google-auth-client-id": string | null;
+  "google-auth-enabled": boolean;
+  "has-user-setup": boolean;
+  "help-link": HelpLinkSetting;
+  "help-link-custom-destination": string;
+  "hide-embed-branding?": boolean;
+  "is-hosted?": boolean;
+  "is-metabot-enabled": boolean;
+  "ldap-configured?": boolean;
+  "ldap-enabled": boolean;
+  "loading-message": LoadingMessage;
+  "map-tile-server-url": string;
+  "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
+  "password-complexity": PasswordComplexity;
+  "persisted-models-enabled": boolean;
+  "report-timezone-long": string;
+  "report-timezone-short": string;
+  "session-cookies": boolean | null;
+  "setup-token": string | null;
+  "show-lighthouse-illustration": boolean;
+  "show-metabase-links": boolean;
+  "show-metabot": boolean;
+  "site-locale": string;
+  "site-url": string;
+  "snowplow-enabled": boolean;
+  "snowplow-url": string;
+  "start-of-week": DayOfWeekId;
+  "token-features": TokenFeatures;
+  version: Version;
+  "version-info-last-checked": string | null;
 }
 
 interface PublicSettings {
@@ -294,7 +350,10 @@ export interface UserSettings {
   "last-used-native-database-id"?: number | null;
 }
 
-export type Settings = InstanceSettings & PublicSettings & UserSettings;
+export type Settings = InstanceSettings &
+  PublicSettings &
+  UserSettings &
+  PrivilegedSettings;
 
 export type SettingKey = keyof Settings;
 
