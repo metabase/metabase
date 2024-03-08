@@ -207,7 +207,7 @@ export function KeyboardTriggeredErrorModal() {
         openDiagnosticModal();
       }
     };
-    window.addEventListener("keypress", keyboardListener);
+    window.addEventListener("keydown", keyboardListener);
     return () => {
       window.removeEventListener("keydown", keyboardListener);
     };

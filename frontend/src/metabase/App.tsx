@@ -98,6 +98,7 @@ function App({
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <AppContainer className="spread">
+          <KeyboardTriggeredErrorModal />
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>
@@ -112,7 +113,6 @@ function App({
           </AppContentContainer>
         </AppContainer>
       </ScrollToTop>
-      <KeyboardTriggeredErrorModal />
     </ErrorBoundary>
   );
 }
