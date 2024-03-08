@@ -131,12 +131,15 @@
   "Sync the foreign keys in a `database`. This sets appropriate values for relevant Fields in the Metabase application
   DB based on values from the `FKMetadata` returned by [[metabase.driver/describe-table-fks]].
 
-  If the driver supports the `:fast-sync-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata."
+  If the driver supports the `:fast-sync-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata.
+
+  This function also sets all the tables in the "
   [database :- i/DatabaseInstance]
   (if (driver/database-supports? (driver.u/database->driver database)
                                  :fast-sync-fks
                                  database)
-    (fast-sync-fks! database)
+    (do (fast-sync-fks! database)
+        (sync-util/set-initial-table-syncs-complete-for-db! database))
     (reduce (fn [update-info table]
               (let [table         (t2.realize/realize table)
                     table-fk-info (sync-fks-for-table! database table)]
@@ -147,7 +150,7 @@
                 (if (instance? Exception table-fk-info)
                   (update update-info :total-failed inc)
                   (merge-with + update-info table-fk-info))))
-          {:total-fks    0
-           :updated-fks  0
-           :total-failed 0}
-          (sync-util/db->reducible-sync-tables database))))
+            {:total-fks    0
+             :updated-fks  0
+             :total-failed 0}
+            (sync-util/db->reducible-sync-tables database))))

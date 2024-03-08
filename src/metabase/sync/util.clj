@@ -297,11 +297,22 @@
 ;; is complete (excluding analysis). This powers a UX that displays the progress of the initial sync to the admin who
 ;; added the database, and enables individual tables when they become usable for queries.
 
+(def ^:private sync-tables-clause
+  [:and [:= :active true]
+        [:= :visibility_type nil]])
+
 (defn set-initial-table-sync-complete!
   "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
   [table]
   (when (not= (:initial_sync_status table) "complete")
     (t2/update! :model/Table (u/the-id table) {:initial_sync_status "complete"})))
+
+(defn set-initial-table-syncs-complete-for-db!
+  "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
+  set"
+  [database-or-id]
+  (t2/update! :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}
+              {:initial_sync_status "complete"}))
 
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
@@ -319,9 +330,6 @@
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private sync-tables-clause
-  [:and [:= :active true]
-        [:= :visibility_type nil]])
 
 (defn db->sync-tables
   "Returns all the Tables that have their metadata sync'd for `database-or-id`."
