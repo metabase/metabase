@@ -100,8 +100,14 @@
   (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
     (let [fk-metadata (fetch-metadata/fk-metadata database)]
       (transduce (map (fn [x]
-                        {:total-fks   1
-                         :updated-fks (mark-fk! database x)}))
+                        (let [[updated failed] (try (mark-fk! database x)
+                                                    [1 0]
+                                                    (catch Exception e
+                                                      (log/error e)
+                                                      [0 1]))]
+                          {:total-fks    1
+                           :updated-fks  updated
+                           :total-failed failed})))
                  (partial merge-with +)
                  {:total-fks   0
                   :updated-fks 0}
@@ -136,8 +142,8 @@
   This function also sets all the tables in the "
   [database :- i/DatabaseInstance]
   (if (driver/database-supports? (driver.u/database->driver database) :fast-sync-fks database)
-    (do (fast-sync-fks! database)
-        (sync-util/set-initial-table-syncs-complete-for-db! database))
+    (u/prog1 (fast-sync-fks! database)
+      (sync-util/set-initial-table-syncs-complete-for-db! database))
     (reduce (fn [update-info table]
               (let [table         (t2.realize/realize table)
                     table-fk-info (sync-fks-for-table! database table)]

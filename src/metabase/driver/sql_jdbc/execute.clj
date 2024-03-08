@@ -719,6 +719,7 @@
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (do-with-connection-with-options
+         driver
          db
          nil
          (fn [^Connection conn]
