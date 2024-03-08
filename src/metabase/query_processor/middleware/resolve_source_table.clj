@@ -64,12 +64,12 @@
 
 (mu/defmethod query->source-table-ids ::pmbql :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   [query]
-  (let [source-table-ids (atom #{})]
+  (let [source-table-ids (volatile! #{})]
     (lib.walk/walk-stages
      query
      (fn [_query _path {:keys [source-table], :as _stage}]
        (when source-table
-         (swap! source-table-ids conj source-table))))
+         (vswap! source-table-ids conj source-table))))
     (not-empty @source-table-ids)))
 
 (defn resolve-source-tables
