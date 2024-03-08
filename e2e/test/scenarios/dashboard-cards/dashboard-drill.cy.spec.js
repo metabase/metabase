@@ -645,6 +645,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should keep card's display when doing zoom drill-through from dashboard (metabase#38307)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     const questionDetails = {
       name: "38307",
       query: {
@@ -667,8 +669,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get(".bar").eq(0).click({ force: true });
         cy.findByText("See this month by week").click();
 
-        // intercept the POST to question's query via api dataset
-        cy.intercept("POST", "/api/dataset").as("dataset");
         cy.wait("@dataset");
 
         // check that the display is still a bar chart by checking that a .bar element exists
