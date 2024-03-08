@@ -234,11 +234,37 @@
 (defn- get-additional-table-permission! [{:keys [db-id table-id]} perm-type]
   (get-in *additional-table-permissions* [db-id table-id perm-type]))
 
+(mu/defn database-permission-for-group :- PermissionValue
+  "Returns the effective permission value for a given *group*, permission type, and database ID"
+  [group-id perm-type database-id]
+  (when (not= :model/Database (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} is not a data-level permission." perm-type)
+                    {perm-type (Permissions perm-type)})))
+  (let [perm-values (t2/select-fn-set :value
+                                      :model/DataPermissions
+                                      {:select [[:p.perm_value :value]]
+                                       :from [[:data_permissions :p]]
+                                       :where [:and
+                                               [:= :p.group_id group-id]
+                                               [:= :p.perm_type (u/qualified-name perm-type)]
+                                               [:= :p.db_id database-id]
+                                               [:= :table_id nil]]})]
+    (or (coalesce perm-type perm-values)
+        (least-permissive-value perm-type))))
+
+(mu/defn group-has-permission-for-database? :- :boolean
+  "Returns a Boolean indicating whether the user has the specified permission value for the given database ID,
+   or a more permissive value."
+  [group-id perm-type perm-value database-id]
+  (at-least-as-permissive? perm-type
+                           (database-permission-for-group group-id perm-type database-id)
+                           perm-value))
+
 (mu/defn table-permission-for-group :- PermissionValue
   "Returns the effective permission value for a given *group*, permission type, and database ID, and table ID."
   [group-id perm-type database-id table-id]
   (when (not= :model/Table (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
+    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
   (let [perm-values (t2/select-fn-set :value
                                       :model/DataPermissions
@@ -401,20 +427,6 @@
                                (coalesce-most-restrictive :perms/download-results values)))))]
       (or (coalesce :perms/download-results (vals value-by-group))
           (least-permissive-value :perms/download-results)))))
-
-(mu/defn user-has-block-perms-for-database? :- :boolean
-  "Returns a Boolean indicating whether the given user should have block permissions enforced for the given database.
-  This is a standalone function because block perms are only set at the database-level, but :perms/data-access is
-  generally checked at the table-level, except in the case of block perms."
-  [user-id database-id]
-  (if (is-superuser? user-id)
-    false
-    (let [perm-values
-          (->> (get-permissions user-id :perms/data-access database-id)
-               (map :perm_value)
-               (into #{}))]
-      (= (coalesce :perms/data-access perm-values)
-         :block))))
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any

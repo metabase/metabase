@@ -318,6 +318,8 @@
         (mt/with-temp-copy-of-db
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
           (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
             (is (malli= [:map
                          [:permissions-error? [:= true]]

@@ -3865,10 +3865,8 @@
               ;; this file
               (testing "Works without read rights on the DB (but access not blocked)"
                 (mt/with-no-data-perms-for-all-users!
-                  (data-perms/set-database-permission! (perms-group/all-users)
-                                                       (:id (mt/db))
-                                                       :perms/data-access
-                                                       :no-self-service)
+                  (data-perms/set-database-permission! (perms-group/all-users) (mt/db) :perms/view-data :unrestricted)
+                  (data-perms/set-database-permission! (perms-group/all-users) (mt/db) :perms/create-queries :no)
                   (mt/with-actions-enabled
                     (is (contains? #{{:ID 76, :NAME "Birds"}
                                      {:id 76, :name "Birds"}}
