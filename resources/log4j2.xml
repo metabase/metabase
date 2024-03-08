@@ -33,6 +33,9 @@
     <Logger name="liquibase" level="ERROR"/>
     <Logger name="net.snowflake.client.jdbc.SnowflakeConnectString" level="ERROR"/>
 
+    <Logger name ="metabase.integrations.ldap" level="DEBUG"/>
+    <Logger name ="metabase-enterprise.enhancements.integrations.ldap" level="DEBUG"/>
+
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>
     </Root>

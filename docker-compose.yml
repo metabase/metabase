@@ -1,0 +1,18 @@
+version: '3.7'
+services:
+  openldap:
+    image: bitnami/openldap:2.6.4
+    hostname: openldap
+    container_name: openldap
+    ports:
+      - 1389:389
+    environment:
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=adminpass
+      - LDAP_USERS=user01@example.org,user02@example.org
+      - LDAP_PASSWORDS=123456,123465
+      - LDAP_PORT_NUMBER=389
+      - LDAP_ROOT=dc=example,dc=org
+      - LDAP_LOGLEVEL=32
+      - LDAP_USER_DC=users
+      - LDAP_GROUP=readers

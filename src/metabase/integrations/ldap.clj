@@ -9,6 +9,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -202,10 +203,13 @@
              group-base-error)
            (catch Exception _e
              group-base-error)))
+       (log/debug "LDAP connection test successful")
        {:status :SUCCESS}))
     (catch LDAPException e
+       (log/debugf "LDAP connection test failed: " (.getMessage e))
       {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
     (catch Exception e
+      (log/debugf "LDAP connection test failed: " (.getMessage e))
       {:status :ERROR, :message (.getMessage e)})))
 
 (defn test-current-ldap-details

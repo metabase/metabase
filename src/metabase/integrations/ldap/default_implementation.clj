@@ -5,8 +5,10 @@
    [clojure.string :as str]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings.premium-features :refer [defenterprise-schema]]
+   [metabase.public-settings.premium-features
+    :refer [defenterprise-schema]]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -51,14 +53,16 @@
   [ldap-connection                 :- (ms/InstanceOfClass LDAPConnectionPool)
    username                        :- ms/NonBlankString
    {:keys [user-base user-filter]} :- LDAPSettings]
-  (some-> (first
-           (ldap/search
-            ldap-connection
-            user-base
-            {:scope      :sub
-             :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
-             :size-limit 1}))
-          u/lower-case-map-keys))
+  (let [search-result (ldap/search
+                       ldap-connection
+                       user-base
+                       {:scope      :sub
+                        :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
+                        :size-limit 1})]
+    (if-not search-result
+      (log/debugf "LDAP user not found: %s" username)
+      (log/debugf "LDAP user found: %s" username))
+    (some-> (first search-result) u/lower-case-map-keys)))
 
 (mu/defn ^:private process-group-membership-filter :- ms/NonBlankString
   "Replace DN and UID placeholders with values returned by the LDAP server."
