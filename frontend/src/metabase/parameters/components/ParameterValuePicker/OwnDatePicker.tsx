@@ -14,10 +14,7 @@ import type {
   ParameterType,
 } from "metabase-types/api";
 
-import {
-  TextInputIcon,
-  TextInputTrirgger,
-} from "./ParameterValuePicker.styled";
+import { PickerIcon, TextInputTrirgger } from "./ParameterValuePicker.styled";
 
 export function OwnDatePicker(props: {
   value: string;
@@ -33,10 +30,12 @@ export function OwnDatePicker(props: {
   const closePopover = () => setIsOpen(false);
 
   const [triggerRef, setTriggerRef] = useState<HTMLDivElement | null>(null);
+
+  // TODO this should be not needed?
   const dropdownRef = useClickOutside(closePopover, null, [triggerRef]);
 
   const icon = value ? (
-    <TextInputIcon
+    <PickerIcon
       name="close"
       onClick={() => {
         onValueChange(null);
@@ -44,7 +43,7 @@ export function OwnDatePicker(props: {
       }}
     />
   ) : (
-    <TextInputIcon name="chevrondown" />
+    <PickerIcon name="chevrondown" />
   );
   // This is required to allow clicking through the "chevrondown" icon.
   // Must be replaced with `rightSectionPointerEvents=none` after upgrade
