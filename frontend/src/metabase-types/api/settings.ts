@@ -295,55 +295,6 @@ interface PublicSettings {
   "version-info-last-checked": string | null;
 }
 
-interface PublicSettings {
-  "anon-tracking-enabled": boolean;
-  "application-font": string;
-  "application-font-files": FontFile[] | null;
-  "application-name": string;
-  "available-fonts": string[];
-  "available-locales": LocaleData[] | null;
-  "cloud-gateway-ips": string[] | null;
-  "custom-formatting": FormattingSettings;
-  "custom-homepage": boolean;
-  "custom-homepage-dashboard": number | null;
-  "email-configured?": boolean;
-  "embedding-app-origin": string;
-  "enable-enhancements?": boolean;
-  "enable-password-login": boolean;
-  engines: Record<string, Engine>;
-  "ga-enabled": boolean;
-  "google-auth-client-id": string | null;
-  "google-auth-enabled": boolean;
-  "has-user-setup": boolean;
-  "help-link": HelpLinkSetting;
-  "help-link-custom-destination": string;
-  "hide-embed-branding?": boolean;
-  "is-hosted?": boolean;
-  "is-metabot-enabled": boolean;
-  "ldap-configured?": boolean;
-  "ldap-enabled": boolean;
-  "loading-message": LoadingMessage;
-  "map-tile-server-url": string;
-  "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
-  "password-complexity": PasswordComplexity;
-  "persisted-models-enabled": boolean;
-  "report-timezone-long": string;
-  "report-timezone-short": string;
-  "session-cookies": boolean | null;
-  "setup-token": string | null;
-  "show-lighthouse-illustration": boolean;
-  "show-metabase-links": boolean;
-  "show-metabot": boolean;
-  "site-locale": string;
-  "site-url": string;
-  "snowplow-enabled": boolean;
-  "snowplow-url": string;
-  "start-of-week": DayOfWeekId;
-  "token-features": TokenFeatures;
-  version: Version;
-  "version-info-last-checked": string | null;
-}
-
 export interface UserSettings {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
