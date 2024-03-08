@@ -477,8 +477,6 @@
         (catch Throwable e
           (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
       (try
-        (when (zero? (.getFetchSize stmt))
-          (.setFetchSize stmt (sql-jdbc-fetch-size)))
         (catch Throwable e
           (log/debug e (trs "Error setting prepared statement fetch size to fetch-size"))))
       (set-parameters! driver stmt params)
@@ -715,7 +713,7 @@
           (respond results-metadata (reducible-rows driver rs rsmeta qp.pipeline/*canceled-chan*))))))))
 
 (defn sql->reducible-rows
-  "Returns a reducible collection of rows from `db` and a given SQL query"
+  "Returns a reducible collection of rows from `db` and a given SQL query."
   [db [sql & params]]
   (let [driver (:engine db)]
     (reify clojure.lang.IReduceInit
@@ -725,14 +723,16 @@
          nil
          (fn [^Connection conn]
            (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)
-                       ^ResultSet rs (if (statement-supported? driver)
-                                       (execute-statement! driver stmt sql)
-                                       (execute-prepared-statement! driver stmt))]
-             (.setFetchSize stmt (sql-jdbc-fetch-size))
-             (reduce
-              rf
-              init
-              (jdbc/reducible-result-set rs {})))))))))
+                       rs   (try
+                              (let [max-rows 0] ; 0 means no limit
+                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql))
+                              (catch Throwable e
+                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                {:driver driver
+                                                 :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                 :params params}
+                                                e))))]
+             (reduce rf init (jdbc/reducible-result-set rs {})))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
