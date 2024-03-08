@@ -19,8 +19,8 @@ import type { ChartMeasurements } from "../chart-measurements/types";
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLineOptionsAndDatasets } from "./trend-line";
 
-export const getSharedEChartsOptions = () => ({
-  animation: true,
+export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
+  animation: !isPlaceholder,
   animationDuration: 0,
   toolbox: {
     show: false,
@@ -40,6 +40,7 @@ export const getCartesianChartOption = (
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
+  isPlaceholder: boolean,
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -94,7 +95,7 @@ export const getCartesianChartOption = (
   ];
 
   return {
-    ...getSharedEChartsOptions(),
+    ...getSharedEChartsOptions(isPlaceholder),
     grid: {
       ...chartMeasurements.padding,
       containLabel: true,
