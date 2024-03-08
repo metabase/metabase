@@ -697,6 +697,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "ee-ai-features-enabled",
         display_name: t`AI features enabled`,
+        note: t`You must supply an API key before AI features can be enabled.`,
         type: "boolean",
       },
       {
