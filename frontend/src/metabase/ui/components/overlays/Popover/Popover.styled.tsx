@@ -1,5 +1,5 @@
 import type { MantineThemeOverride } from "@mantine/core";
-// import type { SyntheticEvent } from "react";
+import type { SyntheticEvent } from "react";
 
 export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
   Popover: {
@@ -19,12 +19,18 @@ export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
   },
   PopoverDropdown: {
     defaultProps: {
-      // onMouseDownCapture: (_event: SyntheticEvent) => {
-      // prevent nested popovers from closing each other
-      // see useClickOutside in @mantine/hooks for the reference
-      // TODO: follow up on fixing this -- it's probably important
-      // event.nativeEvent.stopImmediatePropagation();
-      // },
+      onMouseDownCapture: (event: SyntheticEvent) => {
+        // HACK: prevent nested popovers from closing each other
+        // see useClickOutside in @mantine/hooks for the reference
+        // in react v18 (might be due to v17 changes) causes desired
+        // behavoir to no longer work if we call stopImmediatePropagation
+        // on the first encounter.
+        if ((event as any).hasEncountedPopoverMouseDownCaptureAlready) {
+          event.nativeEvent.stopImmediatePropagation();
+        }
+
+        (event as any).hasEncountedPopoverMouseDownCaptureAlready = true;
+      },
     },
   },
 });
