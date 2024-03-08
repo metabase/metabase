@@ -46,12 +46,13 @@ export const getCartesianChartDefinition = (
     placeholderSeries: [
       {
         card: {
-          display: "line",
+          display: props.identifier,
           visualization_settings: {
             "graph.metrics": ["x"],
             "graph.dimensions": ["y"],
           },
           dataset_query: { type: "query" },
+          name: "x",
         },
         data: {
           rows: _.range(0, 11).map(i => [i, i]),

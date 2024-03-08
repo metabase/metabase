@@ -100,6 +100,7 @@ export function useModelsAndOption({
           timelineEventsModel,
           selectedTimelineEventIds ?? [],
           settings,
+          isPlaceholder ?? false,
           renderingContext,
         );
       default:
@@ -110,6 +111,7 @@ export function useModelsAndOption({
           selectedTimelineEventIds ?? [],
           settings,
           width,
+          isPlaceholder ?? false,
           renderingContext,
         );
     }
@@ -123,6 +125,7 @@ export function useModelsAndOption({
     timelineEventsModel,
     width,
     height,
+    isPlaceholder,
   ]);
 
   return { chartModel, timelineEventsModel, option };
