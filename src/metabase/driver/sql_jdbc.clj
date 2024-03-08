@@ -9,7 +9,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -179,7 +178,7 @@
 
 (defmethod driver/alter-columns! :sql-jdbc
   [driver db-id table-name column-definitions]
-  (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync.interface/alter-columns-sql driver table-name column-definitions)))
+  (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
