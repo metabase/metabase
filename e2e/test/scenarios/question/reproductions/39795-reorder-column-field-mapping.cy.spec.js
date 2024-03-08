@@ -33,10 +33,10 @@ describe("issue 39795", () => {
       },
     });
     cy.findByTestId("viz-settings-button").click();
-    moveColumnDown(getDraggableElements().first(), 3);
+    moveColumnDown(getDraggableElements().first(), 2);
 
     // We are not able to re-order because the dataset will also contain values a column for Product ID
     // This causes the isValid() check to fire, and you are always forced into the default value for table.columns
-    getDraggableElements().eq(3).should("contain.text", "ID");
+    getDraggableElements().eq(2).should("contain.text", "ID");
   });
 });
