@@ -239,6 +239,7 @@
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
+    criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     lambdaisland/deep-diff2      {:mvn/version "2.10.211"}                  ; way better diffs
     methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
     org.clojure/algo.generic     {:mvn/version "0.1.3"}
