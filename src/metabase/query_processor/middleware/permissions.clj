@@ -3,7 +3,6 @@
   (:require
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]

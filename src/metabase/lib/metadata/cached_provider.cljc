@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -65,8 +64,11 @@
         ;; TODO -- we should probably store `::nil` markers for things we tried to fetch that didn't exist
         (doseq [instance (lib.metadata.protocols/bulk-metadata uncached-provider metadata-type missing-ids)]
           (store-in-cache! cache [metadata-type (:id instance)] instance))))
-    (for [id ids]
-      (get-in-cache cache [metadata-type id]))))
+    (into []
+          (comp (map (fn [id]
+                       (get-in-cache cache [metadata-type id])))
+                (filter some?))
+          ids)))
 
 (defn- tables [metadata-provider cache]
   (let [fetched-tables #(lib.metadata.protocols/tables metadata-provider)]

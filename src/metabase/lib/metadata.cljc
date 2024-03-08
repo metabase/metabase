@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
@@ -220,15 +221,49 @@
 (mu/defn bulk-metadata :- [:maybe [:sequential [:map
                                                 [:lib/type :keyword]
                                                 [:id pos-int?]]]]
-  "Fetch multiple objects of [[metadata-type]] at once. Mainly important for QP or other backend Clj stuff that uses
-  the application database MetadataProvider, to avoid N+1 app DB hits. Returns sequence of matching metadatas; does not
-  error if objects could not be found, you'll need to check that yourself."
+  "Fetch multiple objects in bulk. If our metadata provider is a bulk provider (e.g., the application database
+  metadata provider), does a single fetch with [[lib.metadata.protocols/bulk-metadata]] if not (i.e., if this is a
+  mock provider), fetches them with repeated calls to the appropriate single-object method,
+  e.g. [[lib.metadata.protocols/field]].
+
+  The order of the returned objects will match the order of `ids`, but does check that all objects are returned. If
+  you want that behavior, use [[bulk-metadata-or-throw]] instead.
+
+  This can also be called for side-effects to warm the cache."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    metadata-type         :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
    ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
-  (when-let [ids (not-empty (set ids))]
-    (let [provider (->metadata-provider metadata-providerable)
-          f        (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
-                     lib.metadata.protocols/bulk-metadata
-                     fetch-bulk-metadata-with-non-bulk-provider)]
-      (f provider metadata-type ids))))
+  (when-let [ids (not-empty (cond-> ids
+                              (not (set? ids)) distinct))] ; remove duplicates but preserve order.
+    (let [provider   (->metadata-provider metadata-providerable)
+          f          (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
+                       lib.metadata.protocols/bulk-metadata
+                       fetch-bulk-metadata-with-non-bulk-provider)
+          results    (f provider metadata-type ids)
+          id->result (into {} (map (juxt :id identity)) results)]
+      (into []
+            (comp (map id->result)
+                  (filter some?))
+            ids))))
+
+(defn- missing-bulk-metadata-error [metadata-type id]
+  (ex-info (i18n/tru "Failed to fetch {0} {1}: either it does not exist, or it belongs to a different Database"
+                     (pr-str metadata-type)
+                     (pr-str id))
+           {:status-code   400
+            :metadata-type metadata-type
+            :id            id}))
+
+(mu/defn bulk-metadata-or-throw :- [:maybe [:sequential [:map
+                                                         [:lib/type :keyword]
+                                                         [:id pos-int?]]]]
+  "Like [[bulk-metadata]], but verifies that all the requested objects were returned; throws an Exception otherwise."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metadata-type         :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
+   ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
+  (let [results     (bulk-metadata metadata-providerable metadata-type ids)
+        fetched-ids (into #{} (keep :id) results)]
+    (doseq [id ids]
+      (when-not (contains? fetched-ids id)
+        (throw (missing-bulk-metadata-error metadata-type id))))
+    results))

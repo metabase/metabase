@@ -81,6 +81,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -530,9 +531,11 @@
 (defn- check-field-value-query-permissions
   "Check query permissions against the chain-filter-mbql-query (private #196)"
   [field-id constraints options]
-  (->> (chain-filter-mbql-query field-id constraints options)
-       qp.preprocess/preprocess
-       qp.perms/check-query-permissions*))
+  (let [query (chain-filter-mbql-query field-id constraints options)]
+    (qp.setup/with-qp-setup [query query]
+      (->> query
+           qp.preprocess/preprocess
+           qp.perms/check-query-permissions*))))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?

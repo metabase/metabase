@@ -1,6 +1,5 @@
 (ns metabase.lib.card
   (:require
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]

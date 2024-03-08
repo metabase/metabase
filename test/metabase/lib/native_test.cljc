@@ -328,7 +328,7 @@
     (is (= #{1 2}
            (lib/template-tag-card-ids query)))))
 
-(deftest template-tags-referenced-cards-test
+(deftest ^:parallel template-tags-referenced-cards-test
   (testing "returns Card instances from raw query"
     (let [query (lib/query lib.tu/metadata-provider-with-mock-cards
                   {:database (meta/id)

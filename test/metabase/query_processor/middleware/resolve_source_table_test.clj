@@ -29,7 +29,7 @@
     (store-contents)))
 
 (defmacro ^:private with-store-contents {:style/indent 0} [& body]
-  `(do-with-store-contents (fn [] ~@body)))
+  `(do-with-store-contents (^:once fn* [] ~@body)))
 
 (defn- resolve-and-return-store-contents [query]
   (with-store-contents
@@ -46,7 +46,7 @@
                              Table    {table-id :id}    {:db_id database-id}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"\QFailed to fetch :metadata/table\E"
+           #"Failed to fetch :metadata/table \d+: either it does not exist, or it belongs to a different Database"
            (resolve-and-return-store-contents
             {:database (mt/id)
              :type     :query

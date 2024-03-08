@@ -2,7 +2,6 @@
   (:require
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))

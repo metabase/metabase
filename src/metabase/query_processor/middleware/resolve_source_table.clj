@@ -79,5 +79,5 @@
   (check-all-source-table-ids-are-valid query)
   ;; this is done for side effects
   (let [metadata-providerable (if (:lib/type query) query (qp.store/metadata-provider))]
-    (lib.metadata/bulk-metadata metadata-providerable :metadata/table (query->source-table-ids query)))
+    (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/table (query->source-table-ids query)))
   query)

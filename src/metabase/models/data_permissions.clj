@@ -580,7 +580,7 @@
   being a table-level permission."
   [group-or-id :- TheIdable
    db-or-id    :- TheIdable
-   perm-type   :- :keyword
+   perm-type   :- PermissionType
    value       :- :keyword]
   (t2/with-transaction [_conn]
     (let [group-id (u/the-id group-or-id)
@@ -605,7 +605,7 @@
   is removed and table-level rows are are added for all of its tables. Similarly, if setting a table-level permission to a value
   that results in all of the database's tables having the same permission, it is replaced with a single database-level row."
   [group-or-id :- TheIdable
-   perm-type   :- :keyword
+   perm-type   :- PermissionType
    table-perms :- [:map-of TheIdable :keyword]]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
@@ -685,7 +685,7 @@
   "Sets permissions for a single table to the specified value for a given group."
   [group-or-id :- TheIdable
    table-or-id :- TheIdable
-   perm-type   :- :keyword
+   perm-type   :- PermissionType
    value       :- :keyword]
   (set-table-permissions! group-or-id perm-type {table-or-id value}))
 
@@ -712,7 +712,7 @@
   Otherwise, the new table permission is added with the provided value."
   [groups-or-ids :- [:sequential TheIdable]
    table-or-id   :- TheIdable
-   perm-type     :- :keyword
+   perm-type     :- PermissionType
    value         :- :keyword]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
