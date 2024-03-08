@@ -3,13 +3,16 @@ import { openQuestionActions, popover, restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("issue 34349", () => {
+const ID_DESCRIPTION =
+  "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.";
+
+describe("issues 25884 and 34349", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("should show empty description input for columns without description in metadata (metabase#34349)", () => {
+  it("should show empty description input for columns without description in metadata (metabase#25884, metabase#34349)", () => {
     cy.createQuestion(
       {
         type: "model",
@@ -30,11 +33,13 @@ describe("issue 34349", () => {
 
     openQuestionActions();
     popover().findByText("Edit metadata").click();
-    cy.findByLabelText("Description").should(
-      "have.text",
-      "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.",
-    );
+
+    cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
+
     cy.findAllByTestId("header-cell").contains("Country").click();
     cy.findByLabelText("Description").should("have.text", "");
+
+    cy.findAllByTestId("header-cell").contains("ID").click();
+    cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
   });
 });
