@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 export const MAX_ERROR_LOGS = 20;
 
 export function captureConsoleErrors() {

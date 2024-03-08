@@ -104,7 +104,6 @@ function App({
             {isNavBarEnabled && <Navbar />}
             <AppContent ref={setViewportElement}>
               <ContentViewportContext.Provider value={viewportElement ?? null}>
-                <KeyboardTriggeredErrorModal />
                 {errorPage ? getErrorComponent(errorPage) : children}
               </ContentViewportContext.Provider>
             </AppContent>
@@ -113,6 +112,7 @@ function App({
           </AppContentContainer>
         </AppContainer>
       </ScrollToTop>
+      <KeyboardTriggeredErrorModal />
     </ErrorBoundary>
   );
 }

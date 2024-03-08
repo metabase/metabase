@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { t, jt } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -161,7 +161,10 @@ export const ErrorDiagnosticModalTrigger = () => {
       <Stack justify="center" my="lg">
         <Box>
           <Text align="center">
-            {jt`Click the button below to download diagnostic information to send
+            {c(
+              "indicates an email address to which to send diagnostic information",
+            )
+              .jt`Click the button below to download diagnostic information to send
             to
             ${(
               <Link key="email" variant="brand" to="mailto:help@metabase.com">
@@ -195,11 +198,16 @@ export function KeyboardTriggeredErrorModal() {
 
   useEffect(() => {
     const keyboardListener = (event: KeyboardEvent) => {
-      if (event.key === "F1" && (event.ctrlKey || event.metaKey)) {
+      if (
+        event.key === "F1" &&
+        (event.ctrlKey || event.metaKey) &&
+        !event.shiftKey &&
+        !event.altKey
+      ) {
         openDiagnosticModal();
       }
     };
-    window.addEventListener("keydown", keyboardListener);
+    window.addEventListener("keypress", keyboardListener);
     return () => {
       window.removeEventListener("keydown", keyboardListener);
     };
@@ -220,7 +228,9 @@ export function KeyboardTriggeredErrorModal() {
       <Modal opened onClose={closeDiagnosticModal}>
         <Stack align="center" justify="center" mb="lg">
           <Text w="bold" color="text-medium" mb="sm">
-            {t`Gathering diagnostic information...`}
+            {c(
+              "loading message indicating that we are gathering debugging information to aid in providing technical support",
+            ).t`Gathering diagnostic information...`}
           </Text>
           <Loader />
         </Stack>

@@ -43,10 +43,8 @@ export const useErrorInfo = (
       ? UtilApi.logs().catch(nullOnCatch)
       : Promise.resolve(null);
 
-    /* eslint-disable no-console */
-    // @ts-expect-error I'm sorry
+    // @ts-expect-error non-standard error property
     const frontendErrors = console?.errorBuffer?.map?.(err => err.join(""));
-    /* eslint-enable no-console */
 
     const settledPromises = await Promise.allSettled([
       entityInfoRequest,
@@ -87,7 +85,7 @@ export const useErrorInfo = (
       entityInfo,
       entityName: entity,
       localizedEntityName: getLocalizedEntityName(entity),
-      ...(queryResults ? { queryResults } : undefined),
+      queryResults,
       logs: filteredLogs,
       frontendErrors,
       backendErrors,
