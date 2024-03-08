@@ -8,19 +8,23 @@ describe("metabase-lib/expressions/resolve", () => {
     const segments = [];
     const metrics = [];
 
-    resolve(expr, startRule, (kind, name) => {
-      switch (kind) {
-        case "dimension":
-          dimensions.push(name);
-          break;
-        case "segment":
-          segments.push(name);
-          break;
-        case "metric":
-          metrics.push(name);
-          break;
-      }
-      return [kind, name];
+    resolve({
+      expression: expr,
+      type: startRule,
+      fn: (kind, name) => {
+        switch (kind) {
+          case "dimension":
+            dimensions.push(name);
+            break;
+          case "segment":
+            segments.push(name);
+            break;
+          case "metric":
+            metrics.push(name);
+            break;
+        }
+        return [kind, name];
+      },
     });
 
     return { dimensions, segments, metrics };
@@ -342,13 +346,24 @@ describe("metabase-lib/expressions/resolve", () => {
 
   it("should not fail on literal 0", () => {
     const opt = { default: 0 };
-    expect(resolve(["case", [[X, 0]]])).toEqual(["case", [[X, 0]]]);
-    expect(resolve(["case", [[X, 0]], opt])).toEqual(["case", [[X, 0]], opt]);
-    expect(resolve(["case", [[X, 2]], opt])).toEqual(["case", [[X, 2]], opt]);
+    expect(resolve({ expression: ["case", [[X, 0]]] })).toEqual([
+      "case",
+      [[X, 0]],
+    ]);
+    expect(resolve({ expression: ["case", [[X, 0]], opt] })).toEqual([
+      "case",
+      [[X, 0]],
+      opt,
+    ]);
+    expect(resolve({ expression: ["case", [[X, 2]], opt] })).toEqual([
+      "case",
+      [[X, 2]],
+      opt,
+    ]);
   });
 
   it("should reject unknown function", () => {
-    expect(() => resolve(["foobar", 42])).toThrow();
+    expect(() => resolve({ expression: ["foobar", 42] })).toThrow();
   });
 
   it("should reject unsupported function (metabase#39773)", () => {
@@ -362,7 +377,11 @@ describe("metabase-lib/expressions/resolve", () => {
     }).database(1);
 
     expect(() =>
-      resolve(["percentile", 1, 2], "aggregation", undefined, database),
+      resolve({
+        expression: ["percentile", 1, 2],
+        type: "aggregation",
+        database,
+      }),
     ).toThrow("Unsupported function percentile");
   });
 });

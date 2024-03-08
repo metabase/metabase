@@ -69,18 +69,19 @@ const isCompatible = (a, b) => {
 };
 
 /**
- *
- * @param {import("./pratt").Expr} expression
- * @param {string} type
- * @param {?(kind: string, name: string, node: import("./pratt").Node) => void} fn
- * @param {Database | null} database
+ * @param {{
+ *   expression: import("./pratt").Expr
+ *   type?: string
+ *   fn?: ?(kind: string, name: string, node: import("./pratt").Node) => void
+ *   database?: Database | null
+ * }} options
  */
-export function resolve(
+export function resolve({
   expression,
   type = "expression",
   fn = undefined,
   database = undefined,
-) {
+}) {
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
@@ -133,13 +134,13 @@ export function resolve(
       }
 
       const resolvedPairs = pairs.map(([tst, val]) => [
-        resolve(tst, "boolean", fn, database),
-        resolve(val, type, fn, database),
+        resolve({ expression: tst, type: "boolean", fn, database }),
+        resolve({ expression: val, type, fn, database }),
       ]);
 
       if (options && "default" in options) {
         const resolvedOptions = {
-          default: resolve(options.default, type, fn, database),
+          default: resolve({ expression: options.default, type, fn, database }),
         };
         return [op, resolvedPairs, resolvedOptions];
       }
@@ -150,7 +151,9 @@ export function resolve(
     if (operandType) {
       return [
         op,
-        ...operands.map(operand => resolve(operand, operandType, fn, database)),
+        ...operands.map(operand =>
+          resolve({ expression: operand, type: operandType, fn, database }),
+        ),
       ];
     }
 
@@ -200,7 +203,7 @@ export function resolve(
         // as-is, optional object for e.g. ends-with, time-interval, etc
         return operand;
       }
-      return resolve(operand, args[i], fn, database);
+      return resolve({ expression: operand, type: args[i], fn, database });
     });
     return [op, ...resolvedOperands];
   } else if (

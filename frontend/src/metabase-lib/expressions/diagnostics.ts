@@ -224,7 +224,13 @@ function prattCompiler({
       adjustOptions,
       useShorthands,
       adjustCase,
-      expr => resolve(expr, startRule, resolveMBQLField, database),
+      expression =>
+        resolve({
+          expression,
+          type: startRule,
+          fn: resolveMBQLField,
+          database,
+        }),
     ],
     getMBQLName,
   });
