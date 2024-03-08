@@ -68,6 +68,7 @@
      metabase.db.schema-migrations-test.impl/run-migrations-in-range!
      metabase.db.setup/migrate!
      metabase.db.setup/setup-db!
+     metabase.db/migrate!
      metabase.db/setup-db!
      metabase.driver.mongo-test/create-database-from-row-maps!
      metabase.driver.postgres-test/create-enums-db!
