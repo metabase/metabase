@@ -1,12 +1,11 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import SidebarLayout from "metabase/components/SidebarLayout";
-import FieldDetail from "metabase/reference/databases/FieldDetail";
-
 import * as metadataActions from "metabase/redux/metadata";
+import FieldDetail from "metabase/reference/databases/FieldDetail";
 import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -17,6 +16,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
+
 import FieldSidebar from "./FieldSidebar";
 
 const mapStateToProps = (state, props) => ({

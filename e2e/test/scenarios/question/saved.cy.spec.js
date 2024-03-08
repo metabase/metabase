@@ -1,4 +1,8 @@
 import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   addSummaryGroupingField,
   restore,
   popover,
@@ -12,12 +16,8 @@ import {
   appBar,
   queryBuilderHeader,
   openNotebook,
+  hovercard,
 } from "e2e/support/helpers";
-
-import {
-  ORDERS_QUESTION_ID,
-  SECOND_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -36,7 +36,9 @@ describe("scenarios > question > saved", () => {
 
     // Save the question
     queryBuilderHeader().button("Save").click();
-    modal().button("Save").click();
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save").click();
+    });
     cy.wait("@cardCreate");
     modal().button("Not now").click();
 
@@ -56,9 +58,9 @@ describe("scenarios > question > saved", () => {
 
     queryBuilderHeader().button("Save").click();
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save question").should("be.visible");
-      cy.button("Save").should("be.enabled");
+      cy.findByTestId("save-question-button").should("be.enabled");
 
       cy.findByText("Save as new question").click();
       cy.findByLabelText("Name")
@@ -67,10 +69,10 @@ describe("scenarios > question > saved", () => {
         .blur();
       cy.findByLabelText("Name: required").should("be.empty");
       cy.findByLabelText("Description").should("be.empty");
-      cy.button("Save").should("be.disabled");
+      cy.findByTestId("save-question-button").should("be.disabled");
 
       cy.findByText(/^Replace original question,/).click();
-      cy.button("Save").should("be.enabled");
+      cy.findByTestId("save-question-button").should("be.enabled");
     });
   });
 
@@ -96,7 +98,7 @@ describe("scenarios > question > saved", () => {
     // check that save will give option to replace
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText('Replace original question, "Orders"');
       cy.findByText("Save as new question");
       cy.findByText("Cancel").click();
@@ -155,8 +157,10 @@ describe("scenarios > question > saved", () => {
     popover().findByText("New collection").click();
 
     const NEW_COLLECTION = "Foo";
-    modal().within(() => {
-      cy.findByLabelText("Name").type(NEW_COLLECTION);
+    cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByPlaceholderText("My new fantastic collection").type(
+        NEW_COLLECTION,
+      );
       cy.findByText("Create").click();
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
       cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
@@ -203,9 +207,10 @@ describe("scenarios > question > saved", () => {
 
   it("should show table name in header with a table info popover on hover", () => {
     visitQuestion(ORDERS_QUESTION_ID);
-    cy.findByTestId("question-table-badges").trigger("mouseenter");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("9 columns");
+    cy.findByTestId("question-table-badges").within(() => {
+      cy.findByLabelText("More info").realHover();
+    });
+    hovercard().contains("9 columns");
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {

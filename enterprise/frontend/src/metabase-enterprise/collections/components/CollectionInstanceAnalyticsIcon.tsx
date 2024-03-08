@@ -1,8 +1,9 @@
 import { t } from "ttag";
-import { Icon } from "metabase/ui";
-import type { IconProps } from "metabase/ui";
 
+import type { IconProps } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
+
 import { getCollectionType } from "../utils";
 
 interface Props extends Omit<IconProps, "name" | "tooltip"> {

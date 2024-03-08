@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent, { specialChars } from "@testing-library/user-event";
+
 import CheckBox from "./CheckBox";
 
 describe("CheckBox", () => {

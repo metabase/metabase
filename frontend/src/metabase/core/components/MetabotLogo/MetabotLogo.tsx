@@ -1,6 +1,7 @@
 import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
+
 import { LogoRoot } from "./MetabotLogo.styled";
 
 export type MetabotVariant = "happy" | "sad";

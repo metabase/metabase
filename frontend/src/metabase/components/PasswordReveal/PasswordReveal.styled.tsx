@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import { CopyButton } from "metabase/components/CopyButton";
+import { color } from "metabase/lib/colors";
 
 export const PasswordCopyButton = styled(CopyButton)`
   cursor: pointer;

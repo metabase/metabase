@@ -1,14 +1,17 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 import _ from "underscore";
-import MetabaseSettings from "metabase/lib/settings";
-import { Form, FormProvider } from "metabase/forms";
+import * as Yup from "yup";
+
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import MetabaseSettings from "metabase/lib/settings";
+
 import type { ResetPasswordData } from "../../types";
+
 import {
   PasswordFormMessage,
   PasswordFormTitle,

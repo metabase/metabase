@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { Flex, TextInput } from "metabase/ui";
+
 import type { TextInputProps } from "metabase/ui";
+import { Flex, TextInput } from "metabase/ui";
 
 export const SearchInputContainer = styled(Flex)`
   flex-grow: 1;

@@ -1,8 +1,11 @@
 import { t } from "ttag";
+
 import Button from "metabase/core/components/Button";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
-import TimelineList from "../TimelineList";
+
 import TimelineEmptyState from "../TimelineEmptyState";
+import TimelineList from "../TimelineList";
+
 import { PanelRoot, PanelToolbar } from "./TimelinePanel.styled";
 
 export interface TimelinePanelProps {

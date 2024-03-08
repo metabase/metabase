@@ -1,16 +1,14 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
+import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
-
-import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
+import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import {
   getSettingsWidgets,
   getComputedSettings,
 } from "metabase/visualizations/lib/settings";
-
-import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
-import NoResults from "assets/img/no_results.svg";
+import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 
 function getWidgets({
   column,

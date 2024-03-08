@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
+
 import { SettingsApi, StoreApi } from "metabase/services";
 
 export const LICENSE_ACCEPTED_URL_HASH = "#activated";

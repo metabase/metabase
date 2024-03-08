@@ -1,85 +1,63 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-
+import { connect } from "react-redux";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
-import { Icon } from "metabase/ui";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-export default class SaveStatus extends Component {
+import { addUndo, dismissUndo } from "metabase/redux/undo";
+
+class SaveStatus extends Component {
   constructor(props, context) {
     super(props, context);
 
-    this.state = {
-      saving: false,
-      recentlySavedTimeout: null,
-      error: null,
-    };
+    this.state = { showSavingingTimeout: null };
 
     _.bindAll(this, "setSaving", "setSaved", "setSaveError", "clear");
   }
 
+  unnotify = () => {
+    this.props.unnotify("save-status");
+  };
+
+  notify = undo => {
+    clearTimeout(this.state.showSavingingTimeout);
+    this.unnotify();
+    this.props.notify({ id: "save-status", ...undo });
+  };
+
   setSaving() {
-    clearTimeout(this.state.recentlySavedTimeout);
-    this.setState({ saving: true, recentlySavedTimeout: null, error: null });
+    clearTimeout(this.state.showSavingingTimeout);
+    // don't show saving status until after 1 second has elapsed
+    // this avoids quick showing / hiding / then showing a toast again
+    const timeout = setTimeout(() => {
+      this.notify({ icon: "info", message: t`Saving...`, timeout: null });
+    }, 1000);
+    this.setState({ showSavingingTimeout: timeout });
   }
 
-  setSaved() {
-    clearTimeout(this.state.recentlySavedTimeout);
-    const recentlySavedTimeout = setTimeout(
-      () => this.setState({ recentlySavedTimeout: null }),
-      5000,
-    );
-    this.setState({
-      saving: false,
-      recentlySavedTimeout: recentlySavedTimeout,
-      error: null,
-    });
+  setSaved(message = t`Changes saved`) {
+    this.notify({ message });
   }
 
   setSaveError(error) {
-    this.setState({ saving: false, recentlySavedTimeout: null, error: error });
+    const message = t`Error:` + " " + String(error.message || error);
+    this.notify({ icon: "warning", message, timeout: null });
   }
 
   clear() {
-    this.setState({ saving: false, recentlySavedTimeout: null, error: null });
+    this.unnotify();
   }
 
   render() {
-    const { className } = this.props;
-
-    if (this.state.saving) {
-      return (
-        <div className={cx(className, "SaveStatus mx2 px2 border-right")}>
-          <LoadingSpinner size={24} />
-        </div>
-      );
-    } else if (this.state.error) {
-      return (
-        <div
-          className={cx(
-            className,
-            "SaveStatus mx2 px2 border-right text-error",
-          )}
-        >
-          {t`Error:`} {String(this.state.error.message || this.state.error)}
-        </div>
-      );
-    } else if (this.state.recentlySavedTimeout != null) {
-      return (
-        <div
-          className={cx(
-            className,
-            "SaveStatus mx2 px2 border-right flex align-center text-success",
-          )}
-        >
-          <Icon name="check" size={16} />
-          <div className="ml1 h3 text-bold">{t`Saved`}</div>
-        </div>
-      );
-    } else {
-      return null;
-    }
+    return null;
   }
 }
+
+const mapDispatchToProps = dispatch => ({
+  notify: undo => dispatch(addUndo(undo)),
+  unnotify: undoId => dispatch(dismissUndo(undoId)),
+});
+
+export default _.compose(
+  connect(null, mapDispatchToProps, null, { forwardRef: true }),
+)(SaveStatus);

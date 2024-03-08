@@ -1,33 +1,35 @@
 import { Group } from "@visx/group";
-import { RowChart } from "metabase/visualizations/shared/components/RowChart";
-import type {
-  FontStyle,
-  TextWidthMeasurer,
-} from "metabase/visualizations/shared/types/measure-text";
-import { measureTextWidth } from "metabase/static-viz/lib/text";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import {
-  getGroupedDataset,
-  trimData,
-} from "metabase/visualizations/shared/utils/data";
-import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+
 import type { ColorGetter } from "metabase/static-viz/lib/colors";
-import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
-import {
-  getAxesVisibility,
-  getLabelledSeries,
-  getXValueRange,
-} from "metabase/visualizations/visualizations/RowChart/utils/settings";
 import {
   getColumnValueStaticFormatter,
   getLabelsStaticFormatter,
   getStaticFormatters,
 } from "metabase/static-viz/lib/format";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
 import { extractRemappedColumns } from "metabase/visualizations";
+import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import { RowChart } from "metabase/visualizations/shared/components/RowChart";
+import type {
+  FontStyle,
+  TextWidthMeasurer,
+} from "metabase/visualizations/shared/types/measure-text";
+import {
+  getGroupedDataset,
+  trimData,
+} from "metabase/visualizations/shared/utils/data";
+import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedChartData } from "metabase/visualizations/types";
-import { calculateLegendRows } from "../Legend/utils";
+import {
+  getAxesVisibility,
+  getLabelledSeries,
+  getXValueRange,
+} from "metabase/visualizations/visualizations/RowChart/utils/settings";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+
 import { Legend } from "../Legend";
+import { calculateLegendRows } from "../Legend/utils";
 
 import { getStaticChartTheme } from "./theme";
 import { getChartLabels } from "./utils/labels";

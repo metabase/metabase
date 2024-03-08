@@ -1,6 +1,7 @@
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+
 import { BackButtonLink } from "./MetadataBackButton.styled";
 
 interface MetadataBackButtonProps {

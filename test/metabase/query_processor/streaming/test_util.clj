@@ -6,8 +6,10 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util :as u])
   (:import
    (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader)))
 
@@ -55,9 +57,12 @@
   [export-format query & args]
   (with-open [bos (ByteArrayOutputStream.)
               os  (BufferedOutputStream. bos)]
-    (let [{:keys [context rff]} (qp.streaming/streaming-context-and-rff export-format os)]
-      (is (= :completed
-             (:status (qp/process-query query rff (assoc context :timeout 15000))))))
+    (qp.streaming/do-with-streaming-rff
+     export-format os
+     (fn [rff]
+       (binding [qp.pipeline/*query-timeout-ms* (u/seconds->ms 15)]
+         (is (=? {:status :completed}
+                 (qp/process-query query rff))))))
     (.flush os)
     (let [bytea (.toByteArray bos)]
       (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]

@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-
 import type { NativeQuerySnippet } from "metabase-types/api";
 
 import type { SnippetFormOwnProps } from "../SnippetForm";

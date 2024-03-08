@@ -1,3 +1,5 @@
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, TableId } from "metabase-types/api";
 import { createMockForeignKey } from "metabase-types/api/mocks";
@@ -15,10 +17,9 @@ import {
   REVIEWS,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
-import type { ForeignKeyReferences } from "./types";
+
 import { Relationships } from "./ObjectRelationships";
+import type { ForeignKeyReferences } from "./types";
 
 const SINGLE_TABLE_DATABASE = createSampleDatabase({
   tables: [createProductsTable()],

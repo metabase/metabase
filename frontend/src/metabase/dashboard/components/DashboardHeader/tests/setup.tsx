@@ -1,21 +1,25 @@
 import fetchMock from "fetch-mock";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 
-import {
-  createMockDashboard,
-  createMockDashboardCard,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
-
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupBookmarksEndpoints,
   setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { createMockDashboardState } from "metabase-types/store/mocks";
-import { getDefaultTab } from "metabase/dashboard/actions";
 import { mockSettings } from "__support__/settings";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { getDefaultTab } from "metabase/dashboard/actions";
+import {
+  createMockDashboard,
+  createMockDashboardCard,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import type { DashboardSidebarName } from "metabase-types/store";
+import {
+  createMockDashboardState,
+  createMockLocation,
+} from "metabase-types/store/mocks";
+
 import { DashboardHeader } from "../DashboardHeader";
 
 const DASHCARD = createMockDashboardCard();
@@ -98,11 +102,15 @@ export const setup = async ({
   const dashboardHeaderProps = {
     isAdmin,
     dashboard,
+    dashboardId: dashboard.id,
     canManageSubscriptions: true,
     isEditing: false,
     isFullscreen: false,
     isNavBarOpen: false,
     isNightMode: false,
+    isDirty: false,
+    isAddParameterPopoverOpen: false,
+    hasNightModeToggle: false,
     isAdditionalInfoVisible: false,
     refreshPeriod: 0,
     addMarkdownDashCardToDashboard: jest.fn(),
@@ -121,17 +129,18 @@ export const setup = async ({
     onChangeLocation: jest.fn(),
     toggleSidebar: jest.fn(),
     sidebar: {
-      name: "",
+      name: "" as DashboardSidebarName,
       props: {},
     },
-    location: {
-      query: {},
-    },
+    location: createMockLocation(),
     setSidebar: jest.fn(),
     closeSidebar: jest.fn(),
     addActionToDashboard: jest.fn(),
     databases: {},
     params: { tabSlug: undefined },
+    addParameter: jest.fn(),
+    showAddParameterPopover: jest.fn(),
+    hideAddParameterPopover: jest.fn(),
   };
 
   renderWithProviders(<DashboardHeader {...dashboardHeaderProps} />, {

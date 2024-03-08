@@ -1,5 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
-import { isDimensionTarget } from "metabase-types/guards";
+import type Database from "metabase-lib/metadata/Database";
+import {
+  getParameterTargetField,
+  isParameterVariableTarget,
+  getTemplateTagFromTarget,
+} from "metabase-lib/parameters/utils/targets";
 import type { ParameterDimensionTarget } from "metabase-types/api";
 import { createMockTemplateTag } from "metabase-types/api/mocks";
 import {
@@ -8,12 +13,7 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import type Database from "metabase-lib/metadata/Database";
-import {
-  getParameterTargetField,
-  isParameterVariableTarget,
-  getTemplateTagFromTarget,
-} from "metabase-lib/parameters/utils/targets";
+import { isDimensionTarget } from "metabase-types/guards";
 
 describe("parameters/utils/targets", () => {
   const metadata = createMockMetadata({

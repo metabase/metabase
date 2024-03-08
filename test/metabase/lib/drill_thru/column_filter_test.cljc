@@ -212,7 +212,7 @@
                                        :display                :table
                                        :visualization-settings {:table.pivot_column "ID", :table.cell_column "ALIAS_CREATED_AT"}
                                        :parameters             []
-                                       :dataset                true}]})
+                                       :type                   :model}]})
           query             (lib/query metadata-provider (lib.metadata/card metadata-provider 5))
           _                 (is (=? {:stages [{:lib/type :mbql.stage/mbql, :source-card 5}]}
                                     query))

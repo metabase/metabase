@@ -1,6 +1,6 @@
-import { MetabaseApi } from "metabase/services";
-import { createThunkAction } from "metabase/lib/redux";
 import { trackStructEvent } from "metabase/lib/analytics";
+import { createThunkAction } from "metabase/lib/redux";
+import { MetabaseApi } from "metabase/services";
 import type { FieldId, TableId } from "metabase-types/api";
 
 export const RESCAN_FIELD_VALUES = "metabase/admin/fields/RESCAN_FIELD_VALUES";

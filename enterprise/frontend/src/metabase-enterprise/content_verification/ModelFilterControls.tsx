@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import { Switch, Text } from "metabase/ui";
+
 import type { ModelFilterControlsProps } from "metabase/browse/utils";
+import { Switch, Text } from "metabase/ui";
 
 export const ModelFilterControls = ({
   actualModelFilters,
@@ -27,6 +28,7 @@ export const ModelFilterControls = ({
       size="sm"
       labelPosition="left"
       styles={{
+        root: { display: "flex", alignItems: "center" },
         body: {
           alignItems: "center",
           // Align with tab labels:

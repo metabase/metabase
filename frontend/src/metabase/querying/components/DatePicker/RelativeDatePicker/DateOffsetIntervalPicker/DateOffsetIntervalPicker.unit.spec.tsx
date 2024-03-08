@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
+
 import type { RelativeIntervalDirection } from "../../types";
 import type { DateOffsetIntervalValue } from "../types";
+
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
 
 function getDefaultValue(

@@ -1,6 +1,7 @@
 import type Question from "metabase-lib/Question";
-import { DefaultMode } from "../modes/DefaultMode";
+
 import { Mode } from "../Mode";
+import { DefaultMode } from "../modes/DefaultMode";
 
 export function getMode(question: Question): Mode | null {
   return new Mode(question, DefaultMode);

@@ -23,9 +23,11 @@
   There is also more written about how these are used for remapping in the docstrings
   for [[metabase.models.params.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.classloader :as classloader]
@@ -104,26 +106,33 @@
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
 
-(defn- assert-valid-field-values-type
+(defn- assert-valid-type-hash-combo
+  "Ensure that type is present, valid, and that a hash_key is provided iff this is an advanced field type."
   [{:keys [type hash_key] :as _field-values}]
-  (when type
-    (when-not (contains? field-values-types type)
-      (throw (ex-info (tru "Invalid field-values type.")
-                      {:type        type
-                       :stauts-code 400})))
+  (when-not (contains? field-values-types type)
+    (throw (ex-info (tru "Invalid field-values type.")
+                    {:type        type
+                     :status-code 400})))
 
-    (when (and (= type :full)
-               hash_key)
-      (throw (ex-info (tru "Full FieldValues shouldn't have hash_key.")
-                      {:type        type
-                       :hash_key    hash_key
-                       :status-code 400})))
+  (when (and (= type :full) hash_key)
+    (throw (ex-info (tru "Full FieldValues shouldn't have hash_key.")
+                    {:type        type
+                     :hash_key    hash_key
+                     :status-code 400})))
 
-    (when (and (advanced-field-values-types type)
-               (empty? hash_key))
-      (throw (ex-info (tru "Advanced FieldValues requires a hash_key.")
-                      {:type        type
-                       :status-code 400})))))
+  (when (and (advanced-field-values-types type) (str/blank? hash_key))
+    (throw (ex-info (tru "Advanced FieldValues require a hash_key.")
+                    {:type        type
+                     :status-code 400}))))
+
+(defn- assert-no-identity-changes [id changes]
+  (when (some #(contains? changes %) [:field_id :type :hash_key])
+    (throw (ex-info (tru "Can't update field_id, type, or hash_key for a FieldValues.")
+                    {:id          id
+                     :field_id    (:field_id changes)
+                     :type        (:type changes)
+                     :hash_key    (:hash_key changes)
+                     :status-code 400}))))
 
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
@@ -138,28 +147,49 @@
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
-  (u/prog1 (merge {:type :full}
-                  field-values)
+  (u/prog1 (update field-values :type #(keyword (or % :full)))
     (assert-valid-human-readable-values field-values)
-    (assert-valid-field-values-type field-values)
-    ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field is deleted
-    (when (= (:type <>) :full)
+    (assert-valid-type-hash-combo <>)
+    ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
+    (when (= :full (:type <>))
       (clear-advanced-field-values-for-field! field_id))))
 
 (t2/define-before-update :model/FieldValues
   [field-values]
-  (let [{:keys [type values hash_key]} (t2/changes field-values)]
-    (u/prog1 field-values
+  (let [changes (t2/changes field-values)]
+    (u/prog1 (update field-values :type #(keyword (or % :full)))
+      (assert-no-identity-changes (:id field-values) changes)
       (assert-valid-human-readable-values field-values)
-      (when (or type hash_key)
-        (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
-                        {:type        type
-                         :hash_key    hash_key
-                         :status-code 400})))
       ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-      (when (and values
-                 (= (:type field-values) :full))
+      (when (and (contains? changes :values) (= :full (:type <>)))
         (clear-advanced-field-values-for-field! (:field_id field-values))))))
+
+(defn- assert-coherent-query [{:keys [type hash_key] :as field-values}]
+  (cond
+    (nil? type)
+    (when (some? hash_key)
+      (throw (ex-info "Invalid query - cannot specify a hash_key without specifying the type"
+                      {:field-values field-values})))
+
+    (= :full (keyword type))
+    (when (some? hash_key)
+      (throw (ex-info "Invalid query - :full FieldValues cannot have a hash_key"
+                      {:field-values field-values})))
+
+    (and (contains? field-values :hash_key) (nil? hash_key))
+    (throw (ex-info "Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
+                    {:field-values field-values}))))
+
+(defn- add-mismatched-hash-filter [{:keys [type] :as field-values}]
+  (cond
+    (= :full (keyword type)) (assoc field-values :hash_key nil)
+    (some? type)             (update field-values :hash_key #(or % [:not= nil]))
+    :else                    field-values))
+
+(t2/define-before-select :model/FieldValues
+  [{:keys [kv-args] :as query}]
+  (assert-coherent-query kv-args)
+  (update query :kv-args add-mismatched-hash-filter))
 
 (t2/define-after-select :model/FieldValues
   [field-values]
@@ -414,12 +444,10 @@
       unwrapped-values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
-        (t2/insert! FieldValues
-                    :type :full
-                    :field_id              (u/the-id field)
-                    :has_more_values       has_more_values
-                    :values                values
-                    :human_readable_values human-readable-values)
+        (mdb.u/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+          (constantly {:has_more_values       has_more_values
+                       :values                values
+                       :human_readable_values human-readable-values}))
         ::fv-created)
 
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist

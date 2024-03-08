@@ -1,10 +1,10 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import cx from "classnames";
 
 import { conjunct } from "metabase/lib/formatting";
-
 import { Icon } from "metabase/ui";
+
 import Heading from "./Heading";
 
 // TODO: will need improved formatting for operator parameter filters

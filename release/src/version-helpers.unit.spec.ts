@@ -9,6 +9,7 @@ import {
   isLatestVersion,
   getBuildRequirements,
   getNextVersions,
+  getGenericVersion,
 } from "./version-helpers";
 
 describe("version-helpers", () => {
@@ -391,6 +392,40 @@ describe("version-helpers", () => {
       expect(() => getNextVersions("foo")).toThrow();
       expect(() => getNextVersions("v2.75")).toThrow();
       expect(() => getNextVersions("v0.75-RC2")).toThrow();
+    });
+  });
+
+  describe("getGenericVersion", () => {
+    it("should return the generic version for a valid OSS version string", () => {
+      const testCases: [string, string][] = [
+        ["v0.75.0", "75.0"],
+        ["v0.75.1", "75.1"],
+        ["v0.75.12", "75.12"],
+        ["v0.79.99", "79.99"],
+        ["v0.79.99.0", "79.99.0"],
+        ["v0.75.0-RC2", "75.0-RC2"],
+        ["v0.79.0-rc99", "79.0-rc99"],
+      ];
+
+      testCases.forEach(([input, expected]) => {
+        expect(getGenericVersion(input)).toEqual(expected);
+      });
+    });
+
+    it("should return the generic version for a valid EE version string", () => {
+      const testCases: [string, string][] = [
+        ["v1.75.0", "75.0"],
+        ["v1.75.1", "75.1"],
+        ["v1.75.12", "75.12"],
+        ["v1.79.99", "79.99"],
+        ["v1.79.99.0", "79.99.0"],
+        ["v1.75.0-RC2", "75.0-RC2"],
+        ["v1.79.0-rc99", "79.0-rc99"],
+      ];
+
+      testCases.forEach(([input, expected]) => {
+        expect(getGenericVersion(input)).toEqual(expected);
+      });
     });
   });
 });

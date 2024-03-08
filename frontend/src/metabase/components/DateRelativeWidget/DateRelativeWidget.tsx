@@ -1,6 +1,6 @@
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
 
 import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/parameters/constants";
@@ -157,11 +157,7 @@ type DateRelativeWidgetProps = {
   onClose: () => void;
 };
 
-class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
-  constructor(props: DateRelativeWidgetProps) {
-    super(props);
-  }
-
+export class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
   render() {
     const { value, setValue, onClose } = this.props;
     return (
@@ -185,6 +181,3 @@ class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
     );
   }
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateRelativeWidget;

@@ -1,16 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+
 import ErrorBoundary from "metabase/ErrorBoundary";
-import type { PopoverBaseProps } from "metabase/ui";
 import { FilterPicker } from "metabase/querying";
 import * as Lib from "metabase-lib";
+
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
-
-const POPOVER_PROPS: PopoverBaseProps = {
-  position: "bottom-start",
-  offset: { mainAxis: 4 },
-};
 
 export function FilterStep({
   query,
@@ -63,7 +59,6 @@ export function FilterStep({
         readOnly={readOnly}
         color={color}
         isLastOpened={isLastOpened}
-        popoverProps={POPOVER_PROPS}
         renderName={renderFilterName}
         renderPopover={({ item: filter, index, onClose }) => (
           <FilterPopover

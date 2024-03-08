@@ -1,15 +1,17 @@
-import { useCallback } from "react";
 import PropTypes from "prop-types";
+import { useCallback } from "react";
 import { t } from "ttag";
-import Settings from "metabase/lib/settings";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+
 import Link from "metabase/core/components/Link";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import {
   canArchive,
   formatChannel,
   formatLink,
   formatTitle,
 } from "metabase/lib/notifications";
+import Settings from "metabase/lib/settings";
+
 import {
   NotificationContent,
   NotificationIcon,

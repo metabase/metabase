@@ -1,5 +1,6 @@
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
 import type {
   RegularClickAction,
   ClickActionSection,
@@ -36,6 +37,12 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   },
   sum: {
     icon: "sum",
+  },
+  extract: {
+    icon: "extract",
+  },
+  "extract-popover": {
+    icon: "extract",
   },
   auto: {
     icon: "bolt",
@@ -102,6 +109,9 @@ export const getSectionTitle = (
 
     case "breakout-popover":
       return t`Break out by…`;
+
+    case "extract-popover":
+      return t`Select a part to extract`;
   }
 
   return null;

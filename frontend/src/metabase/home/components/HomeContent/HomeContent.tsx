@@ -1,43 +1,42 @@
 import { useUpdate } from "react-use";
-import { useSelector } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
 import {
   useDatabaseListQuery,
   usePopularItemListQuery,
   useRecentItemListQuery,
 } from "metabase/common/hooks";
-import type { PopularItem, RecentItem, User } from "metabase-types/api";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/metadata/Database";
-import { HomePopularSection } from "../HomePopularSection";
-import { HomeRecentSection } from "../HomeRecentSection";
-import { HomeXraySection } from "../HomeXraySection";
+import type { PopularItem, RecentItem, User } from "metabase-types/api";
+
 import { getIsXrayEnabled } from "../../selectors";
 import { isWithinWeeks, shouldShowEmbedHomepage } from "../../utils";
 import { EmbedMinimalHomepage } from "../EmbedMinimalHomepage";
+import { HomePopularSection } from "../HomePopularSection";
+import { HomeRecentSection } from "../HomeRecentSection";
+import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
   const update = useUpdate();
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
-  const { data: databases, isLoading: isDatabasesLoading } =
-    useDatabaseListQuery();
-  const { data: recentItems, isLoading: isRecentItemsLoading } =
-    useRecentItemListQuery({ reload: true });
-  const { data: popularItems, isLoading: isPopularItemsLoading } =
+  const { data: databases, error: databasesError } = useDatabaseListQuery();
+  const { data: recentItems, error: recentItemsError } = useRecentItemListQuery(
+    { reload: true },
+  );
+  const { data: popularItems, error: popularItemsError } =
     usePopularItemListQuery({ reload: true });
+  const error = databasesError || recentItemsError || popularItemsError;
 
-  if (
-    !user ||
-    isLoading(
-      user,
-      isDatabasesLoading,
-      isRecentItemsLoading,
-      isPopularItemsLoading,
-    )
-  ) {
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -62,16 +61,16 @@ export const HomeContent = (): JSX.Element | null => {
 
 const isLoading = (
   user: User,
-  isDatabasesLoading: boolean,
-  isRecentItemsLoading: boolean,
-  isPopularItemsLoading: boolean,
+  databases: Database[] | undefined,
+  recentItems: RecentItem[] | undefined,
+  popularItems: PopularItem[] | undefined,
 ): boolean => {
   if (!user.has_question_and_dashboard) {
-    return isDatabasesLoading;
+    return databases == null;
   } else if (user.is_installer || !isWithinWeeks(user.first_login, 1)) {
-    return isDatabasesLoading || isRecentItemsLoading;
+    return databases == null || recentItems == null;
   } else {
-    return isDatabasesLoading || isRecentItemsLoading || isPopularItemsLoading;
+    return databases == null || recentItems == null || popularItems == null;
   }
 };
 

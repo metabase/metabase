@@ -8,11 +8,8 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-
 import { delay } from "metabase/lib/promise";
-
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
-
 import {
   createMockDatabase,
   createMockSavedQuestionsDatabase,

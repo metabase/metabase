@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
+
 import { Flex, TextInput, Icon } from "metabase/ui";
 
 const SEARCH_TIMEOUT = 200;

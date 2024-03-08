@@ -1,6 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
 
 import { Icon } from "metabase/ui";
+
 import { TokenFieldItem, TokenFieldAddon } from "./TokenFieldItem.styled";
 
 export default {

@@ -1,9 +1,9 @@
 import type { WritebackAction } from "./actions";
 import type { Alert } from "./alert";
-import type { Database, DatabaseId } from "./database";
 import type { Card } from "./card";
 import type { Collection, CollectionId, CollectionItemId } from "./collection";
 import type { Dashboard } from "./dashboard";
+import type { Database, DatabaseId } from "./database";
 import type { Field, FieldDimension, FieldId } from "./field";
 import type { Metric, MetricId } from "./metric";
 import type { Segment, SegmentId } from "./segment";

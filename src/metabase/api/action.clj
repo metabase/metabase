@@ -67,7 +67,7 @@
                    [(api/read-check Card model-id)]
                    (t2/select Card {:where
                                     [:and
-                                     [:= :dataset true]
+                                     [:= :type "model"]
                                      [:= :archived false]
                                      ;; action permission keyed off of model permission
                                      (collection/visible-collection-ids->honeysql-filter-clause

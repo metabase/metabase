@@ -1,5 +1,12 @@
-import { Route } from "react-router";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
+import { callMockEvent } from "__support__/events";
+import {
+  setupDatabasesEndpoints,
+  setupPermissionsGraphEndpoints,
+  setupGroupsEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -7,18 +14,12 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockGroup } from "metabase-types/api/mocks/group";
-import {
-  setupDatabasesEndpoints,
-  setupPermissionsGraphEndpoints,
-  setupGroupsEndpoint,
-} from "__support__/server-mocks";
 import DatabasesPermissionsPage from "metabase/admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";
-import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
-import { delay } from "metabase/lib/promise";
-import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { delay } from "metabase/lib/promise";
+import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
+import { createMockGroup } from "metabase-types/api/mocks/group";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 const TEST_DATABASE = createSampleDatabase();
 
@@ -70,7 +71,7 @@ const editDatabasePermission = async () => {
   await delay(0);
 };
 
-describe("DatabasesPermissionsPage", function () {
+describe("DatabasesPermissionsPage", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });

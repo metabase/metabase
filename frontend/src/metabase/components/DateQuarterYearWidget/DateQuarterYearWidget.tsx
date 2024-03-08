@@ -1,9 +1,10 @@
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Component } from "react";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
 import YearPicker from "metabase/components/YearPicker";
+
 import { QuarterRoot } from "./DateQuarterYearWidget.styled";
 
 // translator: this is a "moment" format string (https://momentjs.com/docs/#/displaying/format/) It should include "Q" for the quarter number, and raw text can be escaped by brackets. For eample "[Quarter] Q" will be rendered as "Quarter 1" etc
@@ -20,7 +21,7 @@ type State = {
   year: number;
 };
 
-class DateQuarterYearWidget extends Component<Props, State> {
+export class DateQuarterYearWidget extends Component<Props, State> {
   state: State = {
     quarter: null,
     year: moment().year(),
@@ -58,11 +59,8 @@ class DateQuarterYearWidget extends Component<Props, State> {
     const { quarter, year } = this.state;
     return (
       <div className="py2">
-        <div className="flex flex-column align-center px1">
-          <YearPicker
-            value={year}
-            onChange={year => this.setState({ year: year })}
-          />
+        <div className="flex flex-column align-center py1">
+          <YearPicker value={year} onChange={year => this.setState({ year })} />
         </div>
         <ol
           className="flex flex-wrap bordered mx2 text-bold rounded"
@@ -93,6 +91,3 @@ const Quarter = ({ quarter, selected, onClick }: QuarterProps) => (
     {moment().quarter(quarter).format(QUARTER_FORMAT_STRING)}
   </QuarterRoot>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateQuarterYearWidget;

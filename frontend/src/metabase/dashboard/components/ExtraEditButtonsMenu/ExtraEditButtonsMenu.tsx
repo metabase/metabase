@@ -1,29 +1,36 @@
-import { useCallback } from "react";
 import { t } from "ttag";
 
-import type { Dashboard } from "metabase-types/api";
-
-import { Box, Popover, Icon, Tooltip, Stack, Switch } from "metabase/ui";
+import { setDashboardAttributes } from "metabase/dashboard/actions";
+import { trackDashboardWidthChange } from "metabase/dashboard/analytics";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+import { getDashboardId } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { Box, Icon, Popover, Stack, Switch, Tooltip } from "metabase/ui";
+import type { Dashboard } from "metabase-types/api";
 
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
 
 interface ExtraEditButtonsMenuProps {
-  key: string;
-  setDashboardAttribute: <Key extends keyof Dashboard>(
-    key: Key,
-    value: Dashboard[Key],
-  ) => void;
   dashboard: Dashboard;
 }
 
-export function ExtraEditButtonsMenu({
-  key,
-  setDashboardAttribute,
-  dashboard,
-}: ExtraEditButtonsMenuProps) {
+export function ExtraEditButtonsMenu({ dashboard }: ExtraEditButtonsMenuProps) {
+  const dispatch = useDispatch();
+  const id = useSelector(getDashboardId);
+
+  const handleToggleWidth = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextWidth = event.currentTarget.checked ? "full" : "fixed";
+
+    if (id) {
+      dispatch(
+        setDashboardAttributes({ id, attributes: { width: nextWidth } }),
+      );
+      trackDashboardWidthChange(id, nextWidth);
+    }
+  };
+
   return (
-    <Popover key={key} shadow="sm" position="bottom-end" offset={5}>
+    <Popover shadow="sm" position="bottom-end" offset={5}>
       <Popover.Target>
         <Box>
           <Tooltip label={EXTRA_BUTTONS_DESCRIPTION}>
@@ -35,43 +42,16 @@ export function ExtraEditButtonsMenu({
       </Popover.Target>
       <Popover.Dropdown>
         <Stack>
-          <WidthToggle
-            dashboard={dashboard}
-            setDashboardAttribute={setDashboardAttribute}
-          />
+          <Box px="md" py="sm">
+            <Switch
+              size="sm"
+              checked={dashboard.width === "full"}
+              onChange={handleToggleWidth}
+              label={t`Full width`}
+            />
+          </Box>
         </Stack>
       </Popover.Dropdown>
     </Popover>
-  );
-}
-
-interface WidthToggleProps {
-  setDashboardAttribute: <Key extends keyof Dashboard>(
-    key: Key,
-    value: Dashboard[Key],
-  ) => void;
-  dashboard: Dashboard;
-}
-
-function WidthToggle({ setDashboardAttribute, dashboard }: WidthToggleProps) {
-  const isToggleChecked = dashboard?.width === "full";
-
-  const handleWidthToggleChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const width = event.currentTarget.checked ? "full" : "fixed";
-      setDashboardAttribute("width", width);
-    },
-    [setDashboardAttribute],
-  );
-
-  return (
-    <Box px="md" py="sm">
-      <Switch
-        size="sm"
-        checked={isToggleChecked}
-        onChange={handleWidthToggleChange}
-        label={t`Full width`}
-      />
-    </Box>
   );
 }

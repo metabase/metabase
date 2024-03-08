@@ -1,12 +1,12 @@
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import type { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
-import type Database from "metabase-lib/metadata/Database";
+
 import {
   formatIdentifier,
   formatStringLiteral,
 } from "metabase-lib/expressions";
+import type { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
+import type Database from "metabase-lib/metadata/Database";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,

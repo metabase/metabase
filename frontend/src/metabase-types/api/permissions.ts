@@ -4,6 +4,7 @@ import type {
   SchemaName,
   CollectionId,
 } from "metabase-types/api";
+
 import type { GroupId } from "./group";
 import type { UserAttribute } from "./user";
 

@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import type { CardDisplayType } from "metabase-types/api";
+
 import type { ChartSkeletonProps } from "./ChartSkeleton";
 import ChartSkeleton from "./ChartSkeleton";
 

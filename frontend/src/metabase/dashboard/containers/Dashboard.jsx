@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 
-import { Component } from "react";
 import cx from "classnames";
+import { Component } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";

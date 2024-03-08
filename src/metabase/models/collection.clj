@@ -928,11 +928,8 @@
   (let [collection (if (integer? collection-or-id)
                      (t2/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
-    ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
-    ;;
-    ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-             (not (premium-features/enable-enhancements?)))
+             (not (premium-features/enable-snippet-collections?)))
       #{}
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
@@ -943,10 +940,12 @@
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
                       (t2/hydrate :parent_id)
-                      :parent_id)]
-    (if parent-id
-      (serdes/identity-hash (t2/select-one Collection :id parent-id))
-      "ROOT")))
+                      :parent_id)
+        parent    (when parent-id (t2/select-one Collection :id parent-id))]
+    (cond
+      (not parent-id) "ROOT"
+      (not parent)    (throw (ex-info (format "Collection %s is an orphan" (:id coll)) {:parent-id parent-id}))
+      :else           (serdes/identity-hash parent))))
 
 (defmethod serdes/hash-fields Collection
   [_collection]
@@ -1177,7 +1176,7 @@
         [(assoc collection :is_personal (is-personal-collection-or-descendant-of-one? collection))]
         ;; root collection is nil
         [collection]))
-    (let [personal-collection-ids (t2/select-pks-set :model/collection :personal_owner_id [:not= nil])
+    (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
           location-is-personal    (fn [location]
                                     (boolean
                                      (and (string? location)

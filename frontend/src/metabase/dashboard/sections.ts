@@ -1,10 +1,12 @@
 import { t } from "ttag";
+
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import type {
   DashboardCardLayoutAttrs,
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+
 import { createVirtualCard } from "./utils";
 
 type Position = Pick<DashboardCardLayoutAttrs, "col" | "row">;
@@ -18,8 +20,14 @@ type SectionDashboardCardAttrs = Partial<VirtualDashboardCard> &
 
 type LayoutFn = (position: Position) => Array<SectionDashboardCardAttrs>;
 
+// Note: these values are used in analytics and should not be changed
+export type SectionId =
+  | "kpi_grid"
+  | "large_chart_kpi_right"
+  | "kpi_chart_below";
+
 export type SectionLayout = {
-  id: string;
+  id: SectionId;
   label: string;
   getLayout: LayoutFn;
 };
@@ -190,17 +198,17 @@ const getKpiLargeChartBelowLayout: LayoutFn = position => {
 
 export const layoutOptions: SectionLayout[] = [
   {
-    id: "kpi-grid",
+    id: "kpi_grid",
     label: t`KPI grid`,
     getLayout: getKpiGridLayout,
   },
   {
-    id: "lg-chart-kpi-col",
+    id: "large_chart_kpi_right",
     label: t`Large chart w/ KPIs to the right`,
     getLayout: getLargeChartKpiColLayout,
   },
   {
-    id: "kpi-lg-chart-below",
+    id: "kpi_chart_below",
     label: t`KPIs w/ large chart below`,
     getLayout: getKpiLargeChartBelowLayout,
   },

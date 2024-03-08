@@ -1,9 +1,11 @@
 import { t } from "ttag";
+
 import { getPlan } from "metabase/common/utils/plan";
 import Link from "metabase/core/components/Link";
+import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
 import { Text, Group, Stack, Box } from "metabase/ui";
-import { useSelector } from "metabase/lib/redux";
+
 import {
   ClickIcon,
   CTAContainer,

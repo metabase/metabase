@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { ApiKey } from "metabase-types/api";
 
 export function setupApiKeyEndpoints(apiKeys: ApiKey[]) {

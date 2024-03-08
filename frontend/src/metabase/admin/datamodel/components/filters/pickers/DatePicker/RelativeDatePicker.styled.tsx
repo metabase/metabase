@@ -1,9 +1,10 @@
 import styled from "@emotion/styled";
+
+import BaseNumericInput from "metabase/components/NumericInput";
+import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-import Button from "metabase/core/components/Button";
-import BaseNumericInput from "metabase/components/NumericInput";
 import BaseDateUnitSelector from "./DateUnitSelector";
 
 type BaseProps = {

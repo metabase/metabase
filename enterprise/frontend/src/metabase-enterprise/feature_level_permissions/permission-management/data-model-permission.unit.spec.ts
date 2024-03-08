@@ -1,4 +1,5 @@
 import type { Group, GroupsPermissions } from "metabase-types/api";
+
 import {
   buildDataModelPermission,
   DATA_MODEL_PERMISSION_OPTIONS,

@@ -2,7 +2,6 @@ import slugg from "slugg";
 
 import { stringifyHashOptions } from "metabase/lib/browser";
 import MetabaseSettings from "metabase/lib/settings";
-
 import type { Dashboard } from "metabase-types/api";
 
 import { appendSlug } from "./utils";

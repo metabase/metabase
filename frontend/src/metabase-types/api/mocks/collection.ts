@@ -28,3 +28,14 @@ export const createMockCollectionItem = (
   getUrl: () => "/question/1",
   ...opts,
 });
+
+export const createMockCollectionItemFromCollection = (
+  opts?: Partial<Collection>,
+): CollectionItem =>
+  createMockCollectionItem({
+    ...opts,
+    id: opts?.id as number,
+    model: "collection",
+    type: undefined,
+    location: opts?.location || "/",
+  });

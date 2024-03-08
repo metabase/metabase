@@ -1,12 +1,13 @@
 import type { RegularClickAction } from "metabase/visualizations/types";
+
+import { ClickActionControl } from "./ClickActionControl";
 import { Container, Divider } from "./ClickActionsPopover.styled";
+import { ClickActionsViewSection } from "./ClickActionsViewSection";
 import {
   getGroupedAndSortedActions,
   getSectionContentDirection,
   getSectionTitle,
 } from "./utils";
-import { ClickActionsViewSection } from "./ClickActionsViewSection";
-import { ClickActionControl } from "./ClickActionControl";
 
 interface Props {
   clickActions: RegularClickAction[];

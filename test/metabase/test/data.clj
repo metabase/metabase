@@ -177,7 +177,7 @@
   (try
     (qp/process-query query)
     (catch Throwable e
-      (throw (ex-info (.getMessage e)
+      (throw (ex-info (ex-message e)
                       {:query query}
                       e)))))
 

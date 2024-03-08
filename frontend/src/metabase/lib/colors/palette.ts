@@ -1,4 +1,5 @@
 import Color from "color";
+
 import type { ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;

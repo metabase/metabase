@@ -209,6 +209,16 @@
    [:definition {:optional true} [:maybe [:ref ::persisted-info.definition]]]
    [:query-hash {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
+(mr/def ::card.type
+  [:enum
+   :question
+   :model])
+
+;;; Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
+;;; a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted
+;;; to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
+;;; massaged into a sequence of [[::column]] metadata just yet. See [[metabase.lib.card/card-metadata-columns]] that
+;;; converts these as needed.
 (mr/def ::card
   [:map
    {:error/message "Valid Card metadata"}
@@ -222,8 +232,8 @@
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
    [:result-metadata {:optional true} [:maybe [:sequential :map]]]
-   ;; whether this Card is a Model or not.
-   [:dataset         {:optional true} :boolean]
+   ;; what sort of saved query this is, e.g. a normal Saved Question or a Model or a V2 Metric.
+   [:type            {:optional true} [:maybe [:ref ::card.type]]]
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a
    ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
    [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]
@@ -270,7 +280,7 @@
    {:error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
-   ;; TODO -- this should validate against the driver features list in [[metabase.driver/driver-features]] if we're in
+   ;; TODO -- this should validate against the driver features list in [[metabase.driver/features]] if we're in
    ;; Clj mode
    [:dbms-version {:optional true} [:maybe :map]]
    [:details      {:optional true} :map]

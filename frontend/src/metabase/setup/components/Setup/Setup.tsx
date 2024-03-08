@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useUpdate } from "react-use";
+
 import { useSelector } from "metabase/lib/redux";
+
 import { trackStepSeen } from "../../analytics";
 import { getIsLocaleLoaded, getStep, getSteps } from "../../selectors";
 import { SettingsPage } from "../SettingsPage";

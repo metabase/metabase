@@ -16,10 +16,12 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -96,17 +98,17 @@
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
 
-(mu/defn metadata-provider :- lib.metadata/MetadataProvider
+(mu/defn metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Get the [[metabase.lib.metadata.protocols/MetadataProvider]] that should be used inside the QP. "
   []
   (or (miscellaneous-value [::metadata-provider])
       (throw (ex-info "QP Store Metadata Provider is not initialized yet; initialize it with `qp.store/with-metadata-provider`."
                       {}))))
 
-(mu/defn ^:private ->metadata-provider :- lib.metadata/MetadataProvider
+(mu/defn ^:private ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id-or-metadata-provider :- [:or
                                         ::lib.schema.id/database
-                                        lib.metadata/MetadataProvider]]
+                                        ::lib.schema.metadata/metadata-provider]]
   (if (integer? database-id-or-metadata-provider)
     (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-provider)
     database-id-or-metadata-provider))
@@ -116,7 +118,7 @@
   Database. We don't need to replace it."
   [database-id-or-metadata-provider :- [:or
                                         ::lib.schema.id/database
-                                        lib.metadata/MetadataProvider]]
+                                        ::lib.schema.metadata/metadata-provider]]
   (let [old-provider (miscellaneous-value [::metadata-provider])]
     (when-not (identical? old-provider database-id-or-metadata-provider)
       (let [new-database-id      (if (integer? database-id-or-metadata-provider)
@@ -136,7 +138,7 @@
   "Create a new metadata provider and save it."
   [database-id-or-metadata-provider :- [:or
                                         ::lib.schema.id/database
-                                        lib.metadata/MetadataProvider]]
+                                        ::lib.schema.metadata/metadata-provider]]
   (let [new-provider (->metadata-provider database-id-or-metadata-provider)]
     ;; validate the new provider.
     (try
@@ -207,14 +209,10 @@
     (let [provider   (metadata-provider)
           objects    (vec (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
                             (filter some? (lib.metadata.protocols/bulk-metadata provider metadata-type ids-set))
-                            (let [f (case metadata-type
-                                      :metadata/card    lib.metadata.protocols/card
-                                      :metadata/column  lib.metadata.protocols/field
-                                      :metadata/metric  lib.metadata.protocols/metric
-                                      :metadata/segment lib.metadata.protocols/segment
-                                      :metadata/table   lib.metadata.protocols/table)]
-                              (for [id ids-set]
-                                (f provider id)))))
+                            (lib.metadata.composed-provider/fetch-bulk-metadata-with-non-bulk-provider
+                             provider
+                             metadata-type
+                             ids-set)))
           id->object (m/index-by :id objects)]
       (mapv (fn [id]
               (or (get id->object id)

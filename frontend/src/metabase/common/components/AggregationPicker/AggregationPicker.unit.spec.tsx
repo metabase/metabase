@@ -1,10 +1,17 @@
-import _ from "underscore";
 import userEvent from "@testing-library/user-event";
+import _ from "underscore";
+
 import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import {
+  createQuery,
+  columnFinder,
+  findAggregationOperator,
+} from "metabase-lib/test-helpers";
 import type { Metric } from "metabase-types/api";
 import {
   createMockMetric,
@@ -24,13 +31,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import {
-  createQuery,
-  columnFinder,
-  findAggregationOperator,
-} from "metabase-lib/test-helpers";
 
 import { AggregationPicker } from "./AggregationPicker";
 

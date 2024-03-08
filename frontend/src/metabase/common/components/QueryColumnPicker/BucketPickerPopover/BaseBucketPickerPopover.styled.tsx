@@ -1,31 +1,55 @@
 import styled from "@emotion/styled";
-import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/ui";
+
 import BaseSelectList from "metabase/components/SelectList";
+import Button from "metabase/core/components/Button";
 import { alpha, color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
+import { Icon } from "metabase/ui";
 
 export const TriggerIcon = styled(Icon)`
   color: ${color("white")} !important;
   flex: 0 0 auto;
+  margin-left: 0.5rem;
 `;
 
-export const TriggerButton = styled.button`
+export const ChevronDown = styled(Icon)`
+  flex: 0 0 auto;
+  width: 8px;
+  margin-left: 0.25em;
+  color: currentColor;
+  opacity: 0.75;
+`;
+
+export const TriggerButton = styled.button<{ hasDot?: boolean }>`
   display: flex;
   align-items: center;
   min-width: 0;
-  max-width: 50%;
-  gap: 0.5rem;
 
   color: ${alpha(color("white"), 0.5)};
   font-weight: 700;
-  border-left: 2px solid ${alpha(color("border"), 0.1)};
+  border-left: 2px solid transparent;
   padding: 0.5rem;
+  border-left: 2px solid
+    ${props => (props.hasDot ? "transparent" : alpha(color("border"), 0.1))};
+
   cursor: pointer;
+
+  ${ChevronDown} {
+    color: currentColor;
+  }
 
   &:hover {
     color: ${color("white")};
   }
+`;
+
+export const Dot = styled.div`
+  width: 3px;
+  height: 3px;
+  margin-right: 0.5em;
+  background: currentColor;
+  border-radius: 100%;
+  opacity: 0.25;
 `;
 
 export const SelectListItem = styled(BaseSelectList.Item)<{

@@ -1,6 +1,6 @@
-import type { WritebackAction } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Database from "metabase-lib/metadata/Database";
+import type { WritebackAction } from "metabase-types/api";
 
 export const canRunAction = (
   action: WritebackAction,

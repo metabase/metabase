@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+
 import type { WritebackAction } from "metabase-types/api";
 
 export type EditableActionParams = Pick<

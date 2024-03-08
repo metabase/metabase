@@ -1,13 +1,13 @@
 import type { FunctionComponent } from "react";
 import { t } from "ttag";
 
-import type { WritebackActionId } from "metabase-types/api";
 import { getActionErrorMessage } from "metabase/actions/utils";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { ActionsApi } from "metabase/services";
+import type { WritebackActionId } from "metabase-types/api";
 
 import type { ObjectId } from "./types";
 

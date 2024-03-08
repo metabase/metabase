@@ -1,12 +1,13 @@
 import "metabase/plugins/builtin";
 import userEvent from "@testing-library/user-event";
+
+import { setupGroupsEndpoint } from "__support__/server-mocks";
+import { screen } from "__support__/ui";
 import {
   createMockGroup,
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
-import { setupGroupsEndpoint } from "__support__/server-mocks";
 
 import type { SetupOpts } from "./setup";
 import { setup, EMAIL_URL } from "./setup";

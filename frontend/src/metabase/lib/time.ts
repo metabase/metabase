@@ -1,11 +1,8 @@
+import type { DurationInputArg2, MomentInput } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { DurationInputArg2, MomentInput } from "moment-timezone";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 addAbbreviatedLocale();

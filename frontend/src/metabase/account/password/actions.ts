@@ -1,7 +1,9 @@
 import { getIn } from "icepick";
-import { UserApi, UtilApi } from "metabase/services";
+
 import MetabaseSettings from "metabase/lib/settings";
+import { UserApi, UtilApi } from "metabase/services";
 import type { User } from "metabase-types/api";
+
 import type { UserPasswordData } from "./types";
 
 export const validatePassword = async (password: string) => {

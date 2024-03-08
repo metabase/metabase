@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
 import PropTypes from "prop-types";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
+
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
+import Button from "metabase/core/components/Button";
 
 const propTypes = {
   item: PropTypes.object.isRequired,

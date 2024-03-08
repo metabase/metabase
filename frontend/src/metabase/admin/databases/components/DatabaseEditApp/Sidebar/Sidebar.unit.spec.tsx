@@ -1,5 +1,9 @@
-import _ from "underscore";
 import userEvent from "@testing-library/user-event";
+import _ from "underscore";
+
+import { setupDatabaseUsageInfo } from "__support__/server-mocks/database";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
@@ -8,9 +12,7 @@ import {
   COMMON_DATABASE_FEATURES,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { setupDatabaseUsageInfo } from "__support__/server-mocks/database";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+
 import Sidebar from "./Sidebar";
 
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];

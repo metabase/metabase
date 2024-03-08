@@ -1,11 +1,14 @@
 import { merge } from "icepick";
+
 import { colors } from "metabase/lib/colors";
 import { createMockColumn } from "metabase-types/api/mocks";
+
 import type {
   ChartSettings,
   SeriesWithOneOrLessDimensions,
   SeriesWithTwoDimensions,
 } from "../../XYChart/types";
+
 import {
   getSeriesWithColors,
   getSeriesWithLegends,
@@ -120,7 +123,7 @@ describe("getSeriesWithColors", () => {
     it("should assign colors from whitelabel colors", () => {
       const seriesWithColors = getSeriesWithColors(
         settings,
-        getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        getPalette({ accent0: "#123456", summarize: "#ffffff" }),
         singleCardSeries,
       );
 

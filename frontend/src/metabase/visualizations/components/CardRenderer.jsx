@@ -1,13 +1,12 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
-
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 // We track this as part of the render loop.

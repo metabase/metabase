@@ -1,3 +1,4 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
   restore,
   withDatabase,
@@ -5,7 +6,6 @@ import {
   visitQuestion,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const PG_DB_ID = 2;
 

@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { TYPE } from "metabase-lib/types/constants";
 
 export const field_semantic_types = [

@@ -1,4 +1,5 @@
 import type { MouseEvent, MouseEventHandler, ReactNode } from "react";
+
 import { Box, Center, Stack, Text } from "metabase/ui";
 
 import {

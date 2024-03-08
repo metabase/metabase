@@ -1,5 +1,6 @@
 import type { CollectionEssentials, SearchResult } from "metabase-types/api";
 import { createMockModelResult } from "metabase-types/api/mocks";
+
 import { availableModelFilters, sortCollectionsByVerification } from "./utils";
 
 describe("Utilities related to content verification", () => {

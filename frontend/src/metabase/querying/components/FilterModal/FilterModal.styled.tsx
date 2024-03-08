@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import type { BoxProps } from "metabase/ui";
-import { Box, Flex, Modal, Tabs } from "metabase/ui";
+
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
+import type { BoxProps } from "metabase/ui";
+import { Box, Flex, Modal, Tabs } from "metabase/ui";
 
 export const TabPanelRoot = styled(Tabs.Panel)`
   overflow-y: auto;
@@ -14,6 +15,8 @@ interface ColumnItemRootProps extends BoxProps {
 
 export const TabPanelItem = styled(Box)<ColumnItemRootProps>`
   border-bottom: 1px solid ${color("border")};
+  padding: 1rem 2rem;
+  padding-left: 0;
 
   &:last-of-type {
     border-bottom: none;

@@ -1,9 +1,10 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export interface ScalarContainerProps {
   isClickable: boolean;

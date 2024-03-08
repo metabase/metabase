@@ -1,7 +1,9 @@
 import { t } from "ttag";
-import { getStoreUrl } from "metabase/selectors/settings";
+
 import { SectionHeader } from "metabase/admin/settings/components/SettingsLicense";
+import { getStoreUrl } from "metabase/selectors/settings";
 import { Text } from "metabase/ui";
+
 import { StoreButtonLink } from "./BillingInfo.styled";
 
 export const BillingGoToStore = () => {

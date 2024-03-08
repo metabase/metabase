@@ -1,9 +1,10 @@
+import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockModelResult,
 } from "metabase-types/api/mocks";
-import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
+
 import type { ActualModelFilters, AvailableModelFilters } from "./utils";
 import { filterModels, groupModels } from "./utils";
 

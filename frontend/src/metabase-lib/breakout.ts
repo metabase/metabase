@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { BreakoutClause, ColumnMetadata, Query } from "./types";
+
 import { removeClause } from "./query";
+import type { BreakoutClause, ColumnMetadata, Query } from "./types";
 
 export function breakoutableColumns(
   query: Query,

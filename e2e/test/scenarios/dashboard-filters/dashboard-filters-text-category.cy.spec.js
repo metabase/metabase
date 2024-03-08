@@ -1,4 +1,8 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   clearFilterWidget,
@@ -13,16 +17,14 @@ import {
   ensureDashboardCardHasText,
   toggleFilterWidgetValues,
   resetFilterWidgetToDefault,
+  dashboardParametersDoneButton,
 } from "e2e/support/helpers";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 import {
   applyFilterByType,
   selectDefaultValueFromPopover,
 } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 
 describe("scenarios > dashboard > filters > text/category", () => {
@@ -35,7 +37,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_TEXT_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
       setFilter("Text or Category", filter);
@@ -90,7 +92,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     });
   });
 
-  it(`should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)`, () => {
+  it("should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)", () => {
     setFilter("Text or Category", "Is");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -151,18 +153,30 @@ describe("scenarios > dashboard > filters > text/category", () => {
       'The "Text" parameter requires a default value but none was provided.',
     );
 
+    // Can't close sidebar without a default value
+    dashboardParametersDoneButton().should("be.disabled");
+    dashboardParametersDoneButton().realHover();
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      "The parameter requires a default value but none was provided.",
+    );
+
     // Updates the filter value
-    selectDefaultValueFromPopover("Twitter");
+    selectDefaultValueFromPopover("Twitter", { buttonLabel: "Update filter" });
     saveDashboard();
     ensureDashboardCardHasText("37.65");
 
     // Resets the value back by clicking widget icon
-    toggleFilterWidgetValues(["Google", "Organic"]);
+    toggleFilterWidgetValues(["Google", "Organic"], {
+      buttonLabel: "Update filter",
+    });
     resetFilterWidgetToDefault();
     filterWidget().findByText("Twitter");
 
     // Removing value resets back to default
-    toggleFilterWidgetValues(["Twitter"]);
+    toggleFilterWidgetValues(["Twitter"], {
+      buttonLabel: "Set to default",
+    });
     filterWidget().findByText("Twitter");
   });
 });

@@ -1,8 +1,10 @@
-import { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+
 import TokenField from "metabase/components/TokenField";
 import { isEmail } from "metabase/lib/utils";
+
 import {
   UserPickerAvatar,
   UserPickerOption,

@@ -2,6 +2,7 @@ import cx from "classnames";
 
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import type Filter from "metabase-lib/queries/structured/Filter";
+
 import OperatorSelector from "../filters/OperatorSelector";
 
 type Props = {

@@ -50,7 +50,7 @@
   [source-query :- mbql.s/MBQLQuery]
   (try
     (let [cols (binding [api/*current-user-id* nil]
-                 ((requiring-resolve 'metabase.query-processor/query->expected-cols)
+                 ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                   {:database (:id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
                    ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
@@ -77,8 +77,9 @@
 (defn- legacy-source-metadata?
   "Whether this source metadata is *legacy* source metadata from < 0.38.0. Legacy source metadata did not include
   `:field_ref` or `:id`, which made it hard to correctly construct queries with. For MBQL queries, we're better off
-  ignoring legacy source metadata and using `qp/query->expected-cols` to infer the source metadata rather than relying
-  on old stuff that can produce incorrect queries. See #14788 for more information."
+  ignoring legacy source metadata and using [[metabase.query-processor.preprocess/query->expected-cols]] to infer the
+  source metadata rather than relying on old stuff that can produce incorrect queries. See #14788 for more
+  information."
   [source-metadata]
   (and (seq source-metadata)
        (every? nil? (map :field_ref source-metadata))))

@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+
 import type { FilterItem } from "./types";
 
 export function getFilterItems(query: Lib.Query): FilterItem[] {

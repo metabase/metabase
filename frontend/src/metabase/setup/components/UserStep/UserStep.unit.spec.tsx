@@ -1,11 +1,12 @@
-import type { UserInfo } from "metabase-types/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { SetupStep } from "metabase/setup/types";
+import type { UserInfo } from "metabase-types/store";
 import {
   createMockSetupState,
   createMockState,
   createMockUserInfo,
 } from "metabase-types/store/mocks";
-import type { SetupStep } from "metabase/setup/types";
+
 import { UserStep } from "./UserStep";
 
 interface SetupOpts {

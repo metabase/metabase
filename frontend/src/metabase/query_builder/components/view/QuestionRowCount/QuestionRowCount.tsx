@@ -1,28 +1,24 @@
 import { useMemo } from "react";
-import { ngettext, msgid, t } from "ttag";
 import { connect } from "react-redux";
+import { ngettext, msgid, t } from "ttag";
 import _ from "underscore";
 
-import { formatNumber } from "metabase/lib/formatting";
-import Database from "metabase/entities/databases";
-
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
+import Database from "metabase/entities/databases";
+import { formatNumber } from "metabase/lib/formatting";
 import { setLimit } from "metabase/query_builder/actions";
+import LimitPopover from "metabase/query_builder/components/LimitPopover";
 import {
   getFirstQueryResult,
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import LimitPopover from "metabase/query_builder/components/LimitPopover";
-
-import type { Dataset } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 import type { Limit } from "metabase-lib/types";
-import type Question from "metabase-lib/Question";
+import type { Dataset } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { RowCountButton, RowCountStaticLabel } from "./QuestionRowCount.styled";
 

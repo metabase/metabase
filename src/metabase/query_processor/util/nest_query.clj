@@ -11,7 +11,6 @@
    [metabase.api.common :as api]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.resolve-joins
     :as qp.middleware.resolve-joins]
@@ -57,7 +56,6 @@
                                       fields)))))
 
 (defn- nest-source [inner-query]
-  (classloader/require 'metabase.query-processor)
   (let [filter-clause (:filter inner-query)
         keep-filter? (nil? (mbql.u/match-one filter-clause :expression))
         source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
@@ -65,7 +63,7 @@
                  ;; here in the first place we already had to do perms checks to make sure the query we're transforming
                  ;; is itself ok, so we don't need to run another check
                  (binding [api/*current-user-id* nil]
-                   ((resolve 'metabase.query-processor/preprocess)
+                   ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
                     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                      :type     :query
                      :query    source}))
@@ -89,10 +87,14 @@
         {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
         {::add/keys [desired-alias]} (mbql.u/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
-                                       source-opts)]
+                                       source-opts)
+        source-alias                 (or desired-alias expression-name)]
     [:field
-     (or desired-alias expression-name)
-     (assoc opts :base-type (or base-type :type/*))]))
+     source-alias
+     (-> opts
+         (assoc :base-type          (or base-type :type/*)
+                ::add/source-table  ::add/source
+                ::add/source-alias  source-alias))]))
 
 (defn- rewrite-fields-and-expressions [query]
   (mbql.u/replace query

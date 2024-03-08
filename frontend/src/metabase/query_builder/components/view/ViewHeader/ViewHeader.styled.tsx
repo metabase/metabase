@@ -1,15 +1,15 @@
 import styled from "@emotion/styled";
 
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-
-import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
-
 import { color, alpha } from "metabase/lib/colors";
+import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
 import ViewSection, { ViewSubHeading, ViewHeading } from "../ViewSection";
+
 import { QuestionDataSource } from "./components/QuestionDataSource";
 
 export const ViewHeaderContainer = styled(ViewSection)<{
@@ -73,9 +73,9 @@ export const SaveButton = styled(Link)`
 `;
 
 export const SavedQuestionHeaderButtonContainer = styled.div<{
-  isDataset: boolean;
+  isModel: boolean;
 }>`
-  right: ${props => (props.isDataset ? "0px" : "0.38rem")};
+  right: ${props => (props.isModel ? "0px" : "0.38rem")};
 `;
 
 export const HeaderButton = styled(Button)<{ active: boolean }>`

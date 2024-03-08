@@ -1,4 +1,5 @@
 import type Dimension from "metabase-lib/Dimension";
+
 import type {
   DimensionFK,
   DimensionOptionsProps,

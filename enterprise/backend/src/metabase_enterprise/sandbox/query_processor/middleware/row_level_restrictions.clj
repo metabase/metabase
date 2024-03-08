@@ -6,9 +6,7 @@
    [clojure.core.memoize :as memoize]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :as gtap
-    :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db.connection :as mdb.connection]
    [metabase.lib.metadata :as lib.metadata]
@@ -16,17 +14,11 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.permissions.util :as perms.u]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.fetch-source-query
-    :as fetch-source-query]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -71,12 +63,7 @@
 
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
-    (let [group-ids           (qp.store/cached *current-user-id*
-                                (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*))
-          sandboxes           (when (seq group-ids)
-                               (t2/select GroupTableAccessPolicy :group_id [:in group-ids]
-                                 :table_id [:in table-ids]))
-          enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
+    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for *current-user-id*)]
        (when (seq enforced-sandboxes)
          (assert-one-gtap-per-table enforced-sandboxes)
          enforced-sandboxes))))
@@ -136,8 +123,7 @@
                         :type     :query
                         :query    source-query}
           preprocessed (binding [*current-user-id* nil]
-                         (classloader/require 'metabase.query-processor)
-                         ((resolve 'metabase.query-processor/preprocess) query))]
+                         ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))
@@ -146,7 +132,7 @@
 
 (defn- card-gtap->source
   [{card-id :card_id :as gtap}]
-  (update-in (fetch-source-query/card-id->source-query-and-metadata card-id)
+  (update-in (fetch-source-query-legacy/card-id->source-query-and-metadata card-id)
              [:source-query :parameters]
              concat
              (gtap->parameters gtap)))
@@ -157,7 +143,7 @@
 (mu/defn ^:private mbql-query-metadata :- [:+ :map]
   [inner-query]
   (binding [*current-user-id* nil]
-    ((requiring-resolve 'metabase.query-processor/query->expected-cols)
+    ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
      {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
       :type     :query
       :query    inner-query})))
@@ -258,9 +244,9 @@
    (remove nil?)
    set))
 
-(mu/defn ^:private sandbox->perms-set :- [:set perms.u/PathSchema]
-  "Calculate the set of permissions needed to run the query associated with a sandbox; this set of permissions is excluded
-  during the normal QP perms check.
+(mu/defn ^:private sandbox->required-perms
+  "Calculate the permissions needed to run the query associated with a sandbox, which are implitly granted to the
+  current user during the normal QP perms check.
 
   Background: when applying sandboxing, we don't want the QP perms check middleware to throw an Exception if the Current
   User doesn't have permissions to run the underlying sandboxed query, which will likely be greater than what they
@@ -271,12 +257,12 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-      (query-perms/perms-set (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
-                             :throw-exceptions? true))
-    (set (map perms/table-query-path (sandbox->table-ids sandbox)))))
+                     (query-perms/required-perms (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+                                                 :throw-exceptions? true))
+    {:perms/data-access (zipmap (sandbox->table-ids sandbox) (repeat :unrestricted))}))
 
-(defn- sandboxes->perms-set [sandboxes]
-  (set (mapcat sandbox->perms-set sandboxes)))
+(defn- sandboxes->required-perms [sandboxes]
+  (apply m/deep-merge (map sandbox->required-perms sandboxes)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -323,7 +309,7 @@
 
 (defn- expected-cols [query]
   (binding [*current-user-id* nil]
-    ((requiring-resolve 'metabase.query-processor/query->expected-cols) query)))
+    ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query)))
 
 (defn- gtapped-query
   "Apply GTAPs to `query` and return the updated version of `query`."
@@ -333,7 +319,9 @@
       original-query
       (-> sandboxed-query
           (assoc ::original-metadata (expected-cols original-query))
-          (update-in [::qp.perms/perms :gtaps] (fn [perms] (into (set perms) (sandboxes->perms-set (vals table-id->gtap)))))))))
+          (update-in [::query-perms/perms :gtaps]
+                     (fn [required-perms] (merge required-perms
+                                                 (sandboxes->required-perms (vals table-id->gtap)))))))))
 
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
@@ -380,7 +368,7 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::qp.perms/perms :gtaps])))
+    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::query-perms/perms :gtaps])))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

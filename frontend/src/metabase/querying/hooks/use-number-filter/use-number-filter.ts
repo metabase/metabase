@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
+
 import * as Lib from "metabase-lib";
+
+import type { NumberValue } from "./types";
 import {
   getAvailableOptions,
   getDefaultValues,
@@ -7,7 +10,6 @@ import {
   getFilterClause,
   isValidFilter,
 } from "./utils";
-import type { NumberValue } from "./types";
 
 interface UseNumberFilterProps {
   query: Lib.Query;

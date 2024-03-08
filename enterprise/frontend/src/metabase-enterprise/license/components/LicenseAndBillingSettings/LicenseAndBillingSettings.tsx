@@ -1,18 +1,8 @@
-import { t, jt } from "ttag";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { connect } from "react-redux";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import { t, jt } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import { getUpgradeUrl } from "metabase/selectors/settings";
-
-import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
-
-import type { TokenStatus } from "metabase-enterprise/settings/hooks/use-license";
-import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
-import { useBillingInfo } from "metabase-enterprise/settings/hooks/use-billing-info";
+import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import {
   ExplorePaidPlansContainer,
   LoaderContainer,
@@ -20,10 +10,17 @@ import {
   SectionHeader,
   SettingsLicenseContainer,
 } from "metabase/admin/settings/components/SettingsLicense";
-import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { getUpgradeUrl } from "metabase/selectors/settings";
+import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
+import { useBillingInfo } from "metabase-enterprise/settings/hooks/use-billing-info";
+import type { TokenStatus } from "metabase-enterprise/settings/hooks/use-license";
+import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { SettingDefinition } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+
 import { BillingInfo } from "../BillingInfo";
 
 const HOSTING_FEATURE_KEY = "hosting";

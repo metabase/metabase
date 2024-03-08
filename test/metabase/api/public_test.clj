@@ -564,7 +564,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (mt/with-actions-test-data-tables #{"venues" "categories"}
         (mt/with-actions-test-data-and-actions-enabled
-          (mt/with-actions [{card-id :id} {:dataset true, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+          (mt/with-actions [{card-id :id} {:type :model, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
                             {:keys [action-id]} {:type :implicit
                                                  :kind "row/update"
                                                  :visualization_settings {:fields {"id"    {:id     "id"
@@ -615,39 +615,6 @@
                        :visualization_settings
                        :parameters}
                      (set (keys public-action))))))))))))
-
-(deftest public-dashboard-param-link-to-a-field-without-full-field-values-test
-  (testing "GET /api/public/dashboard/:uuid"
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (t2.with-temp/with-temp
-        [:model/Dashboard
-         {dashboard-id :id
-          uuid         :public_uuid}
-         {:name        "Test Dashboard"
-          :public_uuid (str (java.util.UUID/randomUUID))}
-
-         :model/Card
-         {card-id :id}
-         {:name "Dashboard Test Card"}
-
-         :model/DashboardCard
-         _
-         {:dashboard_id       dashboard-id
-          :card_id            card-id
-          :parameter_mappings [{:card_id      card-id
-                                :parameter_id "foo"
-                                :target       [:dimension
-                                               [:field (mt/id :venues :name) nil]]}]}]
-        (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
-        (testing "Request triggers computation of field values if missing (#30218)"
-          (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
-                                                                 "25°"
-                                                                 "33 Taps"]
-                                         :field_id              (mt/id :venues :name)
-                                         :human_readable_values []}}
-                 (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "public/dashboard/" uuid)))]
-                   (into {} (for [[field-id m] response]
-                              [field-id (update m :values (partial take 3))]))))))))))
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
@@ -1526,47 +1493,47 @@
 (deftest param-values-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (mt/with-temporary-setting-values [enable-public-sharing true]
-        (testing "with dashboard"
-          (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-            (let [uuid (str (random-uuid))]
-              (is (= 1
-                     (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
-              (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
-                (is (= {:values          [[2] [3] [4] [5] [6]]
-                        :has_more_values false}
-                       (->> (mt/user-http-request :rasta :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
-                            (chain-filter-test/take-n-values 5)))))
-              (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
-                (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
-                        :has_more_values false}
-                       (->> (mt/user-http-request :rasta :get 200 (param-values-url :dashboard uuid (:category-name param-keys) "food"))
-                            (chain-filter-test/take-n-values 3))))))))
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (testing "with dashboard"
+            (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+              (let [uuid (str (random-uuid))]
+                (is (= 1
+                       (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
+                (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
+                  (is (= {:values          [[2] [3] [4] [5] [6]]
+                          :has_more_values false}
+                         (->> (mt/user-http-request :rasta :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
+                              (chain-filter-test/take-n-values 5)))))
+                (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
+                  (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
+                          :has_more_values false}
+                         (->> (mt/user-http-request :rasta :get 200 (param-values-url :dashboard uuid (:category-name param-keys) "food"))
+                              (chain-filter-test/take-n-values 3))))))))
 
-        (testing "with card"
-          (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
-            (let [uuid (str (random-uuid))]
-             (is (= 1
-                    (t2/update! Card (u/the-id card) {:public_uuid uuid})))
-             (testing "GET /api/public/card/:uuid/params/:param-key/values"
-               (is (= {:values          [["African"] ["American"] ["Asian"]]
-                       :has_more_values false}
-                      (client/client :get 200 (param-values-url :card uuid (:static-list param-keys)))))
+          (testing "with card"
+            (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
+              (let [uuid (str (random-uuid))]
+                (is (= 1
+                       (t2/update! Card (u/the-id card) {:public_uuid uuid})))
+                (testing "GET /api/public/card/:uuid/params/:param-key/values"
+                  (is (= {:values          [["African"] ["American"] ["Asian"]]
+                          :has_more_values false}
+                         (client/client :get 200 (param-values-url :card uuid (:static-list param-keys)))))
 
-               (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
-                                         ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
-                       :has_more_values false}
-                      (client/client :get 200 (param-values-url :card uuid (:card param-keys))))))
+                  (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
+                                            ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
+                          :has_more_values false}
+                         (client/client :get 200 (param-values-url :card uuid (:card param-keys))))))
 
-             (testing "GET /api/public/card/:uuid/params/:param-key/search/:query"
-               (is (= {:values          [["African"]]
-                       :has_more_values false}
-                      (client/client :get 200 (param-values-url :card uuid (:static-list param-keys) "af"))))
+                (testing "GET /api/public/card/:uuid/params/:param-key/search/:query"
+                  (is (= {:values          [["African"]]
+                          :has_more_values false}
+                         (client/client :get 200 (param-values-url :card uuid (:static-list param-keys) "af"))))
 
-               (is (= {:values          [["Red Medicine"]]
-                       :has_more_values false}
-                      (client/client :get 200 (param-values-url :card uuid (:card param-keys) "red"))))))))))))
+                  (is (= {:values          [["Red Medicine"]]
+                          :has_more_values false}
+                         (client/client :get 200 (param-values-url :card uuid (:card param-keys) "red")))))))))))))
 
 ;;; --------------------------------------------- Pivot tables ---------------------------------------------
 
@@ -1672,21 +1639,21 @@
 
 (deftest execute-public-dashcard-custom-action-test
   (mt/with-temp-copy-of-db
-    (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-    (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-temporary-setting-values [enable-public-sharing true]
-        (with-temp-public-dashboard [dash {:parameters []}]
-          (mt/with-actions [{:keys [action-id model-id]} {}]
-            (mt/with-temp [DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
-                                                            :action_id action-id
-                                                            :card_id model-id}]
-              (is (partial= {:rows-affected 1}
-                            (client/client
-                             :post 200
-                             (format "public/dashboard/%s/dashcard/%s/execute"
-                                     (:public_uuid dash)
-                                     dashcard-id)
-                             {:parameters {:id 1 :name "European"}}))))))))))
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-dashboard [dash {:parameters []}]
+            (mt/with-actions [{:keys [action-id model-id]} {}]
+              (mt/with-temp [DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
+                                                              :action_id action-id
+                                                              :card_id model-id}]
+                (is (partial= {:rows-affected 1}
+                              (client/client
+                               :post 200
+                               (format "public/dashboard/%s/dashcard/%s/execute"
+                                       (:public_uuid dash)
+                                       dashcard-id)
+                               {:parameters {:id 1 :name "European"}})))))))))))
 
 (deftest fetch-public-dashcard-action-test
   (mt/with-actions-test-data-and-actions-enabled

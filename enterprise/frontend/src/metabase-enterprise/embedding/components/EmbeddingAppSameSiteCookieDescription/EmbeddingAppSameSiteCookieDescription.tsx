@@ -1,10 +1,13 @@
 import { jt, t } from "ttag";
-import { useSelector } from "metabase/lib/redux";
-import { getDocsUrl, getSetting } from "metabase/selectors/settings";
-import { Box, Center, Stack, Text } from "metabase/ui";
+
+import { useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { isEmpty } from "metabase/lib/utils";
 import { isSameOrigin } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
+import { isEmpty } from "metabase/lib/utils";
+import { getDocsUrl } from "metabase/selectors/settings";
+import { Box, Center, Stack, Text } from "metabase/ui";
+
 import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
 
 export const EmbeddingAppSameSiteCookieDescription = () => {
@@ -16,12 +19,8 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
     }),
   );
 
-  const embeddingSameSiteCookieSetting = useSelector(state =>
-    getSetting(state, "session-cookie-samesite"),
-  );
-  const embeddingAuthorizedOrigins = useSelector(state =>
-    getSetting(state, "embedding-app-origin"),
-  );
+  const embeddingSameSiteCookieSetting = useSetting("session-cookie-samesite");
+  const embeddingAuthorizedOrigins = useSetting("embedding-app-origin");
 
   const shouldDisplayNote =
     embeddingSameSiteCookieSetting !== "none" &&

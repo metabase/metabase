@@ -1,7 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import { isDesktopSafari } from "metabase/lib/browser";
+import { color } from "metabase/lib/colors";
 
 interface SharedProps {
   isNarrow: boolean;

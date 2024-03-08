@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { color } from "metabase/lib/colors";
 
 function sumVerticalSpace(layout) {

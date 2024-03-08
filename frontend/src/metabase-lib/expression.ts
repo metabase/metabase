@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+
 import type {
   AggregationClause,
   ColumnMetadata,
@@ -11,6 +12,10 @@ import type {
   JoinCondition,
   Query,
 } from "./types";
+
+type ErrorWithMessage = {
+  message: string;
+};
 
 export function expression(
   query: Query,
@@ -75,5 +80,22 @@ export function legacyExpressionForExpressionClause(
     query,
     stageIndex,
     expressionClause,
+  );
+}
+
+export type ExpressionMode = "expression" | "aggregation" | "filter";
+export function diagnoseExpression(
+  query: Query,
+  stageIndex: number,
+  expressionMode: ExpressionMode,
+  mbql: any,
+  expressionPosition?: number,
+): ErrorWithMessage | null {
+  return ML.diagnose_expression(
+    query,
+    stageIndex,
+    expressionMode,
+    mbql,
+    expressionPosition,
   );
 }

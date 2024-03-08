@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
-import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button/Button";
+import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 
 export const ApplyButton = styled(Button)`
   margin-left: auto;

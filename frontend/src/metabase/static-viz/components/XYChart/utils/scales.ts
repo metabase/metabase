@@ -1,4 +1,3 @@
-import d3, { max, min } from "d3";
 import {
   scaleBand,
   scaleLinear,
@@ -6,14 +5,8 @@ import {
   scalePower,
   scaleTime,
 } from "@visx/scale";
-import {
-  getX,
-  getY,
-} from "metabase/static-viz/components/XYChart/utils/series";
-import type {
-  ContinuousDomain,
-  Range,
-} from "metabase/visualizations/shared/types/scale";
+import d3, { max, min } from "d3";
+
 import type {
   SeriesDatum,
   XAxisType,
@@ -23,6 +16,14 @@ import type {
   StackedDatum,
   XScale,
 } from "metabase/static-viz/components/XYChart/types";
+import {
+  getX,
+  getY,
+} from "metabase/static-viz/components/XYChart/utils/series";
+import type {
+  ContinuousDomain,
+  Range,
+} from "metabase/visualizations/shared/types/scale";
 
 export const createXScale = (
   series: Series[],

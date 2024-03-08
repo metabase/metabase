@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import cx from "classnames";
+import { Component } from "react";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 

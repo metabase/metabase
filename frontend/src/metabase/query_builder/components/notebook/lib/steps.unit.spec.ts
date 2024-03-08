@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
-import { getQuestionSteps } from "metabase/query_builder/components/notebook/lib/steps";
 import { checkNotNull } from "metabase/lib/types";
+import { getQuestionSteps } from "metabase/query_builder/components/notebook/lib/steps";
+import * as Lib from "metabase-lib";
 import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
 import {
   createSampleDatabase,
@@ -9,7 +10,6 @@ import {
   PRODUCTS,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -46,6 +46,7 @@ const filteredAndSummarizedQuery: StructuredQueryObject = {
 const postAggregationFilterQuery: StructuredQueryObject = {
   "source-query": filteredAndSummarizedQuery,
   filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
+  aggregation: [["count"]],
 };
 
 const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
@@ -92,9 +93,9 @@ describe("filtered and summarized query", () => {
     });
   });
 
-  describe("previewQuery", () => {
+  describe("getPreviewQuery", () => {
     it("shouldn't include filter, summarize for data step", () => {
-      const previewQuery = checkNotNull(dataStep.previewQuery);
+      const previewQuery = checkNotNull(dataStep.getPreviewQuery)();
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
@@ -102,7 +103,7 @@ describe("filtered and summarized query", () => {
     });
 
     it("shouldn't include summarize for filter step", () => {
-      const previewQuery = checkNotNull(filterStep.previewQuery);
+      const previewQuery = checkNotNull(filterStep.getPreviewQuery)();
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
@@ -137,12 +138,13 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     steps;
 
   describe("getQuestionSteps", () => {
-    it("`getQuestionSteps()` should return data, filter, summarize, and filter steps", () => {
+    it("`getQuestionSteps()` should return [data, filter, summarize] and [filter, summarize] steps", () => {
       expect(steps.map(s => s.type)).toEqual([
         "data",
         "filter",
         "summarize",
         "filter",
+        "summarize",
       ]);
     });
   });
@@ -157,32 +159,45 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
   });
 
-  describe("previewQuery", () => {
+  describe("getPreviewQuery", () => {
     it("shouldn't include filter, summarize, or post-aggregation filter for data step", () => {
-      const previewQuery = checkNotNull(dataStep.previewQuery);
+      const previewQuery = checkNotNull(dataStep.getPreviewQuery)();
 
+      expect(Lib.stageCount(previewQuery)).toBe(1);
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
       expect(Lib.filters(previewQuery, 0)).toHaveLength(0);
-      expect(Lib.filters(previewQuery, 1)).toHaveLength(0);
     });
 
     it("shouldn't include summarize or post-aggregation filter for filter step", () => {
-      const previewQuery = checkNotNull(filterStep.previewQuery);
+      const previewQuery = checkNotNull(filterStep.getPreviewQuery)();
 
+      expect(Lib.stageCount(previewQuery)).toBe(1);
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
       expect(Lib.filters(previewQuery, 0)).toHaveLength(1);
-      expect(Lib.filters(previewQuery, 1)).toHaveLength(0);
     });
 
-    it("should be the original query for post-aggregation filter step", () => {
-      const previewQuery = checkNotNull(postAggregationFilterStep.previewQuery);
+    it("shouldn't include filters from the next stages for summarizeStep", () => {
+      const previewQuery = checkNotNull(summarizeStep.getPreviewQuery)();
 
+      expect(Lib.stageCount(previewQuery)).toBe(1);
+      expect(Lib.aggregations(previewQuery, 0)).toHaveLength(1);
+      expect(Lib.breakouts(previewQuery, 0)).toHaveLength(1);
+      expect(Lib.filters(previewQuery, 0)).toHaveLength(1);
+    });
+
+    it("shouldn't include aggregations for post-aggregation filter step", () => {
+      const previewQuery = checkNotNull(
+        postAggregationFilterStep.getPreviewQuery,
+      )();
+
+      expect(Lib.stageCount(previewQuery)).toBe(2);
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(1);
       expect(Lib.filters(previewQuery, 0)).toHaveLength(1);
       expect(Lib.filters(previewQuery, 1)).toHaveLength(1);
+      expect(Lib.aggregations(previewQuery, 1)).toHaveLength(0);
     });
   });
 

@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+
 import {
   BaseBucketPickerPopover,
   INITIALLY_VISIBLE_ITEMS_COUNT,

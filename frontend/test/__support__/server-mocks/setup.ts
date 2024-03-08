@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { SetupCheckListItem } from "metabase-types/api";
 
 export function setupErrorSetupEndpoints() {
@@ -7,4 +8,8 @@ export function setupErrorSetupEndpoints() {
 
 export function setupAdminCheckListEndpoint(items: SetupCheckListItem[]) {
   fetchMock.get("path:/api/setup/admin_checklist", items);
+}
+
+export function setupForTokenCheckEndpoint(response: { valid: boolean }) {
+  fetchMock.get("path:/api/setup/token-check", response);
 }

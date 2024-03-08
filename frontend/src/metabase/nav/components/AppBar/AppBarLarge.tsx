@@ -1,11 +1,11 @@
-import type { CollectionId } from "metabase-types/api";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import NewItemButton from "../NewItemButton";
-import { ProfileLink } from "../ProfileLink";
+import type { CollectionId } from "metabase-types/api";
+
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import { AppBarToggle } from "./AppBarToggle";
-import { AppBarLogo } from "./AppBarLogo";
+import NewItemButton from "../NewItemButton";
+import { ProfileLink } from "../ProfileLink";
+
 import {
   AppBarLeftContainer,
   AppBarRightContainer,
@@ -13,6 +13,8 @@ import {
   AppBarInfoContainer,
   AppBarProfileLinkContainer,
 } from "./AppBarLarge.styled";
+import { AppBarLogo } from "./AppBarLogo";
+import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarLargeProps {
   collectionId?: CollectionId;

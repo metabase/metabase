@@ -1,23 +1,27 @@
-import { useCallback } from "react";
-import { t } from "ttag";
-import _ from "underscore";
-import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
+import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
+import {
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
 import {
   arrayMove,
   verticalListSortingStrategy,
   SortableContext,
 } from "@dnd-kit/sortable";
-import {
-  restrictToVerticalAxis,
-  restrictToParentElement,
-} from "@dnd-kit/modifiers";
-import { uuid } from "metabase/lib/utils";
+import { useCallback } from "react";
+import { usePreviousDistinct } from "react-use";
+import { t } from "ttag";
+import _ from "underscore";
+
 import { Sortable } from "metabase/core/components/Sortable";
+import { uuid } from "metabase/lib/utils";
 import { Stack } from "metabase/ui";
 import type { DatasetColumn, SmartScalarComparison } from "metabase-types/api";
+
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
+
 import { ComparisonPicker } from "./ComparisonPicker";
 import {
   AddComparisonButton,
@@ -45,6 +49,10 @@ export function SmartScalarComparisonWidget({
   const canAddComparison = value.length < maxComparisons;
   const canSortComparisons = value.length > 1;
   const canRemoveComparison = value.length > 1;
+
+  const count = value.length;
+  const previousCount = usePreviousDistinct(count) || value.length;
+  const hasNewComparison = count - previousCount === 1;
 
   const handleAddComparison = useCallback(() => {
     const comparison = { id: uuid(), type: COMPARISON_TYPES.PREVIOUS_PERIOD };
@@ -96,23 +104,27 @@ export function SmartScalarComparisonWidget({
           strategy={verticalListSortingStrategy}
         >
           <ComparisonList data-testid="comparison-list">
-            {value.map(comparison => (
-              <Sortable
-                as="li"
-                key={comparison.id}
-                id={comparison.id}
-                disabled={!canSortComparisons}
-              >
-                <ComparisonPicker
-                  {...props}
-                  value={comparison}
-                  isDraggable={canSortComparisons}
-                  isRemovable={canRemoveComparison}
-                  onChange={handleChangeComparison}
-                  onRemove={() => handleRemoveComparison(comparison)}
-                />
-              </Sortable>
-            ))}
+            {value.map((comparison, index) => {
+              const isLast = index === value.length - 1;
+              return (
+                <Sortable
+                  as="li"
+                  key={comparison.id}
+                  id={comparison.id}
+                  disabled={!canSortComparisons}
+                >
+                  <ComparisonPicker
+                    {...props}
+                    value={comparison}
+                    isDraggable={canSortComparisons}
+                    isInitiallyOpen={hasNewComparison && isLast}
+                    isRemovable={canRemoveComparison}
+                    onChange={handleChangeComparison}
+                    onRemove={() => handleRemoveComparison(comparison)}
+                  />
+                </Sortable>
+              );
+            })}
           </ComparisonList>
         </SortableContext>
       </DndContext>

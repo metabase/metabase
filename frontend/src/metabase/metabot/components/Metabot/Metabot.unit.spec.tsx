@@ -1,5 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
+import {
+  API_ERROR,
+  setupCardDataset,
+  setupDatabaseEndpoints,
+  setupBadRequestMetabotDatabaseEndpoint,
+  setupBadRequestMetabotModelEndpoint,
+  setupMetabotDatabaseEndpoint,
+  setupMetabotModelEndpoint,
+} from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
@@ -13,18 +25,7 @@ import {
 import { createStructuredModelCard } from "metabase-types/api/mocks/presets";
 import type { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
-import {
-  API_ERROR,
-  setupCardDataset,
-  setupDatabaseEndpoints,
-  setupBadRequestMetabotDatabaseEndpoint,
-  setupBadRequestMetabotModelEndpoint,
-  setupMetabotDatabaseEndpoint,
-  setupMetabotModelEndpoint,
-} from "__support__/server-mocks";
 
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
 import Metabot from "./Metabot";
 
 registerVisualizations();

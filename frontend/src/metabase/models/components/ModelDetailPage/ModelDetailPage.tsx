@@ -2,18 +2,13 @@ import { t } from "ttag";
 
 import TabContent from "metabase/core/components/TabContent";
 import TabLink from "metabase/core/components/TabLink";
-
 import * as Urls from "metabase/lib/urls";
-
-import type { Collection } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
+import type { Collection } from "metabase-types/api";
 
 import ModelActionDetails from "./ModelActionDetails";
 import ModelDetailHeader from "./ModelDetailHeader";
-import ModelInfoSidePanel from "./ModelInfoSidePanel";
-import ModelSchemaDetails from "./ModelSchemaDetails";
-import ModelUsageDetails from "./ModelUsageDetails";
 import {
   RootLayout,
   ModelMain,
@@ -21,6 +16,9 @@ import {
   TabPanel,
   TabPanelContent,
 } from "./ModelDetailPage.styled";
+import ModelInfoSidePanel from "./ModelInfoSidePanel";
+import ModelSchemaDetails from "./ModelSchemaDetails";
+import ModelUsageDetails from "./ModelUsageDetails";
 
 interface Props {
   model: Question;

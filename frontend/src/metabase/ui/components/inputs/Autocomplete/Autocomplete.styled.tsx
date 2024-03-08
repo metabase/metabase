@@ -1,10 +1,11 @@
 import type { MantineThemeOverride } from "@mantine/core";
-import { SelectDropdown } from "../Select/SelectDropdown";
-import { SelectItem } from "../Select/SelectItem";
+
 import {
   getSelectInputOverrides,
   getSelectItemsOverrides,
 } from "../Select/Select.styled";
+import { SelectDropdown } from "../Select/SelectDropdown";
+import { SelectItem } from "../Select/SelectItem";
 
 export const getAutocompleteOverrides =
   (): MantineThemeOverride["components"] => ({

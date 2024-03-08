@@ -1,3 +1,5 @@
+import { createMockMetadata } from "__support__/metadata";
+import { TYPE } from "metabase-lib/types/constants";
 import type { Database, Field, Table } from "metabase-types/api";
 import {
   createMockDateTimeFieldFingerprint,
@@ -5,8 +7,6 @@ import {
   createMockFieldDimension,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
-import { TYPE } from "metabase-lib/types/constants";
 
 const FIELD_ID = 1;
 

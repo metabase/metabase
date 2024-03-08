@@ -1,11 +1,11 @@
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  popover,
   restore,
   visitQuestionAdhoc,
   getFullName,
+  entityPickerModal,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const { PEOPLE_ID } = SAMPLE_DATABASE;
@@ -43,9 +43,11 @@ describe("issue 23981", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${getFullName(nocollection)}'s Personal Collection`).click();
 
-    popover().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("Our analytics").should("not.exist");
-      cy.findByText("Collections").should("be.visible");
+      cy.log('ensure that "Collections" is not selectable');
+      cy.findByText("Collections").should("be.visible").click();
+      cy.button("Select").should("be.disabled");
     });
   });
 });

@@ -1,4 +1,11 @@
 import { onlyOn } from "@cypress/skip-test";
+
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestion,
@@ -17,13 +24,6 @@ import {
   expectGoodSnowplowEvents,
   modal,
 } from "e2e/support/helpers";
-
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -120,13 +120,18 @@ describe(
                   openQuestionActions();
                   cy.findByTestId("move-button").click();
                   const NEW_COLLECTION = "Foo";
+
                   modal().within(() => {
                     cy.findByText("New collection").click();
-                    cy.findByLabelText("Name").type(NEW_COLLECTION, {
-                      delay: 0,
-                    });
+                  });
+
+                  cy.findByTestId("new-collection-modal").then(modal => {
+                    cy.findByPlaceholderText(
+                      "My new fantastic collection",
+                    ).type(NEW_COLLECTION);
                     cy.findByText("Create").click();
                   });
+
                   cy.get("header").findByText(NEW_COLLECTION);
                 });
 
@@ -387,7 +392,8 @@ describe(
 
                 cy.get(".Modal").within(() => {
                   cy.findByText("Create a new dashboard").click();
-                  cy.findByTestId("select-button").findByText(
+                  cy.findByLabelText(/Which collection/).should(
+                    "contain.text",
                     personalCollection,
                   );
                   cy.findByLabelText("Name").type("Foo", { delay: 0 });

@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+
 import { BooleanFilterEditor } from "../BooleanFilterEditor";
 import { CoordinateFilterEditor } from "../CoordinateFilterEditor";
 import { DateFilterEditor } from "../DateFilterEditor";

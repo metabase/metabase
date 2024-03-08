@@ -1,10 +1,11 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import Card from "metabase/components/Card";
-import { Icon } from "metabase/ui";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const BillingInfoCard = styled(Card)`
   margin-top: 1rem;

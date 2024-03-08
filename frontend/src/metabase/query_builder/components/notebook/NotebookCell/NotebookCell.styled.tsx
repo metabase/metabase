@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { alpha } from "metabase/lib/colors";
 
 export type BorderSide = "top" | "right" | "bottom" | "left";
@@ -33,7 +34,7 @@ export const NotebookCellItemContainer = styled.div<{
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
 
   cursor: ${props =>
-    !props.inactive && !props.readOnly && !props.disabled
+    (!props.inactive || props.onClick) && !props.readOnly && !props.disabled
       ? "pointer"
       : "default"};
 

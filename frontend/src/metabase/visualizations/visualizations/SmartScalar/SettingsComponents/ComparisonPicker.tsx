@@ -2,6 +2,7 @@ import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Menu, Stack, Text } from "metabase/ui";
 import type {
@@ -9,12 +10,13 @@ import type {
   SmartScalarComparison,
   SmartScalarComparisonType,
 } from "metabase-types/api";
+
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
-import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
-import { StaticNumberForm } from "./StaticNumberForm";
+
 import { AnotherColumnForm } from "./AnotherColumnForm";
 import { MenuItemStyled } from "./MenuItem.styled";
+import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
 import {
   ComparisonPickerButton,
   ComparisonPickerSecondaryText,
@@ -22,6 +24,7 @@ import {
   ExpandIcon,
   RemoveIcon,
 } from "./SmartScalarSettingsWidgets.styled";
+import { StaticNumberForm } from "./StaticNumberForm";
 
 type Tab = "anotherColumn" | "staticNumber" | null;
 
@@ -29,6 +32,7 @@ interface ComparisonPickerProps {
   value: SmartScalarComparison;
   options: ComparisonMenuOption[];
   comparableColumns: DatasetColumn[];
+  isInitiallyOpen?: boolean;
   isDraggable?: boolean;
   isRemovable?: boolean;
   onChange: (setting: SmartScalarComparison) => void;
@@ -39,12 +43,13 @@ export function ComparisonPicker({
   onChange,
   onRemove,
   options,
+  isInitiallyOpen = false,
   isDraggable = false,
   isRemovable = true,
   comparableColumns,
   value: selectedValue,
 }: ComparisonPickerProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(isInitiallyOpen);
   const [tab, setTab] = useState<Tab>(
     getTabForComparisonType(selectedValue.type),
   );

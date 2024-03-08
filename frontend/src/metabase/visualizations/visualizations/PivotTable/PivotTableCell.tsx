@@ -1,17 +1,15 @@
-import type * as React from "react";
 import cx from "classnames";
+import type * as React from "react";
 import type { ControlPosition, DraggableBounds } from "react-draggable";
 import Draggable from "react-draggable";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { RowToggleIcon } from "./RowToggleIcon";
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
-
-import type { HeaderItem, BodyItem, PivotTableClicked } from "./types";
+import { RowToggleIcon } from "./RowToggleIcon";
 import { LEFT_HEADER_LEFT_SPACING, RESIZE_HANDLE_WIDTH } from "./constants";
+import type { HeaderItem, BodyItem, PivotTableClicked } from "./types";
 
 interface CellProps {
   value: React.ReactNode;

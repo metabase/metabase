@@ -1,8 +1,9 @@
-import { forwardRef } from "react";
-import type { Ref, HTMLAttributes } from "react";
 import { Group, Text } from "@mantine/core";
-import { Icon } from "metabase/ui";
+import type { Ref, HTMLAttributes } from "react";
+import { forwardRef } from "react";
+
 import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 interface SelectItemProps extends HTMLAttributes<HTMLDivElement> {
   value: string;

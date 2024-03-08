@@ -1,5 +1,25 @@
 import _ from "underscore";
 
+import {
+  formatDateTimeForParameter,
+  formatDateToRangeForParameter,
+} from "metabase/lib/formatting/date";
+import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
+import { parseTimestamp } from "metabase/lib/time";
+import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
+import type { TemplateTagDimension } from "metabase-lib/Dimension";
+import type Question from "metabase-lib/Question";
+import {
+  columnFilterForParameter,
+  dimensionFilterForParameter,
+  variableFilterForParameter,
+} from "metabase-lib/parameters/utils/filters";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
+import type { ClickObjectDimension as DimensionType } from "metabase-lib/types";
+import { TYPE } from "metabase-lib/types/constants";
+import { isa, isDate } from "metabase-lib/types/utils/isa";
 import type {
   ClickBehavior,
   ClickBehaviorDimensionTarget,
@@ -15,26 +35,6 @@ import type {
   UserAttribute,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
-import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
-import { parseTimestamp } from "metabase/lib/time";
-import {
-  formatDateTimeForParameter,
-  formatDateToRangeForParameter,
-} from "metabase/lib/formatting/date";
-import { checkNotNull } from "metabase/lib/types";
-import * as Lib from "metabase-lib";
-import {
-  columnFilterForParameter,
-  dimensionFilterForParameter,
-  variableFilterForParameter,
-} from "metabase-lib/parameters/utils/filters";
-import type { ClickObjectDimension as DimensionType } from "metabase-lib/types";
-import { isa, isDate } from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
-import type Question from "metabase-lib/Question";
-import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type { TemplateTagDimension } from "metabase-lib/Dimension";
 
 interface Target {
   id: Parameter["id"];

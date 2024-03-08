@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
-import ItemSelect from "metabase/containers/ItemSelect";
 import CollectionPicker from "metabase/containers/CollectionPicker";
+import ItemSelect from "metabase/containers/ItemSelect";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
 

@@ -1,12 +1,13 @@
 /* eslint-disable react/prop-types */
-import { memo } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import cx from "classnames";
-import Q from "metabase/components/QueryButton/QueryButton.css";
+import PropTypes from "prop-types";
+import { memo } from "react";
+import { t } from "ttag";
 
+import Q from "metabase/components/QueryButton/QueryButton.module.css";
 import { Icon } from "metabase/ui";
-import S from "./FieldToGroupBy.css";
+
+import S from "./FieldToGroupBy.module.css";
 
 const FieldToGroupBy = ({
   className,

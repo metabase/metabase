@@ -1,10 +1,9 @@
-import { addLocale, useLocale } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 import dayjs from "dayjs";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { addLocale, useLocale } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
+import MetabaseSettings from "metabase/lib/settings";
 
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {

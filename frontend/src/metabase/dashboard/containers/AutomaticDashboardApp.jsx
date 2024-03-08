@@ -1,37 +1,34 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import { t } from "ttag";
-import { connect } from "react-redux";
 import cx from "classnames";
+import { dissoc } from "icepick";
+import { Component } from "react";
+import { connect } from "react-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { dissoc } from "icepick";
-import title from "metabase/hoc/Title";
-import withToast from "metabase/hoc/Toast";
-import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
-
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
-import { Icon } from "metabase/ui";
+import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-
-import { getMetadata } from "metabase/selectors/metadata";
+import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
 import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
-
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
-import * as Urls from "metabase/lib/urls";
+import title from "metabase/hoc/Title";
+import withToast from "metabase/hoc/Toast";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Icon } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
-import { DashboardTabs } from "../components/DashboardTabs";
 import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
+import { DashboardTabs } from "../components/DashboardTabs";
+
 import {
   ItemContent,
   ItemDescription,
@@ -39,6 +36,7 @@ import {
   ListRoot,
   SidebarHeader,
   SidebarRoot,
+  SuggestionsSidebarWrapper,
   XrayIcon,
 } from "./AutomaticDashboardApp.styled";
 
@@ -198,9 +196,9 @@ class AutomaticDashboardAppInner extends Component {
           )}
         </div>
         {hasSidebar && (
-          <div className="Layout-sidebar absolute top right bottom">
+          <SuggestionsSidebarWrapper className="absolute top right bottom">
             <SuggestionsSidebar related={related} />
-          </div>
+          </SuggestionsSidebarWrapper>
         )}
       </div>
     );
@@ -288,6 +286,7 @@ const SuggestionSectionHeading = ({ children }) => (
     {children}
   </h5>
 );
+
 const SuggestionsSidebar = ({ related }) => (
   <SidebarRoot>
     <SidebarHeader>{t`More X-rays`}</SidebarHeader>

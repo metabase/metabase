@@ -1,20 +1,18 @@
 /* eslint "react/prop-types": "warn" */
-import { memo } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import cx from "classnames";
-
-import MetabaseSettings from "metabase/lib/settings";
+import PropTypes from "prop-types";
+import { memo } from "react";
+import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import S from "metabase/components/Sidebar.module.css";
 import SidebarItem from "metabase/components/SidebarItem";
-
-import S from "metabase/components/Sidebar.css";
+import MetabaseSettings from "metabase/lib/settings";
 
 const SegmentSidebar = ({ segment, user, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
-      <div className={S.breadcrumbs}>
+      <div>
         <Breadcrumbs
           className="py4 ml3"
           crumbs={[[t`Segments`, "/reference/segments"], [segment.name]]}

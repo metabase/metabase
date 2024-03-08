@@ -1,11 +1,11 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import mockDate from "mockdate";
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "__support__/ui";
+import mockDate from "mockdate";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import MetabaseSettings from "metabase/lib/settings";
+import { render, screen } from "__support__/ui";
 import { updateMomentStartOfWeek } from "metabase/lib/i18n";
+import MetabaseSettings from "metabase/lib/settings";
+
 import type { CalendarProps } from "./Calendar";
 import Calendar from "./Calendar";
 

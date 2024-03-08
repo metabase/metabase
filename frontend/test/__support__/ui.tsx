@@ -1,24 +1,22 @@
-import type * as React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import type { Store, Reducer } from "@reduxjs/toolkit";
+import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
-import _ from "underscore";
+import { render, screen, waitFor } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
-import { Router, useRouterHistory } from "react-router";
-import { routerReducer, routerMiddleware } from "react-router-redux";
-import type { Store, Reducer } from "@reduxjs/toolkit";
-import { Provider } from "react-redux";
+import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import type { MatcherFunction } from "@testing-library/dom";
-import { ThemeProvider } from "metabase/ui";
-
-import type { State } from "metabase-types/store";
-
-import { createMockState } from "metabase-types/store/mocks";
+import { Provider } from "react-redux";
+import { Router, useRouterHistory } from "react-router";
+import { routerReducer, routerMiddleware } from "react-router-redux";
+import _ from "underscore";
 
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
+import { ThemeProvider } from "metabase/ui";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
 
@@ -209,6 +207,35 @@ export const waitForLoaderToBeRemoved = async () => {
   await waitFor(() => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
+};
+
+/**
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ */
+export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
+  jest
+    .spyOn(window.Element.prototype, "getBoundingClientRect")
+    .mockImplementation(() => {
+      return {
+        height: 200,
+        width: 200,
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+        ...options,
+      };
+    });
+};
+
+/**
+ * jsdom doesn't have scrollBy, so we need to mock it
+ */
+export const mockScrollBy = () => {
+  window.Element.prototype.scrollBy = jest.fn();
 };
 
 export * from "@testing-library/react";

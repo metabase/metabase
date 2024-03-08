@@ -15,6 +15,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -155,7 +156,7 @@
                    {:aggregation [[:avg $category_id]]
                     :breakout    [$price]
                     :order-by    [[:asc [:aggregation 0]]]})
-                 qp/compile
+                 qp.compile/compile
                  (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %)))))))))
 
 (deftest ^:parallel join-alias-test
@@ -954,7 +955,7 @@
                       :params     nil
                       :table-name "checkins"
                       :mbql?      true})
-                   (-> (qp/compile query)
+                   (-> (qp.compile/compile query)
                        (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))))))))
 
 (deftest ^:parallel multiple-template-parameters-test
@@ -1025,7 +1026,7 @@
                     :params     nil
                     :table-name "source"
                     :mbql?      true})
-                 (-> (qp/compile query)
+                 (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
           (is (= [[7 1] [8 1]]
                  (mt/rows
@@ -1053,7 +1054,7 @@
                                      [:percentile $orders.quantity 0.5]
                                      {:name "CE", :display-name "CE"}]]
                       :limit       10})
-                   qp/compile
+                   qp.compile/compile
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))))))
 
 (deftest ^:parallel no-qualify-breakout-field-name-with-subquery-test
@@ -1079,7 +1080,7 @@
                 :params     nil
                 :table-name "source"
                 :mbql?      true}
-               (-> (qp/compile query)
+               (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
         (mt/with-native-query-testing-context query
           (is (= [["2" 1]]
@@ -1107,7 +1108,7 @@
                                                               :display-name name-with-spaces}]]
                                               :breakout [$text]}
                                :limit 1})
-                            qp/compile
+                            qp.compile/compile
                             :query)]
           (is (not (str/includes? sql-query name-with-spaces))
               (format "Query `%s' should not contain `%s'" sql-query name-with-spaces)))))))

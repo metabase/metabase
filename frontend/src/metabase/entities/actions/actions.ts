@@ -1,13 +1,12 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
-import _ from "underscore";
 import { createAction } from "redux-actions";
+import { t } from "ttag";
+import _ from "underscore";
 
-import { ActionSchema } from "metabase/schema";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
+import { ActionSchema } from "metabase/schema";
 import { ActionsApi } from "metabase/services";
-
 import type {
   WritebackAction,
   WritebackActionId,

@@ -1,20 +1,20 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/no-string-refs */
-import { createRef, Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component, createRef } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 
-import cx from "classnames";
-import { Icon } from "metabase/ui";
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import { AggregationWidget } from "../AggregationWidget";
-import { BreakoutWidget } from "../BreakoutWidget";
-import { FilterWidgetList } from "../FilterWidgetList";
 import { FilterPopover } from "../FilterPopover";
+import { FilterWidgetList } from "../FilterWidgetList";
 
 /**
  * @deprecated use MLv2
@@ -51,7 +51,7 @@ export class GuiQueryEditor extends Component {
 
   renderAdd(text, onClick, targetRefName) {
     const className =
-      "AddButton text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
+      "text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
     if (onClick) {
       return (
         <a className={className} onClick={onClick}>
@@ -212,69 +212,11 @@ export class GuiQueryEditor extends Component {
     } else {
       // TODO: move this into AggregationWidget?
       return (
-        <div className="Query-section Query-section-aggregation disabled">
+        <div className="Query-section disabled">
           <a className="QueryOption p1 flex align-center">{t`Raw data`}</a>
         </div>
       );
     }
-  }
-
-  renderBreakouts() {
-    const { legacyQuery, setDatasetQuery, features } = this.props;
-
-    if (!features.breakout) {
-      return;
-    }
-
-    const breakoutList = [];
-
-    const breakouts = [...legacyQuery.breakouts()];
-
-    // Placeholder breakout for showing the add button
-    if (legacyQuery.canAddBreakout()) {
-      breakouts.push(null);
-    }
-
-    for (let index = 0; index < breakouts.length; index++) {
-      const breakout = breakouts[index];
-
-      if (breakout == null) {
-        breakoutList.push(<span key="nullBreakout" className="ml1" />);
-      }
-
-      breakoutList.push(
-        <BreakoutWidget
-          key={"breakout" + (breakout ? index : "-new")}
-          className="QueryOption p1"
-          breakout={breakout}
-          query={legacyQuery}
-          breakoutOptions={legacyQuery.breakoutOptions(breakout)}
-          onChangeBreakout={breakout =>
-            breakout
-              ? setDatasetQuery(legacyQuery.updateBreakout(index, breakout))
-              : setDatasetQuery(legacyQuery.removeBreakout(index))
-          }
-        >
-          {this.renderAdd(index === 0 ? t`Add a grouping` : null)}
-        </BreakoutWidget>,
-      );
-
-      if (breakouts[index + 1] != null) {
-        breakoutList.push(
-          <span key={"and" + index} className="text-bold">{t`and`}</span>,
-        );
-      }
-    }
-
-    return (
-      <div
-        className={cx("Query-section Query-section-breakout", {
-          disabled: breakoutList.length === 0,
-        })}
-      >
-        {breakoutList}
-      </div>
-    );
   }
 
   renderDataSection() {
@@ -338,23 +280,6 @@ export class GuiQueryEditor extends Component {
     );
   }
 
-  renderGroupedBySection() {
-    const { features } = this.props;
-    if (!features.aggregation && !features.breakout) {
-      return;
-    }
-
-    return (
-      <div
-        className="GuiBuilder-section GuiBuilder-groupedBy flex align-center px1"
-        ref="viewSection"
-      >
-        <span className="GuiBuilder-section-label Query-label">{t`Grouped By`}</span>
-        {this.renderBreakouts()}
-      </div>
-    );
-  }
-
   componentDidUpdate() {
     const guiBuilder = this.guiBuilder.current;
     if (!guiBuilder) {
@@ -392,7 +317,6 @@ export class GuiQueryEditor extends Component {
         </div>
         <div className="GuiBuilder-row flex flex-full">
           {this.renderViewSection()}
-          {this.renderGroupedBySection()}
           <div className="flex-full" />
           {this.props.children}
         </div>

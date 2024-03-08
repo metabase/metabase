@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DatePickerValue } from "./types";
+
 import { DatePicker } from "./DatePicker";
+import type { DatePickerValue } from "./types";
 
 interface SetupOpts {
   value?: DatePickerValue;

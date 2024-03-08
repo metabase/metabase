@@ -1,13 +1,13 @@
-import { popover, restore } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { popover, restore } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
 const LONG_COLUMN_NAME =
   "Some very very very very long column name that should have a line break";
 
-describe("issue 31340", function () {
+describe("issue 31340", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

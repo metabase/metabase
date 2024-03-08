@@ -132,5 +132,6 @@ serdes/meta:
 - id: p-z74CSp1IOs1rXwAcwcS
   label: most_active_creators
   model: Card
+initially_published_at: null
 metabase_version: null
 type: question

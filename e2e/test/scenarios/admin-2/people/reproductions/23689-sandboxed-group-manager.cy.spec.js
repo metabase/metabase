@@ -1,6 +1,6 @@
-import { restore, describeEE, setTokenFeatures } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, describeEE, setTokenFeatures } from "e2e/support/helpers";
 
 const { COLLECTION_GROUP } = USER_GROUPS;
 const { sandboxed, normal, nodata, nocollection } = USERS;

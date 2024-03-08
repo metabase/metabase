@@ -1,10 +1,5 @@
 import _ from "underscore";
-import type {
-  BaseDashboardCard,
-  DashboardCard,
-  ParameterTarget,
-  QuestionDashboardCard,
-} from "metabase-types/api";
+
 import {
   getVirtualCardType,
   isActionDashCard,
@@ -12,10 +7,16 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import * as Lib from "metabase-lib";
 import type { ParameterMappingOption as ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { normalize } from "metabase-lib/queries/utils/normalize";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
+import { normalize } from "metabase-lib/queries/utils/normalize";
+import type {
+  BaseDashboardCard,
+  DashboardCard,
+  ParameterTarget,
+  QuestionDashboardCard,
+} from "metabase-types/api";
 
 const VIZ_WITH_CUSTOM_MAPPING_UI = ["placeholder", "link"];
 

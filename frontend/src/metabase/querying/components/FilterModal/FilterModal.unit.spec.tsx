@@ -1,4 +1,6 @@
 import userEvent from "@testing-library/user-event";
+
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import {
   act,
   renderWithProviders,
@@ -6,14 +8,14 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
+import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";
+
 import { FilterModal } from "./FilterModal";
 
 interface SetupOpts {
@@ -203,6 +205,15 @@ describe("FilterModal", () => {
       expect(
         within(section).getByText(columns[sectionIndex]),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("should have info icons on each column", () => {
+    setup({ query });
+
+    const sections = screen.getAllByTestId(/filter-column/);
+    sections.forEach(section => {
+      expect(within(section).getByLabelText("More info")).toBeInTheDocument();
     });
   });
 });

@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
-
+import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
-import { removeAllChildren, parseDataUri } from "metabase/lib/dom";
 
+import { removeAllChildren, parseDataUri } from "metabase/lib/dom";
 import { getLogoUrl } from "metabase-enterprise/settings/selectors";
 
 const mapStateToProps = state => ({

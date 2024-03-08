@@ -1,11 +1,10 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
   visitDashboard,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -51,12 +50,12 @@ describe("scenarios > visualizations > scalar", () => {
     });
   });
 
-  it(`should render date without time (metabase#7494)`, () => {
+  it("should render date without time (metabase#7494)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
-          query: `SELECT cast('2024-05-01T00:00:00Z'::timestamp as date)`,
+          query: "SELECT cast('2024-05-01T00:00:00Z'::timestamp as date)",
           "template-tags": {},
         },
         database: SAMPLE_DB_ID,

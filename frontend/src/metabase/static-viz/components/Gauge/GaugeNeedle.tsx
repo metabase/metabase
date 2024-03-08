@@ -1,5 +1,5 @@
-import { getCirclePositionInSvgCoordinate } from "./utils";
 import type { Position } from "./types";
+import { getCirclePositionInSvgCoordinate } from "./utils";
 
 interface GaugeNeedleProps {
   color: string;

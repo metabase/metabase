@@ -1,36 +1,35 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import Button from "metabase/core/components/Button";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { Locale } from "metabase-types/store";
-import { selectStep, updateLocale } from "../../actions";
+
+import { useStep } from "../..//useStep";
+import { goToNextStep, selectStep, updateLocale } from "../../actions";
 import {
   getAvailableLocales,
   getIsSetupCompleted,
-  getIsStepActive,
-  getIsStepCompleted,
   getLocale,
 } from "../../selectors";
 import { getLocales } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
+
 import {
+  LocaleButton,
   LocaleGroup,
   LocaleInput,
   LocaleLabel,
-  LocaleButton,
   StepDescription,
 } from "./LanguageStep.styled";
 
 export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
+  const { isStepActive, isStepCompleted } = useStep("language");
   const locale = useSelector(getLocale);
   const localeData = useSelector(getAvailableLocales);
-  const isStepActive = useSelector(state => getIsStepActive(state, "language"));
-  const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, "language"),
-  );
   const isSetupCompleted = useSelector(state => getIsSetupCompleted(state));
   const fieldId = useMemo(() => _.uniqueId(), []);
   const locales = useMemo(() => getLocales(localeData), [localeData]);
@@ -45,7 +44,7 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   };
 
   const handleStepSubmit = () => {
-    dispatch(selectStep("user_info"));
+    dispatch(goToNextStep());
   };
 
   if (!isStepActive) {

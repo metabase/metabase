@@ -14,6 +14,7 @@
    [metabase.models.setting :as setting]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
@@ -64,7 +65,7 @@
                                      (qp.store/metadata-provider)
                                      meta/metadata-provider)
     (driver/with-driver :h2
-      (-> (sql.qp/mbql->native :h2 (qp/preprocess query))
+      (-> (sql.qp/mbql->native :h2 (qp.preprocess/preprocess query))
           :query
           sql.qp-test-util/pretty-sql))))
 
@@ -719,7 +720,7 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
                         COUNT (*)         AS count]
              :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
                                   CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]

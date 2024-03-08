@@ -2,14 +2,13 @@ import isPropValid from "@emotion/is-prop-valid";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { AnchorHTMLAttributes, HTMLAttributes, RefObject } from "react";
+
+import Markdown from "metabase/core/components/Markdown";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
 import { Box, Divider, Stack, Anchor, Button } from "metabase/ui";
-import Markdown from "metabase/core/components/Markdown";
 
-const { ModerationStatusIcon } = PLUGIN_MODERATION;
-
-const isBoxPropValid = (propName: PropertyKey) => {
+const isBoxPropValid = (propName: string) => {
   return (
     propName !== "isActive" &&
     propName !== "isSelected" &&
@@ -49,7 +48,7 @@ export const SearchResultContainer = styled(Box, {
   display: grid;
   grid-template-columns: auto 1fr auto auto;
   justify-content: center;
-  align-items: center;
+  align-items: start;
   gap: 0.5rem 0.75rem;
 
   padding: ${({ theme }) => theme.spacing.sm};
@@ -84,7 +83,7 @@ export const ResultNameSection = styled(Stack)`
   overflow: hidden;
 `;
 
-export const ModerationIcon = styled(ModerationStatusIcon)`
+export const ModerationIcon = styled(PLUGIN_MODERATION.ModerationStatusIcon)`
   overflow: unset;
 `;
 
@@ -106,7 +105,7 @@ export const XRayButton = styled(Button)<
 `;
 
 export const DescriptionSection = styled(Box)`
-  grid-column-start: 2;
+  margin-top: 0.5rem;
 `;
 
 export const DescriptionDivider = styled(Divider)`

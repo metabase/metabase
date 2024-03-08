@@ -1,6 +1,12 @@
 import type { Card, DatasetColumn } from "metabase-types/api";
-import type { PivotSetting, HeaderItem } from "./types";
 
+import {
+  MAX_HEADER_CELL_WIDTH,
+  MIN_HEADER_CELL_WIDTH,
+  CELL_PADDING,
+  ROW_TOGGLE_ICON_WIDTH,
+} from "./constants";
+import type { PivotSetting, HeaderItem } from "./types";
 import {
   isColumnValid,
   isFormattablePivotColumn,
@@ -9,13 +15,6 @@ import {
   getLeftHeaderWidths,
   getColumnValues,
 } from "./utils";
-
-import {
-  MAX_HEADER_CELL_WIDTH,
-  MIN_HEADER_CELL_WIDTH,
-  CELL_PADDING,
-  ROW_TOGGLE_ICON_WIDTH,
-} from "./constants";
 
 describe("Visualizations > Visualizations > PivotTable > utils", () => {
   const cols = [

@@ -3,8 +3,8 @@ import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
 
-import { getUserAttributes } from "metabase/selectors/user";
 import { getLinkTargets } from "metabase/lib/click-behavior";
+import { getUserAttributes } from "metabase/selectors/user";
 
 /**
  * This HOC gives access to data referenced in viz settings.

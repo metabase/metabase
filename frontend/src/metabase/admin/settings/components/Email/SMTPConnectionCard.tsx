@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { t } from "ttag";
+
 import { color } from "metabase/lib/colors";
 import { Box, Button, Flex, Paper, Title } from "metabase/ui";
 

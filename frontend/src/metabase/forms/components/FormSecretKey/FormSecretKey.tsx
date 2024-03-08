@@ -1,13 +1,12 @@
-import { forwardRef, useCallback } from "react";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { useField } from "formik";
+import type { ChangeEvent, FocusEvent, Ref } from "react";
+import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
-
-import { Flex, TextInput, Button } from "metabase/ui";
-import type { TextInputProps } from "metabase/ui";
 
 import Confirm from "metabase/components/Confirm";
 import { UtilApi } from "metabase/services";
+import type { TextInputProps } from "metabase/ui";
+import { Flex, TextInput, Button } from "metabase/ui";
 
 export interface FormSecretKeyProps
   extends Omit<TextInputProps, "value" | "error"> {

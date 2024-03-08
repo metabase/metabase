@@ -1,5 +1,6 @@
-import { useSelector } from "metabase/lib/redux";
 import { DatabaseHelpCard } from "metabase/databases/components/DatabaseHelpCard";
+import { useSelector } from "metabase/lib/redux";
+
 import { getDatabaseEngine, getIsStepActive } from "../../selectors";
 import { SetupCardContainer } from "../SetupCardContainer";
 

@@ -1,5 +1,5 @@
-import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { SetupStep } from "metabase/setup/types";
+import type { DatabaseData, UsageReason } from "metabase-types/api";
 
 export interface Locale {
   name: string;
@@ -35,4 +35,5 @@ export interface SetupState {
   invite?: InviteInfo;
   isLocaleLoaded: boolean;
   isTrackingAllowed: boolean;
+  licenseToken?: string | null;
 }

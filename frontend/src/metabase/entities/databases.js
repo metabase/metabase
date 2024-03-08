@@ -1,10 +1,10 @@
-import _ from "underscore";
-import { normalize } from "normalizr";
-
 import { createSelector } from "@reduxjs/toolkit";
-import { createEntity } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
+import { normalize } from "normalizr";
+import _ from "underscore";
+
+import Schemas from "metabase/entities/schemas";
 import { color } from "metabase/lib/colors";
+import { createEntity } from "metabase/lib/entities";
 import {
   fetchData,
   createThunkAction,
@@ -13,16 +13,13 @@ import {
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/lib/redux";
-
-import { MetabaseApi } from "metabase/services";
+import * as Urls from "metabase/lib/urls";
 import { DatabaseSchema } from "metabase/schema";
-import Schemas from "metabase/entities/schemas";
-
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-
+import { MetabaseApi } from "metabase/services";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS

@@ -54,13 +54,16 @@
      (mt/with-temp ~model-bindings ~@body)))
 
 (defn create! [model & {:as properties}]
- (first (t2/insert-returning-instances! model (merge (t2.with-temp/with-temp-defaults model) properties))))
+  (first (t2/insert-returning-instances! model (merge (t2.with-temp/with-temp-defaults model) properties))))
+
+(defn -data-source-url [^metabase.db.data_source.DataSource data-source]
+  (.url data-source))
 
 (defmacro with-db [data-source & body]
   `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
      ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
      ;;   redefs not great for parallelism
-    (testing (format "\nApp DB = %s" (pr-str (.url ~data-source)))
+    (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
       ~@body)) )
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
@@ -92,7 +95,10 @@
    This is particularly useful for load/dump/serialization tests, where you need both a source and application db."
   {:style/indent 0}
   [bindings & body]
-  (let [arity (count bindings)]
+  (let [arity (count bindings)
+        bindings (mapv (fn [binding]
+                         (vary-meta binding assoc :tag 'javax.sql.DataSource))
+                       bindings)]
     `(do-with-dbs ~arity (fn ~bindings ~@body))))
 
 (defn random-dump-dir [prefix]

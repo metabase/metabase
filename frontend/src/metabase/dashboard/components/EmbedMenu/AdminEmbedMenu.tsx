@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { DashboardEmbedHeaderButton } from "metabase/dashboard/components/DashboardEmbedHeaderButton";
+
 import type {
   EmbedMenuModes,
   EmbedMenuProps,
@@ -10,6 +10,7 @@ import {
   QuestionPublicLinkPopover,
 } from "metabase/dashboard/components/PublicLinkPopover";
 import { useSelector } from "metabase/lib/redux";
+import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
 import { getSetting } from "metabase/selectors/settings";
 import { Menu, Title, Text, Stack, Center, Icon } from "metabase/ui";
 
@@ -31,7 +32,7 @@ export const AdminEmbedMenu = ({
   );
 
   const target = (
-    <DashboardEmbedHeaderButton hasBackground={resourceType === "dashboard"} />
+    <ResourceEmbedButton hasBackground={resourceType === "dashboard"} />
   );
 
   if (menuMode === "public-link-popover") {

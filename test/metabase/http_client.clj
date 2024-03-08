@@ -268,21 +268,21 @@
   (update resp :body
           (fn [body]
             (cond
-             ;; read the text response
-             (instance? InputStream body)
-             (with-open [r (io/reader body)]
-               (slurp r))
+              ;; read the text response
+              (instance? InputStream body)
+              (with-open [r (io/reader body)]
+                (slurp r))
 
-             ;; read byte array stuffs like image
-             (instance? (Class/forName "[B") body)
-             (String. ^bytes body "UTF-8")
+              ;; read byte array stuffs like image
+              (instance? (Class/forName "[B") body)
+              (String. ^bytes body "UTF-8")
 
-             ;; Most APIs that execute a request returns a streaming response
-             (instance? StreamingResponse body)
-             (read-streaming-response body (get-in resp [:headers "Content-Type"]))
+              ;; Most APIs that execute a request returns a streaming response
+              (instance? StreamingResponse body)
+              (read-streaming-response body (get-in resp [:headers "Content-Type"]))
 
-             :else
-             body))))
+              :else
+              body))))
 
 (defn- build-mock-request
   [{:keys [query-parameters url credentials http-body method request-options]}]

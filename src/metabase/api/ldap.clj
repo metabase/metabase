@@ -104,14 +104,15 @@
   {settings :map}
   (api/check-superuser)
   (let [ldap-settings (-> settings
-                          (select-keys (keys ldap/mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
                                               (Long/parseLong ldap-port)))
-                          (update :ldap-password update-password-if-needed))
+                          (update :ldap-password update-password-if-needed)
+                          (dissoc :ldap-enabled))
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       (t2/with-transaction [_conn]
+       ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap settings
        (setting/set-many! ldap-settings)
        (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message

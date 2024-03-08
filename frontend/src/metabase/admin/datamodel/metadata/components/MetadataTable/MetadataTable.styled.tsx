@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Input from "metabase/core/components/Input/Input";
+
 import InputBlurChange from "metabase/components/InputBlurChange";
+import Input from "metabase/core/components/Input/Input";
+import { color } from "metabase/lib/colors";
 
 export const TableName = styled.div`
   font-weight: 700;

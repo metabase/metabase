@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useState } from "react";
+
 import {
   SwapperDefaultElement,
   SwapperLayeredElement,

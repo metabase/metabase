@@ -1,18 +1,11 @@
+import type { Location } from "history";
 import { useState } from "react";
 import { useAsync } from "react-use";
-import type { Location } from "history";
 import { t, jt } from "ttag";
 
-import { Center, Stack, Text } from "metabase/ui";
-import { SessionApi } from "metabase/services";
-import { isEmpty } from "metabase/lib/validate";
-import { NotFound } from "metabase/containers/ErrorPages";
-import { color } from "metabase/lib/colors";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Button from "metabase/core/components/Button";
 import LogoIcon from "metabase/components/LogoIcon";
+import { NotFound } from "metabase/containers/ErrorPages";
 import {
   StyledMetabotLogo,
   LayoutBody,
@@ -21,6 +14,12 @@ import {
   LayoutRoot,
   CheckmarkIcon,
 } from "metabase/containers/Unsubscribe.styled";
+import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { color } from "metabase/lib/colors";
+import { isEmpty } from "metabase/lib/validate";
+import { SessionApi } from "metabase/services";
+import { Center, Stack, Text } from "metabase/ui";
 
 const ERRORS = {
   MISSING_REQUIRED_PARAMETERS: "missing required parameters",

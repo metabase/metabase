@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
+
 import type { ButtonProps, PaperProps } from "metabase/ui";
 import { Button, Paper, Title } from "metabase/ui";
 

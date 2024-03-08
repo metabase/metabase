@@ -1,19 +1,19 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-
-import * as React from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
+import * as React from "react";
+import Collapse from "react-collapse";
 import { connect } from "react-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
-import Collapse from "react-collapse";
-import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Button from "metabase/core/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
+import Button from "metabase/core/components/Button";
 import { isEmail, isEmpty } from "metabase/lib/utils";
-import SettingsSetting from "./SettingsSetting";
+
 import { CollapsibleSectionContent } from "./SettingsBatchForm.styled";
+import SettingsSetting from "./SettingsSetting";
 
 const VALIDATIONS = {
   email: {

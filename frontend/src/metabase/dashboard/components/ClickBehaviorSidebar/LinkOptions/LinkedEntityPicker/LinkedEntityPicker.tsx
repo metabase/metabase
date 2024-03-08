@@ -1,22 +1,23 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { isPublicCollection } from "metabase/collections/utils";
 import { useDashboardQuery } from "metabase/common/hooks";
-import { Icon, Select } from "metabase/ui";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
-
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import QuestionPicker from "metabase/containers/QuestionPicker";
-
 import {
   ClickMappingsConnected,
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
-
+import { getDashboard } from "metabase/dashboard/selectors";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
+import { useSelector } from "metabase/lib/redux";
+import { Icon, Select } from "metabase/ui";
+import type Question from "metabase-lib/Question";
 import type {
   Dashboard,
   DashboardId,
@@ -26,14 +27,9 @@ import type {
   EntityCustomDestinationClickBehavior,
   DashboardTab,
 } from "metabase-types/api";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { getDashboard } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
-import { isPublicCollection } from "metabase/collections/utils";
-import type Question from "metabase-lib/Question";
 
-import { SidebarItem } from "../../SidebarItem";
 import { Heading } from "../../ClickBehaviorSidebar.styled";
+import { SidebarItem } from "../../SidebarItem";
 import {
   LinkTargetEntityPickerContent,
   SelectedEntityPickerIcon,

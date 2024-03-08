@@ -1,9 +1,8 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen } from "__support__/ui";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
-
+import { renderWithProviders, screen } from "__support__/ui";
 import type { Database } from "metabase-types/api";
 import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -46,7 +45,7 @@ function setup({
   databases = [SAMPLE_DATABASE, DB_WITH_ACTIONS],
   hasModels = true,
 }: SetupOpts = {}) {
-  const models = hasModels ? [createMockCard({ dataset: true })] : [];
+  const models = hasModels ? [createMockCard({ type: "model" })] : [];
 
   setupDatabasesEndpoints(databases);
 

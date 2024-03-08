@@ -14,7 +14,9 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
+   [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -158,7 +160,7 @@
                                                  :joinedUserName    (or (:first_name new-user) (:email new-user))
                                                  :joinedViaSSO      google-auth?
                                                  :joinedUserEmail   (:email new-user)
-                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
                                                  :adminEmail        (first recipients)
                                                  :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
 
@@ -213,25 +215,22 @@
    If ee that also means users with monitoring and details permissions."
   [database-id]
   (let [monitoring (perms/application-perms-path :monitoring)
-        db-details (perms/feature-perms-path :details :yes database-id)
-        user-ids (when (premium-features/enable-advanced-permissions?)
-                   (->> {:select   [:pgm.user_id]
-                         :from     [[:permissions_group_membership :pgm]]
-                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
-                         :where    [:and
-                                    [:exists {:select [1]
-                                              :from [[:permissions :p]]
-                                              :where [:and
-                                                      [:= :p.group_id :pg.id]
-                                                      [:= :p.object monitoring]]}]
-                                    [:exists {:select [1]
-                                              :from [[:permissions :p]]
-                                              :where [:and
-                                                      [:= :p.group_id :pg.id]
-                                                      [:= :p.object db-details]]}]]
-                         :group-by [:pgm.user_id]}
-                        mdb.query/query
-                        (mapv :user_id)))]
+        user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)
+                                   (->> {:select   [:pgm.user_id]
+                                         :from     [[:permissions_group_membership :pgm]]
+                                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                                         :where    [:and
+                                                    [:exists {:select [1]
+                                                              :from [[:permissions :p]]
+                                                              :where [:and
+                                                                      [:= :p.group_id :pg.id]
+                                                                      [:= :p.object monitoring]]}]]
+                                         :group-by [:pgm.user_id]}
+                                        mdb.query/query
+                                        (mapv :user_id)))
+        user-ids (filter
+                  #(data-perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
+                  user-ids-with-monitoring)]
     (into
       []
       (distinct)
@@ -290,6 +289,39 @@
                :message-type :html
                :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
     (email/send-message! email)))
+
+(defn- creator-sentiment-blob
+  "Create a blob of instance/user data to be sent to the creator sentiment survey."
+  [instance-data created_at num_dashboards num_questions num_models]
+  (-> {:instance instance-data
+       :user     {:created_at     created_at
+                  :num_dashboards num_dashboards
+                  :num_questions  num_questions
+                  :num_models     num_models}}
+      json/generate-string
+      .getBytes
+      codecs/bytes->b64-str))
+
+(defn send-creator-sentiment-email!
+  "Format and send an email to a creator with a link to a survey. Can include info about the instance and the creator
+  if [[public-settings/anon-tracking-enabled]] is true."
+  [{:keys [email created_at first_name num_dashboards num_questions num_models]} instance-data]
+  {:pre [(u/email? email)]}
+  (let [blob    (when (public-settings/anon-tracking-enabled)
+                  (creator-sentiment-blob instance-data created_at num_dashboards num_questions num_models))
+        context (merge (common-context)
+                       {:emailType  "notification"
+                        :logoHeader true
+                        :first-name first_name
+                        :link       (cond-> "https://metabase.com/feedback/creator"
+                                      blob (str "?context=" blob))}
+                       (when-not (premium-features/is-hosted?)
+                         {:self-hosted (public-settings/site-url)}))
+        message {:subject      "Metabase would love your take on something"
+                 :recipients   [email]
+                 :message-type :html
+                 :message      (stencil/render-file "metabase/email/creator_sentiment_email" context)}]
+    (email/send-message! message)))
 
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
@@ -355,7 +387,10 @@
   (let [{:keys [content-type]} (qp.si/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
-     :file-name    (format "%s.%s" card-name (name export-type))
+     :file-name    (format "%s_%s.%s"
+                           (or (u/slugify card-name) "query_result")
+                           (u.date/format (t/zoned-date-time))
+                           (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
@@ -678,3 +713,38 @@
                                  (merge (common-context)
                                         {:logoHeader  true
                                          :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))
+
+(defn send-broken-subscription-notification!
+  "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
+  [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters]}]
+  (let [{:keys [siteUrl] :as context} (common-context)]
+    (email/send-message!
+      :subject (trs "Subscription to {0} removed" dashboard-name)
+      :recipients (distinct (map :email [pulse-creator dashboard-creator]))
+      :message-type :html
+      :message (stencil/render-file
+                 "metabase/email/broken_subscription_notification.mustache"
+                 (merge context
+                        {:dashboardName            dashboard-name
+                         :badParameters            (map
+                                                     (fn [{:keys [value] :as param}]
+                                                       (cond-> param
+                                                         (coll? value)
+                                                         (update :value #(lib.util/join-strings-with-conjunction
+                                                                           (i18n/tru "or")
+                                                                           %))))
+                                                     bad-parameters)
+                         :affectedUsers            (map
+                                                     (fn [{:keys [notification-type] :as m}]
+                                                       (cond-> m
+                                                         notification-type
+                                                         (update :notification-type name)))
+                                                     (into
+                                                       [{:notification-type :email
+                                                         :recipient         (:common_name dashboard-creator)
+                                                         :role              "Dashboard Creator"}
+                                                        {:notification-type :email
+                                                         :recipient         (:common_name pulse-creator)
+                                                         :role              "Subscription Creator"}]
+                                                       (map #(assoc % :role "Subscriber") affected-users)))
+                         :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)})))))

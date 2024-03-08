@@ -1,10 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import { Tree } from "metabase/components/tree";
-
 import { color } from "metabase/lib/colors";
-
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 export const Root = styled.div`

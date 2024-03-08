@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import type { SearchModelType } from "metabase-types/api";
+
 import { color, lighten } from "metabase/lib/colors";
+import type { SearchModelType } from "metabase-types/api";
 
 function getColorForIconWrapper({
   active,

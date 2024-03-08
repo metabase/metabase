@@ -7,18 +7,17 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.query :as query :refer [Query]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
@@ -112,15 +111,13 @@
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
 (defn- test-query [query-kvs]
-  (merge {:cache-ttl 60, :query :abc} query-kvs))
+  (merge {:cache-ttl 60, :lib/type :mbql/query, :stages [{:abc :def}]} query-kvs))
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels
   (while (a/poll! *save-chan*))
   (while (a/poll! *purge-chan*))
-  (let [qp       (qp.reducible/sync-qp
-                  (qp.reducible/async-qp
-                   (cache/maybe-return-cached-results qp.reducible/identity-qp)))
+  (let [qp       (cache/maybe-return-cached-results qp.pipeline/*run*)
         metadata {}
         rows     [[:toucan      71]
                   [:bald-eagle  92]
@@ -130,13 +127,14 @@
                   [:robin       96]
                   [:osprey      72]
                   [:flamingo    70]]
-        query    (test-query query-kvs)
-        context  {:timeout  2000
-                  :executef (fn [_driver _query _context respond]
-                              (Thread/sleep *query-execution-delay-ms*)
-                              (respond metadata rows))}]
-    (-> (qp query context)
-        (assoc :data {}))))
+        query    (test-query query-kvs)]
+    (binding [qp.pipeline/*query-timeout-ms* 2000
+              qp.pipeline/*execute*          (fn [_driver _query respond]
+                                               (Thread/sleep *query-execution-delay-ms*)
+                                               (respond metadata rows))]
+      (driver/with-driver :h2
+        (-> (qp query qp.reducible/default-rff)
+            (assoc :data {}))))))
 
 (defn- run-query [& args]
   (let [result (apply run-query* args)]
@@ -336,7 +334,7 @@
                     cache/min-duration-ms                               (constantly 0)]
         (with-mock-cache [save-chan]
           (t2/delete! Query :query_hash q-hash)
-          (is (not (:cached (qp/process-userland-query query (context.default/default-context)))))
+          (is (not (:cached (qp/process-query (qp/userland-query query)))))
           (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
           (u/deref-with-timeout called-promise 500)
           (is (= 1 @save-query-execution-count))
@@ -344,7 +342,7 @@
           (let [avg-execution-time (query/average-execution-time-ms q-hash)]
             (is (number? avg-execution-time))
             ;; rerun query getting cached results
-            (is (:cached (qp/process-userland-query query (context.default/default-context))))
+            (is (:cached (qp/process-query (qp/userland-query query))))
             (mt/wait-for-result save-chan)
             (is (= 2 @save-query-execution-count)
                 "Saving execution times of a cache lookup")
@@ -382,8 +380,10 @@
       (let [query (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 6})
                          :cache-ttl 100)]
         (with-open [os (java.io.ByteArrayOutputStream.)]
-          (let [{:keys [context rff]} (qp.streaming/streaming-context-and-rff :csv os)]
-            (qp/process-query query rff context))
+          (qp.streaming/do-with-streaming-rff
+           :csv os
+           (fn [rff]
+             (qp/process-query query rff)))
           (mt/wait-for-result save-chan))
         (is (= true
                (:cached (:cache/details (qp/process-query query))))
@@ -391,16 +391,20 @@
         (let [uncached-results (with-open [ostream (java.io.PipedOutputStream.)
                                            istream (java.io.PipedInputStream. ostream)
                                            reader  (java.io.InputStreamReader. istream)]
-                                 (let [{:keys [context rff]} (qp.streaming/streaming-context-and-rff :csv ostream)]
-                                   (qp/process-query (dissoc query :cache-ttl) rff context))
+                                 (qp.streaming/do-with-streaming-rff
+                                  :csv ostream
+                                  (fn [rff]
+                                    (qp/process-query (dissoc query :cache-ttl) rff)))
                                  (vec (csv/read-csv reader)))]
           (with-redefs [sql-jdbc.execute/execute-reducible-query (fn [& _]
                                                                    (throw (Exception. "Should be cached!")))]
             (with-open [ostream (java.io.PipedOutputStream.)
                         istream (java.io.PipedInputStream. ostream)
                         reader  (java.io.InputStreamReader. istream)]
-              (let [{:keys [context rff]} (qp.streaming/streaming-context-and-rff :csv ostream)]
-                (qp/process-query query rff context))
+              (qp.streaming/do-with-streaming-rff
+               :csv ostream
+               (fn [rff]
+                 (qp/process-query query rff)))
               (is (= uncached-results
                      (vec (csv/read-csv reader)))
                   "CSV results should match results when caching isn't in play"))))))))
@@ -415,10 +419,12 @@
       (with-mock-cache [save-chan]
         (let [query (assoc query :cache-ttl 100)]
           (with-open [os (java.io.ByteArrayOutputStream.)]
-            (let [{:keys [rff context]} (qp.streaming/streaming-context-and-rff :csv os)]
-              (is (= false
-                     (boolean (:cached (qp/process-query query rff context))))
-                  "Query shouldn't be cached after first run with the mock cache in place"))
+            (qp.streaming/do-with-streaming-rff
+             :csv os
+             (fn [rff]
+               (is (= false
+                     (boolean (:cached (qp/process-query query rff))))
+                  "Query shouldn't be cached after first run with the mock cache in place")))
             (mt/wait-for-result save-chan))
           (is (= (-> (assoc normal-results :cache/details {:cached true})
                      (m/dissoc-in [:data :results_metadata :checksum]))
@@ -427,7 +433,7 @@
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
 
-(deftest caching-big-resultsets
+(deftest ^:parallel caching-big-resultsets
   (testing "Make sure we can save large result sets without tripping over internal async buffers"
     (is (= 10000 (count (transduce identity
                                    (#'cache/save-results-xform 0 {} (byte 0) conj)
@@ -445,33 +451,33 @@
 (deftest perms-checks-should-still-apply-test
   (testing "Double-check that perms checks still happen even for cached results"
     (mt/with-temp-copy-of-db
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (mt/with-test-user :rasta
-        (with-mock-cache [save-chan]
-          (letfn [(run-forbidden-query []
-                    (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
-                                             :cache-ttl 100)))]
-            (testing "Shouldn't be allowed to run a query if we don't have perms for it"
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"You do not have permissions to run this query"
-                   (run-forbidden-query))))
-            (testing "Run forbidden query as superuser to populate the cache"
-              (mw.session/with-current-user (mt/user->id :crowberto)
-                (is (= [[1000]]
-                       (mt/rows (run-forbidden-query))))))
-            (testing "Cache entry should be saved within 5 seconds"
-              (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
-                (is (= save-chan
-                       chan))))
-            (testing "Run forbidden query again as superuser again, should be cached"
-              (mw.session/with-current-user (mt/user->id :crowberto)
-                (is (=? {:cache/details {:cached     true
-                                         :updated_at some?
-                                         :cache-hash some?}}
-                        (run-forbidden-query)))))
-            (testing "Run query as regular user, should get perms Exception even though result is cached"
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"You do not have permissions to run this query"
-                   (run-forbidden-query))))))))))
+      (mt/with-no-data-perms-for-all-users!
+       (mt/with-test-user :rasta
+         (with-mock-cache [save-chan]
+           (letfn [(run-forbidden-query []
+                     (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                                              :cache-ttl 100)))]
+             (testing "Shouldn't be allowed to run a query if we don't have perms for it"
+               (is (thrown-with-msg?
+                    clojure.lang.ExceptionInfo
+                    #"You do not have permissions to run this query"
+                    (run-forbidden-query))))
+             (testing "Run forbidden query as superuser to populate the cache"
+               (mw.session/with-current-user (mt/user->id :crowberto)
+                 (is (= [[1000]]
+                        (mt/rows (run-forbidden-query))))))
+             (testing "Cache entry should be saved within 5 seconds"
+               (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
+                 (is (= save-chan
+                        chan))))
+             (testing "Run forbidden query again as superuser again, should be cached"
+               (mw.session/with-current-user (mt/user->id :crowberto)
+                 (is (=? {:cache/details {:cached     true
+                                          :updated_at some?
+                                          :cache-hash some?}}
+                         (run-forbidden-query)))))
+             (testing "Run query as regular user, should get perms Exception even though result is cached"
+               (is (thrown-with-msg?
+                    clojure.lang.ExceptionInfo
+                    #"You do not have permissions to run this query"
+                    (run-forbidden-query)))))))))))

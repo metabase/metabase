@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { alpha, color } from "metabase/lib/colors";
 
 export interface ButtonRootProps {

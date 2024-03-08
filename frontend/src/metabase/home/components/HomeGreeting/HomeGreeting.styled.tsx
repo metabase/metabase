@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import MetabotLogo from "metabase/core/components/MetabotLogo";
+import { color } from "metabase/lib/colors";
 import { breakpointMinExtraLarge } from "metabase/styled-components/theme";
 
 export const GreetingRoot = styled.div`

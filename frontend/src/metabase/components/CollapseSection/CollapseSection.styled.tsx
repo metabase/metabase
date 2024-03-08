@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import type { IconName, IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";

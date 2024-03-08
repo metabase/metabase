@@ -2,27 +2,23 @@ import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
+import Search from "metabase/entities/search";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type {
   LinkCardSettings,
   SearchModelType,
   UnrestrictedLinkEntity,
   VirtualDashboardCard,
 } from "metabase-types/api";
-
-import { useToggle } from "metabase/hooks/use-toggle";
-import Search from "metabase/entities/search";
-
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
+
 import {
   EntityDisplay,
   UrlLinkDisplay,
   RestrictedEntityDisplay,
 } from "./EntityDisplay";
-import { settings } from "./LinkVizSettings";
-
 import {
   EditLinkCardWrapper,
   DisplayLinkCardWrapper,
@@ -32,9 +28,9 @@ import {
   ExternalLink,
   StyledInput,
 } from "./LinkViz.styled";
-
-import { isUrlString } from "./utils";
+import { settings } from "./LinkVizSettings";
 import type { WrappedUnrestrictedLinkEntity } from "./types";
+import { isUrlString } from "./utils";
 
 const MODELS_TO_SEARCH: SearchModelType[] = [
   "card",

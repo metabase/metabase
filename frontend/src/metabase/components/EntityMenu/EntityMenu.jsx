@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
 import cx from "classnames";
+import { createRef, Component } from "react";
 
-import { Popover } from "metabase/ui";
-
-import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import EntityMenuItem from "metabase/components/EntityMenuItem";
+import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
+import { Popover } from "metabase/ui";
 
 /**
  * @deprecated: use Menu from "metabase/ui"
@@ -58,13 +57,15 @@ class EntityMenu extends Component {
       renderTrigger,
       triggerAriaLabel,
       tooltipPlacement,
+      transitionDuration = 150,
     } = this.props;
     const { open, menuItemContent } = this.state;
+
     return (
       <Popover
         opened={open}
         className={cx(className, open ? openClassNames : closedClassNames)}
-        transitionProps={{ transition: "fade" }}
+        transitionProps={{ duration: transitionDuration }}
         onChange={() => this.toggleMenu()}
         position="bottom-end"
       >

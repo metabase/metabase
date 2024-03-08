@@ -1,9 +1,7 @@
-import { createEntity } from "metabase/lib/entities";
-
-import { MetricSchema } from "metabase/schema";
 import { color } from "metabase/lib/colors";
+import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-
+import { MetricSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 
 const Metrics = createEntity({

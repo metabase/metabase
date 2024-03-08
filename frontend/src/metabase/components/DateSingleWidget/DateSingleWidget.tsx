@@ -1,5 +1,5 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 
 interface DateSingleWidgetProps {
@@ -8,16 +8,18 @@ interface DateSingleWidgetProps {
   onClose: () => void;
 }
 
-const DateSingleWidget = ({ value, ...props }: DateSingleWidgetProps) => {
-  const defaultedValue = value == null ? moment().format("YYYY-MM-DD") : value;
+export const DateSingleWidget = ({
+  value,
+  ...props
+}: DateSingleWidgetProps) => {
+  const initialValue = value == null ? moment().format("YYYY-MM-DD") : value;
+
   return (
     <DateAllOptionsWidget
       {...props}
-      value={defaultedValue}
+      value={value}
+      initialValue={initialValue}
       disableOperatorSelection
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateSingleWidget;

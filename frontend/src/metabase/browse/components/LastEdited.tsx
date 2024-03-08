@@ -1,11 +1,11 @@
-import _ from "underscore";
-import { c, t } from "ttag";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import updateLocale from "dayjs/plugin/updateLocale";
+import { c, t } from "ttag";
+import _ from "underscore";
 
-import { Text, Tooltip } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { Text, Tooltip } from "metabase/ui";
 
 dayjs.extend(updateLocale);
 dayjs.extend(relativeTime);

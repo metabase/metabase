@@ -1,11 +1,11 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockGroup } from "metabase-types/api/mocks";
 
-import { SettingsLdapFormView } from "./SettingsLdapForm";
 import type { SettingValues } from "./SettingsLdapForm";
+import { SettingsLdapFormView } from "./SettingsLdapForm";
 
 const GROUPS = [
   createMockGroup(),
@@ -27,6 +27,16 @@ const elements = [
     originalValue: null,
     display_name: "LDAP Authentication",
     type: "boolean",
+  },
+  {
+    key: "ldap-user-provisioning-enabled?",
+    value: null,
+    is_env_setting: false,
+    env_name: "MB_LDAP_USER_PROVISIONING_ENABLED",
+    display_name: "User Provisioning",
+    description:
+      "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\ndon't have one.",
+    default: true,
   },
   {
     placeholder: "ldap.yourdomain.org",
@@ -237,6 +247,7 @@ describe("SettingsLdapForm", () => {
     });
 
     const ATTRS = {
+      "ldap-user-provisioning-enabled?": false,
       "ldap-host": "example.com",
       "ldap-port": "123",
       "ldap-security": "ssl",
@@ -254,6 +265,7 @@ describe("SettingsLdapForm", () => {
       "ldap-sync-admin-group": true,
     };
 
+    userEvent.click(screen.getByLabelText(/User Provisioning/));
     userEvent.type(
       await screen.findByRole("textbox", { name: /LDAP Host/ }),
       ATTRS["ldap-host"],

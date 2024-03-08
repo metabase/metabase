@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import cx from "classnames";
 import { t } from "ttag";
 
-import Tables from "metabase/entities/tables";
-import { Icon } from "metabase/ui";
 import { FieldSet } from "metabase/components/FieldSet";
+import Tables from "metabase/entities/tables";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { Icon } from "metabase/ui";
 
 /**
  * @deprecated HOCs are deprecated

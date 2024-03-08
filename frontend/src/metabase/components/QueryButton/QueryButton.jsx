@@ -1,10 +1,11 @@
-import { memo } from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { memo } from "react";
+import { Link } from "react-router";
 
 import { Icon } from "metabase/ui";
-import S from "./QueryButton.css";
+
+import S from "./QueryButton.module.css";
 
 const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
   <div className={className}>

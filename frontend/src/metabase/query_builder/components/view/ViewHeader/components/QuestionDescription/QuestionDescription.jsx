@@ -2,6 +2,7 @@
 import { t, ngettext, msgid } from "ttag";
 
 import * as Lib from "metabase-lib";
+
 import { QuestionDataSource } from "../QuestionDataSource";
 
 import { AggregationAndBreakoutDescription } from "./QuestionDescription.styled";

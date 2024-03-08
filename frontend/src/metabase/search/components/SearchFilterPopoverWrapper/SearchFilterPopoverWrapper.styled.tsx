@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { Stack } from "metabase/ui";
 
 export const SearchPopoverContainer = styled(Stack)`

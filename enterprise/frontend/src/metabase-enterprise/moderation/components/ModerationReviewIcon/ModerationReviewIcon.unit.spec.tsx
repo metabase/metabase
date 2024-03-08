@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import {
   createMockModerationReview,
   createMockUser,
 } from "metabase-types/api/mocks";
+
 import type { ModerationReviewIconProps } from "./ModerationReviewIcon";
 import ModerationReviewIcon from "./ModerationReviewIcon";
 

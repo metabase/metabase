@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   showDashboardCardActions,
@@ -7,7 +8,6 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -133,8 +133,11 @@ describe("issue 17514", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      cy.get(".Modal").button("Save").click();
-      cy.get(".Modal").should("not.exist");
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+      });
+
+      cy.findByTestId("save-question-modal").should("not.exist");
     });
 
     it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {

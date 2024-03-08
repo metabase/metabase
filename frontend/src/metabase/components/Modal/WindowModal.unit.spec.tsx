@@ -1,8 +1,9 @@
-import { useState } from "react";
-import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
-import { WindowModal } from "metabase/components/Modal/WindowModal";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import { render, screen } from "__support__/ui";
+import { WindowModal } from "metabase/components/Modal/WindowModal";
 
 const WINDOW_MODAL_CONTENT = "Close modal";
 

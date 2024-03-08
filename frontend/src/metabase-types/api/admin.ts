@@ -16,7 +16,7 @@ export type ApiKey = {
 };
 
 export interface Log {
-  timestamp: number;
+  timestamp: string;
   process_uuid: string;
   fqns: string;
   msg: string;

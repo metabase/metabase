@@ -1,5 +1,5 @@
-import { createThunkAction } from "metabase/lib/redux";
 import Revision from "metabase/entities/revisions";
+import { createThunkAction } from "metabase/lib/redux";
 
 import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";
 

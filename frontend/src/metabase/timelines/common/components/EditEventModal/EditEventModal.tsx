@@ -1,10 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+
 import type {
   Timeline,
   TimelineEvent,
   TimelineEventData,
 } from "metabase-types/api";
+
 import EventForm from "../../containers/EventForm";
 import ModalBody from "../ModalBody";
 import ModalHeader from "../ModalHeader";

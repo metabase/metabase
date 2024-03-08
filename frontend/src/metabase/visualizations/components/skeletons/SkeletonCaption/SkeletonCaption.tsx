@@ -1,11 +1,13 @@
 import type { HTMLAttributes } from "react";
+
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
-import type { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import {
   LegendDescriptionIcon,
   LegendRightContent,
 } from "metabase/visualizations/components/legend/LegendCaption.styled";
+import type { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
+
 import {
   SkeletonCaptionRoot,
   SkeletonCaptionTitle,

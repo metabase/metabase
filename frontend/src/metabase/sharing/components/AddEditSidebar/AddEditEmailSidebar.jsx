@@ -1,20 +1,20 @@
 import PropTypes from "prop-types";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { dashboardPulseIsValid } from "metabase/lib/pulse";
-
-import { Icon } from "metabase/ui";
-import Toggle from "metabase/core/components/Toggle";
-import SchedulePicker from "metabase/containers/SchedulePicker";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
-import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
-import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
-import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
-import DefaultParametersSection from "./DefaultParametersSection";
+import SchedulePicker from "metabase/containers/SchedulePicker";
+import Toggle from "metabase/core/components/Toggle";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { dashboardPulseIsValid } from "metabase/lib/pulse";
+import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import RecipientPicker from "metabase/pulse/components/RecipientPicker";
+import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
+import { Icon } from "metabase/ui";
+
 import { CaveatMessage } from "./CaveatMessage";
+import DefaultParametersSection from "./DefaultParametersSection";
+import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
 import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
@@ -42,7 +42,7 @@ function _AddEditEmailSidebar({
 
   return (
     <Sidebar
-      closeIsDisabled={!isValid}
+      isCloseDisabled={!isValid}
       onClose={handleSave}
       onCancel={onCancel}
     >

@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import Alert from "metabase/core/components/Alert";
+
 import { SectionHeader } from "metabase/admin/settings/components/SettingsLicense";
+import Alert from "metabase/core/components/Alert";
 import { Text, Anchor, Box } from "metabase/ui";
 
 export const BillingInfoError = () => {

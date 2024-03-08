@@ -1,12 +1,14 @@
-import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 import isPropValid from "@emotion/is-prop-valid";
+import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import { Link } from "react-router";
-import { color as metabaseColor } from "metabase/lib/colors";
+
 import { focusOutlineStyle } from "metabase/core/style/input";
+import { color as metabaseColor } from "metabase/lib/colors";
+
 import type { LinkProps } from "./types";
 
-const isLinkPropValid = (propName: PropertyKey) => {
+const isLinkPropValid = (propName: string) => {
   return isPropValid(propName) || propName === "activeClassName";
 };
 

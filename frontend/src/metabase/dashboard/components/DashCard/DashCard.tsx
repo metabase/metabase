@@ -1,29 +1,27 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { getIn } from "icepick";
 import type { LocationDescriptor } from "history";
-
+import { getIn } from "icepick";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
-import type { IconProps } from "metabase/ui";
 
-import { isJWT } from "metabase/lib/utils";
-
-import { mergeSettings } from "metabase/visualizations/lib/settings";
-
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { isActionCard } from "metabase/actions/utils";
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
   getDashcardResultsError,
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
-
-import { isActionCard } from "metabase/actions/utils";
-
-import ErrorBoundary from "metabase/ErrorBoundary";
-
+import { isJWT } from "metabase/lib/utils";
+import type { IconProps } from "metabase/ui";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
   Dashboard,
-  QuestionDashboardCard,
+  DashboardCard,
   DashCardId,
   ParameterId,
   ParameterValueOrArray,
@@ -33,20 +31,14 @@ import type {
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
-import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-
-import type Metadata from "metabase-lib/metadata/Metadata";
-
+import { DashCardRoot } from "./DashCard.styled";
+import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
+import { DashCardVisualization } from "./DashCardVisualization";
 import type {
   CardSlownessStatus,
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
-import { DashCardVisualization } from "./DashCardVisualization";
-import { DashCardRoot } from "./DashCard.styled";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -63,7 +55,7 @@ export interface DashCardProps {
   metadata: Metadata;
   mode?: Mode;
 
-  clickBehaviorSidebarDashcard?: QuestionDashboardCard | null;
+  clickBehaviorSidebarDashcard?: DashboardCard | null;
 
   isEditing?: boolean;
   isEditingParameter?: boolean;
@@ -265,7 +257,7 @@ function DashCardInner({
     <ErrorBoundary>
       <DashCardRoot
         data-testid="dashcard"
-        className="Card rounded flex flex-column hover-parent hover--visibility"
+        className="Card relative rounded flex flex-column hover-parent hover--visibility"
         hasHiddenBackground={hasHiddenBackground}
         shouldForceHiddenBackground={shouldForceHiddenBackground}
         isNightMode={isNightMode}
@@ -307,6 +299,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
+          isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
           isEditing={isEditing}

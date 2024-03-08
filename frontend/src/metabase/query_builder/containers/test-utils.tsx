@@ -2,21 +2,6 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
-import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockColumn,
-  createMockDataset,
-  createMockFieldValues,
-  createMockModelIndex,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockResultsMetadata,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
-  createMockUnsavedCard,
-} from "metabase-types/api/mocks";
 
 import {
   setupAlertsEndpoints,
@@ -39,17 +24,33 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import NewItemMenu from "metabase/containers/NewItemMenu";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { serializeCardForUrl } from "metabase/lib/card";
+import { checkNotNull } from "metabase/lib/types";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockColumn,
+  createMockDataset,
+  createMockFieldValues,
+  createMockModelIndex,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
+  createMockResultsMetadata,
+  createMockStructuredDatasetQuery,
+  createMockStructuredQuery,
+  createMockUnsavedCard,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import NewItemMenu from "metabase/containers/NewItemMenu";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-import { serializeCardForUrl } from "metabase/lib/card";
-import { checkNotNull } from "metabase/lib/types";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import type { RequestState, State } from "metabase-types/store";
 
 import QueryBuilder from "./QueryBuilder";
 
@@ -58,12 +59,12 @@ const TEST_DB = createSampleDatabase();
 export const TEST_CARD = createMockCard({
   id: 1,
   name: "Test card",
-  dataset: true,
+  type: "model",
 });
 
 export const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
-  dataset: false,
+  type: "question",
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
@@ -77,7 +78,7 @@ export const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
 
 export const TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
-  dataset: false,
+  type: "question",
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
@@ -112,7 +113,7 @@ export const TEST_MODEL_CARD = createMockCard({
       limit: 1,
     },
   },
-  dataset: true,
+  type: "model",
   display: "scalar",
   description: "Test description",
 });
@@ -252,7 +253,11 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const { container, history } = renderWithProviders(
+  const {
+    store: { getState },
+    container,
+    history,
+  } = renderWithProviders(
     <Route>
       <Route path="/" component={TestHome} />
       <Route path="/model">
@@ -278,13 +283,32 @@ export const setup = async ({
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  await waitForLoadingRequests(getState);
 
   return {
     container,
     history: checkNotNull(history),
     mockEventListener,
   };
+};
+
+const waitForLoadingRequests = async (getState: () => State) => {
+  await waitFor(
+    () => {
+      const requests = getRequests(getState());
+      const areRequestsLoading = requests.some(request => request.loading);
+      expect(areRequestsLoading).toBe(false);
+    },
+    { timeout: 5000 },
+  );
+};
+
+const getRequests = (state: State): RequestState[] => {
+  return Object.values(state.requests).flatMap(group =>
+    Object.values(group).flatMap(entity =>
+      Object.values(entity).flatMap(request => Object.values(request)),
+    ),
+  );
 };
 
 export const startNewNotebookModel = async () => {

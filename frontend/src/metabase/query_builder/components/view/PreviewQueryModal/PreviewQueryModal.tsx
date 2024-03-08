@@ -1,14 +1,17 @@
-import { t } from "ttag";
 import { useCallback } from "react";
+import { t } from "ttag";
+
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { checkNotNull } from "metabase/lib/types";
 import {
   getNativeQueryFn,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { checkNotNull } from "metabase/lib/types";
-import { useSelector } from "metabase/lib/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+
 import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
 interface PreviewQueryModalProps {

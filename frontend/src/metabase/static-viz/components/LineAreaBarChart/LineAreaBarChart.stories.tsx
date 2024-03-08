@@ -1,4 +1,6 @@
 import type { ComponentStory } from "@storybook/react";
+
+import { color } from "metabase/lib/colors";
 import {
   CATEGORICAL_LINE_BAR,
   LINE_BAR_AREA,
@@ -7,7 +9,7 @@ import {
   SINGLE_SERIES_MANY_BARS,
   TIMESERIES_WITH_NEGATIVE_DATA,
 } from "metabase/static-viz/components/LineAreaBarChart/stories-data";
-import { color } from "metabase/lib/colors";
+
 import LineAreaBarChart from "./LineAreaBarChart";
 
 export default {

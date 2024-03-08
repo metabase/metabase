@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+
 import type { TimelineDetailsModalProps } from "./TimelineDetailsModal";
 import TimelineDetailsModal from "./TimelineDetailsModal";
 

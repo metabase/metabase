@@ -1,6 +1,5 @@
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Component } from "react";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 import _ from "underscore";
 
 import YearPicker from "metabase/components/YearPicker";
@@ -22,7 +21,7 @@ type State = {
   year: number;
 };
 
-class DateMonthYearWidget extends Component<Props, State> {
+export class DateMonthYearWidget extends Component<Props, State> {
   state: State = {
     month: null,
     year: moment().year(),
@@ -93,6 +92,3 @@ const Month = ({ month, selected, onClick }: MonthProp) => (
     {moment().month(month).format("MMMM")}
   </MonthRoot>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateMonthYearWidget;

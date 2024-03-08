@@ -1,8 +1,7 @@
 /* eslint-disable react/prop-types */
+import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import PropTypes from "prop-types";
-
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";

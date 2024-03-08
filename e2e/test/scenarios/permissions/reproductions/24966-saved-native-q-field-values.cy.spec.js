@@ -1,3 +1,5 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NODATA_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestion,
@@ -6,9 +8,6 @@ import {
   describeEE,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { NODATA_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 

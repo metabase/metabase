@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
 import _ from "underscore";
+
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+
 import LegendCaption from "./legend/LegendCaption";
 
 const getMuteSeriesClass = (i: number) => [

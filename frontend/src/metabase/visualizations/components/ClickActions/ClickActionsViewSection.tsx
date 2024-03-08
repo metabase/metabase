@@ -1,4 +1,5 @@
 import type * as React from "react";
+
 import {
   Section,
   SectionTitle,
@@ -15,8 +16,6 @@ interface Props {
   children: React.ReactNode;
 }
 
-const testId = "drill-through-section";
-
 export const ClickActionsViewSection = ({
   type,
   title,
@@ -25,10 +24,7 @@ export const ClickActionsViewSection = ({
 }: Props): JSX.Element => {
   if (title) {
     return (
-      <SectionWithTitle
-        childrenDirection={contentDirection}
-        data-testid={testId}
-      >
+      <SectionWithTitle childrenDirection={contentDirection}>
         <SectionTitle>{title}</SectionTitle>
         <Section type={type} direction={contentDirection}>
           {children}
@@ -38,7 +34,7 @@ export const ClickActionsViewSection = ({
   }
 
   return (
-    <Section type={type} direction={contentDirection} data-testid={testId}>
+    <Section type={type} direction={contentDirection}>
       {children}
     </Section>
   );

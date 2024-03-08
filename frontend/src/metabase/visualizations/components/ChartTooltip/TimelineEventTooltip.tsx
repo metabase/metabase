@@ -1,7 +1,7 @@
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
-
 import type { HoveredTimelineEvent } from "metabase/visualizations/types";
+
 import {
   TimelineEventDate,
   TimelineEventIconContainer,

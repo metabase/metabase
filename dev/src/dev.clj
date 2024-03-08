@@ -55,7 +55,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server :as server]
    [metabase.server.handler :as handler]
@@ -83,7 +83,6 @@
 
 (p/import-vars
  [debug-qp
-  process-query-debug
   pprint-sql]
  [dev.explain
   explain-query]
@@ -294,7 +293,7 @@
   ;; make sure we use the application database when compiling the query and not something goofy like a connection for a
   ;; Data warehouse DB, if we're using this in combination with a Database as connectable
   (let [{:keys [query params]} (binding [t2.connection/*current-connectable* nil]
-                                 (qp/compile built-query))]
+                                 (qp.compile/compile built-query))]
     (into [query] params)))
 
 (defn app-db-as-data-warehouse

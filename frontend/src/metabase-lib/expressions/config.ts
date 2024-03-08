@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { MBQLClauseMap } from "./types";
 
 export const DISPLAY_QUOTES = {

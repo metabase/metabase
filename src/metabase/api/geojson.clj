@@ -37,17 +37,29 @@
 
 (def ^:private CustomGeoJSONValidator (mc/validator CustomGeoJSON))
 
-(def ^:private builtin-geojson
-  {:us_states       {:name        "United States"
-                     :url         "app/assets/geojson/us-states.json"
-                     :region_key  "STATE"
-                     :region_name "NAME"
-                     :builtin     true}
-   :world_countries {:name        "World"
-                     :url         "app/assets/geojson/world.json"
-                     :region_key  "ISO_A2"
-                     :region_name "NAME"
-                     :builtin     true}})
+(defsetting default-maps-enabled
+  (deferred-tru "Whether or not the default GeoJSON maps are enabled.")
+  :visibility :admin
+  :export?    true
+  :type       :boolean
+  :setter     :none
+  :default    true
+  :audit      :getter)
+
+(defn- builtin-geojson
+  []
+  (if (default-maps-enabled)
+    {:us_states       {:name        "United States"
+                       :url         "app/assets/geojson/us-states.json"
+                       :region_key  "STATE"
+                       :region_name "NAME"
+                       :builtin     true}
+     :world_countries {:name        "World"
+                       :url         "app/assets/geojson/world.json"
+                       :region_key  "ISO_A2"
+                       :region_name "NAME"
+                       :builtin     true}}
+    {}))
 
 (defn- invalid-location-msg []
   (str (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath.")
@@ -100,11 +112,10 @@
 (defsetting custom-geojson
   (deferred-tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
   :type    :json
-  :default {}
-  :getter  (fn [] (merge (setting/get-value-of-type :json :custom-geojson) builtin-geojson))
+  :getter  (fn [] (merge (setting/get-value-of-type :json :custom-geojson) (builtin-geojson)))
   :setter  (fn [new-value]
              ;; remove the built-in keys you can't override them and we don't want those to be subject to validation.
-             (let [new-value (not-empty (reduce dissoc new-value (keys builtin-geojson)))]
+             (let [new-value (not-empty (reduce dissoc new-value (keys (builtin-geojson))))]
                (when new-value
                  (validate-geojson new-value))
                (setting/set-value-of-type! :json :custom-geojson new-value)))
@@ -132,7 +143,7 @@
   file specified for `key`)."
   [{{:keys [key]} :params} respond raise]
   {key ms/NonBlankString}
-  (when-not (or (custom-geojson-enabled) (builtin-geojson (keyword key)))
+  (when-not (or (custom-geojson-enabled) ((builtin-geojson) (keyword key)))
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
   (if-let [url (get-in (custom-geojson) [(keyword key) :url])]
     (try

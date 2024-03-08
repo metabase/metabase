@@ -1,5 +1,5 @@
-import { useCallback, useImperativeHandle, useState } from "react";
 import type { RefObject } from "react";
+import { useCallback, useImperativeHandle, useState } from "react";
 
 import type { ControlledPopoverWithTriggerProps } from "./ControlledPopoverWithTrigger";
 import ControlledPopoverWithTrigger from "./ControlledPopoverWithTrigger";

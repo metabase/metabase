@@ -1,12 +1,13 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 
+import { applyDraftParameterValues } from "metabase/dashboard/actions";
 import {
   getHasUnappliedParameterValues,
   getIsAutoApplyFilters,
 } from "metabase/dashboard/selectors";
-import { applyDraftParameterValues } from "metabase/dashboard/actions";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import { ApplyButton } from "./FilterApplyButton.styled";
 
 export function FilterApplyButton() {

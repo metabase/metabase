@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
 import Tooltip from "metabase/core/components/Tooltip";
+import * as Lib from "metabase-lib";
+
 import { ButtonRoot } from "./QuestionNotebookButton.styled";
 
 export function QuestionNotebookButton({

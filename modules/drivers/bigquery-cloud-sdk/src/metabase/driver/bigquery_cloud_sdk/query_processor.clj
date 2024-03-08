@@ -51,7 +51,11 @@
   project ID associated with the service account credentials."
   []
   (when (qp.store/initialized?)
-    (when-let [{:keys [details] :as database} (lib.metadata/database (qp.store/metadata-provider))]
+    (when-let [{:keys [details], driver :engine, :as database} (lib.metadata/database (qp.store/metadata-provider))]
+      ;; this is mostly here to catch tests that do something dumb like try to run a BigQuery tests with a MBQL query
+      ;; targeting the H2 test database
+      (when driver
+        (assert (isa? driver/hierarchy driver :bigquery-cloud-sdk) "Sanity check: Database is not a BigQuery database"))
       (let [project-id-override (:project-id details)
             project-id-creds    (:project-id-from-credentials details)
             ret-fn              (fn [proj-id-1 proj-id-2]

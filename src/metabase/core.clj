@@ -83,8 +83,6 @@
   "General application shutdown function which should be called once at application shutdown."
   []
   (log/info (trs "Metabase Shutting Down ..."))
-  ;; TODO - it would really be much nicer if we implemented a basic notification system so these things could listen
-  ;; to a Shutdown hook of some sort instead of having here
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (prometheus/shutdown!)

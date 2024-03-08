@@ -1,10 +1,13 @@
 import { jt, t } from "ttag";
-import { Button, Card, Flex, Icon, Stack, Text, Title } from "metabase/ui";
-import Link from "metabase/core/components/Link";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { getDocsUrl } from "metabase/selectors/settings";
+import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
+import { getDocsUrl } from "metabase/selectors/settings";
+import { Button, Card, Flex, Icon, Stack, Text, Title } from "metabase/ui";
+
 import { removeShowEmbedHomepageFlag } from "../../utils";
+
 import { NumberedList } from "./EmbedMinimalHomepage.styled";
 
 type EmbedMinimalHomepageProps = {

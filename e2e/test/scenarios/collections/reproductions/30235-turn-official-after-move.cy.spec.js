@@ -1,3 +1,4 @@
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   describeEE,
   moveOpenedCollectionTo,
@@ -7,9 +8,7 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
-
-describeEE("issue 30235", function () {
+describeEE("issue 30235", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

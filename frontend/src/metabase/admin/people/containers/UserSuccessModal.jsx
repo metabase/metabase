@@ -1,20 +1,20 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import { connect } from "react-redux";
-import { push } from "react-router-redux";
-
-import MetabaseSettings from "metabase/lib/settings";
-import User from "metabase/entities/users";
-
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
-import { getUserTemporaryPassword } from "../selectors";
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
+import User from "metabase/entities/users";
+import MetabaseSettings from "metabase/lib/settings";
+
 import { clearTemporaryPassword } from "../people";
+import { getUserTemporaryPassword } from "../selectors";
+
 import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
 
 class UserSuccessModal extends Component {

@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+
 import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import {

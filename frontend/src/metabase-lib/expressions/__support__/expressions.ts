@@ -1,3 +1,8 @@
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
+import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
+import { TYPE } from "metabase-lib/types/constants";
+import type { DatasetQuery } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockField,
@@ -5,12 +10,7 @@ import {
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
 import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
-import { checkNotNull } from "metabase/lib/types";
-import type { DatasetQuery } from "metabase-types/api";
-import { TYPE } from "metabase-lib/types/constants";
-import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
 
 const DB_ID = SAMPLE_DB_ID;
 const TABLE_ID = 1;

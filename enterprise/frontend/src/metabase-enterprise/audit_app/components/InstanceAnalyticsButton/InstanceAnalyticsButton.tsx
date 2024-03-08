@@ -1,9 +1,10 @@
-import { t } from "ttag";
 import { useEffect } from "react";
 import { push } from "react-router-redux";
-import { loadInfo } from "metabase-enterprise/audit_app/reducer";
+import { t } from "ttag";
+
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { loadInfo } from "metabase-enterprise/audit_app/reducer";
 import type { AuditInfoState } from "metabase-enterprise/audit_app/types/state";
 import type { DashboardId } from "metabase-types/api";
 

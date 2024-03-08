@@ -1,14 +1,14 @@
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useCollectionQuery, useTableQuery } from "metabase/common/hooks";
 import { useSelector, useDispatch } from "metabase/lib/redux";
+import { isUploadAborted, isUploadInProgress } from "metabase/lib/uploads";
+import { isEmpty } from "metabase/lib/validate";
 import { getAllUploads, clearAllUploads } from "metabase/redux/uploads";
 import type { CollectionId, TableId } from "metabase-types/api";
 import type { FileUpload } from "metabase-types/store/upload";
-import { isUploadAborted, isUploadInProgress } from "metabase/lib/uploads";
-import { isEmpty } from "metabase/lib/validate";
 
-import { useCollectionQuery, useTableQuery } from "metabase/common/hooks";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import FileUploadStatusLarge from "../FileUploadStatusLarge";
 
@@ -79,7 +79,10 @@ const FileUploadStatusContent = ({
     { id: collectionId, enabled: !isEmpty(collectionId) },
   );
 
-  if (!isVisible || tableLoading || collectionLoading) {
+  const isLoading = !!(tableLoading || collectionLoading);
+  const hasData = !!(table || collection);
+
+  if (!isVisible || (isLoading && !hasData)) {
     return null;
   }
 

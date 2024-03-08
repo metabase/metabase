@@ -1,5 +1,6 @@
-import { createMockUser } from "metabase-types/api/mocks";
 import { screen } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
+
 import { setup } from "./setup";
 
 describe("MetricList (OSS)", () => {

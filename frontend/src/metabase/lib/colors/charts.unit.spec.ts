@@ -1,6 +1,7 @@
 import _ from "underscore";
-import { color } from "./palette";
+
 import { getColorsForValues } from "./charts";
+import { color } from "./palette";
 
 describe("charts", () => {
   it("should use accent colors for <= 8 series", () => {

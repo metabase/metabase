@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.api.common :as api]
    [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.comparison :as comparison]
    [metabase.automagic-dashboards.core :as magic]
@@ -83,11 +82,17 @@
                         :dataset_query {:query    {:source-table (mt/id :orders)}
                                         :type     :query
                                         :database (mt/id)}
-                        :dataset       true}]
+                        :type          :model}]
             (let [{:keys [entity source]} (#'magic/->root card)]
-              (is (true? (:dataset card)))
+              (is (=? {:type :model}
+                      card))
               (is (= entity card))
-              (is (= source (assoc card :entity_type :entity/GenericTable))))))
+              (is (= source (assoc card :entity_type :entity/GenericTable))))))))))
+
+(deftest source-root-card-test-2
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset test-data
+      (testing "Card sourcing has four branches..."
         (testing "A nested query's source is itself with the :entity_type :entity/GenericTable assoced in"
           (mt/with-temp
             [Card {source-query-id :id
@@ -95,25 +100,37 @@
                                                   :dataset_query {:query    {:source-table (mt/id :orders)}
                                                                   :type     :query
                                                                   :database (mt/id)}
-                                                  :dataset       true}
+                                                  :type          :model}
              Card card {:table_id      (mt/id :orders)
                         :dataset_query {:query    {:limit        10
                                                    :source-table (format "card__%s" source-query-id)}
                                         :type     :query
                                         :database (mt/id)}}]
             (let [{:keys [entity source]} (#'magic/->root card)]
-              (is (false? (:dataset card)))
+              (is (=? {:type :question}
+                      card))
               (is (true? (#'magic/nested-query? card)))
               (is (= entity card))
-              (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))
+              (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))))))
+
+(deftest source-root-card-test-3
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset test-data
+      (testing "Card sourcing has four branches..."
         (testing "A native query's source is itself with the :entity_type :entity/GenericTable assoced in"
           (let [query (mt/native-query {:query "select * from orders"})]
             (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
               (let [{:keys [entity source]} (#'magic/->root card)]
-                (is (false? (:dataset card)))
+                (is (=? {:type :question}
+                        card))
                 (is (true? (#'magic/native-query? card)))
                 (is (= entity card))
-                (is (= source (assoc card :entity_type :entity/GenericTable)))))))
+                (is (= source (assoc card :entity_type :entity/GenericTable)))))))))))
+
+(deftest source-root-card-test-4
+  (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
+    (mt/dataset test-data
+      (testing "Card sourcing has four branches..."
         (testing "A plain query card (not native, nested, or a model) is sourced by its base table."
           (mt/with-temp
             [Card {table-id :table_id
@@ -123,7 +140,8 @@
                                                    :type     :query
                                                    :database (mt/id)}}]
             (let [{:keys [entity source]} (#'magic/->root card)]
-              (is (false? (:dataset card)))
+              (is (=? {:type :question}
+                      card))
               (is (false? (#'magic/nested-query? card)))
               (is (false? (#'magic/native-query? card)))
               (is (= entity card))
@@ -322,24 +340,25 @@
 
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [source-query {:native   {:query "select * from venues"}
-                        :type     :native
-                        :database (mt/id)}]
-      (mt/with-temp [Collection {collection-id :id} {}
-                     Card       {source-id :id}     {:table_id        nil
-                                                     :collection_id   collection-id
-                                                     :dataset_query   source-query
-                                                     :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
-                     Card       {card-id :id}       {:table_id      nil
-                                                     :collection_id collection-id
-                                                     :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
-                                                                                :source-table (str "card__" source-id)}
-                                                                     :type     :query
-                                                                     :database lib.schema.id/saved-questions-virtual-database-id}}]
-        (mt/with-test-user :rasta
-          (automagic-dashboards.test/with-dashboard-cleanup
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (t2/select-one Card :id card-id) 8)))))))
+    (mt/with-full-data-perms-for-all-users!
+      (let [source-query {:native   {:query "select * from venues"}
+                          :type     :native
+                          :database (mt/id)}]
+        (mt/with-temp [Collection {collection-id :id} {}
+                       Card       {source-id :id}     {:table_id        nil
+                                                       :collection_id   collection-id
+                                                       :dataset_query   source-query
+                                                       :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
+                       Card       {card-id :id}       {:table_id      nil
+                                                       :collection_id collection-id
+                                                       :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
+                                                                                  :source-table (str "card__" source-id)}
+                                                                       :type     :query
+                                                                       :database lib.schema.id/saved-questions-virtual-database-id}}]
+          (mt/with-test-user :rasta
+            (automagic-dashboards.test/with-dashboard-cleanup
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+              (test-automagic-analysis (t2/select-one Card :id card-id) 8))))))))
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
@@ -360,7 +379,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [root               (#'magic/->root card)
                   {:keys [dimensions] :as _template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
@@ -395,7 +414,7 @@
                                                                             :rasta
                                                                             (result-metadata-for-query
                                                                              source-query))
-                                                         :dataset         true}]
+                                                         :type            :model}]
             (let [root               (#'magic/->root card)
                   {:keys [dimensions] :as _template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
@@ -465,7 +484,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [base-context (#'magic/make-base-context (#'magic/->root card))
                   dimensions   {"GenericCategoryMedium" {:field_type [:entity/GenericTable :type/Category] :max_cardinality 10}
                                 "GenericNumber"         {:field_type [:entity/GenericTable :type/Number]}
@@ -548,7 +567,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   binned-field-id (mt/id :products :price)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
@@ -590,7 +609,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   temporal-field-ids (for [card (:dashcards dashboard)
                                            :let [fields (get-in card [:card :dataset_query :query :breakout])]
@@ -623,7 +642,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}]
+                                             :type            :model}]
             (let [{:keys [dashcards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
               (ensure-single-table-sourced (mt/id :people) dashboard)
               (ensure-dashboard-sourcing card dashboard)
@@ -655,7 +674,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         true}
+                                             :type            :model}
              Card       question-card       {:table_id        (mt/id :products)
                                              :collection_id   collection-id
                                              :dataset_query   source-query
@@ -663,7 +682,7 @@
                                                                 :rasta
                                                                 (result-metadata-for-query
                                                                  source-query))
-                                             :dataset         false}]
+                                             :type            :question}]
             (let [{model-dashboard-name :name} (mt/with-test-user :rasta (magic/automagic-analysis model-card nil))
                   {question-dashboard-name :name} (mt/with-test-user :rasta (magic/automagic-analysis question-card nil))]
               (is (false? (str/ends-with? model-dashboard-name "question")))
@@ -736,7 +755,7 @@
                                                         (map (fn [m] (update m :display_name {"Created At"            "Created At"
                                                                                               "People - User → State" "State Where Placed"
                                                                                               "Products → Price"      "Ordered Item Price"}))))
-                                  :dataset         true}]
+                                  :type            :model}]
           (let [{:keys [dashcards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                 card-names (set (filter identity (map (comp :name :card) dashcards)))
                 expected-oip-labels #{"Ordered Item Price over time"
@@ -927,13 +946,11 @@
                  Field    _ {:table_id table-id}
                  Metric   _ {:table_id table-id}]
     (mt/with-test-user :rasta
-      ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
-      @api/*current-user-permissions-set*
       (automagic-dashboards.test/with-dashboard-cleanup
         (let [database (t2/select-one Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            (is (= 5
+            (is (= 6
                    (call-count)))))))))
 
 (deftest empty-table-test
@@ -1223,7 +1240,7 @@
         (mt/with-temp [Card card {:table_id        nil
                                   :dataset_query   source-query
                                   :result_metadata (->> (result-metadata-for-query source-query)
-                                                        (mt/with-test-user :rasta)
+                                                        (mt/with-test-user :crowberto)
                                                         (mapv (fn [m]
                                                                 (assoc m
                                                                        :display_name "Frooby"
@@ -1543,7 +1560,7 @@
 (deftest compare-to-the-rest-25278+32557-test
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
     (mt/dataset test-data
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (let [left                 (query/adhoc-query
                                      {:database (mt/id)
                                       :type     :query
@@ -1595,7 +1612,7 @@
 (deftest compare-to-the-rest-with-expression-16680-test
   (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
     (mt/dataset test-data
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (let [left                 (query/adhoc-query
                                      {:database (mt/id)
                                       :type     :query
@@ -1694,7 +1711,7 @@
 (deftest compare-to-the-rest-15655-test
   (testing "Questions based on native questions should produce a valid dashboard."
     (mt/dataset test-data
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (let [native-query {:native   {:query "select * from people"}
                             :type     :native
                             :database (mt/id)}]
@@ -1702,7 +1719,7 @@
             [Card {native-card-id :id :as native-card} {:table_id        nil
                                                         :name            "15655"
                                                         :dataset_query   native-query
-                                                        :result_metadata (mt/with-test-user :rasta (result-metadata-for-query native-query))}
+                                                        :result_metadata (mt/with-test-user :crowberto (result-metadata-for-query native-query))}
              ;card__19169
              Card card {:table_id      (mt/id :orders)
                         :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
@@ -1745,17 +1762,16 @@
                          transient_name))
                   (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
                          comparison-description))
-                  (is (= (take 10
-                               [{:group-name nil, :card-name "SOURCE by CITY"}
-                                {:group-name nil, :card-name "SOURCE by CITY"}
-                                {:group-name nil, :card-name "SOURCE by NAME"}
-                                {:group-name nil, :card-name "SOURCE by NAME"}
-                                {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                                {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
-                                {:group-name nil, :card-name "Distinct values"}
-                                {:group-name nil, :card-name "Distinct values"}
-                                {:group-name nil, :card-name "Null values"}
-                                {:group-name nil, :card-name "Null values"}])
+                  (is (= [{:group-name nil, :card-name "SOURCE by CITY"}
+                          {:group-name nil, :card-name "SOURCE by CITY"}
+                          {:group-name nil, :card-name "SOURCE by NAME"}
+                          {:group-name nil, :card-name "SOURCE by NAME"}
+                          {:group-name "## How the SOURCE fields is distributed", :card-name nil}
+                          {:group-name nil, :card-name "Distinct values"}
+                          {:group-name nil, :card-name "Distinct values"}
+                          {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
+                          {:group-name nil, :card-name "Null values"}
+                          {:group-name nil, :card-name "Null values"}]
                          (->> comparison-dashcards
                               (take 10)
                               (map (fn [dashcard]

@@ -1,4 +1,5 @@
 import { restore } from "e2e/support/helpers";
+
 import { openDetailsSidebar } from "../helpers/e2e-models-helpers";
 
 const renamedColumn = "TITLE renamed";

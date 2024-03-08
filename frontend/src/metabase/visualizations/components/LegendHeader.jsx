@@ -1,10 +1,13 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
+
 import { getAccentColors } from "metabase/lib/colors/groups";
+
 import ExplicitSize from "../../components/ExplicitSize";
-import styles from "./Legend.css";
+
+import styles from "./Legend.module.css";
 import { LegendHeaderItem } from "./LegendHeader.styled";
 
 const DEFAULT_COLORS = getAccentColors();

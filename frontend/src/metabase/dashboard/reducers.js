@@ -1,12 +1,12 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
+import produce from "immer";
 import reduceReducers from "reduce-reducers";
 import _ from "underscore";
 
-import produce from "immer";
-import { handleActions, combineReducers } from "metabase/lib/redux";
+import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import Actions from "metabase/entities/actions";
+import { handleActions, combineReducers } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
 import {
@@ -47,11 +47,11 @@ import {
   FETCH_CARD_DATA_PENDING,
   fetchDashboard,
 } from "./actions";
+import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
   calculateDashCardRowAfterUndo,
   syncParametersAndEmbeddingParams,
 } from "./utils";
-import { INITIAL_DASHBOARD_STATE } from "./constants";
 
 const dashboardId = handleActions(
   {
@@ -66,15 +66,15 @@ const dashboardId = handleActions(
   INITIAL_DASHBOARD_STATE.dashboardId,
 );
 
-const isEditing = handleActions(
+const editingDashboard = handleActions(
   {
-    [INITIALIZE]: { next: state => null },
+    [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload }) => (payload ? payload : null),
+      next: (state, { payload }) => payload ?? null,
     },
-    [RESET]: { next: state => null },
+    [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
   },
-  INITIAL_DASHBOARD_STATE.isEditing,
+  INITIAL_DASHBOARD_STATE.editingDashboard,
 );
 
 const loadingControls = handleActions(
@@ -519,7 +519,7 @@ export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
     dashboardId,
-    isEditing,
+    editingDashboard,
     loadingControls,
     dashboards,
     dashcards,

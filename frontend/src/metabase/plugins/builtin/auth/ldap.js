@@ -1,14 +1,13 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
+import { t } from "ttag";
 
+import LdapAuthCard from "metabase/admin/settings/auth/containers/LdapAuthCard";
+import { SettingsLdapForm } from "metabase/admin/settings/components/SettingsLdapForm";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
-
-import { SettingsLdapForm } from "metabase/admin/settings/components/SettingsLdapForm";
-import LdapAuthCard from "metabase/admin/settings/auth/containers/LdapAuthCard";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(
   sections =>
@@ -33,6 +32,13 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
           description: null,
           type: "boolean",
           getHidden: () => true,
+        },
+        {
+          key: "ldap-user-provisioning-enabled?",
+          display_name: t`User Provisioning`,
+          // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+          description: t`When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one.`,
+          type: "boolean",
         },
         {
           key: "ldap-host",

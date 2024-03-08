@@ -1,9 +1,11 @@
 import { t } from "ttag";
-import type { VisualizationSettings } from "metabase-types/api";
+
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationSettings } from "metabase-types/api";
+
 import Action from "./Action";
 
 const isForm = (object: any, computedSettings: VisualizationSettings) =>

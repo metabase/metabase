@@ -1201,9 +1201,6 @@
    [:map
     [:type TemplateTag:RawValue:Type]]])
 
-;; TODO -- if we were using core.spec here I would make this a multimethod-based spec instead and have it dispatch off
-;; of `:type`. Then we could make it possible to add new types dynamically
-
 (mr/def ::TemplateTag
   [:multi
    {:dispatch :type}
@@ -1276,7 +1273,7 @@
   This metadata automatically gets added for all source queries that are referenced via the `card__id` `:source-table`
   form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
   `:source-query`s."
-  ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
+  ;; TODO - there is a very similar schema in `metabase.analyze.query-results`; see if we can merge them
   [:map
    [:name         NonBlankString]
    [:base_type    BaseType]
@@ -1303,7 +1300,7 @@
   "Valid values of the `:strategy` key in a join map."
   #{:left-join :right-join :inner-join :full-join})
 
-(def ^:private JoinStrategy
+(def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
   driver supports `:full-join` before generating a Join clause using that strategy."
@@ -1685,14 +1682,14 @@
    ;; results? Used by [[metabase.query-processor.middleware.format-rows]]; default `false`
    [:format-rows? {:optional true} :boolean]
    ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
-   ;; you should set this yourself. This is only used by the [[metabase.query-processor/preprocess]] function to get
-   ;; the fully pre-processed query without attempting to convert it to native.
+   ;; you should set this yourself. This is only used by the [[metabase.query-processor.preprocess/preprocess]]
+   ;; function to get the fully pre-processed query without attempting to convert it to native.
    [:disable-mbql->native? {:optional true} :boolean]
    ;; Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware.
    ;; If true, this will override the `:max-results` and `:max-results-bare-rows` values in [[Constraints]].
    [:disable-max-results? {:optional true} :boolean]
-   ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in the
-   ;; `process-userland-query` middleware for such queries -- results are returned in a slightly different format, and
+   ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in
+   ;; certain userland-only middleware for such queries -- results are returned in a slightly different format, and
    ;; QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
    [:userland-query? {:optional true} [:maybe :boolean]]
    ;; Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,
@@ -1735,12 +1732,9 @@
   #?(:clj bytes?
      :cljs :any))
 
-;; TODO - this schema is somewhat misleading because if you use a function like
-;; `qp/process-query-and-save-with-max-results-constraints!` some of these keys (e.g. `:context`) are in fact required
-(def ^:private Info
-  "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
-  was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
-  based on this information, don't do it!"
+;; TODO - this schema is somewhat misleading because if you use a function
+;; like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required
+(mr/def ::Info
   [:map
    ;; These keys are nice to pass in if you're running queries on the backend and you know these values. They aren't
    ;; used for permissions checking or anything like that so don't try to be sneaky
@@ -1754,11 +1748,17 @@
    [:pulse-id                  {:optional true} [:maybe PositiveInt]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
-   [:metadata/dataset-metadata {:optional true} [:maybe [:sequential [:map-of :any :any]]]]
-   ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
-   ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
-   ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
+   [:metadata/model-metadata   {:optional true} [:maybe [:sequential [:map-of :any :any]]]]
+   ;; `:hash` gets added automatically for userland queries (see [[metabase.query-processor/userland-query]]), so
+   ;; don't try passing these in yourself. In fact, I would like this a lot better if we could take these keys xout of
+   ;; `:info` entirely and have the code that saves QueryExceutions figure out their values when it goes to save them
    [:query-hash                {:optional true} [:maybe Hash]]])
+
+(def Info
+  "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
+  was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
+  based on this information, don't do it!"
+  [:ref ::Info])
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
@@ -1832,7 +1832,7 @@
 (mr/def ::Query
   (-> [:map
        [:database DatabaseID]
-       ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
+       ;; Type of query. `:query` = MBQL; `:native` = native.
        [:type [:enum :query :native]]
        [:native     {:optional true} NativeQuery]
        [:query      {:optional true} MBQLQuery]

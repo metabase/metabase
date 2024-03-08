@@ -1,10 +1,10 @@
-import { renderWithProviders, screen } from "__support__/ui";
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { callMockEvent } from "__support__/events";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
-
 import { createMockState, createMockUpload } from "metabase-types/store/mocks";
 import type { FileUploadState } from "metabase-types/store/upload";
+
 import StatusListing from "./StatusListing";
 
 const DatabaseStatusMock = () => <div>DatabaseStatus</div>;

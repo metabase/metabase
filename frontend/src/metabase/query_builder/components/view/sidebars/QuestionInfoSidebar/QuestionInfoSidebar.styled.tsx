@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import EditableText from "metabase/core/components/EditableText";
-
 import { color } from "metabase/lib/colors";
 
 export const Root = styled.div`

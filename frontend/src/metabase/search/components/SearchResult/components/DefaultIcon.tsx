@@ -1,4 +1,5 @@
 import { Icon } from "metabase/ui";
+
 import type { IconComponentProps } from "./ItemIcon";
 import { DEFAULT_ICON_SIZE } from "./constants";
 

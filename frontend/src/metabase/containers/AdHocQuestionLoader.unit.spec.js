@@ -1,10 +1,7 @@
 import { render } from "@testing-library/react";
 
-import { delay } from "metabase/lib/promise";
-
-// import the un-connected component so we can test its internal logic sans
-// redux
 import { AdHocQuestionLoader } from "metabase/containers/AdHocQuestionLoader";
+import { delay } from "metabase/lib/promise";
 import Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
 

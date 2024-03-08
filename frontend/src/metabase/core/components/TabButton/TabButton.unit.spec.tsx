@@ -1,8 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { getIcon } from "__support__/ui";
 
 import { TabRow } from "../TabRow";
+
 import type { RenameableTabButtonProps } from "./TabButton";
 import { TabButton, INPUT_WRAPPER_TEST_ID } from "./TabButton";
 

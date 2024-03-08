@@ -1,19 +1,12 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import { getColumnGroupName } from "metabase/common/utils/column-groups";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import * as Lib from "metabase-lib";
-import type {
-  BaseDashboardCard,
-  Card,
-  NativeParameterDimensionTarget,
-  Parameter,
-  ParameterTarget,
-  ParameterVariableTarget,
-  StructuredParameterDimensionTarget,
-  WritebackParameter,
-} from "metabase-types/api";
+import { TemplateTagDimension } from "metabase-lib/Dimension";
+import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
+import type Question from "metabase-lib/Question";
 import {
   columnFilterForParameter,
   dimensionFilterForParameter,
@@ -25,10 +18,17 @@ import {
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
 } from "metabase-lib/parameters/utils/targets";
-import type Question from "metabase-lib/Question";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
-import { TemplateTagDimension } from "metabase-lib/Dimension";
+import type {
+  BaseDashboardCard,
+  Card,
+  NativeParameterDimensionTarget,
+  Parameter,
+  ParameterTarget,
+  ParameterVariableTarget,
+  StructuredParameterDimensionTarget,
+  WritebackParameter,
+} from "metabase-types/api";
 
 export type StructuredQuerySectionOption = {
   sectionName: string;
@@ -120,7 +120,7 @@ export type ParameterMappingOption =
   | NativeParameterMappingOption;
 
 export function getParameterMappingOptions(
-  question: Question,
+  question: Question | undefined,
   parameter: Parameter | null | undefined = null,
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
@@ -144,15 +144,20 @@ export function getParameterMappingOptions(
     return actionParams || [];
   }
 
-  if (!card.dataset_query || (dashcard && isVirtualDashCard(dashcard))) {
+  if (
+    !question ||
+    !card.dataset_query ||
+    (dashcard && isVirtualDashCard(dashcard))
+  ) {
     return [];
   }
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  if (!isNative || question.isDataset()) {
+  const isModel = question.type() === "model";
+  if (!isNative || isModel) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
-    const query = question.isDataset()
+    const query = isModel
       ? question.composeDataset().query()
       : question.query();
     const stageIndex = -1;

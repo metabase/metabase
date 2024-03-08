@@ -1,20 +1,21 @@
-import { useCallback, useMemo } from "react";
 import cx from "classnames";
-import { t } from "ttag";
-import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
+import { useCallback, useMemo } from "react";
+import { connect } from "react-redux";
+import { t } from "ttag";
 
-import type { IconName, IconProps } from "metabase/ui";
-
-import Visualization from "metabase/visualizations/components/Visualization";
 import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";
-import { getVisualizationRaw } from "metabase/visualizations";
-
 import {
   getVirtualCardType,
+  isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-
+import type { IconName, IconProps } from "metabase/ui";
+import { getVisualizationRaw } from "metabase/visualizations";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import Visualization from "metabase/visualizations/components/Visualization";
+import Question from "metabase-lib/Question";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import type {
   Dashboard,
   DashCardId,
@@ -28,21 +29,17 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
-
-import type {
-  CardSlownessStatus,
-  DashCardOnChangeCardAndRunHandler,
-} from "./types";
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
-import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
-import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
+import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
+import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
+import type {
+  CardSlownessStatus,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import { shouldShowParameterMapper } from "./utils";
 
 interface DashCardVisualizationProps {
@@ -64,6 +61,7 @@ interface DashCardVisualizationProps {
   expectedDuration: number;
   isSlow: CardSlownessStatus;
 
+  isAction: boolean;
   isPreviewing: boolean;
   isEmbed: boolean;
   isClickBehaviorSidebarOpen: boolean;
@@ -110,6 +108,7 @@ export function DashCardVisualization({
   expectedDuration,
   error,
   headerIcon,
+  isAction,
   isSlow,
   isPreviewing,
   isEmbed,
@@ -129,7 +128,9 @@ export function DashCardVisualization({
   onUpdateVisualizationSettings,
 }: DashCardVisualizationProps) {
   const question = useMemo(() => {
-    return new Question(dashcard.card, metadata);
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
   }, [dashcard.card, metadata]);
 
   const renderVisualizationOverlay = useCallback(() => {
@@ -187,8 +188,11 @@ export function DashCardVisualization({
   ]);
 
   const renderActionButtons = useCallback(() => {
-    const mainSeries = series[0] as unknown as Dataset;
+    if (!question) {
+      return null;
+    }
 
+    const mainSeries = series[0] as unknown as Dataset;
     const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
       question,
       result: mainSeries,
@@ -247,6 +251,7 @@ export function DashCardVisualization({
       error={error?.message}
       errorIcon={error?.icon}
       showTitle
+      isAction={isAction}
       isDashboard
       isSlow={isSlow}
       isFullscreen={isFullscreen}

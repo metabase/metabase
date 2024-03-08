@@ -1,21 +1,18 @@
-import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
-
-import Card from "metabase/components/Card";
-import { Icon, Box, Flex, Loader } from "metabase/ui";
-import { Grid } from "metabase/components/Grid";
-import Link from "metabase/core/components/Link";
-import BrowserCrumbs from "metabase/components/BrowserCrumbs";
-
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
+import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import Card from "metabase/components/Card";
+import { Grid } from "metabase/components/Grid";
 import PaginationControls from "metabase/components/PaginationControls";
-
+import Link from "metabase/core/components/Link";
 import {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
-
 import { usePagination } from "metabase/hooks/use-pagination";
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+import { Icon, Box, Flex, Loader } from "metabase/ui";
+
 import {
   CardContent,
   ListGridItem,

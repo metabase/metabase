@@ -86,12 +86,30 @@
   (cond-> [:aggregation aggregation-index]
     (some? option) (conj option)))
 
+(defn- normalize-ref-opts [opts]
+  (let [opts (normalize-tokens opts :ignore-path)]
+   (cond-> opts
+       (:base-type opts)     (update :base-type keyword)
+       (:temporal-unit opts) (update :temporal-unit keyword)
+       (:binning opts)       (update :binning (fn [binning]
+                                                (cond-> binning
+                                                  (:strategy binning) (update :strategy keyword)))))))
+
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
-  [[_ expression-name]]
-  [:expression (if (keyword? expression-name)
-                 (mbql.u/qualified-name expression-name)
-                 expression-name)])
+  [[_ expression-name opts]]
+  (let [expression [:expression (if (keyword? expression-name)
+                                  (mbql.u/qualified-name expression-name)
+                                  expression-name)]
+        opts (->> opts
+                  normalize-ref-opts
+                  ;; Only keep fields required for handling binned&datetime expressions (#33528)
+                  ;; Allowing added alias-info through here breaks
+                  ;; [[metabase.query-processor.util.nest-query-test/nest-expressions-ignore-source-queries-test]]
+                  (m/filter-keys #{:base-type :temporal-unit :binning})
+                  not-empty)]
+    (cond-> expression
+      opts (conj opts))))
 
 (defmethod normalize-mbql-clause-tokens :binning-strategy
   ;; For `:binning-strategy` clauses (which wrap other Field clauses) normalize the strategy-name and recursively
@@ -103,15 +121,9 @@
 
 (defmethod normalize-mbql-clause-tokens :field
   [[_ id-or-name opts]]
-  (let [opts (normalize-tokens opts :ignore-path)]
-    [:field
-     id-or-name
-     (cond-> opts
-       (:base-type opts)     (update :base-type keyword)
-       (:temporal-unit opts) (update :temporal-unit keyword)
-       (:binning opts)       (update :binning (fn [binning]
-                                                (cond-> binning
-                                                  (:strategy binning) (update :strategy keyword)))))]))
+  [:field
+   id-or-name
+   (normalize-ref-opts opts)])
 
 (defmethod normalize-mbql-clause-tokens :field-literal
   ;; Similarly, for Field literals, keep the arg as-is, but make sure it is a string."
@@ -347,7 +359,6 @@
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
-;; TODO - why not make this a multimethod of some sort?
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -361,10 +372,14 @@
                      :source-query    normalize-source-query
                      :source-metadata {::sequence normalize-source-metadata}
                      :joins           {::sequence normalize-join}}
-   ;; we smuggle metadata for datasets and want to preserve their "database" form vs a normalized form so it matches
+   ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
-   :info            {:metadata/dataset-metadata identity}
+   :info            {:metadata/model-metadata identity
+                     ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
+                     :visualization-settings    identity
+                     :context                   maybe-normalize-token}
    :parameters      {::sequence normalize-query-parameter}
+   ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
    :viz-settings    maybe-normalize-token})
@@ -879,10 +894,18 @@
         (set/rename-keys {:query :native}))
     (remove-empty-clauses source-query [:query])))
 
+(defn- remove-empty-clauses-in-parameter [parameter]
+  (merge
+   ;; don't remove `value: nil` from a parameter, the FE code (`haveParametersChanged`) is extremely dumb and will
+   ;; consider the parameter to have changed and thus the query to be 'dirty' if we do this.
+   (select-keys parameter [:value])
+   (remove-empty-clauses-in-map parameter [:parameters ::sequence])))
+
 (def ^:private path->special-remove-empty-clauses-fn
-  {:native identity
-   :query  {:source-query remove-empty-clauses-in-source-query
-            :joins        {::sequence remove-empty-clauses-in-join}}
+  {:native       identity
+   :query        {:source-query remove-empty-clauses-in-source-query
+                  :joins        {::sequence remove-empty-clauses-in-join}}
+   :parameters   {::sequence remove-empty-clauses-in-parameter}
    :viz-settings identity})
 
 (defn- remove-empty-clauses

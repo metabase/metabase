@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+
+import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
-import Button from "metabase/core/components/Button";
 
 export const SetupRoot = styled.div`
   max-width: 42rem;

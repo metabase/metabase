@@ -1,6 +1,6 @@
-import type * as React from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import type * as React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";

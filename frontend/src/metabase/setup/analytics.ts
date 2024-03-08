@@ -1,9 +1,10 @@
-import type { UsageReason } from "metabase-types/api";
 import { trackSchemaEvent } from "metabase/lib/analytics";
+import type { UsageReason } from "metabase-types/api";
+
 import type { SetupStep } from "./types";
 
-const ONBOARDING_VERSION = "1.1.0";
-const SCHEMA_VERSION = "1-0-2";
+const ONBOARDING_VERSION = "1.2.0";
+const SCHEMA_VERSION = "1-0-3";
 
 export const trackStepSeen = ({
   stepName,
@@ -25,6 +26,14 @@ export const trackUsageReasonSelected = (usageReason: UsageReason) => {
     event: "usage_reason_selected",
     version: ONBOARDING_VERSION,
     usage_reason: usageReason,
+  });
+};
+
+export const trackLicenseTokenStepSubmitted = (validTokenPresent: boolean) => {
+  trackSchemaEvent("setup", SCHEMA_VERSION, {
+    event: "license_token_step_submitted",
+    valid_token_present: validTokenPresent,
+    version: ONBOARDING_VERSION,
   });
 };
 

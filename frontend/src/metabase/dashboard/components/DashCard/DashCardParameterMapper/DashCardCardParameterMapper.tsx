@@ -1,20 +1,12 @@
 import { useState, useMemo, useCallback } from "react";
 import { connect } from "react-redux";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
-import {
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-  MOBILE_DEFAULT_CARD_HEIGHT,
-} from "metabase/visualizations/shared/utils/sizes";
-
-import { Icon } from "metabase/ui";
-import Tooltip from "metabase/core/components/Tooltip";
+import { isActionDashCard } from "metabase/actions/utils";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
-import { getMetadata } from "metabase/selectors/metadata";
-
-import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Tooltip from "metabase/core/components/Tooltip";
 import {
   isNativeDashCard,
   isVirtualDashCard,
@@ -22,11 +14,18 @@ import {
   showVirtualDashCardInfoText,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
-
-import { isActionDashCard } from "metabase/actions/utils";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
+import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Icon } from "metabase/ui";
+import {
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
+  MOBILE_DEFAULT_CARD_HEIGHT,
+} from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
-import type { State } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
+import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
+import { isParameterVariableTarget } from "metabase-lib/parameters/utils/targets";
 import type {
   Card,
   CardId,
@@ -36,20 +35,17 @@ import type {
   ParameterId,
   ParameterTarget,
 } from "metabase-types/api";
-import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { isParameterVariableTarget } from "metabase-lib/parameters/utils/targets";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
+import type { State } from "metabase-types/store";
 
-import type Question from "metabase-lib/Question";
+import { setParameterMapping } from "../../../actions";
 import {
   getEditingParameter,
   getDashcardParameterMappingOptions,
   getParameterTarget,
   getQuestionByCard,
 } from "../../../selectors";
-import { setParameterMapping } from "../../../actions";
-
 import { getMappingOptionByTarget } from "../utils";
+
 import {
   Container,
   CardLabel,
@@ -154,17 +150,17 @@ export function DashCardCardParameterMapper({
     }
 
     // virtual or action dashcard
-    if (!question) {
+    if (!isQuestionDashCard(dashcard)) {
       return true;
     }
 
-    if (!card.dataset_query) {
+    if (!question || !card.dataset_query) {
       return false;
     }
 
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     return isEditable;
-  }, [isVirtual, card.dataset_query, question]);
+  }, [isVirtual, dashcard, card.dataset_query, question]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
     useMemo(() => {

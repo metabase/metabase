@@ -7,7 +7,7 @@ Cypress.Commands.add(
     alert_first_only = false,
     alert_above_goal = false,
   } = {}) => {
-    cy.log(`Create an alert`);
+    cy.log("Create an alert");
 
     return cy.request("POST", "/api/alert", {
       card,

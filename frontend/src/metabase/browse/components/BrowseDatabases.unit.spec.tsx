@@ -1,6 +1,7 @@
-import { createMockDatabase } from "metabase-types/api/mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type Database from "metabase-lib/metadata/Database";
+import { createMockDatabase } from "metabase-types/api/mocks";
+
 import { BrowseDatabases } from "./BrowseDatabases";
 
 const renderBrowseDatabases = (modelCount: number) => {

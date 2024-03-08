@@ -1,21 +1,27 @@
 /* eslint-disable react/prop-types */
-import { createRef, forwardRef, Component } from "react";
-import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
-import { t } from "ttag";
-import { connect } from "react-redux";
-import _ from "underscore";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { createRef, forwardRef, Component } from "react";
+import ReactDOM from "react-dom";
+import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
+import { t } from "ttag";
+import _ from "underscore";
 
-import "./TableInteractive.css";
+import "./TableInteractive.module.css";
 
-import { Icon, DelayGroup } from "metabase/ui";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import Button from "metabase/core/components/Button";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
-
+import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
+import { zoomInRow } from "metabase/query_builder/actions";
+import { getQueryBuilderMode } from "metabase/query_builder/selectors";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { Icon, DelayGroup } from "metabase/ui";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -23,19 +29,13 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import { getScrollBarSize } from "metabase/lib/dom";
-import { zoomInRow } from "metabase/query_builder/actions";
-import { getQueryBuilderMode } from "metabase/query_builder/selectors";
-
-import ExplicitSize from "metabase/components/ExplicitSize";
-
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import * as Lib from "metabase-lib";
+import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass } from "metabase-lib/utils";
-import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
+
 import MiniBar from "../MiniBar";
+
 import {
   TableDraggable,
   ExpandButton,
@@ -698,7 +698,10 @@ class TableInteractive extends Component {
     const isSorted = sortDirection != null;
     const isAscending = sortDirection === "asc";
 
-    const fieldInfoPopoverTestId = "field-info-popover";
+    const columnInfoPopoverTestId = "field-info-popover";
+    const question = this.props.question;
+    const query = question?.query();
+    const stageIndex = -1;
 
     return (
       <TableDraggable
@@ -750,7 +753,6 @@ class TableInteractive extends Component {
         }}
       >
         <HeaderCell
-          data-testid={isVirtual ? undefined : "header-cell"}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
@@ -773,6 +775,9 @@ class TableInteractive extends Component {
               "justify-end": isRightAligned,
             },
           )}
+          role="columnheader"
+          aria-label={columnTitle}
+          data-testid={isVirtual ? undefined : "header-cell"}
           onClick={
             // only use the onClick if not draggable since it's also handled in Draggable's onStop
             isClickable && !isDraggable
@@ -782,9 +787,11 @@ class TableInteractive extends Component {
               : undefined
           }
         >
-          <FieldInfoPopover
+          <QueryColumnInfoPopover
             placement="bottom-start"
-            field={column}
+            query={query}
+            stageIndex={-1}
+            column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
             timezone={data.results_timezone}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
             showFingerprintInfo
@@ -796,7 +803,7 @@ class TableInteractive extends Component {
                     className="Icon mr1"
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
-                    data-testid={fieldInfoPopoverTestId}
+                    data-testid={columnInfoPopoverTestId}
                   />
                 )}
                 {columnTitle}
@@ -805,14 +812,14 @@ class TableInteractive extends Component {
                     className="Icon ml1"
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
-                    data-testid={fieldInfoPopoverTestId}
+                    data-testid={columnInfoPopoverTestId}
                   />
                 )}
               </Ellipsified>,
               column,
               columnIndex,
             )}
-          </FieldInfoPopover>
+          </QueryColumnInfoPopover>
           <TableDraggable
             enableUserSelectHack={false}
             enableCustomUserSelectHack={!isVirtual}

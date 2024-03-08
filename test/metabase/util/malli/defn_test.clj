@@ -151,7 +151,7 @@
   (+ x y))
 
 (deftest ^:parallel preserve-arglists-metadata-test
-  (is (= 'Integer
+  (is (= 'java.lang.Integer
          (-> '{:arities [:single {:args    ^{:tag Integer} [x :- :int y :- :int]
                                   :prepost nil
                                   :body    [(+ x y)]}]}
@@ -159,7 +159,7 @@
              first
              meta
              :tag)))
-  (is (= 'Integer
+  (is (= 'java.lang.Integer
          (-> #'add-ints meta :arglists first meta :tag))))
 
 (deftest ^:parallel defn-forms-are-not-emitted-for-skippable-ns-in-prod-test

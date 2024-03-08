@@ -1,7 +1,13 @@
 import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
+
 import { createMockMetadata } from "__support__/metadata";
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import * as ML_Urls from "metabase-lib/urls";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -28,11 +34,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
-import Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -110,7 +111,7 @@ const orders_card_without_pk = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset: true,
+  type: "model",
   database_id: SAMPLE_DB_ID,
   table_id: ORDERS_ID,
   dataset_query: {
@@ -282,9 +283,6 @@ const orders_count_by_id_question = new Question(
 describe("Question", () => {
   describe("CREATED WITH", () => {
     describe("new Question(alreadyDefinedCard, metadata)", () => {
-      it("isn't empty", () => {
-        expect(orders_raw_question.isEmpty()).toBe(false);
-      });
       it("has an id", () => {
         expect(orders_raw_question.id()).toBe(orders_raw_card.id);
       });
@@ -612,7 +610,7 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype._syncNativeQuerySettings", () => {
+  describe("Question.prototype._syncTableColumnSettings", () => {
     let question;
     const cols = [
       {
@@ -664,15 +662,15 @@ describe("Question", () => {
 
     describe("when columns have not been defined", () => {
       it("should do nothing when given no cols", () => {
-        question._syncNativeQuerySettings({});
-        question._syncNativeQuerySettings({ data: { cols: [] } });
-        question._syncNativeQuerySettings({ data: { cols } });
+        question._syncTableColumnSettings({});
+        question._syncTableColumnSettings({ data: { cols: [] } });
+        question._syncTableColumnSettings({ data: { cols } });
 
         expect(question.updateSettings).not.toHaveBeenCalled();
       });
 
       it("should do nothing when given cols", () => {
-        question._syncNativeQuerySettings({ data: { cols } });
+        question._syncTableColumnSettings({ data: { cols } });
 
         expect(question.updateSettings).not.toHaveBeenCalled();
       });
@@ -687,8 +685,10 @@ describe("Question", () => {
         });
       });
 
+      // Adding a column with same name is covered as well, as name is generated at FE and it will
+      // be unique (e.g. foo -> foo_2)
       it("should handle the addition and removal of columns", () => {
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [
               ...cols.slice(1),
@@ -714,6 +714,7 @@ describe("Question", () => {
             ...vizSettingCols.slice(1),
             {
               name: "foo",
+              key: '["name","foo"]',
               fieldRef: [
                 "field",
                 "foo",
@@ -741,7 +742,7 @@ describe("Question", () => {
           name: "foo",
           base_type: "type/Float",
         };
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [updatedColumn, ...cols.slice(1)],
           },
@@ -759,6 +760,7 @@ describe("Question", () => {
                   "base-type": "type/Float",
                 },
               ],
+              key: '["name","foo"]',
               name: "foo",
             },
           ],
@@ -766,7 +768,7 @@ describe("Question", () => {
       });
 
       it("should handle the mutation of a field_ref on an existing column", () => {
-        question._syncNativeQuerySettings({
+        question._syncTableColumnSettings({
           data: {
             cols: [
               {
@@ -793,10 +795,21 @@ describe("Question", () => {
             {
               name: "foo",
               fieldRef: ["field", "foo", { "base-type": "type/Integer" }],
+              key: '["name","foo"]',
               enabled: true,
             },
           ],
         });
+      });
+
+      it("shouldn't update settings if order of columns has changed", () => {
+        question._syncTableColumnSettings({
+          data: {
+            cols: [cols[1], cols[0]],
+          },
+        });
+
+        expect(question.updateSettings).not.toHaveBeenCalled();
       });
     });
   });

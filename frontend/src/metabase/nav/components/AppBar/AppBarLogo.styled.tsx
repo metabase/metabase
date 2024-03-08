@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import Link from "metabase/core/components/Link";
 
 export const LogoLink = styled(Link)<{ isSmallAppBar: boolean }>`

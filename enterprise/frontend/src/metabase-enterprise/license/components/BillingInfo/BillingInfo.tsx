@@ -1,8 +1,9 @@
 import type { BillingInfo as IBillingInfo } from "metabase-types/api";
+
+import { BillingGoToStore } from "./BillingGoToStore";
 import { BillingInfoError } from "./BillingInfoError";
 import { BillingInfoNotStoreManaged } from "./BillingInfoNotStoreManaged";
 import { BillingInfoTable } from "./BillingInfoTable";
-import { BillingGoToStore } from "./BillingGoToStore";
 
 interface BillingInfoProps {
   isStoreManagedBilling: boolean;

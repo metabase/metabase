@@ -1,6 +1,7 @@
 import _ from "underscore";
-import type { Parameter } from "metabase-types/api";
+
 import { FIELD_FILTER_PARAMETER_TYPES } from "metabase-lib/parameters/constants";
+import type { Parameter } from "metabase-types/api";
 
 export function getParameterType(parameter: Parameter | string) {
   return typeof parameter === "string"
@@ -41,6 +42,8 @@ export function isStringParameter(parameter: Parameter) {
   return type === "string";
 }
 
+// TODO this must be wrong because it returns true
+// for parameters without fields
 export function isFieldFilterParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
   return FIELD_FILTER_PARAMETER_TYPES.includes(type);

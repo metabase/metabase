@@ -20,6 +20,11 @@
    :group-type/join.explicit
    :group-type/join.implicit])
 
+(def ^:private group-type-ordering
+  {:group-type/main          1
+   :group-type/join.explicit 2
+   :group-type/join.implicit 3})
+
 (def ^:private ColumnGroup
   "Schema for the metadata returned by [[group-columns]], and accepted by [[columns-group-columns]]."
   [:and
@@ -151,6 +156,15 @@
   [column-metadata :- lib.metadata/ColumnMetadata]
   (column-group-info-method column-metadata))
 
+(defn- column-group-ordering
+  [fk-field-names {::keys [group-type] :as column-group}]
+  (into [(group-type-ordering group-type)]
+        (case group-type
+          :group-type/main          ["main"] ; There's only ever one main group, so no need to sort them further.
+          :group-type/join.explicit [(:join-alias column-group)]
+          :group-type/join.implicit [(or (:fk-join-alias column-group) "")
+                                     (fk-field-names (:fk-field-id column-group) "")])))
+
 (mu/defn group-columns :- [:sequential ColumnGroup]
   "Given a group of columns returned by a function like [[metabase.lib.order-by/orderable-columns]], group the columns
   by Table or equivalent (e.g. Saved Question) so that they're in an appropriate shape for showing in the Query
@@ -172,13 +186,22 @@
                  categories.name]}]
 
   Groups have the type `:metadata/column-group` and can be passed directly
-  to [[metabase.lib.metadata.calculation/display-info]]."
+  to [[metabase.lib.metadata.calculation/display-info]].
+
+  Ordered to put own columns first, then explicit joins alphabetically by join alias, then implicit joins alphabetically
+  by FK join alias + FK field name (which is used as the table name). So if the same FK is available multiple times,
+  they are ordered: own first, then alphabetically by the join alias for that FK."
   [column-metadatas :- [:sequential lib.metadata/ColumnMetadata]]
-  (mapv (fn [[group-info columns]]
-          (assoc group-info
-                 :lib/type :metadata/column-group
-                 ::columns columns))
-        (group-by column-group-info column-metadatas)))
+  (let [fk-field-names (into {} (comp (filter :id)
+                                      (map (juxt :id :name)))
+                             column-metadatas)]
+    (->> (group-by column-group-info column-metadatas)
+         (map (fn [[group-info columns]]
+                (assoc group-info
+                       :lib/type :metadata/column-group
+                       ::columns columns)))
+         (sort-by (partial column-group-ordering fk-field-names))
+         vec)))
 
 (mu/defn columns-group-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get the columns associated with a column group"

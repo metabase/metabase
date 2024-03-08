@@ -1,6 +1,8 @@
 import { t } from "ttag";
+
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type { TooltipRowModel } from "metabase/visualizations/types";
+
 import {
   Cell,
   ColorIndicator,

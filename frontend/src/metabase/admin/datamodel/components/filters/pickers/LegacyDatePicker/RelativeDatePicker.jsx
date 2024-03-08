@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import cx from "classnames";
-
 import { assoc } from "icepick";
+import { Component } from "react";
+
 import DateUnitSelector from "../DatePicker/DateUnitSelector";
 
 import { IntervalInput } from "./RelativeDatePicker.styled";

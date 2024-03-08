@@ -43,6 +43,8 @@ You can also sync user attributes from your identity provider [via SSO](./start.
 
 User attributes are required for [data sandbox](../permissions/data-sandboxes.md) permissions.
 
+You can also employ user attributes to specify what database role Metabase should use when that person queries a database. Check out [impersonation access](../permissions/data.md#impersonation-access).
+
 ## Deactivating an account
 
 To deactivate someone's account, click on the three dots icon on the right of a person’s row and select **Deactivate** from the dropdown. Deactivating an account will mark it as inactive and prevent the user from logging in - but it _won’t_ delete that person's saved questions or dashboards.

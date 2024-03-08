@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import {
   isEqualsOperator,
   doesOperatorExist,
@@ -8,7 +9,6 @@ import {
   getAggregationOperators,
   isFuzzyOperator,
 } from "metabase-lib/operators/utils/index";
-
 import {
   TYPE,
   NUMBER,

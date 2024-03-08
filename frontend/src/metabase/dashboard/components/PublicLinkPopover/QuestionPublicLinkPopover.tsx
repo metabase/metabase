@@ -1,18 +1,20 @@
 import { useState } from "react";
-import {
-  trackPublicLinkCopied,
-  trackPublicLinkRemoved,
-} from "metabase/public/lib/analytics";
+
 import { useDispatch } from "metabase/lib/redux";
 import {
   exportFormats,
   publicQuestion as getPublicQuestionUrl,
 } from "metabase/lib/urls";
 import {
+  trackPublicLinkCopied,
+  trackPublicLinkRemoved,
+} from "metabase/public/lib/analytics";
+import {
   createPublicLink,
   deletePublicLink,
 } from "metabase/query_builder/actions";
 import type Question from "metabase-lib/Question";
+
 import { PublicLinkPopover } from "./PublicLinkPopover";
 import type { ExportFormatType } from "./types";
 

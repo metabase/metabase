@@ -1,6 +1,6 @@
+import { createMockMetadata } from "__support__/metadata";
 import type { Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
 
 const TEST_TABLE = createMockTable({
   schema: "foo_bar",

@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   popover,
   restore,
@@ -5,7 +6,6 @@ import {
   selectSavedQuestionsToJoin,
   visualize,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -76,7 +76,7 @@ describe("issue 31769", () => {
 
     cy.get("@card_id_q2").then(cardId => {
       cy.findByTestId("TableInteractive-root")
-        .findByText(`Q2 - Products → Category → Category`)
+        .findByText("Q2 - Products → Category → Category")
         .should("exist");
     });
 

@@ -1,6 +1,6 @@
 import { CardApi } from "metabase/services";
-import type { Parameter } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
+import type { Parameter } from "metabase-types/api";
 
 interface FetchParameterValuesOpts {
   question: Question;

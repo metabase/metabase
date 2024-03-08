@@ -1,23 +1,22 @@
-import PropTypes from "prop-types";
 import cx from "classnames";
-import { t } from "ttag";
+import PropTypes from "prop-types";
 import type { ReactElement } from "react";
+import { t } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
-
 import { getCurrencySymbol } from "metabase/lib/formatting";
-import type Filter from "metabase-lib/queries/structured/Filter";
-
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
 } from "metabase-lib/operators/utils";
-import { isCurrency } from "metabase-lib/types/utils/isa";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import TextPicker from "../TextPicker";
-import SelectPicker from "../SelectPicker";
+import { isCurrency } from "metabase-lib/types/utils/isa";
+import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
+
 import NumberPicker from "../NumberPicker";
+import SelectPicker from "../SelectPicker";
+import TextPicker from "../TextPicker";
 
 import {
   BetweenLayoutContainer,

@@ -1,15 +1,17 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
+
+import type { TimeValue } from "metabase/querying/hooks/use-time-filter";
+import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
-import type { TimeValue } from "metabase/querying/hooks/use-time-filter";
+
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterPickerHeader } from "../FilterPickerHeader";
-import { FilterPickerFooter } from "../FilterPickerFooter";
 
 export function TimeFilterPicker({
   query,

@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import { createMockCollection } from "metabase-types/api/mocks";
+
 import { getIcon, queryIcon, screen } from "__support__/ui";
+import { createMockCollection } from "metabase-types/api/mocks";
+
 import { setup } from "./setup";
 
 describe("CollectionMenu", () => {

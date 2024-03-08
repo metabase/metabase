@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   filterWidget,
@@ -10,7 +11,6 @@ import {
   modal,
   openNativeEditor,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
@@ -53,7 +53,7 @@ const USERS = {
 
 describe("scenarios > public > question", () => {
   beforeEach(() => {
-    cy.intercept("GET", `/api/public/card/*/query?*`).as("publicQuery");
+    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
     restore();
     cy.signInAsAdmin();
@@ -117,7 +117,7 @@ describe("scenarios > public > question", () => {
 
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
-      it(`should be able to view public questions`, () => {
+      it("should be able to view public questions", () => {
         cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
@@ -146,13 +146,13 @@ describe("scenarios > public > question", () => {
 
     modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        `'test'`,
+        "'test'",
       );
       cy.findByLabelText("Give your snippet a name").type("string 'test'");
       cy.findByText("Save").click();
     });
 
-    cy.get("@editor").type(`{moveToStart}select `);
+    cy.get("@editor").type("{moveToStart}select ");
 
     saveQuestion("test question", { wrapId: true });
 

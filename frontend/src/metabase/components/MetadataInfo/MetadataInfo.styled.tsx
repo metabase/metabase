@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
 import _LoadingSpinner from "metabase/components/LoadingSpinner";
+import { color } from "metabase/lib/colors";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { Icon } from "metabase/ui";
 
 const TRANSITION_DURATION = () => (isReducedMotionPreferred() ? "0" : "0.25s");
 
@@ -34,6 +34,7 @@ export const Description = styled.div`
   white-space: pre-line;
   max-height: 200px;
   overflow: auto;
+  margin-bottom: 0.5em;
 `;
 
 export const EmptyDescription = styled(Description)`
@@ -72,7 +73,6 @@ type FadeProps = {
 };
 
 export const Fade = styled.div<FadeProps>`
-  position: relative;
   width: 100%;
   transition: opacity ${TRANSITION_DURATION} linear;
   opacity: ${({ visible }) => (visible ? "1" : "0")};

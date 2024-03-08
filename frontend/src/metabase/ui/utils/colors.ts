@@ -1,4 +1,5 @@
 import type { MantineTheme } from "@mantine/core";
+
 import { color } from "metabase/lib/colors";
 
 type ColorShades = MantineTheme["colors"]["dark"];

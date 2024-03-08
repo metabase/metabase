@@ -1,8 +1,9 @@
-import { forwardRef, useCallback } from "react";
-import type { FocusEvent, Ref } from "react";
 import { useField } from "formik";
-import { Checkbox } from "metabase/ui";
+import type { FocusEvent, Ref } from "react";
+import { forwardRef, useCallback } from "react";
+
 import type { CheckboxGroupProps } from "metabase/ui";
+import { Checkbox } from "metabase/ui";
 
 export interface FormCheckboxGroupProps
   extends Omit<CheckboxGroupProps, "value" | "error"> {

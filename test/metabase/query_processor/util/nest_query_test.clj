@@ -7,6 +7,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
@@ -25,7 +26,7 @@
 (defn- nest-expressions [query]
   (driver/with-driver (or driver/*driver* :h2)
     (-> query
-        qp/preprocess
+        qp.preprocess/preprocess
         :query
         nest-query/nest-expressions
         remove-source-metadata)))
@@ -67,7 +68,7 @@
                            :breakout    [$price]
                            :aggregation [[:count]]
                            :fields      [[:expression "double_price"]]})
-                        qp/preprocess
+                        qp.preprocess/preprocess
                         add/add-alias-info
                         nest-expressions))))))
 
@@ -118,7 +119,7 @@
                                            !day.date
                                            !month.date]
                              :limit       1})
-                          qp/preprocess
+                          qp.preprocess/preprocess
                           add/add-alias-info
                           nest-expressions)))))))
 
@@ -521,7 +522,7 @@
                                             :alias        "CategoriesStats"
                                             :fields       :all}]
                              :limit       3})
-                          qp/preprocess
+                          qp.preprocess/preprocess
                           add/add-alias-info
                           nest-expressions)))))))
 
@@ -639,7 +640,7 @@
                                               :alias        "PRODUCTS__via__PRODUCT_ID"
                                               :fk-field-id  %product-id
                                               :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
-                            qp/preprocess
+                            qp.preprocess/preprocess
                             add/add-alias-info
                             nest-expressions))))))))
 
@@ -664,7 +665,7 @@
                          :breakout           [[:field "CATEGORY_2" {:base-type          :type/Text
                                                                     ::add/source-table  ::add/source
                                                                     ::add/source-alias  "CATEGORY_2"
-                                                                    ::add/desired-alias "CATEGORY_2"
+                                                                    ::add/desired-alias "CATEGORY"
                                                                     ::add/position      0}]]
                          :aggregation        [[:aggregation-options [:count] {:name               "count"
                                                                               ::add/desired-alias "count"
@@ -672,7 +673,7 @@
                          :order-by           [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
                                                                           ::add/source-table  ::add/source
                                                                           ::add/source-alias  "CATEGORY_2"
-                                                                          ::add/desired-alias "CATEGORY_2"
+                                                                          ::add/desired-alias "CATEGORY"
                                                                           ::add/position      0}]]]
                          :limit              1})
                       (-> (lib.tu.macros/mbql-query products
@@ -681,7 +682,46 @@
                              :aggregation [[:count]]
                              :order-by    [[:asc [:expression"CATEGORY"]]]
                              :limit       1})
-                          qp/preprocess
+                          qp.preprocess/preprocess
                           add/add-alias-info
                           :query
-                          nest-query/nest-expressions)))))))
+                          nest-query/nest-expressions)))
+
+        (testing "multi-stage query with an expression name that matches a table column (#39059)"
+          (is (=? (lib.tu.macros/$ids orders
+                    {:source-query {:fields       [[:field %id          {}]
+                                                   [:field %subtotal    {}]
+                                                   ;; Then exported as DISCOUNT from the middle layer.
+                                                   [:field "DISCOUNT_2" {:base-type          :type/Float
+                                                                         ::add/source-alias  "DISCOUNT_2"
+                                                                         ::add/desired-alias "DISCOUNT"}]]
+                                    :source-query {:expressions  {"DISCOUNT" [:coalesce [:field %discount {}] 0]}
+                                                   :fields       [[:field %id {::add/desired-alias "ID"}]
+                                                                  [:field %subtotal {::add/desired-alias "SUBTOTAL"}]
+                                                                  [:field %discount {::add/desired-alias "DISCOUNT"}]
+                                                                  ;; Exported as DISCOUNT_2 from this inner query.
+                                                                  [:expression "DISCOUNT"
+                                                                   {::add/desired-alias "DISCOUNT_2"}]]
+                                                   :source-table $$orders}}
+                     :source-query/model? true
+                     :fields              [[:field %id        {}]
+                                           [:field %subtotal  {}]
+                                           [:field "DISCOUNT" {:base-type          :type/Float
+                                                               ::add/source-alias  "DISCOUNT"
+                                                               ::add/desired-alias "DISCOUNT"}]]})
+                  (-> (lib.tu.macros/$ids orders
+                        {:type     :query
+                         :database (meta/id)
+                         :query    {:source-query {:expressions  {"DISCOUNT" [:coalesce $discount 0]}
+                                                   :fields       [$id
+                                                                  $subtotal
+                                                                  [:expression "DISCOUNT"]]
+                                                   :source-table $$orders}
+                                    :source-query/model? true
+                                    :fields              [[:field "ID"       {:base-type :type/Integer}]
+                                                          [:field "SUBTOTAL" {:base-type :type/Float}]
+                                                          [:field "DISCOUNT" {:base-type :type/Float}]]}})
+                      qp.preprocess/preprocess
+                      add/add-alias-info
+                      :query
+                      nest-query/nest-expressions))))))))

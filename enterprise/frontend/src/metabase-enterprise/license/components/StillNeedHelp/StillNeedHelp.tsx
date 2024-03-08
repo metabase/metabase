@@ -1,5 +1,6 @@
-import { t } from "ttag";
 import styled from "@emotion/styled";
+import { t } from "ttag";
+
 import { color } from "metabase/lib/colors";
 import { Text, Anchor } from "metabase/ui";
 

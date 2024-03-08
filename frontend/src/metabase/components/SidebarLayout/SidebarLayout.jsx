@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import { cloneElement, Children } from "react";
 import PropTypes from "prop-types";
+import { cloneElement, Children } from "react";
 
 const SidebarLayout = ({ className, style, sidebar, children }) => (
   <div

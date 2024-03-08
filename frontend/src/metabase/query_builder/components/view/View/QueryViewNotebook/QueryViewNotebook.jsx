@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import { useEffect, useState } from "react";
 
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
+
 import { NotebookContainer } from "./QueryViewNotebook.styled";
 
 const delayBeforeNotRenderingNotebook = 10;

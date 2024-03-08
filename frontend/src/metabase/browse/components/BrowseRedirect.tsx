@@ -1,9 +1,10 @@
-import { replace } from "react-router-redux";
 import { useEffect } from "react";
-import type { SearchResult } from "metabase-types/api";
+import { replace } from "react-router-redux";
+
 import { useSearchListQuery } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
+import type { SearchResult } from "metabase-types/api";
 
 export const BrowseRedirect = () => {
   const defaultTab = localStorage.getItem("defaultBrowseTab");

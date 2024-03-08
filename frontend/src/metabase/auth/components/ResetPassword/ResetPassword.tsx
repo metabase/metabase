@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import { AuthLayout } from "../AuthLayout";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
+
 import {
   resetPassword,
   validatePassword,
   validatePasswordToken,
 } from "../../actions";
 import type { ResetPasswordData } from "../../types";
+import { AuthLayout } from "../AuthLayout";
 import { ResetPasswordForm } from "../ResetPasswordForm";
+
 import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
 
 type ViewType = "none" | "form" | "expired";

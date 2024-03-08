@@ -1,5 +1,7 @@
 import type { ChangeEvent, FocusEvent } from "react";
+
 import FileInput from "metabase/core/components/FileInput";
+
 import type { FormField, TreatBeforePosting } from "./types";
 
 export interface FormTextFileWidgetProps {

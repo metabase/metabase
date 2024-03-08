@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {

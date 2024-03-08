@@ -1,7 +1,9 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { getSetting } from "metabase/selectors/settings";
+
 import { redirect } from "metabase/lib/dom";
+import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
+
 import { trackLoginSSO } from "./analytics";
 import { getSSOUrl } from "./utils";
 

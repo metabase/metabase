@@ -24,7 +24,7 @@ export const saveDashboardPdf = async (
       const title = doc.createElement("h2") as HTMLElement;
       title.innerHTML = dashboardName;
       title.style["borderBottom"] = `1px solid ${color("border")}`;
-      title.style["paddingBottom"] = "1rem";
+      title.style["padding"] = "0 1rem 1rem 1rem";
       node.insertBefore(title, node.firstChild);
     },
   });

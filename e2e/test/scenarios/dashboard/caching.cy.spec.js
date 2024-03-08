@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   describeEE,
@@ -7,8 +8,6 @@ import {
   setTokenFeatures,
   toggleDashboardInfoSidebar,
 } from "e2e/support/helpers";
-
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describeEE("scenarios > dashboard > caching", () => {
   beforeEach(() => {

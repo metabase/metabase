@@ -1,11 +1,12 @@
 import { t } from "ttag";
+
+import { hasActionsMenu } from "metabase/lib/click-behavior";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import type {
   ClickBehaviorType,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import { hasActionsMenu } from "metabase/lib/click-behavior";
-import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 
 export function useClickBehaviorOptionName(
   value: ClickBehaviorType,

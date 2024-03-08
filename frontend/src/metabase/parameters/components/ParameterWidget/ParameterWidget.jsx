@@ -1,7 +1,9 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
+
 import ParameterValueWidget from "../ParameterValueWidget";
+
 import {
   ParameterContainer,
   ParameterFieldSet,
@@ -122,13 +124,9 @@ export class ParameterWidget extends Component {
     );
 
     if (isFullscreen) {
-      if (parameter.value != null) {
-        return (
-          <div style={{ fontSize: "0.833em" }}>{renderFieldInNormalMode()}</div>
-        );
-      } else {
-        return <span className="hide" />;
-      }
+      return (
+        <div style={{ fontSize: "0.833em" }}>{renderFieldInNormalMode()}</div>
+      );
     } else if (isEditing && setEditingParameter) {
       return renderEditing();
     } else {

@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   openNativeEditor,
   openQuestionActions,
@@ -7,7 +8,6 @@ import {
   runNativeQuery,
 } from "e2e/support/helpers";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > question > native subquery", () => {
@@ -155,7 +155,7 @@ describe("scenarios > question > native subquery", () => {
           // For some reason, typing `{{#${questionId2}}}` in one go isn't deterministic,
           // so type it in two parts
           cy.get(".ace_editor:not(.ace_autocomplete)")
-            .type(` {{#`)
+            .type(" {{#")
             .type(`{leftarrow}{leftarrow}${questionId2}`);
 
           // Wait until another explicit autocomplete is triggered
@@ -265,15 +265,14 @@ describe("scenarios > question > native subquery", () => {
     cy.signIn("nodata");
 
     // They should be able to access both questions
-    cy.get("@nestedQuestionId").then(nestedQuestionId => {
-      visitQuestion(nestedQuestionId);
-      cy.contains("Showing 41 rows");
-    });
+    visitQuestion("@nestedQuestionId");
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 41 rows",
+    );
 
-    cy.get("@toplevelQuestionId").then(toplevelQuestionId => {
-      visitQuestion(toplevelQuestionId);
-      cy.contains("41");
-    });
+    visitQuestion("@toplevelQuestionId");
+    cy.get("#main-data-grid .cellData").should("have.text", "41");
   });
 
   it("should be able to reference a nested question (metabase#25988)", () => {

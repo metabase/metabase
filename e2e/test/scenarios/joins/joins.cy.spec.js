@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
   addSummaryField,
@@ -21,9 +23,6 @@ import {
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -293,11 +292,11 @@ describe("scenarios > question > joined questions", () => {
     // Test LHS column infers RHS column's temporal unit
 
     cy.findByLabelText("Left column").click();
-    popover().findByText("by month").click({ force: true });
-    popover().last().findByText("Week").click();
+    popover().findByText("Created At").click();
 
     cy.findByLabelText("Right column").click();
-    popover().findByText("Created At").click();
+    popover().findByText("by month").click({ force: true });
+    popover().last().findByText("Week").click();
 
     assertJoinColumnName("left", "Created At: Week");
     assertJoinColumnName("right", "Created At: Week");

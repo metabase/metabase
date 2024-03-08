@@ -1,9 +1,11 @@
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+
 import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
+import * as Lib from "metabase-lib";
+
 import type { GroupItem, SegmentItem } from "../types";
 
 export function appendStageIfAggregated(query: Lib.Query) {

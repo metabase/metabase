@@ -1,11 +1,11 @@
 import { assocIn } from "icepick";
 
-import { createEntity } from "metabase/lib/entities";
 import {
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
   CLEAR_MEMBERSHIPS,
 } from "metabase/admin/people/events";
+import { createEntity } from "metabase/lib/entities";
 import { PermissionsApi } from "metabase/services";
 
 const Groups = createEntity({

@@ -1,13 +1,13 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { mockSettings } from "__support__/settings";
-
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import type { AppErrorDescriptor } from "metabase-types/store";
 import { createMockAppState } from "metabase-types/store/mocks";
 
 import EmbedFrame from "../../components/EmbedFrame";
+
 import PublicApp from "./PublicApp";
 
 type SetupOpts = {

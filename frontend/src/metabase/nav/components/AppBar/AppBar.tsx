@@ -1,10 +1,12 @@
 import { t } from "ttag";
+
+import ErrorBoundary from "metabase/ErrorBoundary";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import type { CollectionId, User } from "metabase-types/api";
-import ErrorBoundary from "metabase/ErrorBoundary";
-import AppBarSmall from "./AppBarSmall";
-import AppBarLarge from "./AppBarLarge";
+
 import { AppBarRoot } from "./AppBar.styled";
+import AppBarLarge from "./AppBarLarge";
+import AppBarSmall from "./AppBarSmall";
 
 export interface AppBarProps {
   currentUser: User;

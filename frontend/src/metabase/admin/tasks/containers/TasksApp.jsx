@@ -3,13 +3,13 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import AdminHeader from "metabase/components/AdminHeader";
+import PaginationControls from "metabase/components/PaginationControls";
+import Link from "metabase/core/components/Link";
+import Tooltip from "metabase/core/components/Tooltip";
 import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";
 
-import PaginationControls from "metabase/components/PaginationControls";
-import AdminHeader from "metabase/components/AdminHeader";
-import Link from "metabase/core/components/Link";
-import Tooltip from "metabase/core/components/Tooltip";
 import {
   InfoIcon,
   SectionControls,

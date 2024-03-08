@@ -1,15 +1,14 @@
-import { parse as parseUrl } from "url";
-import { createAction } from "redux-actions";
 import { push, replace } from "react-router-redux";
+import { createAction } from "redux-actions";
+import { parse as parseUrl } from "url";
 
+import { isEqualCard } from "metabase/lib/card";
 import { createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { getLocation } from "metabase/selectors/routing";
-
-import { isEqualCard } from "metabase/lib/card";
-
 import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
+
 import {
   getCard,
   getDatasetEditorTab,
@@ -58,7 +57,7 @@ export const popState = createThunkAction(
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!equals(card, location.state.card)) {
-        const shouldRefreshUrl = location.state.card.dataset;
+        const shouldRefreshUrl = location.state.card.type === "model";
         await dispatch(setCardAndRun(location.state.card, shouldRefreshUrl));
         await dispatch(setCurrentState(location.state));
         await dispatch(resetUIControls());

@@ -1,12 +1,12 @@
 import _ from "underscore";
+
 import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-
 import Question from "metabase-lib/Question";
+import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/queries/utils/card";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
-import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -59,6 +59,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
+
   if (
     question.display() !== "pivot" ||
     isNative(card) ||
@@ -95,7 +96,9 @@ export async function runQuestionQuery(
   } = {},
 ) {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
-  const parameters = normalizeParameters(question.parameters());
+  const parameters = normalizeParameters(
+    question.parameters({ collectionPreview }),
+  );
   const card = question.card();
 
   if (canUseCardApiEndpoint) {
@@ -137,9 +140,7 @@ export async function runQuestionQuery(
     );
   };
 
-  const datasetQueries = question
-    .atomicQueries()
-    .map(query => query.datasetQuery());
+  const datasetQueries = [question.datasetQuery()];
 
   return Promise.all(datasetQueries.map(getDatasetQueryResult));
 }
@@ -219,8 +220,13 @@ export const DashboardApi = {
   ),
 };
 
+export const SearchApi = {
+  list: GET("/api/search"),
+};
+
 export const CollectionsApi = {
   list: GET("/api/collection"),
+  listItems: GET("/api/collection/:collectionId/items"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
   // Temporary route for getting things not in a collection
@@ -440,6 +446,7 @@ export const SessionApi = {
   create: POST("/api/session"),
   createWithGoogleAuth: POST("/api/session/google_auth"),
   delete: DELETE("/api/session"),
+  slo: POST("/auth/sso/logout"),
   properties: GET("/api/session/properties"),
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
@@ -484,6 +491,7 @@ export const SetupApi = {
   validate_db: POST("/api/setup/validate"),
   admin_checklist: GET("/api/setup/admin_checklist"),
   user_defaults: GET("/api/setup/user_defaults"),
+  validate_token: GET("/api/setup/token-check"),
 };
 
 export const UserApi = {
@@ -531,14 +539,17 @@ export const TaskApi = {
 export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
+
 export function setPublicDashboardEndpoints() {
   setDashboardEndpoints("/api/public");
 }
+
 export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
     setCardEndpoints("/api/embed/card/:token", { token });
   }
 }
+
 export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
     setDashboardEndpoints("/api/embed");

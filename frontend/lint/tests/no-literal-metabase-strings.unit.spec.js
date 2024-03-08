@@ -1,4 +1,5 @@
 import { RuleTester } from "eslint";
+
 import noLiteralMetabaseString from "../eslint-rules/no-literal-metabase-strings";
 
 const ruleTester = new RuleTester({

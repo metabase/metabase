@@ -1,18 +1,18 @@
-import { useMemo } from "react";
-import _ from "underscore";
 import type { Location } from "history";
+import { useMemo } from "react";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
+import _ from "underscore";
 
+import { getAdminPaths } from "metabase/admin/app/selectors";
 import Database from "metabase/entities/databases";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
-import { getAdminPaths } from "metabase/admin/app/selectors";
-
 import type { User } from "metabase-types/api";
 import type { AdminPath, State } from "metabase-types/store";
 
 import { AdminNavbar } from "../components/AdminNavbar";
+
 import MainNavbar from "./MainNavbar";
 
 type NavbarProps = {

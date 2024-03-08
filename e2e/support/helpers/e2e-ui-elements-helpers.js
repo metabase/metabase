@@ -1,6 +1,6 @@
 // various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export const POPOVER_ELEMENT =
-  ".popover[data-state~='visible'],[data-position]";
+  ".popover[data-state~='visible'],[data-position]:not(.emotion-HoverCard-dropdown)";
 
 export function popover() {
   cy.get(POPOVER_ELEMENT).should("be.visible");
@@ -12,7 +12,7 @@ export function mantinePopover() {
   return cy.get(MANTINE_POPOVER).should("be.visible");
 }
 
-const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']";
+const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
   cy.get(HOVERCARD_ELEMENT).should("be.visible");
@@ -31,6 +31,14 @@ export function modal() {
   const LEGACY_MODAL_SELECTOR = ".Modal";
   const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
+}
+
+export function entityPickerModal() {
+  return cy.findByTestId("entity-picker-modal");
+}
+
+export function collectionOnTheGoModal() {
+  return cy.findByTestId("create-collection-on-the-go");
 }
 
 export function sidebar() {
@@ -94,26 +102,33 @@ export function clearFilterWidget(index = 0) {
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  return filterWidget().eq(index).icon("refresh").click();
+  return filterWidget().eq(index).icon("time_history").click();
 }
 
-export function setFilterWidgetValue(value, targetPlaceholder, index = 0) {
-  filterWidget().eq(index).click();
+export function setFilterWidgetValue(
+  value,
+  targetPlaceholder,
+  { buttonLabel = "Update filter" } = {},
+) {
+  filterWidget().eq(0).click();
   popover().within(() => {
     cy.icon("close").click();
     if (value) {
       cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
     }
-    cy.button("Update filter").click();
+    cy.button(buttonLabel).click();
   });
 }
 
-export function toggleFilterWidgetValues(values = [], index = 0) {
-  filterWidget().eq(index).click();
+export function toggleFilterWidgetValues(
+  values = [],
+  { buttonLabel = "Add filter" } = {},
+) {
+  filterWidget().eq(0).click();
 
   popover().within(() => {
     values.forEach(value => cy.findByText(value).click());
-    cy.button("Update filter").click();
+    cy.button(buttonLabel).click();
   });
 }
 
@@ -151,6 +166,34 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mousemove", 5, 5, { force: true })
     .trigger("mousemove", 0, distance * 50, { force: true })
     .trigger("mouseup", 0, distance * 50, { force: true });
+};
+
+export const moveDnDKitColumnVertical = (column, distance) => {
+  column
+    .trigger("pointerdown", 0, 0, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", 5, 5, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", 0, distance, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointerup", 0, distance, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
 };
 
 export const queryBuilderMain = () => {

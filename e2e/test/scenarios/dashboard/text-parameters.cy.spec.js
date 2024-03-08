@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   editDashboard,
@@ -10,7 +11,6 @@ import {
   addHeadingWhileEditing,
   popover,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -44,7 +44,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     saveDashboard();
 
     filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type(`1{enter}`);
+    cy.findByPlaceholderText("Enter a number").type("1{enter}");
     cy.button("Add filter").click();
     getDashboardCard(0).findByText("Variable: 1").should("exist");
     getDashboardCard(1).findByText("Variable: 1").should("exist");
@@ -86,7 +86,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     saveDashboard();
 
     filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type(`1{enter}`);
+    cy.findByPlaceholderText("Enter a number").type("1{enter}");
     cy.button("Add filter").click();
 
     // view mode
@@ -105,7 +105,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    cy.request("PUT", `/api/setting/site-locale`, { value: "fr" });
+    cy.request("PUT", "/api/setting/site-locale", { value: "fr" });
     cy.reload();
 
     editDashboard();
@@ -145,7 +145,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    cy.request("PUT", `/api/setting/site-locale`, { value: "fr" });
+    cy.request("PUT", "/api/setting/site-locale", { value: "fr" });
 
     // Create dashboard with a single date parameter, and a single question
     cy.createQuestionAndDashboard({
@@ -199,7 +199,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
         .click();
       popover().within(() => {
         cy.findByRole("textbox").click().clear().type("07/19/2023").blur();
-        cy.button("Update filter").click();
+        cy.button("Add filter").click();
       });
 
       // Question should be filtered appropriately

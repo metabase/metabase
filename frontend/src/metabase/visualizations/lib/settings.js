@@ -1,20 +1,19 @@
 import { getIn } from "icepick";
-
 import _ from "underscore";
+
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
+import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
+import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
+import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
+import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
 import { ChartSettingInputNumeric } from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
 import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
+import ChartSettingSegmentedControl from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle";
-import ChartSettingSegmentedControl from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
-import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
-import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
-import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
-import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
-import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const WIDGETS = {
   input: ChartSettingInput,

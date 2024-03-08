@@ -6,13 +6,16 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.binning :as binning]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (deftest ^:parallel filter->field-map-test
@@ -54,6 +57,11 @@
 
     {1 [[:> [:field 1 nil] 200] [:< [:field 1 nil] 800] [:between [:field 1 nil] 600 700]]}
     {:min-value 600, :max-value 700}))
+
+(deftest ^:parallel extract-bounds-field-name-test
+  (testing "Should be able to adjust min max based on filters against named field refs. (#26202)"
+    (is (= {:min-value 1, :max-value 10}
+           (#'binning/extract-bounds "foo" test-min-max-fingerprint {"foo" [[:> [:field 1 nil] 1] [:< [:field 1 nil] 10]]})))))
 
 ;; Try an end-to-end test of the middleware
 (defn- mock-field-metadata-provider []
@@ -185,7 +193,7 @@
                                              :condition    [:= $product-id &Products.products.id]
                                              :fields       [&Products.products.price]}]
                                    :fields [[:field %id {:base-type :type/BigInteger}]]})
-              source-metadata   (qp/query->expected-cols source-card-query)
+              source-metadata   (qp.preprocess/query->expected-cols source-card-query)
               query             (-> (lib/query meta/metadata-provider source-card-query)
                                     lib/append-stage
                                     (lib/aggregate (lib/count)))
@@ -208,3 +216,35 @@
                                                     :max-value -60.0
                                                     :num-bins  6}}]]}}
                   (binning/update-binning-strategy legacy-query))))))))
+
+(deftest ^:parallel match-named-field-ref-filter
+  (testing "fields referencing source expressions can still properly update binning strategies (#26202)"
+    (mt/with-temp [:model/Card card (-> orders
+                                        (mt/mbql-query {:fields [$total [:expression "foo"]]
+                                                        :expressions {"foo" [:+ $total 0]}})
+                                        qp.test-util/card-with-source-metadata-for-query
+                                        (assoc-in [:result_metadata 1 :semantic_type] :type/Quantity))]
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            query (lib/query mp (lib.metadata/card mp (:id card)))
+            expr-col (m/find-first #(= (:name %) "foo") (lib/breakoutable-columns query))
+            _ (is (some? expr-col))
+            binning-strategy (m/find-first #(= (:display-name %) "10 bins")
+                                           (lib/available-binning-strategies query expr-col))
+            _ (is (some? binning-strategy))
+            query (-> query
+                      (lib/breakout (lib/with-binning expr-col binning-strategy)))]
+        (qp.store/with-metadata-provider mp
+          (testing "without filter"
+            (is (=? {:query {:breakout [[:field
+                                         "foo"
+                                         {:base-type :type/Float,
+                                          :binning {:strategy :num-bins, :num-bins 10, :min-value -50.0, :max-value 175.0, :bin-width 25.0}}]]}}
+                    (binning/update-binning-strategy (-> (lib.convert/->legacy-MBQL query)
+                                                         (assoc-in [:query :source-metadata] (:result_metadata card)))))))
+          (testing "with filter"
+            (is (=? {:query {:breakout [[:field
+                                         "foo"
+                                         {:base-type :type/Float,
+                                          :binning {:strategy :num-bins, :num-bins 10, :min-value 20.0, :max-value 40.0, :bin-width 2.0}}]]}}
+                    (binning/update-binning-strategy (-> (lib.convert/->legacy-MBQL (lib/filter query (lib/between expr-col 20 40)))
+                                                         (assoc-in [:query :source-metadata] (:result_metadata card))))))))))))

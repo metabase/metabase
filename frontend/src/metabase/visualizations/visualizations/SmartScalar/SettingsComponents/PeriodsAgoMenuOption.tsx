@@ -1,11 +1,13 @@
-import { useCallback, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
+
 import { Group, Text, Box } from "metabase/ui";
-import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
-import { NumberInputStyled } from "./PeriodsAgoMenuOption.styled";
+import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
+
 import { MenuItemStyled } from "./MenuItem.styled";
+import { NumberInputStyled } from "./PeriodsAgoMenuOption.styled";
 
 type PeriodsAgoMenuOptionProps = {
   "aria-selected": boolean;

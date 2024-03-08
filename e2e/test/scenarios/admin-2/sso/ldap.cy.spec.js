@@ -12,6 +12,7 @@ import {
   crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
 } from "./shared/group-mappings-widget";
+import { getUserProvisioningInput, getSuccessUi } from "./shared/helpers";
 
 describe(
   "scenarios > admin > settings > SSO > LDAP",
@@ -62,6 +63,17 @@ describe(
       popover().findByText("Resume").click();
       cy.wait("@updateSetting");
       getLdapCard().findByText("Active").should("exist");
+    });
+
+    it("should allow the user to enable/disable user provisioning", () => {
+      setupLdap();
+      cy.visit("/admin/settings/authentication/ldap");
+
+      getUserProvisioningInput().click();
+      cy.button("Save changes").click();
+      cy.wait("@updateLdapSettings");
+
+      getSuccessUi().should("exist");
     });
 
     it("should allow to reset ldap settings", () => {

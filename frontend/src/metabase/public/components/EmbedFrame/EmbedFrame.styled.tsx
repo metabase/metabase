@@ -1,6 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   breakpointMinSmall,
   breakpointMinLarge,
@@ -8,7 +10,6 @@ import {
   space,
   breakpointMaxSmall,
 } from "metabase/styled-components/theme";
-import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 export const Root = styled.div<{
   hasScroll: boolean;
@@ -36,13 +37,11 @@ export const Root = styled.div<{
     `}
 `;
 
-export const ContentContainer = styled.div<{ hasScroll: boolean }>`
+export const ContentContainer = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
   position: relative;
-
-  overflow-y: ${props => props.hasScroll && "auto"};
 `;
 
 export const Header = styled.header`
@@ -103,9 +102,54 @@ const footerVariantStyles = {
   `,
 };
 
-export const ParametersWidgetContainer = styled(FullWidthContainer)`
+function getParameterPanelBackgroundColor(theme?: string) {
+  if (theme === "night") {
+    return color("bg-black");
+  }
+  if (theme === "transparent") {
+    return "transparent";
+  }
+  return color("white");
+}
+
+function getParameterPanelBorderColor(theme?: string) {
+  if (theme === "night") {
+    return color("bg-dark");
+  }
+  if (theme === "transparent") {
+    return "transparent";
+  }
+  return color("border");
+}
+
+export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  embedFrameTheme?: string;
+  hasScroll: boolean;
+  isSticky: boolean;
+}>`
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
+
+  ${props =>
+    props.hasScroll &&
+    css`
+      border-bottom: 1px solid
+        ${getParameterPanelBorderColor(props.embedFrameTheme)};
+    `}
+
+  ${props =>
+    props.isSticky &&
+    css`
+      position: sticky;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 3;
+
+      background-color: ${getParameterPanelBackgroundColor(
+        props.embedFrameTheme,
+      )};
+    `}
 `;
 
 export const Footer = styled.footer<{ variant: FooterVariant }>`

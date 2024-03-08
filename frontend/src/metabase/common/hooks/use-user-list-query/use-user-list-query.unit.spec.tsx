@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import {
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
@@ -9,8 +10,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockUserListResult } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { createMockUserListResult } from "metabase-types/api/mocks";
 
 import { useUserListQuery } from "./use-user-list-query";
 

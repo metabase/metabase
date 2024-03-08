@@ -1,8 +1,9 @@
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import type { TimelineListModalProps } from "./TimelineListModal";
 import TimelineListModal from "./TimelineListModal";
 

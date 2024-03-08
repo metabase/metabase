@@ -86,5 +86,6 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+initially_published_at: null
 tabs: []
 width: full

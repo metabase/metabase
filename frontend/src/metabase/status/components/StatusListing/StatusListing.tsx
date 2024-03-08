@@ -1,13 +1,13 @@
-import { t } from "ttag";
 import { useBeforeUnload } from "react-use";
+import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-
-import { getUserIsAdmin, getUser } from "metabase/selectors/user";
 import { hasActiveUploads } from "metabase/redux/uploads";
+import { getUserIsAdmin, getUser } from "metabase/selectors/user";
 
 import DatabaseStatus from "../../containers/DatabaseStatus";
 import { FileUploadStatus } from "../FileUploadStatus";
+
 import { StatusListingRoot } from "./StatusListing.styled";
 
 const StatusListing = () => {

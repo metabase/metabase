@@ -1,18 +1,17 @@
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
-
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+
 import {
   FullScreenButtonIcon,
   NightModeButtonIcon,
   RefreshWidgetButton,
 } from "./DashboardActions.styled";
 
-export const getDashboardActions = (
-  self,
-  {
+export const getDashboardActions = props => {
+  const {
     dashboard,
     isAdmin,
     canManageSubscriptions,
@@ -29,8 +28,7 @@ export const getDashboardActions = (
     onSharingClick,
     onFullscreenChange,
     hasNightModeToggle,
-  },
-) => {
+  } = props;
   const buttons = [];
 
   const isLoaded = !!dashboard;

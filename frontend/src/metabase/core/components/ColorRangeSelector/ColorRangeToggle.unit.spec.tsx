@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+
 import { getStatusColorRanges } from "metabase/lib/colors/groups";
 
 import ColorRangeToggle, { getColorRangeLabel } from "./ColorRangeToggle";

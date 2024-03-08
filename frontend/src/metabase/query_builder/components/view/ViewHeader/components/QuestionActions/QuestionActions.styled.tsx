@@ -1,5 +1,7 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
+
 import DatasetMetadataStrengthIndicator from "../../../sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
 
 export const QuestionActionsDivider = styled.div`

@@ -1,5 +1,5 @@
-import { delay } from "metabase/lib/promise";
 import title from "metabase/hoc/Title";
+import { delay } from "metabase/lib/promise";
 
 const SECONDS_UNTIL_DISPLAY = 10;
 

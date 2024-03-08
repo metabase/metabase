@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import { duration } from "metabase/lib/formatting";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import { duration } from "metabase/lib/formatting";
+
 import RunButton from "./RunButton";
 
 const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds

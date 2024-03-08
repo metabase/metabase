@@ -9,8 +9,8 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
@@ -153,7 +153,7 @@
         aggregate (.aggregate coll session pipe)]
     (init-aggregate! aggregate timeout-ms)))
 
-(defn- reducible-rows [context ^MongoCursor cursor first-row post-process]
+(defn- reducible-rows [^MongoCursor cursor first-row post-process]
   {:pre [(fn? post-process)]}
   (let [has-returned-first-row? (volatile! false)]
     (letfn [(first-row-thunk []
@@ -166,9 +166,9 @@
                 (do (vreset! has-returned-first-row? true)
                     (first-row-thunk))
                 (remaining-rows-thunk)))]
-      (qp.reducible/reducible-rows row-thunk (qp.context/canceled-chan context)))))
+      (qp.reducible/reducible-rows row-thunk qp.pipeline/*canceled-chan*))))
 
-(defn- reduce-results [native-query query context ^MongoCursor cursor respond]
+(defn- reduce-results [native-query query ^MongoCursor cursor respond]
   (let [first-row (when (.hasNext cursor)
                     (.next cursor))
         {row-col-names :row
@@ -177,11 +177,11 @@
     (respond (result-metadata unescaped-col-names)
              (if-not first-row
                []
-               (reducible-rows context cursor first-row (post-process-row row-col-names))))))
+               (reducible-rows cursor first-row (post-process-row row-col-names))))))
 
 (defn execute-reducible-query
   "Process and run a native MongoDB query. This function expects initialized [[mongo.connection/*mongo-client*]]."
-  [{{query :query collection-name :collection :as native-query} :native} context respond]
+  [{{query :query collection-name :collection :as native-query} :native} respond]
   {:pre [(string? collection-name) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
@@ -190,13 +190,13 @@
         client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
     (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
       (a/go
-        (when (a/<! (qp.context/canceled-chan context))
+        (when (a/<! qp.pipeline/*canceled-chan*)
           (mongo.util/kill-session! client-database session)))
       (let [aggregate ^AggregateIterable (*aggregate* client-database
                                                       collection-name
                                                       session
                                                       query
-                                                      (qp.context/timeout context))]
+                                                      qp.pipeline/*query-timeout-ms*)]
         (with-open [^MongoCursor cursor (try (.cursor aggregate)
                                              (catch Throwable e
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
@@ -204,4 +204,4 @@
                                                                 :native native-query
                                                                 :type   qp.error-type/invalid-query}
                                                                e))))]
-          (reduce-results native-query query context cursor respond))))))
+          (reduce-results native-query query cursor respond))))))

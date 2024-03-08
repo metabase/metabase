@@ -294,7 +294,7 @@
        [:model/Dashboard     dashboard {:name "A Dashboard"}
         :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)}
         :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}
-        :model/Card          card      {:name "A Card" :dataset true}
+        :model/Card          card      {:name "A Card" :type :model}
         Action               action    {:model_id (:id card)
                                         :type     :implicit
                                         :name     "An action"}]

@@ -7,11 +7,11 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { ActionsApi } from "metabase/services";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
-import { ActionsApi } from "metabase/services";
 
 import type { ActionExecuteModalProps } from "./ActionExecuteModal";
 import { ActionExecuteModal } from "./ActionExecuteModal";

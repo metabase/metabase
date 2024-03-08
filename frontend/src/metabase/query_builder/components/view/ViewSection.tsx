@@ -1,5 +1,7 @@
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+
 import Subhead from "metabase/components/type/Subhead";
+
 import { ViewSectionRoot } from "./ViewSection.styled";
 
 interface ViewSectionProps extends HTMLAttributes<HTMLDivElement> {

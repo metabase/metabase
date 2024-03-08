@@ -1,6 +1,7 @@
-import { createMockDatabase } from "metabase-types/api/mocks";
-import type { DatabaseAccessPermissions } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
+import type { DatabaseAccessPermissions } from "metabase-types/api";
+import { createMockDatabase } from "metabase-types/api/mocks";
+
 import { updateNativePermission } from "./graph";
 const groupId = 10;
 const databaseId = 20;

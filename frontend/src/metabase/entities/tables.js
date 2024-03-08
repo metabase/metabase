@@ -1,31 +1,29 @@
-import { t } from "ttag";
-import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
 import { updateIn } from "icepick";
+import { t } from "ttag";
+import _ from "underscore";
+
+import Questions from "metabase/entities/questions";
+import Metrics from "metabase/entities/metrics"; // eslint-disable-line import/order -- circular dependencies
+import Segments from "metabase/entities/segments";
+import { PUT } from "metabase/lib/api";
+import { color } from "metabase/lib/colors";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
-  createThunkAction,
   compose,
+  createThunkAction,
   withAction,
   withCachedDataAndRequestState,
+  withForceReload,
   withNormalize,
 } from "metabase/lib/redux";
-
 import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
-
-import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
-
-import Metrics from "metabase/entities/metrics";
-import Segments from "metabase/entities/segments";
-import Questions from "metabase/entities/questions";
-
-import { PUT } from "metabase/lib/api";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+import { MetabaseApi } from "metabase/services";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
@@ -84,6 +82,13 @@ const Tables = createEntity({
     // loads `query_metadata` for a single table
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
+      withForceReload((state, { id }) => {
+        // if there is a virtual table without fields,
+        // it might be due to a question with a long-running request that hasn't finished yet.
+        // in this case we should reload the metadata until we get the fields
+        const table = Tables.selectors.getObject(state, { entityId: id });
+        return table?.fields?.length === 0;
+      }),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],

@@ -1,12 +1,13 @@
 import { screen } from "@testing-library/react";
 
-import { renderWithProviders } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
-import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 import {
   setupCardEndpoints,
   setupUserEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders } from "__support__/ui";
+import { createMockCard, createMockUser } from "metabase-types/api/mocks";
+
 import { EntityName } from "./EntityName";
 
 describe("EntityName", () => {

@@ -1,11 +1,10 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { createAsyncThunk } from "metabase/lib/redux";
 
-import { GET } from "metabase/lib/api";
+import { createAsyncThunk } from "metabase/lib/redux";
+import { AuditApi } from "metabase-enterprise/services";
+
 import { isAuditInfoComplete } from "./selectors";
 import type { AuditInfoState } from "./types/state";
-
-const getAuditInfo = GET("/api/ee/audit-app/user/audit-info");
 
 const LOAD_AUDIT_INFO = "metabase-enterprise/audit/FETCH_AUDIT_INFO";
 
@@ -15,7 +14,7 @@ export const loadInfo = createAsyncThunk(
     const state = getState() as AuditInfoState;
     const isComplete = isAuditInfoComplete(state);
     if (!isComplete) {
-      const data = await getAuditInfo();
+      const data = await AuditApi.getAuditInfo();
       return data;
     }
   },

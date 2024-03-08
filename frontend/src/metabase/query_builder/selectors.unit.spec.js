@@ -1,4 +1,6 @@
 import { assoc, assocIn } from "icepick";
+
+import { createMockEntitiesState } from "__support__/store";
 import {
   getQuestion,
   getIsResultDirty,
@@ -6,7 +8,7 @@ import {
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
-import { createMockEntitiesState } from "__support__/store";
+import Question from "metabase-lib/Question";
 import { createMockTable } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -20,7 +22,6 @@ import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
 } from "metabase-types/store/mocks";
-import Question from "metabase-lib/Question";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return createMockState({
@@ -75,7 +76,7 @@ describe("getQuestion", () => {
   it("should return composed dataset when dataset is open", () => {
     const card = {
       id: 5,
-      dataset: true,
+      type: "model",
       dataset_query: {
         database: 1,
         type: "query",
@@ -95,7 +96,7 @@ describe("getQuestion", () => {
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
     const card = {
       id: 5,
-      dataset: true,
+      type: "model",
       dataset_query: {
         database: 1,
         type: "query",
@@ -313,7 +314,7 @@ describe("getIsResultDirty", () => {
     function getDataset(query) {
       return getBaseCard({
         id: 1,
-        dataset: true,
+        type: "model",
         dataset_query: { type: "query", query },
       });
     }

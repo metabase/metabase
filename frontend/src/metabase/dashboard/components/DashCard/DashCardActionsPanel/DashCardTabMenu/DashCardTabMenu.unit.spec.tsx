@@ -1,4 +1,7 @@
 import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { getDefaultTab } from "metabase/dashboard/actions";
 import type { DashboardTab } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -8,8 +11,7 @@ import {
   createMockDashboardState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { getDefaultTab } from "metabase/dashboard/actions";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+
 import { DashCardTabMenu } from "./DashCardTabMenu";
 
 const DASHCARD = createMockDashboardCard();

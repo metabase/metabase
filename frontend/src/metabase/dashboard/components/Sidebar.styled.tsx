@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 
 export const SidebarAside = styled.aside<{ $width: number }>`
@@ -17,8 +18,10 @@ export const ChildrenContainer = styled.div`
   overflow-y: auto;
 `;
 
-export const ButtonContainer = styled.div`
+export const ButtonContainer = styled.div<{ spaceBetween?: boolean }>`
   display: flex;
+  justify-content: ${props =>
+    props.spaceBetween ? "space-between" : "flex-start"};
   align-items: center;
   gap: 20px;
   padding: 12px 32px;

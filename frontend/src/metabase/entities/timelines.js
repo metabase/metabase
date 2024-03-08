@@ -1,11 +1,13 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
+import { t } from "ttag";
 import _ from "underscore";
-import { TimelineSchema } from "metabase/schema";
-import { TimelineApi, TimelineEventApi } from "metabase/services";
+
+import { canonicalCollectionId } from "metabase/collections/utils";
 import { createEntity, undo } from "metabase/lib/entities";
 import { getDefaultTimeline, getTimelineName } from "metabase/lib/timelines";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { TimelineSchema } from "metabase/schema";
+import { TimelineApi, TimelineEventApi } from "metabase/services";
+
 import TimelineEvents from "./timeline-events";
 
 const Timelines = createEntity({

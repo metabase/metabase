@@ -48,7 +48,16 @@
                     (is (= false
                            (v2.entity-ids/seed-entity-ids!))))
                   (is (= nil
-                         (entity-id))))))))))))
+                         (entity-id)))))))
+          (testing "Cannot create entity ID error"
+            (mt/with-temp [Collection c3 {:name      "error collection"
+                                          :entity_id nil}]
+              ;; update table directly so checks for collection existence don't trigger
+              (t2/update! :collection (:id c3) {:location "/13371338/"})
+              (is (=? [[:error Throwable #"Error updating entity ID for \w+ \d+:.*is an orphan.*\{:parent-id \d+\}"]]
+                      (mt/with-log-messages-for-level ['metabase-enterprise :error]
+                        (is (= false
+                               (v2.entity-ids/seed-entity-ids!)))))))))))))
 
 (deftest drop-entity-ids-test
   (mt/with-empty-h2-app-db

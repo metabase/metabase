@@ -1,3 +1,4 @@
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type {
   ClickBehavior,
   Collection,
@@ -7,11 +8,14 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 
-import type { EmbeddingParameters } from "metabase/public/lib/types";
-import type { ActionDisplayType, WritebackAction } from "./actions";
-import type { SearchModelType } from "./search";
+import type {
+  ActionDisplayType,
+  WritebackAction,
+  WritebackActionId,
+} from "./actions";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
+import type { SearchModelType } from "./search";
 
 // x-ray dashboard have string ids
 export type DashboardId = number | string;
@@ -20,6 +24,8 @@ export type DashboardCard =
   | ActionDashboardCard
   | QuestionDashboardCard
   | VirtualDashboardCard;
+
+export type DashboardWidth = "full" | "fixed";
 
 export interface Dashboard {
   id: DashboardId;
@@ -48,7 +54,7 @@ export interface Dashboard {
   public_uuid: string | null;
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
-  width: "full" | "fixed";
+  width: DashboardWidth;
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
@@ -63,6 +69,11 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
+export type DashCardVisualizationSettings = {
+  [key: string]: unknown;
+  virtual_card?: VirtualCard;
+};
+
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   id: DashCardId;
   dashboard_id: DashboardId;
@@ -71,10 +82,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   card: Card | VirtualCard;
   collection_authority_level?: CollectionAuthorityLevel;
   entity_id: string;
-  visualization_settings?: {
-    [key: string]: unknown;
-    virtual_card?: VirtualCard;
-  };
+  visualization_settings?: DashCardVisualizationSettings;
   justAdded?: boolean;
   created_at: string;
   updated_at: string;
@@ -100,13 +108,13 @@ export type ActionDashboardCard = Omit<
   BaseDashboardCard,
   "parameter_mappings"
 > & {
+  action_id: WritebackActionId;
   action?: WritebackAction;
   card_id: CardId | null; // model card id for the associated action
   card: Card;
 
   parameter_mappings?: ActionParametersMapping[] | null;
-  visualization_settings: {
-    [key: string]: unknown;
+  visualization_settings: DashCardVisualizationSettings & {
     "button.label"?: string;
     click_behavior?: ClickBehavior;
     actionDisplayType?: ActionDisplayType;

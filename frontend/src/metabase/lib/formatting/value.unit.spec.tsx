@@ -1,8 +1,8 @@
 import { screen, render } from "__support__/ui";
 import { createMockColumn } from "metabase-types/api/mocks";
-import { formatValue } from "./value";
 
 import type { OptionsType } from "./types";
+import { formatValue } from "./value";
 
 const setup = (value: any, overrides: Partial<OptionsType> = {}) => {
   const column = createMockColumn({

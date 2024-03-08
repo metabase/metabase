@@ -1,10 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
+
 import Fields from "metabase/entities/fields";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import type { FieldFormattingSettings as FieldSettings } from "metabase-types/api";
 import type Field from "metabase-lib/metadata/Field";
+import type { FieldFormattingSettings as FieldSettings } from "metabase-types/api";
+
 import MetadataSection from "../MetadataSection";
 
 interface OwnProps {

@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import { memo } from "react";
 import cx from "classnames";
+import { memo } from "react";
 
-import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
+import { Icon } from "metabase/ui";
 
 const TitleAndDescription = ({ title, description, className }) => (
   <div className={cx("flex align-center", className)}>

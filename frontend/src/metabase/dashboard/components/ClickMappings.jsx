@@ -1,26 +1,25 @@
 /* eslint-disable react/prop-types */
+import { getIn, assocIn, dissocIn } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
-import _ from "underscore";
 import { t } from "ttag";
-import { getIn, assocIn, dissocIn } from "icepick";
+import _ from "underscore";
 
-import { Icon } from "metabase/ui";
 import Select from "metabase/core/components/Select";
-
-import * as Lib from "metabase-lib";
-import MetabaseSettings from "metabase/lib/settings";
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
-import { GTAPApi } from "metabase/services";
-
-import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
+import MetabaseSettings from "metabase/lib/settings";
+import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import { GTAPApi } from "metabase/services";
+import { Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
 import {
   getTargetsForDashboard,
   getTargetsForQuestion,
 } from "metabase-lib/parameters/utils/click-behavior";
-import Question from "metabase-lib/Question";
+
 import { TargetTrigger } from "./ClickMappings.styled";
 
 class ClickMappings extends Component {

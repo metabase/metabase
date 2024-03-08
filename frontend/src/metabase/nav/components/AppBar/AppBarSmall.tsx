@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
+
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import { ProfileLink } from "../ProfileLink";
+
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import { AppBarToggle } from "./AppBarToggle";
+import { ProfileLink } from "../ProfileLink";
+
 import { AppBarLogo } from "./AppBarLogo";
 import {
   AppBarHeader,
@@ -15,6 +17,7 @@ import {
   AppBarSubheader,
   AppBarToggleContainer,
 } from "./AppBarSmall.styled";
+import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarSmallProps {
   isNavBarOpen?: boolean;

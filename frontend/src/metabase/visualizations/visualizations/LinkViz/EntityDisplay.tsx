@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
+import { Icon } from "metabase/ui";
 
 import {
   EllipsifiedEntityContainer,

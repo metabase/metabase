@@ -1,12 +1,10 @@
-import _ from "underscore";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t, ngettext, msgid } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
 import { numberToWord, compareVersions } from "metabase/lib/utils";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
-
 import type {
   PasswordComplexity,
   SettingKey,
@@ -209,13 +207,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "search-typeahead-enabled")
-   */
-  searchTypeaheadEnabled() {
-    return this.get("search-typeahead-enabled");
-  }
-
-  /**
    * @deprecated use getSetting(state, "anon-tracking-enabled")
    */
   trackingEnabled() {
@@ -347,10 +338,6 @@ class MetabaseSettings {
   latestVersion() {
     const { latest } = this.versionInfo();
     return latest && latest.version;
-  }
-
-  isEnterprise() {
-    return false;
   }
 
   /**

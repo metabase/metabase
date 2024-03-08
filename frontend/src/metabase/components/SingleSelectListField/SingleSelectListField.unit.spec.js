@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
 import ValueComponent from "metabase/components/Value";
+
 import SingleSelectListField from ".";
 
 const value = [];

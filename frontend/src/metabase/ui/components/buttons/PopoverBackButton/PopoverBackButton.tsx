@@ -1,6 +1,8 @@
 import type { ButtonHTMLAttributes } from "react";
 import { t } from "ttag";
+
 import { Icon } from "metabase/ui";
+
 import type { BoxProps } from "../../utils";
 import { Button } from "../Button";
 

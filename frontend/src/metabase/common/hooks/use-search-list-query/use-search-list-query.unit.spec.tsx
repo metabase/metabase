@@ -1,18 +1,20 @@
-import _ from "underscore";
 import { within } from "@testing-library/react";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import {
-  createMockCollectionItem,
-  createMockSearchResult,
-  createMockSearchResults,
-} from "metabase-types/api/mocks";
+import _ from "underscore";
+
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { checkNotNull } from "metabase/lib/types";
+import {
+  createMockCollectionItem,
+  createMockSearchResult,
+  createMockSearchResults,
+} from "metabase-types/api/mocks";
+
 import { useSearchListQuery } from "./use-search-list-query";
 
 const TEST_ITEM = createMockCollectionItem();

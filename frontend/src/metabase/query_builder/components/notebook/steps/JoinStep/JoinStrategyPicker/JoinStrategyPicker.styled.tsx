@@ -1,7 +1,13 @@
 import styled from "@emotion/styled";
-import { Icon } from "metabase/ui";
+
+import SelectList from "metabase/components/SelectList";
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const JoinStrategyIcon = styled(Icon)`
   color: ${color("brand")};
+`;
+
+export const JoinStrategyList = styled(SelectList)`
+  padding: 0.5rem;
 `;

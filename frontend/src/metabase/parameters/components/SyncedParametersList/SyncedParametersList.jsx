@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 
-import ParametersList from "metabase/parameters/components/ParametersList";
 import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
+import ParametersList from "metabase/parameters/components/ParametersList";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
 const propTypes = {

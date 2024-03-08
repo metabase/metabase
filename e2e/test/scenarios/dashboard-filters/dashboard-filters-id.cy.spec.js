@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -8,7 +9,6 @@ import {
   checkFilterLabelAndValue,
   visitDashboard,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -94,7 +94,10 @@ describe("scenarios > dashboard > filters > ID", () => {
   describe("should work on the implicit join", () => {
     beforeEach(() => {
       popover().within(() => {
-        cy.findAllByText("ID").last().click();
+        // There are three of these, and the order is fixed:
+        // "own" column first, then implicit join on People and User alphabetically.
+        // We select index 1 to get the Product.ID.
+        cy.findAllByText("ID").eq(1).click();
       });
     });
 

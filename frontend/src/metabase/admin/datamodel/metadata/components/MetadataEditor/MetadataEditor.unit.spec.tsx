@@ -1,6 +1,16 @@
-import { Link, Route } from "react-router";
-import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { Link, Route } from "react-router";
+
+import {
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -18,15 +28,7 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+
 import { getMetadataRoutes } from "../../routes";
 
 const ORDERS_ID_FIELD = createOrdersIdField();

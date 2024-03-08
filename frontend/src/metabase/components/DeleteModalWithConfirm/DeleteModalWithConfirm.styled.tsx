@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import CheckBox from "metabase/core/components/CheckBox";
 
+import CheckBox from "metabase/core/components/CheckBox";
 import { color } from "metabase/lib/colors";
 
 export const CheckboxLabel = styled(CheckBox.Label)`

@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
+
 import {
   createMockEngine,
   createMockEngineSource,
 } from "metabase-types/api/mocks";
+
 import DatabaseEngineWarning from "./DatabaseEngineWarning";
 
 describe("DatabaseEngineWarning", () => {

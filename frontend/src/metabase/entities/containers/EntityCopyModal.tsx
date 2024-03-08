@@ -1,10 +1,10 @@
 import { dissoc } from "icepick";
 import { t } from "ttag";
 
-import EntityForm from "metabase/entities/containers/EntityForm";
+import { useCollectionListQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
-import { useCollectionListQuery } from "metabase/common/hooks";
+import EntityForm from "metabase/entities/containers/EntityForm";
 import { Flex, Loader } from "metabase/ui";
 
 interface EntityCopyModalProps {

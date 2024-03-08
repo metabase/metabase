@@ -1,10 +1,11 @@
 /* eslint-disable react/prop-types */
+import { createSelector } from "@reduxjs/toolkit";
 import { Component } from "react";
 import { connect } from "react-redux";
-import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
 import entityType from "./EntityType";
 
 // props that shouldn't be passed to children in order to properly stack

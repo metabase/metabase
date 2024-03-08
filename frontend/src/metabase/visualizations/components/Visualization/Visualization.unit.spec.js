@@ -1,12 +1,10 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
-
-import { delay } from "metabase/lib/promise";
-import { createMockCard } from "metabase-types/api/mocks";
-
-import { color } from "metabase/lib/colors";
-import Visualization from "metabase/visualizations/components/Visualization";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { color } from "metabase/lib/colors";
+import { delay } from "metabase/lib/promise";
+import Visualization from "metabase/visualizations/components/Visualization";
+import registerVisualizations from "metabase/visualizations/register";
+import { createMockCard } from "metabase-types/api/mocks";
 
 registerVisualizations();
 

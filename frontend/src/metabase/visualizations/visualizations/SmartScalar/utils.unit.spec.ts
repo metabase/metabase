@@ -1,6 +1,6 @@
+import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import * as measureText from "metabase/lib/measure-text";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
-
 import type {
   DatasetColumn,
   Insight,
@@ -15,7 +15,7 @@ import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
-import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
+
 import { COMPARISON_TYPES } from "./constants";
 import {
   COMPARISON_SELECTOR_OPTIONS,

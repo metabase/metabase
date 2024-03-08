@@ -1,14 +1,15 @@
+import userEvent from "@testing-library/user-event";
 import type { ComponentPropsWithoutRef } from "react";
 import _ from "underscore";
-import userEvent from "@testing-library/user-event";
-import { render, screen, getIcon, queryIcon } from "__support__/ui";
 
+import { render, screen, getIcon, queryIcon } from "__support__/ui";
 import type { Card, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
 } from "metabase-types/api/mocks";
+
 import ChartCaption from "./ChartCaption";
 
 type Props = ComponentPropsWithoutRef<typeof ChartCaption>;

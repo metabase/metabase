@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

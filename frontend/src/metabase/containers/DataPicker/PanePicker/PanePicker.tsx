@@ -1,10 +1,9 @@
 import type * as React from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
 import { Tree } from "metabase/components/tree";
-
 import type { ITreeNodeItem } from "metabase/components/tree/types";
+import { Icon } from "metabase/ui";
 
 import {
   Root,

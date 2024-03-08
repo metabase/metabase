@@ -18,11 +18,10 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
+   [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -49,38 +48,6 @@
 (defmethod driver/describe-table :redshift
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
-
-;; The Postgres JDBC .getImportedKeys method doesn't work for Redshift, and we're not allowed to access
-;; information_schema.constraint_column_usage, so we'll have to use this custom query instead
-;;
-;; See also: [Related Postgres JDBC driver issue on GitHub](https://github.com/pgjdbc/pgjdbc/issues/79)
-;;           [How to access the equivalent of information_schema.constraint_column_usage in Redshift](https://forums.aws.amazon.com/thread.jspa?threadID=133514)
-(def ^:private fk-query
-  "SELECT source_column.attname AS \"fk-column-name\",
-          dest_table.relname    AS \"dest-table-name\",
-          dest_table_ns.nspname AS \"dest-table-schema\",
-          dest_column.attname   AS \"dest-column-name\"
-   FROM pg_constraint c
-          JOIN pg_namespace n             ON c.connamespace          = n.oid
-          JOIN pg_class source_table      ON c.conrelid              = source_table.oid
-          JOIN pg_attribute source_column ON c.conrelid              = source_column.attrelid
-          JOIN pg_class dest_table        ON c.confrelid             = dest_table.oid
-          JOIN pg_namespace dest_table_ns ON dest_table.relnamespace = dest_table_ns.oid
-          JOIN pg_attribute dest_column   ON c.confrelid             = dest_column.attrelid
-   WHERE c.contype                 = 'f'::char
-          AND source_table.relname = ?
-          AND n.nspname            = ?
-          AND source_column.attnum = ANY(c.conkey)
-          AND dest_column.attnum   = ANY(c.confkey)")
-
-(defmethod driver/describe-table-fks :redshift
-  [_ database table]
-  (set (for [fk (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-                            [fk-query (:name table) (:schema table)])]
-         {:fk-column-name   (:fk-column-name fk)
-          :dest-table       {:name   (:dest-table-name fk)
-                             :schema (:dest-table-schema fk)}
-          :dest-column-name (:dest-column-name fk)})))
 
 (defmethod driver/db-start-of-week :redshift
   [_]
@@ -217,33 +184,9 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
-(defn- use-server-side-relative-datetime?
-  "Check whether server side :relative-datetime clause should be computed server side.
-   Units are [[metabase.util.date-2/add-units]] greater or equal to day."
-  [unit]
-  (contains? #{:day :week :month :quarter :year} unit))
-
-(defn- server-side-relative-datetime-honeysql-form
-  "Compute `:relative-datetime` clause value server-side. Value is sql formatted (and not passed as date time) to avoid
-   jdbc driver's timezone adjustments. Use of `qp.timezone/now` ensures correct timezone is used for the calculation.
-   For details see the [[metabase.driver.redshift-test/server-side-relative-datetime-truncation-test]]. Use of
-   server-side generated values instead of `getdate` Redshift function enables caching."
-  [amount unit]
-  [:cast
-   (-> (qp.timezone/now)
-       (u.date/truncate unit)
-       (u.date/add unit amount)
-       (u.date/format-sql))
-   :timestamp])
-
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
   [driver [_ amount unit]]
-  (if (use-server-side-relative-datetime? unit)
-    (server-side-relative-datetime-honeysql-form amount unit)
-    (let [now-hsql (sql.qp/current-datetime-honeysql-form driver)]
-      (sql.qp/date driver unit (if (zero? amount)
-                                 now-hsql
-                                 (sql.qp/add-interval-honeysql-form driver now-hsql amount unit))))))
+  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
 
 (defmethod sql.qp/datetime-diff [:redshift :year]
   [driver _unit x y]

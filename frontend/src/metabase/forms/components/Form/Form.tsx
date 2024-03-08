@@ -1,8 +1,9 @@
-import { forwardRef } from "react";
-import type { Ref, FormHTMLAttributes, SyntheticEvent } from "react";
 import { useFormikContext } from "formik";
-import { Box } from "metabase/ui";
+import type { Ref, FormHTMLAttributes, SyntheticEvent } from "react";
+import { forwardRef } from "react";
+
 import type { BoxProps } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 export interface FormProps
   extends BoxProps,

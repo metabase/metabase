@@ -1,5 +1,5 @@
-import { Popover } from "@mantine/core";
 import type { PopoverDropdownProps } from "@mantine/core";
+import { Popover } from "@mantine/core";
 
 export type { PopoverBaseProps, PopoverProps } from "@mantine/core";
 export { getPopoverOverrides } from "./Popover.styled";

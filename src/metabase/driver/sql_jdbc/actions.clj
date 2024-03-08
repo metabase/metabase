@@ -13,14 +13,13 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Connection SQLException)))
 
@@ -86,7 +85,7 @@
   [driver {database-id :database, :as query}]
   (qp.store/with-metadata-provider database-id
     ;; catch errors in the query
-    (qp/preprocess query)
+    (qp.preprocess/preprocess query)
     (sql.qp/mbql->honeysql driver query)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -471,9 +470,10 @@
 
 ;;;; `bulk/update`
 
-(s/defn ^:private check-row-has-all-pk-columns
+(mu/defn ^:private check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."
-  [row :- {s/Str s/Any} pk-names :- #{s/Str}]
+  [row      :- [:map-of :string :any]
+   pk-names :- [:set :string]]
   (doseq [pk-key pk-names
           :when  (not (contains? row pk-key))]
     (throw (ex-info (tru "Row is missing required primary key column. Required {0}; got {1}"
@@ -481,9 +481,10 @@
                          (pr-str (set (keys row))))
                     {:row row, :pk-names pk-names, :status-code 400}))))
 
-(s/defn ^:private check-row-has-some-non-pk-columns
+(mu/defn ^:private check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
-  [row :- {s/Str s/Any} pk-names :- #{s/Str}]
+  [row      :- [:map-of :string :any]
+   pk-names :- [:set :string]]
   (let [non-pk-names (set/difference (set (keys row)) pk-names)]
     (when (empty? non-pk-names)
       (throw (ex-info (tru "Invalid update row map: no non-PK columns. Got {0}, all of which are PKs."

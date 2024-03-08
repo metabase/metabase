@@ -315,7 +315,6 @@
     metabase.query-processor.middleware.parameters.native           qp.native
     metabase.query-processor.middleware.permissions                 qp.perms
     metabase.query-processor.middleware.pre-alias-aggregations      qp.pre-alias-aggregations
-    metabase.query-processor.middleware.resolve-database-and-driver qp.resolve-database-and-driver
     metabase.query-processor.middleware.resolve-fields              qp.resolve-fields
     metabase.query-processor.middleware.resolve-referenced          qp.resolve-referenced
     metabase.query-processor.middleware.resolve-source-table        qp.resolve-source-table
@@ -341,7 +340,7 @@
     metabase.server.middleware.security                             mw.security
     metabase.server.middleware.session                              mw.session
     metabase.server.middleware.ssl                                  mw.ssl
-    metabase.server.middleware.util                                 mw.util
+    metabase.server.request.util                                    req.util
     metabase.server.protocols                                       server.protocols
     metabase.shared.util                                            shared.u
     metabase.shared.util.currency                                   currency
@@ -446,6 +445,7 @@
   metabase.public-settings.premium-features/define-premium-feature                     clojure.core/def
   metabase.pulse-test/with-pulse-for-card                                              clojure.core/let
   metabase.query-processor.error-type/deferror                                         clojure.core/def
+  metabase.query-processor.setup/with-qp-setup                                         clojure.core/let
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                      clojure.core/->
@@ -579,9 +579,9 @@
    clojurewerkz.quartzite.schedule.cron/schedule                                macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                              macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                        macros.quartz/build-trigger
-   metabase-enterprise.sandbox.test-util/with-gtaps                             macros.metabase-enterprise.sandbox.test-util/with-gtaps
+   metabase-enterprise.sandbox.test-util/with-gtaps!                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
-   metabase-enterprise.test/with-gtaps                                          macros.metabase-enterprise.sandbox.test-util/with-gtaps
+   metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection

@@ -8,11 +8,11 @@
   '#{clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
-     metabase-enterprise.sandbox.test-util/with-gtaps
-     metabase-enterprise.sandbox.test-util/with-gtaps-for-user
+     metabase-enterprise.sandbox.test-util/with-gtaps!
+     metabase-enterprise.sandbox.test-util/with-gtaps-for-user!
      metabase-enterprise.sandbox.test-util/with-user-attributes
-     metabase-enterprise.test/with-gtaps
-     metabase-enterprise.test/with-gtaps-for-user
+     metabase-enterprise.test/with-gtaps!
+     metabase-enterprise.test/with-gtaps-for-user!
      metabase-enterprise.test/with-user-attributes
      metabase.actions.test-util/with-actions
      metabase.actions.test-util/with-actions-disabled
@@ -108,8 +108,6 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
-     metabase.query-processor/process-query-and-save-execution!
-     metabase.query-processor/process-query-and-save-with-max-results-constraints!
      metabase.query-processor.store/store-database!})
 
 (defn- node->qualified-symbol [node]

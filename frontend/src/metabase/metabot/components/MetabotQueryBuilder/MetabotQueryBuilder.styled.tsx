@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+
 import EmptyState from "metabase/components/EmptyState";
+import { color } from "metabase/lib/colors";
 import { VisualizationRunningState } from "metabase/query_builder/components/QueryVisualization";
+import { Icon } from "metabase/ui";
 
 export const QueryBuilderRoot = styled.div`
   display: flex;

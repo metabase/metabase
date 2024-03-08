@@ -11,6 +11,7 @@
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.models :refer [Field Metric Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
@@ -93,7 +94,7 @@
   (driver/with-driver :druid
     (tqpt/with-flattened-dbdef
       (with-redefs [druid.qp/random-query-id (constantly "<Query ID>")]
-        (qp/compile query)))))
+        (qp.compile/compile query)))))
 
 (defmacro ^:private query->native [query]
   `(do-query->native
@@ -596,7 +597,7 @@
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (letfn [(compiled [query]
-                (-> (qp/compile query) :query (select-keys [:filter :queryType])))]
+                (-> (qp.compile/compile query) :query (select-keys [:filter :queryType])))]
         (doseq [[message field] {"Make sure we can filter by numeric columns (#10935)" :venue_price
                                  "We should be able to filter by Metrics (#11823)"     :count}
                 :let            [field-clause [:field (mt/id :checkins field) nil]

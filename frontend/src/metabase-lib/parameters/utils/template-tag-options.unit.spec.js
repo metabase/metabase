@@ -1,5 +1,7 @@
 import _ from "underscore";
+
 import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/parameters/constants";
+
 import {
   getParameterOptions,
   getParameterOptionsForField,

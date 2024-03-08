@@ -2,10 +2,13 @@ import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import {
+  formatIdentifier,
+  getDisplayNameWithSeparator,
+} from "metabase-lib/expressions";
+import {
   enclosingFunction,
   partialMatch,
 } from "metabase-lib/expressions/completer";
-import type Metadata from "metabase-lib/metadata/Metadata";
 import {
   AGGREGATION_FUNCTIONS,
   EDITOR_FK_SYMBOLS,
@@ -13,15 +16,12 @@ import {
   getMBQLName,
   MBQL_CLAUSES,
 } from "metabase-lib/expressions/config";
-import {
-  formatIdentifier,
-  getDisplayNameWithSeparator,
-} from "metabase-lib/expressions";
+import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
 import type {
   HelpText,
   MBQLClauseFunctionConfig,
 } from "metabase-lib/expressions/types";
-import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 export type Suggestion = {
   type: string;
@@ -32,6 +32,7 @@ export type Suggestion = {
   icon: string | null | undefined;
   order: number;
   range?: [number, number];
+  column?: Lib.ColumnMetadata;
 };
 
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
@@ -81,7 +82,12 @@ export function suggest({
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
         if (helpText) {
-          return { suggestions, helpText };
+          const clause = MBQL_CLAUSES[helpText?.name];
+          const isSupported =
+            !clause || database?.hasFeature(clause.requiresFeature);
+          if (isSupported) {
+            return { suggestions, helpText };
+          }
         }
       }
     }
@@ -167,6 +173,7 @@ export function suggest({
             index: targetOffset,
             icon: getColumnIcon(column),
             order: 2,
+            column,
             ...column,
           };
         },

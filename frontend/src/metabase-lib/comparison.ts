@@ -1,9 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
-import type {
-  DatasetColumn,
-  DatasetQuery,
-  FieldReference,
-} from "metabase-types/api";
+import type { DatasetQuery, DimensionReference } from "metabase-types/api";
+
 import type { ColumnMetadata, Query } from "./types";
 
 export function areLegacyQueriesEqual(
@@ -26,8 +23,8 @@ export function findMatchingColumn(
 export function findColumnIndexesFromLegacyRefs(
   query: Query,
   stageIndex: number,
-  columns: ColumnMetadata[] | DatasetColumn[],
-  fieldRefs: FieldReference[],
+  columns: ColumnMetadata[],
+  fieldRefs: DimensionReference[],
 ): number[] {
   return ML.find_column_indexes_from_legacy_refs(
     query,

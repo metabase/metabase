@@ -1,5 +1,5 @@
-import { restore, filterWidget } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, filterWidget } from "e2e/support/helpers";
 
 const { ORDERS } = SAMPLE_DATABASE;
 

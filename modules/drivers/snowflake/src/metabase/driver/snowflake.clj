@@ -32,6 +32,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -198,10 +199,6 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp expr 6])
-
-(defmethod sql.qp/current-datetime-honeysql-form :snowflake
-  [_]
-  (h2x/with-database-type-info :%current_timestamp :TIMESTAMPTZ))
 
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_ hsql-form amount unit]
@@ -405,6 +402,10 @@
           [:to_timestamp_ntz
            [:convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone hsql-form]])
         (h2x/with-database-type-info "timestampntz"))))
+
+(defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
+  [driver [_ amount unit]]
+  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
@@ -661,3 +662,10 @@
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
   (-> database :details :role))
+
+(defmethod driver/incorporate-ssh-tunnel-details :snowflake
+  [_driver {:keys [account host port] :as db-details}]
+  (let [details (cond-> db-details
+                  (not host) (assoc :host (str account ".snowflakecomputing.com"))
+                  (not port) (assoc :port 443))]
+    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))

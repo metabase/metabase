@@ -1,14 +1,14 @@
-import { createRef, Component } from "react";
 import PropTypes from "prop-types";
-
+import { createRef, Component } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/ui";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { capitalize } from "metabase/lib/formatting";
-import ObjectRetireModal from "./ObjectRetireModal";
+import { Icon } from "metabase/ui";
 
 import { TriggerIconContainer, ActionLink } from "./ObjectActionSelect.styled";
+import ObjectRetireModal from "./ObjectRetireModal";
 
 export default class ObjectActionsSelect extends Component {
   constructor(props) {
@@ -19,6 +19,7 @@ export default class ObjectActionsSelect extends Component {
   static propTypes = {
     object: PropTypes.object.isRequired,
     objectType: PropTypes.string.isRequired,
+    objectTypeLocalized: PropTypes.string.isRequired,
     onRetire: PropTypes.func.isRequired,
   };
 
@@ -28,7 +29,7 @@ export default class ObjectActionsSelect extends Component {
   }
 
   render() {
-    const { object, objectType } = this.props;
+    const { object, objectType, objectTypeLocalized } = this.props;
     return (
       <div>
         <PopoverWithTrigger
@@ -62,7 +63,7 @@ export default class ObjectActionsSelect extends Component {
             <li className="mt1 border-top">
               <ModalWithTrigger
                 ref={this.retireModal}
-                triggerElement={"Retire " + capitalize(objectType)}
+                triggerElement={t`Retire ${objectTypeLocalized}`}
                 triggerClasses="block p2 bg-error-hover text-error text-white-hover cursor-pointer"
               >
                 <ObjectRetireModal

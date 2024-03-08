@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 
 export interface DashCardRootProps {
@@ -50,5 +51,5 @@ export const VirtualDashCardOverlayRoot = styled.div`
 
 export const VirtualDashCardOverlayText = styled.h4`
   color: ${color("text-medium")};
-  padding: 1.5rem;
+  padding: 1rem;
 `;

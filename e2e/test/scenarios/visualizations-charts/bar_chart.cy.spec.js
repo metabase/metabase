@@ -1,16 +1,15 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
   sidebar,
   getDraggableElements,
-  moveColumnDown,
   popover,
   visitDashboard,
   cypressWaitAll,
+  moveDnDKitColumnVertical,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -144,12 +143,14 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should allow you to show/hide and reorder columns", () => {
-      moveColumnDown(getDraggableElements().eq(0), 2);
+      moveDnDKitColumnVertical(getDraggableElements().eq(0), 100);
 
-      getDraggableElements().each((element, index) => {
-        const draggableName = element[0].innerText;
-        cy.findAllByTestId("legend-item").eq(index).contains(draggableName);
-      });
+      cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
+      cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
+      cy.findAllByTestId("legend-item")
+        .eq(2)
+        .should("contain.text", "Doohickey");
+      cy.findAllByTestId("legend-item").eq(3).should("contain.text", "Widget");
 
       const columnIndex = 1;
 
@@ -191,7 +192,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
-      moveColumnDown(getDraggableElements().first(), 2);
+      moveDnDKitColumnVertical(getDraggableElements().first(), 100);
 
       getDraggableElements()
         .eq(1)
@@ -299,7 +300,7 @@ describe("scenarios > visualizations > bar chart", () => {
           type: "native",
           native: {
             query:
-              `SELECT products.category AS "x", COUNT(*) AS "m1", AVG(orders.discount) AS "m2" ` +
+              'SELECT products.category AS "x", COUNT(*) AS "m1", AVG(orders.discount) AS "m2" ' +
               "FROM orders " +
               "JOIN products ON orders.product_id = products.id " +
               "GROUP BY products.category",

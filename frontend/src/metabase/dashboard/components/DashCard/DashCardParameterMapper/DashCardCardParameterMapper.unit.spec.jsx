@@ -1,5 +1,7 @@
+import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-
+import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/Question";
 import {
   createMockCard,
   createMockTemplateTag,
@@ -15,13 +17,9 @@ import {
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
-
-import { getMetadata } from "metabase/selectors/metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
 
-import Question from "metabase-lib/Question";
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
 
 const QUESTION_ID = 1;

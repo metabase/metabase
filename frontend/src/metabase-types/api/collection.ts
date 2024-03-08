@@ -1,19 +1,28 @@
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/lib/colors/types";
-import type { UserId } from "./user";
+import type { IconName } from "metabase/ui";
+
 import type { CardDisplayType } from "./card";
 import type { DatabaseId } from "./database";
 import type { TableId } from "./table";
+import type { UserId } from "./user";
 
 export type RegularCollectionId = number;
 
-export type CollectionId = RegularCollectionId | "root" | "personal";
+export type CollectionId = RegularCollectionId | "root" | "personal" | "users";
 
 export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
 export type CollectionType = "instance-analytics" | null;
+
+export type LastEditInfo = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  id: UserId;
+  timestamp: string;
+};
 
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;
@@ -47,7 +56,8 @@ export interface Collection {
   personal_owner_id?: UserId;
   is_personal?: boolean;
 
-  location?: string;
+  location: string | null;
+  effective_location?: string; // location path containing only those collections that the user has permission to access
   effective_ancestors?: Collection[];
 
   here?: CollectionContentModel[];
@@ -86,6 +96,9 @@ export interface CollectionItem {
   moderated_status?: string;
   type?: string;
   can_write?: boolean;
+  "last-edit-info"?: LastEditInfo;
+  location?: string;
+  effective_location?: string;
   getIcon: () => { name: IconName };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
@@ -97,5 +110,8 @@ export interface CollectionItem {
 export interface CollectionListQuery {
   archived?: boolean;
   "exclude-other-user-collections"?: boolean;
+  "exclude-archived"?: boolean;
+  "personal-only"?: boolean;
   namespace?: string;
+  tree?: boolean;
 }

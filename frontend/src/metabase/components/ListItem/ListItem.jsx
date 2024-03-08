@@ -4,8 +4,9 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 
 import Card from "metabase/components/Card";
-import S from "metabase/components/List/List.css";
+import S from "metabase/components/List/List.module.css";
 import { Icon } from "metabase/ui";
+
 import { ListItemLink, ListItemName, Root } from "./ListItem.styled";
 
 const ListItem = ({
@@ -25,11 +26,7 @@ const ListItem = ({
         </div>
         <div className={S.itemBody}>
           <div className={S.itemTitle}>
-            <ListItemName
-              className={S.itemName}
-              tooltip={name}
-              tooltipMaxWidth="100%"
-            >
+            <ListItemName tooltip={name} tooltipMaxWidth="100%">
               <h3>{name}</h3>
             </ListItemName>
           </div>

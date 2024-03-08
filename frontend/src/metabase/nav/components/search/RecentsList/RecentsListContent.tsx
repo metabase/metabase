@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import type { RecentItem } from "metabase-types/api";
+
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import EmptyState from "metabase/components/EmptyState";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
@@ -9,17 +9,18 @@ import {
   SearchLoadingSpinner,
   EmptyStateContainer,
 } from "metabase/nav/components/search/SearchResults";
-
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   ItemIcon,
   LoadingSection,
-  ModerationIcon,
   ResultNameSection,
   ResultTitle,
   SearchResultContainer,
 } from "metabase/search/components/SearchResult";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Group, Loader, Stack, Title } from "metabase/ui";
+import type { RecentItem } from "metabase-types/api";
+
 import { getItemName, getItemUrl, isItemActive } from "./util";
 
 type RecentsListContentProps = {
@@ -84,7 +85,7 @@ export const RecentsListContent = ({
                   >
                     {getItemName(item)}
                   </ResultTitle>
-                  <ModerationIcon
+                  <PLUGIN_MODERATION.ModerationStatusIcon
                     status={getModeratedStatus(item)}
                     filled
                     size={14}

@@ -1,9 +1,11 @@
 import { getIn } from "icepick";
 import _ from "underscore";
-import { UtilApi } from "metabase/services";
+
 import MetabaseSettings from "metabase/lib/settings";
+import { UtilApi } from "metabase/services";
 import type { LocaleData } from "metabase-types/api";
 import type { Locale } from "metabase-types/store";
+
 import { SUBSCRIBE_URL, SUBSCRIBE_TOKEN } from "./constants";
 
 export const getLocales = (

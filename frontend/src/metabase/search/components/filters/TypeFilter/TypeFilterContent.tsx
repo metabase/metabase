@@ -1,12 +1,13 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
+
+import { useSearchListQuery } from "metabase/common/hooks";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import { enabledSearchTypes } from "metabase/search/constants";
 import type { SearchFilterDropdown } from "metabase/search/types";
-import { useSearchListQuery } from "metabase/common/hooks";
 import { Checkbox, Stack } from "metabase/ui";
-import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { EnabledSearchModelType } from "metabase-types/api";
-import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =

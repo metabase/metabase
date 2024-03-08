@@ -2,10 +2,10 @@ import styled from "@emotion/styled";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
-import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
-import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import Search from "metabase/entities/search";
+import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
+import { Icon } from "metabase/ui";
 
 const propTypes = {
   databaseId: PropTypes.string,

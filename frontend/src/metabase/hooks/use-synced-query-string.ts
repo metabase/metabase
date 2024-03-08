@@ -1,5 +1,6 @@
-import { useEffect } from "react";
 import querystring from "querystring";
+import { useEffect } from "react";
+
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 export function useSyncedQueryString(

@@ -1,7 +1,8 @@
-import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 import { screen } from "__support__/ui";
-import { setup as baseSetup } from "./setup";
+import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
+
 import type { SetupOpts } from "./setup";
+import { setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts) {
   baseSetup({

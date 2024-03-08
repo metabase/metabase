@@ -1,11 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
+import Filter from "metabase-lib/queries/structured/Filter";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import Filter from "metabase-lib/queries/structured/Filter";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

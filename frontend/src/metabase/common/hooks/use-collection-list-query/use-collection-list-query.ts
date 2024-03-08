@@ -1,5 +1,5 @@
-import type { Collection, CollectionListQuery } from "metabase-types/api";
 import Collections from "metabase/entities/collections";
+import type { Collection, CollectionListQuery } from "metabase-types/api";
 
 import type {
   UseEntityListQueryProps,

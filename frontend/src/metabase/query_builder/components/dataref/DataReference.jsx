@@ -1,13 +1,13 @@
 /* eslint "react/prop-types": "warn" */
-import { useCallback } from "react";
 import PropTypes from "prop-types";
+import { useCallback } from "react";
 
-import MainPane from "./MainPane";
 import DatabasePane from "./DatabasePane";
+import FieldPane from "./FieldPane";
+import MainPane from "./MainPane";
+import QuestionPane from "./QuestionPane";
 import SchemaPane from "./SchemaPane";
 import TablePane from "./TablePane";
-import FieldPane from "./FieldPane";
-import QuestionPane from "./QuestionPane";
 
 const PANES = {
   database: DatabasePane, // lists schemas, tables and models of a database

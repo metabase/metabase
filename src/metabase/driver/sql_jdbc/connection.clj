@@ -10,7 +10,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
-   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -90,12 +90,12 @@
   "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
   will kill connections that time out, but in practice it seems that connections disappear into the ether every once
   in a while; rather than exhaust the connection pool, let's be extra safe. This should be the same as the query
-  timeout in [[metabase.query-processor.context.default/query-timeout-ms]] by default."
+  timeout in [[metabase.query-processor.context/query-timeout-ms]] by default."
   :visibility :internal
   :type       :integer
   :getter     (fn []
                 (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
-                    (long (/ context.default/query-timeout-ms 1000))))
+                    (long (/ qp.pipeline/*query-timeout-ms* 1000))))
   :setter     :none)
 
 (defmethod data-warehouse-connection-pool-properties :default

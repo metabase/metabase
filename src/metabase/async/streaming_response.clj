@@ -11,7 +11,7 @@
    [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [ring.adapter.jetty9.common :as common]
+   [ring.util.jakarta.servlet :as servlet]
    [ring.util.response :as response])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -79,8 +79,8 @@
       nil)))
 
 (defn- do-f-async
-  "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes, completes (i.e., closes) Jetty
-  `async-context`."
+  "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes,
+  completes (i.e., closes) Jetty `async-context`."
   [^AsyncContext async-context f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
@@ -189,7 +189,7 @@
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (merge headers (:headers response-map)) "Content-Type" content-type)
                       gzip? (assoc "Content-Encoding" "gzip"))]
-        (#'common/set-headers response headers)
+        (#'servlet/set-headers response headers)
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
@@ -210,7 +210,7 @@
 (p.types/deftype+ StreamingResponse [f options donechan]
   pretty/PrettyPrintable
   (pretty [_]
-    (list (pretty/qualify-symbol-for-*ns* `->StreamingResponse) f options donechan))
+    (list `->StreamingResponse f options donechan))
 
   server.protocols/Respond
   (respond [_this context]
@@ -223,7 +223,7 @@
 
   ;; async responses only
   compojure.response/Sendable
-  (send* [this request respond* _]
+  (send* [this request respond* _raise]
     (respond* (compojure.response/render this request))))
 
 (defn- render [^StreamingResponse streaming-response gzip?]
@@ -243,8 +243,8 @@
   [^StreamingResponse response]
   (.donechan response))
 
-(defn streaming-response*
-  "Impl for `streaming-response` macro."
+(defn -streaming-response
+  "Impl for [[streaming-response]] macro."
   [f options]
   (->StreamingResponse f options (a/promise-chan)))
 
@@ -266,5 +266,5 @@
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
-  `(streaming-response* (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
+  `(-streaming-response (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))

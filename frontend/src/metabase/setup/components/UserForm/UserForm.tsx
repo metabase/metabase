@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 import _ from "underscore";
-import { FormProvider } from "metabase/forms";
+import * as Yup from "yup";
+
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import { FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type { UserInfo } from "metabase-types/store";
+
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
 
 const USER_SCHEMA = Yup.object({

@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
+
 import { createMockDashboard } from "metabase-types/api/mocks";
+
 import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,

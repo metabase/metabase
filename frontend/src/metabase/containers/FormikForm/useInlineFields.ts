@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import _ from "underscore";
+
 import type { FormFieldDefinition } from "metabase-types/forms";
 
 type FieldsMap = Record<string, FormFieldDefinition>;

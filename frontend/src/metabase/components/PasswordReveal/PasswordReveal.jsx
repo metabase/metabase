@@ -2,7 +2,9 @@
 /* flow */
 import { Component } from "react";
 import { t } from "ttag";
+
 import { color } from "metabase/lib/colors";
+
 import { PasswordCopyButton } from "./PasswordReveal.styled";
 
 const styles = {

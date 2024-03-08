@@ -1,15 +1,15 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import SidebarLayout from "metabase/components/SidebarLayout";
-import DatabaseDetail from "metabase/reference/databases/DatabaseDetail";
-
 import * as metadataActions from "metabase/redux/metadata";
+import DatabaseDetail from "metabase/reference/databases/DatabaseDetail";
 import * as actions from "metabase/reference/reference";
 
 import { getDatabase, getDatabaseId, getIsEditing } from "../selectors";
+
 import DatabaseSidebar from "./DatabaseSidebar";
 
 const mapStateToProps = (state, props) => ({

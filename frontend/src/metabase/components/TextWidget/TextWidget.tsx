@@ -1,6 +1,7 @@
 import { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
+
 import { forceRedraw } from "metabase/lib/dom";
 
 type Props = {

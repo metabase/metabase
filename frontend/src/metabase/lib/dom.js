@@ -1,5 +1,6 @@
-import _ from "underscore";
 import querystring from "querystring";
+import _ from "underscore";
+
 import { isCypressActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 

@@ -92,7 +92,7 @@
     column
     [:name :display_name :description :base_type :semantic_type :unit :fingerprint :id :field_ref])))
 
-(defn insights-rf
+(mu/defn insights-rf :- fn?
   "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
   results. `metadata` is the usual QP results metadata e.g. as received by an `rff`."
   {:arglists '([metadata])}

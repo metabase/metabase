@@ -1,6 +1,8 @@
 /* eslint-disable react/prop-types */
 import { t, ngettext, msgid } from "ttag";
+
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+
 import { AdminGroupLabel } from "./GroupSummary.styled";
 
 const GroupSummary = ({ groups, selectedGroupIds }) => {

@@ -1,9 +1,6 @@
-import { t } from "ttag";
 import { useCallback, useState } from "react";
+import { t } from "ttag";
 
-import type { ApiKey } from "metabase-types/api";
-
-import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 import {
   Form,
   FormErrorMessage,
@@ -12,14 +9,15 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { getThemeOverrides } from "metabase/ui/theme";
-const { fontFamilyMonospace } = getThemeOverrides();
-
 import { ApiKeysApi } from "metabase/services";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
+import type { ApiKey } from "metabase-types/api";
 
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
+const { fontFamilyMonospace } = getThemeOverrides();
 type EditModalName = "edit" | "regenerate" | "secretKey";
 
 const RegenerateKeyModal = ({

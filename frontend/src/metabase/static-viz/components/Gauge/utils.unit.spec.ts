@@ -1,9 +1,9 @@
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+
 import {
   GAUGE_ARC_ANGLE,
   SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE,
 } from "./constants";
-
 import {
   calculateRelativeValueAngle,
   calculateSegmentLabelTextAnchor,

@@ -1,8 +1,9 @@
+import Text from "metabase/components/type/Text";
 import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import type { IconName } from "metabase/ui";
 import { Icon, isValidIconName } from "metabase/ui";
-import Link from "metabase/core/components/Link";
-import Text from "metabase/components/type/Text";
+
 import {
   EmptyStateActions,
   EmptyStateFooter,

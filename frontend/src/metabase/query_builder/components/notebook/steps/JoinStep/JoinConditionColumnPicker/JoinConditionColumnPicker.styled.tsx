@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker/QueryColumnPicker";
 import { alpha, color, lighten } from "metabase/lib/colors";
 
@@ -29,10 +30,10 @@ const hasColumnStyle = (isOpen = false) => css`
   }
 `;
 
-export const JoinConditionCellItem = styled.button<{
-  hasColumnSelected: boolean;
+export const JoinCellItem = styled.button<{
+  isColumnSelected: boolean;
   isOpen?: boolean;
-  readOnly?: boolean;
+  isReadOnly?: boolean;
 }>`
   display: flex;
   flex-direction: column;
@@ -40,14 +41,14 @@ export const JoinConditionCellItem = styled.button<{
   gap: 2px;
 
   ${props =>
-    props.hasColumnSelected
+    props.isColumnSelected
       ? hasColumnStyle(props.isOpen)
       : noColumnStyle(props.isOpen)};
 
-  cursor: ${props => (props.readOnly ? "default" : "pointer")};
+  cursor: ${props => (props.isReadOnly ? "default" : "pointer")};
   transition: background 300ms linear, border 300ms linear, color 300ms linear;
 `;
 
-export const StyledQueryColumnPicker = styled(QueryColumnPicker)`
+export const JoinColumnPicker = styled(QueryColumnPicker)`
   color: ${color("brand")};
 `;

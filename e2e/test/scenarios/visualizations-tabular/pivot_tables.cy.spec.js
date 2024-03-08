@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
@@ -9,14 +11,11 @@ import {
   dragField,
   leftSidebar,
   main,
-  modal,
   getIframeBody,
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
+  modal,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const {
   ORDERS,
@@ -32,7 +31,7 @@ const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
 
 const TEST_CASES = [
-  { case: "question", subject: QUESTION_NAME, confirmSave: true },
+  { case: "question", subject: QUESTION_NAME, confirmSave: false },
   { case: "dashboard", subject: DASHBOARD_NAME, confirmSave: false },
 ];
 
@@ -657,6 +656,12 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in a public link", () => {
+          if (test.case === "question") {
+            cy.icon("share").click();
+            modal().within(() => {
+              cy.findByText("Save").click();
+            });
+          }
           openPublicLinkPopoverFromMenu();
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-input")
@@ -679,6 +684,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
+          if (test.case === "question") {
+            cy.icon("share").click();
+            modal().within(() => {
+              cy.findByText("Save").click();
+            });
+          }
+
           openStaticEmbeddingModal({
             activeTab: "parameters",
             confirmSave: test.confirmSave,
@@ -1031,7 +1043,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         cy.findByText("Save").click();
       });
 
-      cy.get("#SaveQuestionModal").within(() => {
+      cy.findByTestId("save-question-modal").within(() => {
         cy.findByText("Save").click();
       });
 
@@ -1115,7 +1127,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       );
 
       cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-      modal().button("Save").click();
+      cy.findByTestId("save-question-modal").findByText("Save").click();
       cy.wait("@createCard");
       cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
       cy.reload();

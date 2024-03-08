@@ -1,5 +1,4 @@
 import Question from "metabase/entities/questions";
-
 import type { CardId } from "metabase-types/api";
 
 import ItemSelect from "./ItemSelect";

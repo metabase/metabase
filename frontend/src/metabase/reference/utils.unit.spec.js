@@ -1,3 +1,7 @@
+import { createMockMetadata } from "__support__/metadata";
+import { separateTablesBySchema } from "metabase/reference/databases/TableList";
+import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
+import { TYPE } from "metabase-lib/types/constants";
 import {
   createMockDatabase,
   createMockField,
@@ -5,10 +9,6 @@ import {
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
-import { separateTablesBySchema } from "metabase/reference/databases/TableList";
-import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
-import { TYPE } from "metabase-lib/types/constants";
 
 describe("Reference utils.js", () => {
   describe("databaseToForeignKeys()", () => {
@@ -123,7 +123,6 @@ describe("Reference utils.js", () => {
       const card = {
         name: undefined,
         collection_id: undefined,
-        dataset: undefined,
         display,
         visualization_settings: {},
         dataset_query: {

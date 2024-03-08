@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
-
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,

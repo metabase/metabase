@@ -1,24 +1,28 @@
 import _ from "underscore";
-import {
-  ORDERS,
-  ORDERS_ID,
-  REVIEWS,
-  REVIEWS_ID,
-} from "metabase-types/api/mocks/presets";
-import type { DatasetQuery, Join } from "metabase-types/api";
+
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_DATABASE,
   SAMPLE_METADATA,
   createQuery,
 } from "metabase-lib/test-helpers";
-import { sharedMetadata } from "./__support__/shared";
+import type { DatasetQuery, Join } from "metabase-types/api";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} from "metabase-types/api/mocks/presets";
+
 import {
   aggregationOpts,
   expressionOpts,
   metadata,
   DEFAULT_QUERY,
 } from "./__support__/expressions";
+import { sharedMetadata } from "./__support__/shared";
 import type { Suggestion } from "./suggest";
 import { suggest as suggest_ } from "./suggest";
 
@@ -274,6 +278,27 @@ describe("metabase/lib/expression/suggest", () => {
           example: "lower([Status])",
           args: expect.objectContaining({ length: 1 }),
         });
+      });
+
+      it("should not provide help text for an unsupported function (metabase#39766)", () => {
+        const metadata = createMockMetadata({
+          databases: [
+            createSampleDatabase({
+              features: ["foreign-keys"],
+            }),
+          ],
+        });
+
+        expect(
+          helpText({
+            source: "percentile",
+            query: createQuery(),
+            metadata,
+            startRule: "expression",
+            stageIndex: -1,
+            getColumnIcon: () => "icon",
+          }),
+        ).toBeUndefined();
       });
 
       it("should provide help text after first argument if there's only one argument", () => {

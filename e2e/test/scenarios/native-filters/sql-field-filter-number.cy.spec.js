@@ -1,9 +1,8 @@
 import { restore, openNativeEditor } from "e2e/support/helpers";
 
 import { NUMBER_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
-
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const numericFilters = Object.entries(NUMBER_FILTER_SUBTYPES);
 
@@ -51,11 +50,6 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
         cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
         FieldFilter.setWidgetType(subType);
-
-        // When we run the first iteration, there will be no default filter value set
-        if (index !== 0) {
-          FieldFilter.clearDefaultFilterValue();
-        }
 
         FieldFilter.openEntryForm({ isFilterRequired: true });
         FieldFilter.addDefaultNumberFilter(value);

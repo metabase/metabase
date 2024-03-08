@@ -1,9 +1,5 @@
 import fetchMock from "fetch-mock";
-import Databases from "metabase/entities/databases";
-import Tables from "metabase/entities/tables";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import type { DatabaseId, TableId } from "metabase-types/api";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+
 import {
   setupDatabaseEndpoints,
   setupTableEndpoints,
@@ -13,8 +9,14 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
+import type { DatabaseId, TableId } from "metabase-types/api";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+
 import { useEntityQuery } from "./use-entity-query";
 
 const TEST_DB = createMockDatabase();

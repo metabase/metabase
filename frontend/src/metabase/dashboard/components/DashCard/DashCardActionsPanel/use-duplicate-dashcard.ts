@@ -1,7 +1,11 @@
 import { useCallback } from "react";
 
-import { createAction, useDispatch, useSelector } from "metabase/lib/redux";
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import {
+  FETCH_CARD_DATA,
+  addDashCardToDashboard,
+} from "metabase/dashboard/actions";
+import { getExistingDashCards } from "metabase/dashboard/actions/utils";
+import { trackDashcardDuplicated } from "metabase/dashboard/analytics";
 import {
   getCardData,
   getDashboards,
@@ -9,16 +13,12 @@ import {
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
 import {
-  FETCH_CARD_DATA,
-  addDashCardToDashboard,
-} from "metabase/dashboard/actions";
-import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import {
   generateTemporaryDashcardId,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { createAction, useDispatch, useSelector } from "metabase/lib/redux";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
-import { trackDashcardDuplicated } from "metabase/dashboard/analytics";
 
 export function useDuplicateDashCard({
   dashboard,

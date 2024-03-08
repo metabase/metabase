@@ -1,9 +1,8 @@
-import { useMemo } from "react";
 import PropTypes from "prop-types";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getNativeQueryLanguage } from "metabase/lib/engine";
-
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
@@ -66,7 +65,8 @@ const DataSourceSelectors = ({
   const databases = useMemo(() => {
     const allDatabases = query
       .metadata()
-      .databasesList({ savedQuestions: false });
+      .databasesList({ savedQuestions: false })
+      .filter(db => db.canWrite());
 
     if (editorContext === "action") {
       return allDatabases.filter(database => database.hasActionsEnabled());
@@ -165,7 +165,9 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
-  <div className="p2 text-bold text-grey">{database.name}</div>
+  <div className="p2 text-bold text-grey" data-testid="selected-database">
+    {database.name}
+  </div>
 );
 
 SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;

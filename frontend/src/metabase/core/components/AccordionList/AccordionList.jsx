@@ -1,14 +1,14 @@
+import { getIn } from "icepick";
+import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import PropTypes from "prop-types";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
-
 import _ from "underscore";
-import { getIn } from "icepick";
 
 import { Icon } from "metabase/ui";
-import { AccordionListCell } from "./AccordionListCell";
+
 import { AccordionListRoot } from "./AccordionList.styled";
+import { AccordionListCell } from "./AccordionListCell";
 import { getNextCursor, getPrevCursor } from "./utils";
 
 export default class AccordionList extends Component {
@@ -74,6 +74,7 @@ export default class AccordionList extends Component {
     itemIsSelected: PropTypes.func,
     itemIsClickable: PropTypes.func,
     renderItemName: PropTypes.func,
+    renderItemLabel: PropTypes.func,
     renderItemDescription: PropTypes.func,
     renderItemIcon: PropTypes.func,
     renderItemExtra: PropTypes.func,

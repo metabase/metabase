@@ -1,3 +1,5 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   changeBinningForDimension,
@@ -14,9 +16,6 @@ import {
   rightSidebar,
   interceptIfNotPreviouslyDefined,
 } from "e2e/support/helpers";
-
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -45,7 +44,7 @@ describe("scenarios > question > summarize sidebar", () => {
   it("selected dimensions becomes pinned to the top of the dimensions list", () => {
     getDimensionByName({ name: "Total" })
       .should("have.attr", "aria-selected", "false")
-      .click();
+      .click({ position: "left" });
 
     getDimensionByName({ name: "Total" }).should(
       "have.attr",
@@ -102,7 +101,7 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("selecting a binning adds a dimension", () => {
-    getDimensionByName({ name: "Total" }).click();
+    getDimensionByName({ name: "Total" }).click({ position: "left" });
 
     changeBinningForDimension({
       name: "Quantity",

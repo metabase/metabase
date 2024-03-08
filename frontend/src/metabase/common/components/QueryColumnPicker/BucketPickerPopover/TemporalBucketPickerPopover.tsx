@@ -1,12 +1,14 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+
 import * as Lib from "metabase-lib";
-import type { CommonBucketPickerProps } from "./types";
+
 import type { BucketListItem } from "./BaseBucketPickerPopover";
 import {
   BaseBucketPickerPopover,
   getBucketListItem,
 } from "./BaseBucketPickerPopover";
+import type { CommonBucketPickerProps } from "./types";
 
 function checkBucketIsSelected(item: BucketListItem) {
   return !!item.selected;

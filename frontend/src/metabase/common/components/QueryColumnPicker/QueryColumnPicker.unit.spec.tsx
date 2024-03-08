@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+
 import { render, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+
 import type { QueryColumnPickerProps } from "./QueryColumnPicker";
 import { QueryColumnPicker } from "./QueryColumnPicker";
 
@@ -90,6 +92,16 @@ describe("QueryColumnPicker", () => {
 
     expect(onSelect).toHaveBeenCalledWith(sampleColumn);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("should render info icons", () => {
+    const { sampleColumnInfo } = setup();
+
+    expect(
+      within(
+        screen.getByLabelText(sampleColumnInfo.displayName),
+      ).getByLabelText("More info"),
+    ).toBeInTheDocument();
   });
 
   it("should highlight column used in a given clause", () => {

@@ -1,7 +1,8 @@
-import _ from "underscore";
 import { push } from "react-router-redux";
-import { open } from "metabase/lib/dom";
+import _ from "underscore";
+
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
+import { open } from "metabase/lib/dom";
 
 export function performAction(action, { dispatch, onChangeCardAndRun }) {
   let didPerform = false;

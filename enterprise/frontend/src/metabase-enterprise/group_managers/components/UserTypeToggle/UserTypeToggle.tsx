@@ -1,9 +1,10 @@
 import type { MouseEventHandler } from "react";
-import { t } from "ttag";
 import type { Placement } from "tippy.js";
+import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import { Icon } from "metabase/ui";
+
 import { UserTypeToggleRoot } from "./UserTypeToggle.styled";
 
 interface UserTypeCellProps {

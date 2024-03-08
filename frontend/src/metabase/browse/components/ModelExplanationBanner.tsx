@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Flex, Paper, Icon, Text } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { updateSetting } from "metabase/admin/settings/settings";
+import { updateUserSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
+import { Flex, Paper, Icon, Text } from "metabase/ui";
 
 import { BannerCloseButton, BannerModelIcon } from "./BrowseModels.styled";
 
@@ -19,7 +19,7 @@ export function ModelExplanationBanner() {
   const dismissBanner = () => {
     setShouldShowBanner(false);
     dispatch(
-      updateSetting({
+      updateUserSetting({
         key: "dismissed-browse-models-banner",
         value: true,
       }),

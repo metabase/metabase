@@ -1,7 +1,8 @@
 import { humanize, titleize } from "metabase/lib/formatting";
 import type { NormalizedSchema } from "metabase-types/api";
-import type Metadata from "./Metadata";
+
 import type Database from "./Database";
+import type Metadata from "./Metadata";
 import type Table from "./Table";
 
 interface Schema extends Omit<NormalizedSchema, "database" | "tables"> {

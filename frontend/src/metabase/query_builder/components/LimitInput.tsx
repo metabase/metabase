@@ -1,6 +1,6 @@
-import type * as React from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import type * as React from "react";
 
 const DEFAULT_STYLE = {
   borderWidth: 2,

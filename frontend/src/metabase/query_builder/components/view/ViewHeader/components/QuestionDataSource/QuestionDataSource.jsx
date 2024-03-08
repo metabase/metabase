@@ -1,15 +1,13 @@
+import PropTypes from "prop-types";
 import { isValidElement } from "react";
 import { t } from "ttag";
-import PropTypes from "prop-types";
 
-import { color } from "metabase/lib/colors";
-import * as Urls from "metabase/lib/urls";
-import { isNotNull } from "metabase/lib/types";
+import Tooltip from "metabase/core/components/Tooltip";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
-import Tooltip from "metabase/core/components/Tooltip";
-import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
-
+import { color } from "metabase/lib/colors";
+import { isNotNull } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import {
   isVirtualCardId,
@@ -19,7 +17,8 @@ import {
 import * as ML_Urls from "metabase-lib/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
-import { TablesDivider } from "./QuestionDataSource.styled";
+
+import { TablesDivider, TableInfoIcon } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
   question: PropTypes.object,
@@ -79,7 +78,7 @@ export function QuestionDataSource({
             if (!sourceQuestion || loading) {
               return null;
             }
-            if (sourceQuestion.isDataset()) {
+            if (sourceQuestion.type() === "model") {
               return (
                 <SourceDatasetBreadcrumbs
                   model={sourceQuestion}
@@ -259,9 +258,10 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
       to={hasLink ? getTableURL(table) : ""}
       inactiveColor={badgeInactiveColor}
     >
-      <TableInfoPopover table={table} placement="bottom-start">
-        <span>{table.displayName()}</span>
-      </TableInfoPopover>
+      <span>
+        {table.displayName()}
+        <TableInfoIcon table={table} alwaysVisible />
+      </span>
     </HeadBreadcrumbs.Badge>
   ));
 
