@@ -1,4 +1,5 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   enterCustomColumnDetails,
   isScrollableHorizontally,
@@ -15,6 +16,8 @@ import {
   visitQuestionAdhoc,
   getTable,
   leftSidebar,
+  sidebar,
+  moveDnDKitColumnVertical,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -325,67 +328,163 @@ describe("scenarios > visualizations > table", () => {
 });
 
 describe("scenarios > visualizations > table > conditional formatting", () => {
-  beforeEach(() => {
-    resetTestTable({ type: "postgres", table: "many_data_types" });
-    restore("postgres-writable");
-    cy.signInAsAdmin();
-    resyncDatabase({
-      dbId: WRITABLE_DB_ID,
-      tableName: "many_data_types",
-    });
-
-    getTable({ name: "many_data_types" }).then(({ id: tableId, fields }) => {
-      const booleanField = fields.find(field => field.name === "boolean");
-      const stringField = fields.find(field => field.name === "string");
-      const idField = fields.find(field => field.name === "id");
+  describe("rules", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
 
       visitQuestionAdhoc({
         dataset_query: {
-          database: WRITABLE_DB_ID,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": tableId,
-            fields: [
-              ["field", idField.id, { "base-type": idField["base_type"] }],
-              [
-                "field",
-                stringField.id,
-                { "base-type": stringField["base_type"] },
-              ],
-              [
-                "field",
-                booleanField.id,
-                { "base-type": booleanField["base_type"] },
-              ],
-            ],
+            "source-table": SAMPLE_DATABASE.ORDERS_ID,
           },
           type: "query",
         },
-        display: "table",
+        visualization_settings: {
+          "table.column_formatting": [
+            {
+              id: 0,
+              type: "single",
+              operator: "<",
+              value: 3,
+              color: "#509EE3",
+              highlight_row: false,
+              columns: ["TAX"],
+            },
+            {
+              id: 1,
+              type: "single",
+              operator: "<",
+              value: 6,
+              color: "#88BF4D",
+              highlight_row: false,
+              columns: ["TAX"],
+            },
+            {
+              id: 2,
+              type: "single",
+              operator: "<",
+              value: 10,
+              color: "#EF8C8C",
+              highlight_row: false,
+              columns: ["TAX"],
+            },
+          ],
+        },
       });
+
+      cy.findByTestId("viz-settings-button").click();
+      sidebar().findByText("Conditional Formatting").click();
+    });
+
+    it("should be able to remove, add, and re-order rows", () => {
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .should("contain.text", "is less than 3");
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .findByRole("img", { name: /close/ })
+        .click();
+
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .should("contain.text", "is less than 6");
+
+      cy.findByRole("button", { name: /add a rule/i }).click();
+      cy.findByRole("button", { name: /choose a column/i }).click();
+      popover().findByText("Subtotal").click();
+      cy.realPress("Escape");
+      cy.findByRole("button", { name: /is equal to/i }).click();
+      popover().findByText("is less than").click();
+
+      cy.findByTestId("conditional-formatting-value-input").type("20");
+      cy.findByTestId("conditional-formatting-color-selector").click();
+
+      popover()
+        .findByRole("generic", { name: /#F2A86F/i })
+        .click();
+
+      cy.button("Add rule").click();
+
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .should("contain.text", "is less than 20");
+
+      moveDnDKitColumnVertical(
+        cy.findAllByTestId("formatting-rule-preview").eq(2),
+        -300,
+      );
+
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .should("contain.text", "is less than 10");
     });
   });
 
-  it("should work with boolean columns", { tags: ["@external"] }, () => {
-    cy.findByTestId("viz-settings-button").click();
-    leftSidebar().findByText("Conditional Formatting").click();
-    cy.findByRole("button", { name: /add a rule/i }).click();
+  describe("operators", () => {
+    beforeEach(() => {
+      resetTestTable({ type: "postgres", table: "many_data_types" });
+      restore("postgres-writable");
+      cy.signInAsAdmin();
+      resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "many_data_types",
+      });
 
-    popover().findByRole("option", { name: "Boolean" }).click();
+      getTable({ name: "many_data_types" }).then(({ id: tableId, fields }) => {
+        const booleanField = fields.find(field => field.name === "boolean");
+        const stringField = fields.find(field => field.name === "string");
+        const idField = fields.find(field => field.name === "id");
 
-    //Dismiss popover
-    leftSidebar().findByText("Which columns should be affected?").click();
+        visitQuestionAdhoc({
+          dataset_query: {
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": tableId,
+              fields: [
+                ["field", idField.id, { "base-type": idField["base_type"] }],
+                [
+                  "field",
+                  stringField.id,
+                  { "base-type": stringField["base_type"] },
+                ],
+                [
+                  "field",
+                  booleanField.id,
+                  { "base-type": booleanField["base_type"] },
+                ],
+              ],
+            },
+            type: "query",
+          },
+          display: "table",
+        });
+      });
+    });
 
-    //Check that is-true was applied by default to boolean field rule
-    cy.findByTestId("conditional-formatting-value-operator-button").should(
-      "contain.text",
-      "is true",
-    );
+    it("should work with boolean columns", { tags: ["@external"] }, () => {
+      cy.findByTestId("viz-settings-button").click();
+      leftSidebar().findByText("Conditional Formatting").click();
+      cy.findByRole("button", { name: /add a rule/i }).click();
 
-    cy.findByRole("gridcell", { name: "true" }).should(
-      "have.css",
-      "background-color",
-      "rgba(80, 158, 227, 0.65)",
-    );
+      popover().findByRole("option", { name: "Boolean" }).click();
+
+      //Dismiss popover
+      leftSidebar().findByText("Which columns should be affected?").click();
+
+      //Check that is-true was applied by default to boolean field rule
+      cy.findByTestId("conditional-formatting-value-operator-button").should(
+        "contain.text",
+        "is true",
+      );
+
+      cy.findByRole("gridcell", { name: "true" }).should(
+        "have.css",
+        "background-color",
+        "rgba(80, 158, 227, 0.65)",
+      );
+    });
   });
 });
 

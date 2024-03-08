@@ -6,6 +6,13 @@ title: Driver interface changelog
 
 ## Metabase 0.49.0
 
+- The multimethod `metabase.driver/alter-columns!` has been added. This method is used to alter a table's columns in the
+  database. This is currently only required for drivers that support the `:uploads` feature, and has a default
+  implementation for JDBC-based drivers.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/alter-columns-sql` has been added. The method
+  allows you to customize the query used by the default JDBC implementation of `metabase.driver/alter-columns!`.
+
 - The multimethod `metabase.driver.sql-jdbc.sync.interface/current-user-table-privileges` has been added.
   JDBC-based drivers can implement this to improve the performance of the default SQL JDBC implementation of
   `metabase.driver/describe-database`. It needs to be implemented if the database supports the `:table-privileges`

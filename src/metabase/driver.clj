@@ -921,6 +921,13 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti alter-columns!
+  "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
+  Currently we do not currently support changing the the primary key, or take any guidance on how to coerce values."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti syncable-schemas
   "Returns the set of syncable schemas in the database (as strings)."
   {:added "0.47.0", :arglists '([driver database])}
