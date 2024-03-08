@@ -55,9 +55,8 @@
   (when (public-settings/enable-query-caching)
     (let [qs     (for [[i model model-id] [[1 "question"   (:id card)]
                                            [2 "dashboard"  dashboard-id]
-                                           [3 "collection" (:collection_id card)]
-                                           [4 "database"   (:database_id card)]
-                                           [5 "root"       0]]
+                                           [3 "database"   (:database_id card)]
+                                           [4 "root"       0]]
                        :when              model-id]
                    {:from   [:cache_config]
                     :select [:id
