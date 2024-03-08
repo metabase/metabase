@@ -65,7 +65,6 @@
                                                        persisted-info)))]
                 (conj (vec (butlast stages)) last-stage)))
             (update-query [query]
-              (println "(pr-str query):" (pr-str query)) ; NOCOMMIT
               (-> (lib.query/query metadata-providerable query)
                   (update :stages update-stages)))]
       (update card :dataset-query update-query))))
