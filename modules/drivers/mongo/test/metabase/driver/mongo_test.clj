@@ -379,16 +379,16 @@
     (with-redefs [metadata-queries/nested-field-sample-limit 2]
       (binding [tdm/*remove-nil?* true]
         (mt/with-temp-test-data
-          ["bird_species"
-           [{:field-name "name", :base-type :type/Text}
-            {:field-name "favorite_snack", :base-type :type/Text}
-            {:field-name "max_wingspan", :base-type :type/Integer}]
-           [["Sharp-shinned Hawk" nil 68]
-            ["Tropicbird" nil 112]
-            ["House Finch" nil nil]
-            ["Mourning Dove" nil nil]
-            ["Common Blackbird" "earthworms" nil]
-            ["Silvereye" "cherries" nil]]]
+          [["bird_species"
+            [{:field-name "name", :base-type :type/Text}
+             {:field-name "favorite_snack", :base-type :type/Text}
+             {:field-name "max_wingspan", :base-type :type/Integer}]
+            [["Sharp-shinned Hawk" nil 68]
+             ["Tropicbird" nil 112]
+             ["House Finch" nil nil]
+             ["Mourning Dove" nil nil]
+             ["Common Blackbird" "earthworms" nil]
+             ["Silvereye" "cherries" nil]]]]
           ;; do a full sync on the DB to get the correct semantic type info
           (sync/sync-database! (mt/db))
           (is (= #{{:name "_id", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type :type/PK}

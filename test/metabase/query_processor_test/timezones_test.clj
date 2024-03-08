@@ -303,9 +303,9 @@
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to current date"
       (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
-        (mt/with-temp-test-data ["relative_filter"
-                                 [{:field-name "created", :base-type :type/DateTimeWithTZ}]
-                                 [[expected-datetime]]]
+        (mt/with-temp-test-data [["relative_filter"
+                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+                                  [[expected-datetime]]]]
           (doseq [timezone ["UTC" "America/Los_Angeles"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
               (let [query (mt/mbql-query relative_filter {:fields [$created]
@@ -327,9 +327,9 @@
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to days since"
       (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
-        (mt/with-temp-test-data ["relative_filter"
-                                 [{:field-name "created", :base-type :type/DateTimeWithTZ}]
-                                 [[expected-datetime]]]
+        (mt/with-temp-test-data [["relative_filter"
+                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+                                  [[expected-datetime]]]]
           (doseq [timezone ["UTC" "Asia/Hong_Kong" "US/Hawaii" "America/Puerto_Rico"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
               (let [query (mt/mbql-query relative_filter {:fields [$created]
