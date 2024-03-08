@@ -19,6 +19,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -983,6 +984,12 @@
    root_collection_id [:maybe ms/PositiveInt]}
   (api/check-superuser)
   (graph/graph namespace group_id root_collection_id))
+
+(api/defendpoint GET "/graph/revision"
+  "Fetch the current Collection Permissions revision."
+  []
+  (api/check-superuser)
+  {:revision (c-perm-revision/latest-id)})
 
 (def CollectionID "an id for a [[Collection]]."
   [pos-int? {:title "Collection ID"}])
