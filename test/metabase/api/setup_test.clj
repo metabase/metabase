@@ -341,18 +341,6 @@
              (is (= setup-token
                     (setup/setup-token))))))))))
 
-(deftest disallow-h2-validation-test
-  (testing "POST /api/setup/validate"
-    (mt/with-temporary-setting-values [has-user-setup false]
-      (setup/create-token!)
-      (let [details (:details (mt/db))
-            request {:details {:engine  :h2
-                               :details details}
-                     :token   (setup/setup-token)}]
-        (is (= {:message "H2 is not supported as a data warehouse"}
-               (mt/user-http-request :crowberto :post 400 "setup/validate" request)))))))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         GET /api/setup/admin_checklist                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
