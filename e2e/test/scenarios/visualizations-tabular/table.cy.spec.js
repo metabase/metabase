@@ -215,7 +215,7 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
     ].forEach(([column, test]) => {
-      cy.get(".cellData").contains(column).realHover();
+      cy.get(".cellData").contains(column).trigger("mouseover");
 
       // Add a delay here because there can be two popovers active for a very short time.
       cy.wait(250);
@@ -224,7 +224,7 @@ describe("scenarios > visualizations > table", () => {
         test();
       });
 
-      cy.get(".cellData").contains(column).trigger("mouseleave");
+      cy.get(".cellData").contains(column).trigger("mouseout");
     });
 
     summarize();
@@ -233,14 +233,15 @@ describe("scenarios > visualizations > table", () => {
 
     cy.wait("@dataset");
 
-    cy.get(".cellData").contains("Count").realHover();
+    cy.get(".cellData").contains("Count").trigger("mouseover");
     hovercard().within(() => {
       cy.contains("Quantity");
       cy.findByText("No description");
     });
+    cy.get(".cellData").contains("Count").trigger("mouseout");
 
     // Make sure new table results loaded with Custom column and Count columns
-    cy.get(".cellData").contains(ccName).realHover();
+    cy.get(".cellData").contains(ccName).trigger("mouseover");
     cy.wait(250);
 
     hovercard().within(() => {
@@ -252,7 +253,7 @@ describe("scenarios > visualizations > table", () => {
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
     openOrdersTable({ limit: 2 });
 
-    cy.get(".cellData").contains("Product ID").realHover();
+    cy.get(".cellData").contains("Product ID").trigger("mouseover");
 
     hovercard().within(() => {
       cy.contains("Foreign Key");
