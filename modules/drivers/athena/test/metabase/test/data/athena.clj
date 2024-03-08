@@ -201,7 +201,7 @@
             ;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
             ;; very fussy! See [[athena/*loading-data*]] for more info.
             athena/*loading-data*  true]
-    (apply load-data/load-data-add-ids-chunked! args)))
+    (apply load-data/load-data-maybe-add-ids-chunked! args)))
 
 (defn- server-connection-details []
   (tx/dbdef->connection-details :athena :server nil))

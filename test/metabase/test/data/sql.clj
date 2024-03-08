@@ -239,9 +239,14 @@
         inline-comment (inline-column-comment-sql driver field-comment)]
     (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
 
+(defn fielddefs->pk-field-name
+  "Find the pk field name in fieldefs"
+  [fieldefs]
+  (->> fieldefs (filter :pk?) first :field-name))
+
 (defmethod create-table-sql :sql/test-extensions
   [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions table-comment]}]
-  (let [pk-field-name (->> field-definitions (filter :pk?) first :field-name (qualify-and-quote driver))]
+  (let [pk-field-name (format-and-quote-field-name driver (fielddefs->pk-field-name field-definitions))]
     (format "CREATE TABLE %s (%s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
             (str/join
@@ -270,18 +275,20 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defn- get-tabledef
+  [dbdef table-name]
+  (->> dbdef
+       :table-definitions
+       (filter #(= (:table-name %) table-name))
+       first))
+
 (defmethod add-fk-sql :sql/test-extensions
   [driver {:keys [database-name] :as dbdef} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
   (let [quot               #(sql.u/quote-name driver %1 (ddl.i/format-name driver %2))
         dest-table-name    (name dest-table-name)
-        dest-table-pk-name (->> dbdef
-                                :table-definitions
-                                (filter #(= (:table-name %) dest-table-name))
-                                first
+        dest-table-pk-name (->> (get-tabledef dbdef dest-table-name)
                                 :field-definitions
-                                (filter :pk?)
-                                first
-                                :field-name)]
+                                fielddefs->pk-field-name)]
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that
