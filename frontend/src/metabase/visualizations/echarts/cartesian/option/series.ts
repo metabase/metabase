@@ -390,6 +390,11 @@ const generateStackOption = (
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
     },
     z: CHART_STYLE.series.zIndex,
+    blur: {
+      label: {
+        opacity: 1,
+      },
+    },
   };
 };
 

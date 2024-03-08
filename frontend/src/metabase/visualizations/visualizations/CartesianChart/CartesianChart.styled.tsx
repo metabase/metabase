@@ -8,6 +8,7 @@ export const CartesianChartRoot = styled.div<{ isQueryBuilder: boolean }>`
   height: 100%;
   display: flex;
   flex-direction: column;
+  gap: ${({ isQueryBuilder }) => (isQueryBuilder ? "0" : "0.325rem")};
   overflow: hidden;
 `;
 
