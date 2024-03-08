@@ -91,7 +91,7 @@ const INPUT_CLASSNAME = "mt1 full";
 const getValueForDescription = rule =>
   ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;
 
-const ChartSettingsTableFormatting = props => {
+export const ChartSettingsTableFormatting = props => {
   const [editingRule, setEditingRule] = useState();
   const [editingRuleIsNew, setEditingRuleIsNew] = useState();
 
@@ -134,7 +134,8 @@ const ChartSettingsTableFormatting = props => {
           setEditingRule(index);
           setEditingRuleIsNew(false);
         }}
-        //This needs to be
+        // This needs to be an async function so that onChange will complete (and value will be updated)
+        // Before we set the state values for the next render
         onAdd={async () => {
           await onChange([
             {
@@ -551,5 +552,3 @@ const RuleEditor = ({
     </div>
   );
 };
-
-export default ChartSettingsTableFormatting;

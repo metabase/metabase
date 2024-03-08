@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { createMockColumn } from "metabase-types/api/mocks";
 
-import ChartSettingsTableFormatting from "./ChartSettingsTableFormatting";
+import { ChartSettingsTableFormatting } from "./ChartSettingsTableFormatting";
 
 const STRING_COLUMN = createMockColumn({
   base_type: "type/Text",
