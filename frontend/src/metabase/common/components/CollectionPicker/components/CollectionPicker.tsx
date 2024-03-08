@@ -33,6 +33,7 @@ interface CollectionPickerProps {
   onItemSelect: (item: CollectionPickerItem) => void;
   initialValue?: Partial<CollectionPickerItem>;
   options?: CollectionPickerOptions;
+  shouldDisableItem?: (item: CollectionPickerItem) => boolean;
 }
 
 export const CollectionPickerInner = (
@@ -40,6 +41,7 @@ export const CollectionPickerInner = (
     onItemSelect,
     initialValue,
     options = defaultOptions,
+    shouldDisableItem,
   }: CollectionPickerProps,
   ref: Ref<unknown>,
 ) => {
@@ -125,6 +127,7 @@ export const CollectionPickerInner = (
     <NestedItemPicker
       itemName={t`collection`}
       isFolder={isFolder}
+      shouldDisableItem={shouldDisableItem}
       options={options}
       generateKey={generateKey}
       onFolderSelect={onFolderSelect}

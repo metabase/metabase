@@ -26,6 +26,7 @@ interface ItemListProps<
   selectedItem: Item | null;
   isFolder: (item: Item) => boolean;
   isCurrentLevel: boolean;
+  shouldDisableItem?: (item: TItem) => boolean;
 }
 
 export const ItemList = <
@@ -87,6 +88,7 @@ export const ItemList = <
       {items.map((item: Item) => (
         <div key={`${item.model}-${item.id}`}>
           <NavLink
+            disabled={shouldDisableItem?.(item)}
             rightSection={
               isFolder(item) ? <Icon name="chevronright" size={10} /> : null
             }

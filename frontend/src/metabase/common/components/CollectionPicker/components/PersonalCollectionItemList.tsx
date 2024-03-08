@@ -34,6 +34,7 @@ export const PersonalCollectionsItemList = ({
       selectedItem={selectedItem}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
+      shouldDisableItem={shouldDisableItem}
     />
   );
 };
