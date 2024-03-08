@@ -8,7 +8,7 @@ export const CHART_STYLE = {
   axisTicksMarginY: 10,
   axisTicks: {
     size: 12,
-    weight: 600,
+    weight: 700,
   },
   seriesLabels: {
     weight: 600,
@@ -17,8 +17,8 @@ export const CHART_STYLE = {
     zIndex: 10,
   },
   axisName: {
-    size: 14,
-    weight: 600,
+    size: 12,
+    weight: 700,
   },
   axisNameMargin: 12,
   padding: {
