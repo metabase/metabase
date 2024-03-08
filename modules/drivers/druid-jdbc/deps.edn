@@ -1,0 +1,5 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {org.apache.calcite.avatica/avatica  {:mvn/version "1.23.0"}}}
