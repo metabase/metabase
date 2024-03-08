@@ -10,7 +10,7 @@ import SidebarItem from "metabase/components/SidebarItem";
 
 const BaseSidebar = ({ style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
-    <div className={S.breadcrumbs}>
+    <div>
       <Breadcrumbs
         className="py4 ml3"
         crumbs={[[t`Data Reference`]]}

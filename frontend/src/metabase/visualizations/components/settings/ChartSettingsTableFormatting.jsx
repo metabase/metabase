@@ -1,14 +1,12 @@
 /* eslint-disable react/prop-types */
+import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import cx from "classnames";
-import { Component } from "react";
+import { useState, useMemo } from "react";
 import { t, jt, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import NumericInput from "metabase/components/NumericInput";
-import {
-  SortableContainer,
-  SortableElement,
-} from "metabase/components/sortable";
 import Button from "metabase/core/components/Button";
 import ColorRange from "metabase/core/components/ColorRange";
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
@@ -16,6 +14,7 @@ import ColorSelector from "metabase/core/components/ColorSelector";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import Select, { Option } from "metabase/core/components/Select";
+import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import Toggle from "metabase/core/components/Toggle";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
@@ -92,106 +91,132 @@ const INPUT_CLASSNAME = "mt1 full";
 const getValueForDescription = rule =>
   ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;
 
-export default class ChartSettingsTableFormatting extends Component {
-  state = {
-    editingRule: null,
-    editingRuleIsNew: null,
+export const ChartSettingsTableFormatting = props => {
+  const [editingRule, setEditingRule] = useState();
+  const [editingRuleIsNew, setEditingRuleIsNew] = useState();
+
+  const { value, onChange, cols, canHighlightRow } = props;
+
+  if (editingRule !== null && value[editingRule]) {
+    return (
+      <RuleEditor
+        canHighlightRow={canHighlightRow}
+        rule={value[editingRule]}
+        cols={cols}
+        isNew={editingRuleIsNew}
+        onChange={rule => {
+          onChange([
+            ...value.slice(0, editingRule),
+            rule,
+            ...value.slice(editingRule + 1),
+          ]);
+        }}
+        onRemove={() => {
+          onChange([
+            ...value.slice(0, editingRule),
+            ...value.slice(editingRule + 1),
+          ]);
+          setEditingRule(null);
+          setEditingRuleIsNew(null);
+        }}
+        onDone={() => {
+          setEditingRule(null);
+          setEditingRuleIsNew(null);
+        }}
+      />
+    );
+  } else {
+    return (
+      <RuleListing
+        rules={value}
+        cols={cols}
+        onEdit={index => {
+          setEditingRule(index);
+          setEditingRuleIsNew(false);
+        }}
+        // This needs to be an async function so that onChange will complete (and value will be updated)
+        // Before we set the state values for the next render
+        onAdd={async () => {
+          await onChange([
+            {
+              ...DEFAULTS_BY_TYPE["single"],
+              // if there's a single column use that by default
+              columns: cols.length === 1 ? [cols[0].name] : [],
+              id: value.length,
+            },
+            ...value,
+          ]);
+          setEditingRuleIsNew(true);
+          setEditingRule(0);
+        }}
+        onRemove={index => {
+          onChange([...value.slice(0, index), ...value.slice(index + 1)]);
+          MetabaseAnalytics.trackStructEvent(
+            "Chart Settings",
+            "Table Formatting",
+            "Remove Rule",
+          );
+        }}
+        onMove={(from, to) => {
+          onChange(arrayMove(value, from, to));
+          MetabaseAnalytics.trackStructEvent(
+            "Chart Settings",
+            "Table Formatting",
+            "Move Rule",
+          );
+        }}
+      />
+    );
+  }
+};
+
+const SortableRuleList = ({ rules, cols, onEdit, onRemove, onMove }) => {
+  const rulesWithIDs = useMemo(
+    () => rules.map((rule, index) => ({ ...rule, id: index.toString() })),
+    [rules],
+  );
+
+  const getId = rule => rule.id.toString();
+
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 0 },
+  });
+
+  const handleSortEnd = ({ id, newIndex }) => {
+    const oldIndex = rulesWithIDs.findIndex(rule => getId(rule) === id);
+
+    onMove(oldIndex, newIndex);
   };
 
-  render() {
-    const { value, onChange, cols, canHighlightRow } = this.props;
-    const { editingRule, editingRuleIsNew } = this.state;
-    if (editingRule !== null && value[editingRule]) {
-      return (
-        <RuleEditor
-          canHighlightRow={canHighlightRow}
-          rule={value[editingRule]}
-          cols={cols}
-          isNew={editingRuleIsNew}
-          onChange={rule => {
-            onChange([
-              ...value.slice(0, editingRule),
-              rule,
-              ...value.slice(editingRule + 1),
-            ]);
-          }}
-          onRemove={() => {
-            onChange([
-              ...value.slice(0, editingRule),
-              ...value.slice(editingRule + 1),
-            ]);
-            this.setState({ editingRule: null, editingRuleIsNew: null });
-          }}
-          onDone={() => {
-            this.setState({ editingRule: null, editingRuleIsNew: null });
-          }}
-        />
-      );
-    } else {
-      return (
-        <RuleListing
-          rules={value}
-          cols={cols}
-          onEdit={index => {
-            this.setState({ editingRule: index, editingRuleIsNew: false });
-          }}
-          onAdd={() => {
-            onChange([
-              {
-                ...DEFAULTS_BY_TYPE["single"],
-                // if there's a single column use that by default
-                columns: cols.length === 1 ? [cols[0].name] : [],
-              },
-              ...value,
-            ]);
-            this.setState({ editingRule: 0, editingRuleIsNew: true });
-          }}
-          onRemove={index => {
-            onChange([...value.slice(0, index), ...value.slice(index + 1)]);
-            MetabaseAnalytics.trackStructEvent(
-              "Chart Settings",
-              "Table Formatting",
-              "Remove Rule",
-            );
-          }}
-          onMove={(from, to) => {
-            const newValue = [...value];
-            newValue.splice(to, 0, newValue.splice(from, 1)[0]);
-            onChange(newValue);
-            MetabaseAnalytics.trackStructEvent(
-              "Chart Settings",
-              "Table Formatting",
-              "Move Rule",
-            );
-          }}
-        />
-      );
-    }
-  }
-}
+  const handleRemove = id =>
+    onRemove(rulesWithIDs.findIndex(rule => getId(rule) === id));
 
-const SortableRuleItem = SortableElement(({ rule, cols, onEdit, onRemove }) => (
-  <RulePreview rule={rule} cols={cols} onClick={onEdit} onRemove={onRemove} />
-));
+  const handleEdit = id =>
+    onEdit(rulesWithIDs.findIndex(rule => getId(rule) === id));
 
-const SortableRuleList = SortableContainer(
-  ({ rules, cols, onEdit, onRemove }) => {
-    return (
-      <div>
-        {rules.map((rule, index) => (
-          <SortableRuleItem
-            key={`item-${index}`}
-            index={index}
-            rule={rule}
-            cols={cols}
-            onEdit={() => onEdit(index)}
-            onRemove={() => onRemove(index)}
-          />
-        ))}
-      </div>
-    );
-  },
-);
+  const renderItem = ({ item, id }) => (
+    <Sortable id={id} draggingStyle={{ opacity: 0.5 }}>
+      <RulePreview
+        rule={item}
+        cols={cols}
+        onClick={() => handleEdit(id)}
+        onRemove={() => handleRemove(id)}
+      />
+    </Sortable>
+  );
+
+  return (
+    <div>
+      <SortableList
+        items={rulesWithIDs}
+        getId={getId}
+        renderItem={renderItem}
+        sensors={[pointerSensor]}
+        onSortEnd={handleSortEnd}
+      />
+    </div>
+  );
+};
 
 const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
   <div>
@@ -214,7 +239,7 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
           cols={cols}
           onEdit={onEdit}
           onRemove={onRemove}
-          onSortEnd={({ oldIndex, newIndex }) => onMove(oldIndex, newIndex)}
+          onMove={onMove}
           distance={10}
         />
       </div>
@@ -226,6 +251,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
   <div
     className="my2 bordered rounded shadowed cursor-pointer bg-white"
     onClick={onClick}
+    data-testid="formatting-rule-preview"
   >
     <div className="p1 border-bottom relative bg-light">
       <div className="px1 flex align-center relative">
@@ -429,6 +455,7 @@ const RuleEditor = ({
           ) : null}
           <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>
           <ColorSelector
+            data-testid="conditional-formatting-color-selector"
             value={rule.color}
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}

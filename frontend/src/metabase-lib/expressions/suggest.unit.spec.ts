@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_DATABASE,
@@ -8,6 +9,7 @@ import {
 } from "metabase-lib/test-helpers";
 import type { DatasetQuery, Join } from "metabase-types/api";
 import {
+  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   REVIEWS,
@@ -276,6 +278,27 @@ describe("metabase/lib/expression/suggest", () => {
           example: "lower([Status])",
           args: expect.objectContaining({ length: 1 }),
         });
+      });
+
+      it("should not provide help text for an unsupported function (metabase#39766)", () => {
+        const metadata = createMockMetadata({
+          databases: [
+            createSampleDatabase({
+              features: ["foreign-keys"],
+            }),
+          ],
+        });
+
+        expect(
+          helpText({
+            source: "percentile",
+            query: createQuery(),
+            metadata,
+            startRule: "expression",
+            stageIndex: -1,
+            getColumnIcon: () => "icon",
+          }),
+        ).toBeUndefined();
       });
 
       it("should provide help text after first argument if there's only one argument", () => {
