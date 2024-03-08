@@ -84,11 +84,11 @@ export function replaceClause(
 
 export function swapClauses(
   query: Query,
-  _stageIndex: number,
-  _sourceClause: Clause,
-  _targetClause: Clause,
+  stageIndex: number,
+  sourceClause: Clause,
+  targetClause: Clause,
 ): Query {
-  return query;
+  return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
 }
 
 export function sourceTableOrCardId(query: Query): TableId | null {
