@@ -27,6 +27,7 @@ import nativeTimeSeriesQuarter from "./native-time-series-quarter.json";
 import nativeTimeSeriesWithGaps from "./native-time-series-with-gaps.json";
 import structuredTimeSeriesYear from "./structured-time-series-year.json";
 import timeXScaleTwoBarsWithoutTotal from "./time-x-scale-two-bars-without-total.json";
+import enormousDataset from "./enormous-dataset.json";
 
 export const data = {
   timeseriesXScale,
@@ -58,4 +59,5 @@ export const data = {
   nativeTimeSeriesWithGaps,
   structuredTimeSeriesYear,
   timeXScaleTwoBarsWithoutTotal,
+  enormousDataset,
 };
