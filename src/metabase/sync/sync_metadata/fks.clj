@@ -100,8 +100,7 @@
   (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
     (let [fk-metadata (fetch-metadata/fk-metadata database)]
       (transduce (map (fn [x]
-                        (let [[updated failed] (try (mark-fk! database x)
-                                                    [1 0]
+                        (let [[updated failed] (try [(mark-fk! database x) 0]
                                                     (catch Exception e
                                                       (log/error e)
                                                       [0 1]))]
