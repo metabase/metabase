@@ -7,7 +7,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -89,12 +88,11 @@
    legacy-macro-ids      :- [:maybe [:set {:min 1} pos-int?]]]
   (let [metadata-type     (case macro-type
                             :metric  :metadata/metric
-                            :segment :metadata/segment)
-        metadata-provider (lib.metadata/->metadata-provider metadata-providerable)]
+                            :segment :metadata/segment)]
     (u/prog1 (into {}
                    (map (juxt :id (fn [legacy-macro]
                                     (update legacy-macro :definition legacy-macro-definition->pMBQL))))
-                   (lib.metadata.protocols/bulk-metadata metadata-provider metadata-type legacy-macro-ids))
+                   (lib.metadata/bulk-metadata metadata-providerable metadata-type legacy-macro-ids))
       ;; make sure all the IDs exist.
       (doseq [id legacy-macro-ids]
         (or (get <> id)

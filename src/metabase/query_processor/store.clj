@@ -16,10 +16,8 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -190,7 +188,7 @@
 
 (mu/defn bulk-metadata :- [:maybe [:sequential [:map
                                                 [:lib/type :keyword]
-                                                [:id ::lib.schema.common/positive-int]]]]
+                                                [:id pos-int?]]]]
   "Fetch multiple objects in bulk. If our metadata provider is a bulk provider (e.g., the application database metadata
   provider), does a single fetch with [[lib.metadata.protocols/bulk-metadata]] if not (i.e., if this is a mock
   provider), fetches them with repeated calls to the appropriate single-object method,
@@ -203,16 +201,11 @@
   [metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
    ids           :- [:maybe
                      [:or
-                      [:set ::lib.schema.common/positive-int]
-                      [:sequential ::lib.schema.common/positive-int]]]]
-  (when-let [ids-set (not-empty (set ids))]
+                      [:set pos-int?]
+                      [:sequential pos-int?]]]]
+  (when-let [ids (not-empty (set ids))]
     (let [provider   (metadata-provider)
-          objects    (vec (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
-                            (filter some? (lib.metadata.protocols/bulk-metadata provider metadata-type ids-set))
-                            (lib.metadata.composed-provider/fetch-bulk-metadata-with-non-bulk-provider
-                             provider
-                             metadata-type
-                             ids-set)))
+          objects    (lib.metadata/bulk-metadata provider metadata-type ids)
           id->object (m/index-by :id objects)]
       (mapv (fn [id]
               (or (get id->object id)

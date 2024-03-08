@@ -21,6 +21,8 @@
    [metabase.util.malli.schema :as ms]
    [weavejester.dependency :as dep]))
 
+;;; TODO -- consider whether [[normalize-card-query]] should be moved into [[metabase.lib.card]], seems like it would
+;;; make sense but it would involve teasing out some QP-specific stuff to make it work.
 (defn- fix-mongodb-first-stage
   "MongoDB native queries consist of a collection and a pipelne (query).
 
@@ -38,9 +40,10 @@
                                            :query       x}))))]
     (cons first-stage more)))
 
-(defn- normalize-card-query
+(mu/defn normalize-card-query :- ::lib.schema.metadata/card
   "Convert Card's query (`:datasaet-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
-  [metadata-providerable {card-id :id, :as card}]
+  [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
+   {card-id :id, :as card} :- ::lib.schema.metadata/card]
   (let [persisted-info (:lib/persisted-info card)
         persisted?     (qp.persisted/can-substitute? card persisted-info)]
     (when persisted?

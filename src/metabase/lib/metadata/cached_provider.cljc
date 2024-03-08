@@ -34,7 +34,7 @@
 (mu/defn ^:private store-metadata!
   [cache
    metadata-type :- [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric :metadata/segment]
-   id            :- ::lib.schema.common/positive-int
+   id            :- pos-int?
    metadata      :- [:multi
                      {:dispatch :lib/type}
                      [:metadata/database lib.metadata/DatabaseMetadata]

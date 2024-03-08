@@ -110,39 +110,7 @@
 
 ;;;; Stage metadata
 
-(def StageMetadata
-  "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
-  like
-
-    {:database 1
-     :lib/type :mbql/query
-     :stages   [{:lib/type :mbql.stage/mbql
-                 :native   \"SELECT id, name FROM VENUES;\"}]}
-
-  might have stage metadata like
-
-    {:columns [{:name \"id\", :base-type :type/Integer}
-               {:name \"name\", :base-type :type/Text}]}
-
-  associated with the query's lone stage.
-
-  At some point in the near future we will hopefully attach this metadata directly to each stage in a query, so a
-  multi-stage query will have `:lib/stage-metadata` for each stage. The main goal is to facilitate things like
-  returning lists of visible or filterable columns for a given stage of a query. This is TBD, see #28717 for a WIP
-  implementation of this idea.
-
-  This is the same format as the results metadata returned with QP results in `data.results_metadata`. The `:columns`
-  portion of this (`data.results_metadata.columns`) is also saved as `Card.result_metadata` for Saved Questions.
-
-  Note that queries currently actually come back with both `data.results_metadata` AND `data.cols`; it looks like the
-  Frontend actually *merges* these together -- see `applyMetadataDiff` in
-  `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing in
-  `results_metadata` into `cols` going forward so things don't need to be manually merged in the future."
-  [:map
-   [:lib/type [:= :metadata/results]]
-   [:columns [:sequential ColumnMetadata]]])
-
-(mu/defn stage :- [:maybe StageMetadata]
+(mu/defn stage :- [:maybe ::lib.schema.metadata/stage]
   "Get metadata associated with a particular `stage-number` of the query, if any. `stage-number` can be a negative
   index.
 
@@ -227,3 +195,40 @@
                         ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
                         ;; TODO Find a way to unify has-write-permissions and this function?
                         (= :write (:native-permissions (database query)))))))))
+
+(mu/defn fetch-bulk-metadata-with-non-bulk-provider :- [:maybe [:sequential :map]]
+  "Adapter to use a non-BulkMetadataProvider like one by calling the single-instance methods repeatedly. This is
+  mostly useful for mock metadata providers and the like; the only metadata provider where the performance boost
+  from [[bulk-metadata]] is important, the application database MetadataProvider, implements `BulkMetadata` natively."
+  [provider      :- ::lib.schema.metadata/metadata-provider
+   metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
+   ids           :- [:maybe
+                     [:or
+                      [:set pos-int?]
+                      [:sequential pos-int?]]]]
+  (let [f (case metadata-type
+            :metadata/card    lib.metadata.protocols/card
+            :metadata/column  lib.metadata.protocols/field
+            :metadata/metric  lib.metadata.protocols/metric
+            :metadata/segment lib.metadata.protocols/segment
+            :metadata/table   lib.metadata.protocols/table)]
+    (into []
+          (keep (fn [id]
+                  (f provider id)))
+          ids)))
+
+(mu/defn bulk-metadata :- [:maybe [:sequential [:map
+                                                [:lib/type :keyword]
+                                                [:id pos-int?]]]]
+  "Fetch multiple objects of [[metadata-type]] at once. Mainly important for QP or other backend Clj stuff that uses
+  the application database MetadataProvider, to avoid N+1 app DB hits. Returns sequence of matching metadatas; does not
+  error if objects could not be found, you'll need to check that yourself."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metadata-type         :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
+   ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
+  (when-let [ids (not-empty (set ids))]
+    (let [provider (->metadata-provider metadata-providerable)
+          f        (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
+                     lib.metadata.protocols/bulk-metadata
+                     fetch-bulk-metadata-with-non-bulk-provider)]
+      (f provider metadata-type ids))))
