@@ -45,7 +45,7 @@
              :type     :native
              :native   {:query "SELECT * FROM VENUES"}}))))))
 
-(deftest ^:parallel native-query-perms-test-2
+(deftest native-query-perms-test-2
   (testing "...but it should work if user has perms"
     (t2.with-temp/with-temp [Database db]
       ;; query should be returned by middleware unchanged
@@ -71,7 +71,7 @@
               :type     :query
               :query    {:source-table (u/the-id table)}})))))))
 
-(deftest ^:parallel mbql-query-perms-test-2
+(deftest mbql-query-perms-test-2
   (testing "...but it should work if user has perms [MBQL]"
     (mt/with-temp [Database db {}
                    Table    table {:db_id (u/the-id db)}]
@@ -84,7 +84,7 @@
                :type     :query
                :query    {:source-table (u/the-id table)}}))))))
 
-(deftest nested-native-query-test
+(deftest ^:parallel nested-native-query-test
   (testing "Make sure nested native query fails to run if current user doesn't have perms"
     (t2.with-temp/with-temp [:model/Database db {}]
       (data-perms/set-database-permission! (perms-group/all-users) (u/the-id db) :perms/native-query-editing :no)
@@ -96,7 +96,7 @@
              :type     :query
              :query   {:source-query {:native "SELECT * FROM VENUES"}}}))))))
 
-(deftest ^:parallel nested-native-query-test-2
+(deftest nested-native-query-test-2
   (testing "...but it should work if user has perms [nested native queries]"
     (t2.with-temp/with-temp [Database db]
       ;; query should be returned by middleware unchanged
@@ -122,7 +122,7 @@
                :type     :query
                :query    {:source-query {:source-table (u/the-id table)}}})))))))
 
-(deftest ^:parallel nested-mbql-query-test-2
+(deftest nested-mbql-query-test-2
   (testing "...but it should work if user has perms [nested MBQL queries]"
     (mt/with-temp [Database db    {}
                    Table    table {:db_id (u/the-id db)}]
@@ -156,7 +156,7 @@
                                            {:id   tag-name, :name tag-name, :display-name tag-name,
                                             :type "card",   :card card-id}}}}))))))))
 
-(deftest ^:parallel template-tags-referenced-queries-test-2
+(deftest template-tags-referenced-queries-test-2
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp [Database db      {}
                    Table    _       {:db_id (u/the-id db)}
@@ -207,7 +207,7 @@
                                            {:id   tag-name, :name tag-name, :display-name tag-name,
                                             :type "card",   :card card-id}}}}))))))))
 
-(deftest ^:parallel template-tags-referenced-queries-test-4
+(deftest template-tags-referenced-queries-test-4
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp [Database db   {}
                    Card     card {:dataset_query
