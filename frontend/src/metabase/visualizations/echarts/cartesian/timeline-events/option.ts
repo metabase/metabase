@@ -43,11 +43,10 @@ export const getTimelineEventsSeries = (
       );
 
       const color = getColor(isSelected ? "brand" : "text-light");
+      const iconName =
+        events.length === 1 ? (events[0].icon as IconName) : "star";
 
-      const iconSvg = setSvgColor(
-        Icons[events[0].icon as IconName].source,
-        color,
-      );
+      const iconSvg = setSvgColor(Icons[iconName].source, color);
       const dataUri = svgToDataUri(iconSvg);
 
       return {
