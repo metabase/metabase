@@ -170,7 +170,7 @@
 
 (defn- table-id-from-app-db
   [db-id table-name]
-  (t2/select-one-pk [Table :id] :db_id db-id, :name table-name :active true))
+  (t2/select-one-pk [Table :id] :db_id db-id, :name table-name, :active true))
 
 (defn- throw-unfound-table-error [db-id table-name]
   (let [{driver :engine, db-name :name} (t2/select-one [:model/Database :name :engine] :id db-id)]
@@ -246,7 +246,7 @@
 
 (defn- copy-table-fields! [old-table-id new-table-id]
   (t2/insert! Field
-    (for [field (t2/select Field :table_id old-table-id {:order-by [[:id :asc]]} :active true)]
+    (for [field (t2/select Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
       (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id :active true)
@@ -264,7 +264,7 @@
             (update :human_readable_values not-empty))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
-  (let [old-tables    (t2/select Table :db_id old-db-id {:order-by [[:id :asc]]} :active true)
+  (let [old-tables    (t2/select Table :db_id old-db-id, :active true, {:order-by [[:id :asc]]})
         new-table-ids (t2/insert-returning-pks! Table
                         (for [table old-tables]
                           (-> table (dissoc :id) (assoc :db_id new-db-id))))]
@@ -284,6 +284,10 @@
                             :where     [:and
                                         [:= :source-table.db_id old-db-id]
                                         [:= :target-table.db_id old-db-id]
+                                        :source-field.active
+                                        :target-field.active
+                                        :source-table.active
+                                        :target-table.active
                                         [:not= :source-field.fk_target_field_id nil]]})]
     (t2/update! Field (the-field-id (the-table-id new-db-id source-table) source-field)
                 {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
