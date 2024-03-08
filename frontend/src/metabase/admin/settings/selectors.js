@@ -695,6 +695,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
     order: 131,
     settings: [
       {
+        key: "ee-ai-features-enabled",
+        display_name: t`AI features enabled`,
+        type: "boolean",
+      },
+      {
         key: "ee-openai-api-key",
         display_name: t`EE OpenAI API Key`,
         description: t`API key used for Enterprise AI features`,
