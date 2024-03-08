@@ -84,3 +84,38 @@
     (is (= ::boolean-or-int (ordered-hierarchy/first-common-ancestor h ::boolean-or-int ::boolean-or-int)))
     (is (= ::boolean (ordered-hierarchy/first-common-ancestor h ::boolean-or-int ::boolean)))
     (is (= ::varchar-255 (ordered-hierarchy/first-common-ancestor h ::boolean ::int)))))
+
+
+
+(def ^:private polygons
+  (ordered-hierarchy/make-hierarchy
+   [:quadrilateral
+    [:trapezoid :isosceles-trapezoid :right-trapezoid]
+    [:kite [:rhombus :square]]
+    [:parallelogram
+     :rhombus
+     [:rectangle :square]]]
+   [:triangle
+    :scalene-triangle
+    [:isosceles-triangle :equilateral-triangle]
+    [:acute-triangle :equilateral-triangle]
+    :right-angled-triangle
+    :obtuse-triangle]))
+
+(deftest make-hierarchy-test
+  (testing "Hiccup structures are translated into the expected graph structure"
+    (is (= {:trapezoid             [:quadrilateral]
+            :isosceles-trapezoid   [:trapezoid]
+            :right-trapezoid       [:trapezoid]
+            :kite                  [:quadrilateral]
+            :rhombus               [:kite :parallelogram]
+            :square                [:rhombus :rectangle]
+            :parallelogram         [:quadrilateral]
+            :rectangle             [:parallelogram]
+            :scalene-triangle      [:triangle]
+            :isosceles-triangle    [:triangle]
+            :equilateral-triangle  [:isosceles-triangle :acute-triangle]
+            :acute-triangle        [:triangle]
+            :right-angled-triangle [:triangle]
+            :obtuse-triangle       [:triangle]}
+           (update-vals (:parents polygons) vec)))))
