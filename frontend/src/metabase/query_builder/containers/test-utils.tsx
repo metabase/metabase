@@ -41,6 +41,7 @@ import {
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockResultsMetadata,
+  createMockSettings,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -232,7 +233,7 @@ export const setup = async ({
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset(dataset);
   setupSearchEndpoints([]);
-  setupPropertiesEndpoints({});
+  setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
