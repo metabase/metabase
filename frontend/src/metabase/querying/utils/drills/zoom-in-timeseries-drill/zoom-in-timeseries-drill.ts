@@ -16,9 +16,12 @@ export const zoomInTimeseriesDrill: Drill<Lib.ZoomTimeseriesDrillThruInfo> = ({
       section: "zoom",
       icon: "zoom_in",
       buttonType: "horizontal",
-      ...(isDashboard
-        ? { question: () => applyDrill(drill).lockDisplay() }
-        : { question: () => applyDrill(drill).setDefaultDisplay() }),
+      question: () => {
+        const question = applyDrill(drill);
+        return isDashboard
+          ? question.lockDisplay()
+          : question.setDefaultDisplay();
+      },
     },
   ];
 };
