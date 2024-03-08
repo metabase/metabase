@@ -938,6 +938,17 @@
                             {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
       (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
 
+(defn- is-user-reports-collection
+  "Check if the collection is a pipeline user reports collection."
+  [collection]
+  (if (= (:name collection) "User reports")
+    (let [ancestors (some->> (collection/location-path->ids (:location collection))
+                             (map #(:name (t2/select-one Collection :id %))))]
+      (and (= (count ancestors) 4)
+           (= (take 2 ancestors) ["Aion", "Pipelines"])
+           (= (last ancestors) "Reports")))
+    false))
+
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name description archived parent_id authority_level], :as collection-updates} :body}]
@@ -960,6 +971,9 @@
                           ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
                           ;; here
                           (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
+    ;; faros: disallow editing the User reports collection by regular users
+    (when (not api/*is-superuser?*)
+      (api/check-403 (not (is-user-reports-collection collection-before-update))))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :archived :authority_level])]
