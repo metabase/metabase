@@ -23,19 +23,14 @@
            pk-table-schema
            pk-column-name]}]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
-                         {:select [[[:min :f.id] :id]]
-                          ;; Cal 2024-03-04: We use `min` to limit this subquery to one result (limit 1 isn't allowed
-                          ;; in subqueries in MySQL) because it's possible for schema, table, or column names to be
-                          ;; non-unique when lower-cased for some DBs. We have been doing case-insensitive matching
-                          ;; since #5510 so this preserves behaviour to avoid possible regressions.
-                          ;; It's possible this is to avoid
+                         {:select [:id]
                           :from   [[:metabase_field :f]]
                           :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
                           :where  [:and
                                    [:= :t.db_id db-id]
-                                   [:= [:lower :f.name] (u/lower-case-en column-name)]
-                                   [:= [:lower :t.name] (u/lower-case-en table-name)]
-                                   [:= [:lower :t.schema] (some-> table-schema u/lower-case-en)]
+                                   [:= [:lower :f.name] column-name]
+                                   [:= [:lower :t.name] table-name]
+                                   [:= [:lower :t.schema] table-schema]
                                    [:= :f.active true]
                                    [:not= :f.visibility_type "retired"]
                                    [:= :t.active true]
