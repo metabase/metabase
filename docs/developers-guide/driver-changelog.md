@@ -9,6 +9,9 @@ title: Driver interface changelog
 - The multimethod `metabase.driver/describe-fks` has been added. The method needs to be implemented if the database
   supports the `:foreign-keys` and `:fast-sync-fks` features.
 
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-fks-sql` has been added. The method needs
+  to be implemented if you want to use the default JDBC implementation of `metabase.driver/describe-fks`.
+
 ## Metabase 0.49.0
 
 - The multimethod `metabase.driver.sql-jdbc.sync.interface/current-user-table-privileges` has been added.
