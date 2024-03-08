@@ -18,25 +18,6 @@
   max-width: 550px;
 }
 
-.subheader {
-  composes: mt1 mb2 from "style";
-}
-
-.subheaderBody {
-  composes: text-medium text-bold from "style";
-  font-size: 14px;
-}
-
-.subheaderLink {
-  color: var(--color-brand);
-  text-decoration: none;
-}
-
-.subheaderLink:hover {
-  color: var(--color-brand);
-  transition: color 0.3s linear;
-}
-
 .headerSchema {
   composes: text-light from "style";
   position: absolute;
