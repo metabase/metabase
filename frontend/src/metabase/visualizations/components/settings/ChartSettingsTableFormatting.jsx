@@ -91,7 +91,7 @@ const INPUT_CLASSNAME = "mt1 full";
 const getValueForDescription = rule =>
   ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;
 
-const ChartSettingsTableFormatting = props => {
+export const ChartSettingsTableFormatting = props => {
   const [editingRule, setEditingRule] = useState();
   const [editingRuleIsNew, setEditingRuleIsNew] = useState();
 
@@ -552,5 +552,3 @@ const RuleEditor = ({
     </div>
   );
 };
-
-export default ChartSettingsTableFormatting;
