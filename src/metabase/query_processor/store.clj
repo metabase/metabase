@@ -16,6 +16,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -208,14 +209,10 @@
     (let [provider   (metadata-provider)
           objects    (vec (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
                             (filter some? (lib.metadata.protocols/bulk-metadata provider metadata-type ids-set))
-                            (let [f (case metadata-type
-                                      :metadata/card    lib.metadata.protocols/card
-                                      :metadata/column  lib.metadata.protocols/field
-                                      :metadata/metric  lib.metadata.protocols/metric
-                                      :metadata/segment lib.metadata.protocols/segment
-                                      :metadata/table   lib.metadata.protocols/table)]
-                              (for [id ids-set]
-                                (f provider id)))))
+                            (lib.metadata.composed-provider/fetch-bulk-metadata-with-non-bulk-provider
+                             provider
+                             metadata-type
+                             ids-set)))
           id->object (m/index-by :id objects)]
       (mapv (fn [id]
               (or (get id->object id)

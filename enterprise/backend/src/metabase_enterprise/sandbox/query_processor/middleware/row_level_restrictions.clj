@@ -6,8 +6,7 @@
    [clojure.core.memoize :as memoize]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :as gtap]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db.connection :as mdb.connection]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,8 +17,8 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.fetch-source-query
-    :as fetch-source-query]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -133,7 +132,7 @@
 
 (defn- card-gtap->source
   [{card-id :card_id :as gtap}]
-  (update-in (fetch-source-query/card-id->source-query-and-metadata card-id)
+  (update-in (fetch-source-query-legacy/card-id->source-query-and-metadata card-id)
              [:source-query :parameters]
              concat
              (gtap->parameters gtap)))

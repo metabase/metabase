@@ -1233,15 +1233,15 @@
         db-id (mt/id)
         schema+table-name (#'upload/table-identifier {:schema schema-name :name table-name})
         insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
-        col-definitions (#'upload/column-definitions driver col->upload-type)
-        _ (driver/create-table! driver/*driver*
-                                db-id
-                                schema+table-name
-                                col-definitions
-                                (if (contains? col-definitions upload/auto-pk-column-keyword)
-                                  {:primary-key [upload/auto-pk-column-keyword]}
-                                  {}))
-        _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)]
+        col-definitions (#'upload/column-definitions driver col->upload-type)]
+    (driver/create-table! driver/*driver*
+                          db-id
+                          schema+table-name
+                          col-definitions
+                          (if (contains? col-definitions upload/auto-pk-column-keyword)
+                            {:primary-key [upload/auto-pk-column-keyword]}
+                            {}))
+    (driver/insert-into! driver db-id schema+table-name insert-col-names rows)
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
 
 (defmacro maybe-apply-macro

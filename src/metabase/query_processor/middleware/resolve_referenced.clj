@@ -3,8 +3,9 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.middleware.fetch-source-query
-    :as fetch-source-query]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.query-processor.middleware.fetch-source-query-legacy
+    :as fetch-source-query-legacy]
    [metabase.query-processor.middleware.resolve-fields
     :as qp.resolve-fields]
    [metabase.query-processor.middleware.resolve-source-table
@@ -29,7 +30,7 @@
   [query]
   (doseq [referenced-card (qp.u.tag-referenced-cards/tags-referenced-cards query)
           :let            [referenced-query (:dataset-query referenced-card)
-                           resolved-query (fetch-source-query/resolve-card-id-source-tables* referenced-query)]]
+                           resolved-query (fetch-source-query-legacy/resolve-card-id-source-tables* referenced-query)]]
     (check-query-database-id= referenced-query (:database query))
     (qp.resolve-source-table/resolve-source-tables resolved-query)
     (qp.resolve-fields/resolve-fields resolved-query))

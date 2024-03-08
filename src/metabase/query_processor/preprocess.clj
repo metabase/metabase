@@ -13,6 +13,7 @@
    [metabase.query-processor.middleware.binning :as binning]
    [metabase.query-processor.middleware.check-features :as check-features]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.convert-to-legacy :as qp.convert-to-legacy]
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -52,7 +53,10 @@
    #'qp.perms/remove-permissions-key
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
-   #'fetch-source-query/resolve-card-id-source-tables
+   #'fetch-source-query/resolve-source-cards
+   ;; ↑↑↑ ALL MIDDLEWARE ABOVE THIS POINT WILL SEE MLV2 PMBQL QUERIES ↑↑↑
+   #'qp.convert-to-legacy/convert-to-legacy
+   ;; ↓↓↓ ALL MIDDLEWARE BELOW THIS POINT WILL SEE LEGACY MBQL QUERIES ↓↓↓
    #'expand-macros/expand-macros
    #'qp.resolve-referenced/resolve-referenced-card-resources
    #'parameters/substitute-parameters
@@ -104,7 +108,7 @@
           (u/prog1 (middleware-fn query)
             (when-not (map? <>)
               (throw (ex-info (format "Middleware did not return a valid query.")
-                              {:fn middleware-fn, :query query, :type qp.error-type/qp}))))
+                              {:fn middleware-fn, :query query, :result <>, :type qp.error-type/qp}))))
           (catch Throwable e
             (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
                             {:fn middleware-fn, :query query, :type qp.error-type/qp}

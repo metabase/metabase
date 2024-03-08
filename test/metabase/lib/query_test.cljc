@@ -10,6 +10,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -164,3 +165,24 @@
           false (assoc editable :database 999999999)    ; database unknown - no permissions
           false (mock-db-native-perms :none)            ; native-permissions explicitly set to :none
           false (mock-db-native-perms nil))))))         ; native-permissions not found on the database
+
+(deftest ^:parallel convert-from-legacy-preserve-info-test
+  (testing ":info key should be converted when converting from legacy to pMBQL"
+    (is (=? {:lib/type     :mbql/query
+             :lib/metadata meta/metadata-provider
+             :database     (meta/id)
+             :stages       [{:lib/type    :mbql.stage/mbql
+                             :source-card 1}]
+             :info         {:card-id 1000}}
+            (lib.query/query meta/metadata-provider (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
+                                                           :info {:card-id 1000}))))))
+
+(deftest ^:parallel convert-from-legacy-remove-type-test
+  (testing "legacy keys like :type and :query should get removed"
+    (is (= {:database               (meta/id)
+            :lib/type               :mbql/query
+            :lib/metadata           meta/metadata-provider
+            :stages                 [{:lib/type :mbql.stage/mbql, :source-table 74040}]
+            :lib.convert/converted? true}
+           (lib.query/query meta/metadata-provider
+             {:database 74001, :type :query, :query {:source-table 74040}})))))
