@@ -7,6 +7,7 @@ import TableInfo from "../TableInfo";
 
 export type TableInfoPopoverProps = Omit<PopoverProps, "content"> &
   Omit<TableInfoProps, "tableId"> & {
+    hideIfEmpty?: boolean;
     table: {
       id: string | number;
       description?: string | null;
@@ -19,11 +20,16 @@ export function TableInfoPopover({
   disabled,
   position,
   table,
+  hideIfEmpty,
   ...rest
 }: TableInfoPopoverProps) {
   const shouldHavePopover = table.description && !isVirtualCardId(table.id);
 
   if (!shouldHavePopover) {
+    if (hideIfEmpty) {
+      return null;
+    }
+
     return <>{children}</>;
   }
 
