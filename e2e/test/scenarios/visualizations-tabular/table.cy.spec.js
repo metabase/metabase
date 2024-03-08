@@ -218,7 +218,7 @@ describe("scenarios > visualizations > table", () => {
       cy.get(".cellData").contains(column).realHover();
 
       // Add a delay here because there can be two popovers active for a very short time.
-      cy.wait(200);
+      cy.wait(50);
 
       hovercard().within(() => {
         test();
@@ -241,7 +241,7 @@ describe("scenarios > visualizations > table", () => {
 
     // Make sure new table results loaded with Custom column and Count columns
     cy.get(".cellData").contains(ccName).realHover();
-    cy.wait(200);
+    cy.wait(50);
 
     hovercard().within(() => {
       cy.contains("No special type");
