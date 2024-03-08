@@ -349,9 +349,12 @@
   nil)
 
 (defmulti describe-fks
-  "Returns a reducible collection of maps, each containing information about foreign keys. Results match the
-  [[metabase.sync.interface/FKMetadata]] schema. Takes keyword arguments to narrow down the results to a specific
-  catalog, schema or table.
+  "Returns a reducible collection of maps, each containing information about foreign keys.
+  Takes keyword arguments to narrow down the results to a set of `schema-names` or `table-names`.
+
+  Results match [[metabase.sync.interface/FastFKMetadataEntry]].
+  Results are ordered by fk-table-schema, fk-table-name, and fk-column-name.
+  Results are optionally filtered by the `schema-names` and `table-names` provided.
 
   Required for drivers that support `:fast-sync-fks`."
   {:added "0.50.0" :arglists '([driver database & {:keys [schema-names table-names]}])}

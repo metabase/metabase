@@ -47,9 +47,9 @@
             :mysql
             {:update [:metabase_field :f]
              :join   [[fk-field-id-query :fk] [:= :fk.id :f.id]
-                     ;; Only update if either:
-                     ;; - fk_target_field_id is NULL and the new target is not NULL
-                     ;; - fk_target_field_id is not NULL but the new target is different and not NULL
+                      ;; Only update if either:
+                      ;; - fk_target_field_id is NULL and the new target is not NULL
+                      ;; - fk_target_field_id is not NULL but the new target is different and not NULL
                       [pk-field-id-query :pk]
                       [:and
                        [:or
@@ -108,8 +108,9 @@
                            :updated-fks  updated
                            :total-failed failed})))
                  (partial merge-with +)
-                 {:total-fks   0
-                  :updated-fks 0}
+                 {:total-fks    0
+                  :updated-fks  0
+                  :total-failed 0}
                  fk-metadata))))
 
 (mu/defn sync-fks-for-table!
@@ -138,22 +139,22 @@
 
   If the driver supports the `:fast-sync-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata.
 
-  This function also sets all the tables in the "
+  This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
   [database :- i/DatabaseInstance]
-  (if (driver/database-supports? (driver.u/database->driver database) :fast-sync-fks database)
-    (u/prog1 (fast-sync-fks! database)
-      (sync-util/set-initial-table-syncs-complete-for-db! database))
-    (reduce (fn [update-info table]
-              (let [table         (t2.realize/realize table)
-                    table-fk-info (sync-fks-for-table! database table)]
-                ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
-                ;; sync-aborting errors should be surfaced to the UI (see
-                ;; `:metabase.sync.util/exception-classes-not-to-retry`).
-                (sync-util/set-initial-table-sync-complete! table)
-                (if (instance? Exception table-fk-info)
-                  (update update-info :total-failed inc)
-                  (merge-with + update-info table-fk-info))))
-            {:total-fks    0
-             :updated-fks  0
-             :total-failed 0}
-            (sync-util/db->reducible-sync-tables database))))
+  (u/prog1 (if (driver/database-supports? (driver.u/database->driver database) :fast-sync-fks database)
+             (fast-sync-fks! database)
+             (reduce (fn [update-info table]
+                       (let [table         (t2.realize/realize table)
+                             table-fk-info (sync-fks-for-table! database table)]
+                         (sync-util/set-initial-table-sync-complete! table)
+                         (if (instance? Exception table-fk-info)
+                           (update update-info :total-failed inc)
+                           (merge-with + update-info table-fk-info))))
+                     {:total-fks    0
+                      :updated-fks  0
+                      :total-failed 0}
+                     (sync-util/db->reducible-sync-tables database)))
+    ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
+    ;; sync-aborting errors should be surfaced to the UI (see
+    ;; `:metabase.sync.util/exception-classes-not-to-retry`).
+    (sync-util/set-initial-table-syncs-complete-for-db! database)))

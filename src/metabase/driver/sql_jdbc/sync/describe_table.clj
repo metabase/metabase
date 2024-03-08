@@ -273,11 +273,7 @@
 
 (defmulti describe-fks-sql
  "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fks]],
- i.e. [[describe-fks]]. When executed the query will return a result set with the columns matching
- [[metabase.sync.interface/FastFKMetadataEntry]].
-
- Results are ordered by fk-table-schema, fk-table-name, and fk-column-name.
- Results are optionally filtered by the `schema-names` and `table-names` provided."
+ i.e. [[describe-fks]]."
  {:added    "0.50.0"
   :arglists '([driver & {:keys [schema-names table-names]}])}
  driver/dispatch-on-initialized-driver

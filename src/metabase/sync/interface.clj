@@ -111,7 +111,7 @@
    [:pk-column-name   ::lib.schema.common/non-blank-string]])
 
 (def FastFKMetadataEntry
-  "Schema for an individual entry in `FKMetadata`."
+  "Schema for an entry in the expected output of [[metabase.driver/describe-fks]]."
   [:ref ::FastFKMetadataEntry])
 
 ;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
