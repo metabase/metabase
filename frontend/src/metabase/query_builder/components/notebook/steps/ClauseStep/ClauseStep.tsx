@@ -31,12 +31,12 @@ type RenderPopoverOpts<T> = {
 export interface ClauseStepProps<T> {
   color: string;
   items: T[];
-  isLastOpened?: boolean;
-  initialAddText?: string | null;
+  initialAddText?: string;
   readOnly?: boolean;
+  isLastOpened?: boolean;
   renderName: (item: T, index: number) => JSX.Element | string;
   renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
-  onRemove: ((item: T, index: number) => void) | null;
+  onRemove: (item: T, index: number) => void;
   onReorder: (sourceItem: T, targetItem: T) => void;
   "data-testid"?: string;
 }
@@ -44,48 +44,19 @@ export interface ClauseStepProps<T> {
 export const ClauseStep = <T,>({
   color,
   items,
+  initialAddText,
+  readOnly = false,
   isLastOpened = false,
-  initialAddText = null,
-  readOnly,
   renderName,
   renderPopover,
-  onRemove = null,
+  onRemove,
   onReorder,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
-  });
-
-  const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
-    input => {
-      if (input.over) {
-        const sourceIndex = getItemIndexFromId(input.active.id);
-        const targetIndex = getItemIndexFromId(input.over.id);
-        onReorder(items[sourceIndex], items[targetIndex]);
-      }
-    },
-    [items, onReorder],
-  );
-
-  const renderSortContext = (children: ReactNode) => (
-    <DndContext
-      sensors={[pointerSensor]}
-      modifiers={[restrictToParentElement]}
-      onDragEnd={handleSortEnd}
-    >
-      <SortableContext
-        items={items.map((_, index) => getItemIdFromIndex(index))}
-      >
-        {children}
-      </SortableContext>
-    </DndContext>
-  );
-
   const renderItem = ({ item, index, onOpen }: RenderItemOpts<T>) => (
     <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
       {renderName(item, index)}
-      {!readOnly && onRemove && (
+      {!readOnly && (
         <Icon
           className="ml1"
           name="close"
@@ -108,16 +79,16 @@ export const ClauseStep = <T,>({
 
   return (
     <NotebookCell color={color} data-testid={props["data-testid"]}>
-      {renderSortContext(
-        items.map((item, index) => (
-          <ClauseStepItem id={getItemIdFromIndex(index)} key={index}>
+      <ClauseStepDndContext items={items} onReorder={onReorder}>
+        {items.map((item, index) => (
+          <ClauseStepDndItem key={index} index={index} readOnly={readOnly}>
             <ClausePopover
               renderItem={onOpen => renderItem({ item, index, onOpen })}
               renderPopover={onClose => renderPopover({ item, index, onClose })}
             />
-          </ClauseStepItem>
-        )),
-      )}
+          </ClauseStepDndItem>
+        ))}
+      </ClauseStepDndContext>
       {!readOnly && (
         <ClausePopover
           isInitiallyOpen={isLastOpened}
@@ -129,15 +100,62 @@ export const ClauseStep = <T,>({
   );
 };
 
-interface ClauseStepItemProps {
-  id: string;
+type ClauseStepDndContextProps<T> = {
+  items: T[];
   children: ReactNode;
+  onReorder: (sourceItem: T, targetItem: T) => void;
+};
+
+function ClauseStepDndContext<T>({
+  items,
+  children,
+  onReorder,
+}: ClauseStepDndContextProps<T>) {
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 0 },
+  });
+
+  const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
+    input => {
+      if (input.over) {
+        const sourceIndex = getItemIndexFromId(input.active.id);
+        const targetIndex = getItemIndexFromId(input.over.id);
+        onReorder(items[sourceIndex], items[targetIndex]);
+      }
+    },
+    [items, onReorder],
+  );
+
+  return (
+    <DndContext
+      sensors={[pointerSensor]}
+      modifiers={[restrictToParentElement]}
+      onDragEnd={handleSortEnd}
+    >
+      <SortableContext
+        items={items.map((_, index) => getItemIdFromIndex(index))}
+      >
+        {children}
+      </SortableContext>
+    </DndContext>
+  );
 }
 
-function ClauseStepItem({ id, children }: ClauseStepItemProps) {
+type ClauseStepDndItemProps = {
+  index: number;
+  readOnly: boolean;
+  children: ReactNode;
+};
+
+function ClauseStepDndItem({
+  index,
+  readOnly,
+  children,
+}: ClauseStepDndItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
-      id,
+      id: getItemIdFromIndex(index),
+      disabled: readOnly,
       animateLayoutChanges: () => false,
     });
 
