@@ -21,6 +21,8 @@ import { getValue } from "./utils";
 
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
+const MIN_BAR_HEIGHT = 30;
+const COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT = 99;
 
 export default class Progress extends Component {
   constructor(props) {
@@ -92,17 +94,13 @@ export default class Progress extends Component {
     const bar = this.barRef.current;
 
     // Safari not respecting `height: 25%` so just do it here ¯\_(ツ)_/¯
-    bar.style.height = Math.min(MAX_BAR_HEIGHT, component.offsetHeight) + "px";
-
-    if (this.props.gridSize && this.props.gridSize.height < 4) {
-      pointer.parentNode.style.display = "none";
-      label.parentNode.style.display = "none";
-      // no need to do the rest of the repositioning
-      return;
-    } else {
-      pointer.parentNode.style.display = null;
-      label.parentNode.style.display = null;
-    }
+    // we have to reset height before we can calculate new height
+    bar.style.height = 0;
+    bar.style.height = computeBarHeight({
+      cardHeight: this.props.gridSize.height,
+      componentHeight: component.clientHeight,
+      isMobile: this.props.isMobile,
+    });
 
     // reset the pointer transform for these computations
     pointer.style.transform = null;
@@ -243,4 +241,16 @@ export default class Progress extends Component {
       </div>
     );
   }
+}
+
+function computeBarHeight({ cardHeight, componentHeight, isMobile }) {
+  const isSmallCard = cardHeight === Progress.minSize.height;
+
+  if (isSmallCard && !isMobile) {
+    const computedHeight =
+      MIN_BAR_HEIGHT + (componentHeight - COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT);
+    return `${Math.min(MAX_BAR_HEIGHT, computedHeight)}px`;
+  }
+
+  return `${MAX_BAR_HEIGHT}px`;
 }
