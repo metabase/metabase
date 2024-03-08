@@ -118,7 +118,7 @@
                                                ;; if there are any.
                                                (lib.options/update-options merge (select-keys opts-from-ref [:name :display-name])))
                             filters        (legacy-macro-filters legacy-metric)]
-                        (log/infof "Replacing legacy Metric reference\n%s" (u/pprint-to-str &match))
+                        (log/debugf "Expanding legacy Metric macro\n%s" (u/pprint-to-str &match))
                         (log/tracef "Adding aggregation clause for legacy Metric %d:\n%s" id (u/pprint-to-str aggregation))
                         (doseq [filter-clause filters]
                           (log/tracef "Adding filter clause for legacy Metric %d:\n%s" id (u/pprint-to-str filter-clause)))
@@ -136,7 +136,7 @@
         [:segment _opts (id :guard pos-int?)]
         (let [legacy-segment (get id->legacy-segment id)
               filter-clauses (legacy-macro-filters legacy-segment)]
-          (log/infof "Replacing legacy Segment reference\n%s" (u/pprint-to-str &match))
+          (log/debugf "Expanding legacy Segment macro\n%s" (u/pprint-to-str &match))
           (doseq [filter-clause filter-clauses]
             (log/tracef "Adding filter clause for legacy Segment %d:\n%s" id (u/pprint-to-str filter-clause)))
           ;; replace a single segment with a single filter, wrapping them in `:and` if needed... we will unwrap once
