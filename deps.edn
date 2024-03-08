@@ -130,7 +130,7 @@
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.77"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.77"}
-  org.clojure/clojure                       {:mvn/version "1.11.1"}
+  org.clojure/clojure                       {:mvn/version "1.11.2"}
   org.clojure/core.async                    {:mvn/version "1.6.681"
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.logic                    {:mvn/version "1.0.1"}              ; optimized pattern matching library for Clojure
