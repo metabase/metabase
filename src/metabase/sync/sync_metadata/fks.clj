@@ -27,7 +27,8 @@
                           ;; Cal 2024-03-04: We use `min` to limit this subquery to one result (limit 1 isn't allowed
                           ;; in subqueries in MySQL) because it's possible for schema, table, or column names to be
                           ;; non-unique when lower-cased for some DBs. We have been doing case-insensitive matching
-                          ;; since #39679 so this preserves behaviour to avoid possible regressions.
+                          ;; since #5510 so this preserves behaviour to avoid possible regressions.
+                          ;; It's possible this is to avoid
                           :from   [[:metabase_field :f]]
                           :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
                           :where  [:and
