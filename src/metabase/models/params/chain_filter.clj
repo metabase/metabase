@@ -194,12 +194,17 @@
                                            [:pk-field.id :f2]
                                            [:pk-field.table_id :t2]]
                                :from      [[:metabase_field :fk-field]]
-                               :left-join [[:metabase_table :fk-table]    [:= :fk-field.table_id :fk-table.id]
+                               :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                                                :fk-table.active]
                                            [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                                           [:metabase_field :pk-field]    [:= :fk-field.fk_target_field_id :pk-field.id]]
+                                           [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
+                                                                                :pk-field.active]]
                                :where     [:and
                                            [:= :database.id database-id]
-                                           [:not= :fk-field.fk_target_field_id nil]]})]
+                                           [:not= :fk-field.fk_target_field_id nil]
+                                           :fk-field.active]
+                               :order-by [[:fk-field.id :desc]
+                                          [:pk-field.id :desc]]})]
     (reduce
      (partial merge-with merge)
      {}
@@ -297,11 +302,14 @@
                                   enable-reverse-joins?])}
            find-joins*
            :ttl/threshold find-joins-cache-duration-ms)]
-    (fn
-      ([database-id source-table-id other-table-id]
-       (f database-id source-table-id other-table-id *enable-reverse-joins*))
-      ([database-id source-table-id other-table-id enable-reverse-joins?]
-       (f database-id source-table-id other-table-id enable-reverse-joins?)))))
+    ;; expose memoize metadata
+    (with-meta
+     (fn
+       ([database-id source-table-id other-table-id]
+        (f database-id source-table-id other-table-id *enable-reverse-joins*))
+       ([database-id source-table-id other-table-id enable-reverse-joins?]
+        (f database-id source-table-id other-table-id enable-reverse-joins?)))
+     (meta f))))
 
 (def ^:private ^{:arglists '([source-table other-table-ids enable-reverse-joins?])} find-all-joins*
   (memoize/ttl
