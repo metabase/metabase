@@ -84,7 +84,7 @@
                :type     :query
                :query    {:source-table (u/the-id table)}}))))))
 
-(deftest ^:parallel nested-native-query-test
+(deftest nested-native-query-test
   (testing "Make sure nested native query fails to run if current user doesn't have perms"
     (t2.with-temp/with-temp [:model/Database db {}]
       (data-perms/set-database-permission! (perms-group/all-users) (u/the-id db) :perms/native-query-editing :no)
