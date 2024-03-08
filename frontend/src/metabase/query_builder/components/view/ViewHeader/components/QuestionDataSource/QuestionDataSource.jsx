@@ -260,7 +260,7 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
     >
       <span>
         {table.displayName()}
-        {!subHead && <TableInfoIcon table={table} hideIfEmpty />}
+        {!subHead && <TableInfoIcon table={table} />}
       </span>
     </HeadBreadcrumbs.Badge>
   ));
