@@ -1,25 +1,15 @@
 /* eslint-disable react/prop-types */
-import { Motion, spring, presets } from "react-motion";
-
 import { Icon } from "metabase/ui";
 
 const DisclosureTriangle = ({ open, className }) => (
-  <Motion
-    defaultStyle={{ deg: 0 }}
+  <Icon
+    className={className}
+    name="expand_arrow"
     style={{
-      deg: open ? spring(0, presets.gentle) : spring(-90, presets.gentle),
+      transition: "transform 300ms ease-out",
+      transform: `rotate(${open ? 0 : -90}deg)`,
     }}
-  >
-    {motionStyle => (
-      <Icon
-        className={className}
-        name="expand_arrow"
-        style={{
-          transform: `rotate(${motionStyle.deg}deg)`,
-        }}
-      />
-    )}
-  </Motion>
+  />
 );
 
 export default DisclosureTriangle;
