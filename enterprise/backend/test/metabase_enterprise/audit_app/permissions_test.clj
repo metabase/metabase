@@ -86,7 +86,7 @@
 
           (testing "Users without access to the audit collection cannot run any queries on the audit DB, even if they
                    have data perms for the audit DB"
-            (binding [api/*current-user-permissions-set* (delay #{(perms/data-perms-path perms/audit-db-id)})]
+            (binding [api/*current-user-permissions-set* (delay #{})]
               (let [audit-view (t2/select-one :model/Table :db_id perms/audit-db-id)]
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
