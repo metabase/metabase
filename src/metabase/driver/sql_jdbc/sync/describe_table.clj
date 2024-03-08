@@ -272,13 +272,10 @@
      (describe-table-fks* driver conn table db-name-or-nil))))
 
 (defmulti describe-fks-sql
- "Returns a vector of [sql & params] that produces results with the following columns:
-  - fk-column-name
-  - fk-table-schema
-  - fk-table-name
-  - dest-column-name
-  - dest-table-name
-  - dest-table-schema
+ "Returns a SQL query for use in the default JDBC implementation of [[metabase.driver/describe-fks]], i.e. [[describe-fks]].
+
+ Returns a vector of [sql & params] that when executed will return a result set with the columns described by
+ [[metabase.sync.interface/FastFKMetadataEntry]] schema.
 
  Results are ordered by fk-table-schema, fk-table-name, and fk-column-name.
  Results are filtered by the schema-names and table-names provided."

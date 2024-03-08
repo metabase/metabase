@@ -52,7 +52,7 @@
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
-  [_ & {:keys [schema-names table-names]}]
+  [driver & {:keys [schema-names table-names]}]
   (sql/format {:select (vec
                         {:source_ns.nspname     "fk-table-schema"
                          :source_table.relname  "fk-table-name"
@@ -67,15 +67,13 @@
                         [:pg_class     :dest_table]    [:= :c.confrelid :dest_table.oid]
                         [:pg_namespace :dest_ns]       [:= :dest_table.relnamespace :dest_ns.oid]
                         [:pg_attribute :dest_column]   [:= :c.confrelid :dest_column.attrelid]]
-               :where  (cond-> [:and
-                                [:= :c.contype [:raw "'f'::char"]]
-                                [:= :source_column.attnum [:raw "ANY(c.conkey)"]]
-                                [:= :dest_column.attnum [:raw "ANY(c.confkey)"]]]
-                         (seq table-names)
-                         (conj [:in :source_table.relname table-names])
-                         (seq schema-names)
-                         (conj [:in :source_ns.nspname schema-names]))}
-              {:pretty true}))
+               :where  [:and
+                        [:= :c.contype [:raw "'f'::char"]]
+                        [:= :source_column.attnum [:raw "ANY(c.conkey)"]]
+                        [:= :dest_column.attnum [:raw "ANY(c.confkey)"]]
+                        (when table-names [:in :source_table.relname table-names])
+                        (when schema-names [:in :source_ns.nspname schema-names])]}
+              :dialect (sql.qp/quote-style driver)))
 
 (defmethod driver/db-start-of-week :redshift
   [_]
