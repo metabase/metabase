@@ -34,6 +34,7 @@ export const Description = styled.div`
   white-space: pre-line;
   max-height: 200px;
   overflow: auto;
+  margin-bottom: 0.5em;
 `;
 
 export const EmptyDescription = styled(Description)`
@@ -72,7 +73,6 @@ type FadeProps = {
 };
 
 export const Fade = styled.div<FadeProps>`
-  position: relative;
   width: 100%;
   transition: opacity ${TRANSITION_DURATION} linear;
   opacity: ${({ visible }) => (visible ? "1" : "0")};

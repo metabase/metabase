@@ -128,4 +128,4 @@
   (is (= true
          (#'upsert/has-post-insert? User)))
   (is (= false
-         (#'upsert/has-post-insert? Table))))
+         (#'upsert/has-post-insert? Metric))))
