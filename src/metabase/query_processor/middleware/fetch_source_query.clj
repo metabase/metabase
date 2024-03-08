@@ -28,7 +28,8 @@
   hardcoding driver-specific behavior in generic QP middleware."
   [[first-stage & more]]
   (let [first-stage (cond-> first-stage
-                      (= driver/*driver* :mongo)
+                      (and (= driver/*driver* :mongo)
+                           (= (:lib/type first-stage) :mbql.stage/native))
                       (update :native (fn [x]
                                         (if (map? x)
                                           x
