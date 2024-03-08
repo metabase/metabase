@@ -89,7 +89,7 @@
   [metadata-providerable legacy-query]
   (let [pmbql-query (lib.convert/->pMBQL (mbql.normalize/normalize legacy-query))]
     (merge
-     (dissoc legacy-query :query :native :type)
+     pmbql-query
      (query-with-stages metadata-providerable (:stages pmbql-query)))))
 
 (defn- query-from-unknown-query [metadata-providerable query]
