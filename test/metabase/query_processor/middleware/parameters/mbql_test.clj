@@ -153,7 +153,13 @@
                        :parameters [{:name   "price"
                                      :type   :number/between
                                      :target $price
-                                     :value [2 5]}]})))))
+                                     :value [2 5]}]})))))))))
+
+(deftest ^:parallel operations-e2e-test-2
+  (mt/test-drivers (params-test-drivers)
+    (testing "check that operations works correctly"
+      (let [f #(mt/formatted-rows [int]
+                 (qp/process-query %))]
         (testing "unary string"
           (is (= [(case driver/*driver*
                     ;; no idea why this count is off...
@@ -177,8 +183,11 @@
                     {:parameters [{:name   "id"
                                    :type   "id"
                                    :target $id
-                                   :value  9}]}))))))
+                                   :value  9}]})))))))))
 
+(deftest ^:parallel basic-where-test-2
+  (mt/test-drivers (params-test-drivers)
+    (testing "test that we can inject a basic `WHERE field = value` type param"
       (testing "`:category` param type"
         (is (= [[6]]
                (mt/formatted-rows [int]
@@ -188,7 +197,11 @@
                      :parameters [{:name   "price"
                                    :type   :category
                                    :target $price
-                                   :value  4}]}))))))
+                                   :value  4}]})))))))))
+
+(deftest ^:parallel basic-where-test-3
+  (mt/test-drivers (params-test-drivers)
+    (testing "test that we can inject a basic `WHERE field = value` type param"
       (testing "`:number/>=` param type"
         (is (= [[78]]
                (mt/formatted-rows [int]

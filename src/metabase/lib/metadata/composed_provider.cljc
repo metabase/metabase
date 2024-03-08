@@ -1,9 +1,14 @@
 (ns metabase.lib.metadata.composed-provider
   (:require
+   #?(:clj [pretty.core :as pretty])
    [clojure.core.protocols]
    [clojure.datafy :as datafy]
+   [clojure.set :as set]
    [medley.core :as m]
-   [metabase.lib.metadata.protocols :as metadata.protocols]))
+   [metabase.lib.metadata.protocols :as metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.util.malli :as mu]))
 
 (defn- cached-providers [providers]
   (filter #(satisfies? metadata.protocols/CachedMetadataProvider %)
@@ -21,6 +26,44 @@
                    (f provider table-id)))
          (m/distinct-by :id))
         metadata-providers))
+
+(mu/defn fetch-bulk-metadata-with-non-bulk-provider :- [:maybe [:sequential :map]]
+  "Call a non-bulk metadata provider repeatedly to fetch multiple metadatas of the same type."
+  [provider      :- ::lib.schema.metadata/metadata-provider
+   metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
+   ids           :- [:maybe
+                     [:or
+                      [:set ::lib.schema.common/positive-int]
+                      [:sequential ::lib.schema.common/positive-int]]]]
+  (let [f (case metadata-type
+            :metadata/card    metadata.protocols/card
+            :metadata/column  metadata.protocols/field
+            :metadata/metric  metadata.protocols/metric
+            :metadata/segment metadata.protocols/segment
+            :metadata/table   metadata.protocols/table)]
+    (into []
+          (keep (fn [id]
+                  (f provider id)))
+          ids)))
+
+(defn- bulk-metadata [providers metadata-type ids]
+  (loop [[provider & more-providers] providers, unfetched-ids (set ids), fetched []]
+    (cond
+      (empty? unfetched-ids)
+      fetched
+
+      (not provider)
+      fetched
+
+      :else
+      (let [newly-fetched     (if (satisfies? metadata.protocols/BulkMetadataProvider provider)
+                                (metadata.protocols/bulk-metadata provider metadata-type unfetched-ids)
+                                (fetch-bulk-metadata-with-non-bulk-provider provider metadata-type unfetched-ids))
+            newly-fetched-ids (into #{} (map :id) newly-fetched)
+            unfetched-ids     (set/difference unfetched-ids newly-fetched-ids)]
+        (recur more-providers
+               unfetched-ids
+               (into fetched newly-fetched))))))
 
 (deftype ComposedMetadataProvider [metadata-providers]
   metadata.protocols/MetadataProvider
@@ -50,6 +93,10 @@
     (when-first [provider (cached-providers metadata-providers)]
       (metadata.protocols/store-metadata! provider metadata-type id metadata)))
 
+  metadata.protocols/BulkMetadataProvider
+  (bulk-metadata [_this metadata-type ids]
+    (bulk-metadata metadata-providers metadata-type ids))
+
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
     (and (instance? ComposedMetadataProvider another)
@@ -58,7 +105,12 @@
 
   clojure.core.protocols/Datafiable
   (datafy [_this]
-    (cons `composed-metadata-provider (map datafy/datafy metadata-providers))))
+    (cons `composed-metadata-provider (map datafy/datafy metadata-providers)))
+
+  #?@(:clj
+      [pretty/PrettyPrintable
+       (pretty [_this]
+               (list* `composed-metadata-provider metadata-providers))]))
 
 (defn composed-metadata-provider
   "A metadata provider composed of several different `metadata-providers`. Methods try each constituent provider in
