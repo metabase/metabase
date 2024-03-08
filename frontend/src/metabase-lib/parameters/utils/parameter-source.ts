@@ -1,4 +1,6 @@
 import type Field from "metabase-lib/metadata/Field";
+import { isFuzzyOperator } from "metabase-lib/operators/utils";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import type {
   Parameter,
   ValuesQueryType,
@@ -9,7 +11,7 @@ import type {
 import type { ParameterWithTemplateTagTarget } from "../types";
 
 import { getFields } from "./parameter-fields";
-import { getParameterSubType, getParameterType } from "./parameter-type";
+import { getParameterType } from "./parameter-type";
 
 export const getQueryType = (
   parameter: ParameterWithTemplateTagTarget,
@@ -22,19 +24,9 @@ const getDefaultQueryType = (
 ): ValuesQueryType => {
   if (parameter.hasVariableTemplateTagTarget) {
     return "none";
-  }
-
-  const type = getParameterType(parameter);
-  const subType = getParameterSubType(parameter);
-
-  switch (type) {
-    case "string":
-    case "location":
-      return subType === "=" ? "list" : "none";
-    case "category":
-      return "list";
-    default:
-      return "none";
+  } else {
+    const operator = deriveFieldOperatorFromParameter(parameter);
+    return operator != null && isFuzzyOperator(operator) ? "none" : "list";
   }
 };
 
@@ -52,7 +44,6 @@ export const canUseCustomSource = (parameter: Parameter) => {
   switch (type) {
     case "string":
     case "location":
-      return true;
     case "category":
       return true;
     default:
@@ -112,6 +103,11 @@ export const canSearchParameterValues = (
   parameter: Parameter,
   disablePKRemapping = false,
 ) => {
+  const operator = deriveFieldOperatorFromParameter(parameter);
+  if (operator && isFuzzyOperator(operator) && !canUseCustomSource(parameter)) {
+    return false;
+  }
+
   const queryType = getQueryType(parameter);
   const sourceType = getSourceType(parameter);
   const fields = getFields(parameter);
