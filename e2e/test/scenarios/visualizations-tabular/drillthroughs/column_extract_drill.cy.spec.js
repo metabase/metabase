@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   enterCustomColumnDetails,
@@ -59,8 +61,6 @@ describe("extract action", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   describe("date columns", () => {
@@ -68,7 +68,6 @@ describe("extract action", () => {
       DATE_CASES.forEach(({ option, value }) => {
         it(option, () => {
           openOrdersTable({ limit: 1 });
-          cy.wait("@dataset");
           extractColumnAndCheck({
             column: "Created At",
             option,
@@ -98,7 +97,6 @@ describe("extract action", () => {
 
     it("should handle duplicate expression names", () => {
       openOrdersTable({ limit: 1 });
-      cy.wait("@dataset");
       extractColumnAndCheck({
         column: "Created At",
         option: "Hour of day",
@@ -113,19 +111,16 @@ describe("extract action", () => {
 
     it("should be able to modify the expression in the notebook editor", () => {
       openOrdersTable({ limit: 1 });
-      cy.wait("@dataset");
       extractColumnAndCheck({
         column: "Created At",
         option: "Year",
         value: "2,025",
       });
-      cy.wait("@dataset");
       openNotebook();
       getNotebookStep("expression").findByText("Year").click();
       enterCustomColumnDetails({ formula: "+ 2" });
       popover().button("Update").click();
       visualize();
-      cy.wait("@dataset");
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
     });
 
@@ -134,7 +129,6 @@ describe("extract action", () => {
         cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
       });
       openOrdersTable({ limit: 1 });
-      cy.wait("@dataset");
       extractColumnAndCheck({
         column: "Created At",
         option: "Tag der Woche",
@@ -145,10 +139,12 @@ describe("extract action", () => {
 });
 
 function extractColumnAndCheck({ column, option, newColumn = option, value }) {
+  const requestAlias = _.uniqueId("dataset");
+  cy.intercept("POST", "/api/dataset").as(requestAlias);
   cy.findByRole("columnheader", { name: column }).click();
   popover().findByText("Extract day, month…").click();
   popover().findByText(option).click();
-  cy.wait("@dataset");
+  cy.wait(`@${requestAlias}`);
 
   cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
   if (value) {
