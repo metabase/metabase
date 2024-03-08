@@ -1,18 +1,17 @@
 (ns metabase.driver.druid-jdbc
   (:require
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [next.jdbc]))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :druid-jdbc :parent :sql-jdbc)
 
-;; First query snippet based on `query data` exmaple in
-;; https://druid.apache.org/docs/latest/api-reference/sql-jdbc
+(defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
+  [_driver _db-details]
+  {:connection (next.jdbc/get-connection "jdbc:avatica:remote:url=http://localhost:8888/druid/v2/sql/avatica/;transparent_reconnection=true")})
+
 (comment
-  (def query "SELECT __time, isRobot, countryName, comment FROM wikipedia WHERE countryName='Japan'")
-  (def c (next.jdbc/get-connection "jdbc:avatica:remote:url=http://localhost:8888/druid/v2/sql/avatica/;transparent_reconnection=true"))
-  (next.jdbc/execute! c [query])
-  (.close ^java.sql.Connection c)
-  (.isClosed c)
+  (driver/can-connect? :druid-jdbc nil)
   )
