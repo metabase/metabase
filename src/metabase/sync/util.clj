@@ -307,7 +307,7 @@
   {:active          true
    :visibility_type nil})
 
-(defn set-initial-table-syncs-complete-for-db!
+(defn set-initial-table-sync-complete-for-db!
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
   set"
   [database-or-id]

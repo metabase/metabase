@@ -157,4 +157,4 @@
     ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
     ;; sync-aborting errors should be surfaced to the UI (see
     ;; `:metabase.sync.util/exception-classes-not-to-retry`).
-    (sync-util/set-initial-table-syncs-complete-for-db! database)))
+    (sync-util/set-initial-table-sync-complete-for-db! database)))
