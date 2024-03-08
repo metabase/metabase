@@ -264,5 +264,6 @@
     [:database [:or
                 ::id/database
                 ::id/saved-questions-virtual-database]]
+    ;;; TODO -- `:parameters`. Legacy MBQL schema has it
     [:stages   [:ref ::stages]]]
    lib.schema.util/UniqueUUIDs])
