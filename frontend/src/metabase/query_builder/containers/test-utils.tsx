@@ -16,6 +16,7 @@ import {
   setupModelIndexEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
+  setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -231,6 +232,7 @@ export const setup = async ({
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset(dataset);
   setupSearchEndpoints([]);
+  setupPropertiesEndpoints({});
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);

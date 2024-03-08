@@ -38,6 +38,7 @@ export const useErrorInfo = (
       : Promise.resolve(null);
 
     const sessionPropertiesRequest = SessionApi.properties().catch(nullOnCatch);
+
     const logsRequest: any = isAdmin
       ? UtilApi.logs().catch(nullOnCatch)
       : Promise.resolve(null);

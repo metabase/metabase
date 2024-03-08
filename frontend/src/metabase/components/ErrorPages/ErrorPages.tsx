@@ -85,6 +85,7 @@ export const SmallGenericError = ({
       color={color("text-light")}
       tooltip={message}
     />
+    <h1>WARNING THIS IS AN ERROR</h1>
     <ErrorDiagnosticModalTrigger />
   </ErrorPageRoot>
 );
