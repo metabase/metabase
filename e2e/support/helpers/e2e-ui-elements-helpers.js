@@ -168,11 +168,11 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
-export const moveDnDKitItem = (
-  column,
+export const moveDnDKitElement = (
+  element,
   { horizontal = 0, vertical = 0 } = {},
 ) => {
-  column
+  element
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,

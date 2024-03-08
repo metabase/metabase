@@ -10,7 +10,7 @@ import {
   saveDashboard,
   getDashboardCardMenu,
   getDraggableElements,
-  moveDnDKitItem,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard cards > visualization options", () => {
@@ -51,7 +51,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
     getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
-      moveDnDKitItem(getDraggableElements().contains("ID"), {
+      moveDnDKitElement(getDraggableElements().contains("ID"), {
         vertical: 100,
       });
 

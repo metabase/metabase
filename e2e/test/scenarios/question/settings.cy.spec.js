@@ -9,7 +9,7 @@ import {
   popover,
   modal,
   sidebar,
-  moveDnDKitItem,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -100,7 +100,7 @@ describe("scenarios > question > settings", () => {
 
       getSidebarColumns().eq("5").as("total").contains("Total");
 
-      moveDnDKitItem(cy.get("@total"), { vertical: -100 });
+      moveDnDKitElement(cy.get("@total"), { vertical: -100 });
 
       getSidebarColumns().eq("3").should("contain.text", "Total");
 
@@ -114,7 +114,7 @@ describe("scenarios > question > settings", () => {
         expect($el.scrollTop).to.eql(0);
       });
 
-      moveDnDKitItem(cy.get("@title"), { vertical: 15 });
+      moveDnDKitElement(cy.get("@title"), { vertical: 15 });
 
       cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
@@ -156,7 +156,7 @@ describe("scenarios > question > settings", () => {
         .contains(/Products? → Category/);
 
       // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
-      moveDnDKitItem(cy.get("@prod-category"), { vertical: -360 });
+      moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
 
       refreshResultsInHeader();
 
@@ -187,7 +187,7 @@ describe("scenarios > question > settings", () => {
       findColumnAtIndex("User → Address", -1).as("user-address");
 
       // Move it one place up
-      moveDnDKitItem(cy.get("@user-address"), { vertical: -100 });
+      moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
 
       findColumnAtIndex("User → Address", -3);
 

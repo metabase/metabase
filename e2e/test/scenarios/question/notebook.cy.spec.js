@@ -9,7 +9,7 @@ import {
   filterField,
   getNotebookStep,
   join,
-  moveDnDKitItem,
+  moveDnDKitElement,
   openNotebook,
   openOrdersTable,
   openProductsTable,
@@ -679,8 +679,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should be able to drag-n-drop query clauses", () => {
-    function moveItem({ name, horizontal, vertical, index }) {
-      moveDnDKitItem(cy.findByText(name), {
+    function moveElement({ name, horizontal, vertical, index }) {
+      moveDnDKitElement(cy.findByText(name), {
         horizontal,
         vertical,
       });
@@ -718,17 +718,17 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
     openNotebook();
     getNotebookStep("expression").within(() => {
-      moveItem({ name: "E1", horizontal: 100, index: 1 });
+      moveElement({ name: "E1", horizontal: 100, index: 1 });
     });
     getNotebookStep("filter").within(() => {
-      moveItem({ name: "ID is 2", horizontal: -100, index: 0 });
+      moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
     });
     getNotebookStep("summarize").within(() => {
       cy.findByTestId("aggregate-step").within(() => {
-        moveItem({ name: "Count", vertical: 100, index: 3 });
+        moveElement({ name: "Count", vertical: 100, index: 3 });
       });
       cy.findByTestId("breakout-step").within(() => {
-        moveItem({ name: "ID", horizontal: 100, index: 1 });
+        moveElement({ name: "ID", horizontal: 100, index: 1 });
       });
     });
   });
