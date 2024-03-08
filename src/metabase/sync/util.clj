@@ -311,7 +311,9 @@
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
   set"
   [database-or-id]
-  (t2/update! :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}
+  (t2/update! :model/Table {:where [:and
+                                    [:= :db_id (u/the-id database-or-id)]
+                                    sync-tables-clause]}
               {:initial_sync_status "complete"}))
 
 (defn set-initial-database-sync-complete!
