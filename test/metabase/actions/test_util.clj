@@ -107,7 +107,7 @@
    Use this to test destructive actions that may modify the data."
   {:style/indent :defn}
   [table-definitions & body]
-  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~@table-definitions) (fn [] ~@body)))
+  `(do-with-dataset-definition (apply tx/dataset-definition ~(str (gensym)) ~table-definitions) (fn [] ~@body)))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
