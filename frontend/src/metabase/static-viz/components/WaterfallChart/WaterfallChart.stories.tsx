@@ -231,3 +231,10 @@ TimeXScaleTwoBarsWithoutTotal.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const EnourmousDataset = Template.bind({});
+EnourmousDataset.args = {
+  rawSeries: data.enormousDataset as any,
+  dashcardSettings: {},
+  renderingContext,
+};
