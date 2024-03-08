@@ -6,8 +6,8 @@ title: Driver interface changelog
 
 ## Metabase 0.49.0
 
-- The multimethod `metabase.driver.sql-jdbc/alter-columns-sql` has been added. This method can be used to override the
-  default SQL statement generated for JDBC-based drivers.
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/alter-columns-sql` has been added. This method can be used to
+  override the default SQL statement generated for JDBC-based drivers.
 
 - The multimethod `metabase.driver/alter-columns!` has been added. This method is used to alter a table's columns in the
   database. This is currently only required for drivers that support the `:uploads` feature, and has a default

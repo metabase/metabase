@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -176,24 +177,9 @@
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
 
-(defmulti alter-columns-sql
-  "Generate the query to be used with [[driver/alter-columns!]]."
-  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod alter-columns-sql :sql-jdbc
-  [driver table-name column-definitions]
-  (first (sql/format {:alter-table  (keyword table-name)
-                      :alter-column (map (fn [[column-name type-and-constraints]]
-                                           (vec (cons column-name type-and-constraints)))
-                                         column-definitions)}
-                     :quoted true
-                     :dialect (sql.qp/quote-style driver))))
-
 (defmethod driver/alter-columns! :sql-jdbc
   [driver db-id table-name column-definitions]
-  (qp.writeback/execute-write-sql! db-id (alter-columns-sql driver table-name column-definitions)))
+  (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync.interface/alter-columns-sql driver table-name column-definitions)))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
