@@ -47,6 +47,11 @@
     ;; Text cards have no result; treat as empty
     true))
 
+(defn- is-card-virtual?
+  "Check if the card is a virtual card."
+  [card]
+  (contains? card :virtual_card))
+
 (defn- merge-default-values
   "For the specific case of Dashboard Subscriptions we should use `:default` parameter values as the actual `:value` for
   the parameter if none is specified. Normally the FE client will take `:default` and pass it in as `:value` if it
@@ -205,13 +210,21 @@
                       (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                                         (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
                     (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard))]
-        (if skip_if_empty
+        (cond
+          ;; if all cards are virtual, we don't keep anything.
+          (every? is-card-virtual? parts)
+          []
+
+          skip_if_empty
           ;; Remove cards that have no results when empty results aren't wanted
           (remove (fn [{part-type :type :as part}]
                     (and
                       (= part-type :card)
                       (zero? (get-in part [:result :row_count] 0))))
                   parts)
+
+          ;; otherwise, we keep all parts
+          :else
           parts)))))
 
 (defn- database-id [card]
@@ -403,10 +416,8 @@
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
-  [pulse parts]
-  (if (:skip_if_empty pulse)
-    (not (are-all-parts-empty? parts))
-    true))
+  [_pulse parts]
+  (seq parts))
 
 (defn- parts->cards-count
   [parts]
