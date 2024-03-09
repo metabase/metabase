@@ -115,8 +115,11 @@
                       (let [legacy-metric  (get id->legacy-metric id)
                             aggregation    (-> (legacy-metric-aggregation legacy-metric)
                                                ;; preserve the `:name` and `:display-name` from the `:metric` ref itself
-                                               ;; if there are any.
-                                               (lib.options/update-options merge (select-keys opts-from-ref [:name :display-name])))
+                                               ;; if there are any. Very important! Preserve `:lib/uuid` so anything
+                                               ;; `:aggregation` references referring to the Metric will still be valid
+                                               ;; after macroexpansion.
+                                               (lib.options/update-options merge (select-keys opts-from-ref
+                                                                                              [:name :display-name :lib/uuid])))
                             filters        (legacy-macro-filters legacy-metric)]
                         (log/debugf "Expanding legacy Metric macro\n%s" (u/pprint-to-str &match))
                         (log/tracef "Adding aggregation clause for legacy Metric %d:\n%s" id (u/pprint-to-str aggregation))

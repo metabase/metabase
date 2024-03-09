@@ -397,3 +397,39 @@
                                     {:source-query {:source-table $$checkins
                                                     :joins        [{:condition    [:= [:field 1 nil] 2]
                                                                     :source-query before}]}}))))))))))
+
+(deftest ^:parallel preserve-uuids-test
+  (testing "the aggregation that replaces a :metric ref should keep the :metric's :lib/uuid, so :aggregation refs pointing to it are still valid"
+    (let [metric            {:lib/type    :metadata/metric
+                             :id          1
+                             :table-id    2
+                             :name        "Revenue"
+                             :description "Sum of orders subtotal"
+                             :archived    false
+                             :definition  {:source-table 2, :aggregation [[:sum [:field 17 nil]]]}}
+          metadata-provider (lib.tu/mock-metadata-provider
+                             meta/metadata-provider
+                             {:metrics [metric]})]
+      (is (=? {:stages                 [{:lib/type     :mbql.stage/mbql
+                                         :source-table (meta/id :orders)
+                                         :aggregation  [[:sum
+                                                         {:lib/uuid "0c586819-5288-4da9-adba-1ae904a34d5e"}
+                                                         [:field {} 17]]]
+                                         :order-by     [[:desc
+                                                         {}
+                                                         [:aggregation
+                                                          {}
+                                                          "0c586819-5288-4da9-adba-1ae904a34d5e"]]]}]
+               :database               (meta/id)}
+              (#'expand-macros/expand-macros
+               {:lib/type               :mbql/query
+                :lib/metadata           metadata-provider
+                :stages                 [{:lib/type     :mbql.stage/mbql
+                                          :source-table (meta/id :orders)
+                                          :aggregation  [[:metric {:lib/uuid "0c586819-5288-4da9-adba-1ae904a34d5e"} 1]]
+                                          :order-by     [[:desc
+                                                          {:lib/uuid "4bfcc7da-1e47-41aa-af2c-bbdf11b8d6be"}
+                                                          [:aggregation
+                                                           {:lib/uuid "7fb46618-622c-40f3-b0d4-4a779179f055"}
+                                                           "0c586819-5288-4da9-adba-1ae904a34d5e"]]]}]
+                :database               (meta/id)}))))))
