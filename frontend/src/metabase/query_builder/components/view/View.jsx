@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { Motion, spring } from "react-motion";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -11,6 +10,7 @@ import Toaster from "metabase/components/Toaster";
 import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
+import { Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import DatasetEditor from "../DatasetEditor";
@@ -42,6 +42,12 @@ import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
+
+const fadeIn = {
+  in: { opacity: 1 },
+  out: { opacity: 0 },
+  transitionProperty: "opacity",
+};
 
 class View extends Component {
   getLeftSidebar = () => {
@@ -204,22 +210,19 @@ class View extends Component {
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
 
     return (
-      <Motion
-        defaultStyle={isNewQuestion ? { opacity: 0 } : { opacity: 1 }}
-        style={isNewQuestion ? { opacity: spring(0) } : { opacity: spring(1) }}
-      >
-        {({ opacity }) => (
-          <QueryBuilderViewHeaderContainer>
-            <BorderedViewTitleHeader {...this.props} style={{ opacity }} />
-            {opacity < 1 && (
-              <NewQuestionHeader
-                className="spread"
-                style={{ opacity: 1 - opacity }}
-              />
-            )}
-          </QueryBuilderViewHeaderContainer>
-        )}
-      </Motion>
+      <QueryBuilderViewHeaderContainer>
+        <BorderedViewTitleHeader
+          {...this.props}
+          style={{
+            transition: "opacity 300ms linear",
+            opacity: isNewQuestion ? 0 : 1,
+          }}
+        />
+        {/*This is used so that the New Question Header is unmounted after the animation*/}
+        <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
+          {style => <NewQuestionHeader className="spread" style={style} />}
+        </Transition>
+      </QueryBuilderViewHeaderContainer>
     );
   };
 
