@@ -1,7 +1,5 @@
 import { useState } from "react";
 
-import Question from "metabase-lib/Question";
-
 import { ObjectDetailView } from "./ObjectDetailView";
 import { PaginationFooter, RootModal } from "./ObjectDetailWrapper.styled";
 import type { ObjectDetailProps } from "./types";
@@ -20,8 +18,6 @@ export function ObjectDetailWrapper({
 
   // only show modal if this object detail was triggered via an object detail zoom action
   const shouldShowModal = isObjectDetail;
-  const getFallbackQuestion = () =>
-    card && rest.metadata ? new Question(card, rest.metadata) : undefined;
 
   if (shouldShowModal) {
     return (
@@ -35,7 +31,7 @@ export function ObjectDetailWrapper({
           {...rest}
           showHeader
           data={data}
-          question={question ?? getFallbackQuestion()}
+          question={question}
           closeObjectDetail={closeObjectDetail}
         />
       </RootModal>
@@ -50,7 +46,7 @@ export function ObjectDetailWrapper({
         {...rest}
         zoomedRow={data.rows[currentObjectIndex]}
         data={data}
-        question={question ?? getFallbackQuestion()}
+        question={question}
         showHeader={rest.settings["detail.showHeader"]}
         showControls={false}
         showRelations={false}
