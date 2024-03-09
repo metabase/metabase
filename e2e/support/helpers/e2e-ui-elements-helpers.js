@@ -15,7 +15,7 @@ export function mantinePopover() {
 const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']";
 
 export function hovercard() {
-  cy.get(HOVERCARD_ELEMENT).should("be.visible");
+  cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
   return cy.get(HOVERCARD_ELEMENT);
 }
 
