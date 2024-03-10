@@ -649,7 +649,7 @@ const TITLE_LOCALES_BN = {
     'bn' : 'পরিত্যক্ত'
   },
   'tms.gender.wise.application.statistics' : {
-    'en' : 'General Wise Application Statistics',
+    'en' : 'Gender Wise Application Statistics',
     'bn' : 'জেন্ডার ভিত্তিক আবেদনের পরিসংখ্যান '
   },
   'tms.session.criteria.wise.application' : {
