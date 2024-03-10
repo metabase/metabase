@@ -1,9 +1,12 @@
 (ns metabase.public-settings.premium-features
   "Settings related to checking premium token validity and which premium features it allows."
   (:require
+   [buddy.core.keys :as keys]
+   [buddy.sign.jwt :as jwt]
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
+   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [environ.core :refer [env]]
@@ -23,9 +26,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ValidToken
+(def ^:private RemoteCheckedToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
   #"^[0-9a-f]{64}$")
+
+(def ^:private AirgapToken
+  #"airgap_[0-9a-f]*")
 
 (def token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
@@ -89,6 +95,8 @@
 
 (def ^:private TokenStatus
   [:map
+   [:max-users     {:optional true} pos-int?]
+   [:company       {:optional true} [:string {:min 1}]]
    [:valid                          :boolean]
    [:status                         ms/NonBlankString]
    [:error-details {:optional true} [:maybe ms/NonBlankString]]
@@ -118,41 +126,61 @@
          :status        (tru "Unable to validate token")
          :error-details (tru "Token validation timed out.")}))))
 
+(mu/defn decode-airgap-token :- TokenStatus
+  "Given an encrypted airgap token, decrypts it and returns a TokenStatus"
+  [token]
+  (when-not (str/starts-with? token "airgap_")
+    (throw (ex-info "Malformed airgap token" {:token token})))
+  (let [token   (str/replace token #"^airgap_" "")
+        pub-key (with-open [rdr (io/reader (io/resource "airgap/pubkey.pem"))]
+                  (keys/public-key rdr))]
+    (jwt/decrypt token pub-key {:alg :rsa-oaep :enc :a128cbc-hs256})))
+
+(comment
+  (let [token "airgap_eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkExMjhDQkMtSFMyNTYifQ.Zm1Vp_JtxxUPeXYjxWbNNb260-3SbyM3nNidVsDcy_J48jq5t1JsPB04unrd7o0_wid8F9J9aFRy0XnB5KXcBnI5AzUOpozczoU-SNQG1bVhhl5LEe6jy9AHOXdS9nT9OsgoaB8qctUeooVgNihIBW7dKh74x6-rZFI_IvE-ZqGwS2tOLyTsgAqy3km7uGSN4jjnjhrzagBNKYde2Xm0syBh1m9wCLAWgECMG4jnb2oP4Mzn8jX2foreiNsIHy9NGrJWMs62pXt5qa2TNlflSCMD0HNZ9SvVBd-79_lyhYttPFlPXWRzms5FFpLLUj6kzbfv0HJhJIgWMDBbQ9YpGA.Ji0z4JUDGvRfkCdyOYPdfg.JynqR0DrmTqKilphnSdUVbpiWjon71RqcEbiYl3rK-GxNBqHpZVkoHvbHCFJWAdWA42fPYO4kIy-YVrNOsQ4z7fE2bYjF7OEMckTispOfhChcjX-UKtH-gIkB26stQqTAtu4SU6EpxczNmr_NDIWUIZnScAE8Sc1zjEhjb02FeYrCBKe9AiT-p62Fgud3JupyUmcl-gYvmUwLQOZclBV8jXw-OQiaLdPm9uGEkn7GViU6eafX3sde3Ym5N1cifjz1TGKa4sZwsvpk0pkNnDcgYUZ_urn9mGbBHcIzT3KN1fU2WLm7EmSl0piNolNai0KnsdrwGxvoWAM0RGIoL6z4jyiSfAG4N_GrZpLiUVF6XBe2woixRXhrrcTpqCweQyhTSGmrQ4VCj_vEm7CmGQ_gk8TwoqRxr_oD_805-pGSodkn5S1pmOQKybyNdIAghCbaDeGbgSkUP1_ANuKk0XoRT77izrvEqnUC1OmvO3IUcRGDBeLpJuyvXGWZajNVeYqX-DzTiHHFC8nOx3L_w68NdB1xReAqduuKVHXI0hn7Q6-LdMvOs_lxOMhQqqp7pOJtjtijdPQsgNh6fnpHPceKsNaLQnJ65jSOV31f8sg8yKhhBY3JYMQB91AA5HQFBVYe5cuoJ3cACEV2NRJ5iwvx6ghRPXReurgZLMMo_-Ubw8TSlkePZH5jPtl2q6ZYR5MZC-PFHSr-5G6-5j87owa_dd1RTn19yjadObFgW1taGoT5gjMUdkhPiyectdhkpiKNjxbffHLE28tlvBSnwDaQC1vgDjZj4g1cOcJpYqTf71NFDWIJ3UcCTOs6MTwIJRz4q-wCrPzEnD9VQAlZi0zRaosjqfddd5gvKE_TonBsMsuaDq8SiAm0tG7enb638SAphX6h-brpVO3vy8xYzJCmNteoCttwqld9f1LVf8VvY8.W-WscqMM4I-CxQVsDy3xCQ"]
+    (decode-airgap-token token))
+  )
+
 (mu/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- :string]
   ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
   ;; reasonable amount of time throw a timeout exception
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
-  (if-not (mc/validate ValidToken token)
-    (do
-      (log/error (u/format-color 'red "Invalid token format!"))
-      {:valid         false
-       :status        "invalid"
-       :error-details (trs "Token should be 64 hexadecimal characters.")})
-    ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.
-    ;; We will have taken a lock to call through to here, and could create a deadlock with the future's thread.
-    ;; See https://github.com/metabase/metabase/pull/38029/
-    (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
-      (try (fetch-token-and-parse-body token token-check-url site-uuid)
-           (catch Exception e1
-             ;; Unwrap exception from inside the future
-             (let [e1 (ex-cause e1)]
-               (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
-               ;; Try the fallback URL, which was the default URL prior to 45.2
-               (try (fetch-token-and-parse-body token store-url site-uuid)
-                    ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                    ;; first error and return a generic message about the token being invalid. This message
-                    ;; will get displayed in the Settings page in the admin panel so we do not want something
-                    ;; complicated
-                    (catch Exception e2
-                      (log/error (ex-cause e2) (trs "Error fetching token status from {0}:" store-url))
-                      (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                        (or
-                          body
-                          {:valid         false
-                           :status        (tru "Unable to validate token")
-                           :error-details (.getMessage e1)}))))))))))
+  ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
+  ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
+  ;; https://github.com/metabase/metabase/pull/38029/
+  (cond (mc/validate [:re RemoteCheckedToken] token)
+        (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
+          (try (fetch-token-and-parse-body token token-check-url site-uuid)
+               (catch Exception e1
+                 ;; Unwrap exception from inside the future
+                 (let [e1 (ex-cause e1)]
+                   (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+                   ;; Try the fallback URL, which was the default URL prior to 45.2
+                   (try (fetch-token-and-parse-body token store-url site-uuid)
+                        ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                        ;; first error and return a generic message about the token being invalid. This message
+                        ;; will get displayed in the Settings page in the admin panel so we do not want something
+                        ;; complicated
+                        (catch Exception e2
+                          (log/error (ex-cause e2) (trs "Error fetching token status from {0}:" store-url))
+                          (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                            (or
+                             body
+                             {:valid         false
+                              :status        (tru "Unable to validate token")
+                              :error-details (.getMessage e1)}))))))))
+
+        (mc/validate [:re AirgapToken] token)
+        (decode-airgap-token token)
+
+        :else
+        (do
+          (log/error (u/format-color 'red "Invalid token format!"))
+          {:valid         false
+           :status        "invalid"
+           :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
@@ -179,7 +207,7 @@
         (f token)))))
 
 (mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
-  [token :- ValidToken]
+  [token :- [:or RemoteCheckedToken AirgapToken]]
   (let [{:keys [valid status features error-details]} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
@@ -220,7 +248,8 @@
     ;; validate the new value if we're not unsetting it
     (try
       (when (seq new-value)
-        (when-not (mc/validate ValidToken new-value)
+        (when-not (or (mc/validate [:re RemoteCheckedToken] new-value)
+                      (mc/validate [:re AirgapToken] new-value))
           (throw (ex-info (tru "Token format is invalid.")
                           {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
