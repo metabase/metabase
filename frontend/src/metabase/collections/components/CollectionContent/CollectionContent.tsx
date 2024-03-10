@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import _ from "underscore";
 
 import {
@@ -70,13 +71,11 @@ export function CollectionContent({
   const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
     dispatch(Bookmark.actions.delete({ id, type }));
 
-  const uploadFile = ({
-    file,
-    modelId,
-    collectionId,
-    tableId,
-  }: UploadFileProps) =>
-    dispatch(uploadFileAction({ file, modelId, collectionId, tableId }));
+  const uploadFile = useCallback(
+    ({ file, modelId, collectionId, tableId }: UploadFileProps) =>
+      dispatch(uploadFileAction({ file, modelId, collectionId, tableId })),
+    [dispatch],
+  );
 
   const error =
     bookmarksError || databasesError || collectionsError || collectionError;

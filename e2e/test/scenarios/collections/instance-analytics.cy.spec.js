@@ -12,6 +12,7 @@ import {
   visitModel,
   visitQuestion,
   describeOSS,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
@@ -58,7 +59,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         });
 
         cy.findByTestId("TableInteractive-root").within(() => {
-          cy.findByText("Last Name").click();
+          tableHeaderClick(cy.findByText("Last Name"));
         });
 
         popover().findByText("Filter by this column").click();

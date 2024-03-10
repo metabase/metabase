@@ -33,3 +33,4 @@ export * from "./e2e-viz-settings-helpers";
 export * from "./e2e-models-metadata-helpers";
 export * from "./e2e-ui-elements-overflow-helpers";
 export * from "./e2e-relative-date-picker-helpers";
+export * from "./e2e-table-helpers";
