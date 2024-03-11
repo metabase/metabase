@@ -27,12 +27,17 @@ import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
   hasMultipleCards: boolean,
+  isFirstCard: boolean,
   metricsCount: number,
   breakoutName: string | null,
   cardName?: string,
 ): VizSettingsKey => {
   const isBreakoutSeries = breakoutName != null;
   const isSingleMetricCard = metricsCount === 1 && !isBreakoutSeries;
+
+  if (isFirstCard && !isBreakoutSeries) {
+    return column.name;
+  }
 
   // When multiple cards are combined and one of them is a single metric card without a breakout,
   // the default series name is the card name.
@@ -100,6 +105,7 @@ export const getCardSeriesModels = (
   { card, data }: SingleSeries,
   columns: CartesianChartColumns,
   hasMultipleCards: boolean,
+  isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): SeriesModel[] => {
@@ -114,6 +120,7 @@ export const getCardSeriesModels = (
       const vizSettingsKey = getSeriesVizSettingsKey(
         metric.column,
         hasMultipleCards,
+        isFirstCard,
         columns.metrics.length,
         null,
         card.name,
@@ -167,6 +174,7 @@ export const getCardSeriesModels = (
     const vizSettingsKey = getSeriesVizSettingsKey(
       metric.column,
       hasMultipleCards,
+      isFirstCard,
       1,
       formattedBreakoutValue,
       card.name,

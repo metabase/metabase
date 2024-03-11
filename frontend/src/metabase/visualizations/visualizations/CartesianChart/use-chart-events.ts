@@ -17,8 +17,12 @@ import {
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
 import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  ClickObject,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type { CardId } from "metabase-types/api";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
@@ -39,17 +43,21 @@ export const useChartEvents = (
     onDeselectTimelineEvents,
     hovered,
   }: VisualizationProps,
-) => {
+): ClickObject => {
   const isBrushing = useRef<boolean>();
 
-  const onOpenQuestion = useCallback(() => {
-    if (onChangeCardAndRun) {
-      onChangeCardAndRun({
-        nextCard: card,
-        seriesIndex: 0,
-      });
-    }
-  }, [card, onChangeCardAndRun]);
+  const onOpenQuestion = useCallback(
+    (cardId?: CardId) => {
+      const nextCard =
+        rawSeries.find(series => series.card.id === cardId)?.card ?? card;
+      if (onChangeCardAndRun) {
+        onChangeCardAndRun({
+          nextCard,
+        });
+      }
+    },
+    [card, onChangeCardAndRun, rawSeries],
+  );
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
@@ -113,7 +121,7 @@ export const useChartEvents = (
           }
 
           if (!visualizationIsClickable(clickData)) {
-            onOpenQuestion();
+            onOpenQuestion(clickData?.cardId);
           }
 
           onVisualizationClick?.(clickData);
@@ -221,7 +229,14 @@ export const useChartEvents = (
 
   const onSelectSeries = useCallback(
     (event: React.MouseEvent, seriesIndex: number) => {
+      const areMultipleCards = rawSeries.length > 1;
       const seriesModel = chartModel.seriesModels[seriesIndex];
+
+      if (areMultipleCards) {
+        onOpenQuestion(seriesModel.cardId);
+        return;
+      }
+
       const hasBreakout = "breakoutColumn" in seriesModel;
       const dimensions = hasBreakout
         ? [
@@ -233,26 +248,31 @@ export const useChartEvents = (
         : undefined;
 
       const clickData = {
-        column: seriesModel.column,
+        cardId: seriesModel.cardId,
         dimensions,
         settings,
       };
 
-      if (hasBreakout && visualizationIsClickable(clickData)) {
+      if (
+        !areMultipleCards &&
+        hasBreakout &&
+        visualizationIsClickable(clickData)
+      ) {
         onVisualizationClick({
           ...clickData,
           element: event.currentTarget,
         });
       } else {
-        onOpenQuestion();
+        onOpenQuestion(seriesModel.cardId);
       }
     },
     [
       chartModel.seriesModels,
-      onVisualizationClick,
-      onOpenQuestion,
+      rawSeries,
       settings,
       visualizationIsClickable,
+      onVisualizationClick,
+      onOpenQuestion,
     ],
   );
 
