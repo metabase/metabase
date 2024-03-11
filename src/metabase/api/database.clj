@@ -8,7 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -541,7 +541,7 @@
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
                              [:like
-                              (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :report_card.id)
+                              (h2x/cast (if (= (mdb/db-type) :mysql) :char :text) :report_card.id)
                               (str search-id "%")]
 
                              ;; e.g. search-string = "123-foo"

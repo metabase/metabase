@@ -111,7 +111,7 @@
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
 (defn- test-query [query-kvs]
-  (merge {:cache-ttl 60, :type :query, :query :abc} query-kvs))
+  (merge {:cache-ttl 60, :lib/type :mbql/query, :stages [{:abc :def}]} query-kvs))
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels

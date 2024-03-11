@@ -1073,7 +1073,7 @@
       (is (=? {:type "question"}
               (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
 
-(deftest ^:parallel update-card-with-type-and-dataset-test
+(deftest update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"
     (mt/with-temp [:model/Card card {:dataset_query {}}]
       (is (=? {:type "model"}

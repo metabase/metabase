@@ -465,6 +465,16 @@
   [query]
   (-> query :stages first :source-card))
 
+(defn first-stage-type
+  "Type of the first query stage."
+  [query]
+  (:lib/type (query-stage query 0)))
+
+(defn first-stage-is-native?
+  "Whether the first stage of the query is a native query stage."
+  [query]
+  (= (first-stage-type query) :mbql.stage/native))
+
 (mu/defn unique-name-generator :- [:=>
                                    [:cat ::lib.schema.common/non-blank-string]
                                    ::lib.schema.common/non-blank-string]
@@ -523,3 +533,23 @@
           ;; subvec holds onto references, so create a new vector
           (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))
+
+(defn fresh-uuids
+  "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more
+  than once."
+  [x]
+  (cond
+    (sequential? x)
+    (into (empty x) (map fresh-uuids) x)
+
+    (map? x)
+    (into
+     (empty x)
+     (map (fn [[k v]]
+            [k (if (= k :lib/uuid)
+                 (str (random-uuid))
+                 (fresh-uuids v))]))
+     x)
+
+    :else
+    x))

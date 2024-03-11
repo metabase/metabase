@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -8,6 +7,7 @@ import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
+import { ErrorDiagnosticModalTrigger } from "./ErrorDiagnosticModal";
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
 export const GenericError = ({
@@ -28,6 +28,7 @@ export const GenericError = ({
       }
     />
     <ErrorDetails className="pt2" details={details} centered />
+    <ErrorDiagnosticModalTrigger />
   </ErrorPageRoot>
 );
 
@@ -72,7 +73,11 @@ export const Archived = ({
   </ErrorPageRoot>
 );
 
-export const SmallGenericError = ({ message = t`Something's gone wrong` }) => (
+export const SmallGenericError = ({
+  message = t`Something's gone wrong`,
+}: {
+  message?: string;
+}) => (
   <ErrorPageRoot>
     <Icon
       name="warning"
@@ -80,5 +85,6 @@ export const SmallGenericError = ({ message = t`Something's gone wrong` }) => (
       color={color("text-light")}
       tooltip={message}
     />
+    <ErrorDiagnosticModalTrigger />
   </ErrorPageRoot>
 );
