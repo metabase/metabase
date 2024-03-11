@@ -34,8 +34,7 @@
 ;; we need to run this test in oss only:
 
 (deftest card-read-oss-no-view-logging-test
-  (if config/ee-available?
-    (is true "Only test in OSS")
+  (when-not config/ee-available?
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is recorded"
