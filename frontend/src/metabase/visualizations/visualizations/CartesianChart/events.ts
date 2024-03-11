@@ -14,7 +14,7 @@ import type {
 } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getObjectKeys } from "metabase/lib/objects";
-import type { ClickObjectDimension } from "metabase-lib";
+import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
@@ -314,7 +314,7 @@ export const getSeriesClickData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
-) => {
+): ClickObject | undefined => {
   const { seriesId, dataIndex } = event;
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
   const seriesModel = chartModel.seriesModels[seriesIndex];
@@ -334,6 +334,7 @@ export const getSeriesClickData = (
   );
 
   return {
+    cardId: seriesModel.cardId,
     event: event.event.event,
     value: datum[seriesModel.dataKey],
     column: seriesModel.column,
