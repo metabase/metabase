@@ -94,12 +94,12 @@
                                                                 :schema (:fk-table-schema metadata))
                               (sync-util/field-name-for-logging :name (:pk-column-name metadata)))))))
 
-(mu/defn describe-fks!
-  "Sync the foreign keys for a specific `table`."
+(mu/defn sync-fks-for-db!
+  "Sync the foreign keys for a `database`."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
     (let [schema-names (sync-util/db->sync-schemas database)
-          fk-metadata (fetch-metadata/fk-metadata database :schema-names schema-names)]
+          fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
       (transduce (map (fn [x]
                         (let [[updated failed] (try [(mark-fk! database x) 0]
                                                     (catch Exception e
@@ -135,7 +135,7 @@
   This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
   [database :- i/DatabaseInstance]
   (u/prog1 (if (driver/database-supports? (driver.u/database->driver database) :describe-fks database)
-             (describe-fks! database)
+             (sync-fks-for-db! database)
              (reduce (fn [update-info table]
                        (let [table         (t2.realize/realize table)
                              table-fk-info (sync-fks-for-table! database table)]
