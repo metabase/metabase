@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.native-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.models.card :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -40,7 +40,7 @@
 
 (deftest ^:parallel native-with-duplicate-column-names
   (testing "Should be able to run native query referring a question referring a question (#25988)"
-    (mt/with-test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+    (mt/with-test-drivers (sql.qp-test-util/sql-drivers)
       (t2.with-temp/with-temp [:model/Card card {:dataset_query {:native {:query "select id, id from orders"}
                                                                  :database (mt/id)
                                                                  :type :native}

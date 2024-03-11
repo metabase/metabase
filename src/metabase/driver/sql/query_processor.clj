@@ -1415,7 +1415,7 @@
    If the source query has ambiguous column names, use a `WITH` statement to rename the source columns.
    At the time of this writing, all source queries are aliased as `source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
-                         source-metadata :source-metadata :as _x}]
+                         source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
         source-clause (cond
                         persisted
@@ -1432,14 +1432,13 @@
                          source-metadata)
         source-aliases (mapv first alias-info)
         desired-aliases (mapv second alias-info)
-        duplicate-source-aliases? (not (apply distinct? source-aliases))
-        needs-columns? (and
-                         (seq desired-aliases)
-                         (> (count desired-aliases) 1)
-                         duplicate-source-aliases?
-                         (apply distinct? desired-aliases)
-                         (every? some? desired-aliases)
-                         (every? string? desired-aliases))]
+        duplicate-source-aliases? (and (> (count source-aliases) 1)
+                                       (not (apply distinct? source-aliases)))
+        needs-columns? (and (seq desired-aliases)
+                            (> (count desired-aliases) 1)
+                            duplicate-source-aliases?
+                            (apply distinct? desired-aliases)
+                            (every? string? desired-aliases))]
     (merge
       honeysql-form
       (if needs-columns?
