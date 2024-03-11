@@ -1,5 +1,5 @@
 *.class
-*.cljc.rej
+*.*.rej
 *.iml
 *.jar
 *.log
