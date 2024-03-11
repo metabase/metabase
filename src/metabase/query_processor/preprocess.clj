@@ -24,6 +24,7 @@
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
    [metabase.query-processor.middleware.parameters :as parameters]
@@ -78,6 +79,7 @@
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)
    (ensure-pmbql #'fetch-source-query/resolve-source-cards)
+   (ensure-pmbql #'metrics/expand)
    (ensure-pmbql #'expand-macros/expand-macros)
    (ensure-pmbql #'qp.resolve-referenced/resolve-referenced-card-resources)
    (ensure-legacy #'parameters/substitute-parameters)
