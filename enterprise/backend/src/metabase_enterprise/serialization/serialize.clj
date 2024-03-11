@@ -36,6 +36,10 @@
   ;; version 2 - start adding namespace portion to /collections/ paths
   2)
 
+(def ^:dynamic *include-entity-id*
+  "If entity_id should be included in v1 serialization dump"
+  false)
+
 (def ^:private ^{:arglists '([form])} mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   (partial mbql.normalize/is-clause? #{:field :field-id :fk-> :metric :segment}))
@@ -103,7 +107,8 @@
   [entity]
   (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :location
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
-                  :pulse_id :result_metadata :entity_id :action_id)
+                  :pulse_id :result_metadata :action_id)
+    (not *include-entity-id*)   (dissoc :entity_id)
     (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
 
 (defmulti ^:private serialize-one

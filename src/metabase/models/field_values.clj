@@ -27,7 +27,7 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.classloader :as classloader]
@@ -444,7 +444,7 @@
       unwrapped-values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
-        (mdb.u/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+        (mdb.query/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
           (constantly {:has_more_values       has_more_values
                        :values                values
                        :human_readable_values human-readable-values}))

@@ -86,7 +86,7 @@ export function getParameterValuesForQuestion({
   metadata: Metadata;
 }) {
   const parameters = getCardUiParameters(card, metadata);
-  return getParameterValuesByIdFromQueryParams(parameters, queryParams);
+  return getParameterValuesByIdFromQueryParams(parameters, queryParams ?? {});
 }
 
 /**

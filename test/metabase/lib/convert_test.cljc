@@ -205,7 +205,7 @@
     (is (=? {:type  :query
              :query {:source-table 1
                      :aggregation  [[:sum [:field 1 nil]]]
-                     :breakout     [[:aggregation-options [:aggregation 0] {:display-name "Revenue"}]]}}
+                     :breakout     [[:aggregation 0 {:display-name "Revenue"}]]}}
             (let [ag-uuid (str (random-uuid))]
               (lib.convert/->legacy-MBQL
                {:lib/type :mbql/query
@@ -717,3 +717,20 @@
       #?@(:cljs
           [#js ["aggregation" 0]
            #js ["aggregation" 0 #js {}]]))))
+
+(deftest ^:parallel convert-aggregation-reference-test
+  (testing "Don't wrap :aggregation in :aggregation options when converting between legacy and pMBQL"
+    (let [query {:database 2
+                 :type     :query
+                 :query    {:aggregation  [[:aggregation-options
+                                            [:sum [:field 100 {:source-table 12, :source-alias "TOTAL"}]]
+                                            {:name "sum"}]]
+                            :order-by     [[:asc [:aggregation 0 {:desired-alias "sum", :position 1}]]
+                                           [:asc
+                                            [:field 99 {:source-table  12
+                                                        :source-alias  "PRODUCT_ID"
+                                                        :desired-alias "PRODUCT_ID"
+                                                        :position      0}]]]
+                            :source-table 12}}]
+      (is (= query
+             (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))

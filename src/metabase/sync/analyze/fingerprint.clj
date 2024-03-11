@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :as field :refer [Field]]
@@ -157,10 +157,10 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb.u/isa :semantic_type :type/PK)]
+    [:not (mdb.query/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not (mdb.u/isa :base_type :type/Structured)]])
+   [:not (mdb.query/isa :base_type :type/Structured)]])
 
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already

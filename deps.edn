@@ -132,7 +132,7 @@
   org.clj-commons/hickory                   {:mvn/version "0.7.3"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
-  org.clojure/clojure                       {:mvn/version "1.11.1"}
+  org.clojure/clojure                       {:mvn/version "1.11.2"}
   org.clojure/core.async                    {:mvn/version "1.6.681"
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.logic                    {:mvn/version "1.0.1"}              ; optimized pattern matching library for Clojure
@@ -169,7 +169,6 @@
   potemkin/potemkin                         {:mvn/version "0.4.7"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
-  prismatic/schema                          {:mvn/version "1.4.1"}              ; Data schema declaration and validation library
   redux/redux                               {:mvn/version "0.1.4"}              ; Utility functions for building and composing transducers
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
   ring/ring-core                            {:mvn/version "1.11.0"}             ; HTTP abstraction
@@ -226,6 +225,8 @@
   {:extra-deps
    {com.clojure-goes-fast/clj-async-profiler
                                  {:mvn/version "1.1.1"}                     ; Enables local profiling and heat map generation
+    com.clojure-goes-fast/clj-memory-meter
+                                 {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2023.12.15"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
@@ -238,6 +239,7 @@
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
+    criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     lambdaisland/deep-diff2      {:mvn/version "2.10.211"}                  ; way better diffs
     methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
     org.clojure/algo.generic     {:mvn/version "0.1.3"}
@@ -256,10 +258,12 @@
                  "-Dmb.test.env.setting=ABCDEFG"
                  "-Duser.timezone=UTC"
                  "-Dfile.encoding=UTF-8"
-                 ;; Allow clojure goes fast tooling to work
-                 "-Djdk.attach.allowAttachSelf"
                  "-Duser.language=en"
                  "-Duser.country=US"
+                 ;; Allow clojure goes fast tooling to work
+                 "-Djdk.attach.allowAttachSelf"
+                 ;; This will suppress the warning about dynamically loaded agents (like clj-memory-meter)
+                 "-XX:+EnableDynamicAgentLoading"
                  ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
                  "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.selector.BasicContextSelector"
                  "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/log4j2-factory"

@@ -23,11 +23,6 @@
   font-size: 14px;
 }
 
-.fieldSelect {
-  composes: input p1 from "style";
-  display: block;
-}
-
 .fieldType {
   composes: text-medium pr2 from "style";
   flex: 0.25;

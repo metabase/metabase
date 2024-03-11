@@ -4,6 +4,7 @@
   --lg-width: 1140px;
   --xl-width: 1540px;
 }
+
 /* When converting to styled components, use FullWidthContainer */
 :global(.wrapper),
 .wrapper {
@@ -60,6 +61,7 @@
 .full-width {
   width: 100%;
 }
+
 :global(.half) {
   width: 50%;
 }
@@ -74,6 +76,7 @@
 .relative {
   position: relative;
 }
+
 :global(.absolute),
 .absolute {
   position: absolute;
@@ -83,14 +86,17 @@
 .top {
   top: 0;
 }
+
 :global(.right),
 .right {
   right: 0;
 }
+
 :global(.bottom),
 .bottom {
   bottom: 0;
 }
+
 :global(.left),
 .left {
   left: 0;

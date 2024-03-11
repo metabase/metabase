@@ -20,13 +20,7 @@ const Detail = ({
   <div className={cx(S.detail)}>
     <div className={isEditing ? cx(S.detailBody, "flex-full") : S.detailBody}>
       <div className={S.detailTitle}>
-        {url ? (
-          <Link to={url} className={S.detailName}>
-            {name}
-          </Link>
-        ) : (
-          <span className={S.detailName}>{name}</span>
-        )}
+        {url ? <Link to={url}>{name}</Link> : <span>{name}</span>}
       </div>
       <div
         className={cx(description ? S.detailSubtitle : S.detailSubtitleLight)}

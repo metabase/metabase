@@ -720,7 +720,7 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
                         COUNT (*)         AS count]
              :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
                                   CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]

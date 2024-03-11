@@ -14,12 +14,3 @@ export type ApiKey = {
     common_name: string;
   };
 };
-
-export interface Log {
-  timestamp: string;
-  process_uuid: string;
-  fqns: string;
-  msg: string;
-  level: string;
-  exception: any;
-}

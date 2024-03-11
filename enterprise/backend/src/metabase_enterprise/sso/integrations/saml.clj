@@ -52,11 +52,10 @@
    [metabase.util.urls :as urls]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
-   [schema.core :as s]
    [toucan2.core :as t2])
   (:import
    (java.net URI URISyntaxException)
-   (java.util Base64 UUID)))
+   (java.util Base64)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,7 +75,7 @@
       flatten
       set))
 
-(defn- sync-groups!
+(defn sync-groups!
   "Sync a user's groups based on mappings configured in the SAML settings"
   [user group-names]
   (when (sso-settings/saml-group-sync)
@@ -85,7 +84,7 @@
                                                    (group-names->ids group-names)
                                                    (all-mapped-group-ids)))))
 
-(s/defn ^:private fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
+(mu/defn ^:private fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)

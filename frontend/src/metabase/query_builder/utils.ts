@@ -30,7 +30,7 @@ export function getPathNameFromQueryBuilderMode({
 export function getCurrentQueryParams() {
   const search =
     window.location.search.charAt(0) === "?"
-      ? window.location.search.slice(0)
+      ? window.location.search.slice(1)
       : window.location.search;
   return querystring.parse(search);
 }

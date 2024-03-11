@@ -12,7 +12,7 @@
    [metabase.pulse.render.style :as style]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (cz.vutbr.web.css MediaSpec)
    (java.awt Graphics2D RenderingHints)
@@ -74,10 +74,10 @@
           (.getSubimage image 0 0 content-width (.getHeight image))
           image)))))
 
-(s/defn render-html-to-png :- bytes
+(mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
-  [{:keys [content]} :- formatter/RenderedPulseCard
-   width]
+  ^bytes [{:keys [content]} :- formatter/RenderedPulseCard
+          width]
   (try
     (let [html (html [:html [:body {:style (style/style
                                             {:margin           0

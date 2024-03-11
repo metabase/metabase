@@ -6,7 +6,8 @@ import _ from "underscore";
 import * as DataGrid from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
-import ChartSettingsTableFormatting, {
+import {
+  ChartSettingsTableFormatting,
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
@@ -432,6 +433,7 @@ class Table extends Component<TableProps, TableState> {
     return (
       <TableComponent
         {...this.props}
+        question={this.state.question}
         data={data}
         isPivoted={isPivoted}
         getColumnTitle={this.getColumnTitle}

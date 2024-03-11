@@ -20,6 +20,7 @@ import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
+  cancelEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
@@ -67,6 +68,7 @@ import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMe
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
+  SectionMenuItem,
 } from "./DashboardHeader.styled";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import { SectionLayoutPreview } from "./SectionLayoutPreview";
@@ -118,7 +120,7 @@ interface DashboardHeaderProps {
   showAddParameterPopover: () => void;
   hideAddParameterPopover: () => void;
 
-  onEditingChange: (arg: Dashboard | boolean) => void;
+  onEditingChange: (arg: Dashboard | null) => void;
   onRefreshPeriodChange: (period: number | null) => void;
   onFullscreenChange: (
     isFullscreen: boolean,
@@ -249,7 +251,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   };
 
   const onDoneEditing = () => {
-    onEditingChange(false);
+    onEditingChange(null);
   };
 
   const onRevert = () => {
@@ -279,7 +281,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const onCancel = () => {
     onRevert();
-    onDoneEditing();
+    dispatch(cancelEditingDashboard());
   };
 
   const saveAsPDF = async () => {
@@ -412,20 +414,19 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
               </Tooltip>
             </span>
           </Menu.Target>
-          <Menu.Dropdown>
-            {layoutOptions.map(layout => (
-              <Tooltip
-                key={layout.id}
-                label={<SectionLayoutPreview layout={layout} />}
-                position="left"
-              >
-                <span>
-                  <Menu.Item onClick={() => onAddSection(layout)} fw="bold">
-                    {layout.label}
-                  </Menu.Item>
-                </span>
-              </Tooltip>
-            ))}
+          <Menu.Dropdown miw="100px">
+            <Flex direction="column" align="center" gap="md" p="12px">
+              {layoutOptions.map(layout => (
+                <SectionMenuItem
+                  key={layout.id}
+                  onClick={() => onAddSection(layout)}
+                  aria-label={layout.label}
+                  p="14px"
+                >
+                  <SectionLayoutPreview layout={layout} />
+                </SectionMenuItem>
+              ))}
+            </Flex>
           </Menu.Dropdown>
         </Menu>,
       );
@@ -517,13 +518,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
       });
 
       extraButtons.push({
-        title: t`Duplicate`,
-        icon: "clone",
-        link: `${location.pathname}/copy`,
-        event: "Dashboard;Copy",
-      });
-
-      extraButtons.push({
         title:
           Array.isArray(dashboard.tabs) && dashboard.tabs.length > 1
             ? t`Export tab as PDF`
@@ -542,6 +536,17 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           link: `${location.pathname}/move`,
           event: "Dashboard;Move",
         });
+      }
+
+      extraButtons.push({
+        title: t`Duplicate`,
+        icon: "clone",
+        link: `${location.pathname}/copy`,
+        event: "Dashboard;Copy",
+      });
+
+      if (canEdit) {
+        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
         extraButtons.push({
           title: t`Archive`,
@@ -549,8 +554,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
-
-        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
       }
     }
 
@@ -589,6 +592,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
+            // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+            transitionDuration={0}
           />,
         );
       }

@@ -248,18 +248,20 @@
  [lib.metric
   available-metrics]
  [lib.native
+  engine
+  extract-template-tags
+  has-write-permission
+  native-extras
   native-query
   raw-native-query
-  with-native-query
-  template-tags
-  engine
-  with-template-tags
   required-native-extras
-  native-extras
-  with-native-extras
+  template-tag-card-ids
+  template-tags-referenced-cards
+  template-tags
   with-different-database
-  has-write-permission
-  extract-template-tags]
+  with-native-extras
+  with-native-query
+  with-template-tags]
  [lib.order-by
   change-direction
   order-by

@@ -36,13 +36,14 @@ export function Sortable({
   } = useSortable({
     id,
     disabled,
+    animateLayoutChanges: () => false,
   });
 
   return (
     <SortableDiv
       style={isDragging ? draggingStyle : {}}
       as={as}
-      transform={CSS.Transform.toString(transform)}
+      transform={CSS.Translate.toString(transform)}
       transition={transition}
       isDragging={isDragging}
       ref={setNodeRef}

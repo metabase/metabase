@@ -88,9 +88,8 @@ function shouldTemplateTagEditorBeVisible({
     return true;
   } else if (nextTags.length === 0) {
     return false;
-  } else {
-    return isVisible;
   }
+  return isVisible;
 }
 
 export type UpdateQuestionOpts = {

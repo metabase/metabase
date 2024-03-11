@@ -72,7 +72,9 @@ describe("issue 31606", { tags: "@external" }, () => {
       field: "ID",
     });
 
-    FieldFilter.setWidgetType("ID");
+    cy.findByTestId("filter-widget-type-select")
+      .should("have.value", "ID")
+      .should("be.disabled");
 
     FieldFilter.openEntryForm({ isFilterRequired: true });
     FieldFilter.addDefaultStringFilter("2");

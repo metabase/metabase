@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/client-api";
 import type { ComponentStory } from "@storybook/react";
 
-import DateMonthYearWidget from "./DateMonthYearWidget";
+import { DateMonthYearWidget } from "./DateMonthYearWidget";
 
 export default {
   title: "Parameters/DateMonthYearWidget",
