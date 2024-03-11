@@ -47,7 +47,9 @@
   {:perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
    :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
+   :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
 
+   :perms/view-data             {:model :model/Database :values [:unrestricted :block]}
    :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
