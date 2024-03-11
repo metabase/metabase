@@ -1,7 +1,5 @@
 import { useClickOutside } from "@mantine/hooks";
 import { useState } from "react";
-import { t } from "ttag";
-
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
 import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget";
@@ -16,12 +14,15 @@ import type {
 
 import { PickerIcon, TextInputTrirgger } from "./ParameterValuePicker.styled";
 
-export function OwnDatePicker(props: {
+interface OwnDatePickerProps {
   value: string;
-  onValueChange: (value: string | null) => void;
+  onChange: (value: string | null) => void;
   parameter: Parameter;
-}) {
-  const { value, parameter, onValueChange } = props;
+  placeholder: string;
+}
+
+export function OwnDatePicker(props: OwnDatePickerProps) {
+  const { value, parameter, onChange, placeholder } = props;
   const [isOpen, setIsOpen] = useState(false);
   const formatted = formatParameterValue(value, parameter);
   const parameterType = parameter.type as DateParameterType; // TODO fix types in Parameter
@@ -38,7 +39,7 @@ export function OwnDatePicker(props: {
     <PickerIcon
       name="close"
       onClick={() => {
-        onValueChange(null);
+        onChange(null);
         closePopover();
       }}
     />
@@ -61,7 +62,7 @@ export function OwnDatePicker(props: {
           ref={setTriggerRef}
           value={typeof formatted === "string" ? formatted : value ?? ""} // required by Mantine
           readOnly
-          placeholder={t`Select a default value…`}
+          placeholder={placeholder}
           onClick={openPopover}
           rightSection={icon}
           rightSectionProps={rightSectionProps}
@@ -74,7 +75,7 @@ export function OwnDatePicker(props: {
             type={parameterType}
             value={value}
             onClose={closePopover}
-            setValue={onValueChange}
+            setValue={onChange}
           />
         </div>
       </Popover.Dropdown>
