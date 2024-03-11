@@ -705,7 +705,7 @@
 
         {:row-count row-count}))
     (catch Throwable e
-      (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats file))
+      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats file))
       (throw e))))
 
 (defn- can-append-error
