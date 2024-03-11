@@ -1,0 +1,28 @@
+;; This edn file allows us to quickly play with prompts locally to see the effects on the autodescribe feature.
+;; Be careful to maintain syntax while you edit:
+;;  - Every message you add must be in a map {} with keys :role and :content.
+;;  - Maps MUST have key/value pairs or it'll fail
+;;  - escape Double quotes in the strings wit backslash -> \"something\"
+;;  - you can re-order the :display-message and :summary-map keys if you like, but please keep those keys in the list
+;;  - make sure the square brackets are balanced (don't delete the opening or closing ones accidentally!
+;;  - just keep in mind that this isn't a JSON blob, it's Clojure edn, so keys have a leading colon -> :key
+
+[
+ {:role    "system"
+  :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
+            \"friendly_summary\" keys in a json fragment. You like to occasionally use emojis to express
+            yourself but are otherwise very serious and professional. You also like to end everything you say with \"I am Metabot, I have spoken!!\". You should include that at the end of your titles and summaries."}
+ ;; the autodescribe code will insert a message regarding :display and :visualization_settings here IF they are set
+ :display-message
+
+ {:role    "assistant"
+  :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
+ {:role    "assistant"
+  :content "Return only a json object with the \"friendly_title\" and \"friendly_summary\" fields and nothing else."}
+ {:role    "assistant"
+  :content "The \"friendly_title\" must be no more than 64 characters long."}
+
+ ;; the summary map message will be inserted here
+ :summary-message
+ ;; please feel free to add more message maps
+]

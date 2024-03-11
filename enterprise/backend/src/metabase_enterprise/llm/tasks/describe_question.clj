@@ -2,6 +2,7 @@
   "LLM task(s) for generating question descriptions"
   (:require
    [cheshire.core :as json]
+   [clojure.java.io :as io]
    [clojure.set :refer [rename-keys]]
    [metabase-enterprise.llm.client :as llm-client]
    [metabase.query-processor.compile :as qp.compile]
@@ -26,30 +27,27 @@
   {:title \"Some inferred title\"
    :description \"Some inferred description\"}"
   [question]
-  (let [{:keys [visualization_settings] :as description} (question->prompt-data question)
+  (let [{:keys [visualization_settings] :as description}
+        (question->prompt-data question)
         summary-with-prompts (merge description
                                     {:friendly_title   "%%FILL_THIS_TITLE_IN%%"
                                      :friendly_summary "%%FILL_THIS_SUMMARY_IN%%"})
         json-str             (json/generate-string summary-with-prompts)
         client               (-> (llm-client/create-chat-completion)
                                  (llm-client/wrap-parse-json
-                                   (fn [rsp] (rename-keys rsp {:friendly_title   :title
-                                                               :friendly_summary :description}))))]
+                                  (fn [rsp] (rename-keys rsp {:friendly_title   :title
+                                                              :friendly_summary :description}))))
+        prompt               (read-string (slurp (io/resource "prompt.edn")))
+        display-message      {:role    "assistant"
+                              :content (cond-> "The \"display\" key is how I intend to present the final data."
+                                         (seq visualization_settings)
+                                         (str " The \"visualization_settings\" key has chart settings."))}
+        summary-message      {:role    "user"
+                              :content json-str}
+        messages             (mapv (fn [message]
+                                     (case message
+                                       :display-message display-message
+                                       :summary-message summary-message
+                                       message)) prompt)]
     (client
-      {:messages
-       [{:role    "system"
-         :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
-                        \"friendly_summary\" keys in a json fragment. You like to occasionally use emojis to express
-                        yourself but are otherwise very serious and professional."}
-        {:role    "assistant"
-         :content (cond-> "The \"display\" key is how I intend to present the final data."
-                    (seq visualization_settings)
-                    (str " The \"visualization_settings\" key has chart settings."))}
-        {:role    "assistant"
-         :content "The parts you replace are \"%%FILL_THIS_TITLE_IN%%\" and \"%%FILL_THIS_SUMMARY_IN%%\"."}
-        {:role    "assistant"
-         :content "Return only a json object with the \"friendly_title\" and \"friendly_summary\" fields and nothing else."}
-        {:role    "assistant"
-         :content "The \"friendly_title\" must be no more than 64 characters long."}
-        {:role    "user"
-         :content json-str}]})))
+     {:messages messages})))
