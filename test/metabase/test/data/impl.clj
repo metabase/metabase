@@ -1,7 +1,7 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -64,7 +64,7 @@
 
   That is memoized for the current application database."
   []
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [driver]
      (u/the-id (get-or-create-test-data-db! driver)))))
 
@@ -144,10 +144,10 @@
                     :active   true))
 
 (def ^:private ^{:arglists '([database-id])} table-lookup-map
-  (mdb.connection/memoize-for-application-db build-table-lookup-map))
+  (mdb/memoize-for-application-db build-table-lookup-map))
 
 (def ^:private ^{:arglists '([field-lookup-map])} field-lookup-map
-  (mdb.connection/memoize-for-application-db build-field-lookup-map))
+  (mdb/memoize-for-application-db build-field-lookup-map))
 
 (defn- cached-table-id [db-id table-name]
   (get (table-lookup-map db-id) [db-id table-name]))
@@ -359,7 +359,7 @@
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (mdb.connection/memoize-for-application-db
+        get-db-for-driver (mdb/memoize-for-application-db
                            (fn [driver]
                              (let [db (get-or-create-database! driver dbdef)]
                                (assert db)

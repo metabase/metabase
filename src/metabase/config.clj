@@ -153,3 +153,7 @@
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
    13371338)
+
+(def ^:dynamic *disable-setting-cache*
+  "Whether to disable database cache. Here for loading circularity reasons."
+  false)

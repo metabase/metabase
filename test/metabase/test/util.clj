@@ -14,7 +14,6 @@
    [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.models
     :refer [Card
             Dimension
@@ -689,7 +688,7 @@
  [:not= :id perms/audit-db-id])
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}
+  {:pre [(sequential? models) (every? #(isa? % :metabase/model) models)]}
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
