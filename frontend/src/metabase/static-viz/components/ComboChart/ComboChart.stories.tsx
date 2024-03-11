@@ -365,6 +365,13 @@ AreaStackLinearXAxis.args = {
   renderingContext,
 };
 
+export const NullCategoryValueFormatting = Template.bind({});
+NullCategoryValueFormatting.args = {
+  rawSeries: data.nullCategoryValueFormatting as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
