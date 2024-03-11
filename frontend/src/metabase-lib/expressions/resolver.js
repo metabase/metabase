@@ -162,7 +162,11 @@ export function resolve({
       throw new ResolverError(t`Unknown function ${op}`, expression.node);
     }
 
-    if (database && !database.hasFeature(clause.requiresFeature)) {
+    if (
+      clause.requiresFeature &&
+      database &&
+      !database.hasFeature(clause.requiresFeature)
+    ) {
       throw new ResolverError(t`Unsupported function ${op}`, expression.node);
     }
 
