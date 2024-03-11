@@ -51,6 +51,7 @@ export const getTimelineEventsSeries = (
       const dataUri = svgToDataUri(iconSvg);
 
       return {
+        z: CHART_STYLE.timelineEvents.zIndex,
         name: "timeline-event",
         xAxis: date,
         symbolSize: 16,
@@ -79,6 +80,17 @@ export const getTimelineEventsSeries = (
     data: [],
     z: CHART_STYLE.timelineEvents.zIndex,
     markLine: {
+      blur: {
+        label: {
+          opacity: 1,
+        },
+        itemStyle: {
+          opacity: 1,
+        },
+        lineStyle: {
+          opacity: 1,
+        },
+      },
       symbol: "none",
       lineStyle: {
         type: "solid",
