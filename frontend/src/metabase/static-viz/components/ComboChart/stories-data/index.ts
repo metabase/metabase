@@ -47,6 +47,7 @@ import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
 import areaStackLinearXAxis from "./area-stack-linear-x-axis.json";
+import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 
 export const data = {
   lineLinearXScale,
@@ -98,4 +99,5 @@ export const data = {
   ticksNativeWeekWithGapLongRange,
   barStackLinearXAxis,
   areaStackLinearXAxis,
+  nullCategoryValueFormatting,
 };
