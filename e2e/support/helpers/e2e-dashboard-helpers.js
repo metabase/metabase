@@ -111,7 +111,7 @@ export function editDashboard() {
 export function saveDashboard({
   buttonLabel = "Save",
   editBarText = "You're editing this dashboard.",
-  waitMs = 1,
+  waitMs = 50,
 } = {}) {
   cy.button(buttonLabel).click();
   cy.findByText(editBarText).should("not.exist");
