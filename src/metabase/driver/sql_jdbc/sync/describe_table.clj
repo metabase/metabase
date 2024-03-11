@@ -311,8 +311,11 @@
 
 (defn describe-fks
   "Default implementation of [[metabase.driver/describe-fks]] for JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db & args]
-  (sql-jdbc.execute/simple-reducible-query db (describe-fks-sql driver args)))
+  [driver db & {:keys [schema-names table-names] :as args}]
+    (if (or (and schema-names (empty? schema-names))
+            (and table-names (empty? table-names)))
+      []
+      (sql-jdbc.execute/simple-reducible-query db (describe-fks-sql driver args))))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
