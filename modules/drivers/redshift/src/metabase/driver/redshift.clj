@@ -54,25 +54,26 @@
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select (vec
-                        {:source_ns.nspname     "fk-table-schema"
-                         :source_table.relname  "fk-table-name"
-                         :source_column.attname "fk-column-name"
-                         :dest_ns.nspname       "pk-table-schema"
-                         :dest_column.attname   "pk-column-name"
-                         :dest_table.relname    "pk-table-name"})
+                        {:fk_ns.nspname       "fk-table-schema"
+                         :fk_table.relname    "fk-table-name"
+                         :fk_column.attname   "fk-column-name"
+                         :pk_ns.nspname       "pk-table-schema"
+                         :pk_column.attname   "pk-column-name"
+                         :pk_table.relname    "pk-table-name"})
                :from   [[:pg_constraint :c]]
-               :join   [[:pg_namespace :source_ns]     [:= :c.connamespace :source_ns.oid]
-                        [:pg_class     :source_table]  [:= :c.conrelid :source_table.oid]
-                        [:pg_attribute :source_column] [:= :c.conrelid :source_column.attrelid]
-                        [:pg_class     :dest_table]    [:= :c.confrelid :dest_table.oid]
-                        [:pg_namespace :dest_ns]       [:= :dest_table.relnamespace :dest_ns.oid]
-                        [:pg_attribute :dest_column]   [:= :c.confrelid :dest_column.attrelid]]
+               :join   [[:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
+                        [:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
+                        [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
+                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
+                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
+                        [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
                :where  [:and
                         [:= :c.contype [:raw "'f'::char"]]
-                        [:= :source_column.attnum [:raw "ANY(c.conkey)"]]
-                        [:= :dest_column.attnum [:raw "ANY(c.confkey)"]]
-                        (when table-names [:in :source_table.relname table-names])
-                        (when schema-names [:in :source_ns.nspname schema-names])]}
+                        [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
+                        [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
+                        (when table-names [:in :fk_table.relname table-names])
+                        (when schema-names [:in :fk_ns.nspname schema-names])]
+               :order-by [:fk_ns.nspame :fk_table.relname]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod driver/db-start-of-week :redshift

@@ -355,6 +355,7 @@
 
   Results match [[metabase.sync.interface/FKMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.
+  Results are ordered by `fk-table-schema` and `fk-table-name` in ascending order.
 
   Required for drivers that support `:describe-fks`."
   {:added "0.50.0" :arglists '([driver database & {:keys [schema-names table-names]}])}
