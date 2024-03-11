@@ -326,27 +326,24 @@ describe("scenarios > visualizations > table", () => {
     });
   });
 
-  it(
-    "should show the slow loading text when the query is taking too long",
-    { tags: ["@slow"] },
-    () => {
-      openOrdersTable({ mode: "notebook" });
+  it("should show the slow loading text when the query is taking too long", () => {
+    openOrdersTable({ mode: "notebook" });
 
-      cy.intercept("POST", "/api/dataset", req => {
-        req.on("response", res => {
-          res.setDelay(6000);
-        });
+    cy.intercept("POST", "/api/dataset", req => {
+      req.on("response", res => {
+        res.setDelay(10000);
       });
+    });
 
-      cy.button("Visualize").click();
+    cy.button("Visualize").click();
 
-      cy.findByTestId("query-builder-main").findByText("Doing science...");
-      cy.findByTestId("query-builder-main").findByText(
-        "Talking to the database...",
-        { timeout: 6000 },
-      );
-    },
-  );
+    cy.clock();
+    cy.tick(1000);
+    cy.findByTestId("query-builder-main").findByText("Doing science...");
+
+    cy.tick(5000);
+    cy.findByTestId("query-builder-main").findByText("Waiting for results...");
+  });
 });
 
 describe("scenarios > visualizations > table > conditional formatting", () => {
