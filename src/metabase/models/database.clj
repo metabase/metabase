@@ -114,14 +114,20 @@
       ;; tables.
       (if (:is_audit database)
         (doseq [group non-admin-groups]
+          (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
           (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
+          (data-perms/set-database-permission! group database :perms/create-queries :no)
           (data-perms/set-database-permission! group database :perms/native-query-editing :no)
           (data-perms/set-database-permission! group database :perms/download-results :one-million-rows))
         (do
+          (data-perms/set-database-permission! all-users-group database :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! all-users-group database :perms/create-queries :query-builder-and-native)
           (data-perms/set-database-permission! all-users-group database :perms/data-access :unrestricted)
           (data-perms/set-database-permission! all-users-group database :perms/native-query-editing :yes)
           (data-perms/set-database-permission! all-users-group database :perms/download-results :one-million-rows)
           (doseq [group non-magic-groups]
+            (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! group database :perms/create-queries :no)
             (data-perms/set-database-permission! group database :perms/download-results :no)
             (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
             (data-perms/set-database-permission! group database :perms/native-query-editing :no))))
