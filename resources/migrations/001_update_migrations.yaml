@@ -5849,6 +5849,7 @@ databaseChangeLog:
                     referencedTableName: report_card
                     referencedColumnNames: id
                     foreignKeyName: fk_field_usage_card_id
+                    deleteCascade: true
               - column:
                   name: field_id
                   remarks: referenced field
@@ -5858,6 +5859,7 @@ databaseChangeLog:
                     referencedTableName: metabase_field
                     referencedColumnNames: id
                     foreignKeyName: fk_field_usage_field_id
+                    deleteCascade: true
               - column:
                   remarks: Name of the used column, as it is in the query (i.e., the old name)
                   name: column_name
