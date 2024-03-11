@@ -9,7 +9,9 @@ type MenuItemProps = MantineMenuItemProps &
 // check useClickOutside hook in mantine
 export function MenuItem(props: MenuItemProps) {
   const handleMouseDownCapture = (event: MouseEvent) => {
-    event.nativeEvent.stopImmediatePropagation();
+    const target = event.target as HTMLElement;
+    target.setAttribute("data-ignore-outside-clicks", "true");
+    // event.nativeEvent.stopImmediatePropagation();
   };
 
   return <Menu.Item {...props} onMouseDownCapture={handleMouseDownCapture} />;
