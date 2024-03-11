@@ -4,6 +4,7 @@ import {
   visitQuestion,
   getDashboardCard,
   setTokenFeatures,
+  echartsContainer,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -168,7 +169,7 @@ describe("audit > auditing", { tags: "@quarantine" }, () => {
       cy.findByText("Total queries and their average speed");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No results!").should("not.exist");
-      cy.get(".LineAreaBarChart");
+      echartsContainer();
       cy.get("rect");
 
       // All databases tab
@@ -254,7 +255,7 @@ describe("audit > auditing", { tags: "@quarantine" }, () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Query views and speed per day");
       cy.findAllByText("No results!").should("not.exist");
-      cy.get(".LineAreaBarChart").should("have.length", 1);
+      echartsContainer().should("have.length", 1);
       cy.get("rect");
       cy.get(".voronoi");
 

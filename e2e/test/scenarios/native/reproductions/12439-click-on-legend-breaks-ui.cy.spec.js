@@ -1,4 +1,9 @@
-import { restore, visitQuestionAdhoc, sidebar } from "e2e/support/helpers";
+import {
+  restore,
+  visitQuestionAdhoc,
+  sidebar,
+  lineChartCircle,
+} from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -42,7 +47,7 @@ describe("issue 12439", () => {
       cy.findByText("Gizmo").should("be.visible");
       cy.findByText("Doohickey").should("be.visible");
 
-      cy.get("circle");
+      lineChartCircle();
     });
 
     // Make sure buttons are clickable

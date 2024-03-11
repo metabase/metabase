@@ -3,6 +3,7 @@ import {
   popover,
   openPeopleTable,
   summarize,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 import { LONGITUDE_OPTIONS } from "./shared/constants";
@@ -31,7 +32,7 @@ describe("scenarios > binning > correctness > longitude", () => {
         cy.findByText("Done").click();
 
         getTitle(`Count by Longitude: ${selected}`);
-        cy.get(".bar");
+        echartsContainer().find("path");
 
         assertOnXYAxisLabels();
         assertOnXAxisTicks(representativeValues);

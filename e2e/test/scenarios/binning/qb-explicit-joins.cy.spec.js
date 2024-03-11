@@ -4,6 +4,8 @@ import {
   changeBinningForDimension,
   summarize,
   startNewQuestion,
+  lineChartCircle,
+  echartsContainer,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -221,7 +223,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         .and("contain", "January 1965")
         .and("contain", "January 2000");
 
-      cy.get("circle");
+      lineChartCircle();
 
       // Make sure time series footer works as well
       cy.findByTestId("timeseries-bucket-button").contains("Month").click();
@@ -255,7 +257,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("25");
 
-      cy.get(".bar");
+      echartsContainer().find("path");
     });
 
     it("should work for longitude", () => {
@@ -278,7 +280,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("160° W");
 
-      cy.get(".bar");
+      echartsContainer().find("path");
     });
   });
 });

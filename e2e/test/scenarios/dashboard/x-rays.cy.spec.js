@@ -7,6 +7,7 @@ import {
   popover,
   getDashboardCards,
   saveDashboard,
+  lineChartCircle,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -321,7 +322,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         cy.findByRole("tab", { name: "Tab 1" }).click();
         saveDashboard();
 
-        cy.get("circle").eq(0).click({ force: true });
+        lineChartCircle().eq(0).click({ force: true });
         popover().findByText("Automatic insights…").click();
         popover().findByText("X-ray").click();
         cy.wait("@dataset", { timeout: 60000 });

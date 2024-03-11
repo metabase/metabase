@@ -5,6 +5,7 @@ import {
   saveDashboard,
   showDashboardCardActions,
   visitDashboard,
+  lineChartCircle,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -123,7 +124,7 @@ function setupDashcardAndDrillToQuestion({
     cy.wait("@getCardQuery");
 
     cy.findByTestId("visualization-root").within(() => {
-      cy.get("circle").first().click({ force: true });
+      lineChartCircle().first().click({ force: true });
     });
 
     cy.url().should("include", `/question`);

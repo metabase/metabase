@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import { restore, visitDashboard, lineChartCircle } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -33,7 +33,7 @@ describe("issue 27380", () => {
     );
 
     // Doesn't really matter which 'circle" we click on the graph
-    cy.get("circle").last().realClick();
+    lineChartCircle().last().realClick();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See this month by week").click();
     cy.wait("@dataset");

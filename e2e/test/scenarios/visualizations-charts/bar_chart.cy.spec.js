@@ -7,6 +7,8 @@ import {
   popover,
   visitDashboard,
   cypressWaitAll,
+  echartsContainer,
+  chartPathsWithColors,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -165,7 +167,8 @@ describe("scenarios > visualizations > bar chart", () => {
         .then(columnName => {
           cy.get(".Visualization").findByText(columnName).should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
-          cy.get(".enable-dots").should("have.length", 3);
+          // Series bars are paths with colors
+          chartPathsWithColors(["#88BF4D", "#F9D45C", "#F2A86F"]);
         });
 
       getDraggableElements()
@@ -180,7 +183,7 @@ describe("scenarios > visualizations > bar chart", () => {
         .then(columnName => {
           cy.get(".Visualization").findByText(columnName).should("exist");
           cy.findAllByTestId("legend-item").should("have.length", 4);
-          cy.get(".enable-dots").should("have.length", 4);
+          chartPathsWithColors(["#88BF4D", "#F9D45C", "#F2A86F", "#A989C5"]);
         });
 
       cy.findAllByTestId("legend-item").contains("Gadget").click();
@@ -267,7 +270,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get("g.axis.yr").should("be.visible");
+      // Left Y-axis
+      echartsContainer().findByText("Average of Total");
+      // Right Y-axis
+      echartsContainer().findByText("Min of Total");
     });
 
     it("should not split the y-axis when semantic_type, column settings are same and values are not far", () => {
