@@ -153,7 +153,9 @@
       (is
        (= {group-id
            {db-id
-            {:perms/data-access :no-self-service,
+            {:perms/view-data :unrestricted,
+             :perms/create-queries :no,
+             :perms/data-access :no-self-service,
              :perms/download-results :no,
              :perms/manage-table-metadata :no,
              :perms/native-query-editing :no,
