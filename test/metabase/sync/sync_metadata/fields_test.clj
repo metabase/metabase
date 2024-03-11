@@ -319,7 +319,7 @@
           ;; 2. sync the metadata for each table
           (run! sync-fields/sync-fields-for-table! tables)
           (run! sync-fks/sync-fks-for-table! tables)
-          (let [continent-id-field (t2/select-one :model/Field :name "id" :table_id (mt/id :continent))]
+          (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
             (is (= #{{:name "name",         :semantic_type nil,      :fk_target_field_id nil}
                      {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
                      {:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (:id continent-id-field)}}
