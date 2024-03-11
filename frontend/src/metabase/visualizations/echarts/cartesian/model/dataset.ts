@@ -314,7 +314,7 @@ export const applyVisualizationSettingsDataTransformations = (
     {
       condition: isCategoryAxis(xAxisModel),
       fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
-        return isCategoryAxis(xAxisModel) && value === null
+        return isCategoryAxis(xAxisModel) && value == null
           ? ECHARTS_CATEGORY_AXIS_NULL_VALUE
           : value;
       }),
