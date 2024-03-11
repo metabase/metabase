@@ -253,7 +253,7 @@
         (least-permissive-value perm-type))))
 
 (mu/defn group-has-permission-for-database? :- :boolean
-  "Returns a Boolean indicating whether the user has the specified permission value for the given database ID,
+  "Returns a Boolean indicating whether the group has the specified permission value for the given database ID,
    or a more permissive value."
   [group-id perm-type perm-value database-id]
   (at-least-as-permissive? perm-type
@@ -280,6 +280,15 @@
     (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
                                                                                 perm-type)))
         (least-permissive-value perm-type))))
+
+(mu/defn group-has-permission-for-table? :- :boolean
+  "Returns a Boolean indicating whether the group has the specified permission value for the given table ID, or a more
+  permissive value."
+  [group-id perm-type perm-value database-id table-id]
+  (at-least-as-permissive? perm-type
+                           (table-permission-for-group group-id perm-type database-id table-id)
+                           perm-value))
+
 
 (mu/defn table-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
