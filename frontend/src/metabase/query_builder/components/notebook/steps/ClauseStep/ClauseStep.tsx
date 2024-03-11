@@ -156,6 +156,7 @@ function ClauseStepDndItem({
     useSortable({
       id: getItemIdFromIndex(index),
       disabled: readOnly,
+      // disable animation after reordering because we don't have stable item ids
       animateLayoutChanges: () => false,
     });
 
@@ -174,6 +175,7 @@ function ClauseStepDndItem({
   );
 }
 
+// dnd-kit ignores `0` item, so we convert indexes to string `"0"`
 function getItemIdFromIndex(index: number) {
   return String(index);
 }

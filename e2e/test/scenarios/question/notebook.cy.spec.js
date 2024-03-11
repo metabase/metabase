@@ -713,6 +713,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
           ["sum", ["field", ORDERS.TOTAL, null]],
           ["avg", ["field", ORDERS.TOTAL, null]],
         ],
+        "order-by": [
+          ["asc", ["aggregation", 0]],
+          ["asc", ["aggregation", 4]],
+        ],
       },
     };
     cy.createQuestion(questionDetails, { visitQuestion: true });
@@ -730,6 +734,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByTestId("breakout-step").within(() => {
         moveElement({ name: "ID", horizontal: 100, index: 1 });
       });
+    });
+    getNotebookStep("sort").within(() => {
+      moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
     });
   });
 });
