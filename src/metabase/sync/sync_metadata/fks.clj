@@ -94,7 +94,7 @@
                                                                 :schema (:fk-table-schema metadata))
                               (sync-util/field-name-for-logging :name (:pk-column-name metadata)))))))
 
-(mu/defn fast-sync-fks!
+(mu/defn describe-fks!
   "Sync the foreign keys for a specific `table`."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
@@ -130,12 +130,12 @@
   "Sync the foreign keys in a `database`. This sets appropriate values for relevant Fields in the Metabase application
   DB based on values from the `FKMetadata` returned by [[metabase.driver/describe-table-fks]].
 
-  If the driver supports the `:fast-sync-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata.
+  If the driver supports the `:describe-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata.
 
   This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
   [database :- i/DatabaseInstance]
-  (u/prog1 (if (driver/database-supports? (driver.u/database->driver database) :fast-sync-fks database)
-             (fast-sync-fks! database)
+  (u/prog1 (if (driver/database-supports? (driver.u/database->driver database) :describe-fks database)
+             (describe-fks! database)
              (reduce (fn [update-info table]
                        (let [table         (t2.realize/realize table)
                              table-fk-info (sync-fks-for-table! database table)]

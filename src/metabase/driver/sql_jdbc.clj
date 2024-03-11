@@ -93,6 +93,7 @@
   [driver database table]
   (sql-jdbc.sync/describe-table driver database table))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :sql-jdbc
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))

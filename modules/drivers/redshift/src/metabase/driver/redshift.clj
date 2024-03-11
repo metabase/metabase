@@ -37,7 +37,7 @@
 
 (doseq [[feature supported?] {:test/jvm-timezone-setting false
                               :nested-field-columns      false
-                              :fast-sync-fks             true
+                              :describe-fks             true
                               :connection-impersonation  true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 

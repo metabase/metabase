@@ -339,12 +339,13 @@
 (defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
 (defmulti describe-table-fks
-  "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
-  should match the [[metabase.sync.interface/FKMetadata]] schema."
-  {:added "0.32.0" :arglists '([driver database table])}
+  "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys` but not
+  `:describe-fks`. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
+  {:added "0.32.0" :deprecated "0.50.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod describe-table-fks ::driver [_ _ _]
   nil)
 
@@ -355,7 +356,7 @@
   Results match [[metabase.sync.interface/FastFKMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.
 
-  Required for drivers that support `:fast-sync-fks`."
+  Required for drivers that support `:describe-fks`."
   {:added "0.50.0" :arglists '([driver database & {:keys [schema-names table-names]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -565,7 +566,7 @@
     :index-info
 
     ;; Does the driver support a faster `sync-fks` step by fetching all FK metadata in a single collection?
-    :fast-sync-fks})
+    :describe-fks})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

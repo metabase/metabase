@@ -6,8 +6,12 @@ title: Driver interface changelog
 
 ## Metabase 0.50.0
 
+- The multimethod `metabase.driver/describe-table-fks` has been deprecated in favor of `metabase.driver/describe-fks`.
+  `metabase.driver/describe-table-fks` will be removed in 0.53.0.
+
 - The multimethod `metabase.driver/describe-fks` has been added. The method needs to be implemented if the database
-  supports the `:foreign-keys` and `:fast-sync-fks` features.
+  supports the `:foreign-keys` and `:describe-fks` features. It replaces the `metabase.driver/describe-table-fks`
+  method, which is now deprecated.
 
 - The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-fks-sql` has been added. The method needs
   to be implemented if you want to use the default JDBC implementation of `metabase.driver/describe-fks`.

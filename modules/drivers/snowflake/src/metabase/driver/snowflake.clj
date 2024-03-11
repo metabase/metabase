@@ -534,6 +534,7 @@
      (fn [conn]
        (describe-table-fks* driver conn table db-name-or-nil)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]
   (describe-table-fks driver database table (db-name database)))

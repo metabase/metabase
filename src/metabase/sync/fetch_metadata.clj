@@ -37,8 +37,9 @@
    table    :- i/TableInstance]
   (let [driver (driver.u/database->driver database)]
     (when (driver/database-supports? driver :foreign-keys database)
-      (if (driver/database-supports? driver :fast-sync-fks database)
+      (if (driver/database-supports? driver :describe-fks database)
         (into [] (driver/describe-fks driver database :table-names [(:name table)]))
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (vec (for [m (driver/describe-table-fks driver database table)]
                {:fk-table-name   (:name table)
                 :fk-table-schema (:schema table)
