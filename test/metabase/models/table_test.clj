@@ -96,7 +96,9 @@
         (is (partial=
              {all-users-group-id
               {db-id
-               {:perms/data-access           :unrestricted
+               {:perms/view-data             :unrestricted
+                :perms/create-queries        :query-builder-and-native
+                :perms/data-access           :unrestricted
                 :perms/native-query-editing  :yes
                 :perms/download-results      :one-million-rows
                 :perms/manage-table-metadata :no
@@ -107,14 +109,17 @@
       (is (partial=
            {group-id
             {db-id
-               {:perms/data-access           :no-self-service
-                :perms/native-query-editing  :no
-                :perms/download-results      :no
-                :perms/manage-table-metadata :no
-                :perms/manage-database       :no}}}
+             {:perms/view-data             :unrestricted
+              :perms/create-queries        :no
+              :perms/data-access           :no-self-service
+              :perms/native-query-editing  :no
+              :perms/download-results      :no
+              :perms/manage-table-metadata :no
+              :perms/manage-database       :no}}}
            (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))
 
       (testing "A new table has appropriate defaults, when perms are already set granularly for the DB"
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-1 :perms/data-access :unrestricted)
         (data-perms/set-table-permission! group-id table-id-1 :perms/download-results :one-million-rows)
         (data-perms/set-table-permission! group-id table-id-1 :perms/manage-table-metadata :yes)
@@ -123,20 +128,25 @@
           (is (partial=
                {group-id
                 {db-id
-                   {:perms/data-access           {"PUBLIC"
-                                                  {table-id-1 :unrestricted
-                                                   table-id-2 :no-self-service
-                                                   table-id-3 :no-self-service}}
-                    :perms/native-query-editing  :no
-                    :perms/download-results      {"PUBLIC"
-                                                  {table-id-1 :one-million-rows
-                                                   table-id-2 :no
-                                                   table-id-3 :no}}
-                    :perms/manage-table-metadata {"PUBLIC"
-                                                  {table-id-1 :yes
-                                                   table-id-2 :no
-                                                   table-id-3 :no}}
-                    :perms/manage-database       :no}}}
+                 {:perms/view-data             :unrestricted
+                  :perms/create-queries        {"PUBLIC"
+                                                {table-id-1 :query-builder
+                                                 table-id-2 :no
+                                                 table-id-3 :no}}
+                  :perms/data-access           {"PUBLIC"
+                                                {table-id-1 :unrestricted
+                                                 table-id-2 :no-self-service
+                                                 table-id-3 :no-self-service}}
+                  :perms/native-query-editing  :no
+                  :perms/download-results      {"PUBLIC"
+                                                {table-id-1 :one-million-rows
+                                                 table-id-2 :no
+                                                 table-id-3 :no}}
+                  :perms/manage-table-metadata {"PUBLIC"
+                                                {table-id-1 :yes
+                                                 table-id-2 :no
+                                                 table-id-3 :no}}
+                  :perms/manage-database       :no}}}
                (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))))
 
 (deftest cleanup-permissions-after-delete-table-test
@@ -144,6 +154,7 @@
     [:model/Database {db-id :id}      {}
      :model/Table    {table-id-1 :id} {:db_id db-id}
      :model/Table    {}               {:db_id db-id}]
+    (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/create-queries :query-builder-and-native)
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/data-access :unrestricted)
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/download-results :one-million-rows)
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/manage-table-metadata :yes)
