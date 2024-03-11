@@ -138,6 +138,7 @@ export const RadioButton = styled.span<RadioButtonProps>`
 export const RadioLabelText = styled.span`
   flex: 1 1 auto;
   display: block;
+  margin-right: 0.5rem;
 `;
 
 const getSchemeColor = (colorScheme: RadioColorScheme): string => {

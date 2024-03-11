@@ -18,6 +18,7 @@ const linkStyles = css`
   border-radius: 0.5rem;
   transition: border 0.3s linear;
   text-decoration: none;
+  gap: 1rem;
 
   &:hover {
     border-color: ${color("brand")};

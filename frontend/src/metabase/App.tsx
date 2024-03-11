@@ -97,7 +97,7 @@ function App({
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
-        <AppContainer className="spread">
+        <AppContainer className="spread" dir="rtl">
           <KeyboardTriggeredErrorModal />
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}

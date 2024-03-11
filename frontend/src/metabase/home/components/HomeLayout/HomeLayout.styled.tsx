@@ -56,7 +56,7 @@ export const LayoutIllustration = styled.div`
 export const LayoutEditButton = styled(Button)`
   position: absolute;
   top: 0.75rem;
-  right: 1rem;
+  inset-inline-end: 1rem;
 
   &:hover {
     color: ${color("brand")};
