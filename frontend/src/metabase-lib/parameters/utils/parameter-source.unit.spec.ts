@@ -71,7 +71,7 @@ describe("getQueryType", () => {
     );
   });
 
-  it('should return "none" query type by default for legacy parameter types', () => {
+  it('should return "list" query type by default for legacy parameter types', () => {
     const parameter = createMockUiParameter({
       type: "category",
     });
