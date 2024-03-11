@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [macaw.core :as mac]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- normalize-name
@@ -19,19 +20,24 @@
 
 (defn- fields-for-query
   [q db-id]
-  (let [{:keys [columns tables]} (mac/query->components (mac/parsed-query q))]
-    (t2/query {:select [[:f/id :field_id] [:f/name :column_name] [:t/name :table_name]]
-               :from [[(t2/table-name :model/Field) :f]]
-               :join [[(t2/table-name :model/Table) :t] [:= :table_id :t.id]]
-               :where [:and
-                       [:= :t.db_id db-id]
-                       [:in :%lower.t/name (map normalize-name tables)]
-                       [:in :%lower.f/name (map normalize-name columns)]]})))
+  (try
+    (let [{:keys [columns tables]} (mac/query->components (mac/parsed-query q))]
+      (t2/query {:select [[:f/id :field_id] [:f/name :column_name] [:t/name :table_name]]
+                 :from [[(t2/table-name :model/Field) :f]]
+                 :join [[(t2/table-name :model/Table) :t] [:= :table_id :t.id]]
+                 :where [:and
+                         [:= :t.db_id db-id]
+                         [:in :%lower.t/name (map normalize-name tables)]
+                         [:in :%lower.f/name (map normalize-name columns)]]}))
+    (catch Exception e
+      (log/error e "Error parsing native query"))))
 
 (defn- fields-for-card
   "Returns a list of field objects\\* that (may) be referenced in the given cards's query. Errs on the side of optimism:
   i.e., it may return fields that are *not* in the query, and is unlikely to fail to return fields that are in the
   query.
+
+  Returns `nil` (and logs the error) if there was a parse error.
 
   \\* Specifically, the columns of a Field that are appropriate for a FieldUsage record."
   [card]
@@ -41,7 +47,8 @@
 
 (defn- field-usages-for-card
   [{card-id :id :as card}]
-  (map #(assoc % :card_id card-id) (fields-for-card card)))
+  (when-let [field-usages (fields-for-card card)]
+    (map #(assoc % :card_id card-id) field-usages)))
 
 (defn update-field-usages-for-card!
   "Ensures that all FieldUsages associated with this card are up to date with the query, creating or deleting them as necessary.
