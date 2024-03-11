@@ -19,25 +19,33 @@ export const funnelToBarTransform: TransformSeries = (
   );
 
   return rows.map((row, index) => {
+    const name = renderingContext.formatValue(row[dimensionIndex], {
+      column: cols[dimensionIndex],
+    });
     return {
       card: {
         ...card,
         id: index,
-        name: renderingContext.formatValue(row[dimensionIndex], {
-          column: cols[dimensionIndex],
-        }),
+        name,
         display: "bar",
         visualization_settings: {
+          "card.title": card.name,
           "graph.tooltip_type": "default",
           "stackable.stack_type": "stacked" as const,
           "graph.dimensions": [settings["funnel.dimension"]],
-          "graph.metrics": [settings["funnel.metric"]],
+          "graph.metrics": [name],
           "graph.y_axis.auto_split": false,
         },
       },
       data: {
         rows: [[row[dimensionIndex], row[metricIndex]]],
-        cols: [cols[dimensionIndex], cols[metricIndex]],
+        cols: [
+          cols[dimensionIndex],
+          {
+            ...cols[metricIndex],
+            name,
+          },
+        ],
         rows_truncated: 0,
         results_metadata: { columns: [] },
       },

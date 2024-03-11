@@ -233,10 +233,13 @@ class Visualization extends PureComponent {
       metadata,
       isRawTable,
       getExtraDataForClick = () => ({}),
+      rawSeries,
     } = this.props;
 
-    const seriesIndex = clicked.seriesIndex || 0;
-    const card = this.state.series[seriesIndex].card;
+    const card =
+      rawSeries.find(series => series.card.id === clicked.cardId)?.card ??
+      rawSeries[0].card;
+
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
 
@@ -304,11 +307,12 @@ class Visualization extends PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, seriesIndex, objectId }) => {
-    const { series, clicked } = this.state;
+  handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
+    const { rawSeries } = this.props;
 
-    const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
-    const previousCard = series && series[index] && series[index].card;
+    const previousCard =
+      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
+      rawSeries[0].card;
 
     this.props.onChangeCardAndRun({ nextCard, previousCard, objectId });
   };
