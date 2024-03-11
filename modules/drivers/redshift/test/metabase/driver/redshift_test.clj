@@ -276,9 +276,9 @@
                  view-nm))
             (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
               ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",              :base_type :type/Decimal}
-                      {:name "raw_null",                    :database_type "varchar",              :base_type :type/Text}
-                      {:name "raw_var",                     :database_type "character varying(5)", :base_type :type/Text}]
+              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
+                      {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
+                      {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
                      (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
             (finally
               (execute! (str "DROP VIEW IF EXISTS %s;")

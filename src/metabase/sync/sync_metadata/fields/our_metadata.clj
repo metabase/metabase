@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata.fields.fetch-metadata
+(ns metabase.sync.sync-metadata.fields.our-metadata
   "Logic for constructing a map of metadata from the Metabase application database that matches the form of DB metadata
   about Fields in a Table, and for fetching the DB metadata itself. This metadata is used by the logic in other
   `metabase.sync.sync-metadata.fields.*` namespaces to determine what sync operations need to be performed by

@@ -166,24 +166,37 @@
          init
          [jdbc-metadata fallback-metadata])))))
 
+(defn describe-fields-xf
+  "Returns a transducer for computing metadata about the fields in `db`."
+  [driver db]
+  (map (fn [col]
+         (let [base-type      (database-type->base-type-or-warn driver (:database-type col))
+               semantic-type  (calculated-semantic-type driver (:name col) (:database-type col))
+               json?          (isa? base-type :type/JSON)]
+           (merge
+            (u/select-non-nil-keys col [:table-schema
+                                        :table-name
+                                        :pk?
+                                        :name
+                                        :database-type
+                                        :database-position
+                                        :field-comment
+                                        :database-required
+                                        :database-is-auto-increment])
+            {:base-type         base-type
+             ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
+             :json-unfolding    json?}
+            (when semantic-type
+              {:semantic-type semantic-type})
+            (when (and json? (driver/database-supports? driver :nested-field-columns db))
+              {:visibility-type :details-only}))))))
+
 (defn describe-table-fields-xf
-  "Returns a transducer for computing metadata about the fields in `table`."
-  [driver table]
-  (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                 (let [base-type      (database-type->base-type-or-warn driver database-type)
-                       semantic-type  (calculated-semantic-type driver column-name database-type)
-                       db             (table/database table)
-                       json?          (isa? base-type :type/JSON)]
-                   (merge
-                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
-                    {:base-type         base-type
-                     :database-position i
-                     ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
-                     :json-unfolding    json?}
-                    (when semantic-type
-                      {:semantic-type semantic-type})
-                    (when (and json? (driver/database-supports? driver :nested-field-columns db))
-                      {:visibility-type :details-only}))))))
+  "Returns a transducer for computing metadata about the fields in a table, given the database `db`."
+  [driver db]
+  (comp
+   (describe-fields-xf driver db)
+   (map-indexed (fn [i col] (assoc col :database-position i)))))
 
 (defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
@@ -196,7 +209,7 @@
   [driver conn table db-name-or-nil]
   (into
    #{}
-   (describe-table-fields-xf driver table)
+   (describe-table-fields-xf driver (table/database table))
    (fields-metadata driver conn table db-name-or-nil)))
 
 (defmulti get-table-pks
@@ -249,6 +262,22 @@
      nil
      (fn [^Connection conn]
        (describe-table* driver conn table)))))
+
+(defmulti describe-fields-sql
+  "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
+ i.e. [[describe-fields]]."
+  {:added    "0.50.0"
+   :arglists '([driver & {:keys [schema-names table-names]}])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defn describe-fields
+  "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver db & {:as args}]
+  (eduction
+   (describe-fields-xf driver db)
+   (partition-by (juxt :table-schema :table-name))
+   (sql-jdbc.execute/sql->reducible-rows db (describe-fields-sql driver args))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]

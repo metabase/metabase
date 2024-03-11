@@ -319,6 +319,21 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti describe-fields
+  "Returns a reducible collection of maps, each containing information about fields. It includes which keys are
+  primary keys, but not foreign keys. It does not include nested fields (e.g. fields within a JSON column).
+
+  Takes keyword arguments to narrow down the results to a set of
+  `schema-names` or `table-names`.
+
+  Results match [[metabase.sync.interface/FieldMetadataEntry]].
+  Results are optionally filtered by `schema-names` and `table-names` provided.
+  Results are ordered by `table-schema`, `table-name`, and `database-position` in ascending order."
+  {:added    "0.50.0"
+   :arglists '([driver database & {:keys [schema-names table-names]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti describe-table-indexes
   "Returns a set of map containing information about the indexes of a table.
   Currently we only sync single column indexes or the first column of a composite index.
@@ -567,7 +582,10 @@
     :index-info
 
     ;; Does the driver support a faster `sync-fks` step by fetching all FK metadata in a single collection?
-    :describe-fks})
+    :describe-fks
+
+    ;; Does the driver support a faster `sync-fields` step by fetching all FK metadata in a single collection?
+    :describe-fields})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

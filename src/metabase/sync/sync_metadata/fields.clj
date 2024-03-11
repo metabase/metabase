@@ -6,7 +6,7 @@
   both sets of Metadata and perform whatever steps are needed to make sure the things in the DB match the things that
   came back from `describe-table`. These steps are broken out into three main parts:
 
-  * Fetch Metadata - logic is in `metabase.sync.sync-metadata.fields.fetch-metadata`. Construct a map of metadata from
+  * Fetch Our Metadata - logic is in `metabase.sync.sync-metadata.fields.our-metadata`. Construct a map of metadata from
     the Metabase application database that matches the form of DB metadata about Fields in a Table. This metadata is
     used to next two steps to determine what sync operations need to be performed by comparing the differences in the
     two sets of Metadata.
@@ -39,29 +39,62 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
-   [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
+   [metabase.sync.sync-metadata.fields.our-metadata :as our-metadata]
    [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private sync-and-update! :- ms/IntGreaterThanOrEqualToZero
+ (mu/defn ^:private sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
   [table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  (+ (sync-instances/sync-instances! table db-metadata (fetch-metadata/our-metadata table))
+  (+ (sync-instances/sync-instances! table db-metadata (our-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
      ;; Re-fetch our metadata because there might be somethings that have changed after calling
      ;; `sync-instances`
-     (sync-metadata/update-metadata! table db-metadata (fetch-metadata/our-metadata table))))
+     (sync-metadata/update-metadata! table db-metadata (our-metadata/our-metadata table))))
+
+(mu/defn sync-fields-for-db!
+  "Sync the Fields in the Metabase application database for a specific `table`."
+  [database :- i/DatabaseInstance]
+  (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
+    (let [schema-names   (sync-util/db->sync-schemas database)
+          field-metadata (fetch-metadata/field-metadata database :schema-names schema-names)]
+      (transduce (comp
+                  (partition-by (juxt :fk-schema-name :fk-table-name))
+                  (map (fn [table-metadata]
+                         (let [fst (first table-metadata)
+                               table (t2/select-one :model/Table
+                                                    :db_id (:id database)
+                                                    :%lower.name (:table-name fst)
+                                                    :%lower.schema (:schema-name fst)
+                                                    {:where sync-util/sync-tables-clause})
+                               [updated failed] (try [(sync-and-update! table (set table-metadata)) 0]
+                                                     (catch Exception e
+                                                       (log/error e)
+                                                       [0 1]))]
+                           {:total-fks    1
+                            :updated-fks  updated
+                            :total-failed failed}))))
+                 (partial merge-with +)
+                 {:total-fks    0
+                  :updated-fks  0
+                  :total-failed 0}
+                 field-metadata))))
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
@@ -71,19 +104,20 @@
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-     (let [db-metadata (fetch-metadata/db-metadata database table)]
+     (let [db-metadata (our-metadata/db-metadata database table)]
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! table db-metadata)}))))
 
-
-(mu/defn sync-fields! :- [:maybe
+ (mu/defn sync-fields! :- [:maybe
                           [:map
                            [:updated-fields ms/IntGreaterThanOrEqualToZero]
                            [:total-fields   ms/IntGreaterThanOrEqualToZero]]]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
-  (->> database
-       sync-util/db->sync-tables
-       (map (partial sync-fields-for-table! database))
-       (remove (partial instance? Throwable))
-       (apply merge-with +)))
+  (let [tables (sync-util/db->sync-tables database)]
+    (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
+      (sync-fields-for-db! database)
+      (->> tables
+           (map (partial sync-fields-for-table! database))
+           (remove (partial instance? Throwable))
+           (apply merge-with +)))))

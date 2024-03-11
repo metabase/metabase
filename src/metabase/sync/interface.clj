@@ -2,6 +2,7 @@
   "Schemas and constants used by the sync code."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -75,6 +76,15 @@
 (def TableMetadata
   "Schema for the expected output of [[metabase.driver/describe-table]]."
   [:ref ::TableMetadata])
+
+(mr/def ::FieldMetadataEntry
+  (-> (mr/schema ::TableMetadataField)
+      (mut/assoc :table-schema [:maybe ::lib.schema.common/non-blank-string])
+      (mut/assoc :table-name ::lib.schema.common/non-blank-string)))
+
+(def FieldMetadataEntry
+  "Schema for an item in the expected output of [[metabase.driver/describe-fields]]."
+  [:ref ::FieldMetadataEntry])
 
 ;;; not actually used; leaving here for now because it serves as documentation
 (comment

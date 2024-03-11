@@ -37,6 +37,7 @@
 
 (doseq [[feature supported?] {:test/jvm-timezone-setting false
                               :nested-field-columns      false
+                              :describe-fields           true
                               :describe-fks              true
                               :connection-impersonation  true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
@@ -74,6 +75,40 @@
                         (when table-names [:in :fk_table.relname table-names])
                         (when schema-names [:in :fk_ns.nspname schema-names])]
                :order-by [:fk-table-schema :fk-table-name]}
+              :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-fields-sql :redshift
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format {:select [[:c.column_name "name"]
+                        [:c.data_type "database-type"]
+                        [:c.ordinal_position "database-position"]
+                        [:c.schema_name "table-schema"]
+                        [:c.table_name "table-name"]
+                        [[:raw "NULL"] "database-is-auto-increment"] ; only needed for actions, which redshift doesn't support yet
+                        [[:raw "NULL"] "database-required"]          ; only needed for actions, which redshift doesn't support yet
+                        [[:not= :pk.column_name nil] "pk?"]
+                        [:c.remarks "field-comment"]]
+               :from [[:svv_all_columns :c]]
+               :left-join [[{:select [:tc.table_schema
+                                      :tc.table_name
+                                      :kc.column_name]
+                             :from [[:information_schema.table_constraints :tc]]
+                             :join [[:information_schema.key_column_usage :kc]
+                                    [:and
+                                     [:= :tc.constraint_name :kc.constraint_name]
+                                     [:= :tc.table_schema :kc.table_schema]
+                                     [:= :tc.table_name :kc.table_name]]]
+                             :where [:= :tc.constraint_type "PRIMARY KEY"]}
+                            :pk]
+                           [:and
+                            [:= :c.schema_name :pk.table_schema]
+                            [:= :c.table_name :pk.table_name]
+                            [:= :c.column_name :pk.column_name]]]
+               :where [:and
+                       [:not-in :c.schema_name ["pg_catalog" "information_schema"]]
+                       (when schema-names [:c.schema_name [:in schema-names]])
+                       (when table-names [:c.table_name [:in table-names]])]
+               :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod driver/db-start-of-week :redshift
