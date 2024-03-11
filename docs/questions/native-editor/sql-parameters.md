@@ -228,15 +228,15 @@ With Text and Field filter variables, you can tell Metabase what values people c
 1. In the native editor, add a {% raw %}{{variable}}{% endraw %} in double braces.
 2. If the sidebar doesn't open, you can click on the **{x}** icon on the right to open the **Variables** sidebar.
 3. In the **Settings** tab, set the **Variable type** to either "Text" or "Field Filter".
-4. Scroll down to **How should users filter on this variable?** Pick either **Dropdown list** or **Search box**.
+4. In the sidebar, go to **How should users filter on this variable?** Pick either **Dropdown list** or **Search box**.
 5. Next to the option you chose, click **Edit**.
 6. Metabase will pop up a modal where you can select **Where the values should come from**.
 
 You can choose:
 
-- A custom list. Enter each item on a line.
-- A model or saved question, then a field to supply the values for that dropdown or search box.
-- If you selected the Field filter variable type, you'll also have the option to use the connected field.
+- **From connected fields** If you selected the Field filter variable type, you'll also have the option to use the connected field.
+- **From another model or question**. If you select this option, you'll need to pick a model or question, then a field from that model or question that Metabase will use to supply the values for that dropdown or search box. For example, if you want the dropdown to list the different plans an account could be on, you could select an "Account" model you created, and select the field "Plan" to power that dropdown. The dropdown would then list all of the distinct plan options that appear in the "Plan" column in the Accounts model.
+- **Custom list**. Enter each item on a line. You can enter any string values you like.
 
 You can also [change a dashboard filter's selectable values](../../dashboards/filters.md#change-a-filters-selectable-values).
 
