@@ -49,7 +49,7 @@
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
    :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
 
-   :perms/view-data             {:model :model/Database :values [:unrestricted :block]}
+   :perms/view-data             {:model :model/Database :values [:unrestricted :blocked]}
    :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
@@ -591,6 +591,9 @@
                                           :group_id   group-id
                                           :perm_value value
                                           :db_id      db-id})
+      (when (= [:perms/view-data :blocked] [perm-type value])
+        (set-database-permission! group-or-id db-or-id :perms/create-queries :no)
+        (set-database-permission! group-or-id db-or-id :perms/download-results :no))
       (when (= [:perms/data-access :block] [perm-type value])
         (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
