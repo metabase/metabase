@@ -199,7 +199,6 @@ const RowChartVisualization = ({
     if (onChangeCardAndRun) {
       onChangeCardAndRun({
         nextCard: card,
-        seriesIndex: 0,
       });
     }
   };

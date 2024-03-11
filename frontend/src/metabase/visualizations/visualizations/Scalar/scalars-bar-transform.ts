@@ -22,7 +22,7 @@ export const scalarToBarTransform: TransformSeries = rawSeries => {
           name: "name",
           source: "query-transform",
         },
-        { ...data.cols[metricColumnIndex] },
+        { ...data.cols[metricColumnIndex], name: card.name },
       ],
       rows: [[card.name, data.rows[0][metricColumnIndex]]],
     };
@@ -35,7 +35,7 @@ export const scalarToBarTransform: TransformSeries = rawSeries => {
         "graph.x_axis.labels_enabled": false,
         "stackable.stack_type": "stacked",
         "graph.dimensions": [transformedDataset.cols[0].name],
-        "graph.metrics": [transformedDataset.cols[1].name],
+        "graph.metrics": [card.name],
       },
     };
 
