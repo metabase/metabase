@@ -509,7 +509,8 @@
   ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
   ;;
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
-  ;; https://github.com/camsaul/toucan2/issues/129 .
+  ;; https://github.com/camsaul/toucan2/issues/145 .
+  ;; TODO: ^ that's been fixed, this could be refactored
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
@@ -522,7 +523,7 @@
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at
-      ;; TODO: this should go in after-update once camsaul/toucan2#145 is fixed
+      ;; TODO: this should go in after-update once camsaul/toucan2#129 is fixed
       ;; It's at the end for now so that all the before-update validations have a chance to run
       ;; TODO the Second: No reason this couldn't be async, especially once it's in the after-update
       (u/prog1 (query-analyzer/update-field-usages-for-card! <>))
