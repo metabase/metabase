@@ -276,7 +276,7 @@
 (deftest text-cards-are-not-skipped-when-empty-data-is-skipped-test
   (testing "Do not skip text cards when filtering out pulse cards with empty results (#39190)"
     (let [card-text "THIS IS TEXT THAT SHOULD NOT GO AWAY"]
-      (mt/dataset test-data
+      (mt/dataset sample-dataset
         ;; If we don't skip empty cards, we expect 2 cards.
         ;; If we do skip empty cards, we expect 1 card.
         (doseq [[skip? expected-count] [[false 2] [true 1]]]
