@@ -159,7 +159,7 @@ You can preview appearance settings from your question or dashboard's [embedded 
 | `bordered`                                | true, false                                   |
 | `titled`                                  | true, false                                   |
 | `theme`                                   | null, transparent, night                      |
-| `refresh`                                 | integer (seconds, e.g., `refresh=60`)         |
+| `refresh` (dashboard only)                                 | integer (seconds, e.g., `refresh=60`)         |
 | `font`\*                                  | [font name](../configuring-metabase/fonts.md) |
 | `hide_download_button`\* (questions only) | true, false                                   |
 

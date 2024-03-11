@@ -131,14 +131,16 @@ When you make changes to the embed's appearance, Metabase will highlight the cha
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 
-## Refreshing results of an embedded question or dashboard
+## Refreshing results of an embedded dashboard
 
-To refresh the results of a question or dashboard at a specific cadence, you can parameterize the embedded URL with `refresh`. For example, to set an embedded dashboard to refresh every 60 seconds, you would append `refresh=60` to the URL.
+> `refresh` is only available for dashboards, not questions.
 
-For example, the following code for generating an iframe URL for a question would display the question's title and refresh its results every 60 seconds.
+To refresh the results of a dashboard at a specific cadence, you can parameterize the embedded URL with `refresh`. For example, to set an embedded dashboard to refresh every 60 seconds, you would append `refresh=60` to the URL.
+
+For example, the following code for generating an iframe URL for a dashboard would display the dashboard's title and refresh its results every 60 seconds.
 
 ```js
-var iframeUrl = METABASE_SITE_URL + "/embed/question/" + token +
+var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token +
   "#titled=true&refresh=60";
 ```
 
