@@ -43,13 +43,6 @@ TimeseriesXScaleUnsorted.args = {
   renderingContext,
 };
 
-export const LogScaleWithLabelsHourOfDayXAxis = Template.bind({});
-LogScaleWithLabelsHourOfDayXAxis.args = {
-  rawSeries: data.logScaleWithLabelsHourOfDayXAxis as any,
-  dashcardSettings: {},
-  renderingContext,
-};
-
 export const OrdinalXScale = Template.bind({});
 OrdinalXScale.args = {
   rawSeries: data.ordinalXScale as any,
