@@ -683,7 +683,7 @@
                                  (let [fields (map normed-name->field normed-header)]
                                    (->> (changed-field->new-type fields old-column-types detected-types)
                                         (alter-columns! driver database table))
-                                   (->> (added-field->new-type header old-column-types detected-types)
+                                   (->> (added-field->new-type normed-header old-column-types detected-types)
                                         (add-columns! driver database table))))
             ;; this will fail if any of our required relaxations were rejected.
             parsed-rows        (parse-rows settings new-column-types rows)

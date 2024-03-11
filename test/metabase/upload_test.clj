@@ -1352,23 +1352,18 @@
     (with-uploads-allowed
       (testing "Append should fail if there are extra or missing columns in the CSV file"
         (doseq [[csv-rows error-message]
-                {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 (trim-lines "The CSV file contains extra columns that are not in the table:
-                              - extra_column_two
-                              - extra_column_one")
-
-                 [""]
+                {[""]
                  (trim-lines "The CSV file is missing columns that are in the table:
                               - id
                               - name")
 
                  ["_mb_row_id,extra 1, extra 2"]
-                 (trim-lines "The CSV file contains extra columns that are not in the table:
-                              - extra_2
-                              - extra_1
-
-                              The CSV file is missing columns that are in the table:
+                 (trim-lines "The CSV file is missing columns that are in the table:
                               - id
+                              - name")
+
+                 ["_mb_row_id,id, extra 2"]
+                 (trim-lines "The CSV file is missing columns that are in the table:
                               - name")}]
           (with-upload-table!
             [table (create-upload-table!
@@ -1376,11 +1371,10 @@
                                         :id         ::upload/int
                                         :name       ::upload/varchar-255)
                      :rows [[1,"some_text"]]})]
-            (let [file  (csv-file-with csv-rows (mt/random-name))]
+            (let [file (csv-file-with csv-rows (mt/random-name))]
               (is (= {:message error-message
-                      :data {:status-code 422}}
-                     (catch-ex-info (append-csv! {:file     file
-                                                  :table-id (:id table)}))))
+                      :data    {:status-code 422}}
+                     (catch-ex-info (append-csv! {:file file :table-id (:id table)}))))
               (testing "Check the data was not uploaded into the table"
                 (is (= [[1 "some_text"]]
                        (rows-for-table table))))
@@ -1640,17 +1634,18 @@
 
 (deftest append-new-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (testing "Append should handle new columns being added in the latest CSV"
-      (with-upload-table! [table (create-upload-table!)]
-        ;; Reorder as well for good measure
-        (let [csv-rows ["game,name" "Witticisms,Fluke Skytalker"]
-              file     (csv-file-with csv-rows (mt/random-name))]
-          (testing "The new row is inserted with the values correctly reordered"
-            (is (= {:row-count 1} (append-csv! {:file file, :table-id (:id table)})))
-            (is (= [[1 "Obi-Wan Kenobi" nil]
-                    [2 "Fluke Skytalker" "Witticisms"]]
-                   (rows-for-table table))))
-          (io/delete-file file))))))
+    (with-uploads-allowed
+     (testing "Append should handle new columns being added in the latest CSV"
+       (with-upload-table! [table (create-upload-table!)]
+         ;; Reorder as well for good measure
+         (let [csv-rows ["game,name" "Witticisms,Fluke Skytalker"]
+               file     (csv-file-with csv-rows (mt/random-name))]
+           (testing "The new row is inserted with the values correctly reordered"
+             (is (= {:row-count 1} (append-csv! {:file file, :table-id (:id table)})))
+             (is (= [[1 "Obi-Wan Kenobi" nil]
+                     [2 "Fluke Skytalker" "Witticisms"]]
+                    (rows-for-table table))))
+           (io/delete-file file)))))))
 
 (deftest append-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
