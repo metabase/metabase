@@ -1592,7 +1592,7 @@
         (let [csv-rows ["shame,name" "Nothing - you can't prove it,Puke Nightstalker"]
               file     (csv-file-with csv-rows (mt/random-name))]
 
-          (testing "The "
+          (testing "The new row is inserted with the values correctly reordered"
             (is (= {:row-count 1} (append-csv! {:file file, :table-id (:id table)})))
             (is (= [[1 "Obi-Wan Kenobi" "No one really knows me"]
                     [2 "Puke Nightstalker" "Nothing - you can't prove it"]]

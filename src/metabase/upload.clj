@@ -600,7 +600,7 @@
   [fields-by-normed-name header]
   ;; Assumes table-cols are unique when normalized
   (let [normalized-field-names (keys fields-by-normed-name)
-        normalized-header (map normalize-column-name header)
+        normalized-header      (map normalize-column-name header)
         [extra missing _both] (data/diff (set normalized-header) (set normalized-field-names))]
     ;; check for duplicates
     (when (some #(< 1 %) (vals (frequencies normalized-header)))
