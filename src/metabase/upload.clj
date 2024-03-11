@@ -570,28 +570,21 @@
 (defn- base-type->upload-type
   "Returns the most specific upload type for the given base type."
   [base-type]
-  (condp #(isa? %2 %1) base-type
-    :type/Float                  ::float
-    :type/BigInteger             ::int
-    :type/Integer                ::int
-    :type/Boolean                ::boolean
-    :type/DateTimeWithTZ         ::offset-datetime
-    :type/DateTime               ::datetime
-    :type/Date                   ::date
-    :type/Text                   ::text))
+  (when base-type
+    (condp #(isa? %2 %1) base-type
+      :type/Float                  ::float
+      :type/BigInteger             ::int
+      :type/Integer                ::int
+      :type/Boolean                ::boolean
+      :type/DateTimeWithTZ         ::offset-datetime
+      :type/DateTime               ::datetime
+      :type/Date                   ::date
+      :type/Text                   ::text)))
 
-(defn- not-blank [s]
-  (when-not (str/blank? s)
-    s))
-
-(defn- extra-and-missing-error-markdown [extra missing]
-  (->> [[(tru "The CSV file contains extra columns that are not in the table:") extra]
-        [(tru "The CSV file is missing columns that are in the table:") missing]]
-       (keep (fn [[header columns]]
-               (when (seq columns)
-                 (str/join "\n" (cons header (map #(str "- " %) columns))))))
-       (str/join "\n\n")
-       (not-blank)))
+(defn- missing-error-markdown [missing]
+  (when (seq missing)
+    (let [header (tru "The CSV file is missing columns that are in the table:")]
+      (str/join "\n" (cons header (map #(str "- " %) missing))))))
 
 (def ^:private allowed-type-upgrades
   "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values."
@@ -607,35 +600,60 @@
   ;; Assumes table-cols are unique when normalized
   (let [normalized-field-names (keys fields-by-normed-name)
         normalized-header      (map normalize-column-name header)
-        [extra missing _both] (data/diff (set normalized-header) (set normalized-field-names))]
+        [_extra missing _both] (data/diff (set normalized-header) (set normalized-field-names))]
     ;; check for duplicates
     (when (some #(< 1 %) (vals (frequencies normalized-header)))
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
-    (when (or extra missing)
-      (let [error-message (extra-and-missing-error-markdown extra missing)]
+    (when missing
+      (let [error-message (missing-error-markdown missing)]
         (throw (ex-info error-message {:status-code 422}))))))
 
 (defn- matching-or-upgradable? [current-type relaxed-type]
-  (or (= current-type relaxed-type)
+  (or (nil? current-type)
+      (= current-type relaxed-type)
       (when-let [f (allowed-type-upgrades current-type)]
         (f relaxed-type))))
 
 (defn- changed-field->new-type
   "Given some fields and old and new types, filter out fields with unchanged types, then pair with the new types."
   [fields old-types new-types]
-  (let [new-if-changed #(when (not= %1 %2) %2)]
+  (let [new-if-changed #(when (and %1 (not= %1 %2)) %2)]
     (->> (map new-if-changed old-types new-types)
          (map vector fields)
          (filter second)
          (into {}))))
 
+(defn- add-columns! [driver database table field->type & args]
+  (when (seq field->type)
+    (apply driver/add-columns!
+           driver (:id database) (table-identifier table)
+           (m/map-kv (fn [field-or-name column-type]
+                       [(cond
+                          (keyword? field-or-name) field-or-name
+                          (string? field-or-name) (keyword field-or-name)
+                          (map? field-or-name) (keyword (:name field-or-name)))
+                        (driver/upload-type->database-type driver column-type)])
+                     field->type)
+           args)))
+
 (defn- alter-columns! [driver database table field->new-type]
-  (driver/alter-columns! driver (:id database) (table-identifier table)
-                         (m/map-kv (fn [field column-type]
-                                     [(keyword (:name field))
-                                      (driver/upload-type->database-type driver column-type)])
-                                   field->new-type)))
+  (when (seq field->new-type)
+    (driver/alter-columns! driver (:id database) (table-identifier table)
+                           (m/map-kv (fn [field column-type]
+                                       [(keyword (:name field))
+                                        (driver/upload-type->database-type driver column-type)])
+                                     field->new-type))))
+
+(defn- added-field->new-type
+  "Given an old and new types of the column names, return a name->type map of the newly added types."
+  [header old-column-types new-column-types]
+  (->> (map (fn [column-name old-type new-type]
+              (when (nil? old-type) [column-name new-type]))
+            header old-column-types new-column-types)
+       (keep identity)
+       (into {})
+       (not-empty)))
 
 (defn- append-csv!*
   [database table file]
@@ -664,7 +682,9 @@
                                           (= detected-types new-column-types))
                                  (let [fields (map normed-name->field normed-header)]
                                    (->> (changed-field->new-type fields old-column-types detected-types)
-                                        (alter-columns! driver database table))))
+                                        (alter-columns! driver database table))
+                                   (->> (added-field->new-type header old-column-types detected-types)
+                                        (add-columns! driver database table))))
             ;; this will fail if any of our required relaxations were rejected.
             parsed-rows        (parse-rows settings new-column-types rows)
             row-count          (count parsed-rows)
@@ -680,11 +700,9 @@
             (throw (ex-info (ex-message e) {:status-code 422}))))
 
         (when create-auto-pk?
-          (driver/add-columns! driver
-                               (:id database)
-                               (table-identifier table)
-                               {auto-pk-column-keyword (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}
-                               :primary-key [auto-pk-column-keyword]))
+          (add-columns! driver database table
+                        {auto-pk-column-keyword ::auto-incrementing-int-pk}
+                        :primary-key [auto-pk-column-keyword]))
 
         (scan-and-sync-table! database table)
 

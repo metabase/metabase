@@ -1638,6 +1638,20 @@
                    (rows-for-table table))))
           (io/delete-file file))))))
 
+(deftest append-new-column-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should handle new columns being added in the latest CSV"
+      (with-upload-table! [table (create-upload-table!)]
+        ;; Reorder as well for good measure
+        (let [csv-rows ["game,name" "Witticisms,Fluke Skytalker"]
+              file     (csv-file-with csv-rows (mt/random-name))]
+          (testing "The new row is inserted with the values correctly reordered"
+            (is (= {:row-count 1} (append-csv! {:file file, :table-id (:id table)})))
+            (is (= [[1 "Obi-Wan Kenobi" nil]
+                    [2 "Fluke Skytalker" "Witticisms"]]
+                   (rows-for-table table))))
+          (io/delete-file file))))))
+
 (deftest append-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-mysql-local-infile-on-and-off
