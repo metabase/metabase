@@ -6,7 +6,6 @@ import {parseHashOptions, parseSearchOptions} from "metabase/lib/browser";
 import {isWithinIframe} from "metabase/lib/dom";
 import {useDispatch} from "metabase/lib/redux";
 import type {SuperDuperEmbedOptions} from "metabase/public/components/EmbedFrame/types";
-import {useSyncURLSlug} from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 
 const themeTypeGuard = (theme: string | string[] | undefined): theme is "light" | "night" | "transparent" => {
   if (Array.isArray(theme)) {

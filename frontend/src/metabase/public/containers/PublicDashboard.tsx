@@ -79,7 +79,6 @@ export const PublicDashboard = ({
   const dispatch = useDispatch();
 
   const assetId = getDashboardId({ uuid, token });
-
   const {
     metadata,
     dashboard,
@@ -205,7 +204,7 @@ export const PublicDashboard = ({
         )
       : [];
 
-   return (
+  return (
     <EmbedFrame
       hasAbsolutePositioning={hasAbsolutePositioning}
       embedOptions={embedOptions}

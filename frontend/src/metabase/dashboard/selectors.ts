@@ -22,8 +22,6 @@ import type {
   QuestionDashboardCard,
   DashboardId,
   DashCardId,
-  DashboardCard,
-  ActionDashboardCard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -384,13 +382,6 @@ export const getDashboardParametersByDashboardId = (
   const metadata = getMetadata(state);
   const questions = getQuestions(state);
   const dashboard = getDashboardById(state, dashboardId);
-  console.log({
-      state,
-    metadata,
-    questions,
-    dashboard,
-    dbs: getDashboards(state),
-  });
   const dashcards = dashboard?.dashcards
     .map(id => state.dashboard.dashcards[id])
     .filter(dc => !dc.isRemoved)

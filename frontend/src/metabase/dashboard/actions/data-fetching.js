@@ -302,10 +302,6 @@ export const fetchDashboard = createAsyncThunk(
         questions,
       );
 
-      console.log({
-        parameters, queryParams
-      })
-
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
         : getParameterValuesByIdFromQueryParams(parameters, queryParams);

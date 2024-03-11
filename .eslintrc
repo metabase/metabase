@@ -141,7 +141,7 @@
     "plugin:import/typescript"
   ],
   "settings": {
-    "import/internal-regex": "^metabase/|^metabase-lib/",
+    "import/internal-regex": "^metabase/|^metabase-lib/|^embedding-sdk/",
     "import/resolver": {
       "webpack": {
         "typescript": true

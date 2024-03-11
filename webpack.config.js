@@ -26,6 +26,7 @@ const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
+const SDK_PATH = __dirname + "/frontend/src/embedding-sdk";
 
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
@@ -156,6 +157,7 @@ const config = (module.exports = {
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
       metabase: SRC_PATH,
+      "embedding-sdk": SDK_PATH,
       "metabase-lib": LIB_SRC_PATH,
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,

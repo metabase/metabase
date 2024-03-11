@@ -15,7 +15,7 @@ const config = {
   // jwtProviderUri: "http://localhost:8081/sso/metabase",
   apiKey:
     process.env.REACT_APP_API_KEY ||
-    "mb_Zhns2vrYNTIAAc/GHBuIoUshpysJ2laLWsZ9MbJavj0=",
+    "mb_69LT30xYbivFLUHLGRTN/5yK00yrT07zCbz/2smEiCI=",
 };
 
 const App = () => {
