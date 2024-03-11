@@ -12,7 +12,7 @@
     "event": {
       "description": "Event name",
       "type": "string",
-      "enum": ["csv_upload_successful", "csv_upload_failed"],
+      "enum": ["csv_upload_successful", "csv_upload_failed", "csv_append_successful", "csv_append_failed"],
       "maxLength": 128
     },
     "model_id": {

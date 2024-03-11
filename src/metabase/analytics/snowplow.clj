@@ -71,6 +71,8 @@
    ::action-executed                ::action
    ::csv-upload-successful          ::csvupload
    ::csv-upload-failed              ::csvupload
+   ::csv-append-successful          ::csvupload
+   ::csv-append-failed              ::csvupload
    ::metabot-feedback-received      ::metabot
    ::embedding-enabled              ::embed_share
    ::embedding-disabled             ::embed_share
