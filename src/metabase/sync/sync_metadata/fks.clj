@@ -83,7 +83,7 @@
 (mu/defn ^:private mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
-   metadata :- i/FastFKMetadataEntry]
+   metadata :- i/FKMetadataEntry]
   (u/prog1 (t2/query-one (mark-fk-sql (:id database) metadata))
   (when (= <> 1)
     (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"

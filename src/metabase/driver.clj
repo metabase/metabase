@@ -353,7 +353,7 @@
   "Returns a reducible collection of maps, each containing information about foreign keys.
   Takes keyword arguments to narrow down the results to a set of `schema-names` or `table-names`.
 
-  Results match [[metabase.sync.interface/FastFKMetadataEntry]].
+  Results match [[metabase.sync.interface/FKMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.
 
   Required for drivers that support `:describe-fks`."

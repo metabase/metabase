@@ -29,9 +29,9 @@
     ;; Validate the output against the schema, except in prod.
     ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
     (not config/is-prod?)
-    (eduction (map #(mu.fn/validate-output {} i/FastFKMetadataEntry %)))))
+    (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))
 
-(mu/defn table-fk-metadata :- [:sequential i/FastFKMetadataEntry]
+(mu/defn table-fk-metadata :- [:maybe [:sequential i/FKMetadataEntry]]
   "Get information about the foreign keys belonging to `table`."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
@@ -40,13 +40,13 @@
       (if (driver/database-supports? driver :describe-fks database)
         (into [] (driver/describe-fks driver database :table-names [(:name table)]))
         #_{:clj-kondo/ignore [:deprecated-var]}
-        (vec (for [m (driver/describe-table-fks driver database table)]
+        (vec (for [x (driver/describe-table-fks driver database table)]
                {:fk-table-name   (:name table)
                 :fk-table-schema (:schema table)
-                :fk-column-name  (:fk-column-name m)
-                :pk-table-name   (:name (:dest-table m))
-                :pk-table-schema (:schema (:dest-table m))
-                :pk-column-name  (:dest-column-name m)}))))))
+                :fk-column-name  (:fk-column-name x)
+                :pk-table-name   (:name (:dest-table x))
+                :pk-table-schema (:schema (:dest-table x))
+                :pk-column-name  (:dest-column-name x)}))))))
 
 (mu/defn nfc-metadata :- [:maybe [:set i/TableMetadataField]]
   "Get information about the nested field column fields within `table`."
