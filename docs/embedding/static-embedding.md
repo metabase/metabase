@@ -131,9 +131,9 @@ When you make changes to the embed's appearance, Metabase will highlight the cha
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 
-## Refreshing results of an embedded dashboard
+## Auto-refreshing the results of an embedded dashboard
 
-> `refresh` is only available for dashboards, not questions.
+> Auto-refreshing is only available for dashboards, not questions.
 
 To refresh the results of a dashboard at a specific cadence, you can parameterize the embedded URL with `refresh`. For example, to set an embedded dashboard to refresh every 60 seconds, you would append `refresh=60` to the URL.
 
