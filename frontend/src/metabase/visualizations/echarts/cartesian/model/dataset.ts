@@ -24,12 +24,13 @@ import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/carte
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
+  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isMetric } from "metabase-lib/types/utils/isa";
-import { isNumericAxis } from "./guards";
+import { isCategoryAxis, isNumericAxis } from "./guards";
 
 /**
  * Sums two metric column values.
@@ -309,6 +310,14 @@ export const applyVisualizationSettingsDataTransformations = (
     {
       condition: settings["graph.y_axis.scale"] === "pow",
       fn: getKeyBasedDatasetTransform(seriesDataKeys, applySquareRootScaling),
+    },
+    {
+      condition: isCategoryAxis(xAxisModel),
+      fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
+        return isCategoryAxis(xAxisModel) && value == null
+          ? ECHARTS_CATEGORY_AXIS_NULL_VALUE
+          : value;
+      }),
     },
     {
       condition: isNumericAxis(xAxisModel),
