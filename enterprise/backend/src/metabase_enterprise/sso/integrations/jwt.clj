@@ -8,6 +8,7 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings.premium-features :as premium-features]
@@ -93,22 +94,34 @@
           user         (fetch-or-create-user! first-name last-name email login-attrs)
           session      (api.session/create-session! :sso user (req.util/device-info request))]
       (sync-groups! user jwt-data)
-      (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT"))))))
+      {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
 (defn- check-jwt-enabled []
   (api/check (sso-settings/jwt-enabled)
     [400 (tru "JWT SSO has not been enabled and/or configured")]))
 
+(defn ^:private generate-response-token
+  [session jwt-data]
+  (validation/check-embedding-enabled)
+  (response/response {:id (:id session)
+                      :exp (:exp jwt-data)
+                      :iat (:iat jwt-data)}))
+
 (defmethod sso.i/sso-get :jwt
-  [{{:keys [jwt redirect]} :params, :as request}]
+  [{{:keys [jwt redirect token]
+     :or   {token false}} :params
+    :as                                             request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
   (if jwt
-    (login-jwt-user jwt request)
-    (let [idp (sso-settings/jwt-identity-provider-uri)
+    (let [{:keys [session redirect-url jwt-data]} (login-jwt-user jwt request)]
+      (if token
+        (generate-response-token session jwt-data)
+        (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT")))))
+    (let [idp             (sso-settings/jwt-identity-provider-uri)
           return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
       (response/redirect (str idp (when redirect
-                                   (str return-to-param redirect)))))))
+                                    (str return-to-param redirect)))))))
 
 (defmethod sso.i/sso-post :jwt
   [_]

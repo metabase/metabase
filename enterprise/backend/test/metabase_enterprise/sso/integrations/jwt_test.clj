@@ -334,3 +334,24 @@
           clojure.lang.ExceptionInfo
           #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
           (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
+
+(deftest get-jwt-token-test
+  (testing "should return a session token when token=true"
+    (with-jwt-default-setup
+      (let [jwt-iat-time (buddy-util/now)
+            jwt-exp-time (+ (buddy-util/now) 3600)
+            result       (saml-test/client-full-response :get 200 "/auth/sso"
+                                                         :token true
+                                                         :jwt (jwt/sign {:email
+                                                                         "rasta@metabase.com"
+                                                                         :first_name "Rasta"
+                                                                         :last_name  "Toucan"
+                                                                         :extra      "keypairs"
+                                                                         :are        "also present"
+                                                                         :iat       jwt-iat-time
+                                                                         :exp        jwt-exp-time}
+                                                                        default-jwt-secret))]
+        (let [{:keys [id exp iat]} (-> result :body)]
+          (is (and id exp iat))
+          (is (= jwt-iat-time iat))
+          (is (= jwt-exp-time exp)))))))
