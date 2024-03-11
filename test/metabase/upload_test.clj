@@ -617,7 +617,7 @@
             (is (some? table))))))))
 
 (deftest load-from-csv-offset-datetime-test
-  (testing "Upload a CSV file with a datetime column"
+  (testing "Upload a CSV file with an offset datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
@@ -1132,7 +1132,6 @@
                               "event"       "csv_upload_failed"}
                     :user-id (str (mt/user->id :rasta))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))))))))
-
 
 (deftest csv-upload-audit-log-test
   ;; Just test with h2 because these events are independent of the driver
