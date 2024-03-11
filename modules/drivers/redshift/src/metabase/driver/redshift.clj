@@ -73,7 +73,7 @@
                         [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
                         (when table-names [:in :fk_table.relname table-names])
                         (when schema-names [:in :fk_ns.nspname schema-names])]
-               :order-by [:fk_ns.nspame :fk_table.relname]}
+               :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod driver/db-start-of-week :redshift
