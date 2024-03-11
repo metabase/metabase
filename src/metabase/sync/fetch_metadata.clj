@@ -31,13 +31,21 @@
     (not config/is-prod?)
     (eduction (map #(mu.fn/validate-output {} i/FastFKMetadataEntry %)))))
 
-(mu/defn table-fk-metadata :- i/FKMetadata
+(mu/defn table-fk-metadata :- [:sequential i/FastFKMetadataEntry]
   "Get information about the foreign keys belonging to `table`."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (let [driver (driver.u/database->driver database)]
     (when (driver/database-supports? driver :foreign-keys database)
-      (driver/describe-table-fks driver database table))))
+      (if (driver/database-supports? driver :fast-sync-fks database)
+        (into [] (driver/describe-fks driver database :table-names [(:name table)]))
+        (vec (for [m (driver/describe-table-fks driver database table)]
+               {:fk-table-name   (:name table)
+                :fk-table-schema (:schema table)
+                :fk-column-name  (:fk-column-name m)
+                :pk-table-name   (:name (:dest-table m))
+                :pk-table-schema (:schema (:dest-table m))
+                :pk-column-name  (:dest-column-name m)}))))))
 
 (mu/defn nfc-metadata :- [:maybe [:set i/TableMetadataField]]
   "Get information about the nested field column fields within `table`."
