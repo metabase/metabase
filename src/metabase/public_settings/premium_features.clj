@@ -136,7 +136,7 @@
 (mu/defn ^:private token-valid-now? [token :- TokenStatus] :- :boolean
   (t/before? (t/instant) (t/instant (:valid-thru token))))
 
-(mu/defn ^:private validate-airgap-token :- [:or TokenStatus nil]
+(mu/defn ^:private validate-airgap-token :- [:maybe TokenStatus]
   [token :- TokenStatus]
   (when (token-valid-now? token) token))
 
@@ -150,6 +150,12 @@
                     (keys/public-key rdr))
         decrypted (jwt/decrypt token pub-key {:alg :rsa-oaep :enc :a128cbc-hs256})]
     (validate-airgap-token decrypted)))
+
+(mu/defn max-users
+  "Returns the max users value from an airgapped key, or nil indicating there is none."
+  [] :- [:or pos-int? :nil]
+  (let [{:keys [max-users]} (decode-airgap-token (premium-embedding-token))]
+    (when (pos? max-users) max-users)))
 
 (mu/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
