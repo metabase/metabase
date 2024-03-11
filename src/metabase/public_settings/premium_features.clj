@@ -10,6 +10,7 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [java-time.api :as t]
    [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.config :as config]
@@ -32,6 +33,11 @@
 
 (def ^:private AirgapToken
   #"airgap_[0-9a-f]*")
+
+(def ^:private Token
+  [:or
+   [:re RemoteCheckedToken]
+   [:re AirgapToken]])
 
 (def token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
@@ -95,15 +101,14 @@
 
 (def ^:private TokenStatus
   [:map
-   [:max-users     {:optional true} pos-int?]
-   [:company       {:optional true} [:string {:min 1}]]
    [:valid                          :boolean]
-   [:status                         ms/NonBlankString]
-   [:error-details {:optional true} [:maybe ms/NonBlankString]]
-   [:features      {:optional true} [:sequential ms/NonBlankString]]
+   [:status                         [:string {:min 1}]]
+   [:error-details {:optional true} [:maybe [:string {:min 1}]]]
+   [:features      {:optional true} [:sequential [:string {:min 1}]]]
    [:trial         {:optional true} :boolean]
-   [:valid-thru    {:optional true} ms/NonBlankString]]) ; ISO 8601 timestamp
-
+   [:valid-thru    {:optional true} [:string {:min 1}]] ;; ISO 8601 timestamp
+   [:max-users     {:optional true} pos-int?]
+   [:company       {:optional true} [:string {:min 1}]]])
 
 (defn- fetch-token-and-parse-body*
   [token base-url site-uuid]
@@ -126,24 +131,29 @@
          :status        (tru "Unable to validate token")
          :error-details (tru "Token validation timed out.")}))))
 
-(mu/defn decode-airgap-token :- TokenStatus
+;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
+
+(mu/defn ^:private token-valid-now? [token :- TokenStatus] :- :boolean
+  (t/before? (t/instant) (t/instant (:valid-thru token))))
+
+(mu/defn ^:private validate-airgap-token :- [:or TokenStatus nil]
+  [token :- TokenStatus]
+  (when (token-valid-now? token) token))
+
+(mu/defn ^:private decode-airgap-token :- TokenStatus
   "Given an encrypted airgap token, decrypts it and returns a TokenStatus"
   [token]
   (when-not (str/starts-with? token "airgap_")
     (throw (ex-info "Malformed airgap token" {:token token})))
-  (let [token   (str/replace token #"^airgap_" "")
-        pub-key (with-open [rdr (io/reader (io/resource "airgap/pubkey.pem"))]
-                  (keys/public-key rdr))]
-    (jwt/decrypt token pub-key {:alg :rsa-oaep :enc :a128cbc-hs256})))
-
-(comment
-  (let [token "airgap_eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkExMjhDQkMtSFMyNTYifQ.Zm1Vp_JtxxUPeXYjxWbNNb260-3SbyM3nNidVsDcy_J48jq5t1JsPB04unrd7o0_wid8F9J9aFRy0XnB5KXcBnI5AzUOpozczoU-SNQG1bVhhl5LEe6jy9AHOXdS9nT9OsgoaB8qctUeooVgNihIBW7dKh74x6-rZFI_IvE-ZqGwS2tOLyTsgAqy3km7uGSN4jjnjhrzagBNKYde2Xm0syBh1m9wCLAWgECMG4jnb2oP4Mzn8jX2foreiNsIHy9NGrJWMs62pXt5qa2TNlflSCMD0HNZ9SvVBd-79_lyhYttPFlPXWRzms5FFpLLUj6kzbfv0HJhJIgWMDBbQ9YpGA.Ji0z4JUDGvRfkCdyOYPdfg.JynqR0DrmTqKilphnSdUVbpiWjon71RqcEbiYl3rK-GxNBqHpZVkoHvbHCFJWAdWA42fPYO4kIy-YVrNOsQ4z7fE2bYjF7OEMckTispOfhChcjX-UKtH-gIkB26stQqTAtu4SU6EpxczNmr_NDIWUIZnScAE8Sc1zjEhjb02FeYrCBKe9AiT-p62Fgud3JupyUmcl-gYvmUwLQOZclBV8jXw-OQiaLdPm9uGEkn7GViU6eafX3sde3Ym5N1cifjz1TGKa4sZwsvpk0pkNnDcgYUZ_urn9mGbBHcIzT3KN1fU2WLm7EmSl0piNolNai0KnsdrwGxvoWAM0RGIoL6z4jyiSfAG4N_GrZpLiUVF6XBe2woixRXhrrcTpqCweQyhTSGmrQ4VCj_vEm7CmGQ_gk8TwoqRxr_oD_805-pGSodkn5S1pmOQKybyNdIAghCbaDeGbgSkUP1_ANuKk0XoRT77izrvEqnUC1OmvO3IUcRGDBeLpJuyvXGWZajNVeYqX-DzTiHHFC8nOx3L_w68NdB1xReAqduuKVHXI0hn7Q6-LdMvOs_lxOMhQqqp7pOJtjtijdPQsgNh6fnpHPceKsNaLQnJ65jSOV31f8sg8yKhhBY3JYMQB91AA5HQFBVYe5cuoJ3cACEV2NRJ5iwvx6ghRPXReurgZLMMo_-Ubw8TSlkePZH5jPtl2q6ZYR5MZC-PFHSr-5G6-5j87owa_dd1RTn19yjadObFgW1taGoT5gjMUdkhPiyectdhkpiKNjxbffHLE28tlvBSnwDaQC1vgDjZj4g1cOcJpYqTf71NFDWIJ3UcCTOs6MTwIJRz4q-wCrPzEnD9VQAlZi0zRaosjqfddd5gvKE_TonBsMsuaDq8SiAm0tG7enb638SAphX6h-brpVO3vy8xYzJCmNteoCttwqld9f1LVf8VvY8.W-WscqMM4I-CxQVsDy3xCQ"]
-    (decode-airgap-token token))
-  )
+  (let [token     (str/replace token #"^airgap_" "")
+        pub-key   (with-open [rdr (io/reader (io/resource "airgap/pubkey.pem"))]
+                    (keys/public-key rdr))
+        decrypted (jwt/decrypt token pub-key {:alg :rsa-oaep :enc :a128cbc-hs256})]
+    (validate-airgap-token decrypted)))
 
 (mu/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
-  [token :- :string]
+  [token :- Token]
   ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
   ;; reasonable amount of time throw a timeout exception
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
@@ -207,12 +217,18 @@
         (f token)))))
 
 (mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
-  [token :- [:or RemoteCheckedToken AirgapToken]]
+  [token :- Token]
   (let [{:keys [valid status features error-details]} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
       (throw (ex-info status
                       {:status-code 400, :error-details error-details})))
+    ;; A check for airgapped token valid-thru:
+    (when (and (mc/validate AirgapToken token)
+               (some? (validate-airgap-token token)))
+      (throw (ex-info status
+                      {:status-code 400
+                      :error-details (tru "Airgapped token is no longer valid. Please contact Metabase support.")})))
     ;; otherwise return the features this token supports
     (set features)))
 
