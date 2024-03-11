@@ -9002,11 +9002,6 @@ currently-unhandled@^0.4.1:
   dependencies:
     array-find-index "^1.0.1"
 
-cy-verify-downloads@^0.1.12:
-  version "0.1.12"
-  resolved "https://registry.yarnpkg.com/cy-verify-downloads/-/cy-verify-downloads-0.1.12.tgz#066ae3a3a315bb4d0a937023ec6a2ab5fb340836"
-  integrity sha512-vfBmWUi7gaeVkeezC4o8sqUvIZaZktEpQ2NtehOr0jCp8hopKkl4fSq4snhBKYDnzIO3LSJ1DpIzcVCib4q6vw==
-
 cyclist@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/cyclist/-/cyclist-1.0.1.tgz#596e9698fd0c80e12038c2b82d6eb1b35b6224d9"
