@@ -3,7 +3,7 @@
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
    [medley.core :as m]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
@@ -129,7 +129,7 @@
   ([fv-type field constraints]
    (let [hash-key   (hash-key-for-advanced-field-values fv-type (:id field) constraints)
          select-kvs {:field_id (:id field) :type fv-type :hash_key hash-key}
-         fv         (mdb.u/select-or-insert! :model/FieldValues select-kvs
+         fv         (mdb.query/select-or-insert! :model/FieldValues select-kvs
                       #(prepare-advanced-field-values fv-type field hash-key constraints))]
      (cond
        (nil? fv) nil

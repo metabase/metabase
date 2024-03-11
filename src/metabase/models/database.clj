@@ -3,8 +3,8 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.util :as mdb.u]
+   [metabase.db :as mdb]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
@@ -318,7 +318,7 @@
   [{:keys [id]}]
   (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
+      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.query/isa :type/PK)))))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
@@ -423,7 +423,7 @@
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (t2/select-one-fn :db_id :model/Table, :id table-id))))

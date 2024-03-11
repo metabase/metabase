@@ -152,6 +152,7 @@ export const createMockSettings = (
   "help-link": "metabase",
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
+  "ee-ai-features-enabled": false,
   "ee-openai-model": "",
   "ee-openai-api-key": "",
   "email-configured?": false,

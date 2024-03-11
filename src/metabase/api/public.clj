@@ -13,7 +13,7 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
@@ -407,8 +407,8 @@
        (t2/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (t2/select-one-fn :table_id Field :id field-id, :semantic_type (mdb.u/isa :type/PK))]
-         (t2/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.u/isa :type/Name))))))
+       (when-let [table-id (t2/select-one-fn :table_id Field :id field-id, :semantic_type (mdb.query/isa :type/PK))]
+         (t2/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.query/isa :type/Name))))))
 
 (defn- check-field-is-referenced-by-dashboard
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a

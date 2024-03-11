@@ -389,7 +389,7 @@
   "Create a `(defroutes routes ...)` form that automatically includes all functions created with `defendpoint` in the
   current namespace. Optionally specify middleware that will apply to all of the endpoints in the current namespace.
 
-     (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
+    (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
   {:style/indent 0}
   [& middleware]
   (let [api-route-fns (namespace->api-route-fns *ns*)
@@ -404,7 +404,7 @@
 (defn +check-superuser
   "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.
 
-     (api/+check-superuser routes)"
+    (api/+check-superuser routes)"
   [handler]
   (fn
     ([request]
@@ -444,9 +444,9 @@
    (read-check (apply t2/select-one entity :id id other-conditions))))
 
 (defn write-check
-  "Check whether we can write an existing OBJ, or ENTITY with ID.
-   If the object doesn't exist, throw a 404; if we don't have proper permissions, throw a 403.
-   This will fetch the object if it was not already fetched, and returns OBJ if the check is successful."
+  "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
+  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
+  `obj` if the check is successful."
   {:style/indent 2}
   ([obj]
    (check-404 obj)

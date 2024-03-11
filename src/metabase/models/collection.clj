@@ -10,7 +10,7 @@
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -32,7 +32,6 @@
 (set! *warn-on-reflection* true)
 
 (comment collection.root/keep-me)
-(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 (p/import-vars [collection.root root-collection root-collection-with-ui-details])
 
@@ -1128,7 +1127,7 @@
   save a DB call for *every* API call."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[user-id]]
-                         [(mdb.connection/unique-identifier) user-id])}
+                         [(mdb/unique-identifier) user-id])}
    (fn user->personal-collection-id*
      [user-id]
      (u/the-id (user->personal-collection user-id)))
