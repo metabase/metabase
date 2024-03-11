@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
@@ -29,6 +30,18 @@
             :has_access true
             :context    "question"}
            (latest-view (u/id user) (u/id card)))))))
+
+;; we need to run this test in oss only:
+
+(deftest card-read-oss-no-view-logging-test
+  (if config/ee-available?
+    (is true "Only test in OSS")
+    (mt/with-temp [:model/User user {}
+                   :model/Card card {:creator_id (u/id user)}]
+      (testing "A basic card read event is recorded"
+        (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
+        (is (nil? (latest-view (u/id user) (u/id card)))
+            "view log entries should not be made in OSS")))))
 
 (deftest table-read-test
   (mt/with-temp [:model/User user {}]
