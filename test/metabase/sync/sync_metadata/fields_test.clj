@@ -324,4 +324,8 @@
                      {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
                      {:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (:id continent-id-field)}}
                    (set (map #(into {} %)
-                             (t2/select [Field :name :semantic_type :fk_target_field_id] :table_id [:in (map :id tables)])))))))))))
+                             (t2/select [Field
+                                         [:%lower.name :name]
+                                         :semantic_type
+                                         :fk_target_field_id]
+                                        :table_id [:in (map :id tables)])))))))))))
