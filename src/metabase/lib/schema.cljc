@@ -144,7 +144,7 @@
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
    [:fn
-    {:error/message "A query can only have one of :source-table, :source-card, and :sources"}
+    {:error/message "A query must have exactly one of :source-table, :source-card, or :sources"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card :sources}))]
    [:ref ::stage.valid-refs]])
 
@@ -167,14 +167,10 @@
    [:id [:ref ::id/metric]]])
 
 (mr/def ::stage.mbql.with-sources
-  [:and
-   [:merge
-    [:ref ::stage.mbql]
-    [:map
-     [:sources [:sequential {:min 1} [:ref ::source]]]]]
-   [:fn
-    {:error/message "A query with :sources cannot have :joins or :fields"}
-    (complement (some-fn :fields :joins))]])
+  [:merge
+   [:ref ::stage.mbql]
+   [:map
+     [:sources [:sequential {:min 1} [:ref ::source]]]]])
 
 (mr/def ::stage.mbql.with-source
   [:or
@@ -187,8 +183,8 @@
   [:and
    [:ref ::stage.mbql]
    [:fn
-    {:error/message "Only the initial stage of a query can have a :source-table, :source-metrics, or :source-card."}
-    (complement (some-fn :source-table :source-card :source-metrics))]])
+    {:error/message "Only the initial stage of a query can have a :source-table, :source-card, or :sources"}
+    (complement (some-fn :source-table :source-card :sources))]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type

@@ -10,10 +10,6 @@
   [query [_ {:lib/keys [expression-name]} :as expression]]
   (lib/expression query expression-name expression))
 
-(defn- reduce-threaded
-  [init f coll]
-  (reduce f init coll))
-
 (defn expand
   "Expand `:sources` into an expanded query combining this query with sources.
 
@@ -40,12 +36,12 @@
               new-aggregations (->> (mbql.u/replace aggregation
                                       [:metric {} source-metric] (first source-aggregations))
                                     lib.util/fresh-uuids)]
-          (-> source-query
-              (lib.util/update-query-stage -1 dissoc :aggregation :breakout :order-by :fields)
-              (reduce-threaded lib/filter filters)
-              (reduce-threaded lib/breakout breakout)
-              (reduce-threaded lib/order-by order-by)
-              (reduce-threaded expression-with-name-from-source expressions)
-              (reduce-threaded lib/aggregate new-aggregations)
+          (as-> source-query $q
+              (lib.util/update-query-stage $q -1 dissoc :aggregation :breakout :order-by :fields)
+              (reduce lib/filter $q filters)
+              (reduce lib/breakout $q breakout)
+              (reduce lib/order-by $q order-by)
+              (reduce expression-with-name-from-source $q expressions)
+              (reduce lib/aggregate $q new-aggregations)
               :stages))
         stage))))

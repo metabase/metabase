@@ -13,7 +13,7 @@
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.test :as mt]))
 
-(def counter (atom 2000))
+(def counter (atom (rand-int 2000)))
 
 (defn- mock-metric
   ([]
