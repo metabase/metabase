@@ -1,10 +1,11 @@
-import _ from "underscore";
-import type { Parameter } from "metabase-types/api";
-import { ListPicker } from "./ListPicker";
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
+
 import { useDispatch } from "metabase/lib/redux";
 import { fetchParameterValues } from "metabase/parameters/actions";
+import type { Parameter } from "metabase-types/api";
+
+import { ListPicker } from "./ListPicker";
 
 interface ListPickerConnectedProps {
   value: string | string[];
@@ -12,8 +13,6 @@ interface ListPickerConnectedProps {
   onChange: (value: string | null) => void;
   forceSearchItemCount: number;
 }
-
-const DEBOUNCE_MS = 250;
 
 export function ListPickerConnected(props: ListPickerConnectedProps) {
   const dispatch = useDispatch();
@@ -31,20 +30,19 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   // Needed to make Select pick the value without loaded values[]
   const [values, setValues] = useState<string[]>([singleValue]);
 
-  const fetchValuesDebounce = useMemo(
-    () =>
-      _.debounce(async (query: string) => {
-        console.log("fetch", query, values, value);
-        setIsLoading(true);
-        const res = await dispatch(fetchParameterValues({ parameter, query }));
-        // TODO WHY?
-        setValues(res.values.flat(1) as string[]);
-        setIsLoading(false);
-      }, DEBOUNCE_MS),
+  const fetchValues = useCallback(
+    async (query: string) => {
+      // console.log("fetch", query, values, value);
+      setIsLoading(true);
+      const res = await dispatch(fetchParameterValues({ parameter, query }));
+      // TODO WHY?
+      setValues(res.values.flat(1) as string[]);
+      setIsLoading(false);
+    },
     [dispatch, parameter],
   );
 
-  const onSearch = (query: string) => {};
+  // const onSearch = (query: string) => {};
 
   const enableSearch =
     !staticValues || staticValues.length > forceSearchItemCount;
@@ -55,7 +53,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
       values={staticValues ?? values}
       onClear={onClearValue}
       onChange={onChange}
-      onSearchChange={fetchValuesDebounce}
+      onSearchChange={fetchValues}
       // onDropdownOpen={enableSearch ? undefined : fetchValuesInitially}
       enableSearch={enableSearch}
       placeholder={
