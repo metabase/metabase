@@ -144,8 +144,8 @@
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
    [:fn
-    {:error/message "A query cannot have both a :source-table and a :source-card."}
-    (complement (every-pred :source-table :source-card))]
+    {:error/message "A query can only have one of :source-table, :source-card, and :source-metrics."}
+    (complement (comp #(= (count %) 1) #{:source-table :source-card :source-mtrics}))]
    [:ref ::stage.valid-refs]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
@@ -161,18 +161,30 @@
    [:map
     [:source-card [:ref ::id/card]]]])
 
+(mr/def ::stage.mbql.with-source-metrics
+  [:and
+   [:merge
+    [:ref ::stage.mbql]
+    [:map
+     [:source-metrics [:sequential {:min 1} [:ref ::id/metric]]]
+     [:source-dimensions {:optional true} [:sequential {:min 1} [:sequential {:min 1} [:ref ::breakout]]]]]]
+   [:fn
+    {:error/message "A query with :source-metrics cannot have :joins or :fields"}
+    (complement (some-fn :fields :joins))]])
+
 (mr/def ::stage.mbql.with-source
   [:or
    [:ref ::stage.mbql.with-source-table]
-   [:ref ::stage.mbql.with-source-card]])
+   [:ref ::stage.mbql.with-source-card]
+   [:ref ::stage.mbql.with-source-metrics]])
 
 ;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
 (mr/def ::stage.mbql.without-source
   [:and
    [:ref ::stage.mbql]
    [:fn
-    {:error/message "Only the initial stage of a query can have a :source-table or :source-card."}
-    (complement (some-fn :source-table :source-card))]])
+    {:error/message "Only the initial stage of a query can have a :source-table, :source-metrics, or :source-card."}
+    (complement (some-fn :source-table :source-card :source-metrics))]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type

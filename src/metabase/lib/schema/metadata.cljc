@@ -212,7 +212,8 @@
 (mr/def ::card.type
   [:enum
    :question
-   :model])
+   :model
+   :metric])
 
 ;;; Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
 ;;; a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted

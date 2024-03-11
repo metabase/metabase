@@ -22,6 +22,7 @@
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
    [metabase.query-processor.middleware.parameters :as parameters]
@@ -53,6 +54,7 @@
    #'qp.perms/remove-permissions-key
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
+   #'metrics/expand
    #'fetch-source-query/resolve-source-cards
    ;; ↑↑↑ ALL MIDDLEWARE ABOVE THIS POINT WILL SEE MLV2 PMBQL QUERIES ↑↑↑
    #'qp.convert-to-legacy/convert-to-legacy
