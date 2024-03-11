@@ -259,6 +259,9 @@ export class UnconnectedDataSelector extends Component {
     }
     if (selectedTableId != null) {
       setSelectedTable(getTable(selectedTableId));
+      // We need the schema information when we open already saved question (vitual table id),
+      // or already selected table (the actual table id).
+      setSelectedSchema(selectedTable.schema);
     }
     if (selectedFieldId != null) {
       setSelectedField(getField(selectedFieldId));
@@ -458,9 +461,9 @@ export class UnconnectedDataSelector extends Component {
     } else if (
       // If we go from New > Question/Model flow, schemaId will be selected.
       // OTOH, if we're opening already saved question, or already chosen table,
-      // the schema id information is not preserved.
-      // In that case, we can rely on the selected table information.
-      (this.state.selectedSchemaId || this.isTableSelected()) &&
+      // the schema id information is not preserved and we have to access it directly
+      // through the schema object.
+      (this.state.selectedSchemaId || this.state.selectedSchema?.id) &&
       steps.includes(TABLE_STEP)
     ) {
       await this.switchToStep(TABLE_STEP);
