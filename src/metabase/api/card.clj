@@ -104,21 +104,21 @@
                                                   [:or
                                                    [:like :c.dataset_query (format "%%card__%s%%" model-id)]
                                                    [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                        :where [:and [:= :m.id model-id] [:not :c.archived]]})
+                        :where [:and [:= :m.id model-id] [:not :c.archived]]
+                        :order-by [[[:lower :c.name] :asc]]})
        ;; now check if model-id really occurs as a card ID
-       (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))
-       (sort-by :name)))
+       (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 
 (defn- cards-for-segment-or-metric
   [model-type model-id]
-  (->> (t2/select :model/Card {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]})
+  (->> (t2/select :model/Card (merge default-order
+                                     {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
        ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
        (filter (fn [card]
                  (when-let [query (some-> card :dataset_query lib.convert/->pMBQL)]
                    (case model-type
                      :segment (lib/uses-segment? query model-id)
-                     :metric (lib/uses-metric? query model-id)))))
-       (sort-by :name)))
+                     :metric (lib/uses-metric? query model-id)))))))
 
 (defmethod cards-for-filter-option* :using_metric
   [_filter-option model-id]
