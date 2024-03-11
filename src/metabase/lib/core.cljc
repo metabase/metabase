@@ -33,6 +33,7 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
@@ -292,6 +293,8 @@
   drop-stage
   drop-empty-stages
   has-clauses?]
+ [lib.swap
+  swap-clauses]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval
