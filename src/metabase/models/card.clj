@@ -509,7 +509,7 @@
   ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
   ;;
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
-  ;; https://github.com/camsaul/toucan2/issues/145 .
+  ;; https://github.com/camsaul/toucan2/issues/129 .
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
