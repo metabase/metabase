@@ -6,7 +6,7 @@
   - Information about the app-db: [[db-is-set-up?]], [[db-type]], [[quoting-style]]
   - a few other random functions that have built up for different purposes.
 
-  Other namespaces should only depend on this namespace and a sensible API for the app-db maintained."
+  Namespaces outside of src/metabase/db/ should not use any metabase.db.* namespace but use this api namespace."
   (:require
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
@@ -18,10 +18,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO - determine if we *actually* need to import any of these
-;;
-;; These are mostly here as a convenience to avoid having to rework a bunch of existing code. It's better to use these
-;; functions directly where applicable.
 (p/import-vars
  [mdb.connection
   quoting-style
@@ -40,8 +36,7 @@
 
  [mdb.spec
   make-subname
-  spec]
- )
+  spec])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; [[mdb.connection/*application-db*]] (or its data source)
@@ -51,7 +46,7 @@
   (= @(:status mdb.connection/*application-db*) ::setup-finished))
 
 (defn app-db
-  "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to acess. Also
+  "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to access. Also
   implements [[javax.sql.DataSource]] directly, so you can call [[.getConnection]] on it directly."
   ^metabase.db.connection.ApplicationDB []
   mdb.connection/*application-db*)
