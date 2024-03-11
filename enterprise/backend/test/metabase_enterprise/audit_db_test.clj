@@ -63,7 +63,9 @@
               :perms/manage-database       :no
               :perms/data-access           :no-self-service
               :perms/download-results      :one-million-rows
-              :perms/manage-table-metadata :no}
+              :perms/manage-table-metadata :no
+              :perms/view-data             :unrestricted
+              :perms/create-queries        :no}
              (-> (data-perms/data-permissions-graph :db-id perms/audit-db-id :audit? true)
                  (get-in [(u/the-id (perms-group/all-users)) perms/audit-db-id])))))
 
