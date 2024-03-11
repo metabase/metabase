@@ -85,8 +85,6 @@
     (is (= ::boolean (ordered-hierarchy/first-common-ancestor h ::boolean-or-int ::boolean)))
     (is (= ::varchar-255 (ordered-hierarchy/first-common-ancestor h ::boolean ::int)))))
 
-
-
 (def ^:private polygons
   (ordered-hierarchy/make-hierarchy
    [:quadrilateral
@@ -103,6 +101,28 @@
     :obtuse-triangle]))
 
 (deftest make-hierarchy-test
+  (testing "Hiccup structures have the expected topological order"
+    (is (= [:isosceles-trapezoid
+            :right-trapezoid
+            :trapezoid
+            :square
+            :rhombus
+            :kite
+            :rectangle
+            :parallelogram
+            :quadrilateral
+            ;; it's unfortunate that we would exhaustively test all the quadrilateral types, before checking
+            ;; if it's a triangle (if "hypothetically" we were using the topological order to test a value
+            ;; ... this is a case where a root-to-leaf traversal would make more sense.
+            :scalene-triangle
+            :equilateral-triangle
+            :isosceles-triangle
+            :acute-triangle
+            :right-angled-triangle
+            :obtuse-triangle
+            :triangle]
+           (ordered-hierarchy/sorted-tags polygons))))
+
   (testing "Hiccup structures are translated into the expected graph structure"
     (is (= {:trapezoid             [:quadrilateral]
             :isosceles-trapezoid   [:trapezoid]
