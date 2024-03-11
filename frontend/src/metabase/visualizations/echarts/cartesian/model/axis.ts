@@ -53,11 +53,13 @@ import {
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import {
+  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   TICKS_INTERVAL_THRESHOLD,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 const KEYS_TO_COMPARE = new Set([
@@ -795,13 +797,18 @@ export function getXAxisModel(
   const isHistogram = settings["graph.x_axis.scale"] === "histogram";
   const dimensionColumn = dimensionModel.column;
 
-  const formatter = (value: RowValue) =>
-    renderingContext.formatValue(value, {
+  const formatter = (value: RowValue) => {
+    if (value === ECHARTS_CATEGORY_AXIS_NULL_VALUE) {
+      return NULL_DISPLAY_VALUE;
+    }
+
+    return renderingContext.formatValue(value, {
       column: dimensionColumn,
       ...(settings.column?.(dimensionColumn) ?? {}),
       compact: settings["graph.x_axis.axis_enabled"] === "compact",
       noRange: isHistogram,
     });
+  };
 
   return {
     formatter,
