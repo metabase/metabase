@@ -15,7 +15,7 @@
   (reduce f init coll))
 
 (defn expand
-  "Expand `:source-metrics` and `:metric-dimensions` into an expanded query combining this query with sources.
+  "Expand `:sources` into an expanded query combining this query with sources.
 
    How various clauses are combined.
    ```
@@ -31,12 +31,12 @@
   [query]
   (lib.walk/walk-stages
     query
-    (fn [_query _path {:keys [source-metrics metric-dimensions filters aggregation expressions breakout order-by] :as stage}]
-      (if-let [[source-metric & _ignored] source-metrics] ;; Ignore multiple metrics for now
+    (fn [_query _path {:keys [sources filters aggregation expressions breakout order-by] :as stage}]
+      (if-let [source-metric (when (every? (comp #{:source/metric} :lib/type) sources)
+                               (:id (first sources)))] ;; Ignore multiple metrics for now
         (let [source-metric-card (lib.metadata/card query source-metric)
               source-query (expand (lib/query query (:dataset-query source-metric-card)))
               source-aggregations (lib/aggregations source-query)
-              dimensions (mapv first metric-dimensions)
               new-aggregations (->> (mbql.u/replace aggregation
                                       [:metric {} source-metric] (first source-aggregations))
                                     lib.util/fresh-uuids)]
@@ -47,6 +47,5 @@
               (reduce-threaded lib/order-by order-by)
               (reduce-threaded expression-with-name-from-source expressions)
               (reduce-threaded lib/aggregate new-aggregations)
-              (reduce-threaded lib/breakout dimensions)
               :stages))
         stage))))

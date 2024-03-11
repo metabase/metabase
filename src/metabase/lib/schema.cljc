@@ -144,8 +144,8 @@
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
    [:fn
-    {:error/message "A query can only have one of :source-table, :source-card, and :source-metrics."}
-    (complement (comp #(= (count %) 1) #{:source-table :source-card :source-mtrics}))]
+    {:error/message "A query can only have one of :source-table, :source-card, and :sources"}
+    (complement (comp #(= (count %) 1) #{:source-table :source-card :sources}))]
    [:ref ::stage.valid-refs]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
@@ -161,22 +161,26 @@
    [:map
     [:source-card [:ref ::id/card]]]])
 
-(mr/def ::stage.mbql.with-source-metrics
+(mr/def ::source
+  [:map
+   [:lib/type [:enum :source/metric]]
+   [:id [:ref ::id/metric]]])
+
+(mr/def ::stage.mbql.with-sources
   [:and
    [:merge
     [:ref ::stage.mbql]
     [:map
-     [:source-metrics [:sequential {:min 1} [:ref ::id/metric]]]
-     [:source-dimensions {:optional true} [:sequential {:min 1} [:sequential {:min 1} [:ref ::breakout]]]]]]
+     [:sources [:sequential {:min 1} [:ref ::source]]]]]
    [:fn
-    {:error/message "A query with :source-metrics cannot have :joins or :fields"}
+    {:error/message "A query with :sources cannot have :joins or :fields"}
     (complement (some-fn :fields :joins))]])
 
 (mr/def ::stage.mbql.with-source
   [:or
    [:ref ::stage.mbql.with-source-table]
    [:ref ::stage.mbql.with-source-card]
-   [:ref ::stage.mbql.with-source-metrics]])
+   [:ref ::stage.mbql.with-sources]])
 
 ;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
 (mr/def ::stage.mbql.without-source

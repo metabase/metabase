@@ -39,9 +39,20 @@
   (-> query
       (update-in [:stages 0] (fn [stage]
                                (-> stage
-                                   (assoc :source-metrics [(:id source-metric)])
+                                   (assoc :sources [{:lib/type :source/metric :id  (:id source-metric)}])
                                    (dissoc :source-card :source-table))))
       (lib/aggregate [:metric {} (:id source-metric)])))
+
+(deftest expand-aggregation-metric-ref-test
+  (let [[source-metric mp] (mock-metric)
+        query (-> (lib/query mp source-metric)
+                  (add-metric-source source-metric)
+                  (lib/aggregate (lib/+ (lib.options/ensure-uuid [:metric {} (:id source-metric)]) 1)))]
+    (is (=?
+          {:stages [{:source-table (meta/id :products)
+                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]
+                                   [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
+          (metrics/expand query)))))
 
 (deftest expand-basic-test
   (let [[source-metric mp] (mock-metric)
@@ -53,17 +64,6 @@
           (metrics/expand query)))
     (is (lib.equality/=
           (lib/query mp (:dataset-query source-metric))
-          (metrics/expand query)))))
-
-(deftest expand-aggregation-metric-ref-test
-  (let [[source-metric mp] (mock-metric)
-        query (-> (lib/query mp source-metric)
-                  (add-metric-source source-metric)
-                  (lib/aggregate (lib/+ (lib.options/ensure-uuid [:metric {} (:id source-metric)]) 1)))]
-    (is (=?
-          {:stages [{:source-table (meta/id :products)
-                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]
-                                   [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
           (metrics/expand query)))))
 
 (deftest expand-expression-test
@@ -112,9 +112,8 @@
       (let [query {:lib/type :mbql/query
                    :database (mt/id)
                    :stages [{:lib/type :mbql.stage/mbql
-                             :source-metrics [(:id source-metric)]
-                             :metric-dimensions [[(lib.options/ensure-uuid [:field {} (mt/id :products :created_at)])]]
+                             :sources [{:lib/type :source/metric :id (:id source-metric)}]
                              :aggregation [(lib.options/ensure-uuid [:metric {} (:id source-metric)])]}]}]
         (is (=
-             (mt/rows (qp/process-query (lib/breakout source-query (lib.metadata/field mp (mt/id :products :created_at)))))
+             (mt/rows (qp/process-query source-query))
              (mt/rows (qp/process-query query))))))))
