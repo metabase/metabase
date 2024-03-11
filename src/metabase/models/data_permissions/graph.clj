@@ -112,7 +112,9 @@
   There's some tricks in here that ellide table-level and table-level permissions values that are the most-permissive setting."
   [perm-map]
   (let [granular-keys [:perms/native-query-editing :perms/data-access
-                       :perms/download-results :perms/manage-table-metadata]]
+                       :perms/download-results :perms/manage-table-metadata
+                       ;; remove the new perms for now
+                       :perms/view-data :perms/create-queries]]
     (m/deep-merge
      (into {} (keep rename-or-ellide-kv (apply dissoc perm-map granular-keys)))
      (granular-perm-rename perm-map :perms/data-access [:data :schemas])
