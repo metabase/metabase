@@ -5,6 +5,8 @@ import { useTimeout } from "react-use";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { useSelector } from "metabase/lib/redux";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
@@ -23,7 +25,6 @@ export default function QueryVisualization(props) {
     isResultDirty,
     isNativeEditorOpen,
     result,
-    loadingMessage,
     maxTableRows = HARD_ROW_LIMIT,
   } = props;
 
@@ -31,12 +32,7 @@ export default function QueryVisualization(props) {
 
   return (
     <div className={cx(className, "relative stacking-context full-height")}>
-      {isRunning ? (
-        <VisualizationRunningState
-          className="spread z2"
-          loadingMessage={loadingMessage}
-        />
-      ) : null}
+      {isRunning ? <VisualizationRunningState className="spread z2" /> : null}
       <VisualizationDirtyState
         {...props}
         hidden={!isResultDirty || isRunning || isNativeEditorOpen}
@@ -83,15 +79,14 @@ export const VisualizationEmptyState = ({ className }) => (
   </div>
 );
 
-export function VisualizationRunningState({ className = "", loadingMessage }) {
+export function VisualizationRunningState({ className = "" }) {
   const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
+
+  const loadingMessage = useSelector(getWhiteLabeledLoadingMessage);
 
   // show the slower loading message only when the loadingMessage is
   // not customised
-  const message =
-    loadingMessage === "Doing science..." && isSlow()
-      ? t`Waiting for results...`
-      : loadingMessage;
+  const message = loadingMessage(isSlow());
 
   return (
     <div

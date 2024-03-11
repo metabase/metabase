@@ -1,22 +1,27 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 import { VisualizationRunningState } from "./QueryVisualization";
 
 type SetupOpts = {
-  loadingMessage: string;
+  customMessage?: (isSlow: boolean) => string;
 };
 
-function setup({ loadingMessage }: SetupOpts) {
-  renderWithProviders(
-    <VisualizationRunningState loadingMessage={loadingMessage} />,
-  );
+function setup({ customMessage }: SetupOpts = {}) {
+  if (customMessage) {
+    jest
+      .spyOn(PLUGIN_SELECTORS, "getLoadingMessage")
+      .mockImplementation(() => customMessage);
+  }
+
+  renderWithProviders(<VisualizationRunningState />);
 }
 
 describe("VisualizationRunningState", () => {
   it("should render the different loading messages after a while", () => {
     jest.useFakeTimers();
 
-    setup({ loadingMessage: "Doing science..." });
+    setup();
     expect(screen.getByText("Doing science...")).toBeInTheDocument();
 
     jest.advanceTimersByTime(5000);
@@ -24,10 +29,13 @@ describe("VisualizationRunningState", () => {
   });
 
   it("should only render the custom loading message when it was customized", () => {
-    setup({ loadingMessage: "Thinking hard..." });
-    expect(screen.getByText("Thinking hard...")).toBeInTheDocument();
+    const customMessage = (isSlow: boolean) =>
+      isSlow ? `Custom message (slow)...` : `Custom message...`;
+
+    setup({ customMessage });
+    expect(screen.getByText("Custom message...")).toBeInTheDocument();
 
     jest.advanceTimersByTime(5000);
-    expect(screen.getByText("Thinking hard...")).toBeInTheDocument();
+    expect(screen.getByText("Custom message (slow)...")).toBeInTheDocument();
   });
 });
