@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
-   [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
@@ -508,8 +508,8 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (mdb.spec/spec :h2 (cond-> details
-                       (string? (:db details)) (update :db connection-string-set-safe-options))))
+  (mdb/spec :h2 (cond-> details
+                  (string? (:db details)) (update :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]

@@ -515,7 +515,7 @@ class Question {
     return this;
   }
 
-  _syncTableColumnSettings({ data: { cols = [] } = {} }: Dataset) {
+  _syncTableColumnSettings({ data = {} }: Dataset) {
     const columnSettings = this.setting("table.columns") || [];
     // "table.columns" receive a value only if there are custom settings
     // e.g. some columns are hidden. If it's empty, it means everything is visible
@@ -524,6 +524,8 @@ class Question {
       return this;
     }
 
+    // remove columns used for remapping only
+    const cols = data.cols.filter(col => col.remapped_from == null);
     const columnIndexes = findColumnIndexesForColumnSettings(
       cols,
       columnSettings,

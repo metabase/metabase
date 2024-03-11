@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { routerActions } from "react-router-redux";
-import { UserAuthWrapper } from "redux-auth-wrapper";
+import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -53,10 +53,11 @@ import { getSetting } from "metabase/selectors/settings";
 
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 
-const UserCanAccessTools = UserAuthWrapper({
-  predicate: isEnabled => isEnabled,
-  failureRedirectPath: "/admin",
-  authSelector: state => {
+const UserCanAccessTools = connectedReduxRedirect({
+  wrapperDisplayName: "UserCanAccessTools",
+  redirectPath: "/admin",
+  allowRedirectBack: false,
+  authenticatedSelector: state => {
     if (PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
       return true;
     }
@@ -67,8 +68,6 @@ const UserCanAccessTools = UserAuthWrapper({
     const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
     return !hasLoadedSettings || isModelPersistenceEnabled;
   },
-  wrapperDisplayName: "UserCanAccessTools",
-  allowRedirectBack: false,
   redirectAction: routerActions.replace,
 });
 

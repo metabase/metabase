@@ -41,6 +41,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
+import { captureConsoleErrors } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -108,3 +109,5 @@ export function init(...args) {
     document.addEventListener("DOMContentLoaded", () => _init(...args));
   }
 }
+
+captureConsoleErrors();

@@ -518,13 +518,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
       });
 
       extraButtons.push({
-        title: t`Duplicate`,
-        icon: "clone",
-        link: `${location.pathname}/copy`,
-        event: "Dashboard;Copy",
-      });
-
-      extraButtons.push({
         title:
           Array.isArray(dashboard.tabs) && dashboard.tabs.length > 1
             ? t`Export tab as PDF`
@@ -543,6 +536,17 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           link: `${location.pathname}/move`,
           event: "Dashboard;Move",
         });
+      }
+
+      extraButtons.push({
+        title: t`Duplicate`,
+        icon: "clone",
+        link: `${location.pathname}/copy`,
+        event: "Dashboard;Copy",
+      });
+
+      if (canEdit) {
+        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
         extraButtons.push({
           title: t`Archive`,
@@ -550,8 +554,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
-
-        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
       }
     }
 

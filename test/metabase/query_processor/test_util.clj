@@ -11,7 +11,7 @@
    [clojure.test :refer :all]
    [mb.hawk.init]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.lib.metadata :as lib.metadata]
@@ -201,7 +201,7 @@
 (declare cols)
 
 (def ^:private ^{:arglists '([db-id table-id field-id])} native-query-col*
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [db-id table-id field-id]
      (first
       (cols

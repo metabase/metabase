@@ -1,4 +1,6 @@
 (ns metabase.db.data-source
+  "A namespace to define a record holding a connection to the application database. The [[DataSource]] type
+  implements [[javax.sql.DataSource]] so you can call [[getConnection]] on it."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

@@ -11,7 +11,7 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import SavedQuestionPicker from "./SavedQuestionPicker";
+import SavedEntityPicker from "./SavedEntityPicker";
 
 const CURRENT_USER = {
   id: 1,
@@ -73,12 +73,12 @@ async function setup() {
   mockCollectionItemsEndpoint();
 
   renderWithProviders(
-    <SavedQuestionPicker onSelect={jest.fn()} onBack={jest.fn()} />,
+    <SavedEntityPicker onSelect={jest.fn()} onBack={jest.fn()} />,
   );
   await waitForLoaderToBeRemoved();
 }
 
-describe("SavedQuestionPicker", () => {
+describe("SavedEntityPicker", () => {
   it("shows the current user personal collection on the top after the root", async () => {
     await setup();
 

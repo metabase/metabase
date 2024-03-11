@@ -3,7 +3,7 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.models.permissions :as perms]))
 
 ;; List of all failing questions
@@ -38,7 +38,7 @@
                     error-substr [:concat
                                   [:substring
                                    :latest_qe.error
-                                   [:inline (if (= (mdb.connection/db-type) :mysql) 1 0)]
+                                   [:inline (if (= (mdb/db-type) :mysql) 1 0)]
                                    [:inline 60]]
                                   "..."]
                     dash-count   [:coalesce :dash_card.count [:inline 0]]]

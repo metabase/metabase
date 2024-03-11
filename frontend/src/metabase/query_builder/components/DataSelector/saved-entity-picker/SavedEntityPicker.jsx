@@ -16,13 +16,13 @@ import Collection, {
 } from "metabase/entities/collections";
 import { Icon } from "metabase/ui";
 
-import SavedQuestionList from "./SavedQuestionList";
+import SavedEntityList from "./SavedEntityList";
 import {
-  SavedQuestionPickerRoot,
+  SavedEntityPickerRoot,
   CollectionsContainer,
   BackButton,
   TreeContainer,
-} from "./SavedQuestionPicker.styled";
+} from "./SavedEntityPicker.styled";
 import { findCollectionByName } from "./utils";
 
 const propTypes = {
@@ -49,7 +49,7 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
   ...PERSONAL_COLLECTIONS,
 };
 
-function SavedQuestionPicker({
+function SavedEntityPicker({
   isDatasets,
   onBack,
   onSelect,
@@ -116,13 +116,13 @@ function SavedQuestionPicker({
   }, []);
 
   return (
-    <SavedQuestionPickerRoot>
+    <SavedEntityPickerRoot>
       <CollectionsContainer>
-        <BackButton onClick={onBack}>
+        <BackButton onClick={onBack} data-testid="saved-entity-back-navigation">
           <Icon name="chevronleft" className="mr1" />
           {isDatasets ? t`Models` : t`Saved Questions`}
         </BackButton>
-        <TreeContainer>
+        <TreeContainer data-testid="saved-entity-collection-tree">
           <Tree
             data={collectionTree}
             onSelect={handleSelect}
@@ -130,18 +130,18 @@ function SavedQuestionPicker({
           />
         </TreeContainer>
       </CollectionsContainer>
-      <SavedQuestionList
+      <SavedEntityList
         isDatasets={isDatasets}
         collection={selectedCollection}
         selectedId={tableId}
         databaseId={databaseId}
         onSelect={onSelect}
       />
-    </SavedQuestionPickerRoot>
+    </SavedEntityPickerRoot>
   );
 }
 
-SavedQuestionPicker.propTypes = propTypes;
+SavedEntityPicker.propTypes = propTypes;
 
 const mapStateToProps = ({ currentUser }) => ({ currentUser });
 
@@ -155,4 +155,4 @@ export default _.compose(
     query: () => ({ tree: true, "exclude-archived": true }),
   }),
   connect(mapStateToProps),
-)(SavedQuestionPicker);
+)(SavedEntityPicker);

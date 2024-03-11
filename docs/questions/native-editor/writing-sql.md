@@ -66,6 +66,17 @@ For questions, [dashboards](../../dashboards/start.md), and [models](../../data-
 
 See [History](../../exploration-and-organization/history.md).
 
+## Your SQL syntax must match the dialect used by the database
+
+Make sure your SQL dialect matches the database you've selected. Common errors:
+
+| Database | Do this                    | Avoid                |
+| -------- | -------------------------- | -------------------- |
+| BigQuery | `` FROM `dataset.table` `` | `FROM dataset.table` |
+| Oracle   | `FROM "schema"."table"`    | `FROM schema.table`  |
+
+For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
+
 ## Learn more
 
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)
