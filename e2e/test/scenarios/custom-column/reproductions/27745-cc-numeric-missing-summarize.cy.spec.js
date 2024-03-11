@@ -36,7 +36,7 @@ import {
 
       visualize();
 
-      tableHeaderClick(cy.findAllByTestId("header-cell").contains("Numeric"));
+      tableHeaderClick("Numeric");
       popover().findByText(/^Sum$/).click();
 
       cy.wait("@dataset");

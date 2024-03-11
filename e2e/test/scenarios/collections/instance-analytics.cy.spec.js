@@ -59,7 +59,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         });
 
         cy.findByTestId("TableInteractive-root").within(() => {
-          tableHeaderClick(cy.findByText("Last Name"));
+          tableHeaderClick("Last Name");
         });
 
         popover().findByText("Filter by this column").click();
