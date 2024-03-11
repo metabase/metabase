@@ -80,7 +80,8 @@
 (mr/def ::FieldMetadataEntry
   (-> (mr/schema ::TableMetadataField)
       (mut/assoc :table-schema [:maybe ::lib.schema.common/non-blank-string])
-      (mut/assoc :table-name ::lib.schema.common/non-blank-string)))
+      (mut/assoc :table-name ::lib.schema.common/non-blank-string)
+      (mut/assoc :pk? :boolean)))
 
 (def FieldMetadataEntry
   "Schema for an item in the expected output of [[metabase.driver/describe-fields]]."

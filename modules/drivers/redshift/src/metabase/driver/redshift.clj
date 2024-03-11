@@ -106,8 +106,8 @@
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
                        [:not-in :c.schema_name ["pg_catalog" "information_schema"]]
-                       (when schema-names [:c.schema_name [:in schema-names]])
-                       (when table-names [:c.table_name [:in table-names]])]
+                       (when schema-names [:in :c.schema_name schema-names])
+                       (when table-names [:in :c.table_name table-names])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 

@@ -58,42 +58,42 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
  (mu/defn ^:private sync-and-update! :- ms/IntGreaterThanOrEqualToZero
-  "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
+   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
-  [table       :- i/TableInstance
-   db-metadata :- [:set i/TableMetadataField]]
-  (+ (sync-instances/sync-instances! table db-metadata (our-metadata/our-metadata table))
+   [table       :- i/TableInstance
+    db-metadata :- [:set i/TableMetadataField]]
+   (+ (sync-instances/sync-instances! table db-metadata (our-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
      ;; Re-fetch our metadata because there might be somethings that have changed after calling
      ;; `sync-instances`
-     (sync-metadata/update-metadata! table db-metadata (our-metadata/our-metadata table))))
+      (sync-metadata/update-metadata! table db-metadata (our-metadata/our-metadata table))))
 
 (mu/defn sync-fields-for-db!
   "Sync the Fields in the Metabase application database for a specific `table`."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [schema-names   (sync-util/db->sync-schemas database)
-          field-metadata (fetch-metadata/field-metadata database :schema-names schema-names)]
+          field-metadata (into [] (fetch-metadata/field-metadata database :schema-names schema-names))]
       (transduce (comp
-                  (partition-by (juxt :fk-schema-name :fk-table-name))
+                  (partition-by (juxt :table-name :table-schema))
                   (map (fn [table-metadata]
                          (let [fst (first table-metadata)
                                table (t2/select-one :model/Table
                                                     :db_id (:id database)
                                                     :%lower.name (:table-name fst)
-                                                    :%lower.schema (:schema-name fst)
+                                                    :%lower.schema (:table-schema fst)
                                                     {:where sync-util/sync-tables-clause})
-                               [updated failed] (try [(sync-and-update! table (set table-metadata)) 0]
-                                                     (catch Exception e
-                                                       (log/error e)
-                                                       [0 1]))]
-                           {:total-fks    1
-                            :updated-fks  updated
-                            :total-failed failed}))))
+                               updated (if table
+                                         (try (sync-and-update! table (set table-metadata))
+                                              (catch Exception e
+                                                (log/error e)
+                                                0))
+                                         0)]
+                           {:total-fields   1
+                            :updated-fields updated}))))
                  (partial merge-with +)
-                 {:total-fks    0
-                  :updated-fks  0
-                  :total-failed 0}
+                 {:total-fields   0
+                  :updated-fields 0}
                  field-metadata))))
 
 (mu/defn sync-fields-for-table!

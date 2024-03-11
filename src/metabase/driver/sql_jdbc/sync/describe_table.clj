@@ -273,11 +273,13 @@
 
 (defn describe-fields
   "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db & {:as args}]
-  (eduction
-   (describe-fields-xf driver db)
-   (partition-by (juxt :table-schema :table-name))
-   (sql-jdbc.execute/sql->reducible-rows db (describe-fields-sql driver args))))
+  [driver db & {:keys [schema-names table-names] :as args}]
+  (if (or (and schema-names (empty? schema-names))
+          (and table-names (empty? table-names)))
+    []
+    (eduction
+     (describe-fields-xf driver db)
+     (sql-jdbc.execute/sql->reducible-rows db (describe-fields-sql driver args)))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
