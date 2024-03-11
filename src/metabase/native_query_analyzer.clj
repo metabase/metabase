@@ -19,9 +19,7 @@
 
 (defn- fields-for-query
   [q db-id]
-  (let [{:keys [columns tables]} (-> q
-                                     mac/parsed-query
-                                     mac/query->components)]
+  (let [{:keys [columns tables]} (mac/query->components (mac/parsed-query q))]
     (t2/query {:select [[:f/id :field_id] [:f/name :column_name] [:t/name :table_name]]
                :from [[(t2/table-name :model/Field) :f]]
                :join [[(t2/table-name :model/Table) :t] [:= :table_id :t.id]]
@@ -31,9 +29,11 @@
                        [:in :%lower.f/name (map normalize-name columns)]]})))
 
 (defn- fields-for-card
-  "Returns a list of field objects that (may) be referenced in the given cards's query. Errs on the side of optimism:
+  "Returns a list of field objects\\* that (may) be referenced in the given cards's query. Errs on the side of optimism:
   i.e., it may return fields that are *not* in the query, and is unlikely to fail to return fields that are in the
-  query."
+  query.
+
+  \\* Specifically, the columns of a Field that are appropriate for a FieldUsage record."
   [card]
   (let [{native-query :native
          db-id        :database} (:dataset_query card)]

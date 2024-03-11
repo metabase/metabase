@@ -53,6 +53,8 @@
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
+(def ^:private default-order {:order-by [[:%lower.name :asc]]})
+
 (defmulti ^:private cards-for-filter-option*
   {:arglists '([filter-option & args])}
   (fn [filter-option & _]
@@ -61,37 +63,36 @@
 ;; return all Cards. This is the default filter option.
 (defmethod cards-for-filter-option* :all
   [_]
-  (t2/select Card, :archived false, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :archived false, default-order))
 
 ;; return Cards created by the current user
 (defmethod cards-for-filter-option* :mine
   [_]
-  (t2/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :creator_id api/*current-user-id*, :archived false, default-order))
 
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [cards (for [{{:keys [archived], :as card} :card} (t2/hydrate (t2/select [CardBookmark :card_id]
-                                                                      :user_id api/*current-user-id*)
-                                                                  :card)
-                    :when                                 (not archived)]
-                card)]
-    (sort-by :name cards)))
+  (as-> (t2/select [CardBookmark :card_id] :user_id api/*current-user-id*) <>
+      (t2/hydrate <> :card)
+      (map :card <>)
+      (remove :archived <>)
+      (sort-by :name <>)))
 
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
   [_ database-id]
-  (t2/select Card, :database_id database-id, :archived false, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :database_id database-id, :archived false, default-order))
 
 ;; Return all Cards belonging to `Table` with `table-id`.
 (defmethod cards-for-filter-option* :table
   [_ table-id]
-  (t2/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :table_id table-id, :archived false, default-order))
 
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
   [_]
-  (t2/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :archived true, default-order))
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
@@ -105,7 +106,8 @@
                                                    [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
                         :where [:and [:= :m.id model-id] [:not :c.archived]]})
        ;; now check if model-id really occurs as a card ID
-       (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
+       (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))
+       (sort-by :name)))
 
 (defn- cards-for-segment-or-metric
   [model-type model-id]
@@ -115,7 +117,8 @@
                  (when-let [query (some-> card :dataset_query lib.convert/->pMBQL)]
                    (case model-type
                      :segment (lib/uses-segment? query model-id)
-                     :metric (lib/uses-metric? query model-id)))))))
+                     :metric (lib/uses-metric? query model-id)))))
+       (sort-by :name)))
 
 (defmethod cards-for-filter-option* :using_metric
   [_filter-option model-id]
@@ -124,6 +127,20 @@
 (defmethod cards-for-filter-option* :using_segment
   [_filter-option model-id]
   (cards-for-segment-or-metric :segment model-id))
+
+(defmethod cards-for-filter-option* :stale
+  [_]
+  (let [card-id->field-usages (group-by :card_id (t2/select :model/FieldUsage
+                                                            {:select [:fu.* [:f.name :new_column_name] [:t.name :new_table_name]]
+                                                             :from   [[(t2/table-name :model/FieldUsage) :fu]]
+                                                             :join   [[(t2/table-name :model/Field) :f] [:= :f.id :fu.field_id]
+                                                                      [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                                                             :where  [:= false :fu.is_current]}))
+        card-ids              (keys card-id->field-usages)]
+    (if (empty? card-ids)
+      []
+      (map #(assoc % :field_usages (get card-id->field-usages (:id %)))
+           (t2/select Card :id [:in card-ids] default-order)))))
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
@@ -144,8 +161,8 @@
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
-  `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior of each
-  filterp option. :card_index:"
+  `using_segment`, `archived`, and `stale`. See corresponding implementation functions above for the specific behavior
+  of each filter option. :card_index:"
   [f model_id]
   {f        [:maybe (into [:enum] card-filter-options)]
    model_id [:maybe ms/PositiveInt]}

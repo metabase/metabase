@@ -290,6 +290,25 @@
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
                  (select-keys card [:name]))))))))
 
+(deftest filter-by-stale-test
+  (testing "Filter by `stale`"
+    (let [field-id (t2/select-one-pk :model/Field)]
+      (mt/with-temp [:model/Card         relevant-card   {:name "Card with Stale Query"}
+                     :model/Card         not-stale-card  {:name "Card whose columns are up to date"}
+                     :model/Card         irrelevant-card {:name "Card with no FieldUsages at all"}
+                     :model/FieldUsage   _ {:is_current false ;; This is what matters
+                                            :card_id (u/the-id relevant-card) :field_id field-id
+                                            :column_name "OLD_COLUMN" :table_name "TABLE"}
+                     :model/FieldUsage   _ {:is_current true
+                                            :card_id (u/the-id not-stale-card) :field_id field-id
+                                            :column_name "FRESH_COLUMN" :table_name "TABLE"}]
+        (with-cards-in-readable-collection [relevant-card not-stale-card irrelevant-card]
+          (is (=? [{:name "Card with Stale Query"
+                    :field_usages [{:is_current false
+                                    :card_id (u/the-id relevant-card) :field_id field-id
+                                    :column_name "OLD_COLUMN" :table_name "TABLE"}]}]
+                  (mt/user-http-request :rasta :get 200 "card", :f :stale))))))))
+
 (deftest filter-by-using-model-segment-metric
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table {table-id :id} {:db_id database-id}

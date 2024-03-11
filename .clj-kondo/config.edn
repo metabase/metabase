@@ -595,6 +595,7 @@
    metabase.domain-entities.malli/define-getters-and-setters                    macros.metabase.domain-entities.malli/define-getters-and-setters
    metabase.lib.filter/deffilter                                                macros.metabase.lib.filter/deffilter
    metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
+   metabase.models.field-usage-test/with-test-setup                             macros.metabase.models.field-usage-test/with-test-setup
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
