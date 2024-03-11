@@ -5,9 +5,8 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter } from "metabase-types/api";
 
-export function shouldShowPlainInput(parameter: Parameter) {
-  // TODO this is a way to distinguish a field selector from the others
-  // isFieldFilterParameter or similar should be used here
+export function shouldUsePlainInput(parameter: Parameter) {
+  // This is a way to distinguish a field selector from the others
   if (isFieldFilterUiParameter(parameter)) {
     return false;
   }
@@ -31,15 +30,14 @@ export function shouldShowPlainInput(parameter: Parameter) {
   return false;
 }
 
-export function shouldShowListInput(parameter: Parameter) {
-  if (
-    parameter.type === "category" &&
-    parameter.values_source_type === "static-list" &&
-    parameter.values_source_config?.values &&
-    parameter.values_source_config.values.length > 0
-  ) {
-    return true;
+export function shouldUseListPicker(parameter: Parameter): boolean {
+  if (isFieldFilterUiParameter(parameter)) {
+    return false;
   }
 
-  return false;
+  return (
+    parameter.type === "category" &&
+    (parameter.values_query_type === "list" ||
+      parameter.values_query_type === "search")
+  );
 }
