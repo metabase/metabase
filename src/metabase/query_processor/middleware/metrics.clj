@@ -43,5 +43,5 @@
               (reduce lib/order-by $q order-by)
               (reduce expression-with-name-from-source $q expressions)
               (reduce lib/aggregate $q new-aggregations)
-              :stages))
+              (:stages $q)))
         stage))))
