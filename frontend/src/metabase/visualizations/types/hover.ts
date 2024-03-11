@@ -1,12 +1,11 @@
+import type { ClickObjectDataRow } from "metabase-lib";
 import type { TimelineEvent } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { ComputedVisualizationSettings } from "./visualization";
 
-export interface DataPoint {
+export interface DataPoint extends ClickObjectDataRow {
   key: string;
-  col?: RemappingHydratedDatasetColumn;
-  value?: unknown;
 }
 
 export interface HoveredDimension {

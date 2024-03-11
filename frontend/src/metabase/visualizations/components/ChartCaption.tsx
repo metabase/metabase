@@ -38,7 +38,6 @@ const ChartCaption = ({
   const handleSelectTitle = useCallback(() => {
     onChangeCardAndRun({
       nextCard: card,
-      seriesIndex: 0,
     });
   }, [card, onChangeCardAndRun]);
 
