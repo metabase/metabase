@@ -138,7 +138,8 @@
           ;; (Also it solves a perf issue so :shrug:)
           (graph :root)
           (collection-permission-graph [collection-id] nil))
-        (narrow-to-collection collection-id))))
+        (narrow-to-collection collection-id)
+        (assoc :warnings {}))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
