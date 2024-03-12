@@ -714,8 +714,10 @@
               results-metadata {:cols (column-metadata driver rsmeta)}]
           (respond results-metadata (reducible-rows driver rs rsmeta qp.pipeline/*canceled-chan*))))))))
 
-(defn sql->reducible-rows
-  "Returns a reducible collection of rows from `db` and a given SQL query."
+(defn simple-reducible-query
+  "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
+  driver-specific configuration for the Connection and Statement/PreparedStatement. This is slightly different from [[execute-reducible-query]]
+  in that it is not intended to be used as part of middleware. Keywordizes column names. "
   [db [sql & params]]
   (let [driver (:engine db)]
     (reify clojure.lang.IReduceInit
@@ -735,6 +737,7 @@
                                                           :sql    (str/split-lines (driver/prettify-native-form driver sql))
                                                           :params params}
                                                          e))))]
+             ;; TODO - we should probably be using [[reducible-rows]] instead to convert to the correct types
              (reduce rf init (jdbc/reducible-result-set rs {})))))))))
 
 
