@@ -4,7 +4,7 @@ import { Component } from "react";
 import { Link } from "react-router";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { Icon } from "metabase/ui";
+import { ChevronIcon } from "metabase/ui/components/icons/Icon/ChevronIcon";
 
 import S from "./Breadcrumbs.module.css";
 
@@ -69,9 +69,9 @@ export default class Breadcrumbs extends Component {
               index < breadcrumbs.length - 1
                 ? [
                     breadcrumb,
-                    <Icon
+                    <ChevronIcon
+                      dir="forward"
                       key={`${index}-separator`}
-                      name="chevronright"
                       className={S.breadcrumbDivider}
                       width={12}
                       height={12}

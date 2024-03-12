@@ -26,10 +26,10 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           [`&:has(.${getStylesRef("label")}:empty)`]: {
             padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
             [`.${getStylesRef("leftIcon")}`]: {
-              marginRight: 0,
+              marginInlineEnd: 0,
             },
             [`.${getStylesRef("rightIcon")}`]: {
-              marginLeft: 0,
+              marginInlineStart: 0,
             },
           },
         },
@@ -41,11 +41,11 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
         },
         leftIcon: {
           ref: getStylesRef("leftIcon"),
-          marginRight: theme.spacing.sm,
+          marginInlineEnd: theme.spacing.sm,
         },
         rightIcon: {
           ref: getStylesRef("rightIcon"),
-          marginLeft: theme.spacing.sm,
+          marginInlineStart: theme.spacing.sm,
         },
       };
     },
