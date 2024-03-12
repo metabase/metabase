@@ -183,32 +183,12 @@ export const CardApi = {
 };
 
 export const DashboardApi = {
-  // creates a new empty dashboard
-  create: POST("/api/dashboard"),
-  // saves a complete transient dashboard
-  save: POST("/api/dashboard/save"),
-  get: GET("/api/dashboard/:dashId"),
-  update: PUT("/api/dashboard/:id"),
-  delete: DELETE("/api/dashboard/:dashId"),
-  favorite: POST("/api/dashboard/:dashId/favorite"),
-  unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
-  parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
-  parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
-
-  listPublic: GET("/api/dashboard/public"),
-  listEmbeddable: GET("/api/dashboard/embeddable"),
-  createPublicLink: POST("/api/dashboard/:id/public_link"),
-  deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
-
   cardQuery: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
   ),
   cardQueryPivot: POST(
     "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
-  ),
-  exportCardQuery: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
   ),
 };
 
@@ -532,19 +512,9 @@ export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
 
-export function setPublicDashboardEndpoints() {
-  setDashboardEndpoints("/api/public");
-}
-
 export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
     setCardEndpoints("/api/embed/card/:token", { token });
-  }
-}
-
-export function setEmbedDashboardEndpoints() {
-  if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints("/api/embed");
   }
 }
 
@@ -575,15 +545,6 @@ function setCardEndpoints(prefix, params) {
   MetabaseApi.field_remapping = GET_with(
     prefix + "/field/:fieldId/remapping/:remappedFieldId",
     params,
-  );
-}
-
-function setDashboardEndpoints(prefix) {
-  DashboardApi.parameterValues = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/values`,
-  );
-  DashboardApi.parameterSearch = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
   );
 }
 

@@ -2,7 +2,8 @@ import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { DashboardApi } from "metabase/services";
+import { dashboardApi } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
 import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import type { FieldId, Parameter } from "metabase-types/api";
 
@@ -17,6 +18,7 @@ const useFilterFields = (
   otherParameter: Parameter,
 ): UseFilterFieldsState => {
   const [state, setState] = useState<UseFilterFieldsState>({ loading: false });
+  const dispatch = useDispatch();
 
   const handleLoad = useCallback(async () => {
     const filtered = getFields(parameter).map(field => field.id);
@@ -29,10 +31,14 @@ const useFilterFields = (
     } else {
       setState({ loading: true });
       const request = { filtered, filtering };
-      const response = await DashboardApi.validFilterFields(request);
+      const response = await dispatch(
+        dashboardApi.endpoints.validFilterFields.initiate(request),
+        // @ts-expect-error -- TODO fix bad dispatch typing
+        { subscribe: false },
+      ).unwrap();
       setState({ data: getParameterMapping(response), loading: false });
     }
-  }, [parameter, otherParameter]);
+  }, [parameter, otherParameter, dispatch]);
 
   useMount(() => {
     handleLoad();

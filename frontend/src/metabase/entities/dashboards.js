@@ -1,12 +1,12 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
+import { DASHBOARD_TAG } from "metabase/api/tags";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
-import { POST, DELETE } from "metabase/lib/api";
+import { POST } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, undo } from "metabase/lib/entities";
 import {
@@ -20,21 +20,18 @@ import { addUndo } from "metabase/redux/undo";
 
 import forms from "./dashboards/forms";
 
-const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
-const UNFAVORITE_ACTION = `metabase/entities/dashboards/UNFAVORITE`;
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
 const Dashboards = createEntity({
   name: "dashboards",
   nameOne: "dashboard",
+  rtkEntityTagName: DASHBOARD_TAG,
   path: "/api/dashboard",
 
   displayNameOne: t`dashboard`,
   displayNameMany: t`dashboards`,
 
   api: {
-    favorite: POST("/api/dashboard/:id/favorite"),
-    unfavorite: DELETE("/api/dashboard/:id/favorite"),
     save: POST("/api/dashboard/save"),
     copy: POST("/api/dashboard/:id/copy"),
   },
@@ -64,16 +61,6 @@ const Dashboards = createEntity({
         opts,
       ),
 
-    setFavorited: async ({ id }, favorite) => {
-      if (favorite) {
-        await Dashboards.api.favorite({ id });
-        return { type: FAVORITE_ACTION, payload: id };
-      } else {
-        await Dashboards.api.unfavorite({ id });
-        return { type: UNFAVORITE_ACTION, payload: id };
-      }
-    },
-
     // TODO move into more common area as copy is implemented for more entities
     copy: compose(
       withAction(COPY_ACTION),
@@ -85,29 +72,26 @@ const Dashboards = createEntity({
         "copy",
       ]),
       withAnalytics("entities", "dashboard", "copy"),
-    )(
-      (entityObject, overrides, { notify } = {}) =>
-        async (dispatch, getState) => {
-          const result = Dashboards.normalize(
-            await Dashboards.api.copy({
-              id: entityObject.id,
-              ...overrides,
-              is_deep_copy: !overrides.is_shallow_copy,
-            }),
-          );
-          if (notify) {
-            dispatch(addUndo(notify));
-          }
-          dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
-          return result;
-        },
-    ),
+    )((entityObject, overrides, { notify } = {}) => async dispatch => {
+      const result = Dashboards.normalize(
+        await Dashboards.api.copy({
+          id: entityObject.id,
+          ...overrides,
+          is_deep_copy: !overrides.is_shallow_copy,
+        }),
+      );
+      if (notify) {
+        dispatch(addUndo(notify));
+      }
+      dispatch(Dashboards.actions.invalidateLists());
+      return result;
+    }),
   },
 
   actions: {
     save: dashboard => async dispatch => {
       const savedDashboard = await Dashboards.api.save(dashboard);
-      dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+      dispatch(Dashboards.actions.invalidateLists());
       return {
         type: "metabase/entities/dashboards/SAVE_DASHBOARD",
         payload: savedDashboard,
@@ -116,18 +100,13 @@ const Dashboards = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], true);
-    } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], false);
-    } else if (type === COPY_ACTION && !error && state[""]) {
+    if (type === COPY_ACTION && !error && state[""]) {
       return { ...state, "": state[""].concat([payload.result]) };
     }
     return state;
   },
 
   objectSelectors: {
-    getFavorited: dashboard => dashboard && dashboard.favorite,
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>

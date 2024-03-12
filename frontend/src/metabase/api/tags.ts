@@ -17,7 +17,10 @@ export function providesList<
 export const API_KEY_TAG = "ApiKey" as const;
 export const API_KEY_LIST_TAG = getListTag(API_KEY_TAG);
 
+export const DASHBOARD_TAG = "Dashboard" as const;
+export const DASHBOARD_LIST_TAG = getListTag(DASHBOARD_TAG);
+
 export const MODEL_INDEXES_TAG = "ModelIndexes" as const;
 
-export const tagTypes = [API_KEY_TAG, MODEL_INDEXES_TAG];
+export const tagTypes = [API_KEY_TAG, DASHBOARD_TAG, MODEL_INDEXES_TAG];
 export type TagTypes = typeof tagTypes[number];
