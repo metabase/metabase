@@ -76,7 +76,7 @@
                                                      (group-names->ids group-names)
                                                      (all-mapped-group-ids))))))
 
-(defn- login-jwt-user
+(defn- get-jwt-data
   [jwt {{redirect :return_to} :params, :as request}]
   (let [redirect-url (or redirect (URLEncoder/encode "/"))]
     (sso-utils/check-sso-redirect redirect-url)
@@ -103,25 +103,29 @@
 (defn ^:private generate-response-token
   [session jwt-data]
   (validation/check-embedding-enabled)
-  (response/response {:id (:id session)
+  (response/response {:id  (:id session)
                       :exp (:exp jwt-data)
                       :iat (:iat jwt-data)}))
 
+(defn ^:private redirect-to-idp
+  [idp redirect]
+  (let [return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
+    (response/redirect (str idp (when redirect
+                                  (str return-to-param redirect))))))
+
+(defn ^:private handle-jwt-authentication
+  [{:keys [session redirect-url jwt-data]} token request]
+  (if token
+    (generate-response-token session jwt-data)
+    (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT")))))
+
 (defmethod sso.i/sso-get :jwt
-  [{{:keys [jwt redirect token]
-     :or   {token false}} :params
-    :as                                             request}]
+  [{{:keys [jwt redirect token] :or {token false}} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
   (if jwt
-    (let [{:keys [session redirect-url jwt-data]} (login-jwt-user jwt request)]
-      (if token
-        (generate-response-token session jwt-data)
-        (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT")))))
-    (let [idp             (sso-settings/jwt-identity-provider-uri)
-          return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
-      (response/redirect (str idp (when redirect
-                                    (str return-to-param redirect)))))))
+    (handle-jwt-authentication  (get-jwt-data jwt request) token request)
+    (redirect-to-idp (sso-settings/jwt-identity-provider-uri) redirect)))
 
 (defmethod sso.i/sso-post :jwt
   [_]
