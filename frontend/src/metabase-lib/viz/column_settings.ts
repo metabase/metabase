@@ -15,11 +15,14 @@ export function syncColumnSettings(
   let newSettings = settings;
 
   if (queryResults && !queryResults.error) {
-    newSettings = syncTableColumnSettings(
-      newSettings,
-      queryResults,
-      drillContext == null,
-    );
+    newSettings = syncTableColumnSettings(newSettings, queryResults);
+
+    if (drillContext) {
+      newSettings = syncTableColumnSettingsAfterDrill(
+        newSettings,
+        drillContext,
+      );
+    }
 
     if (prevQueryResults && !prevQueryResults.error) {
       newSettings = syncGraphMetricSettings(
@@ -27,15 +30,6 @@ export function syncColumnSettings(
         queryResults,
         prevQueryResults,
       );
-
-      if (drillContext) {
-        newSettings = syncTableColumnSettingsAfterDrill(
-          settings,
-          queryResults,
-          prevQueryResults,
-          drillContext,
-        );
-      }
     }
   }
 
@@ -45,17 +39,10 @@ export function syncColumnSettings(
 function syncTableColumnSettings(
   settings: VisualizationSettings,
   { data }: Dataset,
-  isDefaultSkipped: boolean,
 ): VisualizationSettings {
-  const columnSettings = settings["table.columns"] ?? [];
-  // "table.columns" receive a value only if there are custom settings
-  // e.g. some columns are hidden. If it's empty, it means everything is visible
-  if (columnSettings.length === 0 && isDefaultSkipped) {
-    return settings;
-  }
-
   // remove columns used for remapping only
   const cols = data.cols.filter(col => col.remapped_from == null);
+  const columnSettings = settings["table.columns"] ?? [];
   const columnIndexes = findColumnIndexesForColumnSettings(
     cols,
     columnSettings,
@@ -92,43 +79,23 @@ function syncTableColumnSettings(
 
 function syncTableColumnSettingsAfterDrill(
   settings: VisualizationSettings,
-  { data: { cols } }: Dataset,
-  { data: { cols: prevCols } }: Dataset,
   { column }: DrillThruContext,
 ): VisualizationSettings {
   const columnSettings = settings["table.columns"] ?? [];
-  const prevColumnNames = new Set(prevCols.map(col => col.name));
-  const addedColumns = cols.filter(col => !prevColumnNames.has(col.name));
-
   const [columnSettingIndex] = findColumnSettingIndexesForColumns(
     [column],
     columnSettings,
   );
-  const prevColumnSettingIndexes = findColumnSettingIndexesForColumns(
-    prevCols,
-    columnSettings,
-  );
-  const addedColumnSettingIndexes = findColumnSettingIndexesForColumns(
-    addedColumns,
-    columnSettings,
-  );
-
-  const leftColumnSettings = prevColumnSettingIndexes
-    .filter(index => index >= 0 && index <= columnSettingIndex)
-    .map(index => columnSettings[index]);
-  const rightColumnSettings = prevColumnSettingIndexes
-    .filter(index => index >= 0 && index > columnSettingIndex)
-    .map(index => columnSettings[index]);
-  const addedColumnSettings = addedColumnSettingIndexes
-    .filter(index => index >= 0)
-    .map(index => columnSettings[index]);
+  if (columnSettingIndex < 0) {
+    return settings;
+  }
 
   return {
     ...settings,
     "table.columns": [
-      ...leftColumnSettings,
-      ...addedColumnSettings,
-      ...rightColumnSettings,
+      ...columnSettings.slice(0, columnSettingIndex + 1), // before the selected column
+      ...columnSettings.slice(-1), // new column
+      ...columnSettings.slice(columnSettingIndex + 1, -1), // after the selected column
     ],
   };
 }

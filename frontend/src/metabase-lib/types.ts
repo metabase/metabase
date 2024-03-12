@@ -5,6 +5,7 @@ import type {
   FieldValuesType,
   RowValue,
   TableId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import type {
@@ -459,6 +460,7 @@ export type ColumnExtractDrillThruInfo =
 export type ColumnExtractDrillThruContext =
   BaseDrillThruContext<"drill-thru/column-extract"> & {
     column: DatasetColumn;
+    settings: VisualizationSettings;
   };
 
 export type QuickFilterDrillThruOperator =
