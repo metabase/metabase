@@ -9,23 +9,30 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useCreateApiKeyMutation } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/services";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
 
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
-export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
+export const CreateApiKeyModal = ({
+  onClose,
+  refreshList,
+}: {
+  onClose: () => void;
+  refreshList: () => void;
+}) => {
   const [modal, setModal] = useState<"create" | "secretKey">("create");
-  const [createApiKey, response] = useCreateApiKeyMutation();
-  const secretKey = response?.data?.unmasked_key || "";
+  const [secretKey, setSecretKey] = useState<string>("");
 
   const handleSubmit = useCallback(
     async vals => {
-      await createApiKey(vals);
+      const response = await ApiKeysApi.create(vals);
+      setSecretKey(response.unmasked_key);
       setModal("secretKey");
+      refreshList();
     },
-    [createApiKey],
+    [refreshList],
   );
 
   if (modal === "secretKey") {

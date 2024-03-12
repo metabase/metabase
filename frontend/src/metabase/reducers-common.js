@@ -23,6 +23,5 @@ export default {
   entities,
   upload,
   auth,
-  // rtkquery
   [Api.reducerPath]: Api.reducer,
 };

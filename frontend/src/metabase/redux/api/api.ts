@@ -1,7 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 
-import { apiQuery } from "metabase/redux/utils";
-
+import { apiQuery } from "./query";
 import { tagTypes } from "./tags";
 
 export const Api = createApi({

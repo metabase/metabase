@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
@@ -10,7 +11,7 @@ import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { useListApiKeyQuery } from "metabase/redux/api";
+import { ApiKeysApi } from "metabase/services";
 import { Tooltip, Text, Icon } from "metabase/ui";
 import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -58,10 +59,14 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const { isLoading, data: apiKeys } = useListApiKeyQuery();
-  const groupApiKeys = useMemo(() => {
-    return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
-  }, [apiKeys, group.id]);
+  const { loading, value: apiKeys } = useAsync(async () => {
+    const apiKeys = await (ApiKeysApi.list() as Promise<ApiKey[]>);
+    const filteredApiKeys = apiKeys?.filter(
+      (apiKey: ApiKey) => apiKey.group.id === group.id,
+    );
+
+    return filteredApiKeys ?? [];
+  }, [group.id]);
 
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
@@ -92,8 +97,8 @@ function GroupMembersTable({
     [groupMemberships],
   );
 
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading={isLoading} />;
+  if (loading) {
+    return <LoadingAndErrorWrapper loading={loading} />;
   }
 
   return (
@@ -107,7 +112,7 @@ function GroupMembersTable({
             onDone={handleAddUser}
           />
         )}
-        {groupApiKeys?.map((apiKey: ApiKey) => (
+        {apiKeys?.map((apiKey: ApiKey) => (
           <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
         ))}
         {groupUsers.map((user: IUser) => {
