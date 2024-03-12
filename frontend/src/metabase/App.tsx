@@ -23,7 +23,7 @@ import {
   getIsAdminApp,
   getIsAppBarVisible,
   getIsNavBarEnabled,
-  getLocaleWritingDirection,
+  getWritingDirection,
 } from "metabase/selectors/app";
 import StatusListing from "metabase/status/components/StatusListing";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
@@ -91,7 +91,7 @@ function App({
   location,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
-  const writingDirection = useSelector(getLocaleWritingDirection);
+  const writingDirection = useSelector(getWritingDirection);
 
   useEffect(() => {
     initializeIframeResizer();

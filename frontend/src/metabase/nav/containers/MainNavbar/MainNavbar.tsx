@@ -10,7 +10,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type Question from "metabase-lib/v1/Question";
-import { getLocaleWritingDirection } from "metabase/selectors/app";
+import { getWritingDirection } from "metabase/selectors/app";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -103,7 +103,7 @@ function MainNavbar({
       }),
     [location, params, question, dashboard],
   );
-  const writingDirection = useSelector(getLocaleWritingDirection);
+  const writingDirection = useSelector(getWritingDirection);
 
   return (
     <Sidebar

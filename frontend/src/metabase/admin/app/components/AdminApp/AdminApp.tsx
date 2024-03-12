@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { useSelector } from "metabase/lib/redux";
-import { getLocaleWritingDirection } from "metabase/selectors/app";
+import { getWritingDirection } from "metabase/selectors/app";
 
 import DeprecationNotice from "../../containers/DeprecationNotice";
 
@@ -10,7 +10,7 @@ export interface AdminAppProps {
 }
 
 const AdminApp = ({ children }: AdminAppProps): JSX.Element => {
-  const writingDirection = useSelector(getLocaleWritingDirection);
+  const writingDirection = useSelector(getWritingDirection);
   return (
     <div dir={writingDirection}>
       <DeprecationNotice />

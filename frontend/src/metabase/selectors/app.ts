@@ -208,7 +208,7 @@ export const getLocale = (state: State) => {
   return state.currentUser?.locale || state.settings.values["site-locale"];
 };
 
-export const getLocaleWritingDirection = createSelector([getLocale], locale => {
+export const getWritingDirection = createSelector([getLocale], locale => {
   const localeFamily = locale.split("_")[0];
   const rtlLocales = ["ar", "fa", "he", "ur"];
   return rtlLocales.includes(localeFamily) ? "rtl" : "ltr";

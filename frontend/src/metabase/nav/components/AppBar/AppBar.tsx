@@ -3,7 +3,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { useSelector } from "metabase/lib/redux";
-import { getLocaleWritingDirection } from "metabase/selectors/app";
+import { getWritingDirection } from "metabase/selectors/app";
 import type { CollectionId, User } from "metabase-types/api";
 
 import { AppBarRoot } from "./AppBar.styled";
@@ -28,7 +28,7 @@ export interface AppBarProps {
 
 const AppBar = (props: AppBarProps): JSX.Element => {
   const isSmallScreen = useIsSmallScreen();
-  const writingDirection = useSelector(getLocaleWritingDirection);
+  const writingDirection = useSelector(getWritingDirection);
 
   return (
     <AppBarRoot
