@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/metadata/Database";
-import type Metadata from "metabase-lib/metadata/Metadata";
 import type { Expr, Node } from "metabase-lib/v1/expressions/pratt";
 import {
   parse,
@@ -10,6 +8,8 @@ import {
   compile,
   ResolverError,
 } from "metabase-lib/v1/expressions/pratt";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
