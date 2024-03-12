@@ -31,6 +31,7 @@
         ;;   contains all the breakouts (not exactly 2 as claimed in the spec).
         ;; That all makes sense to me (Braden) and I think this is a bug in the docs, but it also might be a bug in the FE
         ;; code that should be setting the aggregation :value for cell clicks?
+        ;; Tech debt issue: #39380
         (and (#{:cell #_:pivot :legend} click)
              (seq (:dimensions context)))))))
 

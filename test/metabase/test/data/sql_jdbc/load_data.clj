@@ -192,6 +192,7 @@
         (log/tracef "[insert] %s" (pr-str sql-args))
         (try
           ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
+          ;; Tech Debt Issue: #39375
           (jdbc/execute! spec sql-args {:set-parameters (fn [stmt params]
                                                           (sql-jdbc.execute/set-parameters! driver stmt params))})
           (catch Throwable e
