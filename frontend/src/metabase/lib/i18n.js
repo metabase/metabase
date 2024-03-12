@@ -57,8 +57,6 @@ function setLanguage(translationsObject) {
   useLocale(locale);
 }
 
-const ARABIC_LOCALES = ["ar", "ar-sa"];
-
 export function setLocalization(translationsObject) {
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
@@ -67,8 +65,18 @@ export function setLocalization(translationsObject) {
   updateMomentStartOfWeek();
   updateDayjsStartOfWeek();
 
-  if (ARABIC_LOCALES.includes(language)) {
-    preverseLatinNumbersInMomentLocale(language);
+  /**
+   * Use Latin numbers in Arabic and Persian locales.
+   * See https://github.com/metabase/metabase/issues/34271
+   */
+  const languageFamily = language.split("-")[0];
+  if (["ar", "fa"].includes(languageFamily)) {
+    const arabicComma = "،"; // This is also used in Persian
+    moment.updateLocale(language, {
+      // Preserve latin numbers, but still replace commas.
+      // See https://github.com/moment/moment/blob/000ac1800e620f770f4eb31b5ae908f6167b0ab2/locale/ar.js#L185
+      postformat: string => string.replace(/,/g, arabicComma),
+    });
   }
 }
 
@@ -84,19 +92,6 @@ function updateMomentLocale(language) {
     console.warn(`Could not set moment.js locale to ${locale}`);
     moment.locale("en");
   }
-}
-
-/**
- * Ensures that we consistently use latin numbers in Arabic locales.
- * See https://github.com/metabase/metabase/issues/34271
- */
-function preverseLatinNumbersInMomentLocale(locale) {
-  moment.updateLocale(locale, {
-    // Preserve latin numbers, but still replace commas.
-    // See https://github.com/moment/moment/blob/000ac1800e620f770f4eb31b5ae908f6167b0ab2/locale/ar.js#L185
-    postformat: string =>
-      string.replace(/\d/g, match => match).replace(/,/g, "،"),
-  });
 }
 
 function updateDayjsLocale(language) {

@@ -213,7 +213,7 @@ export const getWritingDirection = createSelector([getLocale], locale => {
   const rtlLocales = ["ar", "fa", "he", "ur"];
   const dir = rtlLocales.includes(localeFamily) ? "rtl" : "ltr";
 
-  // FIXME: This is a hacky way to update the writing direction of the <html> tag
+  // HACK: updates the writing direction of the <html> tag
   document.documentElement.setAttribute("dir", dir);
 
   return dir;
