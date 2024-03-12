@@ -20,8 +20,6 @@ interface ListPickerConnectedProps {
   searchDebounceMs?: number;
 }
 
-// TODO crashing when creating a new parameter
-// TODO switch from search/static-list -> card! && resetKey
 // TODO should we fetch initially?
 // TODO annoying onSearch when value is cleared
 export function ListPickerConnected(props: ListPickerConnectedProps) {

@@ -50,6 +50,22 @@ function getStaticListParam(values = STATIC_VALUES, queryType = "list") {
   });
 }
 
+function getEmptyParam(value: any) {
+  return createMockParameter({
+    id: "param",
+    type: "category",
+    target: ["variable", ["template-tag", "address"]],
+    name: "Address",
+    slug: "address",
+    default: value,
+    required: false,
+    values_query_type: "search",
+    values_source_type: value,
+    values_source_config: value,
+    value,
+  });
+}
+
 function getAnotherStaticListParam() {
   return createMockParameter({
     id: "another-param",
@@ -226,6 +242,23 @@ describe("ListPickerConnected", () => {
       userEvent.click(screen.getByPlaceholderText("Select a default value…"));
       OTHER_VALUES.forEach(value => {
         expect(screen.getByText(value)).toBeVisible();
+      });
+    });
+
+    // This probably shouldn't be supported but so far, it could happen
+    it("renders with null/undefined values", () => {
+      [null, undefined].forEach(value => {
+        expect(() => {
+          const { unmount } = setup({
+            value: value as any,
+            parameter: getEmptyParam(value),
+          });
+
+          userEvent.click(
+            screen.getByPlaceholderText("Start typing to filter…"),
+          );
+          unmount();
+        }).not.toThrow();
       });
     });
   });
