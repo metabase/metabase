@@ -32,7 +32,7 @@
           file-contents        {tmp-h2-db    h2-file-dump-content
                                 tmp-h2-db-mv h2-file-dump-content}]
       ;; 1. Don't actually run the copy steps themselves
-      (with-redefs [copy/copy! (constantly nil)]
+      (mt/with-dynamic-redefs [copy/copy! (constantly nil)]
         (doseq [[filename contents] file-contents]
           (spit filename contents))
         (dump-to-h2/dump-to-h2! tmp-h2-db)
