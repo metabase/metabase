@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import { useListApiKeyQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -11,7 +11,6 @@ import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { ApiKeysApi } from "metabase/services";
 import { Tooltip, Text, Icon } from "metabase/ui";
 import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -59,14 +58,10 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const { loading, value: apiKeys } = useAsync(async () => {
-    const apiKeys = await (ApiKeysApi.list() as Promise<ApiKey[]>);
-    const filteredApiKeys = apiKeys?.filter(
-      (apiKey: ApiKey) => apiKey.group.id === group.id,
-    );
-
-    return filteredApiKeys ?? [];
-  }, [group.id]);
+  const { isLoading, data: apiKeys } = useListApiKeyQuery();
+  const groupApiKeys = useMemo(() => {
+    return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
+  }, [apiKeys, group.id]);
 
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
@@ -97,8 +92,8 @@ function GroupMembersTable({
     [groupMemberships],
   );
 
-  if (loading) {
-    return <LoadingAndErrorWrapper loading={loading} />;
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading={isLoading} />;
   }
 
   return (
@@ -112,7 +107,7 @@ function GroupMembersTable({
             onDone={handleAddUser}
           />
         )}
-        {apiKeys?.map((apiKey: ApiKey) => (
+        {groupApiKeys?.map((apiKey: ApiKey) => (
           <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
         ))}
         {groupUsers.map((user: IUser) => {
