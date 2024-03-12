@@ -5823,6 +5823,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               DROP VIEW IF EXISTS v_content;
+
   - changeSet:
       id: v50.2024-02-29T15:06:43
       author: tsmacdonald
@@ -5879,6 +5880,32 @@ databaseChangeLog:
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v50.2024-02-29T15:07:43
+      author: tsmacdonald
+      comment: Index field_usage.card_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: field_usage
+            columns:
+              - column:
+                  name: card_id
+            indexName: idx_field_usage_card_id
+
+  - changeSet:
+      id: v50.2024-02-29T15:08:43
+      author: tsmacdonald
+      comment: Index field_usage.field_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: field_usage
+            columns:
+              - column:
+                  name: field_id
+            indexName: idx_field_usage_field_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
