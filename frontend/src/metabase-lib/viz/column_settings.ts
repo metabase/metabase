@@ -20,6 +20,7 @@ export function syncColumnSettings(
     if (clicked) {
       newSettings = syncTableColumnSettingsAfterClickAction(
         newSettings,
+        settings,
         clicked,
       );
     }
@@ -85,6 +86,7 @@ function syncTableColumnSettings(
 
 function syncTableColumnSettingsAfterClickAction(
   settings: VisualizationSettings,
+  prevSettings: VisualizationSettings,
   { column }: ClickObject,
 ): VisualizationSettings {
   if (!column) {
@@ -92,11 +94,13 @@ function syncTableColumnSettingsAfterClickAction(
   }
 
   const columnSettings = settings["table.columns"] ?? [];
+  const prevColumnSettings = prevSettings["table.columns"] ?? [];
+  const addedColumnCount = columnSettings.length - prevColumnSettings.length;
   const [columnSettingIndex] = findColumnSettingIndexesForColumns(
     [column],
     columnSettings,
   );
-  if (columnSettingIndex < 0) {
+  if (addedColumnCount < 0 || columnSettingIndex < 0) {
     return settings;
   }
 
@@ -104,8 +108,8 @@ function syncTableColumnSettingsAfterClickAction(
     ...settings,
     "table.columns": [
       ...columnSettings.slice(0, columnSettingIndex + 1), // before the selected column
-      ...columnSettings.slice(-1), // new column
-      ...columnSettings.slice(columnSettingIndex + 1, -1), // after the selected column
+      ...columnSettings.slice(-addedColumnCount), // new columns
+      ...columnSettings.slice(columnSettingIndex + 1, -addedColumnCount), // after the selected column
     ],
   };
 }
