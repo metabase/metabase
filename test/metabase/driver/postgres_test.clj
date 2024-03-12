@@ -1292,7 +1292,7 @@
                                      "CREATE MATERIALIZED VIEW \"dotted.schema\".\"dotted.materialized_view\" AS SELECT 'hello world';"
                                      "DROP ROLE IF EXISTS privilege_rows_test_example_role;"
                                      "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
-                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                     "GRANT SELECT (id) ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
                                      "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.view\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.materialized_view\" TO privilege_rows_test_example_role;"))
