@@ -1,22 +1,24 @@
 import type { ClickAction } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { DRILLS } from "./constants";
 
 export function queryDrill(
   question: Question,
-  clicked?: Lib.ClickObject,
+  clicked: Lib.ClickObject,
+  computedSettings: VisualizationSettings,
 ): ClickAction[] {
   const query = question.query();
   const stageIndex = -1;
   const drills = Lib.availableDrillThrus(
     query,
     stageIndex,
-    clicked?.column,
-    clicked?.value,
-    clicked?.data,
-    clicked?.dimensions,
+    clicked.column,
+    clicked.value,
+    clicked.data,
+    clicked.dimensions,
   );
 
   const applyDrill = (drill: Lib.DrillThru, ...args: unknown[]) => {
@@ -33,7 +35,8 @@ export function queryDrill(
       stageIndex,
       drill,
       drillInfo,
-      isDashboard: clicked?.extraData?.dashboard != null,
+      clicked,
+      computedSettings,
       applyDrill,
     });
   });

@@ -111,7 +111,10 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
+export const setCardAndRun = (
+  nextCard,
+  { shouldUpdateUrl = true, clicked } = {},
+) => {
   return async (dispatch, getState) => {
     // clone
     const card = copy(nextCard);
@@ -127,7 +130,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl }));
+    dispatch(runQuestionQuery({ shouldUpdateUrl, clicked }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -147,14 +150,16 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, objectId }) => {
+  ({ nextCard, previousCard, objectId, clicked }) => {
     return async (dispatch, getState) => {
       if (previousCard === nextCard) {
         // Do not reload questions with breakouts when clicked on a legend item
       } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
-          setCardAndRun(await loadCard(nextCard.id, { dispatch, getState })),
+          setCardAndRun(await loadCard(nextCard.id, { dispatch, getState }), {
+            clicked,
+          }),
         );
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
@@ -169,7 +174,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
           }
           // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(setCardAndRun({ ...card, type: "question" }));
+          dispatch(setCardAndRun({ ...card, type: "question" }, { clicked }));
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));

@@ -94,6 +94,7 @@ export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
   overrideWithQuestion = null,
+  clicked,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
@@ -135,7 +136,7 @@ export const runQuestionQuery = ({
             duration,
           ),
         );
-        return dispatch(queryCompleted(question, queryResults));
+        return dispatch(queryCompleted(question, queryResults, { clicked }));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
@@ -168,7 +169,7 @@ export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (question, queryResults) => {
+export const queryCompleted = (question, queryResults, { clicked } = {}) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
     const prevQueryResults = getQueryResults(getState());
@@ -181,6 +182,7 @@ export const queryCompleted = (question, queryResults) => {
       question = question.syncColumnsAndSettings(
         queryResults[0],
         prevQueryResults?.[0],
+        clicked,
       );
 
       question = question.maybeResetDisplay(

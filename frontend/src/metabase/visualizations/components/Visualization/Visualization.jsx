@@ -308,7 +308,12 @@ class Visualization extends PureComponent {
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
     const previousCard = series && series[index] && series[index].card;
 
-    this.props.onChangeCardAndRun({ nextCard, previousCard, objectId });
+    this.props.onChangeCardAndRun({
+      nextCard,
+      previousCard,
+      objectId,
+      clicked,
+    });
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {

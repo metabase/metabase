@@ -46,17 +46,12 @@ import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
-  findColumnIndexesForColumnSettings,
-  findColumnSettingIndexesForColumns,
-} from "metabase-lib/queries/utils/dataset";
-import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 
 import type { Query } from "./types";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -470,110 +465,24 @@ class Question {
     });
   }
 
-  private _syncGraphMetricSettings(
-    { data: { cols = [] } = {} }: Dataset,
-    { data: { cols: prevCols = [] } = {} }: Dataset,
+  syncColumnsAndSettings(
+    queryResults?: Dataset,
+    prevQueryResults?: Dataset,
+    clicked?: Lib.ClickObject,
   ) {
-    const graphMetrics = this.setting("graph.metrics");
-    if (!graphMetrics) {
+    const settings = this.settings();
+    const newSettings = Lib.syncColumnSettings(
+      settings,
+      queryResults,
+      prevQueryResults,
+      clicked,
+    );
+
+    if (newSettings !== settings) {
+      return this.setSettings(newSettings);
+    } else {
       return this;
     }
-
-    const hasNativeColumns =
-      cols.some(column => column.source === "native") ||
-      prevCols.some(column => column.source === "native");
-    if (hasNativeColumns) {
-      return this;
-    }
-
-    const metricColumnNames = new Set(
-      cols
-        .filter(column => column.source === "aggregation")
-        .map(column => column.name),
-    );
-    const prevMetricColumnNames = new Set(
-      prevCols
-        .filter(column => column.source === "aggregation")
-        .map(column => column.name),
-    );
-    const addedMetricColumnNames = new Set(
-      [...metricColumnNames].filter(name => !prevMetricColumnNames.has(name)),
-    );
-    const removedMetricColumnNames = new Set(
-      [...prevMetricColumnNames].filter(name => !metricColumnNames.has(name)),
-    );
-
-    if (addedMetricColumnNames.size > 0 || removedMetricColumnNames.size > 0) {
-      return this.updateSettings({
-        "graph.metrics": [
-          ...graphMetrics.filter(name => !removedMetricColumnNames.has(name)),
-          ...addedMetricColumnNames,
-        ],
-      });
-    }
-
-    return this;
-  }
-
-  _syncTableColumnSettings({ data = {} }: Dataset) {
-    const columnSettings = this.setting("table.columns") || [];
-    // "table.columns" receive a value only if there are custom settings
-    // e.g. some columns are hidden. If it's empty, it means everything is visible
-    const isUsingDefaultSettings = columnSettings.length === 0;
-    if (isUsingDefaultSettings) {
-      return this;
-    }
-
-    // remove columns used for remapping only
-    const cols = data.cols.filter(col => col.remapped_from == null);
-    const columnIndexes = findColumnIndexesForColumnSettings(
-      cols,
-      columnSettings,
-    );
-    const columnSettingIndexes = findColumnSettingIndexesForColumns(
-      cols,
-      columnSettings,
-    );
-    const addedColumns = cols.filter((col, colIndex) => {
-      const hasVizSettings = columnSettingIndexes[colIndex] >= 0;
-      return !hasVizSettings;
-    });
-    const existingColumnSettings = columnSettings.filter(
-      (setting, settingIndex) => columnIndexes[settingIndex] >= 0,
-    );
-    const noColumnsRemoved =
-      existingColumnSettings.length === columnSettings.length;
-
-    if (noColumnsRemoved && addedColumns.length === 0) {
-      return this;
-    }
-
-    const addedColumnSettings = addedColumns.map(col => ({
-      name: col.name,
-      key: getColumnKey(col),
-      fieldRef: col.field_ref,
-      enabled: true,
-    }));
-    return this.updateSettings({
-      "table.columns": [...existingColumnSettings, ...addedColumnSettings],
-    });
-  }
-
-  syncColumnsAndSettings(queryResults?: Dataset, prevQueryResults?: Dataset) {
-    let question = this;
-
-    if (queryResults && !queryResults.error) {
-      question = question._syncTableColumnSettings(queryResults);
-
-      if (prevQueryResults && !prevQueryResults.error) {
-        question = question._syncGraphMetricSettings(
-          queryResults,
-          prevQueryResults,
-        );
-      }
-    }
-
-    return question;
   }
 
   /**
