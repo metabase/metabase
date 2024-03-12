@@ -32,20 +32,21 @@
              (latest-view (u/id user) (u/id card))))))))
 
 (deftest dashboard-read-test
-  (mt/with-temp [:model/User          user      {}
-                 :model/Dashboard     dashboard {:name "Test Dashboard"}
-                 :model/Card          card      {:name "Dashboard Test Card"}
-                 :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
-    (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
-      (testing "A basic dashboard read event is recorded, as well as events for its cards"
-        (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/id user)})
-        (is (partial=
-             {:user_id    (u/id user)
-              :model      "dashboard"
-              :model_id   (u/id dashboard)
-              :has_access true
-              :context    "question"}
-             (latest-view (u/id user) (u/id card))))))))
+  (when (premium-features/log-enabled?)
+    (mt/with-temp [:model/User          user      {}
+                   :model/Dashboard     dashboard {:name "Test Dashboard"}
+                   :model/Card          card      {:name "Dashboard Test Card"}
+                   :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
+      (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
+        (testing "A basic dashboard read event is recorded, as well as events for its cards"
+          (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/id user)})
+          (is (partial=
+               {:user_id    (u/id user)
+                :model      "dashboard"
+                :model_id   (u/id dashboard)
+                :has_access true
+                :context    "question"}
+               (latest-view (u/id user) (u/id card)))))))))
 
 (deftest card-read-oss-no-view-logging-test
   (when-not (premium-features/log-enabled?)
