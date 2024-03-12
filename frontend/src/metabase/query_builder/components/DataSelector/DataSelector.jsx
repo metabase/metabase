@@ -623,6 +623,8 @@ export class UnconnectedDataSelector extends Component {
       [TABLE_STEP]: () => {
         if (this.state.selectedSchemaId != null) {
           return this.props.fetchSchemaTables(this.state.selectedSchemaId);
+        } else if (this.state.selectedSchema?.id != null) {
+          return this.props.fetchSchemaTables(this.state.selectedSchema?.id);
         }
       },
       [FIELD_STEP]: () => {
