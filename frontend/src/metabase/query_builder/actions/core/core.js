@@ -114,7 +114,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (
   nextCard,
-  { shouldUpdateUrl = true, clicked, prevQueryResults } = {},
+  { shouldUpdateUrl = true, prevQueryResults, settingsSyncOptions } = {},
 ) => {
   return async (dispatch, getState) => {
     // clone
@@ -131,7 +131,13 @@ export const setCardAndRun = (
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl, clicked, prevQueryResults }));
+    dispatch(
+      runQuestionQuery({
+        shouldUpdateUrl,
+        prevQueryResults,
+        settingsSyncOptions,
+      }),
+    );
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -151,7 +157,7 @@ export const setCardAndRun = (
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, objectId, clicked }) => {
+  ({ nextCard, previousCard, objectId, settingsSyncOptions }) => {
     return async (dispatch, getState) => {
       if (previousCard === nextCard) {
         // Do not reload questions with breakouts when clicked on a legend item
@@ -159,7 +165,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
           setCardAndRun(await loadCard(nextCard.id, { dispatch, getState }), {
-            clicked,
+            settingsSyncOptions,
           }),
         );
       } else {
@@ -179,7 +185,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
           dispatch(
             setCardAndRun(
               { ...card, type: "question" },
-              { clicked, prevQueryResults },
+              { prevQueryResults, settingsSyncOptions },
             ),
           );
         }

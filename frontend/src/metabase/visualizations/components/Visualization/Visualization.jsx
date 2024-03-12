@@ -306,7 +306,7 @@ class Visualization extends PureComponent {
     nextCard,
     seriesIndex,
     objectId,
-    clicked: passedClicked,
+    settingsSyncOptions,
   }) => {
     const { series, clicked } = this.state;
 
@@ -317,7 +317,7 @@ class Visualization extends PureComponent {
       nextCard,
       previousCard,
       objectId,
-      passedClicked,
+      settingsSyncOptions,
     });
   };
 

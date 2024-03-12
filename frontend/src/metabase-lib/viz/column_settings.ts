@@ -1,16 +1,23 @@
-import type { ClickObject } from "metabase-lib";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import type { Dataset, VisualizationSettings } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetColumn,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+export type SettingsSyncOptions = {
+  column: DatasetColumn;
+};
 
 export function syncColumnSettings(
   settings: VisualizationSettings,
   queryResults?: Dataset,
   prevQueryResults?: Dataset,
-  clicked?: ClickObject,
+  options?: SettingsSyncOptions,
 ): VisualizationSettings {
   let newSettings = settings;
 
@@ -18,7 +25,7 @@ export function syncColumnSettings(
     newSettings = syncTableColumnSettings(
       newSettings,
       queryResults,
-      clicked == null,
+      options == null,
     );
 
     if (prevQueryResults && !prevQueryResults.error) {
@@ -28,12 +35,12 @@ export function syncColumnSettings(
         prevQueryResults,
       );
 
-      if (clicked) {
-        newSettings = syncTableColumnSettingsAfterClickAction(
+      if (options) {
+        newSettings = moveNewTableColumnsAfterColumn(
           newSettings,
           queryResults,
           prevQueryResults,
-          clicked,
+          options.column,
         );
       }
     }
@@ -90,17 +97,17 @@ function syncTableColumnSettings(
   };
 }
 
-function syncTableColumnSettingsAfterClickAction(
+function moveNewTableColumnsAfterColumn(
   settings: VisualizationSettings,
   { data: { cols } }: Dataset,
   { data: { cols: prevCols } }: Dataset,
-  { column }: ClickObject,
+  column: DatasetColumn,
 ): VisualizationSettings {
-  if (!column) {
+  const columnSettings = settings["table.columns"];
+  if (!column || !columnSettings) {
     return settings;
   }
 
-  const columnSettings = settings["table.columns"] ?? [];
   const prevColumnNames = new Set(prevCols.map(col => col.name));
   const addedColumns = cols.filter(col => !prevColumnNames.has(col.name));
   const addedColumnSettingIndexes = findColumnSettingIndexesForColumns(

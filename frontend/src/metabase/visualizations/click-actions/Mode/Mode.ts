@@ -1,6 +1,5 @@
 import { queryDrill } from "metabase/querying";
 import type Question from "metabase-lib/Question";
-import type { VisualizationSettings } from "metabase-types/api";
 
 import type {
   ClickAction,
@@ -27,7 +26,7 @@ export class Mode {
 
   actionsForClick(
     clicked: ClickObject,
-    settings: VisualizationSettings,
+    settings: Record<string, any>,
     extraData?: Record<string, any>,
   ): ClickAction[] {
     const mode = this._queryMode;
