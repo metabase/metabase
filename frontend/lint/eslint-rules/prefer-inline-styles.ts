@@ -1,6 +1,7 @@
 // eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
+    // TODO: Add border-left and border-right (prefer border-inline-start and border-inline-end)
     type: "suggestion",
     docs: {
       description:

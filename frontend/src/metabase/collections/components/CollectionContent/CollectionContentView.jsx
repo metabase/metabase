@@ -16,6 +16,8 @@ import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useSelector } from "metabase/lib/redux";
+import { getWritingDirection } from "metabase/selectors/app";
 
 import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
@@ -196,6 +198,8 @@ export function CollectionContentView({
     sort_direction: "asc",
   };
 
+  const writingDirection = useSelector(getWritingDirection);
+
   return (
     <Search.ListLoader
       query={pinnedQuery}
@@ -207,7 +211,7 @@ export function CollectionContentView({
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
-          <CollectionRoot {...dropzoneProps}>
+          <CollectionRoot {...dropzoneProps} dir={writingDirection}>
             {canUpload && (
               <>
                 <ModelUploadModal

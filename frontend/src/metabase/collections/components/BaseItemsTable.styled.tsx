@@ -25,13 +25,23 @@ export const Table = styled.table<{ canSelect: boolean }>`
       border-top: 1px solid ${color("border")};
 
       &:first-of-type {
-        border-top-left-radius: 8px;
-        border-left: 1px solid ${color("border")};
+        [dir="ltr"] & {
+          border-top-left-radius: 8px;
+        }
+        [dir="rtl"] & {
+          border-top-right-radius: 8px;
+        }
+        border-inline-start: 1px solid ${color("border")};
       }
 
       &:last-child {
-        border-top-right-radius: 8px;
-        border-right: 1px solid ${color("border")};
+        [dir="ltr"] & {
+          border-top-right-radius: 8px;
+        }
+        [dir="rtl"] & {
+          border-top-left-radius: 8px;
+        }
+        border-inline-end: 1px solid ${color("border")};
       }
     }
   }
@@ -80,6 +90,9 @@ export const LastEditedByCol = styled.col`
 
 export const ItemCell = styled.td`
   padding: 0.25em 0 0.25em 1em !important;
+  [dir="rtl"] & {
+    padding: 0.25em 1em 0.25em 0 !important;
+  }
 `;
 
 export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
@@ -163,11 +176,11 @@ export const TBody = styled.tbody`
     border-top: 1px solid ${color("border")};
 
     &:first-of-type {
-      border-left: 1px solid ${color("border")};
+      border-inline-start: 1px solid ${color("border")};
     }
 
     &:last-child {
-      border-right: 1px solid ${color("border")};
+      border-inline-end: 1px solid ${color("border")};
     }
   }
 
@@ -180,11 +193,21 @@ export const TBody = styled.tbody`
       border-bottom: 1px solid ${color("border")};
 
       &:last-child {
-        border-bottom-right-radius: 8px;
+        [dir="ltr"] & {
+          border-bottom-right-radius: 8px;
+        }
+        [dir="rtl"] & {
+          border-bottom-left-radius: 8px;
+        }
       }
 
       &:first-of-type {
-        border-bottom-left-radius: 8px;
+        [dir="ltr"] & {
+          border-bottom-left-radius: 8px;
+        }
+        [dir="rtl"] & {
+          border-bottom-right-radius: 8px;
+        }
       }
     }
   }
