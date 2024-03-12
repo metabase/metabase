@@ -322,6 +322,13 @@ TrendComboLog.args = {
   renderingContext,
 };
 
+export const ComboHistogram = Template.bind({});
+ComboHistogram.args = {
+  rawSeries: data.comboHistogram as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const ComboBarsBecomeStackedInStaticViz38827 = Template.bind({});
 ComboBarsBecomeStackedInStaticViz38827.args = {
   rawSeries: data.comboBarsBecomeStackedInStaticViz38827 as any,
