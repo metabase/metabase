@@ -3,7 +3,7 @@ import type { Parameter } from "metabase-types/api";
 type Action =
   | {
       type: "SET_IS_LOADING";
-      payload: { isLoading: boolean };
+      payload: { isLoading: boolean; query?: string };
     }
   | {
       type: "SET_LOADED";
@@ -11,7 +11,6 @@ type Action =
         values: string[];
         hasMore: boolean;
         resetKey: string;
-        searchQuery: string;
       };
     }
   | { type: "SET_ERROR"; payload: { error?: Error; errorMsg: string } }
@@ -26,10 +25,12 @@ interface State {
   lastSearch: string;
 }
 
-export function getDefaultState(initialValue: string): State {
+export function getDefaultState(initialValue: string | null): State {
+  // console.log("getDefaultSearch", initialValue);
+
   return {
-    // This is needed for  Select to show it
-    values: [initialValue],
+    // This is needed for Select to show it
+    values: initialValue === null ? [] : [initialValue],
     hasMoreValues: true,
     isLoading: false,
     resetKey: null,
@@ -38,11 +39,14 @@ export function getDefaultState(initialValue: string): State {
 }
 
 export function reducer(state: State, action: Action): State {
+  // console.log(action);
+
   switch (action.type) {
     case "SET_IS_LOADING":
       return {
         ...state,
         isLoading: action.payload.isLoading,
+        lastSearch: action.payload.query ?? state.lastSearch,
       };
 
     case "SET_LOADED":
@@ -52,7 +56,6 @@ export function reducer(state: State, action: Action): State {
         hasMoreValues: action.payload.hasMore,
         isLoading: false,
         resetKey: action.payload.resetKey,
-        lastSearch: action.payload.searchQuery,
       };
 
     case "SET_RESET_KEY":
