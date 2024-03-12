@@ -42,7 +42,7 @@
   [:ref ::lib.schema.common/semantic-or-relation-type])
 
 (def ^:private PositiveInt
-  [:ref ::lib.schema.common/positive-int])
+  pos-int?)
 
 (def ^:private IntGreaterThanOrEqualToZero
   [:ref ::lib.schema.common/int-greater-than-or-equal-to-zero])

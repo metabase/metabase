@@ -113,6 +113,12 @@
                   (t/adjust :first-day-of-month))]
     [value (minus-ms (t/plus value (t/months n)))]))
 
+(declare truncate add)
+
+(defmethod common/to-range :quarter [value {:keys [n] :or {n 1}}]
+  (let [value (truncate value :quarter)]
+    [value (minus-ms (add value :quarter n))]))
+
 (defmethod common/to-range :year [value {:keys [n] :or {n 1}}]
   (let [value (-> value
                   (t/truncate-to :days)

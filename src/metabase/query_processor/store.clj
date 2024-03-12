@@ -16,17 +16,13 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -180,78 +176,21 @@
   [database-id-or-metadata-provider & body]
   `(do-with-metadata-provider ~database-id-or-metadata-provider (^:once fn* [] ~@body)))
 
-(defn- missing-bulk-metadata-error [metadata-type id]
-  (ex-info (tru "Failed to fetch {0} {1}" (pr-str metadata-type) (pr-str id))
-           {:status-code       400
-            :type              qp.error-type/invalid-query
-            :metadata-provider (metadata-provider)
-            :metadata-type     metadata-type
-            :id                id}))
-
+;;; TODO -- mark this deprecated in favor of the version in `lib.metadata`
 (mu/defn bulk-metadata :- [:maybe [:sequential [:map
                                                 [:lib/type :keyword]
-                                                [:id ::lib.schema.common/positive-int]]]]
-  "Fetch multiple objects in bulk. If our metadata provider is a bulk provider (e.g., the application database metadata
-  provider), does a single fetch with [[lib.metadata.protocols/bulk-metadata]] if not (i.e., if this is a mock
-  provider), fetches them with repeated calls to the appropriate single-object method,
-  e.g. [[lib.metadata.protocols/field]].
-
-  The order of the returned objects will match the order of `ids`, and the response is guaranteed to contain every
-  object referred to by `ids`. Throws an exception if any objects could not be fetched.
-
-  This can also be called for side-effects to warm the cache."
+                                                [:id pos-int?]]]]
+  "DEPRECATED -- prefer [[metabase.lib.metadata/bulk-metadata-or-throw]] instead."
   [metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
    ids           :- [:maybe
                      [:or
-                      [:set ::lib.schema.common/positive-int]
-                      [:sequential ::lib.schema.common/positive-int]]]]
-  (when-let [ids-set (not-empty (set ids))]
-    (let [provider   (metadata-provider)
-          objects    (vec (if (satisfies? lib.metadata.protocols/BulkMetadataProvider provider)
-                            (filter some? (lib.metadata.protocols/bulk-metadata provider metadata-type ids-set))
-                            (lib.metadata.composed-provider/fetch-bulk-metadata-with-non-bulk-provider
-                             provider
-                             metadata-type
-                             ids-set)))
-          id->object (m/index-by :id objects)]
-      (mapv (fn [id]
-              (or (get id->object id)
-                  (throw (missing-bulk-metadata-error metadata-type id))))
-            ids))))
+                      [:set pos-int?]
+                      [:sequential pos-int?]]]]
+  (lib.metadata/bulk-metadata-or-throw (metadata-provider) metadata-type ids))
 
 ;;;;
 ;;;; DEPRECATED STUFF
 ;;;;
-
-(def ^:private ^{:deprecated "0.48.0"} LegacyDatabaseMetadata
-  [:map
-   [:id       ::lib.schema.id/database]
-   [:engine   :keyword]
-   [:name     ms/NonBlankString]
-   [:details  :map]
-   [:settings [:maybe :map]]])
-
-(def ^:private ^{:deprecated "0.48.0"} LegacyTableMetadata
-  [:map
-   [:schema [:maybe :string]]
-   [:name   ms/NonBlankString]])
-
-(def ^:private ^{:deprecated "0.48.0"} LegacyFieldMetadata
-  [:map
-   [:name          ms/NonBlankString]
-   [:table_id      ::lib.schema.id/table]
-   [:display_name  ms/NonBlankString]
-   [:description   [:maybe :string]]
-   [:database_type ms/NonBlankString]
-   [:base_type     ms/FieldType]
-   [:semantic_type [:maybe ms/FieldSemanticOrRelationType]]
-   [:fingerprint   [:maybe :map]]
-   [:parent_id     [:maybe ::lib.schema.id/field]]
-   [:nfc_path      [:maybe [:sequential ms/NonBlankString]]]
-   ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
-   ;; would make everything just use base_type.
-   [:effective_type    {:optional true} [:maybe ms/FieldType]]
-   [:coercion_strategy {:optional true} [:maybe ms/CoercionStrategy]]])
 
 (defn ->legacy-metadata
   "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
@@ -271,43 +210,3 @@
         (update-keys u/->snake_case_en)
         (vary-meta assoc :type model)
         (m/update-existing :field_ref lib.convert/->legacy-MBQL))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(mu/defn database :- LegacyDatabaseMetadata
-  "Fetch the Database referenced by the current query from the QP Store. Throws an Exception if valid item is not
-  returned.
-
-  Deprecated in favor of [[metabase.lib.metadata/database]] + [[metadata-provider]]."
-  {:deprecated "0.48.0"}
-  []
-  (->legacy-metadata (lib.metadata/database (metadata-provider))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(mu/defn ^:deprecated table :- LegacyTableMetadata
-  "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned.
-
-  Deprecated in favor of [[metabase.lib.metadata/table]] + [[metadata-provider]]."
-  {:deprecated "0.48.0"}
-  [table-id :- ::lib.schema.id/table]
-  (-> (or (lib.metadata.protocols/table (metadata-provider) table-id)
-          (throw (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database."
-                               (pr-str table-id))
-                          {:status-code 404
-                           :type        qp.error-type/invalid-query
-                           :table-id    table-id})))
-      ->legacy-metadata))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(mu/defn ^:deprecated field :- LegacyFieldMetadata
-  "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned.
-
-  Deprecated in favor of [[metabase.lib.metadata/field]] + [[metadata-provider]]."
-  {:deprecated "0.48.0"}
-  [field-id :- ::lib.schema.id/field]
-  (-> (or (lib.metadata.protocols/field (metadata-provider) field-id)
-          (throw (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database."
-                               (pr-str field-id))
-                          {:status-code 404
-                           :type        qp.error-type/invalid-query
-                           :field-id    field-id})))
-      ->legacy-metadata))

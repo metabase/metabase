@@ -117,7 +117,7 @@
   [:tuple
    [:= :segment]
    ::common/options
-   [:or ::common/positive-int ::common/non-blank-string]])
+   [:or pos-int? ::common/non-blank-string]])
 
 (mr/def ::operator
   [:map

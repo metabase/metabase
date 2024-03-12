@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
-   [metabase.api.common :as api]
    [metabase.models
     :refer [Card
             Collection
@@ -187,8 +186,6 @@
                       (mt/with-current-user user-id
                         (#'qp.perms/check-block-permissions query)))]
               (testing "sanity check: should not be able to run ad-hoc query"
-                (is (not (contains? @api/*current-user-permissions-set*
-                                    (perms/data-perms-path (mt/id)))))
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query"
