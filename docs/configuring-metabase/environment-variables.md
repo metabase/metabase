@@ -176,7 +176,7 @@ Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Ente
 Type: string<br>
 Default: `"app/assets/img/logo.svg"`
 
-Path or URL to logo file. For best results use SVG format.
+Path or URL to logo file. For best results use SVG format (inline styling and inline scripts are not supported).
 
 ### `MB_APPLICATION_NAME`
 
