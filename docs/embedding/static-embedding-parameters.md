@@ -165,15 +165,15 @@ You can preview appearance settings from your question or dashboard's [embedded 
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-### Data download
+### Download results
 
-{% include plans-blockquote.html feature="Data download" %}
+{% include plans-blockquote.html feature="Downloading results" %}
 
-You can enable or disable data download for embedded questions by setting the `hide_download_button` parameter in the embedding URL to `false` or `true`.
+You can enable or disable downloading results for embedded questions by setting the `hide_download_button` parameter in the embedding URL to `false` or `true`.
 
 If the download button is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `hide_download_button=false`.
 
-> Data download is available only for questions, not dashboards.
+> Downloading results is available only for questions, not dashboards.
 
 
 ## Maximum request size
