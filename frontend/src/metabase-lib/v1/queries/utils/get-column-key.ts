@@ -7,7 +7,7 @@ import {
   isExpressionReference,
   isFieldReference,
   isValidDimensionReference,
-} from "metabase-lib/references";
+} from "metabase-lib/v1/references";
 import type { DatasetColumn } from "metabase-types/api";
 
 export const getColumnKey = (

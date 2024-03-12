@@ -16,7 +16,7 @@ import {
   EXCLUDE_OPTIONS,
   EXCLUDE_UNITS,
 } from "metabase-lib/v1/queries/utils/query-time";
-import { isTemplateTagReference } from "metabase-lib/references";
+import { isTemplateTagReference } from "metabase-lib/v1/references";
 import { isDimensionTarget } from "metabase-types/guards";
 
 const withTemporalUnit = (fieldRef, unit) => {

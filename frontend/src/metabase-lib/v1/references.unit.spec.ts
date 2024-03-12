@@ -4,7 +4,7 @@ import {
   isAggregationReference,
   isTemplateTagReference,
   normalizeReferenceOptions,
-} from "metabase-lib/references";
+} from "metabase-lib/v1/references";
 
 describe("reference predicates", () => {
   describe("isFieldReference", () => {

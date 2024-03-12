@@ -30,7 +30,7 @@ import {
   normalizeReferenceOptions,
   getBaseDimensionReference,
   BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
-} from "metabase-lib/references";
+} from "metabase-lib/v1/references";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
