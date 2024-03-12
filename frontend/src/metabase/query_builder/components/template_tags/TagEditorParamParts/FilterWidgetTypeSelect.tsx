@@ -39,8 +39,10 @@ export function FilterWidgetTypeSelect({
 
   return (
     <InputContainer>
-      <ContainerLabel smallPaddingBottom>
+      <ContainerLabel>
         {t`Filter widget type`}
+        {/* TODO this might be incorrect, because we allow running the query (see sql-field-filter e2e test)
+            but show "required" here despite it's None */}
         {hasNoWidgetType && <ErrorSpan>({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
@@ -50,6 +52,7 @@ export function FilterWidgetTypeSelect({
         placeholder={t`Select…`}
         data={optionsOrDefault}
         data-testid="filter-widget-type-select"
+        disabled={optionsOrDefault.length === 1}
       />
 
       {!hasOptions && (

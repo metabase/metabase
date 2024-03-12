@@ -8,7 +8,6 @@ import _ from "underscore";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Bookmark from "metabase/entities/bookmarks";
-import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
@@ -27,7 +26,6 @@ import {
   getUserIsAdmin,
   canManageSubscriptions,
 } from "metabase/selectors/user";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 
 import * as actions from "../actions";
 import View from "../components/view/View";
@@ -50,7 +48,6 @@ import {
   getParameters,
   getDatabaseFields,
   getSampleDatabaseId,
-  getNativeDatabases,
   getIsRunnable,
   getIsResultDirty,
   getMode,
@@ -115,7 +112,6 @@ const mapStateToProps = (state, props) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
-    nativeDatabases: getNativeDatabases(state),
     tables: getTables(state),
 
     metadata: getMetadata(state),
@@ -161,10 +157,6 @@ const mapStateToProps = (state, props) => {
     autocompleteResultsFn: getAutocompleteResultsFn(state),
     cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
-    initialCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
     queryStartTime: getQueryStartTime(state),
     nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
@@ -173,7 +165,6 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
-    loadingMessage: getWhiteLabeledLoadingMessage(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
 
@@ -272,7 +263,7 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async newQuestion => {
-      const shouldBePinned = newQuestion.isDataset();
+      const shouldBePinned = newQuestion.type() === "model";
       const createdQuestion = await apiCreateQuestion(
         newQuestion.setPinned(shouldBePinned),
       );

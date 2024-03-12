@@ -13,6 +13,8 @@ import add_row_component from "./add_row.svg?component";
 import add_row_source from "./add_row.svg?source";
 import add_to_dash_component from "./add_to_dash.svg?component";
 import add_to_dash_source from "./add_to_dash.svg?source";
+import ai_component from "./ai.svg?component";
+import ai_source from "./ai.svg?source";
 import alert_component from "./alert.svg?component";
 import alert_source from "./alert.svg?source";
 import alert_confirm_component from "./alert_confirm.svg?component";
@@ -123,6 +125,8 @@ import expand_component from "./expand.svg?component";
 import expand_source from "./expand.svg?source";
 import expand_arrow_component from "./expand_arrow.svg?component";
 import expand_arrow_source from "./expand_arrow.svg?source";
+import extract_component from "./extract.svg?component";
+import extract_source from "./extract.svg?source";
 import eye_component from "./eye.svg?component";
 import eye_source from "./eye.svg?source";
 import eye_crossed_out_component from "./eye_crossed_out.svg?component";
@@ -331,6 +335,8 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import time_history_component from "./time_history.svg?component";
+import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
@@ -382,6 +388,10 @@ export const Icons = {
   add_to_dash: {
     component: add_to_dash_component,
     source: add_to_dash_source,
+  },
+  ai: {
+    component: ai_component,
+    source: ai_source,
   },
   alert: {
     component: alert_component,
@@ -602,6 +612,10 @@ export const Icons = {
   expand_arrow: {
     component: expand_arrow_component,
     source: expand_arrow_source,
+  },
+  extract: {
+    component: extract_component,
+    source: extract_source,
   },
   eye: {
     component: eye_component,
@@ -1018,6 +1032,10 @@ export const Icons = {
   table2: {
     component: table2_component,
     source: table2_source,
+  },
+  time_history: {
+    component: time_history_component,
+    source: time_history_source,
   },
   trash: {
     component: trash_component,

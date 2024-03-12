@@ -294,7 +294,7 @@
        [:model/Dashboard     dashboard {:name "A Dashboard"}
         :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)}
         :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}
-        :model/Card          card      {:name "A Card" :dataset true}
+        :model/Card          card      {:name "A Card" :type :model}
         Action               action    {:model_id (:id card)
                                         :type     :implicit
                                         :name     "An action"}]
@@ -839,7 +839,7 @@
       ~@body)))
 
 (deftest perms-test
-  (with-dash-in-collection [db collection dash]
+  (with-dash-in-collection [_db collection dash]
     (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
@@ -849,9 +849,10 @@
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
                   "that Collection"))
-    (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
-      (is (= false
-             (mi/can-read? dash))))
+    (mt/with-full-data-perms-for-all-users!
+      (binding [api/*current-user-permissions-set* (atom #{})]
+        (is (= false
+               (mi/can-read? dash)))))
 
     (testing "Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?"
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]

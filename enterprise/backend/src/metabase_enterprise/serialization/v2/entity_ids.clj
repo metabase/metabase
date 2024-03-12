@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.models]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -22,11 +21,11 @@
 (defn- entity-id-table-names
   "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding views."
   []
-  (with-open [conn (.getConnection mdb.connection/*application-db*)]
+  (with-open [conn (.getConnection (mdb/app-db))]
     (let [dbmeta (.getMetaData conn)]
       (with-open [tables-rset (.getTables dbmeta nil nil nil (into-array String ["TABLE"]))]
         (let [non-view-tables (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq tables-rset))]
-          (with-open [rset (.getColumns dbmeta nil nil nil (case (mdb.connection/db-type)
+          (with-open [rset (.getColumns dbmeta nil nil nil (case (mdb/db-type)
                                                              :h2                "ENTITY_ID"
                                                              (:mysql :postgres) "entity_id"))]
             (let [entity-id-tables (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))]

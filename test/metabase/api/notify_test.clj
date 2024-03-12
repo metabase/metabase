@@ -8,7 +8,7 @@
    [metabase.http-client :as client]
    [metabase.models.database :as database :refer [Database]]
    [metabase.server.middleware.auth :as mw.auth]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata]
    [metabase.test :as mt]
@@ -26,7 +26,7 @@
                (client/client :post 403 "notify/db/100")))))
     (testing "endpoint requires authentication"
       (mt/with-temporary-setting-values [api-key "test-api-key"] ;; set in :test but not in :dev
-        (is (= (get mw.util/response-forbidden :body)
+        (is (= (get req.util/response-forbidden :body)
                (client/client :post 403 "notify/db/100")))))))
 
 (def ^:private api-headers {:headers {"x-metabase-apikey" "test-api-key"

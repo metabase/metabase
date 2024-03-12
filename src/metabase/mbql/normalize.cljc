@@ -359,7 +359,6 @@
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
-;; TODO - why not make this a multimethod of some sort?
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -373,9 +372,9 @@
                      :source-query    normalize-source-query
                      :source-metadata {::sequence normalize-source-metadata}
                      :joins           {::sequence normalize-join}}
-   ;; we smuggle metadata for datasets and want to preserve their "database" form vs a normalized form so it matches
+   ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
-   :info            {:metadata/dataset-metadata identity
+   :info            {:metadata/model-metadata identity
                      ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
                      :visualization-settings    identity
                      :context                   maybe-normalize-token}

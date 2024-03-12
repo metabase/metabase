@@ -543,7 +543,7 @@
                                                            :type "number"
                                                            :display-name "Id"}}})
                                     :type name)]
-                  (mt/with-actions [{card-id :id} {:dataset true
+                  (mt/with-actions [{card-id :id} {:type :model
                                                    :dataset_query (mt/mbql-query categories)}
                                     {action-id :action-id} {:name                   "Query example"
                                                             :type                   :query

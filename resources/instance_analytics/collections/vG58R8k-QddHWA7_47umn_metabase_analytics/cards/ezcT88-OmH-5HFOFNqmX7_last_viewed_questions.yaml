@@ -186,5 +186,6 @@ serdes/meta:
 - id: ezcT88-OmH-5HFOFNqmX7
   label: last_viewed_questions
   model: Card
+initially_published_at: null
 metabase_version: null
 type: question

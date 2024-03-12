@@ -123,7 +123,6 @@ describe("Reference utils.js", () => {
       const card = {
         name: undefined,
         collection_id: undefined,
-        dataset: undefined,
         display,
         visualization_settings: {},
         dataset_query: {

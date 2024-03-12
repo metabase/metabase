@@ -21,7 +21,13 @@ it("should configure data model settings", () => {
   );
 
   cy.get(".AdminList").findByText("Orders").click();
-  cy.findByDisplayValue("Product ID").parent().find(".Icon-gear").click();
+
+  cy.findByDisplayValue("Product ID")
+    .parent()
+    .parent()
+    .find(".Icon-gear")
+    .click();
+
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Use original value").click();
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -36,7 +42,8 @@ it("should configure data model settings", () => {
     "remapRatingValues",
   );
 
-  cy.findByDisplayValue("Rating").parent().find(".Icon-gear").click();
+  cy.findByDisplayValue("Rating").parent().parent().find(".Icon-gear").click();
+
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Use original value").click();
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -67,13 +74,21 @@ it("should configure data model settings", () => {
   cy.get(".AdminList").findByText("Products").click();
 
   cy.intercept("PUT", `/api/field/${PRODUCTS.EAN}`).as("hideEan");
-  cy.findByDisplayValue("Ean").parent().contains("Everywhere").click();
+
+  cy.findByDisplayValue("Ean").parent().parent().contains("Everywhere").click();
+
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Do not include").click();
   cy.wait("@hideEan");
 
   cy.intercept("PUT", `/api/field/${PRODUCTS.PRICE}`).as("updatePriceField");
-  cy.findByDisplayValue("Price").parent().contains("No semantic type").click();
+
+  cy.findByDisplayValue("Price")
+    .parent()
+    .parent()
+    .contains("No semantic type")
+    .click();
+
   cy.get(".MB-Select")
     .scrollTo("top")
     .within(() => {
@@ -91,7 +106,13 @@ it("should configure data model settings", () => {
   cy.get(".AdminList").findByText("People").click();
 
   cy.intercept("PUT", `/api/field/${PEOPLE.PASSWORD}`).as("hidePassword");
-  cy.findByDisplayValue("Password").parent().contains("Everywhere").click();
+
+  cy.findByDisplayValue("Password")
+    .parent()
+    .parent()
+    .contains("Everywhere")
+    .click();
+
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Do not include").click();
   cy.wait("@hidePassword");

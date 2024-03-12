@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
   getIframeBody,
@@ -7,7 +8,8 @@ import {
   setTokenFeatures,
   visitDashboard,
 } from "e2e/support/helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describeEE("issue 26988", () => {
   beforeEach(() => {
@@ -43,7 +45,7 @@ describeEE("issue 26988", () => {
     });
 
     cy.wait("@previewDashboard");
-    getIframeBody().should("have.css", "font-family", `Lato, sans-serif`);
+    getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
 
     cy.findByLabelText("Playing with appearance options")
       .findByLabelText("Font")
@@ -51,7 +53,7 @@ describeEE("issue 26988", () => {
       .click();
     popover().findByText("Oswald").click();
 
-    getIframeBody().should("have.css", "font-family", `Oswald, sans-serif`);
+    getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
 
     cy.get("@font-control").click();
     popover().findByText("Slabo 27px").click();
@@ -59,7 +61,7 @@ describeEE("issue 26988", () => {
     getIframeBody().should(
       "have.css",
       "font-family",
-      `"Slabo 27px", sans-serif`,
+      '"Slabo 27px", sans-serif',
     );
   });
 });

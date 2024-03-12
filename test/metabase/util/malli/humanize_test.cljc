@@ -177,13 +177,19 @@
       {:stages [{:joins       [{:stages [{:lib/type ["missing required key"
                                                      "invalid dispatch value"
                                                      "missing required key"
+                                                     "invalid dispatch value"
+                                                     "missing required key"
                                                      "invalid dispatch value"]}]
                                 :alias  ["missing required key"
+                                         "missing required key"
                                          "missing required key"]}]
+
+                 :sources ["missing required key"]
                  :source-card ["missing required key"]}]}
 
       mu.humanize/humanize
       {:stages [{:joins       [{:stages [{:lib/type ["missing required key"
                                                      "invalid dispatch value"]}]
                                 :alias  "missing required key"}]
+                 :sources "missing required key"
                  :source-card "missing required key"}]})))

@@ -66,15 +66,15 @@ const dashboardId = handleActions(
   INITIAL_DASHBOARD_STATE.dashboardId,
 );
 
-const isEditing = handleActions(
+const editingDashboard = handleActions(
   {
-    [INITIALIZE]: { next: state => null },
+    [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload }) => (payload ? payload : null),
+      next: (state, { payload }) => payload ?? null,
     },
-    [RESET]: { next: state => null },
+    [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
   },
-  INITIAL_DASHBOARD_STATE.isEditing,
+  INITIAL_DASHBOARD_STATE.editingDashboard,
 );
 
 const loadingControls = handleActions(
@@ -519,7 +519,7 @@ export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
     dashboardId,
-    isEditing,
+    editingDashboard,
     loadingControls,
     dashboards,
     dashcards,

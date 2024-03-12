@@ -5,23 +5,37 @@ import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import {
+  formatColumn,
+  getCurrencySymbol,
+  getDateFormatFromStyle,
+  numberFormatterForOptions,
+} from "metabase/lib/formatting";
+
+import { hasHour } from "metabase/lib/formatting/datetime-utils";
+
+import { currency } from "cljs/metabase.shared.util.currency";
+import MetabaseSettings from "metabase/lib/settings";
+import {
+  isCoordinate,
+  isCurrency,
+  isDate,
+  isDateWithoutTime,
+  isNumber,
+  isPercentage,
+} from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import {
+  findColumnIndexesForColumnSettings,
+  getColumnSettingKey,
+} from "metabase-lib/queries/utils/dataset";
+import { nestedSettings } from "./nested";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
 function getVisualizationRaw(...args) {
   return require("metabase/visualizations").getVisualizationRaw(...args);
 }
-
-import {
-  formatColumn,
-  numberFormatterForOptions,
-  getCurrencySymbol,
-  getDateFormatFromStyle,
-} from "metabase/lib/formatting";
-
-import { hasHour } from "metabase/lib/formatting/datetime-utils";
-
-import { currency } from "cljs/metabase.shared.util.currency";
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map(s => (s.data && s.data.cols) || []));
@@ -44,20 +58,6 @@ export function columnSettings({
     ...def,
   });
 }
-
-import MetabaseSettings from "metabase/lib/settings";
-import {
-  isDate,
-  isNumber,
-  isCoordinate,
-  isCurrency,
-  isDateWithoutTime,
-  isPercentage,
-} from "metabase-lib/types/utils/isa";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import Question from "metabase-lib/Question";
-import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};
@@ -530,37 +530,38 @@ export const buildTableColumnSettings = ({
     // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    isValid: ([{ card, data }]) => {
-      const question = new Question(card /* metadata */);
-      const columns = card.visualization_settings["table.columns"];
-      const enabledColumns = columns.filter(column => column.enabled);
-
-      let query;
-
-      // before we fully migrate from Audit v1
-      // it's possible to have internal query here, which throws
-      try {
-        query = question.query();
-      } catch (e) {
-        console.warn(e);
+    getValue: (series, vizSettings) => {
+      function isValid([{ card, data }], columnSettings) {
+        const columnIndexes = findColumnIndexesForColumnSettings(
+          data.cols,
+          columnSettings.filter(({ enabled }) => enabled),
+        );
+        return columnIndexes.every(columnIndex => columnIndex >= 0);
       }
 
-      return _.all(
-        enabledColumns,
-        columnSetting =>
-          findColumnIndexForColumnSetting(data.cols, columnSetting, query) >= 0,
-      );
+      function getDefault([{ data }]) {
+        return data.cols.map(col => ({
+          name: col.name,
+          key: getColumnKey(col),
+          enabled: getIsColumnVisible(col),
+          fieldRef: col.field_ref,
+        }));
+      }
+
+      function getValue(columnSettings) {
+        return columnSettings.map(setting => ({
+          ...setting,
+          key: getColumnSettingKey(setting),
+        }));
+      }
+
+      const columnSettings = vizSettings["table.columns"];
+      if (!columnSettings || !isValid(series, columnSettings)) {
+        return getDefault(series);
+      } else {
+        return getValue(columnSettings);
+      }
     },
-    getDefault: ([
-      {
-        data: { cols },
-      },
-    ]) =>
-      cols.map(col => ({
-        name: col.name,
-        fieldRef: col.field_ref,
-        enabled: getIsColumnVisible(col),
-      })),
     getProps: (series, settings) => {
       const [
         {

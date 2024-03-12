@@ -4,7 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.util.i18n :refer [deferred-trs]]))
 
 (def ^:private ^:const ^String static-metabase-api-key-header "x-metabase-apikey")
@@ -15,7 +15,7 @@
   (fn [{:keys [metabase-user-id] :as request} respond raise]
     (if metabase-user-id
       (handler request respond raise)
-      (respond mw.util/response-unauthentic))))
+      (respond req.util/response-unauthentic))))
 
 (defn- wrap-static-api-key* [{:keys [headers], :as request}]
   (if-let [api-key (headers static-metabase-api-key-header)]
@@ -64,10 +64,10 @@
           (respond key-not-set-response)
 
           (not static-metabase-api-key)
-          (respond mw.util/response-forbidden)
+          (respond req.util/response-forbidden)
 
           (= (static-api-key) static-metabase-api-key)
           (handler request respond raise)
 
           :else
-          (respond mw.util/response-forbidden))))
+          (respond req.util/response-forbidden))))

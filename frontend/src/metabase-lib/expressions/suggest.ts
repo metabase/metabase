@@ -32,6 +32,7 @@ export type Suggestion = {
   icon: string | null | undefined;
   order: number;
   range?: [number, number];
+  column?: Lib.ColumnMetadata;
 };
 
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
@@ -81,7 +82,12 @@ export function suggest({
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
         if (helpText) {
-          return { suggestions, helpText };
+          const clause = MBQL_CLAUSES[helpText?.name];
+          const isSupported =
+            !clause || database?.hasFeature(clause.requiresFeature);
+          if (isSupported) {
+            return { suggestions, helpText };
+          }
         }
       }
     }
@@ -167,6 +173,7 @@ export function suggest({
             index: targetOffset,
             icon: getColumnIcon(column),
             order: 2,
+            column,
             ...column,
           };
         },

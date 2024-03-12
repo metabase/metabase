@@ -12,13 +12,13 @@
 
 (deftest uploads-disabled-for-sandboxed-user-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (met/with-gtaps-for-user :rasta {:gtaps {:venues {}}}
+    (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
       (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
             (upload-test/upload-example-csv! {:grant-permission? false}))))))
 
 (deftest appends-disabled-for-sandboxed-user-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (met/with-gtaps-for-user :rasta {:gtaps {:venues {}}}
+    (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
       (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
             (upload-test/append-csv-with-defaults! :user-id (mt/user->id :rasta)))))))
 
@@ -37,7 +37,7 @@
                                                          :is_upload true}
                        :model/Card       {card-id :id
                                           :as card}     {:collection_id (:id collection)
-                                                         :dataset       true
+                                                         :type          :model
                                                          :dataset_query {:type     :query
                                                                          :database db-id
                                                                          :query    {:source-table table-id}}}]
@@ -53,7 +53,7 @@
                      (:based_on_upload (get-card))
                      (:based_on_upload (get-collection-item)))))
             (testing "If the user is sandboxed, based_on_upload is nil"
-              (met/with-gtaps-for-user :rasta {:gtaps {:venues {}}}
+              (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
                 (is (= nil
                        (:based_on_upload (get-card))
                        (:based_on_upload (get-collection-item))))))))))))

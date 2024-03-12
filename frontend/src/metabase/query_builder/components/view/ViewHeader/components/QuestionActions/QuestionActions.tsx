@@ -11,8 +11,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import {
-  PLUGIN_MODERATION,
   PLUGIN_MODEL_PERSISTENCE,
+  PLUGIN_MODERATION,
   PLUGIN_QUERY_BUILDER_HEADER,
 } from "metabase/plugins";
 import { softReloadCard } from "metabase/query_builder/actions";
@@ -87,7 +87,8 @@ export const QuestionActions = ({
     ? color("brand")
     : undefined;
 
-  const isDataset = question.isDataset();
+  const isQuestion = question.type() === "question";
+  const isModel = question.type() === "model";
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
@@ -97,7 +98,7 @@ export const QuestionActions = ({
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
     canWrite &&
     isSaved &&
-    isDataset &&
+    isModel &&
     checkDatabaseCanPersistDatasets(question.database());
 
   const handleEditQuery = useCallback(() => {
@@ -124,7 +125,7 @@ export const QuestionActions = ({
 
   if (
     isMetabotEnabled &&
-    isDataset &&
+    isModel &&
     database &&
     canUseMetabotOnDatabase(database)
   ) {
@@ -143,7 +144,7 @@ export const QuestionActions = ({
     ),
   );
 
-  if (canWrite && isDataset) {
+  if (canWrite && isModel) {
     extraButtons.push(
       {
         title: t`Edit query definition`,
@@ -172,7 +173,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (!isDataset) {
+  if (isQuestion) {
     extraButtons.push({
       title: t`Add to dashboard`,
       icon: "add_to_dash",
@@ -188,21 +189,6 @@ export const QuestionActions = ({
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
     });
-    if (!isDataset) {
-      extraButtons.push({
-        title: t`Turn into a model`,
-        icon: "model",
-        action: handleTurnToModel,
-        testId: TURN_INTO_DATASET_TESTID,
-      });
-    }
-    if (isDataset) {
-      extraButtons.push({
-        title: t`Turn back to saved question`,
-        icon: "insight",
-        action: turnDatasetIntoQuestion,
-      });
-    }
   }
 
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -216,6 +202,26 @@ export const QuestionActions = ({
   }
 
   if (canWrite) {
+    if (isQuestion) {
+      extraButtons.push({
+        title: t`Turn into a model`,
+        icon: "model",
+        action: handleTurnToModel,
+        testId: TURN_INTO_DATASET_TESTID,
+      });
+    }
+    if (isModel) {
+      extraButtons.push({
+        title: t`Turn back to saved question`,
+        icon: "insight",
+        action: turnDatasetIntoQuestion,
+      });
+    }
+  }
+
+  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
+
+  if (canWrite) {
     extraButtons.push({
       title: t`Archive`,
       icon: "archive",
@@ -223,8 +229,6 @@ export const QuestionActions = ({
       testId: ARCHIVE_TESTID,
     });
   }
-
-  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

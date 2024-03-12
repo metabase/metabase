@@ -118,7 +118,7 @@ export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
     return false;
   }
 
-  const isModel = card.dataset || originalCard.dataset;
+  const isModel = card.type === "model" || originalCard.type === "model";
   const isSameCard = card.id === originalCard.id;
   const { query } = card.dataset_query as StructuredDatasetQuery;
   const isSelfReferencing =
@@ -144,7 +144,7 @@ export function checkCanRefreshModelCache(
     return false;
   }
 
-  if (refreshInfo.card_dataset === false) {
+  if (refreshInfo.card_type === "question") {
     return false;
   }
 

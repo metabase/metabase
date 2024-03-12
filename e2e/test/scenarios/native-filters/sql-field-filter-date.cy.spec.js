@@ -52,11 +52,6 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
       FieldFilter.setWidgetType(subType);
 
-      // When we run the first iteration, there will be no default filter value set
-      if (index !== 0) {
-        FieldFilter.clearDefaultFilterValue();
-      }
-
       dateFilterSelector({
         filterType: subType,
         filterValue: value,
@@ -74,7 +69,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
 function openDateFilterPicker(isFilterRequired) {
   const selector = isFilterRequired
-    ? cy.findByText("Select a default value…")
+    ? cy.findByPlaceholderText("Select a default value…")
     : cy.get("fieldset");
 
   return selector.click();

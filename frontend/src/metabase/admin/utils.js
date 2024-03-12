@@ -1,17 +1,17 @@
 import { connect } from "react-redux";
 import { routerActions, replace } from "react-router-redux";
-import { UserAuthWrapper } from "redux-auth-wrapper";
+import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getUser } from "metabase/selectors/user";
 
 export const createAdminRouteGuard = (routeKey, Component) => {
-  const Wrapper = UserAuthWrapper({
-    predicate: paths => paths?.find(path => path.key === routeKey) != null,
-    failureRedirectPath: "/unauthorized",
-    authSelector: getAdminPaths,
-    allowRedirectBack: false,
+  const Wrapper = connectedReduxRedirect({
     wrapperDisplayName: `CanAccess(${routeKey})`,
+    redirectPath: "/unauthorized",
+    allowRedirectBack: false,
+    authenticatedSelector: state =>
+      getAdminPaths(state)?.find(path => path.key === routeKey) != null,
     redirectAction: routerActions.replace,
   });
 

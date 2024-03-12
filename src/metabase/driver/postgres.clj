@@ -8,7 +8,7 @@
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
@@ -500,7 +500,8 @@
       (pg-conversion identifier :numeric)
 
       (lib.field/json-field? stored-field)
-      (if (::sql.qp/forced-alias opts)
+      (if (or (::sql.qp/forced-alias opts)
+              (= (::add/source-table opts) ::add/source))
         (keyword (::add/source-alias opts))
         (walk/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
@@ -719,7 +720,7 @@
                 (merge disable-ssl-params props))
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
-                (mdb.spec/spec :postgres it)
+                (mdb/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
@@ -794,6 +795,15 @@
 (defmethod driver/create-auto-pk-with-append-csv? :postgres
   [driver]
   (= driver :postgres))
+
+(defmethod sql-jdbc.sync/alter-columns-sql :postgres
+  [driver table-name column-definitions]
+  (first (sql/format {:alter-table  (keyword table-name)
+                      :alter-column (map (fn [[column-name type-and-constraints]]
+                                           (vec (cons column-name (cons :type type-and-constraints))))
+                                         column-definitions)}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]

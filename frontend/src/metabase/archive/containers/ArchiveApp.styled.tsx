@@ -1,17 +1,31 @@
 import styled from "@emotion/styled";
 
+import Card from "metabase/components/Card";
+
 export const ArchiveRoot = styled.div`
-  margin: 0 4rem;
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 `;
 
 export const ArchiveHeader = styled.div`
   margin-top: 1rem;
-  padding: 1rem 0;
+  padding: 1rem 4rem;
 `;
 
 export const ArchiveBody = styled.div`
-  width: 66.66%;
-  padding-bottom: 4rem;
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+`;
+
+export const VirtualizedListWrapper = styled.div`
+  padding: 0 4rem 4rem 4rem;
+`;
+
+export const CardWithMaxWidth = styled(Card)`
+  max-width: 40rem;
 `;
 
 export const ArchiveBarContent = styled.div`

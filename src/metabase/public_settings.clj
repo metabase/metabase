@@ -40,7 +40,7 @@
   []
   (if *compile-files*
     "Metabase"
-    (binding [setting/*disable-cache* true]
+    (binding [config/*disable-setting-cache* true]
       (application-name))))
 
 (defn- google-auth-enabled? []
@@ -112,23 +112,6 @@
   :type       :integer
   :visibility :public
   :audit      :getter)
-
-(defsetting dismissed-custom-dashboard-toast
-  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
-  :user-local :only
-  :visibility :authenticated
-  :type       :boolean
-  :default    false
-  :audit      :never)
-
-(defsetting dismissed-browse-models-banner
-  (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
-  :user-local :only
-  :export?    false
-  :visibility :authenticated
-  :type       :boolean
-  :default    false
-  :audit      :never)
 
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
@@ -684,7 +667,8 @@
                       :sso_jwt                        (premium-features/enable-sso-jwt?)
                       :sso_ldap                       (premium-features/enable-sso-ldap?)
                       :sso_saml                       (premium-features/enable-sso-saml?)
-                      :whitelabel                     (premium-features/enable-whitelabeling?)})
+                      :whitelabel                     (premium-features/enable-whitelabeling?)
+                      :llm_autodescription            (premium-features/enable-llm-autodescription?)})
   :doc        false)
 
 (defsetting redirect-all-requests-to-https

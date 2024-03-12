@@ -19,8 +19,8 @@ describe("static visualizations", { tags: "@external" }, () => {
     setupSMTP();
   });
 
-  it(`row chart`, () => {
-    const dashboardName = `Row charts dashboard`;
+  it("row chart", () => {
+    const dashboardName = "Row charts dashboard";
     cy.createDashboardWithQuestions({
       dashboardName,
       questions: [createSingleSeriesRowChart()],
@@ -38,7 +38,7 @@ describe("static visualizations", { tags: "@external" }, () => {
 
 function createSingleSeriesRowChart() {
   return {
-    name: `Single series row chart`,
+    name: "Single series row chart",
     query: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],

@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 
-import type * as Lib from "metabase-lib";
+import type { DragEndEvent } from "metabase/core/components/Sortable";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -9,7 +9,7 @@ import type {
 import { ChartSettingOrderedItems } from "../../ChartSettingOrderedItems";
 import type { EditWidgetData } from "../types";
 
-import type { ColumnItem, DragColumnProps } from "./types";
+import type { ColumnItem } from "./types";
 import {
   getColumnItems,
   getEditWidgetData,
@@ -18,8 +18,6 @@ import {
 } from "./utils";
 
 interface TableColumnPanelProps {
-  query: Lib.Query;
-  stageIndex: number;
   columns: DatasetColumn[];
   columnSettings: TableColumnOrderSetting[];
   getColumnName: (column: DatasetColumn) => string;
@@ -28,8 +26,6 @@ interface TableColumnPanelProps {
 }
 
 export const TableColumnPanel = ({
-  query,
-  stageIndex,
   columns,
   columnSettings,
   getColumnName,
@@ -37,40 +33,60 @@ export const TableColumnPanel = ({
   onShowWidget,
 }: TableColumnPanelProps) => {
   const columnItems = useMemo(() => {
-    return getColumnItems(query, stageIndex, columns, columnSettings);
-  }, [query, stageIndex, columns, columnSettings]);
+    return getColumnItems(columns, columnSettings);
+  }, [columns, columnSettings]);
 
-  const getItemName = (columnItem: ColumnItem) => {
-    return getColumnName(columnItem.column);
-  };
+  const getItemName = useCallback(
+    (columnItem: ColumnItem) => {
+      return getColumnName(columnItem.column);
+    },
+    [getColumnName],
+  );
 
-  const handleEnableColumn = (columnItem: ColumnItem) => {
-    onChange(toggleColumnInSettings(columnItem, columnSettings, true));
-  };
+  const handleEnableColumn = useCallback(
+    (columnItem: ColumnItem) => {
+      onChange(toggleColumnInSettings(columnItem, columnItems, true));
+    },
+    [onChange, columnItems],
+  );
 
-  const handleDisableColumn = (columnItem: ColumnItem) => {
-    onChange(toggleColumnInSettings(columnItem, columnSettings, false));
-  };
+  const handleDisableColumn = useCallback(
+    (columnItem: ColumnItem) => {
+      onChange(toggleColumnInSettings(columnItem, columnItems, false));
+    },
+    [onChange, columnItems],
+  );
 
-  const handleDragColumn = (props: DragColumnProps) => {
-    onChange(moveColumnInSettings(columnItems, columnSettings, props));
-  };
+  const handleDragColumn = useCallback(
+    ({ id, newIndex }: DragEndEvent) => {
+      const oldIndex = columnItems.findIndex(
+        columnItem => columnItem.columnSetting.key === id,
+      );
 
-  const handleEditColumn = (
-    columnItem: ColumnItem,
-    targetElement: HTMLElement,
-  ) => {
-    onShowWidget(getEditWidgetData(columnItem), targetElement);
-  };
+      onChange(moveColumnInSettings(columnItems, oldIndex, newIndex));
+    },
+    [columnItems, onChange],
+  );
+
+  const handleEditColumn = useCallback(
+    (columnItem: ColumnItem, targetElement: HTMLElement) => {
+      onShowWidget(getEditWidgetData(columnItem), targetElement);
+    },
+    [onShowWidget],
+  );
+
+  const getId = useCallback((columnItem: ColumnItem) => {
+    return columnItem.columnSetting.key;
+  }, []);
 
   return (
     <div role="list" data-testid="chart-settings-table-columns">
       {columns.length > 0 && (
         <div role="group" data-testid="visible-columns">
           <ChartSettingOrderedItems
+            getId={getId}
             items={columnItems}
             getItemName={getItemName}
-            distance={5}
             onEnable={handleEnableColumn}
             onRemove={handleDisableColumn}
             onEdit={handleEditColumn}

@@ -120,7 +120,7 @@ export type ParameterMappingOption =
   | NativeParameterMappingOption;
 
 export function getParameterMappingOptions(
-  question: Question,
+  question: Question | undefined,
   parameter: Parameter | null | undefined = null,
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
@@ -144,15 +144,20 @@ export function getParameterMappingOptions(
     return actionParams || [];
   }
 
-  if (!card.dataset_query || (dashcard && isVirtualDashCard(dashcard))) {
+  if (
+    !question ||
+    !card.dataset_query ||
+    (dashcard && isVirtualDashCard(dashcard))
+  ) {
     return [];
   }
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  if (!isNative || question.isDataset()) {
+  const isModel = question.type() === "model";
+  if (!isNative || isModel) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
-    const query = question.isDataset()
+    const query = isModel
       ? question.composeDataset().query()
       : question.query();
     const stageIndex = -1;

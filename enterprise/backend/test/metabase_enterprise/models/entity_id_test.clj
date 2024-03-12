@@ -43,6 +43,7 @@
     :model/CardBookmark
     :model/CollectionBookmark
     :model/DashboardBookmark
+    :model/DataPermissions
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory

@@ -37,7 +37,7 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
 
   cy.findByText("Save").click();
 
-  modal().within(() => {
+  cy.findByTestId("save-question-modal").within(() => {
     cy.findByText(/Replace original question/i).should("not.exist");
     if (name) {
       cy.findByLabelText("Name").clear().type(name);

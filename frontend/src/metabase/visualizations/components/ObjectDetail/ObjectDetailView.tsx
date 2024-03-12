@@ -8,9 +8,9 @@ import {
   useActionListQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
+import { NotFound } from "metabase/components/ErrorPages";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
-import { NotFound } from "metabase/containers/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
@@ -247,7 +247,7 @@ export function ObjectDetailView({
   const areImplicitActionsEnabled =
     question &&
     question.canWrite() &&
-    question.isDataset() &&
+    question.type() === "model" &&
     question.supportsImplicitActions();
 
   const { data: actions = [] } = useActionListQuery({
@@ -356,7 +356,6 @@ export function ObjectDetailView({
               tableForeignKeys={tableForeignKeys}
               tableForeignKeyReferences={tableForeignKeyReferences}
               followForeignKey={onFollowForeignKey}
-              question={question}
             />
           </ObjectDetailWrapperDiv>
         )}

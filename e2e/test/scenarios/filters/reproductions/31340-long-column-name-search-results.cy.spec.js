@@ -7,7 +7,7 @@ const { PEOPLE_ID } = SAMPLE_DATABASE;
 const LONG_COLUMN_NAME =
   "Some very very very very long column name that should have a line break";
 
-describe("issue 31340", function () {
+describe("issue 31340", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

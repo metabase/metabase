@@ -46,8 +46,10 @@ export function question(
     query = "?" + query;
   }
 
-  const isModel = card?.dataset || card?.model === "dataset";
-  let path = isModel ? "model" : "question";
+  const isModel = card?.type === "model" || card?.model === "dataset";
+  const fallbackPath = isModel ? "model" : "question";
+  let path: string = card?.type ?? fallbackPath;
+
   if (!card || !card.id) {
     return `/${path}${query}${hash}`;
   }
@@ -103,13 +105,13 @@ export function newQuestion({
     query: objectId ? { objectId } : undefined,
   });
 
-  const entity = question.isDataset() ? "model" : "question";
+  const type = question.type();
 
   if (mode) {
-    return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
-  } else {
-    return url;
+    return url.replace(/^\/(question|model)/, `/${type}\/${mode}`);
   }
+
+  return url;
 }
 
 export function publicQuestion({
