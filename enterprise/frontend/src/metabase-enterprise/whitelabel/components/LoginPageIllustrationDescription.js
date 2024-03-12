@@ -1,32 +1,25 @@
 import { t } from "ttag";
 
-import { useToggle } from "metabase/hooks/use-toggle";
-import { Flex, Icon, Popover, Stack, Text } from "metabase/ui";
+import { Flex, Icon, Stack, Text, HoverCard } from "metabase/ui";
 
 export function LoginPageIllustrationDescription() {
-  const [opened, { turnOn, turnOff }] = useToggle(false);
   return (
     <Text fw="bold" transform="none">
       <Flex align="center">
         {t`Login page`}
-        <Popover key="popover" position="top-start" opened={opened}>
-          <Popover.Target>
-            <Icon
-              aria-hidden
-              name="info"
-              onMouseEnter={turnOn}
-              onMouseLeave={turnOff}
-            />
-          </Popover.Target>
-          <Popover.Dropdown>
+        <HoverCard position="top-start">
+          <HoverCard.Target>
+            <Icon aria-hidden name="info" />
+          </HoverCard.Target>
+          <HoverCard.Dropdown>
             <Stack p="md" spacing="sm" maw={420}>
               <Text size="sm">
                 {t`For best results, choose an image that is horizontally oriented and upload it as an SVG file. Other accepted formats are JPG and PNG.`}
               </Text>
               <Text size="sm">{t`Your file should not be larger than 2MB.`}</Text>
             </Stack>
-          </Popover.Dropdown>
-        </Popover>
+          </HoverCard.Dropdown>
+        </HoverCard>
       </Flex>
     </Text>
   );
