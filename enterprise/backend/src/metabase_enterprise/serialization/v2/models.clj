@@ -48,6 +48,7 @@
    "ConnectionImpersonation"
    "DashboardBookmark"
    "DataPermissions"
+   "FieldUsage"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"
