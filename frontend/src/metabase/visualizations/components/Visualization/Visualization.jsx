@@ -297,17 +297,14 @@ class Visualization extends PureComponent {
 
     // needs to be delayed so we don't clear it when switching from one drill through to another
     setTimeout(() => {
-      this.setState({ clicked });
+      this.setState({
+        clicked: { ...clicked, settings: this.state.computedSettings },
+      });
     }, 100);
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({
-    nextCard,
-    seriesIndex,
-    objectId,
-    drillContext,
-  }) => {
+  handleOnChangeCardAndRun = ({ nextCard, seriesIndex, objectId }) => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
@@ -317,7 +314,7 @@ class Visualization extends PureComponent {
       nextCard,
       previousCard,
       objectId,
-      drillContext,
+      clicked,
     });
   };
 

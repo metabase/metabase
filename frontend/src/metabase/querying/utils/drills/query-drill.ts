@@ -1,12 +1,14 @@
 import type { ClickAction } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { DRILLS } from "./constants";
 
 export function queryDrill(
   question: Question,
   clicked: Lib.ClickObject,
+  settings: VisualizationSettings,
 ): ClickAction[] {
   const query = question.query();
   const stageIndex = -1;
@@ -34,6 +36,7 @@ export function queryDrill(
       drill,
       drillInfo,
       clicked,
+      settings,
       applyDrill,
     });
   });

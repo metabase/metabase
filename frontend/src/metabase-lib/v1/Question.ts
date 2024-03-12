@@ -468,14 +468,14 @@ class Question {
   syncColumnsAndSettings(
     queryResults?: Dataset,
     prevQueryResults?: Dataset,
-    drillContext?: Lib.DrillThruContext,
+    clicked?: Lib.ClickObject,
   ) {
     const settings = this.settings();
     const newSettings = Lib.syncColumnSettings(
       settings,
       queryResults,
       prevQueryResults,
-      drillContext,
+      clicked,
     );
     return settings !== newSettings ? this.setSettings(newSettings) : this;
   }

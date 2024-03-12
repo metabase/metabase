@@ -439,7 +439,6 @@ export type DrillThruType =
   | "drill-thru/zoom-in.timeseries";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
-export type BaseDrillThruContext<Type extends DrillThruType> = { type: Type };
 
 export type ColumnExtraction = {
   key: ColumnExtractionKey;
@@ -455,12 +454,6 @@ export type ColumnExtractDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/column-extract"> & {
     displayName: string;
     extractions: ColumnExtraction[];
-  };
-
-export type ColumnExtractDrillThruContext =
-  BaseDrillThruContext<"drill-thru/column-extract"> & {
-    column: DatasetColumn;
-    settings: VisualizationSettings;
   };
 
 export type QuickFilterDrillThruOperator =
@@ -542,8 +535,6 @@ export type DrillThruDisplayInfo =
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
 
-export type DrillThruContext = ColumnExtractDrillThruContext;
-
 export type FilterDrillDetails = {
   query: Query;
   stageIndex: number;
@@ -569,7 +560,7 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: Element;
   seriesIndex?: number;
-  settings?: Record<string, unknown>;
+  settings: VisualizationSettings;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];

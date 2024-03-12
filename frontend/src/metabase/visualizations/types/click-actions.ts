@@ -150,6 +150,7 @@ export type Drill<
   drill: Lib.DrillThru;
   drillInfo: T;
   clicked: Lib.ClickObject;
+  settings: VisualizationSettings;
   applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
 }) => ClickAction[];
 

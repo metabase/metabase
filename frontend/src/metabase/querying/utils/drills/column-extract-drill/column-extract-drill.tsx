@@ -10,6 +10,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   drill,
   drillInfo,
   clicked,
+  settings,
   applyDrill,
 }) => {
   const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
@@ -19,10 +20,8 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
         title: extraction.displayName,
         section: "extract-popover",
         buttonType: "horizontal",
-        question: () => applyDrill(drill, extraction.key),
-        extra: () => ({
-          drillContext: { type: drillInfo.type, column: clicked.column },
-        }),
+        question: () => applyDrill(drill, extraction.key).setSettings(settings),
+        extra: () => ({ clicked }),
       }),
     );
 

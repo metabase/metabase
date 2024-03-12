@@ -1,4 +1,4 @@
-import type { DrillThruContext } from "metabase-lib";
+import type { ClickObject } from "metabase-lib";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
@@ -10,17 +10,17 @@ export function syncColumnSettings(
   settings: VisualizationSettings,
   queryResults?: Dataset,
   prevQueryResults?: Dataset,
-  drillContext?: DrillThruContext,
+  clicked?: ClickObject,
 ): VisualizationSettings {
   let newSettings = settings;
 
   if (queryResults && !queryResults.error) {
     newSettings = syncTableColumnSettings(newSettings, queryResults);
 
-    if (drillContext) {
-      newSettings = syncTableColumnSettingsAfterDrill(
+    if (clicked) {
+      newSettings = syncTableColumnSettingsAfterClickAction(
         newSettings,
-        drillContext,
+        clicked,
       );
     }
 
@@ -40,9 +40,15 @@ function syncTableColumnSettings(
   settings: VisualizationSettings,
   { data }: Dataset,
 ): VisualizationSettings {
+  // "table.columns" receive a value only if there are custom settings
+  // e.g. some columns are hidden. If it's empty, it means everything is visible
+  const columnSettings = settings["table.columns"] ?? [];
+  if (columnSettings.length === 0) {
+    return settings;
+  }
+
   // remove columns used for remapping only
   const cols = data.cols.filter(col => col.remapped_from == null);
-  const columnSettings = settings["table.columns"] ?? [];
   const columnIndexes = findColumnIndexesForColumnSettings(
     cols,
     columnSettings,
@@ -77,10 +83,14 @@ function syncTableColumnSettings(
   };
 }
 
-function syncTableColumnSettingsAfterDrill(
+function syncTableColumnSettingsAfterClickAction(
   settings: VisualizationSettings,
-  { column }: DrillThruContext,
+  { column }: ClickObject,
 ): VisualizationSettings {
+  if (!column) {
+    return settings;
+  }
+
   const columnSettings = settings["table.columns"] ?? [];
   const [columnSettingIndex] = findColumnSettingIndexesForColumns(
     [column],

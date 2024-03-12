@@ -113,7 +113,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (
   nextCard,
-  { shouldUpdateUrl = true, drillContext },
+  { shouldUpdateUrl = true, clicked },
 ) => {
   return async (dispatch, getState) => {
     // clone
@@ -130,7 +130,7 @@ export const setCardAndRun = (
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl, drillContext }));
+    dispatch(runQuestionQuery({ shouldUpdateUrl, clicked }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -150,7 +150,7 @@ export const setCardAndRun = (
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, objectId, drillContext }) => {
+  ({ nextCard, previousCard, objectId, clicked }) => {
     return async (dispatch, getState) => {
       if (previousCard === nextCard) {
         // Do not reload questions with breakouts when clicked on a legend item
@@ -158,7 +158,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
           setCardAndRun(await loadCard(nextCard.id, { dispatch, getState }), {
-            drillContext,
+            clicked,
           }),
         );
       } else {
@@ -174,9 +174,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
           }
           // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(
-            setCardAndRun({ ...card, type: "question" }, { drillContext }),
-          );
+          dispatch(setCardAndRun({ ...card, type: "question" }, { clicked }));
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));
