@@ -6,6 +6,7 @@
    [metabase.events :as events]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -66,7 +67,7 @@
               (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))
 
 (deftest dashboard-read-ee-test
-  (when config/ee-available?
+  (when (premium-features/log-enabled?)
     (mt/with-temp [:model/User          user      {}
                    :model/Dashboard     dashboard {:name "Test Dashboard"}
                    :model/Card          card      {:name "Dashboard Test Card"}
