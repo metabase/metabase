@@ -1,8 +1,4 @@
-import type {
-  RegisteredSeriesOption,
-  EChartsOption,
-  SeriesOption,
-} from "echarts";
+import type { EChartsOption, SeriesOption } from "echarts";
 import type { DatasetOption } from "echarts/types/dist/shared";
 import type { LabelLayoutOptionCallback } from "echarts/types/src/util/types";
 import type {
@@ -36,11 +32,6 @@ import { getTimelineEventsSeries } from "../../timeline-events/option";
 import { buildAxes } from "../../option/axis";
 import { getSharedEChartsOptions } from "../../option";
 import { isCategoryAxis } from "../../model/guards";
-
-type WaterfallSeriesOptions =
-  | RegisteredSeriesOption["line"]
-  | RegisteredSeriesOption["bar"]
-  | RegisteredSeriesOption["custom"];
 
 const getLabelLayoutFn = (
   dataset: ChartDataset,
@@ -104,7 +95,7 @@ export const buildEChartsWaterfallSeries = (
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
-): WaterfallSeriesOptions[] => {
+) => {
   const { seriesModels, transformedDataset: dataset } = chartModel;
   const [seriesModel] = seriesModels;
   const barWidth = computeWaterfallBarWidth(
@@ -130,7 +121,7 @@ export const buildEChartsWaterfallSeries = (
     ),
   });
 
-  const series: WaterfallSeriesOptions[] = [
+  const series: SeriesOption[] = [
     {
       id: seriesModel.dataKey,
       type: "custom",
@@ -172,13 +163,10 @@ export const buildEChartsWaterfallSeries = (
     },
     {
       id: WATERFALL_LABELS_SERIES_ID,
-      type: "line",
+      type: "scatter",
       z: CHART_STYLE.seriesLabels.zIndex,
       silent: true,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_VALUE_KEY, WATERFALL_END_KEY],
-      itemStyle: {
-        color: "transparent",
-      },
       symbolSize: 0,
       labelLayout: getLabelLayoutFn(dataset, chartMeasurements, settings),
       encode: {
@@ -236,9 +224,10 @@ export const getWaterfallChartOption = (
     renderingContext,
   );
 
-  const seriesOption = [dataSeriesOptions, timelineEventsSeries].flatMap(
-    option => option ?? [],
-  );
+  const seriesOption: SeriesOption[] = [
+    dataSeriesOptions,
+    timelineEventsSeries,
+  ].flatMap(option => option ?? []);
 
   const echartsDataset = [{ source: chartModel.transformedDataset }];
 
