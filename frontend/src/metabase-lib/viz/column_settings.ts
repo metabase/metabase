@@ -107,9 +107,9 @@ function syncTableColumnSettingsAfterClickAction(
   return {
     ...settings,
     "table.columns": [
-      ...columnSettings.slice(0, columnSettingIndex + 1), // before the selected column
+      ...columnSettings.slice(0, columnSettingIndex + 1), // until selected column
       ...columnSettings.slice(-addedColumnCount), // new columns
-      ...columnSettings.slice(columnSettingIndex + 1, -addedColumnCount), // after the selected column
+      ...columnSettings.slice(columnSettingIndex + 1, -addedColumnCount), // after selected column until new columns
     ],
   };
 }
