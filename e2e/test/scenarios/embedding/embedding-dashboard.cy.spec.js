@@ -349,7 +349,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.location().then(location =>
         cy.visit(`${location.origin}${location.pathname}?id=1&id=3`),
       );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
       cy.findByTestId("scalar-value").contains("2");
     });
   });

@@ -146,11 +146,15 @@
   opacity: 0.01;
 }
 
-:global(.Dash--editing) .DashCard :global(.react-resizable-handle:hover::after) {
+:global(.Dash--editing)
+  .DashCard
+  :global(.react-resizable-handle:hover::after) {
   border-color: var(--color-border);
 }
 
-:global(.Dash--editing) .DashCard:hover :global(.react-resizable-handle::after) {
+:global(.Dash--editing)
+  .DashCard:hover
+  :global(.react-resizable-handle::after) {
   opacity: 1;
 }
 

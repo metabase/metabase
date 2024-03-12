@@ -5,10 +5,10 @@ import { useTimeout } from "react-use";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { useSelector } from "metabase/lib/redux";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import CS from "metabase/css/core";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { useSelector } from "metabase/lib/redux";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
@@ -33,13 +33,12 @@ export default function QueryVisualization(props) {
   const [warnings, setWarnings] = useState([]);
 
   return (
-    <div className={cx(
-      className,
-      CS.relative,
-      CS.stackingContext,
-      CS.fullHeight,
-    )}>
-      {isRunning ? <VisualizationRunningState className={cx(CS.spread, CS.z2)} /> : null}
+    <div
+      className={cx(className, CS.relative, CS.stackingContext, CS.fullHeight)}
+    >
+      {isRunning ? (
+        <VisualizationRunningState className={cx(CS.spread, CS.z2)} />
+      ) : null}
       <VisualizationDirtyState
         {...props}
         hidden={!isResultDirty || isRunning || isNativeEditorOpen}
