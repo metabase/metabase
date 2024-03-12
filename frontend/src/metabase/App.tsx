@@ -106,11 +106,7 @@ function App({
           {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}
-            <AppContent
-              ref={setViewportElement}
-              // rtl is not rolled out for this part of the app yet
-              dir="ltr"
-            >
+            <AppContent ref={setViewportElement} dir="ltr">
               <ContentViewportContext.Provider value={viewportElement ?? null}>
                 {errorPage ? getErrorComponent(errorPage) : children}
               </ContentViewportContext.Provider>
