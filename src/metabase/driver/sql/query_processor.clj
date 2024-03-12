@@ -857,7 +857,7 @@
     ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
-    ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
+    ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]] (#40024)
     [ag-type & _]
     (->honeysql driver (h2x/identifier :field-alias ag-type))))
 
@@ -911,7 +911,7 @@
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO -- this name is a bit of a misnomer since it also handles `:aggregation` and `:expression` clauses.
+;; TODO -- this name is a bit of a misnomer since it also handles `:aggregation` and `:expression` clauses. (#40018)
 (mu/defn field-clause->alias :- some?
   "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
   `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
@@ -1055,7 +1055,7 @@
   If matching case insensitively, `pattern` is lowercased earlier in [[generate-pattern]]."
   [field pattern {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   ;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in
-  ;; LIKE clauses? That's what we're doing with Druid... (Cam)
+  ;; LIKE clauses? That's what we're doing with Druid... (Cam) (#40025)
   ;;
   ;; TODO - Postgres supports `ILIKE`. Does that make a big enough difference performance-wise that we should do a
   ;; custom implementation? (Cam)
@@ -1340,7 +1340,7 @@
   ([driver honeysql-form]
    (format-honeysql nil (quote-style driver) honeysql-form))
 
-  ;; TODO -- get rid of this unused param without breaking things.
+  ;; TODO -- get rid of this unused param without breaking things. (#40018)
   ([_version dialect honeysql-form]
    (try
      (format-honeysql-2 dialect honeysql-form)
@@ -1375,7 +1375,7 @@
   "Add `SELECT *` to `honeysql-form` if no `:select` clause is present."
   [driver {:keys [select select-top], :as honeysql-form}]
   ;; TODO - this is hacky -- we should ideally never need to add `SELECT *`, because we should know what fields to
-  ;; expect from the source query, and middleware should be handling that for us
+  ;; expect from the source query, and middleware should be handling that for us (#40024)
   (cond
     (and (empty? select)
          (empty? select-top))
