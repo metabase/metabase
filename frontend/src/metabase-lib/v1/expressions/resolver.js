@@ -69,12 +69,19 @@ const isCompatible = (a, b) => {
 };
 
 /**
- *
- * @param {import("./pratt").Expr} expression
- * @param {string} type
- * @param {?(kind: string, name: string, node: import("./pratt").Node) => void} fn
+ * @param {{
+ *   expression: import("./pratt").Expr
+ *   type?: string
+ *   fn?: ?(kind: string, name: string, node: import("./pratt").Node) => void
+ *   database?: Database | null
+ * }} options
  */
-export function resolve(expression, type = "expression", fn = undefined) {
+export function resolve({
+  expression,
+  type = "expression",
+  fn = undefined,
+  database = undefined,
+}) {
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
@@ -127,13 +134,13 @@ export function resolve(expression, type = "expression", fn = undefined) {
       }
 
       const resolvedPairs = pairs.map(([tst, val]) => [
-        resolve(tst, "boolean", fn),
-        resolve(val, type, fn),
+        resolve({ expression: tst, type: "boolean", fn, database }),
+        resolve({ expression: val, type, fn, database }),
       ]);
 
       if (options && "default" in options) {
         const resolvedOptions = {
-          default: resolve(options.default, type, fn),
+          default: resolve({ expression: options.default, type, fn, database }),
         };
         return [op, resolvedPairs, resolvedOptions];
       }
@@ -144,7 +151,9 @@ export function resolve(expression, type = "expression", fn = undefined) {
     if (operandType) {
       return [
         op,
-        ...operands.map(operand => resolve(operand, operandType, fn)),
+        ...operands.map(operand =>
+          resolve({ expression: operand, type: operandType, fn, database }),
+        ),
       ];
     }
 
@@ -152,6 +161,15 @@ export function resolve(expression, type = "expression", fn = undefined) {
     if (!clause) {
       throw new ResolverError(t`Unknown function ${op}`, expression.node);
     }
+
+    if (
+      clause.requiresFeature &&
+      database &&
+      !database.hasFeature(clause.requiresFeature)
+    ) {
+      throw new ResolverError(t`Unsupported function ${op}`, expression.node);
+    }
+
     const { displayName, args, multiple, hasOptions, validator } = clause;
     if (!isCompatible(type, clause.type)) {
       throw new ResolverError(
@@ -189,7 +207,7 @@ export function resolve(expression, type = "expression", fn = undefined) {
         // as-is, optional object for e.g. ends-with, time-interval, etc
         return operand;
       }
-      return resolve(operand, args[i], fn);
+      return resolve({ expression: operand, type: args[i], fn, database });
     });
     return [op, ...resolvedOperands];
   } else if (
