@@ -41,3 +41,13 @@ export function shouldUseListPicker(parameter: Parameter): boolean {
       parameter.values_query_type === "search")
   );
 }
+
+export function getListParameterStaticValues(
+  parameter: Parameter,
+): string[] | null {
+  if (parameter.values_source_type === "static-list") {
+    return parameter.values_source_config?.values as string[];
+  }
+
+  return null;
+}

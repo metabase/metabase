@@ -1,6 +1,3 @@
-import { useMemo } from "react";
-import _ from "underscore";
-
 import { Select, Loader } from "metabase/ui";
 
 import { PickerIcon } from "./ParameterValuePicker.styled";
@@ -12,7 +9,6 @@ interface ListPickerProps {
   onChange: (value: string) => void;
   onClear: () => void;
   onSearchChange?: (query: string) => void;
-  searchDebounceMs?: number;
   onDropdownOpen?: () => void;
   enableSearch: boolean;
   isLoading: boolean;
@@ -33,22 +29,12 @@ export function ListPicker(props: ListPickerProps) {
     placeholder,
     noResultsText,
     isLoading,
-    searchDebounceMs = 250,
   } = props;
   const icon = isLoading ? (
     <Loader size="xs" />
   ) : value ? (
     <PickerIcon name="close" onClick={onClear} />
   ) : null;
-
-  const onSearchDebounced = useMemo(() => {
-    if (onSearchChange) {
-      return _.debounce((query: string) => {
-        onSearchChange(query);
-      }, searchDebounceMs);
-    }
-    return undefined;
-  }, [onSearchChange, searchDebounceMs]);
 
   return (
     <Select
@@ -60,7 +46,7 @@ export function ListPicker(props: ListPickerProps) {
       searchable={enableSearch}
       onKeyUp={handleInputKeyup}
       nothingFound={noResultsText}
-      onSearchChange={onSearchDebounced}
+      onSearchChange={onSearchChange}
       // TODO make dropdown maxHeight work (Select.styles.tsx)
       // maxDropdownHeight={300}
       onDropdownOpen={onDropdownOpen}
