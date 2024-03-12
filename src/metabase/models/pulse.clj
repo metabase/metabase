@@ -271,7 +271,7 @@
   (dissoc notification :alert_condition :alert_above_goal :alert_first_only))
 
 ;; TODO - do we really need this function? Why can't we just use `t2/select` and `hydrate` like we do for everything
-;; else?
+;; else?  (#40016)
 (mu/defn retrieve-pulse :- [:maybe (mi/InstanceOf Pulse)]
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
@@ -588,7 +588,7 @@
                 (dissoc :card))
       (seq cards) (assoc :cards cards))))
 
-;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT?
+;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT? (#40016)
 (defn update-alert!
   "Updates the given `alert` and returns it"
   [alert]
