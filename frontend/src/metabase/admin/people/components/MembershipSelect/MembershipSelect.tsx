@@ -9,7 +9,7 @@ import {
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { Icon } from "metabase/ui";
+import { Text, Icon } from "metabase/ui";
 import type { Group, GroupListQuery, Member } from "metabase-types/api";
 
 import GroupSummary from "../GroupSummary";
@@ -67,9 +67,9 @@ export const MembershipSelect = ({
   const selectedGroupIds = Array.from(memberships.keys());
   const triggerElement = (
     <div className="flex align-center" aria-label="group-summary">
-      <span className="mr1 text-medium">
+      <Text mine="1rem" color="text-medium">
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
-      </span>
+      </Text>
       <Icon className="text-light" name="chevrondown" size={10} />
     </div>
   );

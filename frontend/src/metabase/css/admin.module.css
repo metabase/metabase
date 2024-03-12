@@ -69,8 +69,14 @@
   top: 0;
   bottom: 0;
   margin: auto;
-  margin-left: 1em;
+  margin-left: 1rem;
   color: var(--color-text-light);
+
+  [dir="rtl"] & {
+    margin-left: 0;
+    margin-right: 1rem;
+    left: 1rem;
+  }
 }
 
 :global(.AdminList-search .AdminInput) {

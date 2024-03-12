@@ -167,11 +167,12 @@ function EditingGroupRow({
           onClick={onCancelClicked}
         >{t`Cancel`}</span>
         <button
-          className={cx("Button ml2", {
+          className={cx("Button", {
             "Button--primary": textIsValid && textHasChanged,
           })}
           disabled={!textIsValid || !textHasChanged}
           onClick={onDoneClicked}
+          style={{ marginInlineStart: "1rem" }}
         >
           {t`Done`}
         </button>
@@ -219,7 +220,9 @@ function GroupRow({
               bg={backgroundColor}
             />
           </span>
-          <span className="ml2 text-bold">{getGroupNameLocalized(group)}</span>
+          <Text color="inherit" mins="1rem" fw="bold">
+            {getGroupNameLocalized(group)}
+          </Text>
         </Link>
       </td>
       <td>

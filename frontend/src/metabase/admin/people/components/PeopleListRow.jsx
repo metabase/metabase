@@ -13,7 +13,7 @@ import * as Urls from "metabase/lib/urls";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 
 import MembershipSelect from "./MembershipSelect";
 import { RefreshLink } from "./PeopleListRow.styled";
@@ -55,7 +55,9 @@ const PeopleListRow = ({
             user={user}
           />
         </span>{" "}
-        <span className="ml2 text-bold">{getName(user)}</span>
+        <Text fw="bold" mins="1rem">
+          {getName(user)}
+        </Text>
       </td>
       <td>
         {user.google_auth ? (

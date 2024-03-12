@@ -62,13 +62,14 @@ const MetadataHeader = ({
       <Icon
         className="flex align-center flex-no-shrink text-medium"
         name="database"
+        style={{ paddingInlineStart: "1rem" }}
       />
       <div className="MetadataEditor-headerSection h2">
         <DatabaseDataSelector
           databases={databases}
           selectedDatabaseId={selectedDatabaseId}
           setDatabaseFn={onSelectDatabase}
-          style={{ padding: 0, paddingLeft: 8 }}
+          style={{ padding: 0, paddingInlineStart: 8 }}
         />
       </div>
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (

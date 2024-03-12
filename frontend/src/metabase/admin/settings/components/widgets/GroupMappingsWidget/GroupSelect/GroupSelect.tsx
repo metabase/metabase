@@ -16,7 +16,7 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 
 type GroupSelectProps = {
   groups: UserGroupsType;
@@ -58,9 +58,9 @@ export const GroupSelect = ({
 }: GroupSelectProps) => {
   const triggerElement = (
     <div className="flex align-center">
-      <span className="mr1 text-medium">
+      <Text mine="1rem" color="text-medium">
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
-      </span>
+      </Text>
       <Icon className="text-light" name="chevrondown" size={10} />
     </div>
   );

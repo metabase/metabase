@@ -169,11 +169,25 @@ const BrowseTabContent = ({
 };
 
 const LearnAboutDataLink = () => (
-  <Flex ml="auto" justify="right" align="center" style={{ flexBasis: "40.0%" }}>
+  <Flex
+    justify="right"
+    align="center"
+    style={{
+      marginInlineStart: "auto",
+    }}
+  >
     <Link to="reference">
       <BrowseHeaderIconContainer>
         <LearnAboutDataIcon size={14} name="reference" />
-        <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
+        <Text
+          size="md"
+          lh="1"
+          fw="bold"
+          c="inherit"
+          style={{
+            marginInlineStart: ".5rem",
+          }}
+        >
           {t`Learn about our data`}
         </Text>
       </BrowseHeaderIconContainer>

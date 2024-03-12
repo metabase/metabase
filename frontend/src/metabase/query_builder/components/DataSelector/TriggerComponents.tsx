@@ -48,7 +48,11 @@ export function Trigger({
     >
       {children}
       {showDropdownIcon && (
-        <Icon className="ml1" name="chevrondown" size={iconSize} />
+        <Icon
+          style={{ marginInlineStart: "0.5rem" }}
+          name="chevrondown"
+          size={iconSize}
+        />
       )}
     </span>
   );

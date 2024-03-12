@@ -20,6 +20,9 @@ export const EmbeddingSwitchWidget = ({
       checked={Boolean(setting.value)}
       label={<strong>{t`Enable Embedding`}</strong>}
       onChange={e => onChange(e.target.checked)}
+      styles={{
+        labelWrapper: { paddingRight: "0px", marginInlineEnd: "1rem" },
+      }}
     />
   </Stack>
 );

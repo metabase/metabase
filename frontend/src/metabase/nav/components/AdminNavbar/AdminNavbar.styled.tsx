@@ -26,8 +26,8 @@ export const AdminNavbarRoot = styled.nav`
 export const AdminNavbarItems = styled.ul`
   display: flex;
   flex: 1 0 auto;
-  margin-right: auto;
-  margin-left: 2rem;
+  margin-inline-end: auto;
+  margin-inline-start: 2rem;
 `;
 
 export const MobileHide = styled.div`

@@ -47,7 +47,7 @@ export const SpinnerIcon = styled.div<SpinnerIconProps>`
     position: relative;
     top: ${props => `-${props.borderWidth}px`};
     left: ${props => `-${props.borderWidth}px`};
-    :dir(rtl) & {
+    [dir="rtl"] & {
       left: ${props => `${props.borderWidth}px`};
     }
   }
