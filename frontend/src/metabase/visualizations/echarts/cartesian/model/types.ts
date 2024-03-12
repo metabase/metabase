@@ -111,8 +111,9 @@ export type BaseXAxisModel = {
 };
 
 export type CategoryXAxisModel = BaseXAxisModel & {
-  isHistogram: boolean;
   axisType: "category";
+  isHistogram: boolean;
+  histogramInterval?: number;
 };
 
 export type NumericXAxisModel = BaseXAxisModel &

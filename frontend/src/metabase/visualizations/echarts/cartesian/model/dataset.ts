@@ -22,7 +22,7 @@ import { isEmpty } from "metabase/lib/validate";
 
 import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -640,3 +640,24 @@ export const getBubbleSizeDomain = (
 
   return [0, bubbleSizeDomainMax];
 };
+
+export function getHistogramDataset(
+  dataset: ChartDataset,
+  xAxisModel: XAxisModel,
+) {
+  if (!isCategoryAxis(xAxisModel) || !xAxisModel.isHistogram) {
+    return dataset;
+  }
+
+  const interval = xAxisModel.histogramInterval ?? 1;
+
+  dataset.unshift({
+    [X_AXIS_DATA_KEY]: checkNumber(dataset[0][X_AXIS_DATA_KEY]) - interval,
+  });
+  dataset.push({
+    [X_AXIS_DATA_KEY]:
+      checkNumber(dataset[dataset.length - 1][X_AXIS_DATA_KEY]) + interval,
+  });
+
+  return dataset;
+}
