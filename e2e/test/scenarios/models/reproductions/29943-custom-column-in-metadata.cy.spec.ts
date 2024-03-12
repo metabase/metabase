@@ -54,8 +54,8 @@ describe("issue 29943", () => {
 });
 
 function reorderTotalAndCustomColumns() {
-  cy.findAllByTestId("header-cell").eq(1).should("have.text", "Total");
-  cy.findAllByTestId("header-cell").eq(2).should("have.text", "Custom");
+  getHeaderCell(1, "Total").should("exist");
+  getHeaderCell(2, "Custom").should("exist");
 
   // drag & drop the Custom column 100 px to the left to switch it with Total column
   cy.findAllByTestId("header-cell")
@@ -68,8 +68,8 @@ function reorderTotalAndCustomColumns() {
         .trigger("mouseup");
     });
 
-  cy.findAllByTestId("header-cell").eq(1).should("have.text", "Custom");
-  cy.findAllByTestId("header-cell").eq(2).should("have.text", "Total");
+  getHeaderCell(1, "Custom").should("exist");
+  getHeaderCell(2, "Total").should("exist");
 }
 
 function assertColumnSelected(columnIndex: number, name: string) {
