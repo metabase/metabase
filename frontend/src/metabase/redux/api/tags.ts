@@ -14,8 +14,5 @@ export function providesList<
     : [listTag];
 }
 
-export const API_KEY_TAG = "ApiKey" as const;
-export const API_KEY_LIST_TAG = getListTag(API_KEY_TAG);
-
-export const tagTypes = [API_KEY_TAG];
+export const tagTypes = [];
 export type TagTypes = typeof tagTypes[number];

@@ -33,24 +33,3 @@ export type ApiKey = {
     common_name: string;
   };
 };
-
-export type CreateApiKeyInput = {
-  name: string;
-  group_id: string;
-};
-
-export type CreateApiKeyResponse = {
-  unmasked_key: string;
-};
-
-export type UpdateApiKeyInput = {
-  id: number;
-  group_id: string;
-  name: string;
-};
-
-export type UpdateApiKeyResponse = void;
-
-export type RegenerateApiKeyResponse = {
-  unmasked_key: string;
-};
