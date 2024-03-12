@@ -20,7 +20,6 @@ export function syncColumnSettings(
     if (clicked) {
       newSettings = syncTableColumnSettingsAfterClickAction(
         newSettings,
-        settings,
         clicked,
       );
     }
@@ -86,7 +85,6 @@ function syncTableColumnSettings(
 
 function syncTableColumnSettingsAfterClickAction(
   settings: VisualizationSettings,
-  prevSettings: VisualizationSettings,
   { column }: ClickObject,
 ): VisualizationSettings {
   if (!column) {
@@ -94,7 +92,7 @@ function syncTableColumnSettingsAfterClickAction(
   }
 
   const columnSettings = settings["table.columns"] ?? [];
-  const prevColumnSettings = prevSettings["table.columns"] ?? [];
+  const prevColumnSettings = settings["table.columns"] ?? [];
   const addedColumnCount = columnSettings.length - prevColumnSettings.length;
   const [columnSettingIndex] = findColumnSettingIndexesForColumns(
     [column],

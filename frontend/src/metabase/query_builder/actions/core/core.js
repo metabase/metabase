@@ -34,6 +34,7 @@ import {
   isBasedOnExistingQuestion,
   getParameters,
   getSubmittableQuestion,
+  getQueryResults,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
@@ -113,7 +114,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (
   nextCard,
-  { shouldUpdateUrl = true, clicked } = {},
+  { shouldUpdateUrl = true, clicked, prevQueryResults } = {},
 ) => {
   return async (dispatch, getState) => {
     // clone
@@ -130,7 +131,7 @@ export const setCardAndRun = (
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl, clicked }));
+    dispatch(runQuestionQuery({ shouldUpdateUrl, clicked, prevQueryResults }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -168,13 +169,19 @@ export const navigateToNewCardInsideQB = createThunkAction(
           dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
+          const prevQueryResults = getQueryResults(getState());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
           // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(setCardAndRun({ ...card, type: "question" }, { clicked }));
+          dispatch(
+            setCardAndRun(
+              { ...card, type: "question" },
+              { clicked, prevQueryResults },
+            ),
+          );
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));
