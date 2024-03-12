@@ -15,26 +15,27 @@ type Action =
     }
   | { type: "SET_ERROR"; payload: { msg: string } }
   | { type: "SET_RESET_KEY"; payload: { key: string } }
-  | { type: "RESET" };
+  | { type: "RESET"; payload: { newResetKey: string } };
 
 interface State {
   values: string[];
   hasMoreValues: boolean;
   isLoading: boolean;
-  resetKey: null | string;
+  resetKey: string;
   lastSearch: string;
   errorMsg?: string;
 }
 
-export function getDefaultState(initialValue: string | null): State {
-  // console.log("getDefaultSearch", initialValue);
-
+export function getDefaultState(
+  initialValue: string | null,
+  resetKey: string,
+): State {
   return {
     // This is needed for Select to show it
     values: initialValue === null ? [] : [initialValue],
     hasMoreValues: true,
     isLoading: false,
-    resetKey: null,
+    resetKey,
     lastSearch: "",
   };
 }
@@ -79,7 +80,7 @@ export function reducer(state: State, action: Action): State {
         values: [],
         hasMoreValues: true,
         isLoading: false,
-        resetKey: null,
+        resetKey: action.payload.newResetKey,
         lastSearch: "",
       };
   }
