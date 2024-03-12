@@ -196,7 +196,8 @@ describe("binning related reproductions", () => {
     summarize();
 
     rightSidebar().within(() => {
-      cy.findByRole("listitem", { name: "Created At" })
+      cy.findAllByRole("listitem", { name: "Created At" })
+        .eq(0)
         .findByLabelText("Temporal bucket")
         .click();
     });
