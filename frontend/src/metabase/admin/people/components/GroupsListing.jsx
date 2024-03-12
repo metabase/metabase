@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { useListApiKeyQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
@@ -23,7 +23,6 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { ApiKeysApi } from "metabase/services";
 import { Stack, Text, Group, Button, Icon } from "metabase/ui";
 
 import { AddRow } from "./AddRow";
@@ -275,10 +274,10 @@ function GroupsTable({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const { loading, value: apiKeys } = useAsync(() => ApiKeysApi.list(), []);
+  const { isLoading, data: apiKeys } = useListApiKeyQuery();
 
-  if (loading) {
-    return <LoadingAndErrorWrapper loading={loading} />;
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading={isLoading} />;
   }
 
   return (
