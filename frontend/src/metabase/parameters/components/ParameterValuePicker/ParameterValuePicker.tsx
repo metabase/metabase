@@ -1,11 +1,13 @@
 import { t } from "ttag";
+
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter, TemplateTag } from "metabase-types/api";
+
+import { ListPickerConnected } from "./ListPickerConnected";
 import { OwnDatePicker } from "./OwnDatePicker";
 import { PlainValueInput } from "./PlainValueInput";
 import { shouldUsePlainInput, shouldUseListPicker } from "./core";
-import { ListPickerConnected } from "./ListPickerConnected";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
@@ -53,7 +55,7 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
   if (shouldUseListPicker(parameter)) {
     return (
       <ListPickerConnected
-        value={value}
+        value={(Array.isArray(value) ? value[0] : value) ?? ""} // TODO
         parameter={parameter}
         onChange={onValueChange}
         forceSearchItemCount={50}
