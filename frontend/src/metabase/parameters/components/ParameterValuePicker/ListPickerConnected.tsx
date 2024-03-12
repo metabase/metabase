@@ -1,9 +1,7 @@
 import { useEffect, useReducer } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import { fetchParameterValues } from "metabase/parameters/actions";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, ParameterValues } from "metabase-types/api";
 
 import { ListPicker } from "./ListPicker";
 import { getFlatValueList, getListParameterStaticValues } from "./core";
@@ -14,33 +12,37 @@ interface ListPickerConnectedProps {
   value: string | null;
   parameter: Parameter;
   onChange: (value: string | null) => void;
+  fetchValues: (
+    parameter: Parameter,
+    query: string,
+  ) => Promise<ParameterValues>;
   forceSearchItemCount: number;
   searchDebounceMs?: number;
 }
 
+// TODO crashing when creating a new parameter
 // TODO switch from search/static-list -> card! && resetKey
 // TODO should we fetch initially?
+// TODO annoying onSearch when value is cleared
 export function ListPickerConnected(props: ListPickerConnectedProps) {
-  const globalDispatch = useDispatch();
   const {
     value,
     parameter,
     onChange,
     forceSearchItemCount,
     searchDebounceMs = 150,
+    fetchValues,
   } = props;
 
   const [
     { values, hasMoreValues, isLoading, lastSearch, resetKey, errorMsg },
     dispatch,
-  ] = useReducer(reducer, getDefaultState(value));
+  ] = useReducer(reducer, getDefaultState(value, getResetKey(parameter)));
 
   const fetchAndSaveValuesDebounced = useDebouncedCallback(
     async (query: string) => {
       try {
-        const res = await globalDispatch(
-          fetchParameterValues({ parameter, query }),
-        );
+        const res = await fetchValues(parameter, query);
 
         dispatch({
           type: "SET_LOADED",
@@ -58,7 +60,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
       }
     },
     searchDebounceMs,
-    [dispatch, globalDispatch, fetchParameterValues, parameter],
+    [dispatch, fetchValues, parameter],
   );
 
   const cancelFetching = () => {
@@ -88,10 +90,9 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
 
   // Reset when parameter changes
   useEffect(() => {
-    // null means we render for the first tima and state shouldn't be reset
-    // console.log(resetKey, getResetKey(parameter));
-    if (resetKey !== null && resetKey !== getResetKey(parameter)) {
-      dispatch({ type: "RESET" });
+    const newResetKey = getResetKey(parameter);
+    if (resetKey !== newResetKey) {
+      dispatch({ type: "RESET", payload: { newResetKey } });
       ownOnChange(null);
     }
   }, [resetKey, parameter]);

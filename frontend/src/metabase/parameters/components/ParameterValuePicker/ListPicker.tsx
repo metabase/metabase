@@ -33,6 +33,7 @@ export function ListPicker(props: ListPickerProps) {
     isLoading,
     errorMessage,
   } = props;
+
   const icon = isLoading ? (
     <Loader size="xs" />
   ) : value ? (

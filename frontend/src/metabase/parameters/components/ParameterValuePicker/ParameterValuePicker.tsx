@@ -8,6 +8,8 @@ import { ListPickerConnected } from "./ListPickerConnected";
 import { OwnDatePicker } from "./OwnDatePicker";
 import { PlainValueInput } from "./PlainValueInput";
 import { shouldUsePlainInput, shouldUseListPicker } from "./core";
+import { useDispatch } from "metabase/lib/redux";
+import { fetchParameterValues } from "metabase/parameters/actions";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
@@ -26,6 +28,9 @@ interface ParameterValuePickerProps {
  */
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
   const { tag, parameter, value, onValueChange } = props;
+  const dispatch = useDispatch();
+  const fetchParamValues = (parameter: Parameter, query: string) =>
+    dispatch(fetchParameterValues({ parameter, query }));
 
   if (!parameter) {
     return null;
@@ -59,6 +64,7 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
         parameter={parameter}
         onChange={onValueChange}
         forceSearchItemCount={50}
+        fetchValues={fetchParamValues}
       />
     );
   }
