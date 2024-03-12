@@ -279,7 +279,7 @@
     []
     (eduction
      (describe-fields-xf driver db)
-     (sql-jdbc.execute/sql->reducible-rows db (describe-fields-sql driver args)))))
+     (sql-jdbc.execute/simple-reducible-query db (describe-fields-sql driver args)))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
