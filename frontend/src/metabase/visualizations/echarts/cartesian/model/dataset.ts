@@ -339,15 +339,20 @@ function getHistogramDataset(
 ) {
   const interval = histogramInterval ?? 1;
 
-  dataset.unshift({
-    [X_AXIS_DATA_KEY]: checkNumber(dataset[0][X_AXIS_DATA_KEY]) - interval,
-  });
-  dataset.push({
+  // Histograms do not display datums where the dimension value is null
+  const nonNullDataset = dataset.filter(
+    datum => datum[X_AXIS_DATA_KEY] != null,
+  );
+  nonNullDataset.unshift({
     [X_AXIS_DATA_KEY]:
-      checkNumber(dataset[dataset.length - 1][X_AXIS_DATA_KEY]) + interval,
+      checkNumber(nonNullDataset[0][X_AXIS_DATA_KEY]) - interval,
   });
-
-  return dataset;
+  nonNullDataset.push({
+    [X_AXIS_DATA_KEY]:
+      checkNumber(nonNullDataset[nonNullDataset.length - 1][X_AXIS_DATA_KEY]) +
+      interval,
+  });
+  return nonNullDataset;
 }
 
 /**

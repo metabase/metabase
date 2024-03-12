@@ -116,7 +116,7 @@ const getHistogramTicksOptions = (
   }
 
   const histogramDimensionWidth =
-    chartMeasurements.boundaryWidth / chartModel.dataset.length;
+    chartMeasurements.boundaryWidth / chartModel.transformedDataset.length;
 
   return {
     padding: [0, histogramDimensionWidth, 0, 0],
