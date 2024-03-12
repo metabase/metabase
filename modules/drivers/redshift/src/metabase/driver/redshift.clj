@@ -13,7 +13,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
@@ -89,6 +88,7 @@
                         [[:not= :pk.column_name nil] "pk?"]
                         [[:case [:not= :c.remarks ""] :c.remarks :else nil] "field-comment"]]
                :from [[:svv_all_columns :c]]
+               ;; TODO: test composite PKs
                :left-join [[{:select [:tc.table_schema
                                       :tc.table_name
                                       :kc.column_name]
@@ -393,18 +393,6 @@
                                                                   metadata
                                                                   schema-inclusion-patterns
                                                                   schema-exclusion-patterns))))
-
-(defmethod sql-jdbc.describe-table/describe-table-fields :redshift
-  [driver conn {schema :schema, table-name :name :as table} db-name-or-nil]
-  (let [parent-method (get-method sql-jdbc.describe-table/describe-table-fields :sql-jdbc)]
-    (try (parent-method driver conn table db-name-or-nil)
-         (catch Exception e
-           (log/error e (trs "Error fetching field metadata for table {0}" table-name))
-           ;; Use the fallback method (a SELECT * query) if the JDBC driver throws an exception (#21215)
-           (into
-            #{}
-            (sql-jdbc.describe-table/describe-table-fields-xf driver table)
-            (sql-jdbc.describe-table/fallback-fields-metadata-from-select-query driver conn db-name-or-nil schema table-name))))))
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]

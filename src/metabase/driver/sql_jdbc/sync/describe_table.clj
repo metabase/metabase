@@ -77,7 +77,7 @@
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
     (sql.qp/format-honeysql driver honeysql)))
 
-(defn fallback-fields-metadata-from-select-query
+(defn- fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
   [driver ^Connection conn db-name-or-nil schema table]
