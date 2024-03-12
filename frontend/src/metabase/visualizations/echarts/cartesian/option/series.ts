@@ -110,6 +110,7 @@ export const buildEChartsLabelOptions = (
     silent: true,
     show,
     position,
+    opacity: 1,
     fontFamily: renderingContext.fontFamily,
     fontWeight: CHART_STYLE.seriesLabels.weight,
     fontSize: CHART_STYLE.seriesLabels.size,
