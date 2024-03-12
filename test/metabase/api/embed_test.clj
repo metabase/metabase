@@ -537,15 +537,16 @@
               (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest embedding-logs-view-test
-  (with-embedding-enabled-and-new-secret-key
-    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
-      (testing "Viewing an embedding logs the correct view log event."
-        (client/client :get 200 (dashboard-url dash))
-        (is (partial=
-             {:model      "dashboard"
-              :model_id   (:id dash)
-              :has_access true}
-             (view-log-test/latest-view nil (:id dash))))))))
+  (when config/ee-available?
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
+        (testing "Viewing an embedding logs the correct view log event."
+          (client/client :get 200 (dashboard-url dash))
+          (is (partial=
+               {:model      "dashboard"
+                :model_id   (:id dash)
+                :has_access true}
+               (view-log-test/latest-view nil (:id dash)))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key

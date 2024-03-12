@@ -549,15 +549,16 @@
                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
 (deftest public-dashboard-logs-view-test
-  (testing "Viewing a public dashboard logs the correct view log event."
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (with-temp-public-dashboard-and-card [dash _]
-        (fetch-public-dashboard dash)
-        (is (partial=
-             {:model      "dashboard"
-              :model_id   (:id dash)
-              :has_access true}
-             (view-log-test/latest-view nil (:id dash))))))))
+  (when config/ee-available?
+    (testing "Viewing a public dashboard logs the correct view log event."
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard-and-card [dash _]
+          (fetch-public-dashboard dash)
+          (is (partial=
+               {:model      "dashboard"
+                :model_id   (:id dash)
+                :has_access true}
+               (view-log-test/latest-view nil (:id dash)))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]

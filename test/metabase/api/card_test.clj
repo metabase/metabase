@@ -3333,15 +3333,16 @@
                  (upload-example-csv-via-api!))))))))
 
 (deftest card-read-event-test
-  (testing "Card reads (views) via the API are recorded in the view_log"
-    (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
-      (testing "GET /api/card/:id"
-        (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
-        (is (partial=
-             {:user_id  (mt/user->id :crowberto)
-              :model    "card"
-              :model_id (u/id card)}
-             (view-log-test/latest-view (mt/user->id :crowberto) (u/id card))))))))
+  (when config/ee-available?
+    (testing "Card reads (views) via the API are recorded in the view_log"
+      (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
+        (testing "GET /api/card/:id"
+          (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
+          (is (partial=
+               {:user_id  (mt/user->id :crowberto)
+                :model    "card"
+                :model_id (u/id card)}
+               (view-log-test/latest-view (mt/user->id :crowberto) (u/id card)))))))))
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"
