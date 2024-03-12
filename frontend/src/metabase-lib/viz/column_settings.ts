@@ -1,3 +1,8 @@
+import {
+  findColumnIndexesForColumnSettings,
+  findColumnSettingIndexesForColumns,
+} from "metabase-lib/v1/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type { Dataset, VisualizationSettings } from "metabase-types/api";
 
 export function syncColumnSettings(
@@ -8,6 +13,8 @@ export function syncColumnSettings(
   let newSettings = settings;
 
   if (queryResults && !queryResults.error) {
+    newSettings = syncTableColumnSettings(newSettings, queryResults);
+
     if (prevQueryResults && !prevQueryResults.error) {
       newSettings = syncGraphMetricSettings(
         newSettings,
@@ -18,6 +25,53 @@ export function syncColumnSettings(
   }
 
   return newSettings;
+}
+
+function syncTableColumnSettings(
+  settings: VisualizationSettings,
+  { data }: Dataset,
+): VisualizationSettings {
+  const columnSettings = settings["table.columns"];
+  // "table.columns" receive a value only if there are custom settings
+  // e.g. some columns are hidden. If it's empty, it means everything is visible
+  if (!columnSettings) {
+    return settings;
+  }
+
+  // remove columns used for remapping only
+  const cols = data.cols.filter(col => col.remapped_from == null);
+  const columnIndexes = findColumnIndexesForColumnSettings(
+    cols,
+    columnSettings,
+  );
+  const columnSettingIndexes = findColumnSettingIndexesForColumns(
+    cols,
+    columnSettings,
+  );
+  const addedColumns = cols.filter((col, colIndex) => {
+    const hasVizSettings = columnSettingIndexes[colIndex] >= 0;
+    return !hasVizSettings;
+  });
+  const existingColumnSettings = columnSettings.filter(
+    (setting, settingIndex) => columnIndexes[settingIndex] >= 0,
+  );
+  const noColumnsRemoved =
+    existingColumnSettings.length === columnSettings.length;
+
+  if (noColumnsRemoved && addedColumns.length === 0) {
+    return settings;
+  }
+
+  const addedColumnSettings = addedColumns.map(col => ({
+    name: col.name,
+    key: getColumnKey(col),
+    fieldRef: col.field_ref,
+    enabled: true,
+  }));
+  return {
+    ...settings,
+    "table.columns": [...existingColumnSettings, ...addedColumnSettings],
+  };
 }
 
 function syncGraphMetricSettings(
