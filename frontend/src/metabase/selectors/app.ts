@@ -212,9 +212,5 @@ export const getWritingDirection = createSelector([getLocale], locale => {
   const localeFamily = locale.split("_")[0];
   const rtlLocales = ["ar", "fa", "he", "ur"];
   const dir = rtlLocales.includes(localeFamily) ? "rtl" : "ltr";
-
-  // HACK: updates the writing direction of the <html> tag
-  document.documentElement.setAttribute("dir", dir);
-
   return dir;
 });

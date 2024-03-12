@@ -100,11 +100,11 @@ function App({
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
-        <AppContainer className="spread" dir="rtl">
+        <AppContainer className="spread" dir={writingDirection}>
           <KeyboardTriggeredErrorModal />
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
-          <AppContentContainer isAdminApp={isAdminApp} dir={writingDirection}>
+          <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}
             <AppContent
               ref={setViewportElement}
