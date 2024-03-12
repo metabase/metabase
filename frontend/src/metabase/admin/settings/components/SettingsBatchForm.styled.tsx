@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 
 export const CollapsibleSectionContent = styled.div`
   display: inline-block;
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   cursor: pointer;
 
   &:hover {

@@ -8,7 +8,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import DisclosureTriangle from "metabase/components/DisclosureTriangle";
+import { DisclosureTriangle } from "metabase/components/DisclosureTriangle";
 import Button from "metabase/core/components/Button";
 import { isEmail, isEmpty } from "metabase/lib/utils";
 
@@ -367,7 +367,7 @@ class CollapsibleSection extends React.Component {
       <section className="mb4">
         <CollapsibleSectionContent onClick={this.handleToggle.bind(this)}>
           <div className="flex align-center">
-            <DisclosureTriangle className="mx1" open={show} />
+            <DisclosureTriangle name="expand_arrow" open={show} />
             <h3>{title}</h3>
           </div>
         </CollapsibleSectionContent>

@@ -6,7 +6,6 @@
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
-  text-align: left;
 }
 
 :global(.ContentTable thead) {
@@ -69,12 +68,10 @@
   top: 0;
   bottom: 0;
   margin: auto;
-  margin-left: 1rem;
+  margin-inline-start: 1rem;
   color: var(--color-text-light);
 
   [dir="rtl"] & {
-    margin-left: 0;
-    margin-right: 1rem;
     left: 1rem;
   }
 }
@@ -180,7 +177,6 @@
 :global(.AdminTable) {
   border-collapse: collapse;
   border-spacing: 0;
-  text-align: left;
 }
 
 :global(.AdminTable th) {

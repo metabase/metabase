@@ -61,7 +61,7 @@ export const GroupMappingsWidgetAboutContentRoot = styled.div`
 `;
 
 export const AddMappingButton = styled(Button)`
-  float: right;
-  margin-right: ${space(2)};
+  position: absolute;
+  inset-inline-end: 1rem;
   margin-bottom: -40px;
 `;
