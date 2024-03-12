@@ -388,6 +388,8 @@ describeEE("scenarios > setup (EE)", () => {
 
       cy.findByText("I'll add my data later").click();
 
+      cy.findByText("Activate your commercial license").should("exist");
+
       typeToken(Cypress.env("NO_FEATURES_TOKEN"));
 
       cy.button("Activate").click();
@@ -581,6 +583,7 @@ const fillUserAndContinue = ({
 
 const skipLicenseStepOnEE = () => {
   if (isEE) {
+    cy.findByText("Activate your commercial license").should("exist");
     cy.button("Skip").click();
   }
 };
