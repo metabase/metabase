@@ -16,6 +16,7 @@ interface ListPickerProps {
   placeholder: string;
 }
 
+// TODO show "remove" button when typing in search
 // TODO dropdown position + change of size doesn't work well
 export function ListPicker(props: ListPickerProps) {
   const {
