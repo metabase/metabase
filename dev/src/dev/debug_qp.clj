@@ -5,7 +5,7 @@
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
@@ -389,7 +389,7 @@
 (defn pprint-sql
   "Pretty print a SQL string."
   ([sql]
-   (pprint-sql (mdb.connection/db-type) sql))
+   (pprint-sql (mdb/db-type) sql))
   ([driver sql]
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println (driver/prettify-native-form driver sql))))

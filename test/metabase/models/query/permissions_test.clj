@@ -10,10 +10,8 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.table :refer [Table]]
-   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -105,20 +103,19 @@
    :native   {:query query}})
 
 (deftest native-query-perms-test
-  (is (= #{"/db/1/native/"}
-         (query-perms/perms-set
+  (is (= {:perms/native-query-editing :yes}
+         (query-perms/required-perms
           (native "SELECT count(*) FROM toucan_sightings;")))))
 
 
 ;;; ------------------------------------------------- MBQL w/o JOIN --------------------------------------------------
 
 (deftest mbql-query-test
-  (is (= #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))}
-         (query-perms/perms-set
-          (mt/mbql-query venues))))
+  (is (= {:perms/data-access {(mt/id :venues) :unrestricted}}
+         (query-perms/required-perms (mt/mbql-query venues))))
 
-  (is (= #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))}
-         (query-perms/perms-set
+  (is (= {:perms/data-access {(mt/id :venues) :unrestricted}}
+         (query-perms/required-perms
           {:query    {:source-table (mt/id :venues)
                       :filter       [:> [:field (mt/id :venues :id) nil] 10]}
            :type     :query
@@ -128,18 +125,18 @@
     (mt/with-temp [Database db    {}
                    Table    table {:db_id (u/the-id db) :schema nil}
                    Field    _     {:table_id (u/the-id table)}]
-      (perms/revoke-data-perms! (perms-group/all-users) db)
-      (binding [*current-user-permissions-set* (atom nil)
-                *current-user-id*              (mt/user->id :rasta)]
-        (is (= #{(perms/table-query-path db nil table)}
-               (query-perms/perms-set
-                {:database (u/the-id db)
-                 :type     :query
-                 :query    {:source-table (u/the-id table)}}))))))
+      (mt/with-no-data-perms-for-all-users!
+        (binding [*current-user-permissions-set* (atom nil)
+                  *current-user-id*              (mt/user->id :rasta)]
+          (is (= {:perms/data-access {(u/the-id table) :unrestricted}}
+                 (query-perms/required-perms
+                  {:database (u/the-id db)
+                   :type     :query
+                   :query    {:source-table (u/the-id table)}})))))))
 
   (testing "should be able to calculate permissions of a query before normalization"
-    (is (= #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))}
-           (query-perms/perms-set
+    (is (= {:perms/data-access {(mt/id :venues) :unrestricted}}
+           (query-perms/required-perms
             {:query    {"SOURCE_TABLE" (mt/id :venues)
                         "FILTER"       [">" (mt/id :venues :id) 10]}
              :type     :query
@@ -150,9 +147,9 @@
 
 (deftest mbql-query-with-join-test
   (testing "you should need perms for both tables if you include a JOIN"
-    (is (= #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :checkins))
-             (perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))}
-           (query-perms/perms-set
+    (is (= {:perms/data-access {(mt/id :venues) :unrestricted
+                                (mt/id :checkins) :unrestricted}}
+           (query-perms/required-perms
             (mt/mbql-query checkins
               {:order-by [[:asc $checkins.venue_id->venues.name]]}))))))
 
@@ -167,8 +164,8 @@
     (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
                                                         :type     :query
                                                         :query    {:source-table (mt/id :venues)}}}]
-      (is (= #{"/collection/root/read/"}
-             (query-perms/perms-set
+      (is (= {:paths #{"/collection/root/read/"}}
+             (query-perms/required-perms
               (query-with-source-card card))))))
 
   (testing "if source Card *is* in a Collection, we require read perms for that Collection"
@@ -177,8 +174,8 @@
                               :dataset_query {:database (mt/id)
                                               :type     :query
                                               :query    {:source-table (mt/id :venues)}}}]
-      (is (= #{(perms/collection-read-path collection)}
-             (query-perms/perms-set
+      (is (= {:paths #{(perms/collection-read-path collection)}}
+             (query-perms/required-perms
               (query-with-source-card card)))))))
 
 
@@ -192,8 +189,8 @@
                                          :type     :query
                                          :query    {:source-table (mt/id :checkins)
                                                     :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
-      (is (= #{"/collection/root/read/"}
-             (query-perms/perms-set
+      (is (= {:paths #{"/collection/root/read/"}}
+             (query-perms/required-perms
               (query-with-source-card card)))))))
 
 
@@ -205,29 +202,25 @@
     (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
                                                         :type     :native
                                                         :native   {:query "SELECT * FROM CHECKINS"}}}]
-      (is (= #{"/collection/root/read/"}
-             (query-perms/perms-set
+      (is (= {:paths #{"/collection/root/read/"}}
+             (query-perms/required-perms
               (query-with-source-card card))))))
 
   (testing (str "However if you just pass in the same query directly as a `:source-query` you will still require "
                 "READWRITE permissions to save the query since we can't verify that it belongs to a Card that you can view.")
-    (is (= #{(perms/adhoc-native-query-path (mt/id))}
-           (query-perms/perms-set
+    (is (= {:perms/native-query-editing :yes}
+           (query-perms/required-perms
             {:database (mt/id)
              :type     :query
              :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}
             :throw-exceptions? true)))))
 
-
-;;; --------------------------------------------- invalid/legacy queries ---------------------------------------------
-
 (deftest ^:parallel invalid-queries-test
-  (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
-    (binding [qp-test.mlv2/*skip-conversion-tests* true]
-      (is (= #{"/db/0/"}
-             (query-perms/perms-set
-              (mt/mbql-query venues
-                {:filter [:WOW 100 200]})))))))
+  (testing "invalid/legacy queries should remove invalid clauses and calculate permissions based on valid parts of the query"
+    (is (= {:perms/data-access {(mt/id :venues) :unrestricted}}
+           (query-perms/required-perms
+            (mt/mbql-query venues
+              {:filter [:WOW 100 200]}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -240,9 +233,9 @@
                                                  (mt/mbql-query checkins
                                                    {:aggregation [[:sum $id]]
                                                     :breakout    [$user_id]}))]
-      (is (= #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :checkins))
-               (perms/table-query-path (mt/id) "PUBLIC" (mt/id :users))}
-             (query-perms/perms-set
+      (is (= {:perms/data-access {(mt/id :users) :unrestricted
+                                  (mt/id :checkins) :unrestricted}}
+             (query-perms/required-perms
               (mt/mbql-query users
                 {:joins [{:fields       :all
                           :alias        "__alias__"
@@ -251,13 +244,13 @@
                                          $id
                                          [:field "USER_ID" {:base-type :type/Integer, :join-alias "__alias__"}]]}]
                  :limit 10})
-              :throw-exceptions? true))))
+              :throw-exceptions? true)))
 
-    (is (= #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :checkins))
-             (perms/table-query-path (mt/id) "PUBLIC" (mt/id :users))}
-           (query-perms/perms-set
+      (is (= {:perms/data-access {(mt/id :users) :unrestricted
+                                  (mt/id :checkins) :unrestricted}}
+           (query-perms/required-perms
             (mt/mbql-query users
               {:joins [{:alias        "c"
                         :source-table $$checkins
                         :condition    [:= $id &c.*USER_ID/Integer]}]})
-            :throw-exceptions? true)))))
+            :throw-exceptions? true))))))

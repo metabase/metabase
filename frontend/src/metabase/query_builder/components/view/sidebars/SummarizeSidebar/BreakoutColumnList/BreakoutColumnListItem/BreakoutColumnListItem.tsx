@@ -2,19 +2,21 @@ import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Tooltip from "metabase/core/components/Tooltip";
 import * as Lib from "metabase-lib";
 
 import {
   AddButton,
-  BucketPickerPopover,
   Content,
   ColumnTypeIcon,
   Title,
   TitleContainer,
   RemoveButton,
   Root,
+  QueryColumnInfoIcon,
 } from "./BreakoutColumnListItem.styled";
 
 const STAGE_INDEX = -1;
@@ -58,30 +60,13 @@ export function BreakoutColumnListItem({
     [item.column, onRemoveColumn],
   );
 
-  const renderBucketPicker = useCallback(
-    () => (
-      <BucketPickerPopover
-        query={query}
-        stageIndex={STAGE_INDEX}
-        column={item.column}
-        isEditing={isSelected}
-        hasArrowIcon={false}
-        hasBinning
-        hasTemporalBucketing
-        onSelect={column =>
-          breakout ? onUpdateColumn(column) : onAddColumn(column)
-        }
-      />
-    ),
-    [query, breakout, item.column, isSelected, onAddColumn, onUpdateColumn],
-  );
-
   const displayName = isPinned ? item.longDisplayName : item.displayName;
 
   return (
-    <Root
+    <HoverParent
+      as={Root}
+      {...{ isSelected }}
       aria-label={displayName}
-      isSelected={isSelected}
       aria-selected={isSelected}
       data-testid="dimension-list-item"
     >
@@ -89,8 +74,27 @@ export function BreakoutColumnListItem({
         <TitleContainer>
           <ColumnTypeIcon name={getColumnIcon(item.column)} size={18} />
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
+          <BucketPickerPopover
+            query={query}
+            stageIndex={STAGE_INDEX}
+            column={item.column}
+            color="summarize"
+            isEditing={isSelected}
+            hasDot
+            hasChevronDown
+            hasBinning
+            hasTemporalBucketing
+            onSelect={column =>
+              breakout ? onUpdateColumn(column) : onAddColumn(column)
+            }
+          />
+          <QueryColumnInfoIcon
+            query={query}
+            stageIndex={STAGE_INDEX}
+            column={item.column}
+            position="top-end"
+          />
         </TitleContainer>
-        {renderBucketPicker()}
         {isSelected && (
           <RemoveButton
             onClick={handleRemoveColumn}
@@ -103,6 +107,6 @@ export function BreakoutColumnListItem({
           <AddButton aria-label={t`Add dimension`} onClick={handleAddClick} />
         </Tooltip>
       )}
-    </Root>
+    </HoverParent>
   );
 }

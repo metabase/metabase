@@ -293,8 +293,54 @@
 (lib.common/defop time-interval [x amount unit])
 (lib.common/defop segment [segment-id])
 
+(mu/defn ^:private add-filter-to-stage
+  "Add a new filter clause to a `stage`, ignoring it if it is a duplicate clause (ignoring :lib/uuid)."
+  [stage      :- ::lib.schema/stage
+   new-filter :- [:maybe ::lib.schema.expression/boolean]]
+  (if-not new-filter
+    stage
+    (let [existing-filter? (some (fn [existing-filter]
+                                   (lib.equality/= existing-filter new-filter))
+                                 (:filters stage))]
+      (if existing-filter?
+        stage
+        (update stage :filters #(conj (vec %) new-filter))))))
+
+(mu/defn add-filters-to-stage :- ::lib.schema/stage
+  "Add additional filter clauses to a `stage`. Ignores any duplicate clauses (ignoring :lib/uuid)."
+  [stage       :- ::lib.schema/stage
+   new-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
+  (reduce add-filter-to-stage stage new-filters))
+
+(mu/defn remove-duplicate-filters-in-stage :- ::lib.schema/stage
+  "Remove any duplicate filters from a query `stage` (ignoring :lib/uuid)."
+  [stage :- ::lib.schema/stage]
+  (add-filters-to-stage (dissoc stage :filters) (:filters stage)))
+
+(mu/defn flatten-compound-filters-in-stage :- ::lib.schema/stage
+  "Flatten any `:and` filters in a `stage`. Does multiple passes until all `:and` filters are flattened."
+  [stage :- ::lib.schema/stage]
+  (letfn [(flatten-filters [filter-clauses]
+            ;; if we did ANY flattening, recurse so we can see if we can do MORE. I'm using a volatile to track this
+            ;; so we can avoid equality comparisons which are more expensive and also potentially dangerous (don't
+            ;; want to accidentally end up with infinite recursion here)
+            (let [did-some-flattening? (volatile! false)
+                  filter-clauses'      (into []
+                                             (mapcat (fn [[tag _opts & args :as filter-clause]]
+                                                       (if (clojure.core/= tag :and)
+                                                         (do
+                                                           (vreset! did-some-flattening? true)
+                                                           args)
+                                                         [filter-clause])))
+                                             filter-clauses)]
+              (if @did-some-flattening?
+                (recur filter-clauses')
+                filter-clauses')))]
+    (cond-> stage
+      (seq (:filters stage)) (update :filters flatten-filters))))
+
 (mu/defn filter :- :metabase.lib.schema/query
-  "Sets `boolean-expression` as a filter on `query`."
+  "Sets `boolean-expression` as a filter on `query`. Ignores duplicate filters (ignoring :lib/uuid)."
   ([query :- :metabase.lib.schema/query
     boolean-expression]
    (metabase.lib.filter/filter query nil boolean-expression))
@@ -307,7 +353,7 @@
      (recur query stage-number (lib.ref/ref boolean-expression))
      (let [stage-number (clojure.core/or stage-number -1)
            new-filter (lib.common/->op-arg boolean-expression)]
-       (lib.util/update-query-stage query stage-number update :filters (fnil conj []) new-filter)))))
+       (lib.util/update-query-stage query stage-number add-filter-to-stage new-filter)))))
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
   "Returns the current filters in stage with `stage-number` of `query`.

@@ -103,6 +103,9 @@ class TagEditorParamInner extends Component<Props> {
 
       setTemplateTag({
         ...newTag,
+        // When we change widget types (e.g. date/relative -> date/single)
+        // the previous default is likely to be incorrect
+        default: null,
         options: getDefaultParameterOptions(newTag),
       });
 

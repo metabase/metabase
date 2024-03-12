@@ -7,8 +7,10 @@
    [metabase-enterprise.audit-db :as audit-db]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.core :as mbc]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
    [metabase.task :as task]
@@ -55,8 +57,14 @@
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
 
-    (testing "Only admins have data perms for the audit DB after it is installed"
-      (is (not (t2/exists? :model/Permissions {:where [:like :object (str "%" perms/audit-db-id "%")]}))))
+    (testing "Audit DB starts with no permissions for all users"
+      (is (= {:perms/native-query-editing  :no
+              :perms/manage-database       :no
+              :perms/data-access           :no-self-service
+              :perms/download-results      :one-million-rows
+              :perms/manage-table-metadata :no}
+             (-> (data-perms/data-permissions-graph :db-id perms/audit-db-id :audit? true)
+                 (get-in [(u/the-id (perms-group/all-users)) perms/audit-db-id])))))
 
     (testing "Audit DB does not have scheduled syncs"
       (let [db-has-sync-job-trigger? (fn [db-id]

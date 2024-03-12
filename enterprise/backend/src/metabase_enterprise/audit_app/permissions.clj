@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.audit-db :refer [default-audit-collection]]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
@@ -63,11 +64,11 @@
   [group-id changes]
   (let [[change-id type] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
       (when change-id
-        (let [change-permissions! (case type
-                                    :read  perms/grant-permissions!
-                                    :none  perms/delete-related-permissions!
-                                    :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
-                                                           {:status-code 400})))
+        (let [permission-value (case type
+                                 :read  :unrestricted
+                                 :none  :no-self-service
+                                 :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
+                                                        {:status-code 400})))
               view-tables         (t2/select :model/Table :db_id perms/audit-db-id :name [:in audit-db-view-names])]
           (doseq [table view-tables]
-            (change-permissions! group-id (perms/table-query-path table)))))))
+            (data-perms/set-table-permission! group-id (u/the-id table) :perms/data-access permission-value))))))

@@ -313,3 +313,35 @@
 
 (deftest ^:parallel engine-test
   (is (= :h2 (lib/engine lib.tu/native-query))))
+
+(deftest ^:parallel template-tag-card-ids-test
+  (let [query (lib/query lib.tu/metadata-provider-with-mock-cards
+                         {:database (meta/id)
+                          :type     :native
+                          :native   {:query         {}
+                                     :template-tags {"tag-name-not-important1" {:type         :card
+                                                                                :display-name "X"
+                                                                                :card-id      1}
+                                                     "tag-name-not-important2" {:type         :card
+                                                                                :display-name "Y"
+                                                                                :card-id      2}}}})]
+    (is (= #{1 2}
+           (lib/template-tag-card-ids query)))))
+
+(deftest ^:parallel template-tags-referenced-cards-test
+  (testing "returns Card instances from raw query"
+    (let [query (lib/query lib.tu/metadata-provider-with-mock-cards
+                  {:database (meta/id)
+                   :type     :native
+                   :native   {:query         {}
+                              :template-tags {"tag-name-not-important1" {:type         :card
+                                                                         :display-name "X"
+                                                                         :card-id      1}
+                                              "tag-name-not-important2" {:type         :card
+                                                                         :display-name "Y"
+                                                                         :card-id      2}}}})]
+      (is (=? [{:id            1
+                :dataset-query {}}
+               {:id            2
+                :dataset-query {}}]
+              (lib/template-tags-referenced-cards query))))))

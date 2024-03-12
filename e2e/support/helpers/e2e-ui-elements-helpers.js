@@ -1,6 +1,6 @@
 // various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export const POPOVER_ELEMENT =
-  ".popover[data-state~='visible'],[data-position]";
+  ".popover[data-state~='visible'],[data-position]:not(.emotion-HoverCard-dropdown)";
 
 export function popover() {
   cy.get(POPOVER_ELEMENT).should("be.visible");
@@ -12,10 +12,10 @@ export function mantinePopover() {
   return cy.get(MANTINE_POPOVER).should("be.visible");
 }
 
-const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']";
+const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
-  cy.get(HOVERCARD_ELEMENT).should("be.visible");
+  cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
   return cy.get(HOVERCARD_ELEMENT);
 }
 

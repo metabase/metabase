@@ -8,12 +8,11 @@
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
    [honey.sql :as sql]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.honey-sql-2]
@@ -112,9 +111,9 @@
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name db-type))))
-  (classloader/require 'metabase.driver.util)
+  (classloader/require 'metabase.driver.sql-jdbc.connection)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
-    (try (assert (sql-jdbc.conn/can-connect-with-spec? {:datasource data-source}) error-msg)
+    (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
@@ -164,8 +163,8 @@
    auto-migrate? :- [:maybe :boolean]]
   (u/profile (trs "Database setup")
     (u/with-us-locale
-       (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                 setting/*disable-cache*         true]
+      (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                config/*disable-setting-cache*  true]
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
          (run-schema-migrations! db-type data-source auto-migrate?))))

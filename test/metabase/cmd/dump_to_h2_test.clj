@@ -9,12 +9,12 @@
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.test-util :as cmd.test-util]
+   [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.spec :as mdb.spec]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Setting]]
-   [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.encryption-test :as encryption-test]
@@ -54,7 +54,7 @@
                {:subprotocol "h2"
                 :subname     (format "mem:%s;DB_CLOSE_DELAY=10" db-name)
                 :classname   "org.h2.Driver"}
-               (mdb.spec/spec db-type (tx/dbdef->connection-details db-type :db {:database-name db-name})))]
+               (mdb/spec db-type (tx/dbdef->connection-details db-type :db {:database-name db-name})))]
     (mdb.test-util/->ClojureJDBCSpecDataSource spec)))
 
 (deftest dump-to-h2-dump-plaintext-test
@@ -66,7 +66,7 @@
                           h2-file-default-enc (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
           (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
-            (binding [setting/*disable-cache*         true
+            (binding [config/*disable-setting-cache*  true
                       mdb.connection/*application-db* (mdb.connection/application-db
                                                        driver/*driver*
                                                        (persistent-data-source driver/*driver* db-name))]
