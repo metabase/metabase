@@ -13,8 +13,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Field]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -465,17 +465,16 @@
             grant?            (and db
                                    (not (mi/can-read? db))
                                    grant-permission?)]
-        (when grant?
-          (perms/grant-permissions! group-id (perms/data-perms-path db-id)))
-        (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
-                   (upload/create-csv-upload! {:collection-id collection-id
-                                               :filename      csv-file-prefix
-                                               :file          file
-                                               :db-id         db-id
-                                               :schema-name   schema-name
-                                               :table-prefix  table-prefix}))
+        (mt/with-restored-data-perms-for-group! group-id
           (when grant?
-            (perms/revoke-data-perms! group-id db-id)))))))
+            (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted))
+          (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
+                     (upload/create-csv-upload! {:collection-id collection-id
+                                                 :filename      csv-file-prefix
+                                                 :file          file
+                                                 :db-id         db-id
+                                                 :schema-name   schema-name
+                                                 :table-prefix  table-prefix}))))))))
 
 (defn do-with-uploads-allowed
   "Set uploads-enabled to true, and uses an admin user, run the thunk"

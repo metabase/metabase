@@ -31,7 +31,10 @@ export function compile(source: string, type: Type, opts: Opts = {}) {
     }).root,
     {
       passes: opts.resolverPass
-        ? [...passes, expr => resolve(expr, type, mockResolve as any)]
+        ? [
+            ...passes,
+            expression => resolve({ expression, type, fn: mockResolve }),
+          ]
         : passes,
       getMBQLName,
     },
@@ -56,7 +59,7 @@ export function oracle(source: string, type: Type) {
     }
     throw err;
   }
-  return resolve(mbql, type, mockResolve as any);
+  return resolve({ expression: mbql, type, fn: mockResolve });
 }
 
 export function compare(

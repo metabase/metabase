@@ -53,8 +53,8 @@
 ;; {:perms/native-query-editing :yes}     mbql-required-perms
 ;;                                            |
 ;;                     no source card  <------+----> has source card
-;;                             ↓                          ↓
-;;               tables->permissions-path-set   source-card-read-perms
+;;                             |                          ↓
+;;                             |                source-card-read-perms
 ;;                             ↓
 ;;     {:perms/data-access {table-id :unrestricted}}
 
@@ -73,60 +73,6 @@
       (cons
        (:source-table m)
        (query->source-table-ids (dissoc m :source-table)))))))
-
-(def ^:private PermsOptions
-  "Map of options to be passed to the permissions checking functions."
-  [:map
-   [:segmented-perms?      {:optional true} :boolean]
-   [:throw-exceptions?     {:optional true} [:maybe :boolean]]
-   [:already-preprocessed? {:optional true} :boolean]
-   [:table-perms-fn        {:optional true} fn?]
-   [:native-perms-fn       {:optional true} fn?]])
-
-(def ^:private TableOrIDOrNativePlaceholder
-  [:or
-   [:= ::native]
-   ms/PositiveInt])
-
-(mu/defn ^:private table-ids->id->schema :- [:maybe [:map-of ::lib.schema.id/table [:maybe :string]]]
-  [table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
-  (when (seq table-ids)
-    (if (qp.store/initialized?)
-      (into {}
-            (map (fn [table-id]
-                   ((juxt :id :schema) (lib.metadata/table (qp.store/metadata-provider) table-id))))
-            table-ids)
-      (t2/select-pk->fn :schema :model/Table :id [:in table-ids]))))
-
-(mu/defn tables->permissions-path-set :- [:set perms.u/PathSchema]
-  "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for
-  `segmented-perms?` will return segmented permissions for the table rather that full table permissions.
-
-  Custom `table-perms-fn` and `native-perms-fn` can be passed as options to generate permissions paths for feature-level
-  permissions, such as download permissions."
-  [database-or-id :- [:or ms/PositiveInt :map]
-   tables-or-ids  :- [:set TableOrIDOrNativePlaceholder]
-   {:keys [segmented-perms?
-           table-perms-fn
-           native-perms-fn]} :- PermsOptions]
-  (let [table-ids           (filter integer? tables-or-ids)
-        table-id->schema    (table-ids->id->schema table-ids)
-        table-or-id->schema #(if (integer? %)
-                               (table-id->schema %)
-                               (:schema %))
-        native-perms-fn     (or native-perms-fn perms/adhoc-native-query-path)
-        table-perms-fn      (or table-perms-fn
-                                (if segmented-perms?
-                                  perms/table-sandboxed-query-path
-                                  perms/table-query-path))]
-    (set (for [table-or-id tables-or-ids]
-           (if (= ::native table-or-id)
-             ;; Any `::native` placeholders from above mean we need native ad-hoc query permissions for this DATABASE
-             (native-perms-fn database-or-id)
-             ;; anything else (i.e., a normal table) just gets normal table permissions
-             (table-perms-fn (u/the-id database-or-id)
-                             (table-or-id->schema table-or-id)
-                             (u/the-id table-or-id)))))))
 
 (mu/defn ^:private card-instance :- [:and
                                      (ms/InstanceOf :model/Card)

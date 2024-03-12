@@ -26,7 +26,6 @@ import {
   getUserIsAdmin,
   canManageSubscriptions,
 } from "metabase/selectors/user";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 
 import * as actions from "../actions";
 import View from "../components/view/View";
@@ -166,7 +165,6 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
-    loadingMessage: getWhiteLabeledLoadingMessage(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
 

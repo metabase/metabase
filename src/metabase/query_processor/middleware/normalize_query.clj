@@ -55,7 +55,7 @@
                                                  (some-fn :lib/type :type)]]
   "Preprocessing middleware. Normalize a query, meaning do things like convert keys and MBQL clause tags to kebab-case
   keywords. Convert query to pMBQL if needed."
-  [query :- :map]
+  [query :- [:map [:database ::lib.schema.id/database]]]
   (try
     (u/prog1 (normalize* query)
       (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str <>)))

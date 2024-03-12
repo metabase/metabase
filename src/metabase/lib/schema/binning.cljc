@@ -12,7 +12,7 @@
   [:enum :bin-width :default :num-bins])
 
 (mr/def ::num-bins
-  ::lib.schema.common/positive-int)
+  pos-int?)
 
 (mr/def ::bin-width
   ::lib.schema.common/positive-number)
