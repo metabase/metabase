@@ -15,8 +15,7 @@ import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./UserStep.styled";
 
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
-  const { isStepActive, isStepCompleted, handleStepSelect, isSetupCompleted } =
-    useStep("user_info");
+  const { isStepActive, isStepCompleted } = useStep("user_info");
   const user = useSelector(getUser);
   const isHosted = useSelector(getIsHosted);
 
@@ -32,8 +31,6 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         title={getStepTitle(user, isStepCompleted)}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleStepSelect}
       />
     );
   }

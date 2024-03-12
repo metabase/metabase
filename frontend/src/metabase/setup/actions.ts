@@ -9,7 +9,7 @@ import {
 } from "metabase/home/utils";
 import { loadLocalization } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
-import { SetupApi, MetabaseApi } from "metabase/services";
+import { SetupApi } from "metabase/services";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
@@ -26,7 +26,6 @@ import {
   getLocale,
   getNextStep,
   getSetupToken,
-  getDatabase,
 } from "./selectors";
 import type { SetupStep } from "./types";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
@@ -133,14 +132,6 @@ export const submitUsageReason = createAsyncThunk(
   },
 );
 
-export const submitLicenseToken = createAsyncThunk(
-  "metabase/setup/SUBMIT_LICENSE_TOKEN",
-  (token: string | null, { dispatch }) => {
-    dispatch(goToNextStep());
-    trackLicenseTokenStepSubmitted(Boolean(token));
-  },
-);
-
 export const UPDATE_DATABASE_ENGINE = "metabase/setup/UPDATE_DATABASE_ENGINE";
 export const updateDatabaseEngine = createAsyncThunk(
   UPDATE_DATABASE_ENGINE,
@@ -160,15 +151,21 @@ export const submitDatabase = createAsyncThunk<
   SUBMIT_DATABASE,
   async (database: DatabaseData, { dispatch, rejectWithValue }) => {
     try {
-      const result = await MetabaseApi.db_validate({ details: database });
-      if (!result.valid) {
-        return rejectWithValue(result);
-      }
+      await dispatch(createDatabase(database));
       dispatch(goToNextStep());
       return database;
     } catch (error) {
       return rejectWithValue(error);
     }
+  },
+);
+
+export const SKIP_DATABASE = "metabase/setup/SKIP_DATABASE";
+export const skipDatabase = createAsyncThunk(
+  SKIP_DATABASE,
+  (engine: string | undefined, { dispatch }) => {
+    trackAddDataLaterClicked(engine);
+    dispatch(goToNextStep());
   },
 );
 
@@ -180,11 +177,25 @@ export const submitUserInvite = createAsyncThunk(
   },
 );
 
-export const SKIP_DATABASE = "metabase/setup/SKIP_DATABASE";
-export const skipDatabase = createAsyncThunk(
-  SKIP_DATABASE,
-  (engine: string | undefined, { dispatch }) => {
-    trackAddDataLaterClicked(engine);
+export const submitLicenseToken = createAsyncThunk(
+  "metabase/setup/SUBMIT_LICENSE_TOKEN",
+  async (licenseToken: string | null, { dispatch, rejectWithValue }) => {
+    try {
+      if (licenseToken) {
+        await dispatch(
+          updateSetting({
+            key: "premium-embedding-token",
+            value: licenseToken,
+          }),
+        );
+      }
+      trackLicenseTokenStepSubmitted(Boolean(licenseToken));
+    } catch (err) {
+      return rejectWithValue(
+        t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`,
+      );
+    }
+
     dispatch(goToNextStep());
   },
 );
@@ -211,33 +222,7 @@ export const updateTracking = createAsyncThunk(
 export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
 export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
   SUBMIT_SETUP,
-  async (_, { getState, dispatch, rejectWithValue }) => {
-    const database = getDatabase(getState());
-    const licenseToken = getState().setup.licenseToken;
-
-    try {
-      if (database) {
-        await dispatch(createDatabase(database));
-      }
-    } catch (error) {
-      return rejectWithValue(error);
-    }
-
-    try {
-      if (licenseToken) {
-        await dispatch(
-          updateSetting({
-            key: "premium-embedding-token",
-            value: licenseToken,
-          }),
-        );
-      }
-    } catch (err) {
-      return rejectWithValue(
-        t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`,
-      );
-    }
-
+  async (_, { dispatch }) => {
     dispatch(goToNextStep());
   },
 );
