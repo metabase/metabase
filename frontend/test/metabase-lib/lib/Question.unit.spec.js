@@ -7,7 +7,7 @@ import { deserializeCardFromUrl } from "metabase/lib/card";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
-import * as ML_Urls from "metabase-lib/urls";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockColumn,
   createMockDatasetData,

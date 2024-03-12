@@ -7,8 +7,8 @@ import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/u
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import type { ParameterId, ParameterValue } from "metabase-types/api";
 
-import type Question from "./v1/Question";
-import type NativeQuery from "./v1/queries/NativeQuery";
+import type Question from "./Question";
+import type NativeQuery from "./queries/NativeQuery";
 
 type UrlBuilderOpts = {
   originalQuestion?: Question;

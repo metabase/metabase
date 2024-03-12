@@ -26,7 +26,7 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
 import { ActionsApi } from "metabase/services";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import * as ML_Urls from "metabase-lib/urls";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Collection,

@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Table from "metabase-lib/v1/metadata/Table";
-import * as ML_Urls from "metabase-lib/urls";
+import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { Label, LabelContainer, Container } from "../MetadataInfo.styled";
 

@@ -29,12 +29,12 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import type { Query } from "../../types";
 import type Question from "../Question";
 import type Database from "../metadata/Database";
 import type Field from "../metadata/Field";
 import type Segment from "../metadata/Segment";
 import type Table from "../metadata/Table";
-import type { Query } from "../../types";
 
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";

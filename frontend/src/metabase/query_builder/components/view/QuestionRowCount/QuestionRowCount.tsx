@@ -13,10 +13,10 @@ import {
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
-import type { Limit } from "metabase-lib";
 import type { Dataset } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

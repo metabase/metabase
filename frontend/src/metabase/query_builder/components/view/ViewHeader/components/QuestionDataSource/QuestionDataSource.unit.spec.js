@@ -6,7 +6,7 @@ import { setupCardEndpoints } from "__support__/server-mocks/card";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/v1/Question";
-import * as ML_Urls from "metabase-lib/urls";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockCard,
   createMockDatabase,

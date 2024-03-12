@@ -6,12 +6,12 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   createQuery,
   columnFinder,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Metric } from "metabase-types/api";
 import {
   createMockMetric,

@@ -1,7 +1,6 @@
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import { formatIdentifier, getDisplayNameWithSeparator } from "./";
 import {
   enclosingFunction,
   partialMatch,
@@ -19,6 +18,8 @@ import type {
   MBQLClauseFunctionConfig,
 } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+
+import { formatIdentifier, getDisplayNameWithSeparator } from "./";
 
 export type Suggestion = {
   type: string;

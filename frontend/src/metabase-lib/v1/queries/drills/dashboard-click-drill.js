@@ -12,7 +12,7 @@ import {
   getTargetForQueryParams,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import * as ML_Urls from "metabase-lib/urls";
+import * as ML_Urls from "metabase-lib/v1/urls";
 
 export function getDashboardDrillType(clicked) {
   const clickBehavior = getClickBehavior(clicked);

@@ -7,6 +7,7 @@ import {
 import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
 import { parseTimestamp } from "metabase/lib/time";
 import { checkNotNull } from "metabase/lib/types";
+import type { ClickObjectDimension as DimensionType } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -17,7 +18,6 @@ import {
 } from "metabase-lib/v1/parameters/utils/filters";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { ClickObjectDataRow } from "metabase-lib/v1/queries/drills/types";
-import type { ClickObjectDimension as DimensionType } from "metabase-lib";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isa, isDate } from "metabase-lib/v1/types/utils/isa";
 import type {

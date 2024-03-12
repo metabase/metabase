@@ -1,10 +1,10 @@
 import _ from "underscore";
 
 import { checkNotNull } from "metabase/lib/types";
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Query } from "metabase-lib";
 
 import type { NotebookStep, OpenSteps } from "../types";
 

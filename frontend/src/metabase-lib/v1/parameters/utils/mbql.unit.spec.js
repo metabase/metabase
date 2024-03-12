@@ -1,13 +1,13 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as Lib from "metabase-lib";
+import { createQuery } from "metabase-lib/test-helpers";
 import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
   fieldFilterParameterToFilter,
 } from "metabase-lib/v1/parameters/utils/mbql";
-import { createQuery } from "metabase-lib/test-helpers";
 import { PRODUCTS, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 describe("parameters/utils/mbql", () => {

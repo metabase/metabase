@@ -14,7 +14,7 @@ import type { IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/urls";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
 
