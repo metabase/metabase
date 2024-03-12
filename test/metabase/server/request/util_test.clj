@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]))
 
@@ -22,7 +22,7 @@
                               {"origin" "http://mysite.com"}   false}]
     (testing (pr-str (list 'https? {:headers headers}))
       (is (= expected
-             (request.u/https? {:headers headers}))))))
+             (req.util/https? {:headers headers}))))))
 
 (def ^:private mock-request
   (delay (edn/read-string (slurp "test/metabase/server/request/sample-request.edn"))))
@@ -31,10 +31,10 @@
   (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
           :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
           :ip_address         "0:0:0:0:0:0:0:1"}
-         (request.u/device-info @mock-request))))
+         (req.util/device-info @mock-request))))
 
 (deftest ^:parallel describe-user-agent-test
-  (are [user-agent expected] (= expected (request.u/describe-user-agent user-agent))
+  (are [user-agent expected] (= expected (req.util/describe-user-agent user-agent))
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"
     "Browser (Chrome/Windows)"
 
@@ -57,27 +57,27 @@
   (let [request (ring.mock/request :get "api/session")]
     (testing "request with no forwarding"
       (is (= "127.0.0.1"
-             (request.u/ip-address request))))
+             (req.util/ip-address request))))
     (testing "request with forwarding"
       (let [mock-request (-> (ring.mock/request :get "api/session")
                              (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
         (is (= "5.6.7.8"
-               (request.u/ip-address mock-request))))
+               (req.util/ip-address mock-request))))
       (testing "multiple IP addresses"
         (let [mock-request (-> (ring.mock/request :get "api/session")
                                (ring.mock/header "X-Forwarded-For" "1.2.3.4, 5.6.7.8"))]
           (is (= "1.2.3.4"
-                 (request.u/ip-address mock-request)))))
+                 (req.util/ip-address mock-request)))))
       (testing "different header than default X-Forwarded-For"
         (mt/with-temporary-setting-values [source-address-header "X-ProxyUser-Ip"]
           (let [mock-request (-> (ring.mock/request :get "api/session")
                                  (ring.mock/header "x-proxyuser-ip" "1.2.3.4"))]
             (is (= "1.2.3.4"
-                   (request.u/ip-address mock-request)))))))))
+                   (req.util/ip-address mock-request)))))))))
 
 (deftest ^:parallel geocode-ip-addresses-test
   (are [ip-addresses expected] (malli= [:maybe expected]
-                                       (request.u/geocode-ip-addresses ip-addresses))
+                                       (req.util/geocode-ip-addresses ip-addresses))
     ;; Google DNS
     ["8.8.8.8"]
     [:map

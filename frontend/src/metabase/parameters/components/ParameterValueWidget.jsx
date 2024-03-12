@@ -4,10 +4,10 @@ import { createRef, Component } from "react";
 import { t } from "ttag";
 
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
-import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
-import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
+import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
+import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget";
 import { DateRangeWidget } from "metabase/components/DateRangeWidget";
-import DateRelativeWidget from "metabase/components/DateRelativeWidget";
+import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
 import { DateSingleWidget } from "metabase/components/DateSingleWidget";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { TextWidget } from "metabase/components/TextWidget";

@@ -349,7 +349,7 @@
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
-(mu/defn query->source-table-id :- [:maybe ::lib.schema.common/positive-int]
+(mu/defn query->source-table-id :- [:maybe pos-int?]
   "Return the source Table ID associated with `query`, if applicable; handles nested queries as well. If `query` is
   `nil`, returns `nil`.
 
@@ -382,7 +382,7 @@
     :else
     source-table-id))
 
-(mu/defn join->source-table-id :- [:maybe ::lib.schema.common/positive-int]
+(mu/defn join->source-table-id :- [:maybe pos-int?]
   "Like `query->source-table-id`, but for a join."
   [join]
   (query->source-table-id {:type :query, :query join}))

@@ -20,11 +20,6 @@
   height: 0;
 }
 
-:global(.input--small) {
-  padding: 0.3rem 0.4rem;
-}
-
-:global(.input--focus),
 :global(.input:focus),
 .input:focus:focus {
   outline: none;

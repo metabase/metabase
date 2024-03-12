@@ -155,7 +155,7 @@
   [action arg-map]
   (let [action  (keyword action)
         spec    (action-arg-map-spec action)
-        arg-map (normalize-action-arg-map action arg-map)]
+        arg-map (normalize-action-arg-map action arg-map)] ; is arg-map always just a regular query?
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))

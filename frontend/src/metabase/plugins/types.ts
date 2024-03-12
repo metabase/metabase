@@ -64,5 +64,6 @@ export type LLMSuggestQuestionInfo = (
 ) => JSX.Element | null;
 
 export type PluginLLMAutoDescription = {
+  isEnabled: () => boolean;
   LLMSuggestQuestionInfo: LLMSuggestQuestionInfo;
 };

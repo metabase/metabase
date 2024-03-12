@@ -39,7 +39,7 @@
   [:map
    [:id ms/UUIDString]])
 
-(def ^:private session-cookie @#'mw.session/metabase-session-cookie)
+(def ^:private session-cookie mw.session/metabase-session-cookie)
 
 (deftest login-test
   (reset-throttlers!)

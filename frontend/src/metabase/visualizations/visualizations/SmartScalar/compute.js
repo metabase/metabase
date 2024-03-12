@@ -22,10 +22,6 @@ export function computeTrend(
     settings,
   });
 
-  if (isEmpty(currentMetricData)) {
-    return null;
-  }
-
   const { clicked, date, dateUnitSettings, formatOptions, value } =
     currentMetricData;
 
@@ -168,8 +164,14 @@ function getCurrentMetricData({ series, insights, settings }) {
     col => col.name === settings["scalar.field"],
   );
 
-  if (dimensionColIndex === -1 || metricColIndex === -1) {
-    return null;
+  if (dimensionColIndex === -1) {
+    throw Error("No date column was found");
+  }
+
+  if (metricColIndex === -1) {
+    throw Error(
+      "There was a problem with the primary number you chose. Check the viz settings and select a valid column for the primary number field",
+    );
   }
 
   // get latest value and date
@@ -177,7 +179,7 @@ function getCurrentMetricData({ series, insights, settings }) {
   const date = rows[latestRowIndex][dimensionColIndex];
   const value = rows[latestRowIndex][metricColIndex];
   if (isEmpty(value) || isEmpty(date)) {
-    return null;
+    throw Error("The latest data point contains a null value");
   }
 
   // get metric column metadata

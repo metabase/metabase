@@ -56,7 +56,8 @@ export interface Collection {
   personal_owner_id?: UserId;
   is_personal?: boolean;
 
-  location?: string;
+  location: string | null;
+  effective_location?: string; // location path containing only those collections that the user has permission to access
   effective_ancestors?: Collection[];
 
   here?: CollectionContentModel[];
@@ -96,6 +97,8 @@ export interface CollectionItem {
   type?: string;
   can_write?: boolean;
   "last-edit-info"?: LastEditInfo;
+  location?: string;
+  effective_location?: string;
   getIcon: () => { name: IconName };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
@@ -108,6 +111,7 @@ export interface CollectionListQuery {
   archived?: boolean;
   "exclude-other-user-collections"?: boolean;
   "exclude-archived"?: boolean;
+  "personal-only"?: boolean;
   namespace?: string;
   tree?: boolean;
 }

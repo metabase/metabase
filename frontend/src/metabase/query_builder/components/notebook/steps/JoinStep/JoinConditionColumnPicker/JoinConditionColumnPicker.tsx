@@ -1,139 +1,190 @@
-import { forwardRef, useCallback, useMemo } from "react";
+import type { Ref } from "react";
+import { forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
-import type {
-  QueryColumnPickerProps,
-  ColumnListItem,
-} from "metabase/common/components/QueryColumnPicker";
+import type { ColumnListItem } from "metabase/common/components/QueryColumnPicker";
 import { Popover, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
-  JoinConditionCellItem,
-  StyledQueryColumnPicker,
+  JoinCellItem,
+  JoinColumnPicker,
 } from "./JoinConditionColumnPicker.styled";
 
-interface JoinConditionColumnPickerProps
-  extends Omit<QueryColumnPickerProps, "checkIsColumnSelected"> {
-  isNewCondition: boolean;
-  column?: Lib.ColumnMetadata;
-  table?: Lib.Joinable;
-  label?: string;
+interface JoinConditionColumnPickerProps {
+  query: Lib.Query;
+  stageIndex: number;
+  joinable: Lib.JoinOrJoinable;
+  tableName: string | undefined;
+  lhsColumn: Lib.ColumnMetadata | undefined;
+  rhsColumn: Lib.ColumnMetadata | undefined;
   isOpened: boolean;
-  readOnly?: boolean;
-  onOpenedChange: (isOpened: boolean) => void;
-  "data-testid"?: string;
+  isLhsColumn: boolean;
+  isReadOnly: boolean;
+  onChange: (column: Lib.ColumnMetadata) => void;
+  onOpenChange: (isOpened: boolean) => void;
 }
 
 export function JoinConditionColumnPicker({
   query,
   stageIndex,
-  column,
-  table,
-  label,
-  isNewCondition,
+  joinable,
+  tableName,
+  lhsColumn,
+  rhsColumn,
   isOpened,
-  readOnly = false,
-  onOpenedChange,
-  ...props
+  isLhsColumn,
+  isReadOnly,
+  onChange,
+  onOpenChange,
 }: JoinConditionColumnPickerProps) {
-  const columnInfo = column ? Lib.displayInfo(query, stageIndex, column) : null;
-
-  const tableName = useMemo(() => {
-    if (!columnInfo) {
-      return;
-    }
-    if (table) {
-      return Lib.displayInfo(query, stageIndex, table).displayName;
-    }
-    return columnInfo.table?.displayName;
-  }, [query, stageIndex, table, columnInfo]);
-
-  const checkColumnSelected = useCallback(
-    (item: ColumnListItem) => {
-      if (isNewCondition) {
-        return false;
-      }
-      return !!item.selected;
-    },
-    [isNewCondition],
-  );
-
   return (
-    <Popover opened={isOpened} onChange={onOpenedChange}>
+    <Popover opened={isOpened} position="bottom-start" onChange={onOpenChange}>
       <Popover.Target>
-        <ColumnNotebookCellItem
-          isOpen={isOpened}
+        <JoinColumnTarget
+          query={query}
+          stageIndex={stageIndex}
           tableName={tableName}
-          columnName={columnInfo?.displayName}
-          label={label}
-          readOnly={readOnly}
-          onClick={() => onOpenedChange(!isOpened)}
+          lhsColumn={lhsColumn}
+          rhsColumn={rhsColumn}
+          isLhsColumn={isLhsColumn}
+          isOpened={isOpened}
+          isReadOnly={isReadOnly}
+          onClick={() => onOpenChange(!isOpened)}
         />
       </Popover.Target>
       <Popover.Dropdown>
-        <StyledQueryColumnPicker
-          {...props}
+        <JoinColumnDropdown
           query={query}
           stageIndex={stageIndex}
-          hasTemporalBucketing
-          checkIsColumnSelected={checkColumnSelected}
-          onClose={() => onOpenedChange(false)}
+          joinable={joinable}
+          lhsColumn={lhsColumn}
+          rhsColumn={rhsColumn}
+          isLhsColumn={isLhsColumn}
+          onChange={onChange}
+          onClose={() => onOpenChange(false)}
         />
       </Popover.Dropdown>
     </Popover>
   );
 }
 
-interface ColumnNotebookCellItemProps {
-  tableName?: string;
-  columnName?: string;
-  label?: string;
-  isOpen?: boolean;
-  readOnly?: boolean;
+interface JoinColumnTargetProps {
+  query: Lib.Query;
+  stageIndex: number;
+  tableName: string | undefined;
+  lhsColumn: Lib.ColumnMetadata | undefined;
+  rhsColumn: Lib.ColumnMetadata | undefined;
+  isLhsColumn: boolean;
+  isOpened: boolean;
+  isReadOnly: boolean;
   onClick: () => void;
 }
 
-const ColumnNotebookCellItem = forwardRef<
-  HTMLButtonElement,
-  ColumnNotebookCellItemProps
->(function ColumnNotebookCellItem(
-  { tableName, columnName, label, isOpen, readOnly, onClick },
-  ref,
+const JoinColumnTarget = forwardRef(function JoinColumnTarget(
+  {
+    query,
+    stageIndex,
+    tableName,
+    lhsColumn,
+    rhsColumn,
+    isLhsColumn,
+    isOpened,
+    isReadOnly,
+    onClick,
+  }: JoinColumnTargetProps,
+  ref: Ref<HTMLButtonElement>,
 ) {
-  const hasColumnSelected = !!columnName;
-  const hasTableLabel = !!tableName || hasColumnSelected;
+  const column = isLhsColumn ? lhsColumn : rhsColumn;
+  const columnInfo = useMemo(
+    () => (column ? Lib.displayInfo(query, stageIndex, column) : undefined),
+    [query, stageIndex, column],
+  );
+
   return (
-    <JoinConditionCellItem
-      isOpen={isOpen}
-      hasColumnSelected={hasColumnSelected}
-      aria-label={label}
-      disabled={readOnly}
-      readOnly={readOnly}
-      onClick={onClick}
+    <JoinCellItem
       ref={ref}
+      isOpen={isOpened}
+      isColumnSelected={column != null}
+      isReadOnly={isReadOnly}
+      disabled={isReadOnly}
+      onClick={onClick}
+      aria-label={isLhsColumn ? t`Left column` : t`Right column`}
     >
-      {hasTableLabel && (
+      {tableName != null && (
         <Text
           display="block"
           size={11}
           lh={1}
-          color="white"
+          color={columnInfo ? "white" : "brand"}
           align="left"
           weight={400}
         >
-          {tableName || t`Previous results`}
+          {tableName}
         </Text>
       )}
       <Text
         display="block"
-        color={columnName ? "white" : "brand"}
+        color={columnInfo ? "white" : "brand"}
         align="left"
         weight={700}
         lh={1}
       >
-        {columnName || t`Pick a column…`}
+        {columnInfo?.displayName ?? t`Pick a column…`}
       </Text>
-    </JoinConditionCellItem>
+    </JoinCellItem>
   );
 });
+
+interface JoinColumnDropdownProps {
+  query: Lib.Query;
+  stageIndex: number;
+  joinable: Lib.JoinOrJoinable;
+  lhsColumn: Lib.ColumnMetadata | undefined;
+  rhsColumn: Lib.ColumnMetadata | undefined;
+  isLhsColumn: boolean;
+  onChange: (column: Lib.ColumnMetadata) => void;
+  onClose: () => void;
+}
+
+function JoinColumnDropdown({
+  query,
+  stageIndex,
+  joinable,
+  lhsColumn,
+  rhsColumn,
+  isLhsColumn,
+  onChange,
+  onClose,
+}: JoinColumnDropdownProps) {
+  const columnGroups = useMemo(() => {
+    const getColumns = isLhsColumn
+      ? Lib.joinConditionLHSColumns
+      : Lib.joinConditionRHSColumns;
+    const columns = getColumns(
+      query,
+      stageIndex,
+      joinable,
+      lhsColumn,
+      rhsColumn,
+    );
+    return Lib.groupColumns(columns);
+  }, [query, stageIndex, joinable, lhsColumn, rhsColumn, isLhsColumn]);
+
+  return (
+    <JoinColumnPicker
+      query={query}
+      columnGroups={columnGroups}
+      stageIndex={stageIndex}
+      hasTemporalBucketing
+      checkIsColumnSelected={checkIsColumnSelected}
+      onSelect={onChange}
+      onClose={onClose}
+      data-testid={isLhsColumn ? "lhs-column-picker" : "rhs-column-picker"}
+    />
+  );
+}
+
+function checkIsColumnSelected(item: ColumnListItem) {
+  return Boolean(item.selected);
+}

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.advanced-config.caching-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.models :refer [Card Dashboard Database PersistedInfo TaskHistory]]
@@ -74,9 +75,9 @@
   (mt/with-model-cleanup [TaskHistory]
     (testing "with :cache-granular-controls enabled, don't refresh any tables in an 'off' or 'deletable' state"
       (mt/with-premium-features #{:cache-granular-controls}
-        (with-temp-persist-models [db creating]
+        (with-temp-persist-models [db creating poff pdeletable]
           (testing "Calls refresh on each persisted-info row"
-            (let [card-ids (atom #{})
+            (let [card-ids       (atom #{})
                   test-refresher (reify task.persist-refresh/Refresher
                                    (refresh! [_ _database _definition card]
                                      (swap! card-ids conj (:id card))
@@ -85,12 +86,25 @@
               (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
               (testing "Doesn't refresh models that have state='off' or 'deletable' if :cache-granular-controls feature flag is enabled"
                 (is (= #{(u/the-id creating)} @card-ids)))
-              (is (partial= {:task "persist-refresh"
+              (is (partial= {:task         "persist-refresh"
                              :task_details {:success 1 :error 0}}
                             (t2/select-one TaskHistory
                                            :db_id (u/the-id db)
                                            :task "persist-refresh"
-                                           {:order-by [[:id :desc]]}))))))))))
+                                           {:order-by [[:id :desc]]})))
+              (testing "Deletes backing tables of models that have state='off'"
+                (let [unpersisted-ids (atom #{})
+                      test-refresher  (reify task.persist-refresh/Refresher
+                                        (unpersist! [_ _database persisted-info]
+                                          (swap! unpersisted-ids conj (:id persisted-info))))
+                      deleted?        (fn [{id :id}]
+                                        (not (t2/exists? :model/PersistedInfo :id id)))]
+                  (#'task.persist-refresh/prune-all-deletable! test-refresher)
+                  (is (set/subset? (set [(:id pdeletable) (:id poff)])
+                                   @unpersisted-ids))
+                  (is (deleted? pdeletable))
+                  (testing "But does not delete the persisted_info record for \"off\" models"
+                    (is (not (deleted? poff)))))))))))))
 
 (deftest model-caching-granular-controls-test-2
   (mt/with-model-cleanup [TaskHistory]

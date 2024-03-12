@@ -3,7 +3,7 @@
   (:require
    [clojure.test :as t]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -13,7 +13,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -56,9 +55,6 @@
 (def ^:private TestUserName
   (into [:enum] usernames))
 
-(def ^:private TestUserName:Schema
-  (apply s/enum usernames))
-
 ;;; ------------------------------------------------- Test User Fns --------------------------------------------------
 
 (def ^:private create-user-lock (Object.))
@@ -97,7 +93,7 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn
      ([]
       (zipmap usernames (map user->id usernames)))
@@ -115,11 +111,15 @@
    (:is_superuser user) "admin"
    :else                "non-admin"))
 
-(s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
+(mu/defn user->credentials :- [:map
+                               [:username [:fn
+                                           {:error/message "valid email"}
+                                           u/email?]]
+                               [:password :string]]
   "Return a map with `:username` and `:password` for User with `username`.
 
     (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
-  [username :- TestUserName:Schema]
+  [username :- TestUserName]
   {:pre [(contains? usernames username)]}
   (let [{:keys [email password]} (user->info username)]
     {:username email
@@ -127,14 +127,14 @@
 
 (defonce ^:private tokens (atom {}))
 
-(s/defn username->token :- u/uuid-regex
+(mu/defn username->token :- [:re u/uuid-regex]
   "Return cached session token for a test User, logging in first if needed."
-  [username :- TestUserName:Schema]
+  [username :- TestUserName]
   (or (@tokens username)
       (locking tokens
         (or (@tokens username)
             (u/prog1 (client/authenticate (user->credentials username))
-              (swap! tokens assoc username <>))))
+                     (swap! tokens assoc username <>))))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
 

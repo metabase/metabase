@@ -1,13 +1,8 @@
 :root {
   --shadow-color: var(--color-shadow);
-  --shadow-hover-color: var(--color-shadow);
 }
+
 :global(.shadowed),
 .shadowed {
   box-shadow: 0 2px 2px var(--color-shadow);
-}
-
-:global(.shadow-hover:hover) {
-  box-shadow: 0 2px 2px color-mod(var(--color-shadow) alpha(20%));
-  transition: box-shadow 300ms linear;
 }

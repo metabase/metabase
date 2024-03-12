@@ -4,8 +4,10 @@ redirect_from:
   - /docs/latest/users-guide/12-data-model-reference
   - /docs/latest/questions/native-editor/data-model-reference
 ---
- 
+
 # Data reference
+
+![Learn about our data](./images/learn-about-our-data.png)
 
 You can open the data reference from:
 

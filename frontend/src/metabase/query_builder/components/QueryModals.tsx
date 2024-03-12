@@ -218,11 +218,11 @@ class QueryModals extends Component<QueryModalsProps> {
             originalQuestion={this.props.originalQuestion}
             onSave={async question => {
               await this.props.onSave(question);
-              onOpenModal(MODAL_TYPES.EMBED);
+              onCloseModal();
             }}
             onCreate={async question => {
               await this.props.onCreate(question);
-              onOpenModal(MODAL_TYPES.EMBED);
+              onCloseModal();
             }}
             onClose={onCloseModal}
             multiStep

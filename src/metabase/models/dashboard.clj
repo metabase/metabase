@@ -448,7 +448,9 @@
     (let [new-param-field-ids (params/dashcards->param-field-ids (t2/hydrate new-dashcards :card))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
 
+
 ;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
+;; Issue: https://github.com/metabase/metabase/issues/39413
 (defn- result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
