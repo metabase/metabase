@@ -87,7 +87,7 @@
                         [[:raw "NULL"] "database-is-auto-increment"] ; only needed for actions, which redshift doesn't support yet
                         [[:raw "NULL"] "database-required"]          ; only needed for actions, which redshift doesn't support yet
                         [[:not= :pk.column_name nil] "pk?"]
-                        [:c.remarks "field-comment"]]
+                        [[:case [:not= :c.remarks ""] :c.remarks :else nil] "field-comment"]]
                :from [[:svv_all_columns :c]]
                :left-join [[{:select [:tc.table_schema
                                       :tc.table_name

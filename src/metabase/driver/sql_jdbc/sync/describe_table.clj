@@ -253,15 +253,13 @@
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec-or-conn table]
-  (if (instance? Connection db-or-id-or-spec-or-conn)
-    (describe-table* driver db-or-id-or-spec-or-conn table)
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db-or-id-or-spec-or-conn
-     nil
-     (fn [^Connection conn]
-       (describe-table* driver conn table)))))
+  [driver db table]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^Connection conn]
+     (describe-table* driver conn table))))
 
 (defmulti describe-fields-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
