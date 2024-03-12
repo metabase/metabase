@@ -13,7 +13,7 @@ type Action =
         resetKey: string;
       };
     }
-  | { type: "SET_ERROR"; payload: { error?: Error; errorMsg: string } }
+  | { type: "SET_ERROR"; payload: { msg: string } }
   | { type: "SET_RESET_KEY"; payload: { key: string } }
   | { type: "RESET" };
 
@@ -23,6 +23,7 @@ interface State {
   isLoading: boolean;
   resetKey: null | string;
   lastSearch: string;
+  errorMsg?: string;
 }
 
 export function getDefaultState(initialValue: string | null): State {
@@ -47,6 +48,7 @@ export function reducer(state: State, action: Action): State {
         ...state,
         isLoading: action.payload.isLoading,
         lastSearch: action.payload.query ?? state.lastSearch,
+        errorMsg: undefined,
       };
 
     case "SET_LOADED":
@@ -56,6 +58,7 @@ export function reducer(state: State, action: Action): State {
         hasMoreValues: action.payload.hasMore,
         isLoading: false,
         resetKey: action.payload.resetKey,
+        errorMsg: undefined,
       };
 
     case "SET_RESET_KEY":
@@ -64,9 +67,12 @@ export function reducer(state: State, action: Action): State {
         resetKey: action.payload.key,
       };
 
-    // TODO
     case "SET_ERROR":
-      return state;
+      return {
+        ...state,
+        isLoading: false,
+        errorMsg: action.payload.msg,
+      };
 
     case "RESET":
       return {
