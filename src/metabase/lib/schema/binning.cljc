@@ -10,7 +10,7 @@
 
 (mr/def ::strategy
   [:enum
-   {:decode/normalize keyword}
+   {:decode/normalize lib.schema.common/normalize-keyword}
    :bin-width :default :num-bins])
 
 (mr/def ::num-bins
@@ -21,21 +21,22 @@
 
 ;;; the binning options that goes in a `:field` ref under the `:binning` key
 (mr/def ::binning
-  [:multi {:dispatch (fn [x]
-                       (keyword (some #(get x %) [:strategy "strategy"])))
-           :error/fn (fn [{:keys [value]} _]
-                       (str "Invalid binning strategy" (pr-str value)))}
-   [:default   [:map
-                {:decode/normalize lib.schema.common/normalize-map}
-                [:strategy [:= {:decode/normalize keyword} :default]]]]
-   [:bin-width [:map
-                {:decode/normalize lib.schema.common/normalize-map}
-                [:strategy  [:= {:decode/normalize keyword} :bin-width]]
-                [:bin-width [:ref ::bin-width]]]]
-   [:num-bins  [:map
-                {:decode/normalize lib.schema.common/normalize-map}
-                [:strategy [:= {:decode/normalize keyword} :num-bins]]
-                [:num-bins [:ref ::num-bins]]]]])
+  [:and
+   [:map
+    {:decode/normalize lib.schema.common/normalize-map}
+    [:strategy [:ref ::strategy]]]
+   [:multi {:dispatch (fn [x]
+                        (keyword (some #(get x %) [:strategy "strategy"])))
+            :error/fn (fn [{:keys [value]} _]
+                        (str "Invalid binning strategy" (pr-str value)))}
+    [:default   [:map
+                 [:strategy [:= :default]]]]
+    [:bin-width [:map
+                 [:strategy  [:= :bin-width]]
+                 [:bin-width [:ref ::bin-width]]]]
+    [:num-bins  [:map
+                 [:strategy [:= :num-bins]]
+                 [:num-bins [:ref ::num-bins]]]]]])
 
 (mr/def ::binning-option
   [:map

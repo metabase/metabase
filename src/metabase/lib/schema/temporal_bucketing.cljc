@@ -2,6 +2,7 @@
   "Malli schema for temporal bucketing units and expressions."
   (:require
    [clojure.set :as set]
+   [metabase.lib.schema.common :as common]
    [metabase.util.malli.registry :as mr]))
 
 (def ordered-date-extraction-units
@@ -22,7 +23,7 @@
 
 (mr/def ::unit.date.extract
   (into [:enum {:error/message    "Valid date extraction unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         date-extraction-units))
 
 (def ordered-date-truncation-units
@@ -36,7 +37,7 @@
 
 (mr/def ::unit.date.truncate
   (into [:enum {:error/message    "Valid date truncation unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         date-truncation-units))
 
 (def ordered-date-bucketing-units
@@ -50,7 +51,7 @@
 
 (mr/def ::unit.date
   (into [:enum {:error/message    "Valid date bucketing unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         date-bucketing-units))
 
 (def ordered-time-extraction-units
@@ -79,7 +80,7 @@
 
 (mr/def ::unit.time.truncate
   (into [:enum {:error/message    "Valid time truncation unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         time-truncation-units))
 
 (def ordered-time-bucketing-units
@@ -95,7 +96,7 @@
 
 (mr/def ::unit.time
   (into [:enum {:error/message    "Valid time bucketing unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         time-bucketing-units))
 
 (def ordered-datetime-bucketing-units
@@ -112,7 +113,7 @@
 
 (mr/def ::unit.date-time
   (into [:enum {:error/message    "Valid datetime bucketing unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         ordered-datetime-bucketing-units))
 
 (def temporal-bucketing-units
@@ -121,7 +122,7 @@
 
 (mr/def ::unit
   (into [:enum {:error/message    "Valid temporal bucketing unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         temporal-bucketing-units))
 
 (def datetime-truncation-units
@@ -130,7 +131,7 @@
 
 (mr/def ::unit.date-time.truncate
   (into [:enum {:error/message    "Valid datetime truncation unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         datetime-truncation-units))
 
 (def datetime-extraction-units
@@ -139,7 +140,7 @@
 
 (mr/def ::unit.date-time.extract
   (into [:enum {:error/message    "Valid datetime extraction unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         datetime-extraction-units))
 
 (def date-interval-units
@@ -151,7 +152,7 @@
 
 (mr/def ::unit.date.interval
   (into [:enum {:error/message    "Valid date interval unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         date-interval-units))
 
 (def time-interval-units
@@ -161,7 +162,7 @@
 
 (mr/def ::unit.time.interval
   (into [:enum {:error/message    "Valid time interval unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         time-interval-units))
 
 (def datetime-interval-units
@@ -170,7 +171,7 @@
 
 (mr/def ::unit.date-time.interval
   (into [:enum {:error/message    "Valid datetime interval unit"
-                :decode/normalize keyword}]
+                :decode/normalize common/normalize-keyword}]
         datetime-interval-units))
 
 (mr/def ::option

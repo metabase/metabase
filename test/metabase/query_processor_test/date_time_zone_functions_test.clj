@@ -19,7 +19,7 @@
 ;;; |                                                Date extract tests                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn test-temporal-extract
+(defn- test-temporal-extract
   [{:keys [aggregation breakout expressions fields filter limit]}]
   (if breakout
     (->> (mt/run-mbql-query times {:expressions expressions

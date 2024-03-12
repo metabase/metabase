@@ -96,7 +96,14 @@
              :sum
              :cum-sum
              :sum-where
-             :var]]
+             :var
+             ;; legacy metric ref
+             :metric
+             ;; arithmetic TODO -- these are only allowed if they have an aggregation as an arg
+             :+
+             :-
+             :/
+             :*]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
 
 (mr/def ::aggregation

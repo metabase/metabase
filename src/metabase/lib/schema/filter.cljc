@@ -88,7 +88,7 @@
 (doseq [op [:starts-with :ends-with :contains :does-not-contain]]
   (mbql-clause/define-mbql-clause op :- :type/Boolean
     [:tuple
-     [:= {:decode/normalize keyword} op]
+     [:= {:decode/normalize common/normalize-keyword} op]
      [:merge ::common/options string-filter-options]
      #_whole [:ref ::expression/string]
      #_part  [:ref ::expression/string]]))
@@ -104,11 +104,11 @@
   ;;
   ;; using units that don't agree with the expr type
   [:tuple
-   [:= {:decode/normalize keyword} :time-interval]
+   [:= {:decode/normalize common/normalize-keyword} :time-interval]
    [:merge ::common/options time-interval-options]
    #_expr [:ref ::expression/temporal]
    #_n    [:or
-           [:enum {:decode/normalize keyword} :current :last :next]
+           [:enum {:decode/normalize common/normalize-keyword} :current :last :next]
            ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
            [:ref ::expression/integer]]
    #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
@@ -116,7 +116,7 @@
 ;; segments are guaranteed to return valid filter clauses and thus booleans, right?
 (mbql-clause/define-mbql-clause :segment :- :type/Boolean
   [:tuple
-   [:= {:decode/normalize keyword} :segment]
+   [:= {:decode/normalize common/normalize-keyword} :segment]
    ::common/options
    [:or ::id/segment ::common/non-blank-string]])
 

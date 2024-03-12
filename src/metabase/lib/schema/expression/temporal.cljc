@@ -68,7 +68,7 @@
     #_:datetime [:schema [:ref ::expression/temporal]]))
 
 (mr/def ::week-mode
-  [:enum {:decode/normalize keyword} :iso :us :instance])
+  [:enum {:decode/normalize common/normalize-keyword} :iso :us :instance])
 
 (mbql-clause/define-catn-mbql-clause :get-week :- :type/Integer
   [:datetime [:schema [:ref ::expression/temporal]]]
@@ -122,7 +122,7 @@
 (mbql-clause/define-mbql-clause :absolute-datetime
   [:cat
    {:error/message "valid :absolute-datetime clause"}
-   [:= {:decode/normalize keyword} :absolute-datetime]
+   [:= {:decode/normalize common/normalize-keyword} :absolute-datetime]
    [:schema [:ref ::absolute-datetime.options]]
    [:alt
     [:cat
@@ -173,7 +173,7 @@
 
 (mr/def ::relative-datetime.amount
   [:or
-   [:= :current]
+   [:= {:decode/normalize common/normalize-keyword} :current]
    :int])
 
 (mbql-clause/define-catn-mbql-clause :relative-datetime :- :type/DateTime

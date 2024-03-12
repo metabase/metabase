@@ -52,7 +52,8 @@
 (mu/defn store-miscellaneous-value!
   "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
   calls."
-  [ks v]
+  [ks :- [:sequential :any]
+   v]
   (swap! *store* assoc-in ks v))
 
 (mu/defn miscellaneous-value
@@ -60,7 +61,8 @@
   ([ks]
    (miscellaneous-value ks nil))
 
-  ([ks not-found]
+  ([ks :- [:sequential :any]
+    not-found]
    (get-in @*store* ks not-found)))
 
 (defn cached-fn

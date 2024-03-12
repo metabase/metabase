@@ -59,7 +59,7 @@
   [:and
    {:error/message (str tag " clause with a temporal expression and one or more :interval clauses")}
    [:cat
-    [:= {:decode/normalize keyword} tag]
+    [:= {:decode/normalize common/normalize-keyword} tag]
     [:schema [:ref ::common/options]]
     [:repeat [:schema [:ref :mbql.clause/interval]]]
     [:schema [:ref ::expression/temporal]]
@@ -74,7 +74,7 @@
   [tag]
   [:cat
    {:error/message (str tag " clause with numeric args")}
-   [:= {:decode/normalize keyword} tag]
+   [:= {:decode/normalize common/normalize-keyword} tag]
    [:schema [:ref ::common/options]]
    [:repeat {:min 2} [:schema [:ref ::expression/number]]]])
 

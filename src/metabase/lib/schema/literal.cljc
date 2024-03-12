@@ -149,6 +149,6 @@
 (mbql-clause/define-mbql-clause :value
   [:tuple
    {:error/message "Value :value clause"}
-   #_tag   [:= {:decode/normalize keyword} :value]
+   #_tag   [:= {:decode/normalize common/normalize-keyword} :value]
    #_opts  [:ref ::value.options]
    #_value any?])

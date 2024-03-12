@@ -91,7 +91,7 @@
   [:schema
    (into [:catn
           {:error/message (str "Valid " tag " clause")}
-          [:tag [:= {:decode/normalize keyword} tag]]
+          [:tag [:= {:decode/normalize common/normalize-keyword} tag]]
           [:options [:schema [:ref ::common/options]]]]
          args)])
 
@@ -102,7 +102,7 @@
   {:pre [(simple-keyword? tag)]}
   (into [:tuple
          {:error/message (str "Valid " tag " clause")}
-         [:= {:decode/normalize keyword} tag]
+         [:= {:decode/normalize common/normalize-keyword} tag]
          [:ref ::common/options]]
         args))
 

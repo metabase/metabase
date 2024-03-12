@@ -44,7 +44,7 @@
 (mbql-clause/define-mbql-clause :field
   [:and
    [:tuple
-    [:= {:decode/normalize keyword} :field]
+    [:= {:decode/normalize common/normalize-keyword} :field]
     ::field.options
     [:or ::id/field ::common/non-blank-string]]
    [:multi {:dispatch      (fn [clause]
@@ -86,7 +86,7 @@
 
 (mbql-clause/define-mbql-clause :aggregation
   [:tuple
-   [:= {:decode/normalize keyword} :aggregation]
+   [:= {:decode/normalize common/normalize-keyword} :aggregation]
    ::aggregation-options
    :string])
 

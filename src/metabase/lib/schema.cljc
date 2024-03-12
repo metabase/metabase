@@ -38,7 +38,7 @@
 (mr/def ::stage.native
   [:map
    {:decode/normalize common/normalize-map}
-   [:lib/type [:= {:decode/normalize keyword} :mbql.stage/native]]
+   [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
    ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
    ;; Only restriction is that it is non-nil.
    [:native some?]
@@ -143,7 +143,7 @@
   [:and
    [:map
     {:decode/normalize common/normalize-map}
-    [:lib/type     [:= {:decode/normalize keyword} :mbql.stage/mbql]]
+    [:lib/type     [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
     [:joins        {:optional true} [:ref ::join/joins]]
     [:expressions  {:optional true} [:ref ::expression/expressions]]
     [:breakout     {:optional true} [:ref ::breakouts]]
@@ -191,7 +191,7 @@
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
   [:enum
-   {:decode/normalize keyword}
+   {:decode/normalize common/normalize-keyword}
    :mbql.stage/native
    :mbql.stage/mbql])
 
@@ -300,7 +300,7 @@
    [:map
     {:decode/normalize common/normalize-map}
     [:lib/type [:=
-                {:decode/normalize keyword}
+                {:decode/normalize common/normalize-keyword}
                 :mbql/query]]
     [:database [:or
                 ::id/database

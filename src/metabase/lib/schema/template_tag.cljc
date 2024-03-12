@@ -11,7 +11,7 @@
   (into
    [:enum
     ;; this will be a nicer error message than Malli trying to list every single possible allowed type.
-    {:decode/normalize keyword
+    {:decode/normalize common/normalize-keyword
      :error/message    "Valid template tag :widget-type"}
     :none]
    ;; TODO -- move this stuff into `metabase.lib`
@@ -20,7 +20,7 @@
 ;; Schema for valid values of template tag `:type`.
 (mr/def ::type
   [:enum
-   {:decode/normalize keyword}
+   {:decode/normalize common/normalize-keyword}
    :snippet :card :dimension :number :text :date])
 
 ;;; Things required by all template tag types.
