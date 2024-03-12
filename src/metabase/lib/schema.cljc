@@ -21,6 +21,7 @@
    [metabase.lib.schema.join :as join]
    [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
+   [metabase.lib.schema.parameter :as parameter]
    [metabase.lib.schema.ref :as ref]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -288,13 +289,6 @@
    {:decode/normalize identity}
    :metabase.mbql.schema/Constraints])
 
-;;; TODO -- move/copy this schema from the legacy schema to here
-(mr/def ::parameters
-  [:ref
-   ;; do not decode, since this should not get written to the app DB or come in from the REST API.
-   {:decode/normalize identity}
-   :metabase.mbql.schema/ParameterList])
-
 (mr/def ::query
   [:and
    [:map
@@ -307,7 +301,7 @@
                 ::id/saved-questions-virtual-database]]
     [:stages   [:ref ::stages]]
     [:constraints {:optional true} [:ref ::constraints]]
-    [:parameters  {:optional true} [:ref ::parameters]]
+    [:parameters  {:optional true} [:ref ::parameter/parameters]]
     [:info        {:optional true} [:ref ::info/info]]
     ;; TODO -- `:viz-settings` ?
     ;;

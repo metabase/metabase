@@ -19,14 +19,14 @@
     (when-not (qp.store/miscellaneous-value [::tested])
       (qp.store/store-miscellaneous-value! [::tested] true)
       (testing "Test pMBQL normalization from JSON-serialized queries"
-        ;; remove keys that aren't supposed to get serialized anyway (these are added at runtime by the QP or things that
-        ;; call it)
+        ;; remove keys that aren't supposed to get serialized anyway (these are added at runtime by the QP or things
+        ;; that call it)
         (let [query (dissoc query :lib/metadata :info :middleware :constraints :parameters :viz-settings)
               query (update query :stages (fn [stages]
                                             (mapv (fn [stage]
-                                                    ;; don't worry about native query params or parameters passed in to
-                                                    ;; QP
-                                                    (dissoc stage :params :parameters))
+                                                    ;; don't worry about native query params, parameters passed in to
+                                                    ;; QP, or metadata
+                                                    (dissoc stage :params :parameters :lib/stage-metadata))
                                                   stages)))]
           (with-open [pis (java.io.PipedInputStream.)
                       pos (java.io.PipedOutputStream. pis)

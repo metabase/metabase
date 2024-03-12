@@ -5,7 +5,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]))
 
 (defn- lib-type [x]
   (when (map? x)
@@ -49,7 +51,13 @@
 
   ([schema x]
    (try
-     (mc/coerce schema x (mtx/transformer {:name :normalize}))
+     (let [respond identity
+           ;; if normalization errors somewhere, just log the error and return the partially-normalized result. Easier
+           ;; to debug this way
+           raise   (fn [error]
+                     (log/warnf "Error normalizing pMBQL:\n%s" (u/pprint-to-str error))
+                     (:value error))]
+       (mc/coerce schema x (mtx/transformer {:name :normalize}) respond raise))
      (catch #?(:clj Throwable :cljs :default) e
        (throw (ex-info (i18n/tru "Normalization error: {0}" (ex-message e))
                        {:x x, :schema schema}

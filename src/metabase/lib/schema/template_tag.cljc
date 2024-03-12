@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.schema :as mbql.s]
    [metabase.util.malli.registry :as mr]))
 
@@ -15,7 +16,7 @@
      :error/message    "Valid template tag :widget-type"}
     :none]
    ;; TODO -- move this stuff into `metabase.lib`
-   (keys mbql.s/parameter-types)))
+   (keys lib.schema.parameter/types)))
 
 ;; Schema for valid values of template tag `:type`.
 (mr/def ::type

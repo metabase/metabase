@@ -19,14 +19,15 @@
   [:merge
    ::common/options
    [:map
-    [:temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]
-    [:binning       {:optional true} [:ref ::binning/binning]]]])
+    [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]
+    [:binning                                    {:optional true} [:ref ::binning/binning]]
+    [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]]])
 
 (mr/def ::field.literal.options
   [:merge
    ::field.options
    [:map
-    [:base-type ::common/base-type]]])
+    [:base-type [:ref ::common/base-type]]]])
 
 ;;; `:field` clause
 (mr/def ::field.literal

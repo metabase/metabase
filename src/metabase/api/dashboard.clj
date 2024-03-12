@@ -13,6 +13,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -922,7 +923,7 @@
     (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
 
 (defn- param-type->op [type]
-  (if (get-in mbql.s/parameter-types [type :operator])
+  (if (get-in lib.schema.parameter/types [type :operator])
     (keyword (name type))
     :=))
 
