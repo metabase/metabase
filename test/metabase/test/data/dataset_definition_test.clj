@@ -42,9 +42,9 @@
 
 (mt/defdataset composite-pk
   [["songs"
-    [{:field-name "artist" :base-type :type/Text :pk? true}
-     {:field-name "song"  :base-type :type/Text :pk? true}]
-    [["The Killers" "Somebody Told Me"]]]])
+    [{:field-name "artist_id", :base-type :type/Integer, :pk? true}
+     {:field-name "song_id",   :base-type :type/Integer, :pk? true}]
+    [[1 2]]]])
 
 (deftest dataset-with-custom-composite-pk-test
   (mt/test-drivers (disj (mt/sql-jdbc-drivers)
