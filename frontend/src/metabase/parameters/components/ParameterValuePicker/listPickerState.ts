@@ -32,7 +32,7 @@ export function getDefaultState(
 ): State {
   return {
     // This is needed for Select to show it
-    values: initialValue === null ? [] : [initialValue],
+    values: initialValue ? [initialValue] : [],
     hasMoreValues: true,
     isLoading: false,
     resetKey,
