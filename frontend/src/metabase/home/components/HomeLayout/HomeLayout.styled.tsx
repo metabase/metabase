@@ -14,6 +14,7 @@ export const LayoutRoot = styled.div`
   padding: 1rem;
   display: flex;
   gap: 0.5rem;
+  flex-direction: column;
   background-color: ${color("bg-light")};
 
   ${breakpointMinMedium} {

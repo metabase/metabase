@@ -35,6 +35,10 @@ export const RadioLabelNormal = styled(RadioLabel)`
   &:not(:last-child) {
     margin-right: ${props => (!props.vertical ? "2rem" : "")};
     margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
+    [dir="rtl"] & {
+      margin-right: 0;
+      margin-left: ${props => (!props.vertical ? "2rem" : "")};
+    }
   }
 `;
 
@@ -138,7 +142,6 @@ export const RadioButton = styled.span<RadioButtonProps>`
 export const RadioLabelText = styled.span`
   flex: 1 1 auto;
   display: block;
-  margin-right: 0.5rem;
 `;
 
 const getSchemeColor = (colorScheme: RadioColorScheme): string => {
