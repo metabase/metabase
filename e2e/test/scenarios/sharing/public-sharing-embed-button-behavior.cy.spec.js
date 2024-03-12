@@ -10,14 +10,17 @@ import {
   mantinePopover,
   modal,
   openEmbedModalFromMenu,
+  openNewPublicLinkDropdown,
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
   popover,
   resetSnowplow,
   restore,
   setTokenFeatures,
+  startNewQuestion,
   visitDashboard,
   visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 ["dashboard", "question"].forEach(resource => {
@@ -42,7 +45,7 @@ import {
             visitResource(resource, id);
           });
 
-          cy.findByTestId("dashboard-embed-button").click();
+          cy.findByTestId("resource-embed-button").click();
           cy.findByTestId("embed-header-menu").within(() => {
             cy.findByTestId("embed-menu-embed-modal-item").should(
               "be.disabled",
@@ -95,11 +98,7 @@ import {
 
             openPublicLinkPopoverFromMenu();
 
-            cy.findByTestId("public-link-popover-content").within(() => {
-              cy.findByText("Public link").should("be.visible");
-              cy.findByTestId("public-link-input").should("be.visible");
-              cy.findByText("Remove public link").should("be.visible");
-            });
+            assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
           });
         });
 
@@ -124,11 +123,7 @@ import {
 
             openPublicLinkPopoverFromMenu();
 
-            cy.findByTestId("public-link-popover-content").within(() => {
-              cy.findByText("Public link").should("be.visible");
-              cy.findByTestId("public-link-input").should("be.visible");
-              cy.findByText("Remove public link").should("be.visible");
-            });
+            assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
             cy.signInAsNormalUser();
 
@@ -138,10 +133,9 @@ import {
 
             cy.icon("share").click();
 
-            cy.findByTestId("public-link-popover-content").within(() => {
-              cy.findByText("Public link").should("be.visible");
-              cy.findByTestId("public-link-input").should("be.visible");
-              cy.findByText("Remove public link").should("not.exist");
+            assertValidPublicLink({
+              resource,
+              shouldHaveRemoveLink: false,
             });
           });
         });
@@ -253,6 +247,34 @@ describe("embed modal display", () => {
         );
       });
     });
+  });
+});
+
+describe("#39152 sharing an unsaved question", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+  });
+
+  it("should ask the user to save the question before creating a public link", () => {
+    startNewQuestion();
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByText("People").click();
+    });
+    visualize();
+
+    cy.findByTestId("resource-embed-button").click();
+
+    modal().within(() => {
+      cy.findByText("First, save your question").should("be.visible");
+      cy.findByText("Save").click();
+    });
+
+    openNewPublicLinkDropdown("card");
+
+    assertValidPublicLink({ resource: "question", shouldHaveRemoveLink: true });
   });
 });
 
@@ -719,9 +741,10 @@ describe("embed modal display", () => {
 function toSecond(milliseconds) {
   return Math.round(milliseconds / 1000);
 }
+
 function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
-  cy.findByTestId("dashboard-embed-button").should("be.disabled");
-  cy.findByTestId("dashboard-embed-button").realHover();
+  cy.findByTestId("resource-embed-button").should("be.disabled");
+  cy.findByTestId("resource-embed-button").realHover();
   cy.findByRole("tooltip").findByText(tooltipLabel).should("be.visible");
 }
 
@@ -814,6 +837,27 @@ function enableEmbeddingForResource({ resource, id }) {
   const endpoint = resource === "question" ? "card" : "dashboard";
   cy.request("PUT", `/api/${endpoint}/${id}`, {
     enable_embedding: true,
+  });
+}
+
+function assertValidPublicLink({ resource, shouldHaveRemoveLink }) {
+  const regex = new RegExp(
+    `https?:\\/\\/[^\\/]+\\/public\\/${resource}\\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(\\.csv|\\.json|\\.xlsx)?`,
+  );
+
+  cy.findByTestId("public-link-popover-content").within(() => {
+    cy.findByText("Public link").should("be.visible");
+
+    cy.findByTestId("public-link-input")
+      .should("be.visible")
+      .invoke("val")
+      .then(value => {
+        expect(value).to.match(regex);
+      });
+
+    cy.findByText("Remove public link").should(
+      shouldHaveRemoveLink ? "be.visible" : "not.exist",
+    );
   });
 }
 
