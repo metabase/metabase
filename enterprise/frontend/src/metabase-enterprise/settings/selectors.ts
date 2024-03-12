@@ -17,8 +17,9 @@ const getCustomLogoUrl = (settingValues: EnterpriseSettings) => {
 export const getLogoUrl = (state: EnterpriseState) =>
   getCustomLogoUrl(getSettings(state));
 
-export const getLoadingMessage = (state: EnterpriseState) =>
-  LOADING_MESSAGE_BY_SETTING[getSetting(state, "loading-message")];
+export const getLoadingMessage = (state: EnterpriseState) => {
+  return LOADING_MESSAGE_BY_SETTING[getSetting(state, "loading-message")].value;
+};
 
 const DEFAULT_APPLICATION_NAME = "Metabase";
 export const getIsWhiteLabeling = (state: EnterpriseState) =>
