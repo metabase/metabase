@@ -48,6 +48,11 @@ export function renderLinkURLForClick(
     data,
     ({ value, column }: TemplateForClickFormatFunctionParamsType) => {
       const valueForLinkTemplate = formatValueForLinkTemplate(value, column);
+
+      if (valueForLinkTemplate === null) {
+        return "";
+      }
+
       return encodeURIComponent(valueForLinkTemplate);
     },
   );
