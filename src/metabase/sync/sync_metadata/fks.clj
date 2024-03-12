@@ -132,7 +132,6 @@
              (reduce (fn [update-info table]
                        (let [table         (t2.realize/realize table)
                              table-fk-info (sync-fks-for-table! database table)]
-                         (sync-util/set-initial-table-sync-complete! table)
                          (if (instance? Exception table-fk-info)
                            (update update-info :total-failed inc)
                            (merge-with + update-info table-fk-info))))

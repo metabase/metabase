@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
-  "SQL JDBC impl for `describe-table`, `describe-table-fks`, and `describe-nested-field-columns`."
+  "SQL JDBC impl for `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
+  `describe-table-fks` is deprecated and will be replaced by `describe-fks` in the future."
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
@@ -263,10 +264,10 @@
 
 (defn describe-table-fks
   "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
+  [driver db-or-id-or-spec table & [db-name-or-nil]]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
-   db-or-id-or-spec-or-conn
+   db-or-id-or-spec
    nil
    (fn [^Connection conn]
      (describe-table-fks* driver conn table db-name-or-nil))))

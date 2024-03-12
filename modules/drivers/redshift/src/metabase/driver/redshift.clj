@@ -37,7 +37,7 @@
 
 (doseq [[feature supported?] {:test/jvm-timezone-setting false
                               :nested-field-columns      false
-                              :describe-fks             true
+                              :describe-fks              true
                               :connection-impersonation  true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
@@ -58,14 +58,14 @@
                          :fk_table.relname    "fk-table-name"
                          :fk_column.attname   "fk-column-name"
                          :pk_ns.nspname       "pk-table-schema"
-                         :pk_column.attname   "pk-column-name"
-                         :pk_table.relname    "pk-table-name"})
+                         :pk_table.relname    "pk-table-name"
+                         :pk_column.attname   "pk-column-name"})
                :from   [[:pg_constraint :c]]
                :join   [[:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
                         [:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
                         [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
-                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
                         [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
+                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
                         [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
                :where  [:and
                         [:= :c.contype [:raw "'f'::char"]]

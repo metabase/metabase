@@ -309,7 +309,7 @@
 
 (defn set-initial-table-sync-complete-for-db!
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
-  set"
+  set."
   [database-or-id]
   (t2/update! :model/Table (merge sync-tables-kv-args {:db_id (u/the-id database-or-id)})
               {:initial_sync_status "complete"}))

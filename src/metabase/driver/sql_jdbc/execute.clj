@@ -477,6 +477,8 @@
         (catch Throwable e
           (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
       (try
+        (when (zero? (.getFetchSize stmt))
+          (.setFetchSize stmt (sql-jdbc-fetch-size)))
         (catch Throwable e
           (log/debug e (trs "Error setting prepared statement fetch size to fetch-size"))))
       (set-parameters! driver stmt params)
