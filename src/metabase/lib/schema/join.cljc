@@ -23,7 +23,7 @@
 ;;; with appropriate aliases.
 (mr/def ::fields
   [:or
-   [:enum :all :none]
+   [:enum {:decode/normalize keyword} :all :none]
    ;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
    ;; twice. (#32489)
    [:sequential {:min 1} [:ref :mbql.clause/field]]])
@@ -48,6 +48,7 @@
 ;;; When `:strategy` is not specified, `:left-join` is the default strategy.
 (mr/def ::strategy
   [:enum
+   {:decode/normalize keyword}
    :left-join
    :right-join
    :inner-join
@@ -55,7 +56,8 @@
 
 (mr/def ::join
   [:map
-   [:lib/type    [:= :mbql/join]]
+   {:decode/normalize common/normalize-map}
+   [:lib/type    [:= {:decode/normalize keyword} :mbql/join]]
    [:lib/options ::common/options]
    [:stages      [:ref :metabase.lib.schema/stages]]
    [:conditions  ::conditions]

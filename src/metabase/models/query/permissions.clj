@@ -132,7 +132,6 @@
   legacy implementation(s) of [[required-perms]]."
   [query perms-opts]
   (let [query (lib/normalize query)]
-    (println "query:" query) ; NOCOMMIT
     (if (lib.util/first-stage-is-native? query)
       {:perms/native-query-editing :yes}
       ;; convert it to legacy by running it thru the QP preprocessor.

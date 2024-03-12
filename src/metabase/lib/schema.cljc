@@ -38,7 +38,7 @@
 (mr/def ::stage.native
   [:map
    {:decode/normalize common/normalize-map}
-   [:lib/type [:= :mbql.stage/native]]
+   [:lib/type [:= {:decode/normalize keyword} :mbql.stage/native]]
    ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
    ;; Only restriction is that it is non-nil.
    [:native some?]
@@ -51,7 +51,10 @@
    [:collection {:optional true} ::common/non-blank-string]
    ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
    ;; `:native` key), but their definition lives under this key.
-   [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]])
+   [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
+   ;;
+   ;; TODO -- parameters??
+   ])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -201,7 +204,8 @@
    {:decode/normalize common/normalize-map}
    [:map
     [:lib/type [:ref ::stage.type]]]
-   [:multi {:dispatch lib-type}
+   [:multi {:dispatch      lib-type
+            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
     [:mbql.stage/mbql   [:ref ::stage.mbql]]]])
 
@@ -266,8 +270,8 @@
 (mr/def ::stages.valid-refs
   [:fn
    {:error/message "Valid references for all query stages"
-    :error/fn      (fn [{:keys [value]} _]
-                     (ref-error-for-stages value))}
+    :error/fn      (fn [{stages :value} _]
+                     (ref-error-for-stages stages))}
    (complement ref-error-for-stages)])
 
 (mr/def ::stages

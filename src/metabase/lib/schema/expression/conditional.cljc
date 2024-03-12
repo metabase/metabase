@@ -54,7 +54,6 @@
    #_pred [:ref ::expression/boolean]
    #_expr [:ref ::expression/expression]])
 
-
 (mbql-clause/define-catn-mbql-clause :case
   ;; TODO -- we should further constrain this so all of the exprs are of the same type
   [:pred-expr-pairs [:sequential {:min 1} [:ref ::case-subclause]]]

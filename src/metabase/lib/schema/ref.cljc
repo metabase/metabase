@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema.binning :as binning]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
@@ -18,7 +19,8 @@
   [:merge
    ::common/options
    [:map
-    [:temporal-unit {:optional true} ::temporal-bucketing/unit]]])
+    [:temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]
+    [:binning       {:optional true} [:ref ::binning/binning]]]])
 
 (mr/def ::field.literal.options
   [:merge
@@ -84,7 +86,7 @@
 
 (mbql-clause/define-mbql-clause :aggregation
   [:tuple
-   [:= :aggregation]
+   [:= {:decode/normalize keyword} :aggregation]
    ::aggregation-options
    :string])
 

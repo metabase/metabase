@@ -67,14 +67,14 @@
   (mbql-clause/define-tuple-mbql-clause temporal-extract-op :- :type/Integer
     #_:datetime [:schema [:ref ::expression/temporal]]))
 
-(mr/def ::get-week-mode
-  [:enum :iso :us :instance])
+(mr/def ::week-mode
+  [:enum {:decode/normalize keyword} :iso :us :instance])
 
 (mbql-clause/define-catn-mbql-clause :get-week :- :type/Integer
   [:datetime [:schema [:ref ::expression/temporal]]]
   ;; TODO : the mode should probably go in the options map in modern MBQL rather than have it be a separate positional
   ;; argument. But we can't refactor everything in one go, so that will have to be a future refactor.
-  [:mode     [:? [:schema [:ref ::get-week-mode]]]])
+  [:mode     [:? [:schema [:ref ::week-mode]]]])
 
 (mr/def ::timezone-id
   [:and
@@ -122,7 +122,7 @@
 (mbql-clause/define-mbql-clause :absolute-datetime
   [:cat
    {:error/message "valid :absolute-datetime clause"}
-   [:= :absolute-datetime]
+   [:= {:decode/normalize keyword} :absolute-datetime]
    [:schema [:ref ::absolute-datetime.options]]
    [:alt
     [:cat
@@ -184,25 +184,8 @@
   #_:timestr [:schema [:ref ::expression/string]]
   #_:unit [:ref ::temporal-bucketing/unit.time.interval])
 
-(mr/def ::temporal-extract.unit
-  [:enum
-   :year-of-era
-   :quarter-of-year
-   :month-of-year
-   :week-of-year-iso
-   :week-of-year-us
-   :week-of-year-instance
-   :day-of-month
-   :day-of-week
-   :hour-of-day
-   :minute-of-hour
-   :second-of-minute])
-
-(mr/def ::temporal-extract.week-mode
-  [:enum :iso :us :instance])
-
 ;;; TODO -- this should make sure unit agrees with the type of expression we're extracting from.
 (mbql-clause/define-catn-mbql-clause :temporal-extract :- :type/Integer
   [:datetime [:schema [:ref ::expression/temporal]]]
-  [:unit     [:schema [:ref ::temporal-extract.unit]]]
-  [:mode     [:? [:schema [:ref ::temporal-extract.week-mode]]]])
+  [:unit     [:schema [:ref ::temporal-bucketing/unit.date-time.extract]]]
+  [:mode     [:? [:schema [:ref ::week-mode]]]])

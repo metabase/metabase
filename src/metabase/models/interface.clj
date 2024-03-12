@@ -9,7 +9,6 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -170,9 +169,10 @@
 (defn- deserialize-mlv2-query
   "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
   [query]
-  (let [{database-id :database, :as normalized} (lib/normalize query)]
-    (lib/query (lib.metadata.jvm/application-database-metadata-provider (u/the-id database-id))
-               normalized)))
+  (let [{database-id :database, :as normalized} (lib/normalize query)
+        metadata-provider                       ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
+                                                 (u/the-id database-id))]
+    (lib/query metadata-provider normalized)))
 
 (mu/defn maybe-normalize-query :- [:maybe :map]
   "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."

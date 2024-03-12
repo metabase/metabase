@@ -9,7 +9,9 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::strategy
-  [:enum :bin-width :default :num-bins])
+  [:enum
+   {:decode/normalize keyword}
+   :bin-width :default :num-bins])
 
 (mr/def ::num-bins
   pos-int?)
@@ -17,18 +19,23 @@
 (mr/def ::bin-width
   ::lib.schema.common/positive-number)
 
+;;; the binning options that goes in a `:field` ref under the `:binning` key
 (mr/def ::binning
-  [:merge
-   [:map
-    [:strategy [:ref ::strategy]]]
-   [:multi {:dispatch :strategy
-            :error/fn (fn [{:keys [value]} _]
-                        (str "Invalid binning strategy" (pr-str value)))}
-    [:default   :map]
-    [:bin-width [:map
-                 [:bin-width [:ref ::bin-width]]]]
-    [:num-bins  [:map
-                 [:num-bins [:ref ::num-bins]]]]]])
+  [:multi {:dispatch (fn [x]
+                       (keyword (some #(get x %) [:strategy "strategy"])))
+           :error/fn (fn [{:keys [value]} _]
+                       (str "Invalid binning strategy" (pr-str value)))}
+   [:default   [:map
+                {:decode/normalize lib.schema.common/normalize-map}
+                [:strategy [:= {:decode/normalize keyword} :default]]]]
+   [:bin-width [:map
+                {:decode/normalize lib.schema.common/normalize-map}
+                [:strategy  [:= {:decode/normalize keyword} :bin-width]]
+                [:bin-width [:ref ::bin-width]]]]
+   [:num-bins  [:map
+                {:decode/normalize lib.schema.common/normalize-map}
+                [:strategy [:= {:decode/normalize keyword} :num-bins]]
+                [:num-bins [:ref ::num-bins]]]]])
 
 (mr/def ::binning-option
   [:map

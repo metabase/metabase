@@ -11,13 +11,17 @@
   (into
    [:enum
     ;; this will be a nicer error message than Malli trying to list every single possible allowed type.
-    {:error/message "Valid template tag :widget-type"}
+    {:decode/normalize keyword
+     :error/message    "Valid template tag :widget-type"}
     :none]
+   ;; TODO -- move this stuff into `metabase.lib`
    (keys mbql.s/parameter-types)))
 
 ;; Schema for valid values of template tag `:type`.
 (mr/def ::type
-  [:enum :snippet :card :dimension :number :text :date])
+  [:enum
+   {:decode/normalize keyword}
+   :snippet :card :dimension :number :text :date])
 
 ;;; Things required by all template tag types.
 (mr/def ::common
@@ -112,9 +116,10 @@
 
 (mr/def ::template-tag
   [:and
+   {:decode/normalize common/normalize-map}
    [:map
     [:type [:ref ::type]]]
-   [:multi {:dispatch :type}
+   [:multi {:dispatch #(keyword (:type %))}
     [:dimension   [:ref ::field-filter]]
     [:snippet     [:ref ::snippet]]
     [:card        [:ref ::source-query]]
