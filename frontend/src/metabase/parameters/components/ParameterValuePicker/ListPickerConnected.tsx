@@ -1,5 +1,4 @@
-import { useCallback, useState } from "react";
-import { useDeepCompareEffect } from "react-use";
+import { useEffect, useReducer } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -7,70 +6,93 @@ import { fetchParameterValues } from "metabase/parameters/actions";
 import type { Parameter } from "metabase-types/api";
 
 import { ListPicker } from "./ListPicker";
-import { getListParameterStaticValues } from "./core";
+import { getFlatValueList, getListParameterStaticValues } from "./core";
+import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
+import { getDefaultState, getResetKey, reducer } from "./listPickerState";
 
 interface ListPickerConnectedProps {
   value: string;
   parameter: Parameter;
   onChange: (value: string | null) => void;
   forceSearchItemCount: number;
+  searchDebounceMs?: number;
 }
 
-// TODO when parameter changes, reset internal state (or rather move to state in Redux)
-// TODO debounced search
-// TODO clearing doesn't work
-// TODO null value in search URL
+// TODO should we fetch initially?
+// TODO fetching errors
+// TODO clearing doesn't work on first try
+// TODO null value or different value in search URL
 export function ListPickerConnected(props: ListPickerConnectedProps) {
-  const dispatch = useDispatch();
-  const { value, parameter, onChange, forceSearchItemCount } = props;
+  const globalDispatch = useDispatch();
+  const {
+    value,
+    parameter,
+    onChange,
+    forceSearchItemCount,
+    searchDebounceMs = 150,
+  } = props;
 
-  const [hasMoreValues, setHasMoreValues] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [values, setValues] = useState<string[]>([]);
+  const [{ values, hasMoreValues, isLoading, lastSearch, resetKey }, dispatch] =
+    useReducer(reducer, getDefaultState(value));
 
-  useDeepCompareEffect(() => {
-    // console.log("PARAMETER CHANGE", parameter);
-    setValues([]);
-    setHasMoreValues(true);
-  }, [parameter]);
-
-  const fetchValues = useCallback(
+  const fetchAndSaveValuesDebounced = useDebouncedCallback(
     async (query: string) => {
-      // console.log("fetch", query);
-      setValues([]);
-      setIsLoading(true);
-      // await new Promise(res => setTimeout(res, 1000));
-      const res = await dispatch(fetchParameterValues({ parameter, query }));
-      // TODO WHY?
-      setValues(res.values.flat(1) as string[]);
-      setHasMoreValues(res.has_more_values);
-      setIsLoading(false);
+      const res = await globalDispatch(
+        fetchParameterValues({ parameter, query }),
+      );
+
+      dispatch({
+        type: "SET_LOADED",
+        payload: {
+          values: getFlatValueList(res.values as string[][]),
+          hasMore: res.has_more_values,
+          resetKey: getResetKey(parameter),
+          searchQuery: query,
+        },
+      });
     },
-    [dispatch, parameter],
+    searchDebounceMs,
+    [dispatch, globalDispatch, fetchParameterValues, parameter],
   );
 
-  const onSearch = useCallback(
-    (query: string) => {
-      if (!hasMoreValues) {
-        // console.log("search NO MORE values");
-        return;
-      }
+  const cancelFetching = () => {
+    fetchAndSaveValuesDebounced.cancel();
+    dispatch({ type: "SET_IS_LOADING", payload: { isLoading: false } });
+  };
 
+  const ownOnSearch = (query: string) => {
+    if (hasMoreValues) {
       const trimmed = query.trim();
-      // console.log(`search trimmed="${trimmed}" value="${value}"`);
-      // We have to trigger fecth only when search is different from the current value
-      if (trimmed !== value) {
-        fetchValues(trimmed);
+      // We have to trigger fetch only when search is different from the current value
+      if (trimmed !== lastSearch) {
+        // console.log(`search trimmed="${trimmed}" value="${lastSearch}"`);
+        fetchAndSaveValuesDebounced.cancel();
+        dispatch({ type: "SET_IS_LOADING", payload: { isLoading: true } });
+        fetchAndSaveValuesDebounced(query);
       }
-    },
-    [value, fetchValues, hasMoreValues],
-  );
+    }
+  };
 
-  const onClearValue = () => {
-    setHasMoreValues(true);
-    setValues([]);
+  const ownOnChange = (value: string | null) => {
+    cancelFetching();
+    onChange(value);
+  };
+
+  const ownOnClear = () => {
+    cancelFetching();
     onChange(null);
   };
+
+  // Reset when parameter changes
+  useEffect(() => {
+    // null means we render for the first tima and state shouldn't be reset
+    if (resetKey !== null && resetKey !== getResetKey(parameter)) {
+      dispatch({ type: "RESET" });
+      ownOnClear();
+    }
+  }, [resetKey, parameter]);
+  // Cleanup
+  useEffect(() => () => cancelFetching(), []);
 
   const staticValues = getListParameterStaticValues(parameter);
   const enableSearch =
@@ -80,10 +102,9 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     <ListPicker
       value={value}
       values={staticValues ?? values}
-      onClear={onClearValue}
-      onChange={onChange}
-      // TODO This is triggered on initial load before opening the dropdown
-      onSearchChange={staticValues ? undefined : onSearch}
+      onClear={ownOnClear}
+      onChange={ownOnChange}
+      onSearchChange={staticValues ? undefined : ownOnSearch}
       enableSearch={enableSearch}
       placeholder={
         enableSearch ? t`Start typing to filter…` : t`Select a default value…`

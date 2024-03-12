@@ -42,6 +42,7 @@ export function shouldUseListPicker(parameter: Parameter): boolean {
   );
 }
 
+// TODO extract this
 export function getListParameterStaticValues(
   parameter: Parameter,
 ): string[] | null {
@@ -50,4 +51,8 @@ export function getListParameterStaticValues(
   }
 
   return null;
+}
+
+export function getFlatValueList(values: string[][] | string[]) {
+  return values.flat(1);
 }
