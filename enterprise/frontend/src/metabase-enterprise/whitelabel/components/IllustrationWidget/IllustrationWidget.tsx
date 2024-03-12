@@ -74,9 +74,10 @@ export function IllustrationWidget({
       const file = fileEvent.target.files[0];
 
       const reader = new FileReader();
-      reader.onload = readerEvent => {
+      reader.onload = async readerEvent => {
         setFileName(file.name);
-        onChange("custom");
+        // Setting 2 setting values at the same time could result in one of them not being saved
+        await onChange("custom");
         onChangeSetting(
           customIllustrationSetting,
           readerEvent.target?.result as string,
@@ -86,12 +87,13 @@ export function IllustrationWidget({
     }
   }
 
-  function handleRemoveCustomIllustration() {
+  async function handleRemoveCustomIllustration() {
     if (fileInputRef.current?.value) {
       fileInputRef.current.value = "";
     }
     setFileName("");
-    onChange("default");
+    // Setting 2 setting values at the same time could result in one of them not being saved
+    await onChange("default");
     onChangeSetting(customIllustrationSetting, null);
   }
 
