@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -27,15 +28,15 @@
                                                     ;; don't worry about native query params, parameters passed in to
                                                     ;; QP, or metadata
                                                     (dissoc stage :params :parameters :lib/stage-metadata))
-                                                  stages)))]
-          (with-open [pis (java.io.PipedInputStream.)
-                      pos (java.io.PipedOutputStream. pis)
-                      w   (java.io.OutputStreamWriter. pos)
-                      rdr (java.io.InputStreamReader. pis)]
-            (let [decode (future
-                           (json/decode-stream rdr))]
-              (json/encode-stream query w)
-              (let [deserialized @decode
-                    normalized   (lib/normalize deserialized)]
-                (is (= normalized
-                       query))))))))))
+                                                  stages)))
+              ;; serialize all the `java.time` instances to strings, because that's what JSON serialization will do and
+              ;; we don't expect normalization to deserialize them back to their original class
+              query (walk/postwalk
+                     (fn [x]
+                       (cond-> x
+                         (instance? java.time.temporal.Temporal x) str))
+                     query)]
+          (let [deserialized (json/parse-string (json/generate-string query))
+                normalized   (lib/normalize deserialized)]
+            (is (= normalized
+                   query))))))))

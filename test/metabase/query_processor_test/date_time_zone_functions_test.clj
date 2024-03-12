@@ -1080,41 +1080,43 @@
                        (zipmap units))))]
           (run-datetime-diff-time-zone-tests diffs))))))
 
-(deftest datetime-diff-expressions-test
+(deftest ^:parallel datetime-diff-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
-    (mt/dataset test-data
-      (testing "Args can be expressions that return datetime values"
-        (let [diffs (fn [x y]
-                      (let [units [:second :minute :hour :day :week :month :quarter :year]]
-                        (->> (mt/run-mbql-query orders
-                               {:limit 1
-                                :expressions (into {} (for [unit units]
-                                                        [(name unit) [:datetime-diff x y unit]]))
-                                :fields (into [] (for [unit units]
-                                                   [:expression (name unit)]))})
-                             (mt/formatted-rows (repeat (count units) int))
-                             first
-                             (zipmap units))))]
-          (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :quarter 4, :year 1}
-                 (diffs [:datetime-add #t "2022-10-03T00:00:00" 1 "day"] [:datetime-add #t "2023-10-03T00:00:00" 4 "day"])))))
-      (testing "Result works in arithmetic expressions"
-        (let [start "2021-10-03T09:19:09"
-              end   "2022-10-03T09:18:09"]
-          (is (= [1 6 365 370]
-                 (->> (mt/run-mbql-query orders
-                        {:limit       1
-                         :expressions {"datediff1"     [:datetime-diff start end :year]
-                                       "datediff1-add" [:+ [:datetime-diff start end :year] 5]
-                                       "datediff2"     [:datetime-diff start end :day]
-                                       "datediff2-add" [:+ 5 [:datetime-diff start end :day]]}
-                         :fields      [[:expression "datediff1"]
-                                       [:expression "datediff1-add"]
-                                       [:expression "datediff2"]
-                                       [:expression "datediff2-add"]]})
-                      (mt/formatted-rows [int int int int])
-                      first))))))))
+    (testing "Args can be expressions that return datetime values"
+      (let [diffs (fn [x y]
+                    (let [units [:second :minute :hour :day :week :month :quarter :year]]
+                      (->> (mt/run-mbql-query orders
+                                              {:limit 1
+                                               :expressions (into {} (for [unit units]
+                                                                       [(name unit) [:datetime-diff x y unit]]))
+                                               :fields (into [] (for [unit units]
+                                                                  [:expression (name unit)]))})
+                           (mt/formatted-rows (repeat (count units) int))
+                           first
+                           (zipmap units))))]
+        (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :quarter 4, :year 1}
+               (diffs [:datetime-add #t "2022-10-03T00:00:00" 1 "day"] [:datetime-add #t "2023-10-03T00:00:00" 4 "day"])))))))
 
-(deftest datetime-diff-type-test
+(deftest ^:parallel datetime-diff-expressions-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
+    (testing "Result works in arithmetic expressions"
+      (let [start "2021-10-03T09:19:09"
+            end   "2022-10-03T09:18:09"]
+        (is (= [1 6 365 370]
+               (->> (mt/run-mbql-query orders
+                                       {:limit       1
+                                        :expressions {"datediff1"     [:datetime-diff start end :year]
+                                                      "datediff1-add" [:+ [:datetime-diff start end :year] 5]
+                                                      "datediff2"     [:datetime-diff start end :day]
+                                                      "datediff2-add" [:+ 5 [:datetime-diff start end :day]]}
+                                        :fields      [[:expression "datediff1"]
+                                                      [:expression "datediff1-add"]
+                                                      [:expression "datediff2"]
+                                                      [:expression "datediff2-add"]]})
+                    (mt/formatted-rows [int int int int])
+                    first)))))))
+
+(deftest ^:parallel datetime-diff-type-test
   (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-with-feature :datetime-diff))
     (testing "Cannot datetime-diff against time column"
       (mt/dataset test-data-with-time

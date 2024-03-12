@@ -9,7 +9,14 @@
 
 (defonce ^:private cache (atom {}))
 
-(defn- cached [k schema value-thunk]
+(defn cached
+  "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
+  with [[metabase.util.malli.registry/def]]. If value doesn't exist, `value-thunk` is used to calculate (and cache)
+  it.
+
+  You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
+  you used namespaced keys if you are using it elsewhere."
+  [k schema value-thunk]
   (or (get-in @cache [k schema])
       (let [v (value-thunk)]
         (swap! cache assoc-in [k schema] v)

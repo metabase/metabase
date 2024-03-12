@@ -7,7 +7,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- lib-type [x]
   (when (map? x)
@@ -38,6 +39,16 @@
     :else
     :any))
 
+(defn- coercer [schema]
+  (mr/cached ::coercer schema (fn []
+                                (let [respond identity
+                                      ;; if normalization errors somewhere, just log the error and return the
+                                      ;; partially-normalized result. Easier to debug this way
+                                      raise   (fn [error]
+                                                (log/warnf "Error normalizing pMBQL:\n%s" (u/pprint-to-str error))
+                                                (:value error))]
+                                  (mc/coercer schema (mtx/transformer {:name :normalize}) respond raise)))))
+
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
   deserialized JSON (from the app DB or a REST API request). This is intended for things that are already in a
@@ -51,13 +62,7 @@
 
   ([schema x]
    (try
-     (let [respond identity
-           ;; if normalization errors somewhere, just log the error and return the partially-normalized result. Easier
-           ;; to debug this way
-           raise   (fn [error]
-                     (log/warnf "Error normalizing pMBQL:\n%s" (u/pprint-to-str error))
-                     (:value error))]
-       (mc/coerce schema x (mtx/transformer {:name :normalize}) respond raise))
+     ((coercer schema) x)
      (catch #?(:clj Throwable :cljs :default) e
        (throw (ex-info (i18n/tru "Normalization error: {0}" (ex-message e))
                        {:x x, :schema schema}
