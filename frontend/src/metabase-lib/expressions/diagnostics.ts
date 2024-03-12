@@ -8,6 +8,8 @@ import {
   compile,
   ResolverError,
 } from "metabase-lib/expressions/pratt";
+import type Database from "metabase-lib/metadata/Database";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
@@ -43,6 +45,7 @@ export function diagnose({
   startRule,
   query,
   stageIndex,
+  metadata,
   name = null,
 }: {
   source: string;
@@ -50,6 +53,7 @@ export function diagnose({
   query: Lib.Query;
   stageIndex: number;
   name?: string | null;
+  metadata?: Metadata;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -88,12 +92,22 @@ export function diagnose({
       : mismatchedParentheses < -1
       ? t`Expecting ${-mismatchedParentheses} opening parentheses`
       : null;
+
   if (message) {
     return { message };
   }
 
+  const database = getDatabase(query, metadata);
+
   try {
-    return prattCompiler({ source, startRule, name, query, stageIndex });
+    return prattCompiler({
+      source,
+      startRule,
+      name,
+      query,
+      stageIndex,
+      database,
+    });
   } catch (err) {
     if (isErrorWithMessage(err)) {
       return err;
@@ -109,12 +123,14 @@ function prattCompiler({
   name,
   query,
   stageIndex,
+  database,
 }: {
   source: string;
   startRule: string;
   name: string | null;
   query: Lib.Query;
   stageIndex: number;
+  database?: Database | null;
 }): ErrorWithMessage | null {
   const tokens = lexify(source);
   const options = { source, startRule, name, query, stageIndex };
@@ -167,7 +183,13 @@ function prattCompiler({
         adjustOptions,
         useShorthands,
         adjustCase,
-        expr => resolve(expr, startRule, resolveMBQLField),
+        expression =>
+          resolve({
+            expression,
+            type: startRule,
+            fn: resolveMBQLField,
+            database,
+          }),
       ],
       getMBQLName,
     });
@@ -206,4 +228,9 @@ function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
     err != null &&
     typeof (err as any).message === "string"
   );
+}
+
+function getDatabase(query: Lib.Query, metadata?: Metadata) {
+  const databaseId = Lib.databaseID(query);
+  return metadata?.database(databaseId);
 }

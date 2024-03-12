@@ -405,6 +405,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
+      metadata,
     } = this.props;
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
@@ -415,6 +416,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
+      metadata,
     });
   }
 
