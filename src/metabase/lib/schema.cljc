@@ -17,6 +17,7 @@
    [metabase.lib.schema.expression.temporal]
    [metabase.lib.schema.filter]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.info :as info]
    [metabase.lib.schema.join :as join]
    [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
@@ -36,6 +37,7 @@
 
 (mr/def ::stage.native
   [:map
+   {:decode/normalize common/normalize-map}
    [:lib/type [:= :mbql.stage/native]]
    ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
    ;; Only restriction is that it is non-nil.
@@ -69,10 +71,13 @@
     #'lib.schema.util/distinct-refs?]])
 
 ;; this is just for enabling round-tripping filters with named segment references
+(mr/def ::named-segment-reference
+  [:tuple [:= :segment] :map :string])
+
 (mr/def ::filterable
   [:or
    [:ref ::expression/boolean]
-   [:tuple [:= :segment] :map :string]])
+   [:ref ::named-segment-reference]])
 
 (mr/def ::filters
   [:sequential {:min 1} ::filterable])
@@ -125,21 +130,27 @@
                      (ref-error-for-stage value))}
    (complement ref-error-for-stage)])
 
+;;; TODO -- should `::page` have a `:lib/type`, like all the other maps in pMBQL?
+(mr/def ::page
+  [:map
+   [:page  pos-int?]
+   [:items pos-int?]])
+
 (mr/def ::stage.mbql
   [:and
    [:map
-    [:lib/type     [:= :mbql.stage/mbql]]
+    {:decode/normalize common/normalize-map}
+    [:lib/type     [:= {:decode/normalize keyword} :mbql.stage/mbql]]
     [:joins        {:optional true} [:ref ::join/joins]]
     [:expressions  {:optional true} [:ref ::expression/expressions]]
-    [:breakout     {:optional true} ::breakouts]
+    [:breakout     {:optional true} [:ref ::breakouts]]
     [:aggregation  {:optional true} [:ref ::aggregation/aggregations]]
-    [:fields       {:optional true} ::fields]
-    [:filters      {:optional true} ::filters]
+    [:fields       {:optional true} [:ref ::fields]]
+    [:filters      {:optional true} [:ref ::filters]]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
     [:source-card  {:optional true} [:ref ::id/card]]
-    ;; TODO -- `:page` ???
-    ]
+    [:page         {:optional true} [:ref ::page]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
@@ -176,26 +187,35 @@
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
-  [:enum :mbql.stage/native :mbql.stage/mbql])
+  [:enum
+   {:decode/normalize keyword}
+   :mbql.stage/native
+   :mbql.stage/mbql])
+
+(defn- lib-type [x]
+  (when (map? x)
+    (keyword (some #(get x %) [:lib/type "lib/type"]))))
 
 (mr/def ::stage
   [:and
+   {:decode/normalize common/normalize-map}
    [:map
-    [:lib/type ::stage.type]]
-   [:multi {:dispatch :lib/type}
+    [:lib/type [:ref ::stage.type]]]
+   [:multi {:dispatch lib-type}
     [:mbql.stage/native [:ref ::stage.native]]
     [:mbql.stage/mbql   [:ref ::stage.mbql]]]])
 
 (mr/def ::stage.initial
   [:and
+   {:decode/normalize common/normalize-map}
    [:map
-    [:lib/type ::stage.type]]
-   [:multi {:dispatch :lib/type}
+    [:lib/type [:ref ::stage.type]]]
+   [:multi {:dispatch lib-type}
     [:mbql.stage/native [:ref ::stage.native]]
     [:mbql.stage/mbql   [:ref ::stage.mbql.with-source]]]])
 
 (mr/def ::stage.additional
-  ::stage.mbql.without-source)
+  [:ref ::stage.mbql.without-source])
 
 (defn- visible-join-alias?-fn
   "Apparently you're allowed to use a join alias for a join that appeared in any previous stage or the current stage, or
@@ -257,13 +277,36 @@
     [:* [:schema [:ref ::stage.additional]]]]
    [:ref ::stages.valid-refs]])
 
+;;; TODO -- move/copy this schema from the legacy schema to here
+(mr/def ::constraints
+  [:ref
+   ;; do not decode, since this should not get written to the app DB or come in from the REST API.
+   {:decode/normalize identity}
+   :metabase.mbql.schema/Constraints])
+
+;;; TODO -- move/copy this schema from the legacy schema to here
+(mr/def ::parameters
+  [:ref
+   ;; do not decode, since this should not get written to the app DB or come in from the REST API.
+   {:decode/normalize identity}
+   :metabase.mbql.schema/ParameterList])
+
 (mr/def ::query
   [:and
    [:map
-    [:lib/type [:= :mbql/query]]
+    {:decode/normalize common/normalize-map}
+    [:lib/type [:=
+                {:decode/normalize keyword}
+                :mbql/query]]
     [:database [:or
                 ::id/database
                 ::id/saved-questions-virtual-database]]
-    ;;; TODO -- `:parameters`. Legacy MBQL schema has it
-    [:stages   [:ref ::stages]]]
+    [:stages   [:ref ::stages]]
+    [:constraints {:optional true} [:ref ::constraints]]
+    [:parameters  {:optional true} [:ref ::parameters]]
+    [:info        {:optional true} [:ref ::info/info]]
+    ;; TODO -- `:viz-settings` ?
+    ;;
+    ;; TODO -- `:middleware`?
+    ]
    lib.schema.util/UniqueUUIDs])

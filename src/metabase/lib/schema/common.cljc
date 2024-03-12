@@ -6,6 +6,15 @@
 
 (comment metabase.types/keep-me)
 
+(defn normalize-map
+  "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`."
+  [m]
+  (if-not (map? m)
+    m
+    (let [m (update-keys m keyword)]
+      (cond-> m
+        (:lib/type m) (update :lib/type keyword)))))
+
 ;;; Schema for a string that cannot be blank.
 (mr/def ::non-blank-string
   [:and
@@ -24,17 +33,23 @@
    (every-pred number? pos?)])
 
 (mr/def ::uuid
-  ;; TODO -- should this be stricter?
-  [:string {:min 36, :max 36}])
+  [:string
+   {:decode/normalize (fn [x]
+                        (cond-> x
+                          (uuid? x) str))
+    ;; TODO -- should this be stricter?
+    :min 36
+    :max 36}])
 
 (defn- semantic-type? [x]
   (isa? x :Semantic/*))
 
 (mr/def ::semantic-type
   [:fn
-   {:error/message "valid semantic type"
-    :error/fn      (fn [{:keys [value]} _]
-                     (str "Not a valid semantic type: " (pr-str value)))}
+   {:decode/normalize keyword
+    :error/message    "valid semantic type"
+    :error/fn         (fn [{:keys [value]} _]
+                        (str "Not a valid semantic type: " (pr-str value)))}
    semantic-type?])
 
 (defn- relation-type? [x]
@@ -42,13 +57,15 @@
 
 (mr/def ::relation-type
   [:fn
-   {:error/message "valid relation type"
-    :error/fn      (fn [{:keys [value]} _]
-                     (str "Not a valid relation type: " (pr-str value)))}
+   {:decode/normalize keyword
+    :error/message    "valid relation type"
+    :error/fn         (fn [{:keys [value]} _]
+                        (str "Not a valid relation type: " (pr-str value)))}
    relation-type?])
 
 (mr/def ::semantic-or-relation-type
   [:or
+   {:decode/normalize keyword}
    [:ref ::semantic-type]
    [:ref ::relation-type]])
 
@@ -57,13 +74,15 @@
 
 (mr/def ::base-type
   [:fn
-   {:error/message "valid base type"
-    :error/fn      (fn [{:keys [value]} _]
-                     (str "Not a valid base type: " (pr-str value)))}
+   {:decode/normalize keyword
+    :error/message    "valid base type"
+    :error/fn         (fn [{:keys [value]} _]
+                        (str "Not a valid base type: " (pr-str value)))}
    base-type?])
 
 (mr/def ::options
   [:map
+   {:decode/normalize normalize-map}
    [:lib/uuid ::uuid]
    ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
    [:base-type      {:optional true} [:maybe ::base-type]]

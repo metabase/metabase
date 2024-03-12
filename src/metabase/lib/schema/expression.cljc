@@ -31,7 +31,7 @@
 
 (defn- mbql-clause? [expr]
   (and (vector? expr)
-       (keyword? (first expr))))
+       ((some-fn keyword? string?) (first expr))))
 
 (mr/def ::base-type
   [:or
@@ -90,13 +90,11 @@
   2. expression's [[type-of]] isa? `base-type`"
   [base-type description]
   [:and
-   [:or
-    [:fn
-     {:error/message "valid MBQL clause"
-      :error/fn      (fn [{:keys [value]} _]
-                       (str "invalid MBQL clause: " (pr-str value)))}
-     (complement mbql-clause?)]
-    [:ref :metabase.lib.schema.mbql-clause/clause]]
+   ;; vector = MBQL clause, anything else = not an MBQL clause
+   [:multi
+    {:dispatch vector?}
+    [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
+    [false :any]]
    [:fn
     {:error/message description}
     #(type-of? % base-type)]])

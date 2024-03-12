@@ -8,6 +8,9 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -18,6 +21,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -157,10 +161,35 @@
   {:in  json-in
    :out json-out-with-keywordization})
 
-;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
-(defn- maybe-normalize [query]
-  (cond-> query
-    (seq query) mbql.normalize/normalize))
+(defn- serialize-mlv2-query
+  "Saving MLv2 queries​ we can assume MLv2 queries are normalized enough already, but remove the metadata provider before
+  saving it, because it's not something that lends itself well to serialization."
+  [query]
+  (dissoc query :lib/metadata))
+
+(defn- deserialize-mlv2-query
+  "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
+  [query]
+  (let [{database-id :database, :as normalized} (lib/normalize query)]
+    (lib/query (lib.metadata.jvm/application-database-metadata-provider (u/the-id database-id))
+               normalized)))
+
+(mu/defn maybe-normalize-query :- [:maybe :map]
+  "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
+  [in-or-out :- [:enum :in :out]
+   query     :- [:maybe :map]]
+  (when (seq query)
+    (let [f (if (= (lib/normalized-query-type query) :mbql/query)
+              ;; MLv2 queries
+              (case in-or-out
+                :in  serialize-mlv2-query
+                :out deserialize-mlv2-query)
+              ;; legacy queries: just normalize them with the legacy normalization code for now... in the near future
+              ;; we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
+              (case in-or-out
+                :in  mbql.normalize/normalize
+                :out mbql.normalize/normalize))]
+      (f query))))
 
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
@@ -183,8 +212,8 @@
 
 (def transform-metabase-query
   "Transform for metabase-query."
-  {:in  (comp json-in maybe-normalize)
-   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization)})
+  {:in  (comp json-in (partial maybe-normalize-query :in))
+   :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
 
 (def transform-parameters-list
   "Transform for parameters list."

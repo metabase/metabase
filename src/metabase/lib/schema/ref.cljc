@@ -42,7 +42,7 @@
 (mbql-clause/define-mbql-clause :field
   [:and
    [:tuple
-    [:= :field]
+    [:= {:decode/normalize keyword} :field]
     ::field.options
     [:or ::id/field ::common/non-blank-string]]
    [:multi {:dispatch      (fn [clause]
@@ -65,7 +65,7 @@
       ::expression/type.unknown))
 
 (mbql-clause/define-tuple-mbql-clause :expression
-  ::common/non-blank-string)
+  #_expression-name ::common/non-blank-string)
 
 (defmethod expression/type-of-method :expression
   [[_tag opts _expression-name]]

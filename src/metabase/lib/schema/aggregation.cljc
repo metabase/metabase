@@ -82,29 +82,30 @@
 (mbql-clause/define-tuple-mbql-clause :var :- :type/Float
   #_expr [:schema [:ref ::expression/number]])
 
+(doseq [tag [:avg
+             :count
+             :cum-count
+             :count-where
+             :distinct
+             :max
+             :median
+             :min
+             :percentile
+             :share
+             :stddev
+             :sum
+             :cum-sum
+             :sum-where
+             :var]]
+  (lib.hierarchy/derive tag ::aggregation-clause-tag))
+
 (mr/def ::aggregation
-  ;; placeholder!
-  [:or
-   :mbql.clause/avg
-   :mbql.clause/count
-   :mbql.clause/cum-count
-   :mbql.clause/count-where
-   :mbql.clause/distinct
-   :mbql.clause/max
-   :mbql.clause/median
-   :mbql.clause/min
-   :mbql.clause/percentile
-   :mbql.clause/share
-   :mbql.clause/stddev
-   :mbql.clause/sum
-   :mbql.clause/cum-sum
-   :mbql.clause/sum-where
-   :mbql.clause/var
-   ;; We should not allow anything. Fixing this is bigger piece of work,
-   ;; because it makes expressions and aggregations mutually recursive
-   ;; or requires a large amount of duplication. See also
-   ;; metabase.lib.expression-test/diagnose-expression-test.
-   :any])
+  [:and
+   [:ref :metabase.lib.schema.mbql-clause/clause]
+   [:fn
+    {:error/message "Valid aggregation clause"}
+    (fn [[tag :as _clause]]
+      (lib.hierarchy/isa? tag ::aggregation-clause-tag))]])
 
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])

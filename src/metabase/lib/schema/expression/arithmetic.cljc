@@ -74,7 +74,7 @@
   [tag]
   [:cat
    {:error/message (str tag " clause with numeric args")}
-   [:= tag]
+   [:= {:decode/normalize keyword} tag]
    [:schema [:ref ::common/options]]
    [:repeat {:min 2} [:schema [:ref ::expression/number]]]])
 

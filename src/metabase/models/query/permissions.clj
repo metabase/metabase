@@ -5,8 +5,10 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.data-permissions :as data-perms]
@@ -50,7 +52,7 @@
 ;;                             |
 ;;      native query? <--------+------- > mbql query?
 ;;            ↓                               ↓
-;; {:perms/native-query-editing :yes}     mbql-required-perms
+;; {:perms/native-query-editing :yes}     legacy-mbql-required-perms
 ;;                                            |
 ;;                     no source card  <------+----> has source card
 ;;                             |                          ↓
@@ -60,7 +62,7 @@
 
 (mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
   "Return a sequence of all Table IDs referenced by `query`."
-  [query]
+  [query :- :map]
   (set
    (flatten
     (mbql.u/match query
@@ -69,7 +71,7 @@
       (m :guard (every-pred map? :native))
       [::native]
 
-      (m :guard (every-pred map? :source-table))
+      (m :guard (every-pred map? #(pos-int? (:source-table %))))
       (cons
        (:source-table m)
        (query->source-table-ids (dissoc m :source-table)))))))
@@ -97,12 +99,12 @@
   (binding [api/*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)))
 
-(defn- mbql-required-perms
-  [query {:keys [throw-exceptions? already-preprocessed?]}]
+(defn- legacy-mbql-required-perms
+  [query {:keys [throw-exceptions? already-preprocessed?], :as _perms-opts}]
   (try
-    (let [query (mbql.normalize/normalize query)]
+    (let [query (lib/normalize query)]
       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
-      (if-let [source-card-id (qp.util/query->source-card-id query)]
+      (if-let [source-card-id (lib.util/source-card-id query)]
         {:paths (source-card-read-perms source-card-id)}
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (let [{:keys [query]}     (cond-> query
@@ -123,18 +125,35 @@
                                    query)}
                        e)]
         (if throw-exceptions? (throw e) (log/error e)))
-      {:perms/data-access {0 :unrestricted}}))) ; table 0 will never exist
+      {:perms/data-access {0 :unrestricted}})))
+                                        ;
+(defn- pmbql-required-perms
+  "For pMBQL queries: for now, just convert it to legacy by running it thru the QP preprocessor, then hand off to the
+  legacy implementation(s) of [[required-perms]]."
+  [query perms-opts]
+  (let [query (lib/normalize query)]
+    (println "query:" query) ; NOCOMMIT
+    (if (lib.util/first-stage-is-native? query)
+      {:perms/native-query-editing :yes}
+      ;; convert it to legacy by running it thru the QP preprocessor.
+      (let [legacy-query (preprocess-query query)]
+        (assert (= (:type legacy-query) :query)
+                (format "Expected QP preprocessing to return legacy MBQL query, got: %s" (pr-str legacy-query)))
+        (legacy-mbql-required-perms legacy-query perms-opts)))))
 
 (defn required-perms
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys
   :paths (containing legacy permission paths), :perms/data-access, and :perms/native-query-editing."
-  [{query-type :type, :as query} & {:as perms-opts}]
-  (cond
-    (empty? query)                   {}
-    (= (keyword query-type) :native) {:perms/native-query-editing :yes}
-    (= (keyword query-type) :query)  (mbql-required-perms query perms-opts)
-    :else                            (throw (ex-info (tru "Invalid query type: {0}" query-type)
-                                                     {:query query}))))
+  [query & {:as perms-opts}]
+  (if (empty? query)
+    {}
+    (let [query-type (lib/normalized-query-type query)]
+      (case query-type
+        :native     {:perms/native-query-editing :yes}
+        :query      (legacy-mbql-required-perms query perms-opts)
+        :mbql/query (pmbql-required-perms query perms-opts)
+        (throw (ex-info (tru "Invalid query type: {0}" query-type)
+                        {:query query}))))))
 
 (defn check-data-perms
   "Checks whether the current user has sufficient data permissions to run `query`. Returns `true` if the user has data

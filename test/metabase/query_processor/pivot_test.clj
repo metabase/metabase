@@ -460,4 +460,7 @@
                   [4 nil 2 314]
                   [nil nil 3 607]]
                  (mt/rows
-                   (qp.pivot/run-pivot-query query)))))))))
+                  (qp.pivot/run-pivot-query query)))))))))
+
+(deftest ^:parallel adhoc-mlv2-query-test
+  (testing "Should be able to run a pivot query for an MLv2 query (#39024)"))

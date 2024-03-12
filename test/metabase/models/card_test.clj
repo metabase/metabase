@@ -4,6 +4,9 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.config :as config]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models
     :refer [Collection
             Dashboard
@@ -375,11 +378,11 @@
 (deftest ^:parallel template-tag-parameters-test
   (testing "Card with a Field filter parameter"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/field-filter-query)}]
-      (is (= [{:id "_DATE_",
-               :type :date/all-options,
-               :target [:dimension [:template-tag "date"]],
-               :name "Check-In Date",
-               :slug "date",
+      (is (= [{:id "_DATE_"
+               :type :date/all-options
+               :target [:dimension [:template-tag "date"]]
+               :name "Check-In Date"
+               :slug "date"
                :default nil
                :required false}]
              (card/template-tag-parameters card))))))
@@ -387,11 +390,11 @@
 (deftest ^:parallel template-tag-parameters-test-2
   (testing "Card with a non-Field-filter parameter"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-field-filter-query)}]
-      (is (= [{:id "_ID_",
-               :type :number/=,
-               :target [:variable [:template-tag "id"]],
-               :name "Order ID",
-               :slug "id",
+      (is (= [{:id "_ID_"
+               :type :number/=
+               :target [:variable [:template-tag "id"]]
+               :name "Order ID"
+               :slug "id"
                :default "1"
                :required true}]
              (card/template-tag-parameters card))))))
@@ -399,11 +402,11 @@
 (deftest ^:parallel template-tag-parameters-test-3
   (testing "Should ignore native query snippets and source card IDs"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-parameter-template-tag-query)}]
-      (is (= [{:id "_ID_",
-               :type :number/=,
-               :target [:variable [:template-tag "id"]],
-               :name "Order ID",
-               :slug "id",
+      (is (= [{:id "_ID_"
+               :type :number/=
+               :target [:variable [:template-tag "id"]]
+               :name "Order ID"
+               :slug "id"
                :default "1"
                :required true}]
              (card/template-tag-parameters card))))))
@@ -501,8 +504,8 @@
     (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
                                                                               :card_id      1
                                                                               :target       [:dimension [:field-id 1]]}]}]
-      (is (= [{:parameter_id "22486e00",
-               :card_id      1,
+      (is (= [{:parameter_id "22486e00"
+               :card_id      1
                :target       [:dimension [:field 1 nil]]}]
              (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))
 
@@ -901,3 +904,46 @@
                               {:collection_id 1})))
         (is (true? (changed? {:dataset_query {} :collection_id 1}
                              {:dataset_query nil :collection_id 1})))))))
+
+(deftest save-mlv2-card-test
+  (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
+    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          venues            (lib.metadata/table metadata-provider (mt/id :venues))
+          query             (lib/query metadata-provider venues)]
+      (mt/with-temp [:model/Card card {:dataset_query query}]
+        (testing "Save to app DB: table_id and database_id should get populated"
+          (is (=? {:dataset_query {:lib/type     :mbql/query
+                                   :database     (mt/id)
+                                   :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]
+                                   :lib/metadata metadata-provider}
+                   :table_id      (mt/id :venues)
+                   :database_id   (mt/id)}
+                  card)))
+        (testing "Save to app DB: Check MLv2 query was serialized to app DB in a sane way. Metadata provider should be removed"
+          (is (= {"lib/type" "mbql/query"
+                  "database" (mt/id)
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" (mt/id :venues)}]}
+                 (json/parse-string (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id (u/the-id card))))))
+        (testing "fetch from app DB"
+          (is (=? {:dataset_query {:lib/type     :mbql/query
+                                   :database     (mt/id)
+                                   :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]
+                                   :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                   :query_type    :query
+                   :table_id      (mt/id :venues)
+                   :database_id   (mt/id)}
+                  (t2/select-one :model/Card :id (u/the-id card)))))
+        (testing "Update query: change table to ORDERS; query and table_id should reflect that"
+          (let [orders (lib.metadata/table metadata-provider (mt/id :orders))]
+            (is (= 1
+                   (t2/update! :model/Card :id (u/the-id card)
+                               {:dataset_query (lib/query metadata-provider orders)})))
+            (is (=? {:dataset_query {:lib/type     :mbql/query
+                                     :database     (mt/id)
+                                     :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :orders)}]
+                                     :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                     :query_type    :query
+                     :table_id      (mt/id :orders)
+                     :database_id   (mt/id)}
+                    (t2/select-one :model/Card :id (u/the-id card))))))))))

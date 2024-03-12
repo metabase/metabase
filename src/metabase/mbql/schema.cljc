@@ -9,6 +9,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
    [metabase.mbql.schema.macros :refer [defclause one-of]]
@@ -1641,9 +1642,12 @@
    [:default  {:optional true} :any]
    [:required {:optional true} :any]])
 
+(mr/def ::ParameterList
+  [:maybe [:sequential Parameter]])
+
 (def ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
-  [:maybe [:sequential Parameter]])
+  [:ref ::ParameterList])
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------
 
@@ -1653,10 +1657,7 @@
    ;; The timezone the query should be ran in, overriding the default report timezone for the instance.
    [:report-timezone {:optional true} TimezoneId]])
 
-(def ^:private Constraints
-  "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
-  because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will
-  override these values."
+(mr/def ::Constraints
   [:and
    [:map
     ;; maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
@@ -1671,6 +1672,12 @@
       (if-not (core/and max-results max-results-bare-rows)
         true
         (core/>= max-results max-results-bare-rows)))]])
+
+(def ^:private Constraints
+  "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
+  because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will
+  override these values."
+  [:ref ::Constraints])
 
 (def ^:private MiddlewareOptions
   "Additional options that can be used to toggle middleware on or off."
@@ -1699,66 +1706,6 @@
    ;; Whether to process a question's visualization settings and include them in the result metadata so that they can
    ;; incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default `false`.
    [:process-viz-settings? {:optional true} [:maybe :boolean]]])
-
-
-;;; ------------------------------------------------------ Info ------------------------------------------------------
-
-;; This stuff is used for informational purposes, primarily to record QueryExecution entries when a query is ran. Pass
-;; them along if applicable when writing code that creates queries, but when working on middleware and the like you
-;; can most likely ignore this stuff entirely.
-
-(def Context
-  "Schema for `info.context`; used for informational purposes to record how a query was executed."
-  [:enum
-   :action
-   :ad-hoc
-   :collection
-   :map-tiles
-   :pulse
-   :dashboard
-   :question
-   :csv-download
-   :xlsx-download
-   :json-download
-   :public-dashboard
-   :public-question
-   :embedded-dashboard
-   :embedded-question
-   :embedded-csv-download
-   :embedded-xlsx-download
-   :embedded-json-download])
-
-(def ^:private Hash
-  #?(:clj bytes?
-     :cljs :any))
-
-;; TODO - this schema is somewhat misleading because if you use a function
-;; like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required
-(mr/def ::Info
-  [:map
-   ;; These keys are nice to pass in if you're running queries on the backend and you know these values. They aren't
-   ;; used for permissions checking or anything like that so don't try to be sneaky
-   [:context                   {:optional true} [:maybe Context]]
-   [:executed-by               {:optional true} [:maybe PositiveInt]]
-   [:action-id                 {:optional true} [:maybe PositiveInt]]
-   [:card-id                   {:optional true} [:maybe CardID]]
-   [:card-name                 {:optional true} [:maybe NonBlankString]]
-   [:dashboard-id              {:optional true} [:maybe PositiveInt]]
-   [:alias/escaped->original   {:optional true} [:maybe [:map-of :any :any]]]
-   [:pulse-id                  {:optional true} [:maybe PositiveInt]]
-   ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
-   ;; with runtime computed metadata so that edits are saved.
-   [:metadata/model-metadata   {:optional true} [:maybe [:sequential [:map-of :any :any]]]]
-   ;; `:hash` gets added automatically for userland queries (see [[metabase.query-processor/userland-query]]), so
-   ;; don't try passing these in yourself. In fact, I would like this a lot better if we could take these keys xout of
-   ;; `:info` entirely and have the code that saves QueryExceutions figure out their values when it goes to save them
-   [:query-hash                {:optional true} [:maybe Hash]]])
-
-(def Info
-  "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
-  was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
-  based on this information, don't do it!"
-  [:ref ::Info])
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
@@ -1851,7 +1798,7 @@
        ;;
        ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
        ;; User who ran it
-       [:info {:optional true} [:maybe Info]]]
+       [:info {:optional true} [:maybe [:ref ::lib.schema.info/info]]]]
       ;;
       ;; CONSTRAINTS
       check-keys-for-query-type

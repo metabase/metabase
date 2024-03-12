@@ -6,7 +6,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::direction
-  [:enum :asc :desc])
+  [:enum {:decode/normalize keyword} :asc :desc])
 
 (mbql-clause/define-tuple-mbql-clause :asc
   [:ref ::expression/orderable])
@@ -15,12 +15,13 @@
   [:ref ::expression/orderable])
 
 (mr/def ::order-by
-  [:and
-   [:ref ::mbql-clause/clause]
-   [:fn
-    {:error/message ":asc or :desc clause"}
-    (fn [[tag]]
-      (#{:asc :desc} tag))]])
+  [:multi
+   {:dispatch (fn [x]
+                (when (and (vector? x)
+                           ((some-fn keyword? string?) (first x)))
+                  (keyword (first x))))}
+   [:asc  :mbql.clause/asc]
+   [:desc :mbql.clause/desc]])
 
 ;;; TODO -- should there be a no-duplicates constraint here?
 (mr/def ::order-bys

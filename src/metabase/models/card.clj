@@ -194,7 +194,7 @@
 
 (defn populate-query-fields
   "Lift `database_id`, `table_id`, and `query_type` from query definition when inserting/updating a Card."
-  [{{query-type :type, :as outer-query} :dataset_query, :as card}]
+  [{query :dataset_query, :as card}]
   (merge
    card
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
@@ -202,14 +202,17 @@
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
    ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
    (when-not mi/*deserializing?*
-     (when-let [{:keys [database-id table-id]} (and query-type
-                                                    (query/query->database-and-table-ids outer-query))]
-       (merge
-        {:query_type (keyword query-type)}
-        (when database-id
-          {:database_id database-id})
-        (when table-id
-          {:table_id table-id}))))))
+     (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
+       ;; TODO -- not sure `query_type` is actually used for anything important anyway
+       (let [query-type (if (query/query-is-native? query)
+                          :native
+                          :query)]
+         (merge
+          {:query_type (keyword query-type)}
+          (when database-id
+            {:database_id database-id})
+          (when table-id
+            {:table_id table-id})))))))
 
 (defn- populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
@@ -275,10 +278,6 @@
                    (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
-
-(defn- maybe-normalize-query [card]
-  (cond-> card
-    (seq (:dataset_query card)) (update :dataset_query mbql.normalize/normalize)))
 
 ;; TODO: move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and frontend
 ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
@@ -489,7 +488,6 @@
   [card]
   (-> card
       (assoc :metabase_version config/mb-version-string)
-      maybe-normalize-query
       populate-result-metadata
       pre-insert
       populate-query-fields))
@@ -510,7 +508,6 @@
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
-      maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
       ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
       ;; verified-result-metadata? flag (see #37009).
@@ -830,6 +827,10 @@ saved later when it is ready."
                  (set (keys card-updates)))
       (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
     card))
+
+(methodical/defmethod mi/to-json :model/Card
+  [card json-generator]
+  (next-method (m/dissoc-in card [:dataset_query :lib/metadata]) json-generator))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

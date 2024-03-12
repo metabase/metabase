@@ -4333,3 +4333,6 @@
               (testing "Notification emails were sent to the dashboard and pulse creators"
                 (emails-received? "rasta@metabase.com")
                 (emails-received? "trashbird@metabase.com")))))))))
+
+(deftest run-mlv2-dashcard-query-test
+  (testing "Should be able to run a query for a DashCard with an MLv2 query (#39024)"))
