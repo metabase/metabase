@@ -83,10 +83,10 @@ export const AdminLogoContainer = styled.div`
   height: 32px;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
 `;
 
 export const AdminLogoText = styled.div`
-  margin-left: 1rem;
   font-weight: 700;
 
   ${breakpointMaxLarge} {
