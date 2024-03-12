@@ -3,6 +3,7 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [clojure.walk :as walk]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision
@@ -115,6 +116,29 @@
          non-personal-collection-ids
          (collection-permission-graph collection-namespace)
          modify-instance-analytics-for-admins))))
+
+(defn- narrow-to-collection [graph collection-id]
+  (walk/postwalk
+   (fn [x]
+     (if (and (map? x) (contains? x collection-id))
+       (select-keys x [collection-id])
+       x))
+   graph))
+
+(mu/defn graph-for-coll-id
+  "Fetch a graph corresponding to the current permissions status for a single collection with ID `collection-id`.
+  This works just like [[metabase.models.permissions/graph-for-db-id]], but for Collections."
+  [collection-id] :- [:map
+                      [:revision :int]
+                      [:groups :map]
+                      [:warnings [:maybe [:map]]]]
+  (t2/with-transaction [_conn]
+    (-> (if (= collection-id :root)
+          ;; TODO: This might be too slow, but we can use it to iterative quickly for now.
+          ;; (Also it solves a perf issue so :shrug:)
+          (graph :root)
+          (collection-permission-graph [collection-id] nil))
+        (narrow-to-collection collection-id))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 

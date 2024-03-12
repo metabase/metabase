@@ -1005,6 +1005,13 @@
   (api/check-superuser)
   (graph/graph namespace))
 
+(api/defendpoint GET "/graph/collection/:collection-id"
+  "Fetch a graph of all Permissions for db-id `db-id`."
+  [collection-id]
+  {collection-id ms/PositiveInt}
+  (api/check-superuser)
+  (graph/graph-for-coll-id collection-id))
+
 (def CollectionID "an id for a [[Collection]]."
   [pos-int? {:title "Collection ID"}])
 
