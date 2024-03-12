@@ -9,6 +9,9 @@ title: Driver interface changelog
 - The multimethod `metabase.driver/describe-fields` has been added. The method needs to be
   implemented if the database supports the `:fast-sync-fields` feature.
 
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-fields-sql` has been added. The method needs
+  to be implemented if you want to use the default JDBC implementation of `metabase.driver/describe-fields`.
+
 - The multimethod `metabase.driver/describe-table-fks` has been deprecated in favor of `metabase.driver/describe-fks`.
   `metabase.driver/describe-table-fks` will be removed in 0.53.0.
 
