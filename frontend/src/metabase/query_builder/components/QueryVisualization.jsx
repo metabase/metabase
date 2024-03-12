@@ -4,7 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";

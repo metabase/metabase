@@ -13,7 +13,7 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";

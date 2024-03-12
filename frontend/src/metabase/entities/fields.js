@@ -25,9 +25,9 @@ import {
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
-import { getUniqueFieldId } from "metabase-lib/metadata/utils/fields";
-import { getFieldValues } from "metabase-lib/queries/utils/field";
-import { TYPE } from "metabase-lib/types/constants";
+import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
+import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 // ADDITIONAL OBJECT ACTIONS
 

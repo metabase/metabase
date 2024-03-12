@@ -1,5 +1,5 @@
 import { checkNotNull } from "metabase/lib/types";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
 export function createDatasetQuery(

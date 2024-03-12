@@ -13,7 +13,7 @@ import Link from "metabase/core/components/Link/Link";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { UserAttribute } from "metabase-types/api";
 
 import { ImpersonationWarning } from "../ImpersonationWarning";

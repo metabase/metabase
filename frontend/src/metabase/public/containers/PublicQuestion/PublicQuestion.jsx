@@ -22,11 +22,11 @@ import {
 } from "metabase/services";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Question from "metabase-lib/Question";
-import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-import { applyParameters } from "metabase-lib/queries/utils/card";
+import Question from "metabase-lib/v1/Question";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
+import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 
 import EmbedFrame from "../../components/EmbedFrame";
 

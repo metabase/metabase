@@ -1,5 +1,5 @@
 import * as Lib from "metabase-lib";
-import type { Limit } from "metabase-lib/types";
+import type { Limit } from "metabase-lib";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getQuestion } from "../selectors";

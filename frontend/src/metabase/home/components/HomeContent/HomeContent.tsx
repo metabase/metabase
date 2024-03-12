@@ -9,7 +9,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
 
 import { getIsXrayEnabled } from "../../selectors";

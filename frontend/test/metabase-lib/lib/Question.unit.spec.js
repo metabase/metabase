@@ -4,9 +4,9 @@ import { parse } from "url";
 import { createMockMetadata } from "__support__/metadata";
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import { deserializeCardFromUrl } from "metabase/lib/card";
-import Question from "metabase-lib/Question";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Question from "metabase-lib/v1/Question";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import * as ML_Urls from "metabase-lib/urls";
 import {
   createMockColumn,

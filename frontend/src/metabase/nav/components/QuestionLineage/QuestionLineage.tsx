@@ -3,7 +3,7 @@ import { t } from "ttag";
 import Badge from "metabase/components/Badge";
 import Link from "metabase/core/components/Link/Link";
 import type { IconName } from "metabase/ui";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/urls";
 
 export interface QuestionLineageProps {

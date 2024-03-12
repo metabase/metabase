@@ -19,7 +19,7 @@ import {
 } from "metabase/visualizations/lib/settings/validation";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import CardRenderer from "./CardRenderer";
 import {

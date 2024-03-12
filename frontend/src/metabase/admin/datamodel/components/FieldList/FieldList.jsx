@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 
-import Dimension from "metabase-lib/Dimension";
-import DimensionOptions from "metabase-lib/DimensionOptions";
+import Dimension from "metabase-lib/v1/Dimension";
+import DimensionOptions from "metabase-lib/v1/DimensionOptions";
 
 import { DimensionList } from "../DimensionList";
 

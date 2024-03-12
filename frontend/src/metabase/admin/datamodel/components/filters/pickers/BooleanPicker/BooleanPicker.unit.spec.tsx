@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
-import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Filter from "metabase-lib/queries/structured/Filter";
+import Question from "metabase-lib/v1/Question";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import Filter from "metabase-lib/v1/queries/structured/Filter";
 import { createMockField } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 

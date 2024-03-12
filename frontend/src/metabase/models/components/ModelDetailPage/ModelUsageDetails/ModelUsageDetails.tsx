@@ -6,7 +6,7 @@ import Questions, { getIcon } from "metabase/entities/questions";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/urls";
 import type { State } from "metabase-types/store";
 

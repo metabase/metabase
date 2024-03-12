@@ -1,14 +1,14 @@
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
-import type { ParameterWithTarget } from "metabase-lib/parameters/types";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
-import { isTransientId } from "metabase-lib/queries/utils/card";
+import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/utils/template-tags";
+import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import type { ParameterId, ParameterValue } from "metabase-types/api";
 
-import type Question from "./Question";
-import type NativeQuery from "./queries/NativeQuery";
+import type Question from "./v1/Question";
+import type NativeQuery from "./v1/queries/NativeQuery";
 
 type UrlBuilderOpts = {
   originalQuestion?: Question;

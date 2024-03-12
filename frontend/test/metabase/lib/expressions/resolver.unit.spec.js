@@ -1,6 +1,6 @@
-import { resolve } from "metabase-lib/expressions/resolver";
+import { resolve } from "metabase-lib/v1/expressions/resolver";
 
-describe("metabase-lib/expressions/resolve", () => {
+describe("metabase-lib/v1/expressions/resolve", () => {
   function collect(expr, startRule = "expression") {
     const dimensions = [];
     const segments = [];

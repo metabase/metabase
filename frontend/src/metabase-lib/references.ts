@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { normalize } from "metabase-lib/queries/utils/normalize";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   AggregateFieldReference,
   DimensionReference,

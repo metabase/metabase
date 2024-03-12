@@ -4,7 +4,7 @@ import { forwardRef, useCallback } from "react";
 
 import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 
 import CategoryFieldPicker from "./CategoryFieldPicker";
 
