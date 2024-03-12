@@ -26,26 +26,20 @@
 (deftest dump-deletes-target-db-files-tests
   ;; test fails when the application db is anything but H2 presently
   ;; TODO: make this test work with postgres / mysql / mariadb
-  (mt/with-temp-file [tmp-h2-db "mbtest_dump.h2"]
-    (let [tmp-h2-db-mv  (str tmp-h2-db ".mv.db")
-          file-contents {tmp-h2-db    "Not really an H2 DB"
-                         tmp-h2-db-mv "Not really another H2 DB"}]
+  (mt/with-temp-file [tmp-h2-db "mbtest_dump.h2"
+                      tmp-h2-db-mv "mbtest_dump.h2.mv.db"]
+    (let [h2-file-dump-content "H:2,block:61,blockSize:1000,chunk:7,clean:1,created:18e17379d42,format:2,version:7"
+          file-contents        {tmp-h2-db    h2-file-dump-content
+                                tmp-h2-db-mv h2-file-dump-content}]
       ;; 1. Don't actually run the copy steps themselves
       (with-redefs [copy/copy! (constantly nil)]
-        (try
-          (doseq [[filename contents] file-contents]
-            (spit filename contents))
-          (dump-to-h2/dump-to-h2! tmp-h2-db)
+        (doseq [[filename contents] file-contents]
+          (spit filename contents))
+        (dump-to-h2/dump-to-h2! tmp-h2-db)
 
-          (doseq [filename (keys file-contents)]
-            (testing (str filename " was deleted")
-              (is (false? (.exists (io/file filename))))))
-
-          (finally
-            (doseq [filename (keys file-contents)
-                    :let     [file (io/file filename)]]
-              (when (.exists file)
-                (io/delete-file file)))))))))
+        (doseq [filename (keys file-contents)]
+          (testing (str filename " was deleted")
+            (is (false? (.exists (io/file filename))))))))))
 
 (deftest cmd-dump-to-h2-returns-code-from-dump-test
   (with-redefs [dump-to-h2/dump-to-h2! #(throw (Exception. "err"))
