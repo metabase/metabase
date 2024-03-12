@@ -39,3 +39,27 @@
                       :fk_target_field_id nil
                       :semantic_type      :type/PK}}
                    (set group-fields)))))))))
+
+(mt/defdataset composite-pk
+  [["songs"
+    [{:field-name "artist" :base-type :type/Text :pk? true}
+     {:field-name "song"  :base-type :type/Text :pk? true}]
+    [["The Killers" "Somebody Told Me"]]]])
+
+(deftest dataset-with-custom-composite-pk-test
+  (mt/test-drivers (disj (mt/sql-jdbc-drivers)
+                         ;; presto doesn't create PK for test data :) not sure why
+                         :presto-jdbc
+                         ;; creating db for athena is expensive and require some extra steps,
+                         ;; so it's not worth testing against, see [[metabase.test.data.athena/*allow-database-creation*]]
+                         :athena
+                         ;; there is no PK in sparksql
+                         :sparksql)
+    (mt/dataset composite-pk
+      (let [format-name #(ddl.i/format-name driver/*driver* %)]
+        (testing "(users.first_name, users.last_name) is a PK"
+          (is (= #{(format-name "artist")
+                   (format-name "song")}
+                 (t2/select-fn-set :name :model/Field
+                                   :table_id (mt/id :songs)
+                                   :semantic_type :type/PK))))))))
