@@ -7,6 +7,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -89,9 +90,11 @@
 
 (mu/defn db-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
-  implementation of `describe-table`."
+  implementation of `describe-table` or `describe-fields` if supported."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
-  (cond-> (:fields (fetch-metadata/table-metadata database table))
-    (driver/database-supports? (:engine database) :nested-field-columns database)
-    (set/union (fetch-metadata/nfc-metadata database table))))
+    (cond-> (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
+              (set (fetch-metadata/field-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
+              (:fields (fetch-metadata/table-metadata database table)))
+      (driver/database-supports? (:engine database) :nested-field-columns database)
+      (set/union (fetch-metadata/nfc-metadata database table))))

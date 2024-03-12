@@ -28,8 +28,8 @@
   (cond->> (driver/describe-fields (driver.u/database->driver database) database args)
     ;; Validate the output against the schema, except in prod.
     ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-    #_(not config/is-prod?)
-    #_(eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))
+    (not config/is-prod?)
+    (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))
 
 (mu/defn fk-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema."
