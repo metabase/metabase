@@ -16,7 +16,7 @@ import SchedulePicker from "metabase/containers/SchedulePicker";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import CS from "metabase/css/core";
+import CS from "metabase/css/core/index.css";
 import User from "metabase/entities/users";
 import { alertIsValid } from "metabase/lib/alert";
 import * as MetabaseAnalytics from "metabase/lib/analytics";

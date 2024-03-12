@@ -6,7 +6,7 @@ import { t } from "ttag";
 import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import CS from "metabase/css/core";
+import CS from "metabase/css/core/index.css";
 
 export default class ObjectRetireModal extends Component {
   constructor(props, context) {

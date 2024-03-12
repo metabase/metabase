@@ -9,7 +9,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import FormMessage from "metabase/components/form/FormMessage";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import CS from "metabase/css/core";
+import CS from "metabase/css/core/index.css";
 import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";

@@ -4,7 +4,7 @@ import { Component } from "react";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import CS from "metabase/css/core";
+import CS from "metabase/css/core/index.css";
 
 const DEBOUNCE_PERIOD = 300;
 

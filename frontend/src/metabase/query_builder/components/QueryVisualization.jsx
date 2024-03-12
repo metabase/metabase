@@ -5,7 +5,7 @@ import { useTimeout } from "react-use";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import CS from "metabase/css/core";
+import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
