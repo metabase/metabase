@@ -80,7 +80,7 @@
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select [[:c.column_name "name"]
                         [:c.data_type "database-type"]
-                        [:c.ordinal_position "database-position"]
+                        [[:- :c.ordinal_position 1] "database-position"]
                         [:c.schema_name "table-schema"]
                         [:c.table_name "table-name"]
                         [[:raw "NULL"] "database-is-auto-increment"] ; only needed for actions, which redshift doesn't support yet
