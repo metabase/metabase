@@ -5,6 +5,7 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip/Tooltip";
 import { useSelector } from "metabase/lib/redux";
 import MetabotWidget from "metabase/metabot/components/MetabotWidget";
+import { getLocaleWritingDirection } from "metabase/selectors/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { getHasIllustration } from "../../selectors";
@@ -30,9 +31,10 @@ export const HomeLayout = ({
   const [showModal, setShowModal] = useState(false);
   const isAdmin = useSelector(getUserIsAdmin);
   const hasIllustration = useSelector(getHasIllustration);
+  const writingDirection = useSelector(getLocaleWritingDirection);
 
   return (
-    <LayoutRoot data-testid="home-page">
+    <LayoutRoot dir={writingDirection} data-testid="home-page">
       {hasIllustration && <LayoutIllustration />}
       {hasMetabot ? <MetabotWidget /> : <HomeGreeting />}
       {isAdmin && (

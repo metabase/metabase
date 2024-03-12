@@ -203,3 +203,14 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
     return isNavbarOpen;
   },
 );
+
+export const getLocale = (state: State) => {
+  return state.currentUser?.locale || state.settings.values["site-locale"];
+};
+
+export const getLocaleWritingDirection = createSelector([getLocale], locale => {
+  return "rtl"; // for testing
+  const localeFamily = locale.split("_")[0];
+  const rtlLocales = ["ar", "fa", "he", "ur"];
+  return rtlLocales.includes(localeFamily) ? "rtl" : "ltr";
+});

@@ -1,8 +1,15 @@
+import styled from "@emotion/styled";
 import PropTypes from "prop-types";
 import { Fragment } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+
+const StyledPaginationButton = styled(Button)`
+  [dir="rtl"] & {
+    transform: rotate(180deg);
+  }
+`;
 
 export default function PaginationControls({
   page,
@@ -34,7 +41,7 @@ export default function PaginationControls({
           </Fragment>
         )}
       </span>
-      <Button
+      <StyledPaginationButton
         onlyIcon
         icon="chevronleft"
         onClick={onPreviousPage}
@@ -42,8 +49,7 @@ export default function PaginationControls({
         data-testid="previous-page-btn"
         aria-label={t`Previous page`}
       />
-
-      <Button
+      <StyledPaginationButton
         onlyIcon
         icon="chevronright"
         onClick={onNextPage}

@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import LogoIcon from "metabase/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
+import { getLocaleWritingDirection } from "metabase/selectors/app";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Button, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
@@ -33,10 +34,12 @@ export const AdminNavbar = ({
   path: currentPath,
   adminPaths,
 }: AdminNavbarProps) => {
-  const isPaidPlain = useSelector(getIsPaidPlan);
+  const isPaidPlan = useSelector(getIsPaidPlan);
+  const writingDirection = useSelector(getLocaleWritingDirection);
 
   return (
     <AdminNavbarRoot
+      dir={writingDirection}
       data-element-id="navbar-root"
       aria-label={t`Navigation bar`}
     >
@@ -62,7 +65,7 @@ export const AdminNavbar = ({
           ))}
         </AdminNavbarItems>
 
-        {!isPaidPlain && <StoreLink />}
+        {!isPaidPlan && <StoreLink />}
         <AdminExitLink
           to="/"
           data-testid="exit-admin"

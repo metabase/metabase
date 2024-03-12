@@ -23,12 +23,14 @@ import {
   getIsAdminApp,
   getIsAppBarVisible,
   getIsNavBarEnabled,
+  getLocaleWritingDirection,
 } from "metabase/selectors/app";
 import StatusListing from "metabase/status/components/StatusListing";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
+import { useSelector } from "./lib/redux";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -89,6 +91,7 @@ function App({
   location,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
+  const writingDirection = useSelector(getLocaleWritingDirection);
 
   useEffect(() => {
     initializeIframeResizer();
@@ -101,9 +104,13 @@ function App({
           <KeyboardTriggeredErrorModal />
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
-          <AppContentContainer isAdminApp={isAdminApp}>
+          <AppContentContainer isAdminApp={isAdminApp} dir={writingDirection}>
             {isNavBarEnabled && <Navbar />}
-            <AppContent ref={setViewportElement}>
+            <AppContent
+              ref={setViewportElement}
+              // rtl is not rolled out for this part of the app yet
+              dir="ltr"
+            >
               <ContentViewportContext.Provider value={viewportElement ?? null}>
                 {errorPage ? getErrorComponent(errorPage) : children}
               </ContentViewportContext.Provider>

@@ -84,7 +84,7 @@ export const EntityNameLink = styled(Link)`
 
 export const HintIcon = styled(Icon)`
   color: ${color("text-light")};
-  margin-left: 0.375rem;
+  margin-inline-start: 0.375rem;
   cursor: pointer;
 `;
 

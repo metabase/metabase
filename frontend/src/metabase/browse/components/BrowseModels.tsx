@@ -23,6 +23,7 @@ export const BrowseModels = ({
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
 }) => {
   const { data: models = [], error, isLoading } = modelsResult;
+  // TODO: Use the right locale selector here
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
   const [collectionViewPreferences, setCollectionViewPreferences] = useState(
