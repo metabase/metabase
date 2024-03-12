@@ -100,7 +100,7 @@ function syncTableColumnSettingsAfterClickAction(
     [column],
     columnSettings,
   );
-  if (addedColumnCount < 0 || columnSettingIndex < 0) {
+  if (addedColumnCount <= 0 || columnSettingIndex < 0) {
     return settings;
   }
 
