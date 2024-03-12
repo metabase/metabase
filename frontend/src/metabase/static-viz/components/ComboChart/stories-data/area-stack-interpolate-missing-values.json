@@ -1,0 +1,376 @@
+[
+  {
+    "card": {
+      "original_card_id": 62,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-05T23:02:40.140569Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (c375960)",
+      "collection": null,
+      "visualization_settings": {
+        "table.pivot_column": "Y1",
+        "table.cell_column": "X",
+        "graph.dimensions": ["X"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["Y3", "Y2", "Y1"]
+      },
+      "collection_preview": true,
+      "entity_id": "mUuWk7lY13qG-8fZpN57L",
+      "display": "area",
+      "parameter_mappings": [],
+      "id": 62,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 1 x, 10 y1, 20 y2, 30 y3\nunion all select 2, 10, null, 30\nunion all select 3, null, null, 30\nunion all select 4, null, null, null\nunion all select 5, 10, null, 30"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-12T20:22:56.641405Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 58.75,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": "2024-03-12T20:21:06.052937Z",
+      "name": "stacked areas with nulls",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1.75,
+                "q3": 4.25,
+                "max": 5,
+                "sd": 1.5811388300841898,
+                "avg": 3
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y1",
+          "field_ref": [
+            "field",
+            "Y1",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y1",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0.4
+            },
+            "type": {
+              "type/Number": {
+                "min": 10,
+                "q1": 10,
+                "q3": 10,
+                "max": 10,
+                "sd": 0,
+                "avg": 10
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y2",
+          "field_ref": [
+            "field",
+            "Y2",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y2",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0.8
+            },
+            "type": {
+              "type/Number": {
+                "min": 20,
+                "q1": 20,
+                "q3": 20,
+                "max": 20,
+                "sd": null,
+                "avg": 20
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y3",
+          "field_ref": [
+            "field",
+            "Y3",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y3",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0.2
+            },
+            "type": {
+              "type/Number": {
+                "min": 30,
+                "q1": 30,
+                "q3": 30,
+                "max": 30,
+                "sd": 0,
+                "avg": 30
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [1, 10, 20, 30],
+        [2, 10, null, 30],
+        [3, null, null, 30],
+        [4, null, null, null],
+        [5, 10, null, 30]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "Y1",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y1",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y1",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "Y2",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y2",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y2",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "Y3",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y3",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y3",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "query": "select 1 x, 10 y1, 20 y2, 30 y3\nunion all select 2, 10, null, 30\nunion all select 3, null, null, 30\nunion all select 4, null, null, null\nunion all select 5, 10, null, 30",
+        "params": null
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1.75,
+                  "q3": 4.25,
+                  "max": 5,
+                  "sd": 1.5811388300841898,
+                  "avg": 3
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y1",
+            "field_ref": [
+              "field",
+              "Y1",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y1",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0.4
+              },
+              "type": {
+                "type/Number": {
+                  "min": 10,
+                  "q1": 10,
+                  "q3": 10,
+                  "max": 10,
+                  "sd": 0,
+                  "avg": 10
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y2",
+            "field_ref": [
+              "field",
+              "Y2",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y2",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0.8
+              },
+              "type": {
+                "type/Number": {
+                  "min": 20,
+                  "q1": 20,
+                  "q3": 20,
+                  "max": 20,
+                  "sd": null,
+                  "avg": 20
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y3",
+            "field_ref": [
+              "field",
+              "Y3",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y3",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0.2
+              },
+              "type": {
+                "type/Number": {
+                  "min": 30,
+                  "q1": 30,
+                  "q3": 30,
+                  "max": 30,
+                  "sd": 0,
+                  "avg": 30
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

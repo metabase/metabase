@@ -372,6 +372,13 @@ NullCategoryValueFormatting.args = {
   renderingContext,
 };
 
+export const AreaStackInterpolateMissingValues = Template.bind({});
+AreaStackInterpolateMissingValues.args = {
+  rawSeries: data.areaStackInterpolateMissingValues as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
