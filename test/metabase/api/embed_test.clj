@@ -24,6 +24,7 @@
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -519,15 +520,16 @@
               (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest embedding-logs-view-test
-  (with-embedding-enabled-and-new-secret-key
-    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
-      (testing "Viewing an embedding logs the correct view log event."
-        (client/client :get 200 (dashboard-url dash))
-        (is (partial=
-             {:model      "dashboard"
-              :model_id   (:id dash)
-              :has_access true}
-             (view-log-test/latest-view nil (:id dash))))))))
+  (when (premium-features/log-enabled?)
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
+        (testing "Viewing an embedding logs the correct view log event."
+          (client/client :get 200 (dashboard-url dash))
+          (is (partial=
+               {:model      "dashboard"
+                :model_id   (:id dash)
+                :has_access true}
+               (view-log-test/latest-view nil (:id dash)))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key

@@ -17,6 +17,7 @@ import {
   resetSnowplow,
   enableTracking,
   main,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -99,6 +100,10 @@ describe("scenarios > home > homepage", () => {
   describe("after content creation", () => {
     beforeEach(() => {
       restore("default");
+      cy.signInAsAdmin();
+      // Setting this to true so that displaying popular items for new users works.
+      // This requires the audit-app feature to be enabled
+      setTokenFeatures("all");
     });
 
     it("should display recent items", () => {
@@ -122,6 +127,7 @@ describe("scenarios > home > homepage", () => {
 
     it("should display popular items for a new user", () => {
       cy.signInAsAdmin();
+
       visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
