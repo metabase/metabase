@@ -67,7 +67,7 @@ export const MembershipSelect = ({
   const selectedGroupIds = Array.from(memberships.keys());
   const triggerElement = (
     <div className="flex align-center" aria-label="group-summary">
-      <Text mine="1rem" color="text-medium">
+      <Text me="1rem" color="text-medium">
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </Text>
       <Icon className="text-light" name="chevrondown" size={10} />
