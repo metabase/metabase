@@ -61,11 +61,11 @@
                          :pk_table.relname    "pk-table-name"
                          :pk_column.attname   "pk-column-name"})
                :from   [[:pg_constraint :c]]
-               :join   [[:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
-                        [:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
+               :join   [[:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
+                        [:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
                         [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
-                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
                         [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
+                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
                         [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
                :where  [:and
                         [:= :c.contype [:raw "'f'::char"]]
