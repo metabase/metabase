@@ -24,7 +24,6 @@ body {
   border-color: var(--color-bg-dark);
 }
 
-/* TODO: .fullscreenNightText */
 :global(.Theme--night.EmbedFrame) .fullscreenNightText {
   color: color-mod(var(--color-text-white) alpha(-14%));
   transition: color 1s linear;

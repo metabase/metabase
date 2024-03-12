@@ -119,8 +119,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       // Ask question
       cy.visit("/reference/segments/1/questions");
 
-      // TODO: fix test after styles migration
-      cy.get(".full .Button").click();
+      cy.button("Ask a question").click();
       cy.findAllByText("37.65");
 
       filter();
