@@ -1008,7 +1008,7 @@
 (api/defendpoint GET "/graph/collection/:collection-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
   [collection-id]
-  {collection-id ms/PositiveInt}
+  {collection-id [:or ms/PositiveInt [:= :root]]}
   (api/check-superuser)
   (graph/graph-for-coll-id collection-id))
 
