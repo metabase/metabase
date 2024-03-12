@@ -49,7 +49,9 @@ export function processSource(options: {
   let compileError;
   try {
     const parsed = parse(source);
-    expression = adjustBooleans(resolve(parsed, startRule, resolveMBQLField));
+    expression = adjustBooleans(
+      resolve({ expression: parsed, type: startRule, fn: resolveMBQLField }),
+    );
 
     // query and stageIndex are not available outside of notebook editor (e.g. in Metrics or Segments).
     if (query && typeof stageIndex !== "undefined") {
