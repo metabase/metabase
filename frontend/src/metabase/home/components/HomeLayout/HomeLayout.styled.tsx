@@ -12,6 +12,8 @@ export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100%;
   padding: 1rem;
+  display: flex;
+  gap: 0.5rem;
   background-color: ${color("bg-light")};
 
   ${breakpointMinMedium} {

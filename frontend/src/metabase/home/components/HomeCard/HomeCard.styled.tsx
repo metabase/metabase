@@ -16,6 +16,7 @@ export const CardRoot = styled(Link)`
   background-color: ${color("white")};
   box-shadow: 0 7px 20px ${color("shadow")};
   max-width: 100%;
+  gap: 1rem;
 
   ${breakpointMinSmall} {
     max-width: 50%;

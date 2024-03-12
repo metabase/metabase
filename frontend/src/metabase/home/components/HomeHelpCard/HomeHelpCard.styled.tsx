@@ -12,6 +12,7 @@ export const CardRoot = styled(ExternalLink)`
   padding: 1rem;
   border: 1px solid ${color("focus")};
   border-radius: 0.5rem;
+  gap: 0.5rem;
 
   ${breakpointMinLarge} {
     padding: 1.5rem;
@@ -30,5 +31,4 @@ export const CardTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1rem;
   font-weight: bold;
-  margin-left: 1rem;
 `;
