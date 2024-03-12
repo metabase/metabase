@@ -129,15 +129,15 @@
 ;; TODO: Specify a unique location each time
 (defmethod sql.tx/create-table-sql :athena
   [driver {:keys [database-name]} {:keys [table-name field-definitions], :as _tabledef}]
-  (let [fields            (->> field-definitions
-                               (map (fn [{:keys [field-name base-type]}]
-                                      (format "`%s` %s"
-                                              (ddl.i/format-name driver field-name)
-                                              (if (map? base-type)
-                                                (:native base-type)
-                                                (sql.tx/field-base-type->sql-type driver base-type)))))
-                               (interpose ", ")
-                               str/join)]
+  (let [fields (->> field-definitions
+                    (map (fn [{:keys [field-name base-type]}]
+                           (format "`%s` %s"
+                                   (ddl.i/format-name driver field-name)
+                                   (if (map? base-type)
+                                     (:native base-type)
+                                     (sql.tx/field-base-type->sql-type driver base-type)))))
+                    (interpose ", ")
+                    str/join)]
     ;; ICEBERG tables do what we want, and dropping them causes the data to disappear; dropping a normal non-ICEBERG
     ;; table doesn't delete data, so if you recreate it you'll have duplicate rows. 'normal' tables do not support
     ;; `DELETE .. FROM`, either, so there's no way to fix them here.

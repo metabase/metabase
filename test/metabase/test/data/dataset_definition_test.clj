@@ -14,9 +14,7 @@
                          ;; so it's not worth testing against, see [[metabase.test.data.athena/*allow-database-creation*]]
                          :athena
                          ;; there is no PK in sparksql
-                         :sparksql
-                         ;; redshift has some problem with creating db in the same schema
-                         :redshift)
+                         :sparksql)
     (mt/dataset (mt/dataset-definition "custom-pk"
                   ["user"
                    [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
