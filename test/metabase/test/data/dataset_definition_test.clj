@@ -57,7 +57,7 @@
                          :sparksql)
     (mt/dataset composite-pk
       (let [format-name #(ddl.i/format-name driver/*driver* %)]
-        (testing "(users.first_name, users.last_name) is a PK"
+        (testing "(artist_id, song_id) is a PK"
           (is (= #{(format-name "artist_id")
                    (format-name "song_id")}
                  (t2/select-fn-set :name :model/Field
