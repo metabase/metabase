@@ -15,7 +15,6 @@ import {
   getIframeBody,
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
-  modal,
 } from "e2e/support/helpers";
 
 const {
