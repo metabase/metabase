@@ -69,7 +69,10 @@ describe("IllustrationWidget", () => {
     });
 
     it("should allow setting 'No illustration' option", () => {
-      const newOption = { label: "No illustration", value: "no-illustration" };
+      const noIllustrationOption = {
+        label: "No illustration",
+        value: "no-illustration",
+      };
 
       const { onChange } = setup({
         setting: defaultSetting,
@@ -77,12 +80,12 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
       userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText(newOption.label));
-      expect(onChange).toHaveBeenCalledWith(newOption.value);
+      userEvent.click(screen.getByText(noIllustrationOption.label));
+      expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
     });
 
     it("should not set anything after selecting 'Custom' option", () => {
-      const newOption = { label: "Custom", value: "custom" };
+      const customOption = { label: "Custom", value: "custom" };
 
       const { onChange } = setup({
         setting: defaultSetting,
@@ -90,12 +93,12 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
       userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText(newOption.label));
+      userEvent.click(screen.getByText(customOption.label));
       expect(onChange).not.toHaveBeenCalled();
     });
 
-    it("should allow uploading PNG file", async () => {
-      const newOption = { label: "Custom", value: "custom" };
+    it("should allow uploading a PNG file", async () => {
+      const customOption = { label: "Custom", value: "custom" };
 
       const { onChangeSetting } = setup({
         setting: defaultSetting,
@@ -104,7 +107,7 @@ describe("IllustrationWidget", () => {
       });
 
       userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText(newOption.label));
+      userEvent.click(screen.getByText(customOption.label));
 
       const file = new File(["hello"], "hello.png", { type: "image/png" });
       const input = screen.getByTestId("file-input");
@@ -112,7 +115,6 @@ describe("IllustrationWidget", () => {
       await waitFor(() => {
         expect(onChangeSetting).toHaveBeenCalledWith(
           customIllustrationSetting,
-          // We'll modify the test once we don't save the value as data URL
           expect.stringMatching(/^data:image\/png;base64,/),
         );
       });
