@@ -209,7 +209,6 @@ export const getLocale = (state: State) => {
 };
 
 export const getLocaleWritingDirection = createSelector([getLocale], locale => {
-  return "rtl"; // for testing
   const localeFamily = locale.split("_")[0];
   const rtlLocales = ["ar", "fa", "he", "ur"];
   return rtlLocales.includes(localeFamily) ? "rtl" : "ltr";
