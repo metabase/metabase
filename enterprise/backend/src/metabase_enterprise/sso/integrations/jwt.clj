@@ -76,7 +76,7 @@
                                                      (group-names->ids group-names)
                                                      (all-mapped-group-ids))))))
 
-(defn- get-jwt-data
+(defn- session-data
   [jwt {{redirect :return_to} :params, :as request}]
   (let [redirect-url (or redirect (URLEncoder/encode "/"))]
     (sso-utils/check-sso-redirect redirect-url)
@@ -120,11 +120,11 @@
     (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT")))))
 
 (defmethod sso.i/sso-get :jwt
-  [{{:keys [jwt redirect token] :or {token false}} :params, :as request}]
+  [{{:keys [jwt redirect token] :or {token nil}} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
   (if jwt
-    (handle-jwt-authentication  (get-jwt-data jwt request) token request)
+    (handle-jwt-authentication (session-data jwt request) token request)
     (redirect-to-idp (sso-settings/jwt-identity-provider-uri) redirect)))
 
 (defmethod sso.i/sso-post :jwt
