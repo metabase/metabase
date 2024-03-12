@@ -10,7 +10,6 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field-usage :as field-usage]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -141,7 +140,7 @@
         (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
                                                                     :fk_target_field_id nil}))
       (when (boolean? active?)
-        (field-usage/toggle-field! (:id field) active?)))))
+        (t2/update! :model/FieldUsage :field_id (:id field) {:is_currently_valid active?})))))
 
 (defn- field->db-id
   [{table-id :table_id, {db-id :db_id} :table}]

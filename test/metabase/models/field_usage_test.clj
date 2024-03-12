@@ -6,7 +6,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def field-usage-keys [:card_id :field_id :column_name :table_name :is_current])
+(def field-usage-keys [:card_id :field_id :column_name :table_name :is_currently_valid])
 
 (defn- field-usages-for-card
   [card-id]
@@ -38,9 +38,9 @@
 
 (deftest field-usages-created-by-queries-test
   (with-test-setup
-    (let [default-field-usage {:card_id    card-id
-                               :table_name "ORDERS"
-                               :is_current true}
+    (let [default-field-usage {:card_id            card-id
+                               :table_name         "ORDERS"
+                               :is_currently_valid true}
           total-fu            (merge default-field-usage
                                      {:field_id    total-id
                                       :column_name "TOTAL"})]
@@ -63,12 +63,12 @@
 
 (deftest field-deactivation-test
   (with-test-setup
-    (testing "deactivating a field twiddles field_usage.is_current"
+    (testing "deactivating a field twiddles field_usage.is_currently_valid"
       (try
         (trigger-parse! card-id)
         (t2/update! :model/Field tax-id {:active false})
-        (is (= #{{:field_id tax-id   :is_current false}
-                 {:field_id total-id :is_current true}}
-               (t2/select-fn-set #(select-keys % [:field_id :is_current]) :model/FieldUsage :card_id card-id)))
+        (is (= #{{:field_id tax-id   :is_currently_valid false}
+                 {:field_id total-id :is_currently_valid true}}
+               (t2/select-fn-set #(select-keys % [:field_id :is_currently_valid]) :model/FieldUsage :card_id card-id)))
         (finally
           (t2/update! :model/Field tax-id {:active true}))))))

@@ -53,7 +53,7 @@
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
-(def ^:private default-order {:order-by [[:%lower.name :asc]]})
+(def ^:private order-by-name {:order-by [[:%lower.name :asc]]})
 
 (defmulti ^:private cards-for-filter-option*
   {:arglists '([filter-option & args])}
@@ -63,36 +63,36 @@
 ;; return all Cards. This is the default filter option.
 (defmethod cards-for-filter-option* :all
   [_]
-  (t2/select Card, :archived false, default-order))
+  (t2/select Card, :archived false, order-by-name))
 
 ;; return Cards created by the current user
 (defmethod cards-for-filter-option* :mine
   [_]
-  (t2/select Card, :creator_id api/*current-user-id*, :archived false, default-order))
+  (t2/select Card, :creator_id api/*current-user-id*, :archived false, order-by-name))
 
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
   [_]
-  (as-> (t2/select [CardBookmark :card_id] :user_id api/*current-user-id*) <>
-      (t2/hydrate <> :card)
-      (map :card <>)
-      (remove :archived <>)
-      (sort-by :name <>)))
+  (let [bookmarks (t2/select [CardBookmark :card_id] :user_id api/*current-user-id*)]
+    (->> (t2/hydrate bookmarks :card)
+         (map :card)
+         (remove :archived)
+         (sort-by :name))))
 
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
   [_ database-id]
-  (t2/select Card, :database_id database-id, :archived false, default-order))
+  (t2/select Card, :database_id database-id, :archived false, order-by-name))
 
 ;; Return all Cards belonging to `Table` with `table-id`.
 (defmethod cards-for-filter-option* :table
   [_ table-id]
-  (t2/select Card, :table_id table-id, :archived false, default-order))
+  (t2/select Card, :table_id table-id, :archived false, order-by-name))
 
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
   [_]
-  (t2/select Card, :archived true, default-order))
+  (t2/select Card, :archived true, order-by-name))
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
@@ -111,7 +111,7 @@
 
 (defn- cards-for-segment-or-metric
   [model-type model-id]
-  (->> (t2/select :model/Card (merge default-order
+  (->> (t2/select :model/Card (merge order-by-name
                                      {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
        ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
        (filter (fn [card]
@@ -130,17 +130,18 @@
 
 (defmethod cards-for-filter-option* :stale
   [_]
-  (let [card-id->field-usages (group-by :card_id (t2/select :model/FieldUsage
-                                                            {:select [:fu.* [:f.name :new_column_name] [:t.name :new_table_name]]
-                                                             :from   [[(t2/table-name :model/FieldUsage) :fu]]
-                                                             :join   [[(t2/table-name :model/Field) :f] [:= :f.id :fu.field_id]
-                                                                      [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                             :where  [:= false :fu.is_current]}))
-        card-ids              (keys card-id->field-usages)]
-    (if (empty? card-ids)
-      []
-      (map #(assoc % :field_usages (get card-id->field-usages (:id %)))
-           (t2/select Card :id [:in card-ids] default-order)))))
+  (let [card-id->field-usages (group-by :card_id
+                                        (t2/select :model/FieldUsage
+                                                   {:select [:fu.* [:f.name :new_column_name] [:t.name :new_table_name]]
+                                                    :from   [[(t2/table-name :model/FieldUsage) :fu]]
+                                                    :join   [[(t2/table-name :model/Field) :f] [:= :f.id :fu.field_id]
+                                                             [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                                                    :where  [:= false :fu.is_currently_valid]}))
+        card-ids              (keys card-id->field-usages)
+        add-field-usage (fn [{:keys [id] :as card}]
+                          (assoc card :field_usages (card-id->field-usages id)))]
+    (when (seq card-ids)
+      (map add-field-usage (t2/select Card :id [:in card-ids] order-by-name)))))
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))

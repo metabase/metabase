@@ -5862,20 +5862,20 @@ databaseChangeLog:
                     foreignKeyName: fk_field_usage_field_id
                     deleteCascade: true
               - column:
-                  remarks: Name of the used column, as it is in the query (i.e., the old name)
+                  remarks: Name of the used column, as it is in the query
                   name: column_name
                   type: varchar(254)
                   constraints:
                     nullable: false
               - column:
-                  remarks: Name of the used table, as it is in the query (i.e., the old name)
+                  remarks: Name of the used table, as it is in the query
                   name: table_name
                   type: varchar(254)
                   constraints:
                     nullable: false
               - column:
                   remarks: Is this field usage still valid?
-                  name: is_current
+                  name: is_currently_valid
                   type: ${boolean.type}
                   defaultValueBoolean: true
                   constraints:
