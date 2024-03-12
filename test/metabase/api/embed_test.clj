@@ -22,6 +22,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -537,7 +538,7 @@
               (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest embedding-logs-view-test
-  (when config/ee-available?
+  (when (premium-features/log-enabled?)
     (with-embedding-enabled-and-new-secret-key
       (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
         (testing "Viewing an embedding logs the correct view log event."

@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
@@ -20,7 +19,7 @@
                  {:order-by [[:id :desc]]}))
 
 (deftest card-read-ee-test
-  (when config/ee-available?
+  (when (premium-features/log-enabled?)
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is recorded in EE"
@@ -34,7 +33,7 @@
              (latest-view (u/id user) (u/id card))))))))
 
 (deftest card-read-oss-no-view-logging-test
-  (when-not config/ee-available?
+  (when-not (premium-features/log-enabled?)
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is not recorded in OSS"
@@ -43,7 +42,7 @@
             "view log entries should not be made in OSS")))))
 
 (deftest table-read-ee-test
-  (when config/ee-available?
+  (when (premium-features/log-enabled?)
     (mt/with-temp [:model/User user {}]
       (let [table (t2/select-one :model/Table :id (mt/id :users))]
         (testing "A basic table read event is recorded in EE"

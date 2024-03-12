@@ -17,24 +17,15 @@
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
-            CardBookmark
-            Collection
-            Dashboard
-            Database
-            ModerationReview
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            Table
-            Timeline
+    :refer [Card CardBookmark Collection Dashboard Database ModerationReview
+            Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.permissions.util :as perms.u]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -3333,7 +3324,7 @@
                  (upload-example-csv-via-api!))))))))
 
 (deftest card-read-event-test
-  (when config/ee-available?
+  (when (premium-features/log-enabled?)
     (testing "Card reads (views) via the API are recorded in the view_log"
       (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
         (testing "GET /api/card/:id"
