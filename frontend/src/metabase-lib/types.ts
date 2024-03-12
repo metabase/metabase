@@ -5,7 +5,6 @@ import type {
   FieldValuesType,
   RowValue,
   TableId,
-  VisualizationSettings,
 } from "metabase-types/api";
 
 import type {
@@ -560,7 +559,7 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: Element;
   seriesIndex?: number;
-  settings: VisualizationSettings;
+  settings?: Record<string, unknown>;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];
