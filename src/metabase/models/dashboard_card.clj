@@ -193,16 +193,16 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
+    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
     [:parameter_id ms/NonBlankString]
     #_[:target       :any]]])
 
 (def ^:private NewDashboardCard
-  ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
+  ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
   [:map
    [:dashboard_id                            ms/PositiveInt]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   ;; TODO - use ParamMapping. Breaks too many tests right now tho
+   ;; TODO - use ParamMapping. Breaks too many tests right now tho (#40021)
    [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
    [:visualization_settings {:optional true} [:maybe map?]]
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])

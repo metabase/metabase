@@ -50,10 +50,7 @@
                       ;; - fk_target_field_id is NULL and the new target is not NULL
                       ;; - fk_target_field_id is not NULL but the new target is different and not NULL
                       [pk-field-id-query :pk]
-                      [:and
-                       [:or
-                        [:= :f.fk_target_field_id nil]
-                        [:not= :f.fk_target_field_id :pk.id]]]]
+                      [:= :f.fk_target_field_id nil]]
              :set    {:fk_target_field_id :pk.id
                       :semantic_type      "type/FK"}}
             :postgres
@@ -64,9 +61,7 @@
                       :semantic_type      "type/FK"}
              :where  [:and
                       [:= :fk.id :f.id]
-                      [:or
-                       [:= :f.fk_target_field_id nil]
-                       [:not= :f.fk_target_field_id :pk.id]]]}
+                      [:= :f.fk_target_field_id nil]]}
             :h2
             {:update [:metabase_field :f]
              :set    {:fk_target_field_id pk-field-id-query
@@ -74,9 +69,7 @@
              :where  [:and
                       [:= :f.id fk-field-id-query]
                       [:not= pk-field-id-query nil]
-                      [:or
-                       [:= :f.fk_target_field_id nil]
-                       [:not= :f.fk_target_field_id pk-field-id-query]]]})]
+                      [:= :f.fk_target_field_id nil]]})]
     (sql/format q :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))))
 
 (mu/defn ^:private mark-fk!
