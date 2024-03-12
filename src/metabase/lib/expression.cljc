@@ -24,7 +24,6 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -190,11 +189,11 @@
   [query stage-number [_coalesce _opts expr _null-expr]]
   (lib.metadata.calculation/column-name query stage-number expr))
 
-(defn- conflicting-name? [query stage-number expression-name]
-  (let [stage     (lib.util/query-stage query stage-number)
-        cols      (lib.metadata.calculation/visible-columns query stage-number stage)
-        expr-name (u/lower-case-en expression-name)]
-    (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
+#_(defn- conflicting-name? [query stage-number expression-name]
+    (let [stage     (lib.util/query-stage query stage-number)
+          cols      (lib.metadata.calculation/visible-columns query stage-number stage)
+          expr-name (u/lower-case-en expression-name)]
+      (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
 
 (defn- add-expression-to-stage
   [stage expression]
@@ -213,14 +212,17 @@
     expression-name      :- ::lib.schema.common/non-blank-string
     expressionable]
    (let [stage-number (or stage-number -1)]
-     (when (conflicting-name? query stage-number expression-name)
-       (throw (ex-info "Expression name conflicts with a column in the same query stage"
-                       {:expression-name expression-name})))
+     ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
+     ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by
+     ;; the QP code, and it should be powered by MLv2 in due course.
+     #_(when (conflicting-name? query stage-number expression-name)
+         (throw (ex-info "Expression name conflicts with a column in the same query stage"
+                         {:expression-name expression-name})))
      (lib.util/update-query-stage
-      query stage-number
-      add-expression-to-stage
-      (-> (lib.common/->op-arg expressionable)
-          (lib.util/top-level-expression-clause expression-name))))))
+       query stage-number
+       add-expression-to-stage
+       (-> (lib.common/->op-arg expressionable)
+           (lib.util/top-level-expression-clause expression-name))))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
@@ -252,6 +254,7 @@
 (lib.common/defop get-minute [t])
 (lib.common/defop get-second [t])
 (lib.common/defop get-quarter [t])
+(lib.common/defop get-day-of-week [t])
 (lib.common/defop datetime-add [t i unit])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])

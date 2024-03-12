@@ -9,8 +9,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [ring.adapter.jetty9 :as ring-jetty]
-   [ring.adapter.jetty9.servlet :as servlet])
+   [ring.adapter.jetty :as ring-jetty]
+   [ring.util.jakarta.servlet :as servlet])
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
@@ -97,11 +97,8 @@
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)
-  ;;
-  ;; TODO - I suppose the default value should be moved to the `metabase.config` namespace?
-  (let [timeout (or (config/config-int :mb-jetty-async-response-timeout)
-                    (* 10 60 1000))
-        handler (async-proxy-handler handler timeout)
+  (let [timeout       (config/config-int :mb-jetty-async-response-timeout)
+        handler       (async-proxy-handler handler timeout)
         stats-handler (doto (StatisticsHandler.)
                         (.setHandler handler))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))

@@ -13,8 +13,9 @@ export interface EnterpriseSettings extends Settings {
   "application-colors"?: Record<string, string>;
   "application-logo-url"?: string;
   "landing-page"?: string;
-  "ee-openai-model"?: string;
+  "ee-ai-features-enabled"?: boolean;
   "ee-openai-api-key"?: string;
+  "ee-openai-model"?: string;
   /**
    * @deprecated
    */

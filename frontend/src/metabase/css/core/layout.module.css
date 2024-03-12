@@ -51,6 +51,7 @@
 .full-width {
   width: 100%;
 }
+
 :global(.half) {
   width: 50%;
 }
@@ -74,14 +75,17 @@
 .top {
   top: 0;
 }
+
 :global(.right),
 .right {
   right: 0;
 }
+
 :global(.bottom),
 .bottom {
   bottom: 0;
 }
+
 :global(.left),
 .left {
   left: 0;

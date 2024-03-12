@@ -18,6 +18,7 @@ import {
   dashboardSaveButton,
   ensureDashboardCardHasText,
   sidebar,
+  dashboardParametersDoneButton,
 } from "e2e/support/helpers";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
@@ -96,10 +97,17 @@ describe("scenarios > dashboard > filters > number", () => {
     toggleRequiredParameter();
     dashboardSaveButton().should("be.disabled");
     dashboardSaveButton().realHover();
-
     cy.findByRole("tooltip").should(
       "contain.text",
       'The "Equal to" parameter requires a default value but none was provided.',
+    );
+
+    // Can't close sidebar without a default value
+    dashboardParametersDoneButton().should("be.disabled");
+    dashboardParametersDoneButton().realHover();
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      "The parameter requires a default value but none was provided.",
     );
 
     sidebar().findByText("Default value").next().click();

@@ -726,7 +726,7 @@
   [driver [_ & args]]
   (into [:*]
         (map (partial ->honeysql driver))
-         args))
+        args))
 
 ;; for division we want to go ahead and convert any integer args to floats, because something like field / 2 will do
 ;; integer division and give us something like 1.0 where we would rather see something like 1.5
@@ -763,7 +763,7 @@
                                                           mbql-expr)))]
     (into [:/ (->float driver numerator)]
           (map safe-denominator)
-           denominators)))
+          denominators)))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]

@@ -7,6 +7,7 @@ import type { CollectionEndpoints } from "__support__/server-mocks";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
+  setupCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -14,15 +15,19 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  mockGetBoundingClientRect,
+  mockScrollBy,
 } from "__support__/ui";
-import { openCollection } from "metabase/containers/ItemPicker/test-utils";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { CollectionId } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
@@ -665,16 +670,66 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("new collection modal", () => {
-    const collDropdown = () => screen.getByTestId("select-button");
+    const collDropdown = () => screen.getByLabelText(/Which collection/);
     const newCollBtn = () =>
       screen.getByRole("button", {
         name: /new collection/i,
       });
-    const collModalTitle = () =>
-      screen.getByRole("heading", { name: /new collection/i });
     const questionModalTitle = () =>
       screen.getByRole("heading", { name: /new question/i });
     const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
+
+    const COLLECTION = {
+      ROOT: createMockCollection({
+        ...ROOT_COLLECTION,
+        can_write: true,
+      }),
+      PARENT: createMockCollection({
+        id: 2,
+        name: "Parent collection",
+        can_write: true,
+      }),
+      CHILD: createMockCollection({
+        id: 3,
+        name: "Child collection",
+        can_write: true,
+      }),
+    };
+    COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
+
+    beforeEach(async () => {
+      mockGetBoundingClientRect();
+      mockScrollBy();
+
+      setupCollectionItemsEndpoint({
+        collection: COLLECTION.ROOT,
+        collectionItems: [
+          createMockCollectionItem({
+            ...COLLECTION.PARENT,
+            id: COLLECTION.PARENT.id as number,
+            location: COLLECTION.PARENT.location || "/",
+            type: undefined,
+            model: "collection",
+          }),
+        ],
+      });
+      setupCollectionItemsEndpoint({
+        collection: COLLECTION.PARENT,
+        collectionItems: [
+          createMockCollectionItem({
+            ...COLLECTION.CHILD,
+            id: COLLECTION.CHILD.id as number,
+            location: COLLECTION.CHILD.location || "/",
+            type: undefined,
+            model: "collection",
+          }),
+        ],
+      });
+    });
+
+    afterAll(() => {
+      jest.restoreAllMocks();
+    });
 
     it("should have a new collection button in the collection picker", async () => {
       await setup(getQuestion());
@@ -686,29 +741,12 @@ describe("SaveQuestionModal", () => {
       userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       userEvent.click(newCollBtn());
-      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
+      await screen.findByText("Give it a name");
+      userEvent.click(cancelBtn());
       userEvent.click(cancelBtn());
       await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
     });
     describe("new collection location", () => {
-      const COLLECTION = {
-        ROOT: createMockCollection({
-          ...ROOT_COLLECTION,
-          can_write: true,
-        }),
-        PARENT: createMockCollection({
-          id: 1,
-          name: "Parent collection",
-          can_write: true,
-        }),
-        CHILD: createMockCollection({
-          id: 2,
-          name: "Child collection",
-          can_write: true,
-        }),
-      };
-      COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
-
       beforeEach(async () => {
         await setup(getQuestion(), null, {
           collectionEndpoints: {
@@ -718,21 +756,28 @@ describe("SaveQuestionModal", () => {
         });
         setupCollectionByIdEndpoint({ collections: [COLLECTION.PARENT] });
       });
-
       it("should create collection inside nested folder", async () => {
         userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
-        openCollection(COLLECTION.PARENT.name);
+        userEvent.click(
+          await screen.findByRole("button", {
+            name: new RegExp(COLLECTION.PARENT.name),
+          }),
+        );
         userEvent.click(newCollBtn());
-        await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
-        expect(collDropdown()).toHaveTextContent(COLLECTION.PARENT.name);
+        await screen.findByText("Give it a name");
       });
       it("should create collection inside root folder", async () => {
         userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
         userEvent.click(newCollBtn());
-        await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
-        expect(collDropdown()).toHaveTextContent(COLLECTION.ROOT.name);
+        await waitFor(async () =>
+          expect(
+            await screen.findByRole("heading", {
+              name: "Create a new collection",
+            }),
+          ).toBeInTheDocument(),
+        );
       });
     });
   });

@@ -7,9 +7,10 @@ import { AppBanner } from "metabase/components/AppBanner";
 import {
   Archived,
   GenericError,
+  KeyboardTriggeredErrorModal,
   NotFound,
   Unauthorized,
-} from "metabase/containers/ErrorPages";
+} from "metabase/components/ErrorPages";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
@@ -98,6 +99,7 @@ function App({
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <AppContainer className={CS.spread}>
+          <KeyboardTriggeredErrorModal />
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>

@@ -17,7 +17,7 @@
    [metabase.util.log :as log]
    [potemkin :as p]
    [potemkin.types :as p.types]
-   [ring.adapter.jetty9 :as ring-jetty])
+   [ring.adapter.jetty :as ring-jetty])
   (:import
    (io.prometheus.client Collector GaugeMetricFamily)
    (io.prometheus.client.hotspot GarbageCollectorExports MemoryPoolsExports StandardExports ThreadExports)

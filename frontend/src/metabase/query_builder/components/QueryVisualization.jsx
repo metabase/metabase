@@ -1,9 +1,12 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { useState } from "react";
+import { useTimeout } from "react-use";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { useSelector } from "metabase/lib/redux";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import CS from "metabase/css/core";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
@@ -13,98 +16,74 @@ import { VisualizationError } from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
 
-export default class QueryVisualization extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {};
-  }
+const SLOW_MESSAGE_TIMEOUT = 4000;
 
-  static defaultProps = {
-    // NOTE: this should be more dynamic from the backend, it's set based on the query lang
-    maxTableRows: HARD_ROW_LIMIT,
-  };
+export default function QueryVisualization(props) {
+  const {
+    className,
+    question,
+    isRunning,
+    isObjectDetail,
+    isResultDirty,
+    isNativeEditorOpen,
+    result,
+    maxTableRows = HARD_ROW_LIMIT,
+  } = props;
 
-  runQuery = () => {
-    const { isResultDirty } = this.props;
-    // ignore the cache if we're hitting "Refresh" (which we only show if isResultDirty = false)
-    this.props.runQuestionQuery({ ignoreCache: !isResultDirty });
-  };
+  const [warnings, setWarnings] = useState([]);
 
-  handleUpdateWarnings = warnings => {
-    this.setState({ warnings });
-  };
-
-  render() {
-    const {
+  return (
+    <div className={cx(
       className,
-      question,
-      isRunning,
-      isObjectDetail,
-      isResultDirty,
-      isNativeEditorOpen,
-      result,
-      loadingMessage,
-    } = this.props;
-
-    return (
+      CS.relative,
+      CS.stackingContext,
+      CS.fullHeight,
+    )}>
+      {isRunning ? <VisualizationRunningState className={cx(CS.spread, CS.z2)} /> : null}
+      <VisualizationDirtyState
+        {...props}
+        hidden={!isResultDirty || isRunning || isNativeEditorOpen}
+        className={cx(CS.spread, CS.z2)}
+      />
+      {!isObjectDetail && (
+        <Warnings
+          warnings={warnings}
+          className={cx(CS.absolute, CS.top, CS.right, CS.mt2, CS.mr2, CS.z2)}
+          size={18}
+        />
+      )}
       <div
         className={cx(
-          className,
-          CS.relative,
-          CS.stackingContext,
-          CS.fullHeight,
+          CS.spread,
+          QueryBuilderS.Visualization,
+          {
+            [QueryBuilderS.VisualizationLoading]: isRunning,
+          },
+          CS.z1,
         )}
+        data-testid="visualization-root"
       >
-        {isRunning ? (
-          <VisualizationRunningState
-            className={cx(CS.spread, CS.z2)}
-            loadingMessage={loadingMessage}
+        {result?.error ? (
+          <VisualizationError
+            className={CS.spread}
+            error={result.error}
+            via={result.via}
+            question={question}
+            duration={result.duration}
           />
+        ) : result?.data ? (
+          <VisualizationResult
+            {...props}
+            maxTableRows={maxTableRows}
+            className={CS.spread}
+            onUpdateWarnings={setWarnings}
+          />
+        ) : !isRunning ? (
+          <VisualizationEmptyState className="spread" />
         ) : null}
-        <VisualizationDirtyState
-          {...this.props}
-          hidden={!isResultDirty || isRunning || isNativeEditorOpen}
-          className={cx(CS.spread, CS.z2)}
-        />
-        {!isObjectDetail && (
-          <Warnings
-            warnings={this.state.warnings}
-            className={cx(CS.absolute, CS.top, CS.right, CS.mt2, CS.mr2, CS.z2)}
-            size={18}
-          />
-        )}
-        <div
-          className={cx(
-            CS.spread,
-            QueryBuilderS.Visualization,
-            {
-              [QueryBuilderS.VisualizationLoading]: isRunning,
-            },
-            CS.z1,
-          )}
-          data-testid="visualization-root"
-        >
-          {result?.error ? (
-            <VisualizationError
-              className={CS.spread}
-              error={result.error}
-              via={result.via}
-              question={question}
-              duration={result.duration}
-            />
-          ) : result?.data ? (
-            <VisualizationResult
-              {...this.props}
-              className={CS.spread}
-              onUpdateWarnings={this.handleUpdateWarnings}
-            />
-          ) : !isRunning ? (
-            <VisualizationEmptyState className={CS.spread} />
-          ) : null}
-        </div>
       </div>
-    );
-  }
+    </div>
+  );
 }
 
 export const VisualizationEmptyState = ({ className }) => (
@@ -113,24 +92,33 @@ export const VisualizationEmptyState = ({ className }) => (
   </div>
 );
 
-export const VisualizationRunningState = ({
-  className = "",
-  loadingMessage,
-}) => (
-  <div
-    className={cx(
-      className,
-      QueryBuilderS.Loading,
-      CS.flex,
-      "flex-column",
-      CS.layoutCentered,
-      CS.textBrand,
-    )}
-  >
-    <LoadingSpinner />
-    <h2 className="text-brand text-uppercase my3">{loadingMessage}</h2>
-  </div>
-);
+export function VisualizationRunningState({ className = "" }) {
+  const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
+
+  const loadingMessage = useSelector(getWhiteLabeledLoadingMessage);
+
+  // show the slower loading message only when the loadingMessage is
+  // not customised
+  const message = loadingMessage(isSlow());
+
+  return (
+    <div
+      className={cx(
+        className,
+        QueryBuilderS.Loading,
+        CS.flex,
+        "flex-column",
+        CS.layoutCentered,
+        CS.textBrand,
+      )}
+    >
+      <LoadingSpinner />
+      <h2 className="Loading-message text-brand text-uppercase my3">
+        {message}
+      </h2>
+    </div>
+  );
+}
 
 export const VisualizationDirtyState = ({
   className,

@@ -104,7 +104,7 @@
                                  :lib/expression-name "prev_month"}
                                 (lib.tu/field-clause :users :last-login)
                                 [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
-                :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
+                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
     (is (=? [{:name         "prev_month"
               :display-name "prev_month"
               :base-type    :type/DateTime
@@ -251,7 +251,10 @@
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions
                 (->> (map (fn [expr] (lib/display-info lib.tu/venues-query expr))))))))
-  (testing "collisions with other column names are detected and rejected"
+  ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
+  ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
+  ;; QP code, and it should be powered by MLv2 in due course.
+  #_(testing "collisions with other column names are detected and rejected"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
                   (lib/expression query "ID" (meta/field-metadata :categories :name))
@@ -348,7 +351,7 @@
           rating (m/find-first #(= (:id %) (meta/id :products :rating)) cols)
           query  (lib/expression base "bad_product" (lib/< rating 3))
           join   (first (lib/joins query))]
-      ;; TODO: There should probably be a (lib/join-alias join) ;=> "Products" function.
+      ;; TODO: There should probably be a (lib/join-alias join) ;=> "Products" function. (#39368)
       (is (=? [[:< {:lib/expression-name "bad_product"}
                 [:field {:join-alias (:alias join)} (meta/id :products :rating)]
                 3]]

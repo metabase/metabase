@@ -83,6 +83,10 @@ export function expandInlineCard(card?: Card | VirtualCard) {
   };
 }
 
+export function isQuestionCard(card: Card | VirtualCard) {
+  return card.dataset_query != null;
+}
+
 export function isQuestionDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is QuestionDashboardCard {

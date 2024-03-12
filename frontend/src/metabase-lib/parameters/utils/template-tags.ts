@@ -10,21 +10,26 @@ import type {
   TemplateTag,
 } from "metabase-types/api";
 
-function getTemplateTagType(tag: TemplateTag) {
+function getParameterType(tag: TemplateTag) {
+  if (tag["widget-type"]) {
+    return tag["widget-type"];
+  }
+
   const { type } = tag;
   if (type === "date") {
     return "date/single";
-    // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  } else if (type === "string") {
-    return "string/=";
-  } else if (type === "number") {
-    return "number/=";
-  } else {
-    return "category";
   }
+  // @ts-expect-error -- preserving preexisting incorrect types (for now)
+  if (type === "string") {
+    return "string/=";
+  }
+  if (type === "number") {
+    return "number/=";
+  }
+  return "category";
 }
 
-function getTemplateTagParameterTarget(tag: TemplateTag): ParameterTarget {
+function getParameterTarget(tag: TemplateTag): ParameterTarget {
   return tag.type === "dimension"
     ? ["dimension", ["template-tag", tag.name]]
     : ["variable", ["template-tag", tag.name]];
@@ -36,8 +41,8 @@ export function getTemplateTagParameter(
 ): ParameterWithTarget {
   return {
     id: tag.id,
-    type: tag["widget-type"] || getTemplateTagType(tag),
-    target: getTemplateTagParameterTarget(tag),
+    type: getParameterType(tag),
+    target: getParameterTarget(tag),
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,

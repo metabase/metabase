@@ -5,7 +5,9 @@ import { t } from "ttag";
 import ButtonBar from "metabase/components/ButtonBar";
 import CS from "metabase/css/core/index.css";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
+import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 
 import { ExecutionTime } from "./ExecutionTime";
@@ -143,19 +145,23 @@ const ViewFooter = ({
               }
             />
           ),
-          type === "question" && (
-            <EmbedMenu
-              key="embed"
-              resource={question}
-              resourceType="question"
-              hasPublicLink={!!question.publicUUID()}
-              onModalOpen={() =>
-                question.isSaved()
-                  ? onOpenModal("embed")
-                  : onOpenModal("save-question-before-embed")
-              }
-            />
-          ),
+          type === "question" &&
+            (question.isSaved() ? (
+              <EmbedMenu
+                key="embed"
+                resource={question}
+                resourceType="question"
+                hasPublicLink={!!question.publicUUID()}
+                onModalOpen={() => onOpenModal(MODAL_TYPES.EMBED)}
+              />
+            ) : (
+              <ResourceEmbedButton
+                hasBackground={false}
+                onClick={() =>
+                  onOpenModal(MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED)
+                }
+              />
+            )),
           QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"

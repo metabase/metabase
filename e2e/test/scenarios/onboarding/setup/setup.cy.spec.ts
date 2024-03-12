@@ -1,10 +1,12 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
   blockSnowplow,
+  describeEE,
   describeWithSnowplow,
   expectGoodSnowplowEvent,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  isEE,
   main,
   resetSnowplow,
   restore,
@@ -23,7 +25,7 @@ describe("scenarios > setup", () => {
       `should allow you to sign up using "${locale}" browser locale`,
       { tags: ["@external"] },
       () => {
-        // intial redirection and welcome page
+        // initial redirection and welcome page
         cy.visit("/", {
           // set the browser language as per:
           // https://glebbahmutov.com/blog/cypress-tips-and-tricks/index.html#control-navigatorlanguage
@@ -126,6 +128,8 @@ describe("scenarios > setup", () => {
           // test database setup help card is hidden on the next step
           cy.findByText("Need help connecting?").should("not.be.visible");
 
+          skipLicenseStepOnEE();
+
           // ================
           // Data Preferences
           // ================
@@ -186,6 +190,8 @@ describe("scenarios > setup", () => {
       // Database
       cy.findByText("Add your data");
       cy.findByText("I'll add my data later").click();
+
+      skipLicenseStepOnEE();
 
       // Turns off anonymous data collection
       cy.findByLabelText(
@@ -264,6 +270,8 @@ describe("scenarios > setup", () => {
       cy.button("Connect database").click();
     });
 
+    skipLicenseStepOnEE();
+
     // usage data
     cy.get("section").last().button("Finish").click();
 
@@ -309,6 +317,8 @@ describe("scenarios > setup", () => {
 
       // Database
       cy.findByText("Add your data").should("not.exist");
+
+      skipLicenseStepOnEE();
 
       // Turns off anonymous data collection
       cy.findByLabelText(
@@ -358,6 +368,48 @@ describe("scenarios > setup", () => {
   });
 });
 
+describeEE("scenarios > setup (EE)", () => {
+  beforeEach(() => restore("blank"));
+
+  it("should ask for a license token on self-hosted", () => {
+    cy.visit("/setup");
+
+    skipWelcomePage();
+
+    selectPreferredLanguageAndContinue();
+
+    cy.findByTestId("setup-forms").within(() => {
+      fillUserAndContinue({
+        ...admin,
+        company_name: "Epic team",
+      });
+
+      cy.button("Next").click();
+
+      cy.findByText("I'll add my data later").click();
+
+      cy.findByText("Activate your commercial license").should("exist");
+
+      typeToken(Cypress.env("NO_FEATURES_TOKEN"));
+
+      cy.button("Activate").click();
+
+      cy.findByText("Finish").click();
+      cy.findByText("Take me to Metabase").click();
+    });
+
+    cy.intercept("/api/premium-features/token/status").as("tokenStatus");
+
+    cy.visit("/admin/settings/license");
+
+    main().findByText("Looking for more?").should("exist");
+
+    cy.wait("@tokenStatus").then(request => {
+      expect(request.response?.body.valid).to.equal(true);
+    });
+  });
+});
+
 describeWithSnowplow("scenarios > setup", () => {
   beforeEach(() => {
     restore("blank");
@@ -369,18 +421,21 @@ describeWithSnowplow("scenarios > setup", () => {
   });
 
   it("should send snowplow events", () => {
-    // 1 - new_instance_created
-    // 2 - pageview
+    let goodEvents = 0;
+
+    goodEvents++; // 1 - new_instance_created
+    goodEvents++; // 2 - pageview
     cy.visit("/setup");
 
-    // 3 - setup/step_seen "welcome"
+    goodEvents++; // 3 - setup/step_seen "welcome"
     expectGoodSnowplowEvent({
       event: "step_seen",
       step_number: 0,
       step: "welcome",
     });
     skipWelcomePage();
-    // 4 - setup/step_seen  "language"
+
+    goodEvents++; // 4 - setup/step_seen  "language"
     expectGoodSnowplowEvent({
       event: "step_seen",
       step_number: 1,
@@ -388,12 +443,13 @@ describeWithSnowplow("scenarios > setup", () => {
     });
     selectPreferredLanguageAndContinue();
 
-    // 5 - setup/step_seen "user_info"
+    goodEvents++; // 5 - setup/step_seen "user_info"
     expectGoodSnowplowEvent({
       event: "step_seen",
       step_number: 2,
       step: "user_info",
     });
+
     cy.findByTestId("setup-forms").within(() => {
       fillUserAndContinue({
         ...admin,
@@ -401,7 +457,7 @@ describeWithSnowplow("scenarios > setup", () => {
       });
 
       cy.findByText("What will you use Metabase for?").should("exist");
-      // 6 - setup/step_seen "usage_question"
+      goodEvents++; // 6 - setup/step_seen "usage_question"
       expectGoodSnowplowEvent({
         event: "step_seen",
         step_number: 3,
@@ -409,41 +465,61 @@ describeWithSnowplow("scenarios > setup", () => {
       });
       cy.button("Next").click();
 
-      // 7 - setup/usage_reason_selected
+      goodEvents++; // 7 - setup/usage_reason_selected
       expectGoodSnowplowEvent({
         event: "usage_reason_selected",
         usage_reason: "self-service-analytics",
       });
-      // 8 - setup/step_seen "db_connection"
+
+      goodEvents++; // 8 - setup/step_seen "db_connection"
       expectGoodSnowplowEvent({
         event: "step_seen",
         step_number: 4,
         step: "db_connection",
       });
       cy.findByText("I'll add my data later").click();
-      // 9 - setup/add_data_later_clicked
+
+      goodEvents++; // 9/10 - setup/add_data_later_clicked
       expectGoodSnowplowEvent({
         event: "add_data_later_clicked",
       });
-      // 10 - setup/step_seen "data_usage"
+
+      // This step is only visile on EE builds
+      if (isEE) {
+        goodEvents++; // 10/11 - setup/step_seen "commercial_license"
+        expectGoodSnowplowEvent({
+          event: "step_seen",
+          step_number: 5,
+          step: "license_token",
+        });
+
+        cy.button("Skip").click();
+        goodEvents++; // 11/12 - setup/step_seen "commercial_license"
+        expectGoodSnowplowEvent({
+          event: "license_token_step_submitted",
+          valid_token_present: false,
+        });
+      }
+
+      goodEvents++; // 11/12 - setup/step_seen "data_usage"
       expectGoodSnowplowEvent({
         event: "step_seen",
-        step_number: 5,
+        step_number: isEE ? 6 : 5,
         step: "data_usage",
       });
 
       cy.findByRole("button", { name: "Finish" }).click();
-      // 11 - new_user_created (from BE)
+      goodEvents++; // 12/13- - new_user_created (from BE)
 
-      // 12- setup/step_seen "completed"
+      goodEvents++; // 13/14- setup/step_seen "completed"
       expectGoodSnowplowEvent({
         event: "step_seen",
-        step_number: 6,
+        step_number: isEE ? 7 : 6,
         step: "completed",
       });
-    });
 
-    expectGoodSnowplowEvents(12);
+      expectGoodSnowplowEvents(goodEvents);
+    });
   });
 
   it("should ignore snowplow failures and work as normal", () => {
@@ -451,7 +527,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit("/setup");
     skipWelcomePage();
 
-    // 1 event is sent from the BE, which isn't blocked by blockSnoplow()
+    // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
     expectGoodSnowplowEvents(1);
   });
 });
@@ -503,4 +579,20 @@ const fillUserAndContinue = ({
     cy.findByLabelText("Confirm your password").type(password);
   }
   cy.button("Next").click();
+};
+
+const skipLicenseStepOnEE = () => {
+  if (isEE) {
+    cy.findByText("Activate your commercial license").should("exist");
+    cy.button("Skip").click();
+  }
+};
+
+const typeToken = (token: string) => {
+  // hides the requests from the logs as the token is passed as a GET param
+  cy.intercept({ resourceType: "xhr" }, { log: false });
+  cy.findByLabelText("Token")
+    // hides the token from failure screenshots
+    .invoke("attr", "type", "password")
+    .type(token, { log: false });
 };

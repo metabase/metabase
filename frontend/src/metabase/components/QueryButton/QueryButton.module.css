@@ -1,8 +1,12 @@
 .queryButton {
-  composes: flex align-center no-decoration text-brand py1 from "style";
+  composes: text-brand py1 from "style";
+  text-decoration: none;
+  align-items: center;
+  display: flex;
 }
 
 .queryButtonText {
-  composes: flex-full ml2 from "style";
+  composes: ml2 from "style";
+  flex: 1 0 auto;
   max-width: 100%;
 }

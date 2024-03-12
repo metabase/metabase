@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clojure.data :as data]
    [metabase.config :as config]
-   [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-strings*]]
    [metabase.util :as u]
@@ -12,6 +11,11 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
+
+(defn toucan-model?
+  "Check if `model` is a toucan model."
+  [model]
+  (isa? model :metabase/model))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions
@@ -155,13 +159,13 @@
 
 (mu/defn revisions
   "Get the revisions for `model` with `id` in reverse chronological order."
-  [model :- [:fn mdb.u/toucan-model?]
+  [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (t2/select Revision :model (name model) :model_id id {:order-by [[:id :desc]]}))
 
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
-  [model :- [:fn mdb.u/toucan-model?]
+  [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (when-let [revisions (revisions model id)]
     (loop [acc [], [r1 r2 & more] revisions]
@@ -178,7 +182,7 @@
     :or   {is-creation? false}}     :- [:map {:closed true}
                                         [:id                            pos-int?]
                                         [:object                        :map]
-                                        [:entity                        [:fn mdb.u/toucan-model?]]
+                                        [:entity                        [:fn toucan-model?]]
                                         [:user-id                       pos-int?]
                                         [:is-creation? {:optional true} [:maybe :boolean]]
                                         [:message      {:optional true} [:maybe :string]]]]
@@ -208,7 +212,7 @@
             [:id          pos-int?]
             [:user-id     pos-int?]
             [:revision-id pos-int?]
-            [:entity      [:fn mdb.u/toucan-model?]]]]
+            [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
         serialized-instance (t2/select-one-fn :object Revision :model (name entity) :model_id id :id revision-id)]
     (t2/with-transaction [_conn]

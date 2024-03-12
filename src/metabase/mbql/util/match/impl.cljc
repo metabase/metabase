@@ -9,7 +9,7 @@
   (Class-based matching currently only works in Clojure. For ClojureScript, only predicate function matching works.)"
   [pred-or-class]
   (cond
-    ;; TODO -- FIXME -- Figure out how to make this work in JS
+    ;; If this function is ever used from JS, we need to figure out how to do this
     #?@(:clj [(class? pred-or-class)
               (partial instance? pred-or-class)])
 

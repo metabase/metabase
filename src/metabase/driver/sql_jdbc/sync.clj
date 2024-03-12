@@ -15,6 +15,7 @@
 (p/import-vars
  [sql-jdbc.sync.interface
   active-tables
+  alter-columns-sql
   column->semantic-type
   current-user-table-privileges
   database-type->base-type

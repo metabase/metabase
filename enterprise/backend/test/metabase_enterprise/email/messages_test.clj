@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.email.messages :as messages]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -13,8 +14,12 @@
     (mt/with-user-in-groups [group {:name "New Group"}
                              user [group]]
       (perms/grant-application-permissions! group :monitoring)
-      (perms/grant-permissions! group (perms/feature-perms-path :details :yes db-id))
-      (testing "Include monitoring and details user when advanced-permissions are enabled"
+      (testing "Users with monitoring but no `manage-database` permission do not recieve"
+        (mt/with-premium-features #{:advanced-permissions}
+          (is (= (set (#'messages/all-admin-recipients))
+                 (set (#'messages/admin-or-ee-monitoring-details-emails db-id))))))
+      (testing "Users with both `monitoring` and `manage-database` permission DO receive"
+        (data-perms/set-database-permission! group db-id :perms/manage-database :yes)
         (mt/with-premium-features #{:advanced-permissions}
           (is (= (conj (set (#'messages/all-admin-recipients))
                        (:email user))

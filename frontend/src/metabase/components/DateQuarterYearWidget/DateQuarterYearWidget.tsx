@@ -21,7 +21,7 @@ type State = {
   year: number;
 };
 
-class DateQuarterYearWidget extends Component<Props, State> {
+export class DateQuarterYearWidget extends Component<Props, State> {
   state: State = {
     quarter: null,
     year: moment().year(),
@@ -59,11 +59,8 @@ class DateQuarterYearWidget extends Component<Props, State> {
     const { quarter, year } = this.state;
     return (
       <div className="py2">
-        <div className="flex flex-column align-center px1">
-          <YearPicker
-            value={year}
-            onChange={year => this.setState({ year: year })}
-          />
+        <div className="flex flex-column align-center py1">
+          <YearPicker value={year} onChange={year => this.setState({ year })} />
         </div>
         <ol
           className="flex flex-wrap bordered mx2 text-bold rounded"
@@ -94,6 +91,3 @@ const Quarter = ({ quarter, selected, onClick }: QuarterProps) => (
     {moment().quarter(quarter).format(QUARTER_FORMAT_STRING)}
   </QuarterRoot>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateQuarterYearWidget;

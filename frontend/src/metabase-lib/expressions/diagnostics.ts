@@ -8,6 +8,8 @@ import {
   compile,
   ResolverError,
 } from "metabase-lib/expressions/pratt";
+import type Database from "metabase-lib/metadata/Database";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
@@ -43,13 +45,17 @@ export function diagnose({
   startRule,
   query,
   stageIndex,
+  metadata,
   name = null,
+  expressionPosition,
 }: {
   source: string;
-  startRule: string;
+  startRule: "expression" | "aggregation" | "boolean";
   query: Lib.Query;
   stageIndex: number;
   name?: string | null;
+  metadata?: Metadata;
+  expressionPosition?: number;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -88,12 +94,35 @@ export function diagnose({
       : mismatchedParentheses < -1
       ? t`Expecting ${-mismatchedParentheses} opening parentheses`
       : null;
+
   if (message) {
     return { message };
   }
 
+  const database = getDatabase(query, metadata);
+
+  // make a simple check on expression syntax correctness
+  let mbqlOrError: Expr | ErrorWithMessage;
   try {
-    return prattCompiler({ source, startRule, name, query, stageIndex });
+    mbqlOrError = prattCompiler({
+      source,
+      startRule,
+      name,
+      query,
+      stageIndex,
+      database,
+    });
+
+    if (isErrorWithMessage(mbqlOrError)) {
+      return mbqlOrError;
+    }
+
+    if (startRule === "expression" && isBooleanExpression(mbqlOrError)) {
+      throw new ResolverError(
+        t`Custom columns do not support boolean expressions`,
+        mbqlOrError.node,
+      );
+    }
   } catch (err) {
     if (isErrorWithMessage(err)) {
       return err;
@@ -101,6 +130,32 @@ export function diagnose({
 
     return { message: t`Invalid expression` };
   }
+
+  // now make a proper check
+  const startRuleToExpressionModeMapping: Record<string, Lib.ExpressionMode> = {
+    boolean: "filter",
+  };
+
+  const expressionMode: Lib.ExpressionMode =
+    startRuleToExpressionModeMapping[startRule] ?? startRule;
+
+  const possibleError = Lib.diagnoseExpression(
+    query,
+    stageIndex,
+    expressionMode,
+    mbqlOrError,
+    expressionPosition,
+  );
+
+  if (possibleError) {
+    console.warn("diagnostic error", possibleError.message);
+
+    // diagnoseExpression should return a user friendly message, which we'll be
+    // able to return directly
+    return { message: t`Invalid expression` };
+  }
+
+  return null;
 }
 
 function prattCompiler({
@@ -109,13 +164,15 @@ function prattCompiler({
   name,
   query,
   stageIndex,
+  database,
 }: {
   source: string;
   startRule: string;
   name: string | null;
   query: Lib.Query;
   stageIndex: number;
-}): ErrorWithMessage | null {
+  database?: Database | null;
+}): ErrorWithMessage | Expr {
   const tokens = lexify(source);
   const options = { source, startRule, name, query, stageIndex };
 
@@ -124,6 +181,7 @@ function prattCompiler({
     throwOnError: false,
     ...options,
   });
+
   if (errors.length > 0) {
     return errors[0];
   }
@@ -161,34 +219,23 @@ function prattCompiler({
   }
 
   // COMPILE
-  try {
-    const expression = compile(root, {
-      passes: [
-        adjustOptions,
-        useShorthands,
-        adjustCase,
-        expr => resolve(expr, startRule, resolveMBQLField),
-      ],
-      getMBQLName,
-    });
-    const isBoolean = isBooleanExpression(expression);
-    if (startRule === "expression" && isBoolean) {
-      throw new ResolverError(
-        t`Custom columns do not support boolean expressions`,
-        expression.node,
-      );
-    }
-  } catch (err) {
-    console.warn("compile error", err);
+  const mbql = compile(root, {
+    passes: [
+      adjustOptions,
+      useShorthands,
+      adjustCase,
+      expression =>
+        resolve({
+          expression,
+          type: startRule,
+          fn: resolveMBQLField,
+          database,
+        }),
+    ],
+    getMBQLName,
+  });
 
-    if (isErrorWithMessage(err)) {
-      return err;
-    }
-
-    return { message: t`Invalid expression` };
-  }
-
-  return null;
+  return mbql;
 }
 
 function isBooleanExpression(
@@ -206,4 +253,9 @@ function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
     err != null &&
     typeof (err as any).message === "string"
   );
+}
+
+function getDatabase(query: Lib.Query, metadata?: Metadata) {
+  const databaseId = Lib.databaseID(query);
+  return metadata?.database(databaseId);
 }

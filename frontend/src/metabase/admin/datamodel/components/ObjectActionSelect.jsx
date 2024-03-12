@@ -21,6 +21,7 @@ export default class ObjectActionsSelect extends Component {
   static propTypes = {
     object: PropTypes.object.isRequired,
     objectType: PropTypes.string.isRequired,
+    objectTypeLocalized: PropTypes.string.isRequired,
     onRetire: PropTypes.func.isRequired,
   };
 
@@ -30,7 +31,7 @@ export default class ObjectActionsSelect extends Component {
   }
 
   render() {
-    const { object, objectType } = this.props;
+    const { object, objectType, objectTypeLocalized } = this.props;
     return (
       <div>
         <PopoverWithTrigger
@@ -64,7 +65,7 @@ export default class ObjectActionsSelect extends Component {
             <li className={cx(CS.mt1, CS.borderTop)}>
               <ModalWithTrigger
                 ref={this.retireModal}
-                triggerElement={"Retire " + capitalize(objectType)}
+                triggerElement={t`Retire ${objectTypeLocalized}`}
                 triggerClasses="block p2 bg-error-hover text-error text-white-hover cursor-pointer"
               >
                 <ObjectRetireModal

@@ -35,7 +35,9 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "ID",
       });
 
-      FieldFilter.setWidgetType("ID");
+      cy.findByTestId("filter-widget-type-select")
+        .should("have.value", "ID")
+        .should("be.disabled");
     });
 
     function setDefaultFieldValue(value) {
@@ -113,7 +115,9 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "ID",
       });
 
-      FieldFilter.setWidgetType("ID");
+      cy.findByTestId("filter-widget-type-select")
+        .should("have.value", "ID")
+        .should("be.disabled");
     });
 
     it("should work when set initially as default value and then through the filter widget", () => {
@@ -149,8 +153,9 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "Longitude",
       });
 
-      cy.findByTestId("filter-widget-type-select").click();
-      popover().findByText("None").should("be.visible");
+      cy.findByTestId("filter-widget-type-select")
+        .should("have.value", "None")
+        .should("be.disabled");
 
       filterWidget().should("not.exist");
     });

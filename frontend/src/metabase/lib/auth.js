@@ -9,3 +9,13 @@ export const deleteSession = async () => {
     }
   }
 };
+
+export const initiateSLO = async () => {
+  try {
+    return await SessionApi.slo();
+  } catch (error) {
+    if (error.status !== 404) {
+      console.error("Problem clearing session", error);
+    }
+  }
+};

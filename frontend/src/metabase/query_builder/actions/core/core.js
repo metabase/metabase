@@ -30,24 +30,24 @@ import {
   getCard,
   getIsResultDirty,
   getOriginalQuestion,
-  getParameters,
   getQuestion,
-  getResultsMetadata,
-  getSubmittableQuestion,
   isBasedOnExistingQuestion,
+  getParameters,
+  getSubmittableQuestion,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
 
+import { SOFT_RELOAD_CARD, API_UPDATE_QUESTION } from "./types";
 import { updateQuestion } from "./updateQuestion";
 
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
 // refreshes the card without triggering a run of the card's query
-export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
+export { SOFT_RELOAD_CARD };
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
@@ -229,7 +229,7 @@ export const apiCreateQuestion = question => {
   };
 };
 
-export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
+export { API_UPDATE_QUESTION };
 export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
@@ -237,17 +237,6 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
-
-    if (isModel) {
-      const resultsMetadata = getResultsMetadata(getState());
-
-      if (!resultsMetadata) {
-        // Running the question will populate results metadata in redux store.
-        // Without it getSubmittableQuestion won't have all the necessary information.
-        await dispatch(runQuestionQuery());
-      }
-    }
-
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     if (!isNative) {

@@ -159,7 +159,7 @@ class PublicDashboard extends Component {
     } = this.props;
 
     const buttons = !isWithinIframe()
-      ? getDashboardActions(this, { ...this.props, isPublic: true })
+      ? getDashboardActions({ ...this.props, isPublic: true })
       : [];
 
     const visibleDashcards = (dashboard?.dashcards ?? []).filter(

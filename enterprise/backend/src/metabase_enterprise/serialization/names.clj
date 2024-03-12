@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
@@ -41,7 +41,7 @@
 
 (def ^{:arglists '([entity] [model id])} fully-qualified-name
   "Get the logical path for entity `entity`."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn
      ([entity] (fully-qualified-name* entity))
      ([model id]

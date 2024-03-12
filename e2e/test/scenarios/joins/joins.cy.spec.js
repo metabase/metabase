@@ -292,11 +292,11 @@ describe("scenarios > question > joined questions", () => {
     // Test LHS column infers RHS column's temporal unit
 
     cy.findByLabelText("Left column").click();
-    popover().findByText("by month").click({ force: true });
-    popover().last().findByText("Week").click();
+    popover().findByText("Created At").click();
 
     cy.findByLabelText("Right column").click();
-    popover().findByText("Created At").click();
+    popover().findByText("by month").click({ force: true });
+    popover().last().findByText("Week").click();
 
     assertJoinColumnName("left", "Created At: Week");
     assertJoinColumnName("right", "Created At: Week");

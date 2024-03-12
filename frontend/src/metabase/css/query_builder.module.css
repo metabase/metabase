@@ -124,6 +124,10 @@
   transition: background 0.3s linear;
 }
 
+:global(.Visualization.Visualization--error) {
+  justify-content: center;
+}
+
 .Loading {
   background-color: color-mod(var(--color-bg-white) alpha(-28%));
   transition: opacity 0.5s;
@@ -176,7 +180,7 @@
   padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
 }
 
-.QueryErrorAdminEmail:before {
+.QueryErrorAdminEmail::before {
   content: "Admin Email";
   font-size: 10px;
   text-align: center;
@@ -184,7 +188,6 @@
   background-color: white;
   padding-left: var(--padding-1);
   padding-right: var(--padding-1);
-
   position: absolute;
   top: -0.75em;
   left: 50%;
@@ -208,7 +211,6 @@
   font-size: 0.9em;
   z-index: 2;
   background-color: var(--color-bg-white);
-
   border: 1px solid var(--color-border);
 }
 
@@ -223,18 +225,20 @@
 .GuiBuilderRow {
   border-bottom: 1px solid var(--color-border);
 }
+
 .GuiBuilderRow:last-child {
   border-bottom-color: transparent;
 }
+
 .GuiBuilderData {
   border-right: 1px solid var(--color-border);
-
   z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
 .GuiBuilderFilteredBy {
   border-right: 1px solid transparent;
 }
+
 .GuiBuilderView {
   border-right: 1px solid var(--color-border);
 }
@@ -267,6 +271,10 @@
 }
 
 /* VISUALIZATION SETTINGS */
+
+:global(.VisualizationSettings .GuiBuilder-section) {
+  border-right: none !important;
+}
 
 .RunButton {
   opacity: 1;
@@ -314,15 +322,13 @@
   width: 20px;
   height: 20px;
   display: flex;
-
   align-items: center;
   justify-content: center;
   opacity: 0.7;
-
   cursor: pointer;
 }
 
-.QuestionTooltipTarget:after {
+.QuestionTooltipTarget::after {
   content: "?";
   font-size: 13px;
   font-weight: bold;
