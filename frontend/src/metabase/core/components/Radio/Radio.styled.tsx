@@ -32,12 +32,16 @@ export const RadioLabel = styled.label<RadioLabelProps>`
 `;
 
 export const RadioLabelNormal = styled(RadioLabel)`
-  &:not(:last-child) {
-    margin-right: ${props => (!props.vertical ? "2rem" : "")};
-    margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
-    [dir="rtl"] & {
-      margin-right: 0;
+  [dir="ltr"] & {
+    &:not(:last-child) {
+      margin-right: ${props => (!props.vertical ? "2rem" : "")};
+      margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
+    }
+  }
+  [dir="rtl"] & {
+    &:not(:first-child) {
       margin-left: ${props => (!props.vertical ? "2rem" : "")};
+      margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
     }
   }
 `;

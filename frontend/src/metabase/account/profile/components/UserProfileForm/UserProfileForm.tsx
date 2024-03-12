@@ -9,6 +9,8 @@ import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
+import { getLocaleWritingDirection } from "metabase/selectors/app";
 import type { LocaleData, User } from "metabase-types/api";
 
 import type { UserProfileData } from "../../types";
@@ -37,6 +39,7 @@ const UserProfileForm = ({
   onSubmit,
 }: UserProfileFormProps): JSX.Element => {
   const schema = isSsoUser ? SSO_PROFILE_SCHEMA : LOCAL_PROFILE_SCHEMA;
+  const writingDirection = useSelector(getLocaleWritingDirection);
 
   const initialValues = useMemo(() => {
     return schema.cast(user, { stripUnknown: true });
@@ -59,7 +62,7 @@ const UserProfileForm = ({
       onSubmit={handleSubmit}
     >
       {({ dirty }) => (
-        <Form disabled={!dirty}>
+        <Form disabled={!dirty} dir={writingDirection}>
           {!isSsoUser && (
             <>
               <FormInput
