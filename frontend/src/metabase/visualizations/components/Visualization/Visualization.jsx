@@ -297,9 +297,7 @@ class Visualization extends PureComponent {
 
     // needs to be delayed so we don't clear it when switching from one drill through to another
     setTimeout(() => {
-      this.setState({
-        clicked: { ...clicked, settings: this.state.computedSettings },
-      });
+      this.setState({ clicked });
     }, 100);
   };
 
