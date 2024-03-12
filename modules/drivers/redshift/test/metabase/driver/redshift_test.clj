@@ -226,7 +226,7 @@
             qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
             view-nm      "late_binding_view"
             qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
-        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
           ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
           (execute!
            (str "DROP TABLE IF EXISTS %1$s;%n"
