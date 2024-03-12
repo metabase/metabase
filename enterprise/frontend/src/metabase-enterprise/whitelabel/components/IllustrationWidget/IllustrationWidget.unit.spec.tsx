@@ -84,7 +84,7 @@ describe("IllustrationWidget", () => {
       expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
     });
 
-    it("should not set anything after selecting 'Custom' option", () => {
+    it("should not set anything after selecting 'Custom' option, but not uploading any file", () => {
       const customOption = { label: "Custom", value: "custom" };
 
       const { onChange } = setup({
@@ -98,9 +98,13 @@ describe("IllustrationWidget", () => {
     });
 
     it("should allow uploading a PNG file", async () => {
+      /**
+       * Since `userEvent.upload` seem to bypass input's `accept` which accepts MIME types,
+       * we need to test those scenarios in Cypress instead.
+       */
       const customOption = { label: "Custom", value: "custom" };
 
-      const { onChangeSetting } = setup({
+      const { onChange, onChangeSetting } = setup({
         setting: defaultSetting,
         defaultIllustrationLabel,
         customIllustrationSetting,
@@ -113,11 +117,81 @@ describe("IllustrationWidget", () => {
       const input = screen.getByTestId("file-input");
       userEvent.upload(input, file);
       await waitFor(() => {
-        expect(onChangeSetting).toHaveBeenCalledWith(
-          customIllustrationSetting,
-          expect.stringMatching(/^data:image\/png;base64,/),
-        );
+        expect(onChange).toHaveBeenCalledWith(customOption.value);
       });
+      expect(onChangeSetting).toHaveBeenCalledWith(
+        customIllustrationSetting,
+        expect.stringMatching(/^data:image\/png;base64,/),
+      );
+    });
+
+    it("should not remove the custom uploaded image after changing the option to 'No illustration'", async () => {
+      const noIllustrationOption = {
+        label: "No illustration",
+        value: "no-illustration",
+      };
+      const setting = {
+        ...defaultSetting,
+        value: "custom",
+      } as const;
+
+      const { onChange, onChangeSetting } = setup({
+        setting,
+        defaultIllustrationLabel,
+        customIllustrationSetting,
+      });
+
+      userEvent.click(screen.getByRole("searchbox"));
+      userEvent.click(screen.getByText(noIllustrationOption.label));
+
+      expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
+      expect(onChangeSetting).not.toHaveBeenCalled();
+    });
+
+    it("should not remove the custom uploaded image after changing the option to the default option", async () => {
+      const defaultOption = {
+        label: "Lighthouse",
+        value: "default",
+      };
+      const setting = {
+        ...defaultSetting,
+        value: "custom",
+      } as const;
+
+      const { onChange, onChangeSetting } = setup({
+        setting,
+        defaultIllustrationLabel,
+        customIllustrationSetting,
+      });
+
+      userEvent.click(screen.getByRole("searchbox"));
+      userEvent.click(screen.getByText(defaultOption.label));
+
+      expect(onChange).toHaveBeenCalledWith(defaultOption.value);
+      expect(onChangeSetting).not.toHaveBeenCalled();
+    });
+
+    it("should remove the custom uploaded image when clicking the remove button", async () => {
+      const setting = {
+        ...defaultSetting,
+        value: "custom",
+      } as const;
+
+      const { onChange, onChangeSetting } = setup({
+        setting,
+        defaultIllustrationLabel,
+        customIllustrationSetting,
+      });
+
+      userEvent.click(screen.getByLabelText("close icon"));
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith("default");
+      });
+      expect(onChangeSetting).toHaveBeenCalledWith(
+        customIllustrationSetting,
+        null,
+      );
     });
   });
 
