@@ -418,6 +418,9 @@ export class NativeQueryEditor extends Component<
     this.handleQueryUpdate(query?.queryText() ?? "");
     editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN, 0, 0);
 
+    // reset undo manager to prevent undoing to empty editor
+    editor.getSession().getUndoManager().reset();
+
     // hmmm, this could be dangerous
     if (!this.props.readOnly) {
       editor.focus();

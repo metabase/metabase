@@ -441,6 +441,7 @@ export const SessionApi = {
   create: POST("/api/session"),
   createWithGoogleAuth: POST("/api/session/google_auth"),
   delete: DELETE("/api/session"),
+  slo: POST("/auth/sso/logout"),
   properties: GET("/api/session/properties"),
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),

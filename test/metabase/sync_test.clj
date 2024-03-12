@@ -231,8 +231,10 @@
 
 (deftest sync-table-test
   (binding [sync-util/*log-exceptions-and-continue?* false]
-    (mt/with-temp [Database db {:engine ::sync-test}
-                   Table    table {:name "movie", :schema "default", :db_id (u/the-id db)}]
+    (mt/with-temp [Database db           {:engine ::sync-test}
+                   Table    table        {:name "movie", :schema "default", :db_id (u/the-id db)}
+                   Table    studio-table {:name "studio", :schema nil, :db_id (u/the-id db)}]
+      (sync/sync-table! studio-table)
       (sync/sync-table! table)
       (is (= (merge
               (table-defaults)
@@ -241,10 +243,7 @@
                :display_name        "Movie"
                :initial_sync_status "complete"
                :fields              [(field:movie-id)
-                                     (assoc (field:movie-studio)
-                                            :fk_target_field_id false
-                                            :semantic_type nil
-                                            :has_field_values :auto-list)
+                                     (field:movie-studio)
                                      (field:movie-title)]})
              (table-details (t2/select-one Table :id (:id table))))))))
 

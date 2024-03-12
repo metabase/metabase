@@ -16,7 +16,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/api-key/`
 
@@ -32,7 +32,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`_body`**
+-  **`_body`**
 
 ## `POST /api/api-key/`
 
@@ -42,11 +42,11 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`group_id`** value must be an integer greater than zero.
+-  **`group_id`** value must be an integer greater than zero.
 
-*  **`name`** value must be a non-blank string.
+-  **`name`** value must be a non-blank string.
 
-*  **`_body`**
+-  **`_body`**
 
 ## `PUT /api/api-key/:id`
 
@@ -56,13 +56,13 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`group_id`** nullable value must be an integer greater than zero.
+-  **`group_id`** nullable value must be an integer greater than zero.
 
-*  **`name`** nullable value must be a non-blank string.
+-  **`name`** nullable value must be a non-blank string.
 
-*  **`_body`**
+-  **`_body`**
 
 ## `PUT /api/api-key/:id/regenerate`
 
@@ -72,7 +72,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ---
 

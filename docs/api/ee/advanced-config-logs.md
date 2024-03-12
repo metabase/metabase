@@ -25,7 +25,7 @@ Fetch rows for the month specified by `:yyyy-mm` from the query_execution logs t
 
 ### PARAMS:
 
-*  **`yyyy-mm`** Must be a string like 2020-04 or 2222-11.
+-  **`yyyy-mm`** Must be a string like 2020-04 or 2222-11.
 
 ---
 

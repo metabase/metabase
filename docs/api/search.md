@@ -33,29 +33,29 @@ Search for items in Metabase.
 
 ### PARAMS:
 
-*  **`filter_items_in_personal_collection`** nullable enum of only, exclude
+-  **`filter_items_in_personal_collection`** nullable enum of only, exclude.
 
-*  **`table_db_id`** nullable value must be an integer greater than zero.
+-  **`table_db_id`** nullable value must be an integer greater than zero.
 
-*  **`created_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+-  **`created_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
 
-*  **`verified`** nullable true
+-  **`verified`** nullable true.
 
-*  **`created_at`** nullable value must be a non-blank string.
+-  **`created_at`** nullable value must be a non-blank string.
 
-*  **`archived`** nullable boolean
+-  **`archived`** nullable boolean.
 
-*  **`q`** nullable value must be a non-blank string.
+-  **`q`** nullable value must be a non-blank string.
 
-*  **`search_native_query`** nullable true
+-  **`search_native_query`** nullable true.
 
-*  **`models`** nullable enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card, or sequence of enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card
+-  **`models`** nullable enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card, or sequence of enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card.
 
-*  **`last_edited_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+-  **`last_edited_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
 
-*  **`last_edited_at`** nullable value must be a non-blank string.
+-  **`last_edited_at`** nullable value must be a non-blank string.
 
-*  **`context`** nullable enum of search-bar, search-app
+-  **`context`** nullable enum of search-bar, search-app.
 
 ## `GET /api/search/models`
 
@@ -63,25 +63,25 @@ Get the set of models that a search query will return.
 
 ### PARAMS:
 
-*  **`filter_items_in_personal_collection`** 
+-  **`filter_items_in_personal_collection`** 
 
-*  **`created_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+-  **`created_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
 
-*  **`verified`** nullable true
+-  **`verified`** nullable true.
 
-*  **`created_at`** nullable value must be a non-blank string.
+-  **`created_at`** nullable value must be a non-blank string.
 
-*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`q`** 
+-  **`q`** 
 
-*  **`search_native_query`** nullable true
+-  **`search_native_query`** nullable true.
 
-*  **`last_edited_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+-  **`last_edited_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
 
-*  **`last_edited_at`** nullable value must be an integer greater than zero.
+-  **`last_edited_at`** nullable value must be an integer greater than zero.
 
-*  **`table-db-id`** nullable value must be an integer greater than zero.
+-  **`table-db-id`** nullable value must be an integer greater than zero.
 
 ---
 

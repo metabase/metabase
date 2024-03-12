@@ -129,7 +129,8 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessage: (_state: State) => t`Doing science...`,
+  getLoadingMessage: (_state: State) => (isSlow: boolean) =>
+    isSlow ? t`Waiting for results...` : t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,

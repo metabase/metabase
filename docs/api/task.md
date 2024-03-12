@@ -18,7 +18,7 @@ Get `TaskHistory` entry with ID.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/task/info`
 

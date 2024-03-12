@@ -198,7 +198,8 @@
                :default      :all
                :default-desc "all"
                :parse-fn     mbql.u/normalize-token
-               :validate     [#{:active :all} "Must be 'active' or 'all'"]]]}
+               :validate     [#{:active :all} "Must be 'active' or 'all'"]]
+              [nil "--include-entity-id"   "Include entity_id property in all dumped entities. Default: false."]]}
   [path & options]
   (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''.")))
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump! path (get-parsed-options #'dump options)))

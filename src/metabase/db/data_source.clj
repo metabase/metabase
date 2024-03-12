@@ -15,7 +15,10 @@
 
 (set! *warn-on-reflection* true)
 
-(p/deftype+ DataSource [^String url ^Properties properties]
+;; NOTE: Never instantiate a DataSource directly
+;; Use one of our helper functions below to ensure [[update-h2/update-if-needed!]] is called
+;; You can use [[raw-connection-string->DataSource]] or [[broken-out-details->DataSource]]
+(p/deftype+ ^:private DataSource [^String url ^Properties properties]
   pretty/PrettyPrintable
   (pretty [_]
     ;; in dev we can actually print out the details, it's useful in debugging. Everywhere else we should obscure them
@@ -26,10 +29,9 @@
 
   javax.sql.DataSource
   (getConnection [_]
-    (update-h2/update-if-needed! url)
-    (if properties
-      (DriverManager/getConnection url properties)
-      (DriverManager/getConnection url)))
+   (if properties
+     (DriverManager/getConnection url properties)
+     (DriverManager/getConnection url)))
 
   ;; we don't use (.getConnection this url user password) so we don't need to implement it.
   (getConnection [_ _user _password]
@@ -83,6 +85,7 @@
          m     (cond-> m
                  (seq username) (assoc :user username)
                  (seq password) (assoc :password password))]
+     (update-h2/update-if-needed! s)
      (->DataSource s (some-> (not-empty m) connection-pool/map->properties)))))
 
 (defn broken-out-details->DataSource
@@ -95,4 +98,6 @@
         url                                     (format "jdbc:%s:%s" subprotocol subname)
         properties                              (some-> (not-empty (dissoc spec :classname :subprotocol :subname))
                                                         connection-pool/map->properties)]
+
+    (update-h2/update-if-needed! url)
     (->DataSource url properties)))
