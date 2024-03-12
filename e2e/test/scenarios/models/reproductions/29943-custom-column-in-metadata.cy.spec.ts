@@ -40,25 +40,16 @@ describe("issue 29943", () => {
     openQuestionActions();
     popover().findByText("Edit metadata").click();
 
-    getHeaderCell(0, "ID")
-      .find("div")
-      .should("have.css", "background-color")
-      .and("eq", "rgb(80, 158, 227)");
-    cy.findByLabelText("Display name").should("have.value", "ID");
+    assertColumnSelected(0, "ID");
 
     getHeaderCell(1, "Custom").click();
-    getHeaderCell(1, "Custom")
-      .find("div")
-      .should("have.css", "background-color")
-      .and("eq", "rgb(80, 158, 227)");
-    cy.findByLabelText("Display name").should("have.value", "Custom");
+    assertColumnSelected(1, "Custom");
 
     getHeaderCell(2, "Total").click();
-    getHeaderCell(2, "Total")
-      .find("div")
-      .should("have.css", "background-color")
-      .and("eq", "rgb(80, 158, 227)");
-    cy.findByLabelText("Display name").should("have.value", "Total");
+    assertColumnSelected(2, "Total");
+
+    getHeaderCell(0, "ID").click();
+    assertColumnSelected(0, "ID");
   });
 });
 
@@ -81,9 +72,18 @@ function reorderTotalAndCustomColumns() {
   cy.findAllByTestId("header-cell").eq(2).should("have.text", "Total");
 }
 
-function getHeaderCell(index: number, expectedName: string) {
+function assertColumnSelected(columnIndex: number, name: string) {
+  getHeaderCell(columnIndex, name)
+    .find("div")
+    .should("have.css", "background-color")
+    .and("eq", "rgb(80, 158, 227)");
+
+  cy.findByLabelText("Display name").should("have.value", name);
+}
+
+function getHeaderCell(columnIndex: number, name: string) {
   return cy
     .findAllByTestId("header-cell")
-    .eq(index)
-    .should("have.text", expectedName);
+    .eq(columnIndex)
+    .should("have.text", name);
 }
