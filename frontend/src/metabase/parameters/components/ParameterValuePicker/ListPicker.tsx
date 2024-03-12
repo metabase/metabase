@@ -14,6 +14,7 @@ interface ListPickerProps {
   isLoading: boolean;
   noResultsText: string;
   placeholder: string;
+  errorMessage?: string;
 }
 
 // TODO show "remove" button when typing in search
@@ -30,6 +31,7 @@ export function ListPicker(props: ListPickerProps) {
     placeholder,
     noResultsText,
     isLoading,
+    errorMessage,
   } = props;
   const icon = isLoading ? (
     <Loader size="xs" />
@@ -39,6 +41,7 @@ export function ListPicker(props: ListPickerProps) {
 
   return (
     <Select
+      error={errorMessage}
       value={value}
       data={values}
       onChange={onChange}

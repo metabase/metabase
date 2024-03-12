@@ -20,8 +20,6 @@ interface ListPickerConnectedProps {
 
 // TODO switch from search/static-list -> card! && resetKey
 // TODO should we fetch initially?
-// TODO fetching errors
-// TODO null value or different value in search URL
 export function ListPickerConnected(props: ListPickerConnectedProps) {
   const globalDispatch = useDispatch();
   const {
@@ -32,23 +30,32 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     searchDebounceMs = 150,
   } = props;
 
-  const [{ values, hasMoreValues, isLoading, lastSearch, resetKey }, dispatch] =
-    useReducer(reducer, getDefaultState(value));
+  const [
+    { values, hasMoreValues, isLoading, lastSearch, resetKey, errorMsg },
+    dispatch,
+  ] = useReducer(reducer, getDefaultState(value));
 
   const fetchAndSaveValuesDebounced = useDebouncedCallback(
     async (query: string) => {
-      const res = await globalDispatch(
-        fetchParameterValues({ parameter, query }),
-      );
+      try {
+        const res = await globalDispatch(
+          fetchParameterValues({ parameter, query }),
+        );
 
-      dispatch({
-        type: "SET_LOADED",
-        payload: {
-          values: getFlatValueList(res.values as string[][]),
-          hasMore: res.has_more_values,
-          resetKey: getResetKey(parameter),
-        },
-      });
+        dispatch({
+          type: "SET_LOADED",
+          payload: {
+            values: getFlatValueList(res.values as string[][]),
+            hasMore: res.has_more_values,
+            resetKey: getResetKey(parameter),
+          },
+        });
+      } catch (e) {
+        dispatch({
+          type: "SET_ERROR",
+          payload: { msg: t`Loading values failed. Please try again shortly.` },
+        });
+      }
     },
     searchDebounceMs,
     [dispatch, globalDispatch, fetchParameterValues, parameter],
@@ -110,6 +117,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
       }
       isLoading={isLoading}
       noResultsText={isLoading ? t`Loading…` : t`No matching result`}
+      errorMessage={errorMsg}
     />
   );
 }
