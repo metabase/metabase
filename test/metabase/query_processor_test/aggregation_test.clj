@@ -284,6 +284,33 @@
                (or (-> results mt/cols first)
                    results)))))))
 
+(deftest semantic-type-for-aggregate-fields-test
+  (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"
+    (tu/with-temp-vals-in-db Field (data/id :venues :price) {:semantic_type :type/Currency}
+      (let [price [:field (mt/id :venues :price) nil]]
+        (doseq [[aggregation expected-semantic-type]
+                [[[:sum price] :type/Currency]
+                 [[:count price] :type/Quantity]
+                 [[:cum-count price] :type/Quantity]
+                 [[:avg price] :type/Currency]
+                 [[:distinct price] :type/Quantity]
+                 [[:max price] :type/Currency]
+                 [[:median price] :type/Currency]
+                 [[:min price] :type/Currency]
+                 [[:share [:< price 10]] :type/Percentage]
+                 [[:stddev price] :type/Currency]
+                 [[:cum-sum price] :type/Currency]
+                 [[:var price] nil]
+                 [[:count-where [:> price 10]] :type/Quantity]
+                 [[:sum-where price [:> price 10]] :type/Currency]
+                 [[:percentile price 0.9] nil]]]
+          (let [results (mt/run-mbql-query venues {:aggregation aggregation})]
+            (testing (format "The %s Aggregation's semantic-type should be: %s" (first aggregation) expected-semantic-type)
+              (is (= expected-semantic-type
+                     (:semantic_type
+                      (or (-> results mt/cols first)
+                          results)))))))))))
+
 (deftest ^:parallel duplicate-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Do we properly handle queries that have more than one of the same aggregation? (#5393)"

@@ -9,7 +9,7 @@ import {
 
 describe("issue 17963", { tags: "@mongo" }, () => {
   beforeEach(() => {
-    restore("mongo-4");
+    restore("mongo-5");
     cy.signInAsAdmin();
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {

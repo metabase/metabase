@@ -12,8 +12,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date   "today")
@@ -210,8 +209,11 @@
   [_ _ x]
   {:start-date (->rvalue x), :end-date (->rvalue x)})
 
-(s/defn ^:private day-date-range :- (s/maybe {(s/optional-key :start-date) s/Str, (s/optional-key :end-date) s/Str})
-  [comparison-type :- s/Keyword n :- s/Int]
+(mu/defn ^:private day-date-range :- [:maybe [:map
+                                              [:start-date {:optional true} :string]
+                                              [:end-date   {:optional true} :string]]]
+  [comparison-type :- :keyword
+   n               :- :int]
   ;; since GA is normally inclusive add 1 to `:<` or `:>` filters so it starts and ends on the correct date
   ;; e.g
   ;;

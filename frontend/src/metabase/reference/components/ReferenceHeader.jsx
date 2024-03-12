@@ -4,11 +4,11 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import L from "metabase/components/List/List.css";
+import L from "metabase/components/List/List.module.css";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/ui";
 
-import S from "./ReferenceHeader.css";
+import S from "./ReferenceHeader.module.css";
 
 const ReferenceHeader = ({
   name,
@@ -34,6 +34,8 @@ const ReferenceHeader = ({
         </Ellipsified>
 
         {headerLink && (
+          /* TODO: there is only L.headerButton, so either change to
+          L.headerButton or remove */
           <div key="2" className={cx("flex-full", S.headerButton)}>
             <Link
               to={headerLink}

@@ -8,12 +8,11 @@
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
    [honey.sql :as sql]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.honey-sql-2]
@@ -112,9 +111,9 @@
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name db-type))))
-  (classloader/require 'metabase.driver.util)
+  (classloader/require 'metabase.driver.sql-jdbc.connection)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
-    (try (assert (sql-jdbc.conn/can-connect-with-spec? {:datasource data-source}) error-msg)
+    (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
@@ -132,18 +131,17 @@
             latest-applied (liquibase/latest-applied-major-version conn)]
         ;; `latest-applied` will be `nil` for fresh installs
         (when (and latest-applied (< latest-available latest-applied))
-          (log/error (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
-                          "\n\n"
-                          (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
-                          "\n\n"
-                          (trs "You must run `java -jar metabase.jar migrate down` from version {0}." latest-applied)
-                          "\n\n"
-                          (trs "Once your database has been downgraded, try running the application again.")
-                          "\n\n"
-                          (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade")))
-          (throw (ex-info (trs "Downgrade detected. Please run `migrate down` from version {0}."
-                            latest-applied)
-                          {})))))))
+          (throw (ex-info
+                  (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                       "\n\n"
+                       (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                       "\n\n"
+                       (trs "You must run `java -jar metabase.jar migrate down` from version {0}." latest-applied)
+                       "\n\n"
+                       (trs "Once your database has been downgraded, try running the application again.")
+                       "\n\n"
+                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
+                  {})))))))
 
 (mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
@@ -165,8 +163,8 @@
    auto-migrate? :- [:maybe :boolean]]
   (u/profile (trs "Database setup")
     (u/with-us-locale
-       (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                 setting/*disable-cache*         true]
+      (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                config/*disable-setting-cache*  true]
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
          (run-schema-migrations! db-type data-source auto-migrate?))))

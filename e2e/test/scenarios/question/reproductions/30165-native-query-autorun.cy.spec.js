@@ -19,21 +19,25 @@ describe("issue 30165", () => {
     openNativeEditor();
     cy.findByTestId("native-query-editor").type("SELECT * FROM ORDERS");
     queryBuilderHeader().findByText("Save").click();
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").clear().type("Q1");
-      cy.button("Save").click();
+      cy.findByText("Save").click();
     });
     cy.wait("@createQuestion");
     modal().button("Not now").click();
 
     cy.findByTestId("native-query-editor").type(" WHERE TOTAL < 20");
     queryBuilderHeader().findByText("Save").click();
-    modal().button("Save").click();
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save").click();
+    });
     cy.wait("@updateQuestion");
 
     cy.findByTestId("native-query-editor").type(" LIMIT 10");
     queryBuilderHeader().findByText("Save").click();
-    modal().button("Save").click();
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save").click();
+    });
     cy.wait("@updateQuestion");
 
     cy.get("@dataset.all").should("have.length", 0);

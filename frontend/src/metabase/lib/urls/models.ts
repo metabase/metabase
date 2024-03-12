@@ -20,7 +20,7 @@ export function model(
 }
 
 export function modelDetail(card: CardOrSearchResult, tab = "") {
-  const baseUrl = `${model({ ...card, dataset: true })}/detail`;
+  const baseUrl = `${model({ ...card, type: "model" })}/detail`;
   return tab ? `${baseUrl}/${tab}` : baseUrl;
 }
 

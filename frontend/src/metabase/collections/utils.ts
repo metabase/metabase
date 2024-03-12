@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
@@ -34,10 +33,10 @@ export function isPublicCollection(
 }
 
 export function isInstanceAnalyticsCollection(
-  collection: Partial<Collection>,
+  collection?: Partial<Collection>,
 ): boolean {
   return (
-    collection &&
+    !!collection &&
     PLUGIN_COLLECTIONS.getCollectionType(collection).type ===
       "instance-analytics"
   );
@@ -208,33 +207,4 @@ export function isValidCollectionId(
   }
   const id = canonicalCollectionId(collectionId);
   return id === null || typeof id === "number";
-}
-
-function isPersonalOrPersonalChild(
-  collection: Collection,
-  collections: Collection[],
-) {
-  if (!collection) {
-    return false;
-  }
-  return (
-    isRootPersonalCollection(collection) ||
-    isPersonalCollectionChild(collection, collections)
-  );
-}
-
-export function canManageCollectionAuthorityLevel(
-  collection: Partial<Collection>,
-  collectionMap: Partial<Record<CollectionId, Collection>>,
-) {
-  if (isRootPersonalCollection(collection)) {
-    return false;
-  }
-  const parentId = coerceCollectionId(collection.parent_id);
-  const parentCollection = collectionMap[parentId];
-  const collections = Object.values(collectionMap).filter(isNotNull);
-  return (
-    parentCollection &&
-    !isPersonalOrPersonalChild(parentCollection, collections)
-  );
 }

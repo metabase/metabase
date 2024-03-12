@@ -6,10 +6,10 @@ import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 
-import { Container } from "./DashboardEmptyState.styled";
+import { Container, QuestionCircleStyled } from "./DashboardEmptyState.styled";
 
 function QuestionIllustration() {
-  return <span className="QuestionCircle">?</span>;
+  return <QuestionCircleStyled>?</QuestionCircleStyled>;
 }
 
 interface DashboardEmptyStateProps {
@@ -42,6 +42,7 @@ export function DashboardEmptyState({
                 mode: "notebook",
                 creationType: "custom_question",
                 collectionId: dashboard.collection_id ?? undefined,
+                cardType: "question",
               })}
               className="text-bold text-brand"
               onClick={closeNavbar}

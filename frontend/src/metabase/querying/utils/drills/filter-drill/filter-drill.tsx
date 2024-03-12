@@ -1,4 +1,4 @@
-import { FilterPickerBody } from "metabase/querying/components/FilterPicker";
+import { FilterPickerBody } from "metabase/querying/components/FilterPicker/FilterPickerBody";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";

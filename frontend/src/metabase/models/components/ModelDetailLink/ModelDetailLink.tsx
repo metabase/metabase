@@ -6,7 +6,7 @@ import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import type { Card, CollectionItem } from "metabase-types/api";
 
-type ModelCard = Card & { dataset: true; type: "model" };
+type ModelCard = Card & { type: "model" };
 
 /**
  * Omitting the "type" attribute is hopefully a temporary workaround

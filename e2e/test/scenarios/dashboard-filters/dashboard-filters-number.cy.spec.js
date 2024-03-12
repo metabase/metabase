@@ -18,6 +18,7 @@ import {
   dashboardSaveButton,
   ensureDashboardCardHasText,
   sidebar,
+  dashboardParametersDoneButton,
 } from "e2e/support/helpers";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
@@ -36,7 +37,7 @@ describe("scenarios > dashboard > filters > number", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
       setFilter("Number", filter);
@@ -63,7 +64,7 @@ describe("scenarios > dashboard > filters > number", () => {
     );
   });
 
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Number", "Equal to");
     selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -96,10 +97,17 @@ describe("scenarios > dashboard > filters > number", () => {
     toggleRequiredParameter();
     dashboardSaveButton().should("be.disabled");
     dashboardSaveButton().realHover();
-
     cy.findByRole("tooltip").should(
       "contain.text",
       'The "Equal to" parameter requires a default value but none was provided.',
+    );
+
+    // Can't close sidebar without a default value
+    dashboardParametersDoneButton().should("be.disabled");
+    dashboardParametersDoneButton().realHover();
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      "The parameter requires a default value but none was provided.",
     );
 
     sidebar().findByText("Default value").next().click();

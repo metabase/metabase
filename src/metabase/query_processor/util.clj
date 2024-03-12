@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -84,23 +85,42 @@
        x))
    x))
 
+(defn- remove-lib-uuids
+  "Two queries should be the same even if they have different :lib/uuids, because they might have both been converted
+  from the same legacy query."
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (dissoc x :lib/uuid)
+       x))
+   x))
+
 (mu/defn ^:private select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
   [query :- :map]
-  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :type :query :native :parameters
-                                                                        :constraints])]
+  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :lib/type :stages :parameters :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters)
+      true                 remove-lib-uuids
       true                 walk-query-sort-maps)))
 
-#_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
-(mu/defn ^"[B" query-hash :- bytes?
+(mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  [query :- :map]
-  (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
+  ^bytes [query :- :map]
+  ;; convert to pMBQL first if this is a legacy query.
+  (let [query (try
+                (cond-> query
+                  (#{"query" "native"} (:type query)) (#(lib.convert/->pMBQL (mbql.normalize/normalize %)))
+                  (#{:query :native} (:type query))   lib.convert/->pMBQL)
+                (catch Throwable e
+                  (throw (ex-info "Error hashing query. Is this a valid query?"
+                                  {:query query}
+                                  e))))]
+    (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query)))))
 
 
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------

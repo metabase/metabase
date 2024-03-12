@@ -2,7 +2,6 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
-  modal,
   openNativeEditor,
   popover,
   restore,
@@ -362,7 +361,7 @@ describeEE("scenarios > filters > sql filters > values source", () => {
   it("should sandbox parameter values in questions", () => {
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+        [SAMPLE_DB_ID]: { data: { schemas: "all" } },
       },
     });
 
@@ -387,15 +386,6 @@ describeEE("scenarios > filters > sql filters > values source", () => {
 
     FieldFilter.openEntryForm();
     cy.wait("@cardParameterValues");
-    checkFilterValueNotInList("Gadget");
-    checkFilterValueNotInList("Doohickey");
-    FieldFilter.selectFilterValueFromList("Gizmo");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Open Editor").click();
-    cy.icon("variable").click();
-    FieldFilter.openEntryForm(true);
-    cy.wait("@parameterValues");
     checkFilterValueNotInList("Gadget");
     checkFilterValueNotInList("Doohickey");
     FieldFilter.selectFilterValueFromList("Gizmo");
@@ -539,7 +529,9 @@ const getListDimensionTargetQuestion = () => {
 
 const updateQuestion = () => {
   cy.findByText("Save").click();
-  modal().button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
+  });
   cy.wait("@updateQuestion");
 };
 

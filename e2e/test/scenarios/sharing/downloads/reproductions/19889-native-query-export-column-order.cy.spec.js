@@ -33,7 +33,7 @@ describe("issue 19889", () => {
   });
 
   testCases.forEach(fileType => {
-    it(`should order columns correctly in unsaved native query exports`, () => {
+    it("should order columns correctly in unsaved native query exports", () => {
       downloadAndAssert({ fileType, raw: true }, sheet => {
         expect(sheet["A1"].v).to.equal("column b");
         expect(sheet["B1"].v).to.equal("column a");
@@ -41,7 +41,7 @@ describe("issue 19889", () => {
       });
     });
 
-    it(`should order columns correctly in saved native query exports`, () => {
+    it("should order columns correctly in saved native query exports", () => {
       saveAndOverwrite();
 
       cy.get("@questionId").then(questionId => {
@@ -53,7 +53,7 @@ describe("issue 19889", () => {
       });
     });
 
-    it(`should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)`, () => {
+    it("should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
       cy.get(".ace_editor").type(
@@ -77,5 +77,7 @@ describe("issue 19889", () => {
 
 function saveAndOverwrite() {
   cy.findByText("Save").click();
-  cy.button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
+  });
 }

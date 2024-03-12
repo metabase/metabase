@@ -51,8 +51,11 @@ describe("scenarios > models > create", () => {
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.contains("button", "Save").click();
     });
-    modal().within(() => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText(/Which collection should this go in/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 
@@ -70,8 +73,11 @@ describe("scenarios > models > create", () => {
       cy.contains("button", "Save").click();
     });
 
-    modal().within(() => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText(/Which collection should this go in/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 });

@@ -1,6 +1,6 @@
 import { restore, saveQuestion, startNewQuestion } from "e2e/support/helpers";
 
-const MONGO_DB_NAME = "QA Mongo4";
+const MONGO_DB_NAME = "QA Mongo";
 
 describe("issue 32121", () => {
   describe("on SQL questions", () => {
@@ -39,7 +39,7 @@ describe("issue 32121", () => {
 
   describe("on native Mongo questions", { tags: "@mongo" }, () => {
     before(() => {
-      restore("mongo-4");
+      restore("mongo-5");
       cy.signInAsAdmin();
 
       startNewQuestion();
@@ -51,7 +51,7 @@ describe("issue 32121", () => {
     });
 
     it("convert GUI question to native query, and 'Explore results' works (metabase#32121)", () => {
-      cy.get(".QueryBuilder .Icon-sql").click();
+      cy.findByTestId("query-builder-root").icon("sql").click();
 
       cy.get(".Modal")
         .findByText("Convert this question to a native query")

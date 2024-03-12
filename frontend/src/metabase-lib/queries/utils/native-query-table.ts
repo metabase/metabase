@@ -7,9 +7,9 @@ import type NativeQuery from "../NativeQuery";
 
 export function getNativeQueryTable(nativeQuery: NativeQuery): Table | null {
   const question = nativeQuery.question();
-  const isDataset = question.isDataset() && question.isSaved();
+  const isModel = question.type() === "model" && question.isSaved();
 
-  if (isDataset) {
+  if (isModel) {
     return question.metadata().table(getQuestionVirtualTableId(question.id()));
   }
 

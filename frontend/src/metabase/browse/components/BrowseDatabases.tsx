@@ -19,17 +19,17 @@ export const BrowseDatabases = ({
 }: {
   databasesResult: ReturnType<typeof useDatabaseListQuery>;
 }) => {
-  const { data: databases = [], error, isLoading } = databasesResult;
+  const { data: databases, error, isLoading } = databasesResult;
 
   if (error) {
     return <LoadingAndErrorWrapper error />;
   }
 
-  if (isLoading) {
+  if (!databases && isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  return databases.length ? (
+  return databases?.length ? (
     <DatabaseGrid data-testid="database-browser">
       {databases.map(database => (
         <div key={database.id}>

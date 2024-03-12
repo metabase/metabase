@@ -1,6 +1,5 @@
 (ns metabase.lib.card
   (:require
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
@@ -50,7 +49,7 @@
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
   (when (some? card-query)
-    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
+    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
 
 (def ^:private Card
   [:map
@@ -73,31 +72,29 @@
     card-or-id            :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     col                   :- :map]
    (let [col (-> col
-                 (update-keys u/->kebab-case-en)
-                 ;; ignore `:field-ref`, it's very likely a legacy field ref, and it's probably wrong either way. We
-                 ;; can always calculate a new one.
-                 (dissoc :field-ref))]
+                 (update-keys u/->kebab-case-en))]
      (cond-> (merge
-               {:base-type :type/*, :lib/type :metadata/column}
-               (when-let [field-id (:id col)]
-                 (try
-                   (lib.metadata/field metadata-providerable field-id)
-                   (catch #?(:clj Throwable :cljs :default) _
-                     nil)))
-               col
-               {:lib/type                :metadata/column
-                :lib/source              :source/card
-                :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
+              {:base-type :type/*, :lib/type :metadata/column}
+              (when-let [field-id (:id col)]
+                (try
+                  (lib.metadata/field metadata-providerable field-id)
+                  (catch #?(:clj Throwable :cljs :default) _
+                    nil)))
+              col
+              {:lib/type                :metadata/column
+               :lib/source              :source/card
+               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
        card-or-id
        (assoc :lib/card-id (u/the-id card-or-id))
 
        (and *force-broken-card-refs*
-            ;; never force broken refs for datasets, because datasets can have give columns with completely
+            ;; never force broken refs for Models, because Models can have give columns with completely
             ;; different names the Field ID of a different column, somehow. See #22715
             (or
-              ;; we can only do this check if `card-or-id` is passed in.
-              (not card-or-id)
-              (not (:dataset (lib.metadata/card metadata-providerable (u/the-id card-or-id))))))
+             ;; we can only do this check if `card-or-id` is passed in.
+             (not card-or-id)
+             (not= (:type (lib.metadata/card metadata-providerable (u/the-id card-or-id)))
+                   :model)))
        (assoc ::force-broken-id-refs true)
 
        ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
@@ -115,19 +112,27 @@
 (def ^:private CardColumns
   [:maybe [:sequential {:min 1} CardColumnMetadata]])
 
-(mu/defn ^:private card-metadata-columns :- CardColumns
+(def ^:private ^:dynamic *card-metadata-columns-card-ids*
+  "Used to track the ID of Cards we're resolving columns for, to avoid inifinte recursion for Cards that have circular
+  references between one another."
+  #{})
+
+(mu/defn card-metadata-columns :- CardColumns
+  "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card                  :- Card]
-  (when-let [result-metadata (or (:fields card)
-                                 (:result-metadata card)
-                                 (infer-returned-columns metadata-providerable (:dataset-query card)))]
-    ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
-    ;; contains` :columns` as well.
-    (when-let [cols (not-empty (cond
-                                 (map? result-metadata)        (:columns result-metadata)
-                                 (sequential? result-metadata) result-metadata))]
-      (mapv (partial ->card-metadata-column metadata-providerable card)
-            cols))))
+  (when-not (contains? *card-metadata-columns-card-ids* (:id card))
+    (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
+      (when-let [result-metadata (or (:fields card)
+                                     (:result-metadata card)
+                                     (infer-returned-columns metadata-providerable (:dataset-query card)))]
+        ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
+        ;; contains` :columns` as well.
+        (when-let [cols (not-empty (cond
+                                     (map? result-metadata)        (:columns result-metadata)
+                                     (sequential? result-metadata) result-metadata))]
+          (mapv (partial ->card-metadata-column metadata-providerable card)
+                cols))))))
 
 (mu/defn saved-question-metadata :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."

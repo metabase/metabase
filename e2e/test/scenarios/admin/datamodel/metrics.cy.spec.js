@@ -112,7 +112,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.get(".ace_text-input")
         .click()
-        .type(`{selectall}{del}`)
+        .type("{selectall}{del}")
         .type(`{selectall}{del}${customExpression}`)
         .blur();
 

@@ -8,7 +8,7 @@ import type { FieldId, FieldValue } from "metabase-types/api";
 import { getEffectiveOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE } from "./constants";
-import { shouldSearch, getSearchValues } from "./utils";
+import { shouldSearch, getSearchValues, getOptimisticOptions } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -16,7 +16,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  nothingFound?: string;
+  canAddValue: (query: string) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
 }
@@ -27,14 +27,14 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
-  nothingFound,
+  canAddValue,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const { value: fieldValues = initialFieldValues, loading } = useAsync(
+  const { value: fieldValues = initialFieldValues } = useAsync(
     () => getSearchValues(fieldId, searchFieldId, searchQuery),
     [fieldId, searchFieldId, searchQuery],
   );
@@ -57,16 +57,14 @@ export function SearchValuePicker({
     }
   };
 
-  const isSearched = searchQuery.length > 0 && !loading;
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
     <MultiSelect
-      data={options}
+      data={getOptimisticOptions(options, searchValue, canAddValue)}
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
-      nothingFound={isSearched ? nothingFound : null}
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}

@@ -3,7 +3,7 @@ import { restore, visitDashboard } from "e2e/support/helpers";
 
 import { setup } from "./visit-dashboard";
 
-describe(`visitDashboard e2e helper`, () => {
+describe("visitDashboard e2e helper", () => {
   Object.keys(Cypress._.omit(USERS, "sandboxed")).forEach(user => {
     context(`${user.toUpperCase()}`, () => {
       beforeEach(() => {

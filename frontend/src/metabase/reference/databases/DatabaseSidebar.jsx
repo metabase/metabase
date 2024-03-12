@@ -5,13 +5,13 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import S from "metabase/components/Sidebar.css";
+import S from "metabase/components/Sidebar.module.css";
 import SidebarItem from "metabase/components/SidebarItem";
 
 const DatabaseSidebar = ({ database, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
-      <div className={S.breadcrumbs}>
+      <div>
         <Breadcrumbs
           className="py4 ml3"
           crumbs={[[t`Databases`, "/reference/databases"], [database.name]]}

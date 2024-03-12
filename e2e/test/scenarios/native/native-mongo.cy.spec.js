@@ -1,13 +1,13 @@
-import { restore, modal } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 
-const MONGO_DB_NAME = "QA Mongo4";
+const MONGO_DB_NAME = "QA Mongo";
 
 describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   before(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    restore("mongo-4");
+    restore("mongo-5");
     cy.signInAsNormalUser();
 
     cy.visit("/");
@@ -28,7 +28,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   it("can save a native MongoDB query", () => {
     cy.get(".ace_content")
       .should("be.visible")
-      .type(`[ { $count: "Total" } ]`, {
+      .type('[ { $count: "Total" } ]', {
         parseSpecialCharSequences: false,
       });
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -42,10 +42,10 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
 
     cy.findByTextEnsureVisible("Save new question");
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");
 
-      cy.button("Save").should("not.be.disabled").click();
+      cy.findByText("Save").should("not.be.disabled").click();
     });
 
     cy.wait("@createQuestion");

@@ -87,10 +87,14 @@
         {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
         {::add/keys [desired-alias]} (mbql.u/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
-                                       source-opts)]
+                                       source-opts)
+        source-alias                 (or desired-alias expression-name)]
     [:field
-     (or desired-alias expression-name)
-     (assoc opts :base-type (or base-type :type/*))]))
+     source-alias
+     (-> opts
+         (assoc :base-type          (or base-type :type/*)
+                ::add/source-table  ::add/source
+                ::add/source-alias  source-alias))]))
 
 (defn- rewrite-fields-and-expressions [query]
   (mbql.u/replace query

@@ -29,6 +29,11 @@
   validate the POST from the SSO backend and successfully log the user into Metabase."
   sso-backend)
 
+(defmulti sso-handle-slo
+  "Multi-method for handling a SLO request from an SSO backend. An implementation of this method will need to validate
+  the SLO request and log the user out of Metabase."
+  sso-backend)
+
 (defn- throw-not-configured-error []
   (throw (ex-info (str (tru "SSO has not been enabled and/or configured"))
                   {:status-code 400})))
@@ -38,5 +43,9 @@
   (throw-not-configured-error))
 
 (defmethod sso-post :default
+  [_]
+  (throw-not-configured-error))
+
+(defmethod sso-handle-slo :default
   [_]
   (throw-not-configured-error))

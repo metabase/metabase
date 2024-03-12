@@ -56,7 +56,7 @@ describe("Components > SelectList", () => {
 
     userEvent.click(screen.getByText("Item 2"));
 
-    expect(selectSpy).toHaveBeenCalledWith("2");
+    expect(selectSpy).toHaveBeenCalledWith("2", expect.anything());
   });
 
   describe("SelectList.Item", () => {

@@ -35,7 +35,7 @@ describeWithSnowplow("scenarios > dashboard cards > sections", () => {
     cy.signInAsAdmin();
     enableTracking();
 
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [CATEGORY_FILTER],
@@ -117,7 +117,7 @@ describeWithSnowplow("scenarios > dashboard cards > sections", () => {
 
 function addSection(name) {
   cy.findByLabelText("Add section").click();
-  menu().findByText(name).click();
+  menu().findByLabelText(name).click();
 }
 
 function selectQuestion(question) {

@@ -51,13 +51,13 @@ describe("AdminEmbedMenu", () => {
   describe("when public sharing enabled, public link exists, embedding enabled", () => {
     it("should have a `Sharing` tooltip", () => {
       setup();
-      userEvent.hover(screen.getByTestId("dashboard-embed-button"));
+      userEvent.hover(screen.getByTestId("resource-embed-button"));
       expect(screen.getByRole("tooltip")).toHaveTextContent("Sharing");
     });
 
     it("should show `Public link` and `Embed` options", async () => {
       setup();
-      userEvent.click(screen.getByTestId("dashboard-embed-button"));
+      userEvent.click(screen.getByTestId("resource-embed-button"));
 
       expect(
         await screen.findByTestId("embed-header-menu"),
@@ -72,7 +72,7 @@ describe("AdminEmbedMenu", () => {
 
     it("should open the public link popover when `Public link` is clicked", async () => {
       setup();
-      userEvent.click(screen.getByTestId("dashboard-embed-button"));
+      userEvent.click(screen.getByTestId("resource-embed-button"));
 
       expect(
         await screen.findByTestId("embed-header-menu"),
@@ -101,7 +101,7 @@ describe("AdminEmbedMenu", () => {
 
     it("should open the embed modal when `Embed` is clicked", async () => {
       const { onModalOpen } = setup();
-      userEvent.click(screen.getByTestId("dashboard-embed-button"));
+      userEvent.click(screen.getByTestId("resource-embed-button"));
 
       expect(
         await screen.findByTestId("embed-header-menu"),
@@ -119,12 +119,12 @@ describe("AdminEmbedMenu", () => {
     });
 
     it("should have a `Sharing` tooltip", () => {
-      userEvent.hover(screen.getByTestId("dashboard-embed-button"));
+      userEvent.hover(screen.getByTestId("resource-embed-button"));
       expect(screen.getByRole("tooltip")).toHaveTextContent("Sharing");
     });
 
     it("should show `Create a public link` and `Embed` options", async () => {
-      userEvent.click(screen.getByTestId("dashboard-embed-button"));
+      userEvent.click(screen.getByTestId("resource-embed-button"));
 
       expect(
         await screen.findByTestId("embed-header-menu"),
@@ -144,12 +144,12 @@ describe("AdminEmbedMenu", () => {
     });
 
     it("should have a `Sharing` tooltip", () => {
-      userEvent.hover(screen.getByTestId("dashboard-embed-button"));
+      userEvent.hover(screen.getByTestId("resource-embed-button"));
       expect(screen.getByRole("tooltip")).toHaveTextContent("Sharing");
     });
 
     it("should show `Public link` and `Embed` options", async () => {
-      userEvent.click(screen.getByTestId("dashboard-embed-button"));
+      userEvent.click(screen.getByTestId("resource-embed-button"));
 
       expect(
         await screen.findByTestId("embed-header-menu"),
@@ -170,12 +170,12 @@ describe("AdminEmbedMenu", () => {
     });
 
     it("should have a `Sharing` tooltip", () => {
-      userEvent.hover(screen.getByTestId("dashboard-embed-button"));
+      userEvent.hover(screen.getByTestId("resource-embed-button"));
       expect(screen.getByRole("tooltip")).toHaveTextContent("Sharing");
     });
 
     it("should show `Public link` and `Embed` options", async () => {
-      userEvent.click(screen.getByTestId("dashboard-embed-button"));
+      userEvent.click(screen.getByTestId("resource-embed-button"));
 
       expect(
         await screen.findByTestId("embed-header-menu"),
@@ -196,12 +196,12 @@ describe("AdminEmbedMenu", () => {
     });
 
     it("should have an `Embedding` tooltip", () => {
-      userEvent.hover(screen.getByTestId("dashboard-embed-button"));
+      userEvent.hover(screen.getByTestId("resource-embed-button"));
       expect(screen.getByRole("tooltip")).toHaveTextContent("Embedding");
     });
 
     it("should show `Public link` and `Embed` options", async () => {
-      userEvent.click(screen.getByTestId("dashboard-embed-button"));
+      userEvent.click(screen.getByTestId("resource-embed-button"));
 
       expect(
         await screen.findByTestId("embed-header-menu"),
@@ -222,12 +222,12 @@ describe("AdminEmbedMenu", () => {
     });
 
     it("should have an `Embedding` tooltip", () => {
-      userEvent.hover(screen.getByTestId("dashboard-embed-button"));
+      userEvent.hover(screen.getByTestId("resource-embed-button"));
       expect(screen.getByRole("tooltip")).toHaveTextContent("Embedding");
     });
 
     it("should show `Public link` and `Embed` options", async () => {
-      userEvent.click(screen.getByTestId("dashboard-embed-button"));
+      userEvent.click(screen.getByTestId("resource-embed-button"));
 
       expect(
         await screen.findByTestId("embed-header-menu"),

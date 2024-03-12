@@ -7,18 +7,6 @@ import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
-const aggTetherOptions = {
-  attachment: "top left",
-  targetAttachment: "bottom left",
-  offset: "0 10px",
-  constraints: [
-    {
-      to: "scrollParent",
-      attachment: "together",
-    },
-  ],
-};
-
 export function AggregateStep({
   query,
   step,
@@ -66,9 +54,8 @@ export function AggregateStep({
       readOnly={readOnly}
       color={color}
       isLastOpened={isLastOpened}
-      tetherOptions={aggTetherOptions}
       renderName={renderAggregationName}
-      renderPopover={({ item: aggregation, index }) => (
+      renderPopover={({ item: aggregation, index, onClose }) => (
         <AggregationPopover
           query={query}
           stageIndex={stageIndex}
@@ -76,11 +63,11 @@ export function AggregateStep({
           clauseIndex={index}
           onAddAggregation={handleAddAggregation}
           onUpdateAggregation={handleUpdateAggregation}
+          onClose={onClose}
         />
       )}
       onRemove={handleRemoveAggregation}
       data-testid="aggregate-step"
-      withLegacyPopover
     />
   );
 }
@@ -97,8 +84,7 @@ interface AggregationPopoverProps {
 
   clauseIndex?: number;
 
-  // Implicitly passed by metabase/components/Triggerable
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 function AggregationPopover({

@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
@@ -12,7 +13,6 @@ import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getSetting } from "metabase/selectors/settings";
 import {
   getApplicationName,
   getIsWhiteLabeling,
@@ -30,7 +30,7 @@ export default connect(mapStateToProps)(ProfileLink);
 
 function ProfileLink({ adminItems, onLogout }) {
   const [modalOpen, setModalOpen] = useState(null);
-  const version = useSelector(state => getSetting(state, "version"));
+  const version = useSetting("version");
   const applicationName = useSelector(getApplicationName);
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
@@ -97,6 +97,11 @@ function ProfileLink({ adminItems, onLogout }) {
             color: color("text-white"),
           },
         }}
+        // I've disabled this transition, since it results in the menu
+        // sometimes not appearing until content finishes loading on complex
+        // dashboards and questions #39303
+        // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+        transitionDuration={0}
       />
       {modalOpen === "about" ? (
         <Modal small onClose={closeModal}>

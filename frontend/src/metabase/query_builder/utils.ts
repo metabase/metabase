@@ -30,7 +30,7 @@ export function getPathNameFromQueryBuilderMode({
 export function getCurrentQueryParams() {
   const search =
     window.location.search.charAt(0) === "?"
-      ? window.location.search.slice(0)
+      ? window.location.search.slice(1)
       : window.location.search;
   return querystring.parse(search);
 }
@@ -103,7 +103,13 @@ export const isNavigationAllowed = ({
   }
 
   if (isNative) {
-    const isRunningQuestion = pathname === "/question" && hash.length > 0;
+    const allowedPathnames = [
+      ...validSlugs.map(slug => `/question/${slug}`),
+      "/question",
+    ];
+    const isRunningQuestion =
+      allowedPathnames.includes(pathname) && hash.length > 0;
+
     return isRunningQuestion;
   }
 

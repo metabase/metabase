@@ -420,6 +420,7 @@ export type DrillThru = unknown & { _opaque: typeof DrillThru };
 
 export type DrillThruType =
   | "drill-thru/automatic-insights"
+  | "drill-thru/column-extract"
   | "drill-thru/column-filter"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
@@ -437,6 +438,22 @@ export type DrillThruType =
   | "drill-thru/zoom-in.timeseries";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
+
+export type ColumnExtraction = {
+  key: ColumnExtractionKey;
+  displayName: string;
+};
+
+declare const ColumnExtractionKey: unique symbol;
+export type ColumnExtractionKey = unknown & {
+  _opaque: typeof ColumnExtractionKey;
+};
+
+export type ColumnExtractDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/column-extract"> & {
+    displayName: string;
+    extractions: ColumnExtraction[];
+  };
 
 export type QuickFilterDrillThruOperator =
   | "="
@@ -502,6 +519,7 @@ export type ZoomTimeseriesDrillThruInfo =
   };
 
 export type DrillThruDisplayInfo =
+  | ColumnExtractDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo

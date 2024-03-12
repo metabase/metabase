@@ -46,7 +46,7 @@ import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
-  findColumnIndexForColumnSetting,
+  findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/queries/utils/dataset";
 import {
@@ -56,10 +56,11 @@ import {
 } from "metabase-lib/Alert";
 
 import type { Query } from "./types";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
-  dataset?: boolean;
+  cardType?: CardType;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -240,30 +241,12 @@ class Question {
     return this.setCard(assoc(this.card(), "cache_ttl", cache));
   }
 
-  /**
-   * returns whether this question is a model
-   * @deprecated Use Question.prototype.type instead
-   */
-  isDataset(): boolean {
-    return this._card && this._card.dataset;
-  }
-
   type(): CardType {
     return this._card?.type ?? "question";
   }
 
-  /**
-   * @deprecated Use Question.prototype.setType instead
-   */
-  private _setDataset(dataset: boolean) {
-    return this.setCard(assoc(this.card(), "dataset", dataset));
-  }
-
   setType(type: CardType) {
-    const dataset = type === "model";
-    // _setDataset is still called for backwards compatibility
-    // as we're migrating "dataset" -> "type" incrementally
-    return this.setCard(assoc(this.card(), "type", type))._setDataset(dataset);
+    return this.setCard(assoc(this.card(), "type", type));
   }
 
   isPersisted() {
@@ -472,7 +455,9 @@ class Question {
   }
 
   composeDataset(): Question {
-    if (!this.isDataset() || !this.isSaved()) {
+    const type = this.type();
+
+    if (type === "question" || !this.isSaved()) {
       return this;
     }
 
@@ -485,81 +470,44 @@ class Question {
     });
   }
 
-  private _syncStructuredQueryColumnsAndSettings(previousQuestion: Question) {
-    const query = this.query();
-    const previousQuery = previousQuestion.query();
-    const stageIndex = -1;
-    const columns = Lib.returnedColumns(query, stageIndex);
-    const previousColumns = Lib.returnedColumns(previousQuery, stageIndex);
-
-    const addedColumns = columns
-      .filter(
-        column =>
-          !Lib.findMatchingColumn(query, stageIndex, column, previousColumns),
-      )
-      .map(column => ({
-        column,
-        columnInfo: Lib.displayInfo(query, stageIndex, column),
-      }));
-    const removedColumns = previousColumns
-      .filter(
-        column =>
-          !Lib.findMatchingColumn(previousQuery, stageIndex, column, columns),
-      )
-      .map(column => ({
-        column,
-        columnInfo: Lib.displayInfo(previousQuery, stageIndex, column),
-      }));
+  private _syncGraphMetricSettings(
+    { data: { cols = [] } = {} }: Dataset,
+    { data: { cols: prevCols = [] } = {} }: Dataset,
+  ) {
     const graphMetrics = this.setting("graph.metrics");
-
-    if (
-      graphMetrics &&
-      (addedColumns.length > 0 || removedColumns.length > 0)
-    ) {
-      const addedMetricColumnNames = addedColumns
-        .filter(({ columnInfo }) => columnInfo.isAggregation)
-        .map(({ columnInfo }) => columnInfo.name);
-
-      const removedMetricColumnNames = removedColumns
-        .filter(({ columnInfo }) => columnInfo.isAggregation)
-        .map(({ columnInfo }) => columnInfo.name);
-
-      if (
-        addedMetricColumnNames.length > 0 ||
-        removedMetricColumnNames.length > 0
-      ) {
-        return this.updateSettings({
-          "graph.metrics": [
-            ..._.difference(graphMetrics, removedMetricColumnNames),
-            ...addedMetricColumnNames,
-          ],
-        });
-      }
+    if (!graphMetrics) {
+      return this;
     }
 
-    const tableColumns = this.setting("table.columns");
-    if (
-      tableColumns &&
-      (addedColumns.length > 0 || removedColumns.length > 0)
-    ) {
+    const hasNativeColumns =
+      cols.some(column => column.source === "native") ||
+      prevCols.some(column => column.source === "native");
+    if (hasNativeColumns) {
+      return this;
+    }
+
+    const metricColumnNames = new Set(
+      cols
+        .filter(column => column.source === "aggregation")
+        .map(column => column.name),
+    );
+    const prevMetricColumnNames = new Set(
+      prevCols
+        .filter(column => column.source === "aggregation")
+        .map(column => column.name),
+    );
+    const addedMetricColumnNames = new Set(
+      [...metricColumnNames].filter(name => !prevMetricColumnNames.has(name)),
+    );
+    const removedMetricColumnNames = new Set(
+      [...prevMetricColumnNames].filter(name => !metricColumnNames.has(name)),
+    );
+
+    if (addedMetricColumnNames.size > 0 || removedMetricColumnNames.size > 0) {
       return this.updateSettings({
-        "table.columns": [
-          ...tableColumns.filter(
-            column =>
-              !addedColumns.some(
-                ({ columnInfo }) => column.name === columnInfo.name,
-              ) &&
-              !removedColumns.some(
-                ({ columnInfo }) => column.name === columnInfo.name,
-              ),
-          ),
-          ...addedColumns.map(({ column, columnInfo }) => {
-            return {
-              name: columnInfo.name,
-              fieldRef: Lib.legacyRef(query, stageIndex, column),
-              enabled: true,
-            };
-          }),
+        "graph.metrics": [
+          ...graphMetrics.filter(name => !removedMetricColumnNames.has(name)),
+          ...addedMetricColumnNames,
         ],
       });
     }
@@ -567,75 +515,65 @@ class Question {
     return this;
   }
 
-  _syncNativeQuerySettings({ data: { cols = [] } = {} }) {
-    const vizSettings = this.setting("table.columns") || [];
+  _syncTableColumnSettings({ data = {} }: Dataset) {
+    const columnSettings = this.setting("table.columns") || [];
     // "table.columns" receive a value only if there are custom settings
     // e.g. some columns are hidden. If it's empty, it means everything is visible
-    const isUsingDefaultSettings = vizSettings.length === 0;
-
+    const isUsingDefaultSettings = columnSettings.length === 0;
     if (isUsingDefaultSettings) {
       return this;
     }
 
-    const query = this.query();
-    const stageIndex = -1;
-
-    const settingIndexByColumnIndex = findColumnSettingIndexesForColumns(
-      query,
-      stageIndex,
+    // remove columns used for remapping only
+    const cols = data.cols.filter(col => col.remapped_from == null);
+    const columnIndexes = findColumnIndexesForColumnSettings(
       cols,
-      vizSettings,
+      columnSettings,
     );
-    let addedColumns = cols.filter((col, colIndex) => {
-      const hasVizSettings = settingIndexByColumnIndex[colIndex] >= 0;
+    const columnSettingIndexes = findColumnSettingIndexesForColumns(
+      cols,
+      columnSettings,
+    );
+    const addedColumns = cols.filter((col, colIndex) => {
+      const hasVizSettings = columnSettingIndexes[colIndex] >= 0;
       return !hasVizSettings;
     });
-    const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn =
-        findColumnIndexForColumnSetting(cols, colSetting, this.query()) >= 0;
-      const isMutatingColumn =
-        findColumnIndexForColumnSetting(
-          addedColumns,
-          colSetting,
-          this.query(),
-        ) >= 0;
-      return hasColumn && !isMutatingColumn;
-    });
-    const noColumnsRemoved = validVizSettings.length === vizSettings.length;
+    const existingColumnSettings = columnSettings.filter(
+      (setting, settingIndex) => columnIndexes[settingIndex] >= 0,
+    );
+    const noColumnsRemoved =
+      existingColumnSettings.length === columnSettings.length;
 
     if (noColumnsRemoved && addedColumns.length === 0) {
       return this;
     }
 
-    addedColumns = addedColumns.map(col => ({
+    const addedColumnSettings = addedColumns.map(col => ({
       name: col.name,
+      key: getColumnKey(col),
       fieldRef: col.field_ref,
       enabled: true,
     }));
     return this.updateSettings({
-      "table.columns": [...validVizSettings, ...addedColumns],
+      "table.columns": [...existingColumnSettings, ...addedColumnSettings],
     });
   }
 
-  syncColumnsAndSettings(previousQuestion?: Question, queryResults?: Dataset) {
-    const query = this.query();
-    const { isNative } = Lib.queryDisplayInfo(query);
+  syncColumnsAndSettings(queryResults?: Dataset, prevQueryResults?: Dataset) {
+    let question = this;
 
-    if (isNative && queryResults && !queryResults.error) {
-      return this._syncNativeQuerySettings(queryResults);
-    }
+    if (queryResults && !queryResults.error) {
+      question = question._syncTableColumnSettings(queryResults);
 
-    if (previousQuestion) {
-      const previousQuery = previousQuestion.query();
-      const { isNative: isPreviousQuestionNative } =
-        Lib.queryDisplayInfo(previousQuery);
-
-      if (!isNative && !isPreviousQuestionNative) {
-        return this._syncStructuredQueryColumnsAndSettings(previousQuestion);
+      if (prevQueryResults && !prevQueryResults.error) {
+        question = question._syncGraphMetricSettings(
+          queryResults,
+          prevQueryResults,
+        );
       }
     }
 
-    return this;
+    return question;
   }
 
   /**
@@ -764,7 +702,9 @@ class Question {
     // we frequently treat dataset/model questions like they are already nested
     // so we need to fetch the virtual card table representation of the Question
     // so that we can properly access the table's fields in various scenarios
-    if (this.isDataset() && this.isSaved()) {
+    const type = this.type();
+    const isModel = type === "model";
+    if (isModel && this.isSaved()) {
       dependencies.push({
         type: "table",
         id: getQuestionVirtualTableId(this.id()),
@@ -832,11 +772,13 @@ class Question {
     return question;
   }
 
-  parameters(): ParameterObject[] {
+  parameters({ collectionPreview } = {}): ParameterObject[] {
     return getCardUiParameters(
       this.card(),
       this.metadata(),
       this._parameterValues,
+      undefined,
+      collectionPreview,
     );
   }
 
@@ -892,7 +834,7 @@ class Question {
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
-      dataset: this._card.dataset,
+      type: this._card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
@@ -1021,7 +963,7 @@ class Question {
     name,
     display = "table",
     visualization_settings = {},
-    dataset,
+    cardType,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -1031,8 +973,8 @@ class Question {
       collection_id: collectionId,
       display,
       visualization_settings,
-      dataset,
       dataset_query,
+      type: cardType,
     };
 
     if (type === "native") {
