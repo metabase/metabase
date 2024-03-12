@@ -258,13 +258,7 @@ export class UnconnectedDataSelector extends Component {
       setSelectedSchema(getSchema(selectedSchemaId));
     }
     if (selectedTableId != null) {
-      const table = getTable(selectedTableId);
-      setSelectedTable(table);
-      // We need the schema information when we open already saved simple question
-      // because its source table might come from a multiple-schemas database.
-      this.setState({
-        selectedSchemaId: table?.schema?.id,
-      });
+      setSelectedTable(getTable(selectedTableId));
     }
     if (selectedFieldId != null) {
       setSelectedField(getField(selectedFieldId));
@@ -461,7 +455,12 @@ export class UnconnectedDataSelector extends Component {
       await this.switchToStep(DATABASE_STEP);
     } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
-    } else if (this.state.selectedSchemaId && steps.includes(TABLE_STEP)) {
+    } else if (
+      // Schema id is explicitly set when going through the New > Question/Model flow,
+      // whereas we have to obtain it from the state when opening a saved question.
+      (this.state.selectedSchemaId || this.state.selectedSchema?.id) &&
+      steps.includes(TABLE_STEP)
+    ) {
       await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
       await this.switchToStep(SCHEMA_STEP);
