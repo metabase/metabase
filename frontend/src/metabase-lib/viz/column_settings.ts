@@ -17,19 +17,21 @@ export function syncColumnSettings(
   if (queryResults && !queryResults.error) {
     newSettings = syncTableColumnSettings(newSettings, queryResults);
 
-    if (clicked) {
-      newSettings = syncTableColumnSettingsAfterClickAction(
-        newSettings,
-        clicked,
-      );
-    }
-
     if (prevQueryResults && !prevQueryResults.error) {
       newSettings = syncGraphMetricSettings(
         newSettings,
         queryResults,
         prevQueryResults,
       );
+
+      if (clicked) {
+        newSettings = syncTableColumnSettingsAfterClickAction(
+          newSettings,
+          queryResults,
+          prevQueryResults,
+          clicked,
+        );
+      }
     }
   }
 
@@ -85,6 +87,8 @@ function syncTableColumnSettings(
 
 function syncTableColumnSettingsAfterClickAction(
   settings: VisualizationSettings,
+  { data: { cols } }: Dataset,
+  { data: { cols: prevCols } }: Dataset,
   { column }: ClickObject,
 ): VisualizationSettings {
   if (!column) {
@@ -92,22 +96,32 @@ function syncTableColumnSettingsAfterClickAction(
   }
 
   const columnSettings = settings["table.columns"] ?? [];
-  const prevColumnSettings = settings["table.columns"] ?? [];
-  const addedColumnCount = columnSettings.length - prevColumnSettings.length;
-  const [columnSettingIndex] = findColumnSettingIndexesForColumns(
-    [column],
+  const prevColumnNames = new Set(prevCols.map(col => col.name));
+  const addedColumns = cols.filter(col => !prevColumnNames.has(col.name));
+  const addedColumnSettingIndexes = findColumnSettingIndexesForColumns(
+    addedColumns,
     columnSettings,
   );
-  if (addedColumnCount <= 0 || columnSettingIndex < 0) {
+  const addedColumnSettings = addedColumnSettingIndexes.map(
+    index => columnSettings[index],
+  );
+  const existingColumnSettings = columnSettings.filter(
+    (_, index) => !addedColumnSettingIndexes.includes(index),
+  );
+  const [columnSettingIndex] = findColumnSettingIndexesForColumns(
+    [column],
+    existingColumnSettings,
+  );
+  if (columnSettingIndex < 0) {
     return settings;
   }
 
   return {
     ...settings,
     "table.columns": [
-      ...columnSettings.slice(0, columnSettingIndex + 1), // before the selected column
-      ...columnSettings.slice(-addedColumnCount), // new columns
-      ...columnSettings.slice(columnSettingIndex + 1, -addedColumnCount), // after the selected column
+      ...existingColumnSettings.slice(0, columnSettingIndex + 1), // before the selected column
+      ...addedColumnSettings,
+      ...existingColumnSettings.slice(columnSettingIndex + 1), // after the selected column
     ],
   };
 }
