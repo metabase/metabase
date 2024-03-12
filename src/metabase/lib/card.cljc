@@ -1,6 +1,5 @@
 (ns metabase.lib.card
   (:require
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
@@ -50,7 +49,7 @@
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
   (when (some? card-query)
-    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
+    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
 
 (def ^:private Card
   [:map

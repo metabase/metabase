@@ -3984,22 +3984,6 @@
                       (mt/with-temp [PermissionsGroup {group-id :id} {}
                                      PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
                                                                    :group_id group-id}]
-                        (comment ;; We do not currently support /execute/ permission
-                          (is (partial= {:message "You don't have permissions to do that."}
-                                        (mt/user-http-request :rasta :post 403 execute-path
-                                                              {:parameters {"id" 1}}))
-                              "Execution permission should be required"))
-                        (mt/user-http-request
-                         :crowberto :put 200 "permissions/execution/graph"
-                         (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
-                        (is (= :all
-                               (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-                            "Should be able to set execution permission")
-                        (is (= {:rows-affected 1}
-                               (mt/user-http-request :rasta :post 200 execute-path
-                                                     {:parameters {"id" 1}}))
-                            "Execution and data permissions should be enough")
-
                         (data-perms.graph/update-data-perms-graph!* [group-id (mt/id) :data]
                                                                     {:schemas :block})
                         (data-perms.graph/update-data-perms-graph!* [(:id (perms-group/all-users)) (mt/id) :data]

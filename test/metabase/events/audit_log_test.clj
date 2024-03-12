@@ -436,7 +436,6 @@
 
 (deftest user-joined-event-test
   (testing :user-joined
-    ;; TODO - what's the difference between `user-login` / `user-joined`?
     (is (= {:user-id (mt/user->id :rasta)}
            (events/publish-event! :event/user-joined {:user-id (mt/user->id :rasta)})))
     (is (= {:topic       :user-joined

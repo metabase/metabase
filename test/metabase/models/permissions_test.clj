@@ -188,20 +188,6 @@
     #{"/db/1/schema/public/table/1/"}                          #{"/db/1/schema/public/" "/db/9/"}
     #{"/db/1/schema/public/table/2/" "/db/3/schema//table/4/"} #{"/db/1/" "/db/9/"}))
 
-(deftest ^:parallel set-has-any-native-query-permissions?-test
-  (are [perms] (perms/set-has-any-native-query-permissions? perms)
-    #{"/"}
-    #{"/db/1/"}
-    #{"/db/1/native/"}
-    #{"/db/1/" "/db/2/schema/PUBLIC/table/1/"}
-    #{"/db/1/native/" "/db/2/schema/PUBLIC/table/1/"})
-  (are [perms] (not (perms/set-has-any-native-query-permissions? perms))
-    #{}
-    #{"/db/1"}
-    #{"/db/1/native"}
-    #{"/db/1/schema/"}
-    #{"/db/1/schema/PUBLIC/table/1/"}))
-
 (deftest ^:parallel perms-objects-set-for-parent-collection-test
   (are [input expected] (= expected
                            (apply perms/perms-objects-set-for-parent-collection input))

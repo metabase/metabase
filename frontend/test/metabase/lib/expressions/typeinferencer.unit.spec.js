@@ -9,7 +9,11 @@ describe("metabase-lib/expressions/typeinferencer", () => {
   function compileAs(source, startRule) {
     let mbql = null;
     try {
-      mbql = resolve(parse(source), startRule, mockResolve);
+      mbql = resolve({
+        expression: parse(source),
+        type: startRule,
+        fn: mockResolve,
+      });
     } catch (e) {}
     return mbql;
   }
