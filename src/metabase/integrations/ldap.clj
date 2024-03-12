@@ -156,8 +156,15 @@
 
 (defn- get-connection
   "Connects to LDAP with the currently set settings and returns the connection."
-  ^LDAPConnectionPool []
-  (ldap/connect (settings->ldap-options)))
+  ^LDAPConnectionPool
+  []
+  (let [options (settings->ldap-options)]
+    (log/debugf "Opening LDAP connection with options %s" (u/pprint-to-str options))
+    (try
+      (ldap/connect options)
+      (catch LDAPException e
+        (log/errorf "Failed to obtain LDAP connection: %s" (.getMessage e))
+        (throw e)))))
 
 (defn do-with-ldap-connection
   "Impl for [[with-ldap-connection]] macro."
