@@ -22,6 +22,10 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         borderRadius: theme.radius.xs,
         height: multiline ? "auto" : getSize({ size, sizes: SIZES }),
         minHeight: getSize({ size, sizes: SIZES }),
+        "[dir=rtl] &": {
+          direction: "rtl",
+          textAlign: "right",
+        },
         "&::placeholder": {
           color: theme.fn.themeColor("text-light"),
         },
