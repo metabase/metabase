@@ -104,7 +104,7 @@
                                  :lib/expression-name "prev_month"}
                                 (lib.tu/field-clause :users :last-login)
                                 [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
-                :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
+                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
     (is (=? [{:name         "prev_month"
               :display-name "prev_month"
               :base-type    :type/DateTime
@@ -351,7 +351,7 @@
           rating (m/find-first #(= (:id %) (meta/id :products :rating)) cols)
           query  (lib/expression base "bad_product" (lib/< rating 3))
           join   (first (lib/joins query))]
-      ;; TODO: There should probably be a (lib/join-alias join) ;=> "Products" function.
+      ;; TODO: There should probably be a (lib/join-alias join) ;=> "Products" function. (#39368)
       (is (=? [[:< {:lib/expression-name "bad_product"}
                 [:field {:join-alias (:alias join)} (meta/id :products :rating)]
                 3]]
