@@ -17,7 +17,6 @@ import {
   getSortedSeriesModels,
   applyVisualizationSettingsDataTransformations,
   sortDataset,
-  getHistogramDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getXAxisModel,
@@ -105,8 +104,6 @@ export const getCartesianChartModel = (
     settings,
     renderingContext,
   );
-
-  dataset = getHistogramDataset(dataset, xAxisModel);
 
   const transformedDataset = applyVisualizationSettingsDataTransformations(
     dataset,

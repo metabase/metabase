@@ -333,6 +333,23 @@ function filterNullDimensionValues(dataset: ChartDataset) {
   return filteredDataset;
 }
 
+function getHistogramDataset(
+  dataset: ChartDataset,
+  histogramInterval: number | undefined,
+) {
+  const interval = histogramInterval ?? 1;
+
+  dataset.unshift({
+    [X_AXIS_DATA_KEY]: checkNumber(dataset[0][X_AXIS_DATA_KEY]) - interval,
+  });
+  dataset.push({
+    [X_AXIS_DATA_KEY]:
+      checkNumber(dataset[dataset.length - 1][X_AXIS_DATA_KEY]) + interval,
+  });
+
+  return dataset;
+}
+
 /**
  * Modifies the dataset for visualization according to the specified visualization settings.
  *
@@ -640,24 +657,3 @@ export const getBubbleSizeDomain = (
 
   return [0, bubbleSizeDomainMax];
 };
-
-export function getHistogramDataset(
-  dataset: ChartDataset,
-  xAxisModel: XAxisModel,
-) {
-  if (!isCategoryAxis(xAxisModel) || !xAxisModel.isHistogram) {
-    return dataset;
-  }
-
-  const interval = xAxisModel.histogramInterval ?? 1;
-
-  dataset.unshift({
-    [X_AXIS_DATA_KEY]: checkNumber(dataset[0][X_AXIS_DATA_KEY]) - interval,
-  });
-  dataset.push({
-    [X_AXIS_DATA_KEY]:
-      checkNumber(dataset[dataset.length - 1][X_AXIS_DATA_KEY]) + interval,
-  });
-
-  return dataset;
-}
