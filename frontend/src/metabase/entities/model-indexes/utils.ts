@@ -1,3 +1,4 @@
+import { dissocIn } from "icepick";
 import _ from "underscore";
 
 import type Question from "metabase-lib/Question";
@@ -8,7 +9,7 @@ import {
   isInteger,
   isBoolean,
 } from "metabase-lib/types/utils/isa";
-import type { Field } from "metabase-types/api";
+import type { Field, FieldWithMaybeIndex } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
 const hasSingleIntegerPk = (model?: Question) => {
@@ -29,3 +30,13 @@ export const fieldHasIndex = (modelIndexes: ModelIndex[], field: Field) =>
   !!modelIndexes.some((index: any) =>
     _.isEqual(index.value_ref, field.field_ref),
   );
+
+export function cleanIndexFlags(fields: Field[] = []) {
+  return fields.map((field: FieldWithMaybeIndex) => {
+    if (field.should_index !== undefined) {
+      return dissocIn(field, ["should_index"]);
+    } else {
+      return field;
+    }
+  });
+}

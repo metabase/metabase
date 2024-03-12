@@ -14,7 +14,10 @@ import _ from "underscore";
 
 import RootForm from "metabase/containers/FormikForm";
 import Radio from "metabase/core/components/Radio";
-import { ModelIndexes } from "metabase/entities/model-indexes";
+import {
+  fieldHasIndex,
+  canIndexField,
+} from "metabase/entities/model-indexes/utils";
 import {
   field_visibility_types,
   field_semantic_types,
@@ -79,8 +82,7 @@ function getFormFields({ dataset, field }) {
       value: type.id,
     }));
 
-  const canIndex =
-    dataset.isSaved() && ModelIndexes.utils.canIndexField(field, dataset);
+  const canIndex = dataset.isSaved() && canIndexField(field, dataset);
 
   const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
@@ -178,7 +180,7 @@ function DatasetFieldMetadataSidebar({
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
-      should_index: ModelIndexes.utils.fieldHasIndex(modelIndexes, field),
+      should_index: fieldHasIndex(modelIndexes, field),
     };
     const { isNative } = Lib.queryDisplayInfo(dataset.query());
 

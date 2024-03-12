@@ -10,6 +10,7 @@ import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
 export const ActionSchema = new schema.Entity("actions");
 export const UserSchema = new schema.Entity("users");
 export const QuestionSchema = new schema.Entity("questions");
+// TODO: needed?
 export const ModelIndexSchema = new schema.Entity("modelIndexes");
 export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
@@ -133,6 +134,7 @@ export const ObjectUnionSchema = new schema.Union(
   (object, parent, key) => entityTypeForObject(object),
 );
 
+// TODO: can collections load modelIndexes in practice?
 CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
