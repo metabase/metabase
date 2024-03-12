@@ -5,7 +5,7 @@ import NoResults from "assets/img/no_results.svg";
 import type { useSearchListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
-import { getLocale } from "metabase/setup/selectors";
+import { getLocale } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
 import type { SearchResult, CollectionId } from "metabase-types/api";
 
@@ -23,9 +23,7 @@ export const BrowseModels = ({
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
 }) => {
   const { data: models = [], error, isLoading } = modelsResult;
-  // TODO: Use the right locale selector here
-  const locale = useSelector(getLocale);
-  const localeCode: string | undefined = locale?.code;
+  const localeCode = useSelector(getLocale);
   const [collectionViewPreferences, setCollectionViewPreferences] = useState(
     getCollectionViewPreferences,
   );
