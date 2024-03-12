@@ -88,7 +88,7 @@
               fk-metadata (driver/describe-fields :redshift (mt/db)
                                                   :table-names [(:name songs)]
                                                   :schema-names [(:schema songs)])]
-          (is (= #{{:name "song", :pk? true} {:name "artist", :pk? true}}
+          (is (= #{{:name "song_id", :pk? true} {:name "artist_id", :pk? true}}
                  (into #{}
                        (map #(select-keys % [:name :pk?]))
                        fk-metadata))))))))
