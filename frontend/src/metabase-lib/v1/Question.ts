@@ -465,12 +465,17 @@ class Question {
     });
   }
 
-  syncColumnsAndSettings(queryResults?: Dataset, prevQueryResults?: Dataset) {
+  syncColumnsAndSettings(
+    queryResults?: Dataset,
+    prevQueryResults?: Dataset,
+    drillContext?: Lib.DrillThruContext,
+  ) {
     const settings = this.settings();
     const newSettings = Lib.syncColumnSettings(
       settings,
       queryResults,
       prevQueryResults,
+      drillContext,
     );
     return settings !== newSettings ? this.setSettings(newSettings) : this;
   }

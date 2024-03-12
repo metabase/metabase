@@ -1,3 +1,4 @@
+import type { DrillThruContext } from "metabase-lib";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
@@ -9,11 +10,16 @@ export function syncColumnSettings(
   settings: VisualizationSettings,
   queryResults?: Dataset,
   prevQueryResults?: Dataset,
+  drillContext?: DrillThruContext,
 ): VisualizationSettings {
   let newSettings = settings;
 
   if (queryResults && !queryResults.error) {
-    newSettings = syncTableColumnSettings(newSettings, queryResults);
+    newSettings = syncTableColumnSettings(
+      newSettings,
+      queryResults,
+      drillContext == null,
+    );
 
     if (prevQueryResults && !prevQueryResults.error) {
       newSettings = syncGraphMetricSettings(
@@ -21,6 +27,15 @@ export function syncColumnSettings(
         queryResults,
         prevQueryResults,
       );
+
+      if (drillContext) {
+        newSettings = syncTableColumnSettingsAfterDrill(
+          settings,
+          queryResults,
+          prevQueryResults,
+          drillContext,
+        );
+      }
     }
   }
 
@@ -30,11 +45,12 @@ export function syncColumnSettings(
 function syncTableColumnSettings(
   settings: VisualizationSettings,
   { data }: Dataset,
+  isDefaultSkipped: boolean,
 ): VisualizationSettings {
-  const columnSettings = settings["table.columns"];
+  const columnSettings = settings["table.columns"] ?? [];
   // "table.columns" receive a value only if there are custom settings
   // e.g. some columns are hidden. If it's empty, it means everything is visible
-  if (!columnSettings) {
+  if (columnSettings.length === 0 && isDefaultSkipped) {
     return settings;
   }
 
@@ -71,6 +87,49 @@ function syncTableColumnSettings(
   return {
     ...settings,
     "table.columns": [...existingColumnSettings, ...addedColumnSettings],
+  };
+}
+
+function syncTableColumnSettingsAfterDrill(
+  settings: VisualizationSettings,
+  { data: { cols } }: Dataset,
+  { data: { cols: prevCols } }: Dataset,
+  { column }: DrillThruContext,
+): VisualizationSettings {
+  const columnSettings = settings["table.columns"] ?? [];
+  const prevColumnNames = new Set(prevCols.map(col => col.name));
+  const addedColumns = cols.filter(col => !prevColumnNames.has(col.name));
+
+  const [columnSettingIndex] = findColumnSettingIndexesForColumns(
+    [column],
+    columnSettings,
+  );
+  const prevColumnSettingIndexes = findColumnSettingIndexesForColumns(
+    prevCols,
+    columnSettings,
+  );
+  const addedColumnSettingIndexes = findColumnSettingIndexesForColumns(
+    addedColumns,
+    columnSettings,
+  );
+
+  const leftColumnSettings = prevColumnSettingIndexes
+    .filter(index => index >= 0 && index <= columnSettingIndex)
+    .map(index => columnSettings[index]);
+  const rightColumnSettings = prevColumnSettingIndexes
+    .filter(index => index >= 0 && index > columnSettingIndex)
+    .map(index => columnSettings[index]);
+  const addedColumnSettings = addedColumnSettingIndexes
+    .filter(index => index >= 0)
+    .map(index => columnSettings[index]);
+
+  return {
+    ...settings,
+    "table.columns": [
+      ...leftColumnSettings,
+      ...addedColumnSettings,
+      ...rightColumnSettings,
+    ],
   };
 }
 
