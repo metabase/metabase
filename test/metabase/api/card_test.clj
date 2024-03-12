@@ -293,6 +293,7 @@
 (deftest filter-by-stale-test
   (testing "Filter by `stale`"
     (let [field-id (t2/select-one-pk :model/Field)]
+      ;; *query-analyzer/*parse-queries-in-test?* is not relevant since we're not doing the parsing here
       (mt/with-temp [:model/Card         relevant-card   {:name "Card with Stale Query"}
                      :model/Card         not-stale-card  {:name "Card whose columns are up to date"}
                      :model/Card         irrelevant-card {:name "Card with no FieldUsages at all"}

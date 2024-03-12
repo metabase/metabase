@@ -7,18 +7,35 @@
   (:require
    [clojure.string :as str]
    [macaw.core :as mac]
+   [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(def ^:dynamic *parse-queries-in-test?*
+  "Normally, a native card's query is parsed on every create/update. For most tests, this is an unnecessary
+  expense. Therefore, we skip parsing while testing unless this variable is turned on. c.f. [[active?]]"
+  false)
+
+(defn- active?
+  "Should the query run? Either we're not testing or it's been explicitly turned on.
+
+  c.f. [[*parse-queries-in-test?*]]"
+  []
+  (or (not config/is-test?)
+      *parse-queries-in-test?*))
+
 (defn- normalize-name
   ;; TODO: This is wildly naive and will be revisited once the rest of the plumbing is sorted out
+  ;; c.f. Milestone 3 of the epic: https://github.com/metabase/metabase/issues/36911
   [name]
   (-> name
       (str/replace "\"" "")
       u/lower-case-en))
 
 (defn- fields-for-query
+  "Very naively selects Fields that could be used in the query. Improvements to this are planned for Q2 2024,
+  c.f. Milestone 3 of https://github.com/metabase/metabase/issues/36911"
   [q db-id]
   (try
     (let [{:keys [columns tables]} (mac/query->components (mac/parsed-query q))]
@@ -51,12 +68,16 @@
     (map #(assoc % :card_id card-id) field-usages)))
 
 (defn update-field-usages-for-card!
-  "Ensures that all FieldUsages associated with this card are up to date with the query, creating or deleting them as necessary.
+  "Clears FieldUsages associated with this card and creates fresh, up-to-date-ones.
 
-  Any card is accepted, but this functionality only works for ones with a native query."
+  Any card is accepted, but this functionality only works for ones with a native query.
+
+  If you're invoking this from a test, be sure to turn on [[*parse-queries-in-test?*]]."
   [{card-id :id, query :dataset_query :as card}]
-  (when (= :native (:type query))
-    ;; This feels inefficient, but the number of records should be quite small and doing some sort of upsert-or-delete
-    ;; would involve comparisons in Clojure-land that are more expensive than just "killing and filling" the records.
+  (when (and (active?)
+             (= :native (:type query)))
+    ;; This feels inefficient at first glance, but the number of records should be quite small and doing some sort of
+    ;; upsert-or-delete would involve comparisons in Clojure-land that are more expensive than just "killing and
+    ;; filling" the records.
     (t2/delete! :model/FieldUsage :card_id card-id)
     (t2/insert! :model/FieldUsage (field-usages-for-card card))))
