@@ -4,32 +4,26 @@
  * This allows us to use search results to show a particular record in the model.
  */
 
-import { createEntity } from "metabase/lib/entities";
-import { ModelIndexSchema } from "metabase/schema";
-import { ModelIndexApi } from "metabase/services";
-import type { IndexedEntity } from "metabase-types/api/modelIndexes";
+import { modelIndexesApi } from "metabase/api";
 
-import * as actions from "./actions";
-import * as utils from "./utils";
+import { updateModelIndexes } from "./actions";
+import {
+  canIndexField,
+  getPkRef,
+  fieldHasIndex,
+  cleanIndexFlags,
+} from "./utils";
 
-export const ModelIndexes = createEntity({
-  name: "modelIndexes",
-  nameOne: "modelIndex",
-  path: "/api/model-index",
-  schema: ModelIndexSchema,
-  api: {
-    ...ModelIndexApi,
-    list: ({ model_id }: { model_id?: string | null }) =>
-      model_id ? ModelIndexApi.list({ model_id }) : { data: [] },
+export const ModelIndexes = {
+  api: modelIndexesApi,
+  actions: {
+    updateModelIndexes,
   },
-  actions,
-  utils,
-  writableProperties: ["name", "value_ref", "pk_ref", "model_id"],
-  objectSelectors: {
-    getUrl: (entity: IndexedEntity) => `/model/${entity.model_id}/${entity.id}`,
-    getIcon: () => ({ name: "beaker" }),
+  utils: {
+    canIndexField,
+    getPkRef,
+    fieldHasIndex,
+    cleanIndexFlags,
   },
-  reducer: (state = {}) => {
-    return state;
-  },
-});
+  useListQuery: modelIndexesApi.useListModelIndexesQuery,
+};
