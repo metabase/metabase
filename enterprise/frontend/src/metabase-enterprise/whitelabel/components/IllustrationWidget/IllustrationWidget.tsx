@@ -9,7 +9,7 @@ import type {
   EnterpriseSettings,
 } from "metabase-enterprise/settings/types";
 
-import { LighthouseImage } from "./IllustrationWidget.styled";
+import { LighthouseImage, PreviewImage } from "./IllustrationWidget.styled";
 
 type IllustrationValue = "default" | "no-illustration" | "custom";
 
@@ -165,7 +165,7 @@ function getPreviewImage(value: IllustrationValue, customSource?: string) {
   }
 
   if (value === "custom") {
-    return <img src={customSource} width={100} />;
+    return <PreviewImage src={customSource} />;
   }
 
   return null;
