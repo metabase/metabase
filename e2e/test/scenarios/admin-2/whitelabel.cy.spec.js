@@ -17,7 +17,7 @@ function checkFavicon(url) {
 
 function checkLogo() {
   cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(logo_data => {
-    cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`);
+    cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`).should("exist");
   });
 }
 
@@ -60,73 +60,110 @@ describeEE("formatting > whitelabel", () => {
     });
   });
 
-  describe("company logo", () => {
-    beforeEach(() => {
-      cy.log("Add a logo");
-      cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(logo_data => {
-        cy.request("PUT", "/api/setting/application-logo-url", {
-          value: `data:image/jpeg;base64,${logo_data}`,
+  describe("image uploads", () => {
+    describe("company logo", () => {
+      beforeEach(() => {
+        cy.log("Add a logo");
+        cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+          logo_data => {
+            cy.request("PUT", "/api/setting/application-logo-url", {
+              value: `data:image/jpeg;base64,${logo_data}`,
+            });
+          },
+        );
+      });
+
+      it("changes should reflect on admin's dashboard", () => {
+        cy.visit("/");
+        checkLogo();
+      });
+
+      it("changes should reflect while signed out", () => {
+        cy.signOut();
+        cy.visit("/");
+        checkLogo();
+      });
+
+      it("changes should reflect on user's dashboard", () => {
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        checkLogo();
+      });
+    });
+
+    describe("favicon", () => {
+      it("should work for people that set favicon URL before we change the input to file input", () => {
+        const faviconUrl =
+          "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
+        cy.request("PUT", "/api/setting/application-favicon-url", {
+          value: faviconUrl,
+        });
+        checkFavicon(faviconUrl);
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        cy.get('head link[rel="icon"]')
+          .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')
+          .should("have.length", 1);
+      });
+
+      it("should show up in user's HTML", () => {
+        cy.visit("/admin/settings/whitelabel");
+        cy.log("Add favicon");
+
+        cy.findByLabelText("Favicon").selectFile(
+          {
+            contents: "e2e/support/assets/favicon.ico",
+            mimeType: "image/jpeg",
+          },
+          { force: true },
+        );
+        undoToast().findByText("Changes saved").should("be.visible");
+        cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
+          base64Url => {
+            const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
+            cy.wrap(faviconUrl).as("faviconUrl");
+            checkFavicon(faviconUrl);
+          },
+        );
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        cy.get("@faviconUrl").then(faviconUrl => {
+          cy.get('head link[rel="icon"]')
+            .get(`[href="${faviconUrl}"]`)
+            .should("have.length", 1);
         });
       });
     });
 
-    it("changes should reflect on admin's dashboard", () => {
-      cy.visit("/");
-      checkLogo();
-    });
+    describe("login page illustration", () => {
+      it("should only allow uploading a valid image files (PNG, JPG, SVG)", () => {
+        /**
+         * Unfortunately, we couldn't test the browser file selector with Cypress yet.
+         * With `input.selectFile`, we still can select any files unlike the browser file selector
+         * which would respect the `accept` attribute (which specifies the accepted MIME types).
+         */
+        cy.visit("/admin/settings/whitelabel/conceal-metabase");
+        cy.findByTestId("file-input").selectFile(
+          {
+            contents: "e2e/support/assets/logo.jpeg",
+            mimeType: "image/jpeg",
+          },
+          { force: true },
+        );
+        undoToast().findByText("Changes saved").should("be.visible");
 
-    it("changes should reflect while signed out", () => {
-      cy.signOut();
-      cy.visit("/");
-      checkLogo();
-    });
+        cy.signOut();
+        cy.visit("/");
 
-    it("changes should reflect on user's dashboard", () => {
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      checkLogo();
-    });
-  });
-
-  describe("favicon", () => {
-    it("should work for people that set favicon URL before we change the input to file input", () => {
-      const faviconUrl = "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
-      cy.request("PUT", "/api/setting/application-favicon-url", {
-        value: faviconUrl,
-      });
-      checkFavicon(faviconUrl);
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.get('head link[rel="icon"]')
-        .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')
-        .should("have.length", 1);
-    });
-
-    it("should show up in user's HTML", () => {
-      cy.visit("/admin/settings/whitelabel");
-      cy.log("Add favicon");
-
-      cy.findByLabelText("Favicon").selectFile(
-        {
-          contents: "e2e/support/assets/favicon.ico",
-          mimeType: "image/jpeg",
-        },
-        { force: true },
-      );
-      undoToast().findByText("Changes saved").should("be.visible");
-      cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
-        base64Url => {
-          const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
-          cy.wrap(faviconUrl).as("faviconUrl");
-          checkFavicon(faviconUrl);
-        },
-      );
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.get("@faviconUrl").then(faviconUrl => {
-        cy.get('head link[rel="icon"]')
-          .get(`[href="${faviconUrl}"]`)
-          .should("have.length", 1);
+        cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+          logo_data => {
+            cy.findByTestId("login-page-container").should(
+              "have.css",
+              "background-image",
+              `url("data:image/jpeg;base64,${logo_data}")`,
+            );
+          },
+        );
       });
     });
   });
