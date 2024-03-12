@@ -55,7 +55,7 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
   if (shouldUseListPicker(parameter)) {
     return (
       <ListPickerConnected
-        value={(Array.isArray(value) ? value[0] : value) ?? ""} // TODO
+        value={Array.isArray(value) ? value[0] : value} // TODO
         parameter={parameter}
         onChange={onValueChange}
         forceSearchItemCount={50}

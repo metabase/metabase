@@ -11,16 +11,16 @@ import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
 import { getDefaultState, getResetKey, reducer } from "./listPickerState";
 
 interface ListPickerConnectedProps {
-  value: string;
+  value: string | null;
   parameter: Parameter;
   onChange: (value: string | null) => void;
   forceSearchItemCount: number;
   searchDebounceMs?: number;
 }
 
+// TODO switch from search/static-list -> card! && resetKey
 // TODO should we fetch initially?
 // TODO fetching errors
-// TODO clearing doesn't work on first try
 // TODO null value or different value in search URL
 export function ListPickerConnected(props: ListPickerConnectedProps) {
   const globalDispatch = useDispatch();
@@ -47,7 +47,6 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
           values: getFlatValueList(res.values as string[][]),
           hasMore: res.has_more_values,
           resetKey: getResetKey(parameter),
-          searchQuery: query,
         },
       });
     },
@@ -61,15 +60,17 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   };
 
   const ownOnSearch = (query: string) => {
-    if (hasMoreValues) {
-      const trimmed = query.trim();
-      // We have to trigger fetch only when search is different from the current value
-      if (trimmed !== lastSearch) {
-        // console.log(`search trimmed="${trimmed}" value="${lastSearch}"`);
-        fetchAndSaveValuesDebounced.cancel();
-        dispatch({ type: "SET_IS_LOADING", payload: { isLoading: true } });
-        fetchAndSaveValuesDebounced(query);
-      }
+    const trimmed = query.trim();
+
+    // We have to trigger fetch only when search is different from the current value
+    if (hasMoreValues && trimmed !== lastSearch) {
+      // console.log(`search trimmed="${trimmed}" lastSearch="${lastSearch}"`);
+      fetchAndSaveValuesDebounced.cancel();
+      dispatch({
+        type: "SET_IS_LOADING",
+        payload: { isLoading: true, query: trimmed },
+      });
+      fetchAndSaveValuesDebounced(query);
     }
   };
 
@@ -78,17 +79,13 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     onChange(value);
   };
 
-  const ownOnClear = () => {
-    cancelFetching();
-    onChange(null);
-  };
-
   // Reset when parameter changes
   useEffect(() => {
     // null means we render for the first tima and state shouldn't be reset
+    // console.log(resetKey, getResetKey(parameter));
     if (resetKey !== null && resetKey !== getResetKey(parameter)) {
       dispatch({ type: "RESET" });
-      ownOnClear();
+      ownOnChange(null);
     }
   }, [resetKey, parameter]);
   // Cleanup
@@ -96,13 +93,15 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
 
   const staticValues = getListParameterStaticValues(parameter);
   const enableSearch =
-    !staticValues || staticValues.length > forceSearchItemCount;
+    !staticValues ||
+    staticValues.length > forceSearchItemCount ||
+    parameter.values_query_type === "search";
 
   return (
     <ListPicker
-      value={value}
+      value={value ?? ""}
       values={staticValues ?? values}
-      onClear={ownOnClear}
+      onClear={() => ownOnChange(null)}
       onChange={ownOnChange}
       onSearchChange={staticValues ? undefined : ownOnSearch}
       enableSearch={enableSearch}
