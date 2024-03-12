@@ -427,21 +427,6 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
-;; be setting `:archived` to `true` via the `PUT` endpoint instead
-(api/defendpoint DELETE "/:id"
-  "Delete a Dashboard.
-
-  This will remove also any questions/models/segments/metrics that use this database."
-  [id]
-  {id ms/PositiveInt}
-  (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
-                 "`archived` value via PUT /api/dashboard/:id."))
-  (let [dashboard (api/write-check :model/Dashboard id)]
-    (t2/delete! :model/Dashboard :id id)
-    (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
-  api/generic-204-no-content)
-
 (defn- param-target->field-id [target query]
   (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))

@@ -533,21 +533,6 @@
           (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
           (card/schedule-metadata-saving result-metadata-chan <>))))))
 
-
-;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
-
-;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT
-;;        /api/card/:id) instead of deleted.  Should we remove this?
-(api/defendpoint DELETE "/:id"
-  "Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.)"
-  [id]
-  {id ms/PositiveInt}
-  (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
-  (let [card (api/write-check Card id)]
-    (t2/delete! Card :id id)
-    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
-  api/generic-204-no-content)
-
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
 
 (defn- update-collection-positions!

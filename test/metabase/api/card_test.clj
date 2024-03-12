@@ -1769,22 +1769,6 @@
                 :pulse-2  (boolean (t2/select-one Pulse :id (u/the-id pulse))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          DELETING A CARD (DEPRECATED)                                          |
-;;; +----------------------------------------------------------------------------------------------------------------+
-;; Deprecated because you're not supposed to delete cards anymore. Archive them instead
-
-(deftest check-that-we-can-delete-a-card
-  (is (nil? (t2.with-temp/with-temp [:model/Card card]
-              (with-cards-in-writeable-collection card
-                (mt/user-http-request :rasta :delete 204 (str "card/" (u/the-id card)))
-                (t2/select-one :model/Card :id (u/the-id card)))))))
-
-;; deleting a card that doesn't exist should return a 404 (#1957)
-(deftest deleting-a-card-that-doesnt-exist-should-return-a-404---1957-
-  (is (= "Not found."
-         (mt/user-http-request :crowberto :delete 404 "card/12345"))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Timelines                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

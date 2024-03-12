@@ -770,8 +770,8 @@
       (t2.with-temp/with-temp [Dashboard dashboard {:description "What a nice Dashboard"}]
         (with-dashboards-in-writeable-collection [dashboard]
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description nil})
-          (is (= nil
-                 (t2/select-one-fn :description Dashboard :id (u/the-id dashboard))))
+          (is (nil?
+                (t2/select-one-fn :description Dashboard :id (u/the-id dashboard))))
 
           (testing "Set to a blank description"
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description ""})
@@ -892,16 +892,16 @@
           (testing "...and unset (unpin) it as well?"
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position nil})
-            (is (= nil
-                   (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard))))))
+            (is (nil?
+                  (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard))))))
 
         (testing "we shouldn't be able to if we don't have permissions for the Collection"
           (mt/with-temp [Collection collection {}
                          Dashboard  dashboard {:collection_id (u/the-id collection)}]
             (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position 1})
-            (is (= nil
-                   (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard)))))
+            (is (nil?
+                  (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard)))))
 
           (mt/with-temp [Collection collection {}
                          Dashboard  dashboard {:collection_id (u/the-id collection), :collection_position 1}]
@@ -1042,18 +1042,6 @@
                       "c" nil
                       "d" 3}
                      (api.card-test/get-name->collection-position :rasta collection))))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           DELETE /api/dashboard/:id                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest delete-test
-  (t2.with-temp/with-temp [Dashboard {dashboard-id :id}]
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (is (= nil
-             (mt/user-http-request :rasta :delete 204 (format "dashboard/%d" dashboard-id))))
-      (is (= nil
-             (t2/select-one Dashboard :id dashboard-id))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         POST /api/dashboard/:id/copy                                           |
