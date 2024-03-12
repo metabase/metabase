@@ -18,7 +18,7 @@ export function syncColumnSettings(
     newSettings = syncTableColumnSettings(
       newSettings,
       queryResults,
-      clicked != null,
+      clicked == null,
     );
 
     if (prevQueryResults && !prevQueryResults.error) {
@@ -45,12 +45,12 @@ export function syncColumnSettings(
 function syncTableColumnSettings(
   settings: VisualizationSettings,
   { data }: Dataset,
-  isDefaultUnwrapped: boolean,
+  isDefaultSkipped: boolean,
 ): VisualizationSettings {
   // "table.columns" receive a value only if there are custom settings
   // e.g. some columns are hidden. If it's empty, it means everything is visible
   const columnSettings = settings["table.columns"] ?? [];
-  if (columnSettings.length === 0 && !isDefaultUnwrapped) {
+  if (columnSettings.length === 0 && isDefaultSkipped) {
     return settings;
   }
 
