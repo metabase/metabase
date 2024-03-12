@@ -94,8 +94,8 @@ export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
   overrideWithQuestion = null,
-  clicked,
-  prevQueryResults,
+  clicked = null,
+  prevQueryResults = null,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
