@@ -1,6 +1,6 @@
 // Reducers shared between "main" and "public" apps
 
-import { Api } from "metabase/redux/api";
+import { Api } from "metabase/api";
 import app from "metabase/redux/app";
 import { reducer as auth } from "metabase/redux/auth";
 import embed from "metabase/redux/embed";

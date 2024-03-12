@@ -15,7 +15,7 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
 
 // custom fetcher that wraps our Api client
 export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions: any) => {
-  const method = typeof args === "string" ? "GET" : args?.method;
+  const method = typeof args === "string" ? "GET" : args?.method ?? "GET";
   const url = typeof args === "string" ? args : args.url;
 
   if (!isAllowedHTTPMethod(method)) {
@@ -32,7 +32,10 @@ export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions: any) => {
       extraOptions?.requestOptions,
     );
 
-    const response = await api[method](url)(args?.body, options);
+    const response = await api[method](url)(
+      { ...args?.body, ...args?.params },
+      options,
+    );
     return { data: response };
   } catch (error) {
     return { error };
