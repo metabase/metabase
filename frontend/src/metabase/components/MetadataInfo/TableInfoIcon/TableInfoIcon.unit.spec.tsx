@@ -8,18 +8,22 @@ import { TableInfoIcon } from "./TableInfoIcon";
 
 type SetupOpts = {
   table: Table;
+  showIfEmpty?: boolean;
 };
 
-function setup({ table }: SetupOpts) {
+function setup({ table, showIfEmpty }: SetupOpts) {
   const state = createMockState({
     entities: createMockEntitiesState({
       tables: [table],
     }),
   });
 
-  return renderWithProviders(<TableInfoIcon table={table} />, {
-    storeInitialState: state,
-  });
+  return renderWithProviders(
+    <TableInfoIcon table={table} showIfEmpty={showIfEmpty} />,
+    {
+      storeInitialState: state,
+    },
+  );
 }
 
 describe("TableInfoIcon", () => {
@@ -36,5 +40,17 @@ describe("TableInfoIcon", () => {
     fireEvent.mouseEnter(icon);
 
     expect(screen.getByText(description, { exact: false })).toBeInTheDocument();
+  });
+
+  it("should not show the icon if there is no description", async () => {
+    const table = createMockTable({ description: undefined });
+    setup({ table });
+    expect(screen.queryByLabelText("More info")).not.toBeInTheDocument();
+  });
+
+  it("should show the icon if there is no description, but showIfEmpty is set", async () => {
+    const table = createMockTable({ description: undefined });
+    setup({ table, showIfEmpty: true });
+    expect(screen.getByLabelText("More info")).toBeInTheDocument();
   });
 });

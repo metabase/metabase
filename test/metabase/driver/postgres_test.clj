@@ -481,8 +481,8 @@
     json-alias-mock-metadata-provider
     {:cards [{:name          "Model with JSON"
               :id            123
-              :database-id   (meta/id)
-              :dataset-query {:database (meta/id)
+              :database-id   1
+              :dataset-query {:database 1
                               :type     :query
                               :query    {:source-table 1
                                          :aggregation  [[:count]]
@@ -493,7 +493,7 @@
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
       (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
         (let [nested (qp.compile/compile
-                       {:database 1
+                       {:database (meta/id)
                         :type     :query
                         :query    {:source-table "card__123"}})]
           (is (= ["SELECT"

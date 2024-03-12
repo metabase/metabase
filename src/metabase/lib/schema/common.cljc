@@ -18,9 +18,6 @@
 (mr/def ::int-greater-than-or-equal-to-zero
   [:int {:min 0}])
 
-(mr/def ::positive-int
-  pos-int?)
-
 (mr/def ::positive-number
   [:fn
    {:error/message "positive number"}

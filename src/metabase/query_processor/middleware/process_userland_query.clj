@@ -64,12 +64,12 @@
                                                              (catch Throwable e
                                                                (log/error e (trs "Error saving query execution info"))))))))
 
-(defn- save-successful-query-execution! [cache-details is_sandboxed? query-execution result-rows]
+(defn- save-successful-query-execution! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution
                       :cache_hit    (boolean (:cached cache-details))
                       :cache_hash   (:hash cache-details)
                       :result_rows  result-rows
-                      :is_sandboxed (boolean is_sandboxed?))]
+                      :is_sandboxed (boolean is-sandboxed?))]
     (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]

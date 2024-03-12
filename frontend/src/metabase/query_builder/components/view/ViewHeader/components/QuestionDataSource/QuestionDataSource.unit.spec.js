@@ -561,4 +561,14 @@ describe("QuestionDataSource", () => {
       });
     });
   });
+
+  it("should show info icon on an ad-hoc question header", () => {
+    setup({ card: SOURCE_CARD });
+    expect(screen.getByLabelText("More info")).toBeInTheDocument();
+  });
+
+  it("should show info icon on a subheader", () => {
+    setup({ card: SOURCE_CARD, subHead: true });
+    expect(screen.queryByLabelText("More info")).not.toBeInTheDocument();
+  });
 });

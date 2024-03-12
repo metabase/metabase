@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.data-permissions :as data-perms]
@@ -11,11 +12,7 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.fetch-source-query
-    :as fetch-source-query]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.tag-referenced-cards
-    :as qp.u.tag-referenced-cards]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -86,8 +83,8 @@
     (log/tracef "Checking query permissions. Current user permissions = %s"
                 (pr-str (data-perms/permissions-for-user *current-user-id*)))
     (when (= perms/audit-db-id database-id)
-     (check-audit-db-permissions outer-query))
-    (let [card-id (or *card-id* (::fetch-source-query/source-card-id outer-query))
+      (check-audit-db-permissions outer-query))
+    (let [card-id (or *card-id* (:qp/source-card-id outer-query))
           required-perms (query-perms/required-perms outer-query :already-preprocessed? true)]
       (cond
         card-id
@@ -106,7 +103,8 @@
         (do
           (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
           ;; check perms for any Cards referenced by this query (if it is a native query)
-          (doseq [{query :dataset-query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
+          (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
+                                          (lib/query (qp.store/metadata-provider) outer-query))]
             (check-query-permissions* query)))))))
 
 (defn check-query-permissions
@@ -125,7 +123,9 @@
 
 (mu/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
-  [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
+  [{database-id :database, :as outer-query} :- [:map
+                                                [:database ::lib.schema.id/database]
+                                                [:type [:enum :query :native]]]]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (check-card-read-perms database-id *card-id*))

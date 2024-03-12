@@ -104,6 +104,8 @@
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
     (t2.with-temp/with-temp [Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                                         :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+      (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
+             (card-metadata card)))
       (let [result (qp/process-query
                     (qp/userland-query
                      {:database lib.schema.id/saved-questions-virtual-database-id

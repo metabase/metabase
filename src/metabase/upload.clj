@@ -13,6 +13,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
    [metabase.lib.core :as lib]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
@@ -209,25 +210,29 @@
            (filter #((type->check %) trimmed))
            first))))
 
-(defn- row->value-types
-  [type->check row]
-  (map (partial value->type type->check) row))
+(defn- relax-type
+  "Given an existing column type, and a new value, relax the type until it includes the value."
+  [type->check current-type value]
+  (cond (nil? value) current-type
+        (nil? current-type) (value->type type->check value)
+        :else (let [trimmed (str/trim value)]
+                (if (str/blank? trimmed)
+                  current-type
+                  (->> (cons current-type (ancestors h current-type))
+                       (filter #((type->check %) trimmed))
+                       first)))))
 
-(defn- most-specific-common-ancestor
-  "Return the first \"ancestor\" of `base-type` which is also an \"ancestor\" of `new-type`.
-  We use a more relaxed definition of \"ancestor\" here than usual, which includes the tag itself."
-  [base-type new-type]
-  (when (or base-type new-type)
-    (or (ordered-hierarchy/first-common-ancestor h base-type new-type)
-        (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}"
-                                               base-type
-                                               new-type))))))
+(defn- type-relaxer
+  "Given a map of {value-type -> predicate}, return a reducing fn which updates our inferred schema using the next row."
+  [type->check]
+  (fn [value-types row]
+    ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
+    (vec (u/map-all (partial relax-type type->check) value-types row))))
 
-(defn- coalesce-types
-  "Given two collections of type tags, find the most specific common ancestor for each pair.
-  If one of the collections is longer, we return its existing tags for the remaining length."
-  [types-a types-b]
-  (u/map-all most-specific-common-ancestor types-a types-b))
+(defn- relax-types [settings current-types rows]
+  (let [type->check (settings->type->check settings)]
+    (->> (reduce (type-relaxer type->check) current-types rows)
+         (map column-type))))
 
 (defn- normalize-column-name
   [raw-name]
@@ -251,11 +256,7 @@
 (mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
   "Returns a sequence of types, given the unparsed rows in the CSV file"
   [settings column-count rows]
-  (let [type->check (settings->type->check settings)]
-    (->> rows
-         (map (partial row->value-types type->check))
-         (reduce coalesce-types (repeat column-count nil))
-         (map column-type))))
+  (relax-types settings (repeat column-count nil) rows))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
@@ -267,16 +268,11 @@
    The value of `extant-columns` and `generated-columns` is an ordered map of normalized-column-name -> type for the
    given CSV file. Supported types include `::int`, `::datetime`, etc. A column that is completely blank is assumed to
    be of type `::text`."
-  [header rows]
-  (let [normalized-header (->> header
-                               (map normalize-column-name))
-        unique-header     (->> normalized-header
-                               mbql.u/uniquify-names
-                               (map keyword))
-        column-count      (count normalized-header)
-        settings          (upload-parsing/get-settings)
-        col-name+type-pairs (->> rows
-                                 (column-types-from-rows settings column-count)
+  [settings header rows]
+  (let [normalized-header   (map normalize-column-name header)
+        unique-header       (map keyword (mbql.u/uniquify-names normalized-header))
+        column-count        (count normalized-header)
+        col-name+type-pairs (->> (column-types-from-rows settings column-count rows)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
      :generated-columns (ordered-map/ordered-map auto-pk-column-keyword ::auto-incrementing-int-pk)}))
@@ -312,18 +308,6 @@
     (str truncated-name-without-time
          (t/format time-format (strictly-monotonic-now)))))
 
-(def ^:private max-sample-rows "Maximum number of values to use for detecting a column's type" 1000)
-
-(defn- sample-rows
-  "Returns an improper subset of the rows no longer than [[max-sample-rows]]. Takes an evenly-distributed sample (not
-  just the first n)."
-  [rows]
-  (take max-sample-rows
-        (take-nth (max 1
-                       (long (/ (count rows)
-                                max-sample-rows)))
-                  rows)))
-
 (defn- column-definitions
   "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."
   [driver col->upload-type]
@@ -347,9 +331,8 @@
 (defn- parse-rows
   "Returns a lazy seq of parsed rows, given a sequence of upload types for each column.
   Empty strings are parsed as nil."
-  [col-upload-types rows]
-  (let [settings (upload-parsing/get-settings)
-        parsers  (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
+  [settings col-upload-types rows]
+  (let [parsers (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
     (for [row rows]
       (for [[value parser] (u/map-all vector row parsers)]
         (when-not (str/blank? value)
@@ -384,18 +367,22 @@
       auto-pk-indices
       (map (partial remove-indices auto-pk-indices)))))
 
+(defn- file-size-mb [csv-file]
+  (/ (.length ^File csv-file) 1048576.0))
+
 (defn- load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows]         (without-auto-pk-columns (csv/read-csv reader))
-          {:keys [extant-columns generated-columns]} (detect-schema header (sample-rows rows))
+          settings                (upload-parsing/get-settings)
+          {:keys [extant-columns generated-columns]} (detect-schema settings header rows)
           cols->upload-type       (merge generated-columns extant-columns)
           col-definitions         (column-definitions driver cols->upload-type)
           csv-col-names           (keys extant-columns)
           col-upload-types        (vals extant-columns)
-          parsed-rows             (vec (parse-rows col-upload-types rows))]
+          parsed-rows             (vec (parse-rows settings col-upload-types rows))]
       (driver/create-table! driver
                             db-id
                             table-name
@@ -406,8 +393,7 @@
         {:num-rows          (count rows)
          :num-columns       (count extant-columns)
          :generated-columns (count generated-columns)
-         :size-mb           (/ (.length csv-file)
-                               1048576.0)}
+         :size-mb           (file-size-mb csv-file)}
         (catch Throwable e
           (driver/drop-table! driver db-id table-name)
           (throw (ex-info (ex-message e) {:status-code 400})))))))
@@ -478,6 +464,10 @@
   [db schema-name]
   (nil? (can-create-upload-error db schema-name)))
 
+(defn- start-timer [] (System/nanoTime))
+
+(defn- since-ms [timer] (/ (- (System/nanoTime) timer) 1e6))
+
 ;;; +-----------------------------------------
 ;;; |  public interface for creating CSV table
 ;;; +-----------------------------------------
@@ -518,7 +508,7 @@
     (check-can-create-upload database schema-name)
     (collection/check-write-perms-for-collection collection-id)
     (try
-      (let [start-time        (System/currentTimeMillis)
+      (let [timer             (start-timer)
             driver            (driver.u/database->driver database)
             filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                                   filename)
@@ -546,14 +536,22 @@
                                 :name                   (humanization/name->human-readable-name filename-prefix)
                                 :visualization_settings {}}
                                @api/*current-user*)
-            upload-seconds    (/ (- (System/currentTimeMillis) start-time)
-                                 1000.0)]
+            upload-seconds    (/ (since-ms timer) 1e3)
+            stats             (assoc stats :upload-seconds upload-seconds)]
+
+        (events/publish-event! :event/upload-create
+                               {:user-id  (:id @api/*current-user*)
+                                :model-id (:id table)
+                                :model    :model/Table
+                                :details  {:db-id       db-id
+                                           :schema-name schema-name
+                                           :table-name  table-name
+                                           :model-id    (:id card)
+                                           :stats       stats}})
+
         (snowplow/track-event! ::snowplow/csv-upload-successful
                                api/*current-user-id*
-                               (merge
-                                {:model-id       (:id card)
-                                 :upload-seconds upload-seconds}
-                                stats))
+                               (assoc stats :model-id (:id card)))
         card)
       (catch Throwable e
         (let [fail-stats (with-open [reader (bom/bom-reader file)]
@@ -594,6 +592,10 @@
        (str/join "\n\n")
        (not-blank)))
 
+(def ^:private allowed-type-upgrades
+  "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values."
+  {::int #{::float}})
+
 (defn- check-schema
   "Throws an exception if:
     - the CSV file contains duplicate column names
@@ -611,10 +613,32 @@
       (let [error-message (extra-and-missing-error-markdown extra missing)]
         (throw (ex-info error-message {:status-code 422}))))))
 
+(defn- matching-or-upgradable? [current-type relaxed-type]
+  (or (= current-type relaxed-type)
+      (when-let [f (allowed-type-upgrades current-type)]
+        (f relaxed-type))))
+
+(defn- changed-field->new-type
+  "Given some fields and old and new types, filter out fields with unchanged types, then pair with the new types."
+  [fields old-types new-types]
+  (let [new-if-changed #(when (not= %1 %2) %2)]
+    (->> (map new-if-changed old-types new-types)
+         (map vector fields)
+         (filter second)
+         (into {}))))
+
+(defn- alter-columns! [driver database table field->new-type]
+  (driver/alter-columns! driver (:id database) (table-identifier table)
+                         (m/map-kv (fn [field column-type]
+                                     [(keyword (:name field))
+                                      (driver/upload-type->database-type driver column-type)])
+                                   field->new-type)))
+
 (defn- append-csv!*
   [database table file]
   (with-open [reader (bom/bom-reader file)]
-    (let [[header & rows]    (without-auto-pk-columns (csv/read-csv reader))
+    (let [timer              (start-timer)
+          [header & rows]    (without-auto-pk-columns (csv/read-csv reader))
           driver             (driver.u/database->driver database)
           normed-name->field (m/index-by (comp normalize-column-name :name)
                                          (t2/select :model/Field :table_id (:id table) :active true))
@@ -623,24 +647,56 @@
                               (driver/create-auto-pk-with-append-csv? driver)
                               (not (contains? normed-name->field auto-pk-column-name)))
           _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
-          col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
-          parsed-rows        (parse-rows col-upload-types rows)]
+          settings           (upload-parsing/get-settings)
+          old-column-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
+          ;; in the happy, and most common, case all the values will match the existing types
+          ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
+          ;; we can come back and optimize this to an optimistic-with-fallback approach later.
+          relaxed-types      (relax-types settings old-column-types rows)
+          new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types relaxed-types)
+          _                  (when (and (not= old-column-types new-column-types)
+                                        ;; if we cannot coerce all the columns, don't bother coercing any of them
+                                        ;; we will instead throw an error when we try to parse as the old type
+                                        (= relaxed-types new-column-types))
+                               (let [fields (map normed-name->field normed-header)]
+                                 (->> (changed-field->new-type fields old-column-types relaxed-types)
+                                      (alter-columns! driver database table))))
+          ;; this will fail if any of our required relaxations were rejected.
+          parsed-rows        (parse-rows settings new-column-types rows)
+          row-count          (count parsed-rows)]
+
       (try
         (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
         (catch Throwable e
-
           (throw (ex-info (ex-message e) {:status-code 422}))))
+
       (when create-auto-pk?
         (driver/add-columns! driver
                              (:id database)
                              (table-identifier table)
-                             {auto-pk-column-keyword (conj (driver/upload-type->database-type driver ::auto-incrementing-int-pk))}
+                             {auto-pk-column-keyword (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}
                              :primary-key [auto-pk-column-keyword]))
+
       (scan-and-sync-table! database table)
+
       (when create-auto-pk?
         (let [auto-pk-field (table-id->auto-pk-column (:id table))]
           (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
-      {:row-count (count parsed-rows)})))
+
+      (events/publish-event! :event/upload-append
+                             {:user-id  (:id @api/*current-user*)
+                              :model-id (:id table)
+                              :model    :model/Table
+                              :details  {:db-id       (:id database)
+                                         :schema-name (:schema table)
+                                         :table-name  (:name table)
+                                         :stats       {:num-rows          row-count
+                                                       :num-columns       (count new-column-types)
+                                                       :generated-columns (if create-auto-pk? 1 0)
+                                                       :size-mb           (file-size-mb file)
+                                                       :upload-seconds    (since-ms timer)}}})
+
+      {:row-count row-count})))
 
 (defn- can-append-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
