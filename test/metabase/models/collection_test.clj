@@ -1546,8 +1546,8 @@
                                    :location "/1/3/"
                                    :here     #{:card}
                                    :children [{:name "G", :id 7, :location "/1/3/6/", :children []}]}]}]}
-          {:name "aaa", :id 9, :location "/", :children [] :here #{:card}}
-          {:name "H", :id 8, :location "/", :children []}]
+          {:name "H", :id 8, :location "/", :children []}
+          {:name "aaa", :id 9, :location "/", :children [] :here #{:card}}]
          (collection/collections->tree
           {:dataset #{4 5} :card #{6 9}}
           [{:name "A", :id 1, :location "/"}
@@ -1599,25 +1599,31 @@
         (is (= [{:id       3
                  :name     "a"
                  :location "/"
-                 :children [{:id       1
-                             :name     "a"
-                             :location "/3/"
-                             :children [{:id       2
-                                         :name     "a"
-                                         :location "/3/1/"
-                                         :children [{:id       5
-                                                     :name     "a"
-                                                     :location "/3/1/2/"
-                                                     :children []}]}
-                                        {:id       4
-                                         :name     "a"
-                                         :location "/3/1/"
-                                         :children []}]}
-                            {:id       6
-                             :name     "a"
-                             :location "/3/"
-                             :children []}]}]
-               (collection/collections->tree {} collections)))))))
+                 :children #{{:id       1
+                              :name     "a"
+                              :location "/3/"
+                              :children #{{:id       2
+                                           :name     "a"
+                                           :location "/3/1/"
+                                           :children #{{:id       5
+                                                        :name     "a"
+                                                        :location "/3/1/2/"
+                                                        :children #{}}}}
+                                          {:id       4
+                                           :name     "a"
+                                           :location "/3/1/"
+                                           :children #{}}}}
+                             {:id       6
+                              :name     "a"
+                              :location "/3/"
+                              :children #{}}}}]
+               (walk/postwalk (fn [m]
+                                (if (and (map? m) (:children m))
+                                  (update m :children set)
+                                  m))
+                              ;; within each `children` vector, `collections->tree` will return collections in
+                              ;; the order they were passed.
+                              (collection/collections->tree {} collections))))))))
 
 (deftest ^:parallel annotate-collections-test
   (let [collections [{:id 1, :name "a", :location "/"}
