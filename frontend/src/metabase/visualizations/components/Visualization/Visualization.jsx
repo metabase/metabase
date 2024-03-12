@@ -302,7 +302,12 @@ class Visualization extends PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, seriesIndex, objectId }) => {
+  handleOnChangeCardAndRun = ({
+    nextCard,
+    seriesIndex,
+    objectId,
+    clicked: passedClicked,
+  }) => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
@@ -312,7 +317,7 @@ class Visualization extends PureComponent {
       nextCard,
       previousCard,
       objectId,
-      clicked,
+      passedClicked,
     });
   };
 
