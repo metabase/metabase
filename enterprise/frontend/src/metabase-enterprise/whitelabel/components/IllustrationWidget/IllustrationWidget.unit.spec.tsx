@@ -100,7 +100,8 @@ describe("IllustrationWidget", () => {
     it("should allow uploading a PNG file", async () => {
       /**
        * Since `userEvent.upload` seem to bypass input's `accept` which accepts MIME types,
-       * we need to test those scenarios in Cypress instead.
+       * we wouldn't be able to test that we shouldn't be able to select files with MIME type
+       * not specified in `accept`.
        */
       const customOption = { label: "Custom", value: "custom" };
 
