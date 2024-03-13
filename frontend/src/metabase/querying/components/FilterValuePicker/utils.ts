@@ -41,21 +41,26 @@ function getFieldOptions(fieldValues: FieldValue[]): SelectItem[] {
 function getSelectedOptions(selectedValues: string[]): SelectItem[] {
   return selectedValues.map(value => ({
     value,
-    label: value,
   }));
 }
 
 export function getEffectiveOptions(
   fieldValues: FieldValue[],
   selectedValues: string[],
+  elevatedValues: string[] = [],
 ): SelectItem[] {
   const options = [
+    ...getSelectedOptions(elevatedValues),
     ...getFieldOptions(fieldValues),
     ...getSelectedOptions(selectedValues),
   ];
 
   const mapping = options.reduce((map: Record<string, string>, option) => {
-    map[option.value] ??= option.label ?? option.value;
+    if (option.label) {
+      map[option.value] = option.label;
+    } else {
+      map[option.value] ??= option.value;
+    }
     return map;
   }, {});
 
