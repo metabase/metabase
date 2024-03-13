@@ -1,12 +1,14 @@
 import type { Parameter } from "metabase-types/api";
 
+import { isStaticListParam } from "./core";
+
 type Action =
   | {
       type: "SET_IS_LOADING";
       payload: { isLoading: boolean; query?: string };
     }
   | {
-      type: "SET_LOADED";
+      type: "SET_VALUES";
       payload: {
         values: string[];
         hasMore: boolean;
@@ -19,10 +21,11 @@ type Action =
 
 interface State {
   values: string[];
+  hasFetchedValues: boolean;
   hasMoreValues: boolean;
   isLoading: boolean;
   resetKey: string;
-  lastSearch: string;
+  searchQuery: string;
   errorMsg?: string;
 }
 
@@ -31,32 +34,34 @@ export function getDefaultState(
   resetKey: string,
 ): State {
   return {
-    // This is needed for Select to show it
+    // This is needed for Select to show it initially
     values: initialValue ? [initialValue] : [],
+    hasFetchedValues: false,
     hasMoreValues: true,
     isLoading: false,
     resetKey,
-    lastSearch: "",
+    searchQuery: initialValue ?? "",
   };
 }
 
 export function reducer(state: State, action: Action): State {
-  // console.log(action);
+  // console.log(action.type, JSON.stringify(action.payload), state);
 
   switch (action.type) {
     case "SET_IS_LOADING":
       return {
         ...state,
         isLoading: action.payload.isLoading,
-        lastSearch: action.payload.query ?? state.lastSearch,
+        searchQuery: action.payload.query ?? state.searchQuery,
         errorMsg: undefined,
       };
 
-    case "SET_LOADED":
+    case "SET_VALUES":
       return {
         ...state,
         values: action.payload.values,
         hasMoreValues: action.payload.hasMore,
+        hasFetchedValues: true,
         isLoading: false,
         resetKey: action.payload.resetKey,
         errorMsg: undefined,
@@ -78,10 +83,11 @@ export function reducer(state: State, action: Action): State {
     case "RESET":
       return {
         values: [],
+        hasFetchedValues: false,
         hasMoreValues: true,
         isLoading: false,
         resetKey: action.payload.newResetKey,
-        lastSearch: "",
+        searchQuery: "",
       };
   }
 }
@@ -91,4 +97,24 @@ export function getResetKey(parameter: Parameter): string {
     parameter.values_source_config,
     parameter.values_source_type,
   ]);
+}
+
+export function shouldFetchInitially(state: State, parameter: Parameter) {
+  return !isStaticListParam(parameter) && !state.hasFetchedValues;
+}
+
+export function shouldFetchOnSearch(
+  state: State,
+  parameter: Parameter,
+  query: string,
+) {
+  return (
+    !isStaticListParam(parameter) &&
+    state.hasMoreValues &&
+    query !== state.searchQuery
+  );
+}
+
+export function shouldReset(state: State, newResetKey: string) {
+  return state.resetKey !== newResetKey;
 }

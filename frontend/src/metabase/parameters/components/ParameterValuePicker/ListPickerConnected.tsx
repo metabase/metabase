@@ -1,12 +1,23 @@
-import { useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer } from "react";
 import { t } from "ttag";
 
+import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
 import type { Parameter, ParameterValues } from "metabase-types/api";
 
 import { ListPicker } from "./ListPicker";
-import { getFlatValueList, getListParameterStaticValues } from "./core";
-import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
-import { getDefaultState, getResetKey, reducer } from "./listPickerState";
+import {
+  getFlatValueList,
+  getListParameterStaticValues,
+  shouldEnableSearch,
+} from "./core";
+import {
+  getDefaultState,
+  getResetKey,
+  reducer,
+  shouldFetchInitially,
+  shouldFetchOnSearch,
+  shouldReset,
+} from "./listPickerState";
 
 interface ListPickerConnectedProps {
   value: string | null;
@@ -20,8 +31,6 @@ interface ListPickerConnectedProps {
   searchDebounceMs?: number;
 }
 
-// TODO should we fetch initially?
-// TODO annoying onSearch when value is cleared
 export function ListPickerConnected(props: ListPickerConnectedProps) {
   const {
     value,
@@ -32,18 +41,18 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     fetchValues,
   } = props;
 
-  const [
-    { values, hasMoreValues, isLoading, lastSearch, resetKey, errorMsg },
-    dispatch,
-  ] = useReducer(reducer, getDefaultState(value, getResetKey(parameter)));
+  const [state, dispatch] = useReducer(
+    reducer,
+    getDefaultState(value, getResetKey(parameter)),
+  );
+  const { values: fetchedValues, isLoading, errorMsg } = state;
 
-  const fetchAndSaveValuesDebounced = useDebouncedCallback(
+  const fetchAndUpdate = useCallback(
     async (query: string) => {
       try {
         const res = await fetchValues(parameter, query);
-
         dispatch({
-          type: "SET_LOADED",
+          type: "SET_VALUES",
           payload: {
             values: getFlatValueList(res.values as string[][]),
             hasMore: res.has_more_values,
@@ -57,59 +66,75 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
         });
       }
     },
-    searchDebounceMs,
-    [dispatch, fetchValues, parameter],
+    [fetchValues, dispatch, parameter],
   );
 
-  const cancelFetching = () => {
-    fetchAndSaveValuesDebounced.cancel();
+  const fetchUpdateDebounced = useDebouncedCallback(
+    fetchAndUpdate,
+    searchDebounceMs,
+    [fetchAndUpdate],
+  );
+
+  const cancelFetch = () => {
+    fetchUpdateDebounced.cancel();
     dispatch({ type: "SET_IS_LOADING", payload: { isLoading: false } });
   };
 
   const ownOnSearch = (query: string) => {
-    const trimmed = query.trim();
-
-    // We have to trigger fetch only when search is different from the current value
-    if (hasMoreValues && trimmed !== lastSearch) {
-      // console.log(`search trimmed="${trimmed}" lastSearch="${lastSearch}"`);
-      fetchAndSaveValuesDebounced.cancel();
+    // console.log(
+    //   `search hasMoreValues=${hasMoreValues} query="${searchQuery}" lastSearch="${searchQuery}"`,
+    // );
+    // Trigger fetch only when search is different from the current value
+    if (shouldFetchOnSearch(state, parameter, query)) {
+      fetchUpdateDebounced.cancel();
       dispatch({
         type: "SET_IS_LOADING",
-        payload: { isLoading: true, query: trimmed },
+        payload: { isLoading: true, query },
       });
-      fetchAndSaveValuesDebounced(query);
+      fetchUpdateDebounced(query);
+      return;
     }
   };
 
   const ownOnChange = (value: string | null) => {
-    cancelFetching();
+    cancelFetch();
     onChange(value);
   };
 
   // Reset when parameter changes
   useEffect(() => {
     const newResetKey = getResetKey(parameter);
-    if (resetKey !== newResetKey) {
+    if (shouldReset(state, newResetKey)) {
       dispatch({ type: "RESET", payload: { newResetKey } });
       ownOnChange(null);
     }
-  }, [resetKey, parameter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, parameter]);
   // Cleanup
-  useEffect(() => () => cancelFetching(), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => cancelFetch(), []);
 
   const staticValues = getListParameterStaticValues(parameter);
-  const enableSearch =
-    !staticValues ||
-    staticValues.length > forceSearchItemCount ||
-    parameter.values_query_type === "search";
+  const enableSearch = shouldEnableSearch(parameter, forceSearchItemCount);
+
+  const fetchValuesInit = useCallback(() => {
+    if (shouldFetchInitially(state, parameter)) {
+      dispatch({
+        type: "SET_IS_LOADING",
+        payload: { isLoading: true, query: "" },
+      });
+      fetchAndUpdate("");
+    }
+  }, [parameter, state, fetchAndUpdate]);
 
   return (
     <ListPicker
       value={value ?? ""}
-      values={staticValues ?? values}
+      values={staticValues ?? fetchedValues}
       onClear={() => ownOnChange(null)}
       onChange={ownOnChange}
-      onSearchChange={staticValues ? undefined : ownOnSearch}
+      onSearchChange={ownOnSearch}
+      onDropdownOpen={staticValues ? undefined : fetchValuesInit}
       enableSearch={enableSearch}
       placeholder={
         enableSearch ? t`Start typing to filter…` : t`Select a default value…`

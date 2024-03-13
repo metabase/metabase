@@ -42,17 +42,30 @@ export function shouldUseListPicker(parameter: Parameter): boolean {
   );
 }
 
-// TODO extract this
+export function isStaticListParam(parameter: Parameter) {
+  return parameter.values_source_type === "static-list";
+}
+
 export function getListParameterStaticValues(
   parameter: Parameter,
 ): string[] | null {
-  if (parameter.values_source_type === "static-list") {
+  if (isStaticListParam(parameter)) {
     return parameter.values_source_config?.values as string[];
   }
-
   return null;
 }
 
 export function getFlatValueList(values: string[][] | string[]) {
   return values.flat(1);
+}
+
+export function shouldEnableSearch(
+  parameter: Parameter,
+  maxCount: number,
+): boolean {
+  if (parameter.values_query_type === "search") {
+    return true;
+  }
+  const staticValues = getListParameterStaticValues(parameter);
+  return !staticValues || staticValues.length > maxCount;
 }
