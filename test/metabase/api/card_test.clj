@@ -1085,8 +1085,7 @@
 (deftest create-card-with-metric-type
   (mt/with-model-cleanup [:model/Card]
     (testing "can create a metric card"
-      (is (=? {:dataset false
-               :type    "metric"}
+      (is (=? {:type "metric"}
               (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
                                                                        :type "metric")))))))
 
@@ -1207,8 +1206,7 @@
   (testing "can fetch a metric card"
     (mt/with-temp [:model/Card card {:dataset_query (mbql-count-query)
                                      :type "metric"}]
-      (is (=? {:dataset false
-               :type    "metric"}
+      (is (=? {:type "metric"}
               (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
