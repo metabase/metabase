@@ -55,7 +55,7 @@ const PeopleListRow = ({
             user={user}
           />
         </span>{" "}
-        <Text fw="bold" mins="1rem">
+        <Text fw="bold" ms="1rem">
           {getName(user)}
         </Text>
       </td>

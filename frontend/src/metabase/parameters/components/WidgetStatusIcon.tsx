@@ -1,3 +1,4 @@
+import styled from "@emotion/styled";
 import cx from "classnames";
 import type { MouseEvent } from "react";
 
@@ -8,8 +9,12 @@ type Props = {
   onClick?: () => void;
 };
 
+const StyledIcon = styled(Icon)`
+  inset-inline-end: 0;
+`;
+
 export function WidgetStatusIcon({ name, onClick }: Props) {
-  const classes = cx("flex-align-right flex-no-shrink", {
+  const classes = cx({
     "cursor-pointer": ["close", "time_history"].includes(name),
   });
 
@@ -21,6 +26,11 @@ export function WidgetStatusIcon({ name, onClick }: Props) {
   };
 
   return (
-    <Icon name={name} onClick={handleOnClick} size={12} className={classes} />
+    <StyledIcon
+      name={name}
+      onClick={handleOnClick}
+      size={12}
+      className={classes}
+    />
   );
 }

@@ -220,7 +220,7 @@ function GroupRow({
               bg={backgroundColor}
             />
           </span>
-          <Text color="inherit" mins="1rem" fw="bold">
+          <Text color="inherit" ms="1rem" fw="bold">
             {getGroupNameLocalized(group)}
           </Text>
         </Link>

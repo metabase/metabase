@@ -19,7 +19,7 @@ import {
   getParameterIconName,
   getParameterWidgetTitle,
 } from "metabase/parameters/utils/ui";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import {
   getNumberParameterArity,
   getStringParameterArity,
@@ -178,7 +178,10 @@ class ParameterValueWidget extends Component {
           {showTypeIcon && (
             <Icon
               name={parameterTypeIcon}
-              className="flex-align-left mr1 flex-no-shrink"
+              style={{
+                marginInlineEnd: "0.5rem",
+              }}
+              className="flex-no-shrink"
               size={16}
             />
           )}
@@ -214,17 +217,20 @@ class ParameterValueWidget extends Component {
             {showTypeIcon && (
               <Icon
                 name={parameterTypeIcon}
-                className="flex-align-left mr1 flex-no-shrink"
+                style={{
+                  marginInlineEnd: "0.5rem",
+                }}
+                className="flex-no-shrink"
                 size={16}
               />
             )}
-            <div className="mr1 text-nowrap">
+            <Box me="1rem">
               <FormattedParameterValue
                 parameter={parameter}
                 value={value}
                 placeholder={placeholderText}
               />
-            </div>
+            </Box>
             {this.getActionIcon()}
           </ParameterValueWidgetTrigger>
         }

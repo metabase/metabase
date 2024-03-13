@@ -89,19 +89,11 @@ const verticalBottomIconCSS = css`
 `;
 
 const horizontalLeftIconCSS = css`
-  margin-left: 0.5rem;
-  [dir="rtl"] & {
-    margin-left: 0;
-    margin-right: 0.5rem;
-  }
+  margin-inline-start: 0.5rem;
 `;
 
 const horizontalRightIconCSS = css`
-  margin-right: 0.5rem;
-  [dir="rtl"] & {
-    margin-right: 0;
-    margin-left: 0.5rem;
-  }
+  margin-inline-end: 0.5rem;
 `;
 
 export const ButtonTextContainer = styled.div<ButtonTextContainerProps>`
