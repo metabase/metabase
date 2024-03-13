@@ -22,11 +22,7 @@ export function syncColumnSettings(
   let newSettings = settings;
 
   if (queryResults && !queryResults.error) {
-    newSettings = syncTableColumnSettings(
-      newSettings,
-      queryResults,
-      options == null,
-    );
+    newSettings = syncTableColumnSettings(newSettings, queryResults, options);
 
     if (prevQueryResults && !prevQueryResults.error) {
       newSettings = syncGraphMetricSettings(
@@ -40,7 +36,7 @@ export function syncColumnSettings(
           newSettings,
           queryResults,
           prevQueryResults,
-          options.column,
+          options,
         );
       }
     }
@@ -52,12 +48,12 @@ export function syncColumnSettings(
 function syncTableColumnSettings(
   settings: VisualizationSettings,
   { data }: Dataset,
-  isDefaultSkipped: boolean,
+  options?: SettingsSyncOptions,
 ): VisualizationSettings {
   // "table.columns" receive a value only if there are custom settings
   // e.g. some columns are hidden. If it's empty, it means everything is visible
   const columnSettings = settings["table.columns"] ?? [];
-  if (columnSettings.length === 0 && isDefaultSkipped) {
+  if (columnSettings.length === 0 && !options?.column) {
     return settings;
   }
 
@@ -101,7 +97,7 @@ function moveNewTableColumnsAfterColumn(
   settings: VisualizationSettings,
   { data: { cols } }: Dataset,
   { data: { cols: prevCols } }: Dataset,
-  column: DatasetColumn,
+  { column }: SettingsSyncOptions,
 ): VisualizationSettings {
   const columnSettings = settings["table.columns"];
   if (!column || !columnSettings) {
