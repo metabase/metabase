@@ -30,7 +30,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Rustic Paper Wallet");
         cy.findAllByText("Doohickey").should("not.exist");
       });
@@ -42,7 +42,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Rustic Paper Wallet");
         cy.findAllByText("Doohickey").should("not.exist");
       });
@@ -109,7 +109,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
       });
@@ -121,7 +121,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
       });
@@ -196,7 +196,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("No results!");
       });
     });
@@ -214,7 +214,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("No results!");
       });
     });
