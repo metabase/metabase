@@ -77,5 +77,6 @@
       ;; This feels inefficient at first glance, but the number of records should be quite small and doing some sort
       ;; of upsert-or-delete would involve comparisons in Clojure-land that are more expensive than just "killing and
       ;; filling" the records.
-      (t2/delete! :model/QueryField :card_id card-id)
-      (t2/insert! :model/QueryField query-field-records))))
+      (t2/with-transaction [_conn]
+        (t2/delete! :model/QueryField :card_id card-id)
+        (t2/insert! :model/QueryField query-field-records)))))
