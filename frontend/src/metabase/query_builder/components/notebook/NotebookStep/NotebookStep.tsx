@@ -7,8 +7,8 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
-import type Question from "metabase-lib/Question";
-import type { Query } from "metabase-lib/types";
+import type { Query } from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import NotebookStepPreview from "../NotebookStepPreview";
 import type {

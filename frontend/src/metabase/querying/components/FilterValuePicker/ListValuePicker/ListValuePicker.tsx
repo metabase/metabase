@@ -37,7 +37,7 @@ export function ListValuePicker({
 }: ListValuePickerProps) {
   if (!compact) {
     return (
-      <DefaultValuePicker
+      <CheckboxListPicker
         fieldValues={fieldValues}
         selectedValues={selectedValues}
         placeholder={placeholder}
@@ -49,7 +49,7 @@ export function ListValuePicker({
 
   if (fieldValues.length <= MAX_INLINE_OPTIONS) {
     return (
-      <CheckboxValuePicker
+      <CheckboxGridPicker
         fieldValues={fieldValues}
         selectedValues={selectedValues}
         placeholder={placeholder}
@@ -59,7 +59,7 @@ export function ListValuePicker({
   }
 
   return (
-    <SelectValuePicker
+    <MultiSelectPicker
       fieldValues={fieldValues}
       selectedValues={selectedValues}
       placeholder={placeholder}
@@ -68,7 +68,7 @@ export function ListValuePicker({
   );
 }
 
-function DefaultValuePicker({
+function CheckboxListPicker({
   fieldValues,
   selectedValues,
   placeholder,
@@ -76,7 +76,12 @@ function DefaultValuePicker({
   onChange,
 }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const options = getEffectiveOptions(fieldValues, selectedValues);
+  const [elevatedValues] = useState(selectedValues);
+  const options = getEffectiveOptions(
+    fieldValues,
+    selectedValues,
+    elevatedValues,
+  );
   const visibleOptions = searchOptions(options, searchValue);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -113,7 +118,7 @@ function DefaultValuePicker({
   );
 }
 
-function CheckboxValuePicker({
+function CheckboxGridPicker({
   fieldValues,
   selectedValues,
   onChange,
@@ -140,7 +145,7 @@ function CheckboxValuePicker({
   );
 }
 
-export function SelectValuePicker({
+export function MultiSelectPicker({
   fieldValues,
   selectedValues,
   placeholder,
@@ -155,6 +160,7 @@ export function SelectValuePicker({
       value={selectedValues}
       placeholder={placeholder}
       autoFocus={autoFocus}
+      searchable
       aria-label={t`Filter value`}
       onChange={onChange}
     />

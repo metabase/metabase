@@ -46,7 +46,7 @@ import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Bookmark as IBookmark,
   DashboardId,

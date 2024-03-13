@@ -9,7 +9,7 @@ import {
 import Tables from "metabase/entities/tables";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
-import type Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { State } from "metabase-types/store";
 
 import FieldList from "./FieldList";

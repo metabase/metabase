@@ -13,7 +13,7 @@ import { getParameterMappingOptions as _getParameterMappingOptions } from "metab
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardId,

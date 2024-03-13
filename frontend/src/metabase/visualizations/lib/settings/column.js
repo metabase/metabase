@@ -23,12 +23,12 @@ import {
   isDateWithoutTime,
   isNumber,
   isPercentage,
-} from "metabase-lib/types/utils/isa";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+} from "metabase-lib/v1/types/utils/isa";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import {
   findColumnIndexesForColumnSettings,
   getColumnSettingKey,
-} from "metabase-lib/queries/utils/dataset";
+} from "metabase-lib/v1/queries/utils/dataset";
 import { nestedSettings } from "./nested";
 
 // HACK: cyclical dependency causing errors in unit tests

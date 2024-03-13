@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import Table from "metabase-lib/metadata/Table";
+import Table from "metabase-lib/v1/metadata/Table";
 
 import {
   Description,

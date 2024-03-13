@@ -1,11 +1,11 @@
 import * as Lib from "metabase-lib";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 import {
   isCategory,
   isDate,
   isID,
   isNumber,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import CategoryFingerprint from "./CategoryFingerprint";

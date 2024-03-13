@@ -14,8 +14,8 @@ import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard,
   DashCardId,

@@ -7,7 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
-import { hasLatitudeAndLongitudeColumns } from "metabase-lib/types/utils/isa";
+import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 
 import LeafletGridHeatMap from "./LeafletGridHeatMap";
 import LeafletHeatMap from "./LeafletHeatMap";

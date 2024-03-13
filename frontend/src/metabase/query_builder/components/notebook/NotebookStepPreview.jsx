@@ -11,7 +11,7 @@ import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { Icon } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 import {
   PreviewButtonContainer,

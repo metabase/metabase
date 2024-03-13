@@ -14,8 +14,8 @@ import AccordionList from "metabase/core/components/AccordionList";
 import { SortableList } from "metabase/core/components/Sortable";
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/ui";
-import type Field from "metabase-lib/metadata/Field";
-import type Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, SchemaId, TableFieldOrder } from "metabase-types/api";
 
 import MetadataTableColumn from "../MetadataTableColumn";
