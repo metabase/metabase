@@ -8,12 +8,12 @@ import { DatesProvider } from "../DatesProvider";
 
 interface ThemeProviderProps {
   children: ReactNode;
+  dir?: "ltr" | "rtl";
 }
 
 export const ThemeProvider = withEmotionCache(
-  ({ children }: ThemeProviderProps, cache: EmotionCache) => {
-    const theme = getThemeOverrides();
-
+  ({ children, dir = "ltr" }: ThemeProviderProps, cache: EmotionCache) => {
+    const theme = { ...getThemeOverrides(), dir };
     return (
       <MantineProvider theme={theme} emotionCache={cache}>
         <DatesProvider>{children}</DatesProvider>
@@ -21,3 +21,19 @@ export const ThemeProvider = withEmotionCache(
     );
   },
 );
+
+export const Direction = ({
+  children,
+  dir,
+}: {
+  children: ReactNode;
+  dir: "ltr" | "rtl";
+}) => {
+  return (
+    <ThemeProvider dir={dir}>
+      <div dir={dir} style={{ height: "100%" }}>
+        {children}
+      </div>
+    </ThemeProvider>
+  );
+};

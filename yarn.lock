@@ -8961,6 +8961,11 @@ cssfontparser@^1.2.1:
   resolved "https://registry.yarnpkg.com/cssfontparser/-/cssfontparser-1.2.1.tgz#f4022fc8f9700c68029d542084afbaf425a3f3e3"
   integrity sha512-6tun4LoZnj7VN6YeegOVb67KBX/7JJsqvj+pv3ZA7F878/eN33AbGa5b/S/wXxS/tcp8nc40xRUrsPlxIyNUPg==
 
+cssjanus@^2.0.1:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/cssjanus/-/cssjanus-2.1.0.tgz#6f99070e0b7cc79f826ea48c63c03cb250713af1"
+  integrity sha512-kAijbny3GmdOi9k+QT6DGIXqFvL96aksNlGr4Rhk9qXDZYWUojU4bRc3IHWxdaLNOqgEZHuXoe5Wl2l7dxLW5g==
+
 csso@^5.0.5:
   version "5.0.5"
   resolved "https://registry.yarnpkg.com/csso/-/csso-5.0.5.tgz#f9b7fe6cc6ac0b7d90781bb16d5e9874303e2ca6"
@@ -20673,6 +20678,13 @@ stylelint@^16.2.1:
     svg-tags "^1.0.0"
     table "^6.8.1"
     write-file-atomic "^5.0.1"
+
+stylis-plugin-rtl@^2.1.1:
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/stylis-plugin-rtl/-/stylis-plugin-rtl-2.1.1.tgz#16707809c878494835f77e5d4aadaae3db639b5e"
+  integrity sha512-q6xIkri6fBufIO/sV55md2CbgS5c6gg9EhSVATtHHCdOnbN/jcI0u3lYhNVeuI65c4lQPo67g8xmq5jrREvzlg==
+  dependencies:
+    cssjanus "^2.0.1"
 
 stylis@4.2.0:
   version "4.2.0"

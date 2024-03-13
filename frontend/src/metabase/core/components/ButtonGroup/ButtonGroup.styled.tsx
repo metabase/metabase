@@ -10,15 +10,15 @@ export const ButtonGroupRoot = styled.div`
     border: 1px solid ${color("border")};
 
     &:not(:last-of-type) {
-      border-right-width: 0.5px;
-      border-top-right-radius: 0;
-      border-bottom-right-radius: 0;
+      border-inline-end-width: 0.5px;
+      border-start-end-radius: 0;
+      border-end-end-radius: 0;
     }
 
     &:not(:first-of-type) {
       border-left-width: 0.5px;
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
+      border-start-start-radius: 0;
+      border-end-start-radius: 0;
     }
   }
 `;

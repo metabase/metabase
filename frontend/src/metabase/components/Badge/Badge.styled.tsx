@@ -43,7 +43,7 @@ export const MaybeLink = styled(RawMaybeLink)`
 `;
 
 export const BadgeIcon = styled(Icon)<{ hasMargin: boolean }>`
-  margin-right: ${props => (props.hasMargin ? "5px" : 0)};
+  margin-inline-end: ${props => (props.hasMargin ? "5px" : 0)};
 `;
 
 export const BadgeText = styled.span<{ isSingleLine: boolean }>`

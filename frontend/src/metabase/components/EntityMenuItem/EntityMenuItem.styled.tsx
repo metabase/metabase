@@ -49,7 +49,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
 `;
 
 export const MenuItemIcon = styled(Icon)`
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
 `;
 
 export const MenuItemTitle = styled.span`

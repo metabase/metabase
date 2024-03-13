@@ -7,6 +7,8 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
 import Typeahead from "metabase/hoc/Typeahead";
 import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
+import { getWritingDirection } from "metabase/selectors/app";
 import { Icon } from "metabase/ui";
 
 import { AddMemberAutocompleteSuggestionRoot } from "./AddMemberRow.styled";
@@ -114,12 +116,13 @@ const AddMemberTypeaheadPopover = Typeahead({
   target,
 }) {
   const colors = useMemo(getColorPalette, []);
+  const writingDirection = useSelector(getWritingDirection);
 
   return (
     <TippyPopover
       className="bordered"
       offset={0}
-      placement="bottom-start"
+      placement={writingDirection === "ltr" ? "bottom-start" : "bottom-end"}
       visible={suggestions.length > 0}
       reference={target}
       content={

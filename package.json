@@ -117,6 +117,7 @@
     "simple-statistics": "^3.0.0",
     "slugg": "^1.2.1",
     "sql-formatter": "^15.1.2",
+    "stylis-plugin-rtl": "^2.1.1",
     "tether": "^1.2.0",
     "tippy.js": "^6.3.5",
     "ttag": "1.7.21",
