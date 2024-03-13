@@ -240,12 +240,6 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
 
-    if (isModel) {
-      resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
-        resultsMetadata.columns,
-      );
-    }
-
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     if (!isNative) {
