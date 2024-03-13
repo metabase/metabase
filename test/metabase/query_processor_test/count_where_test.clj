@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.count-where-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.segment :refer [Segment]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -85,7 +84,8 @@
                   ffirst
                   long))))))
 
-(deftest metric-test
+;; TODO TB legacy macro test, delete or port
+#_(deftest metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
                                                      :definition {:source-table (mt/id :venues)
