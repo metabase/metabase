@@ -22,6 +22,7 @@
   ;; (Add more as needed)
   (eval . (put 'defendpoint-schema 'clojure-doc-string-elt 3))
   (eval . (put 'defendpoint 'clojure-doc-string-elt 3))
+  (eval . (put 'defendpoint2 'clojure-doc-string-elt 3))
   (eval . (put 'defendpoint-async 'clojure-doc-string-elt 3))
   (eval . (put 'define-premium-feature 'clojure-doc-string-elt 2))
   (eval . (put 'api/defendpoint-schema 'clojure-doc-string-elt 3))

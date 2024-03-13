@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.api.defendpoint2 :refer [defendpoint2]]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.logger :as logger]
    [metabase.models.serialization :as serdes]
@@ -114,7 +115,7 @@
 
 ;;; HTTP API
 
-(api/defendpoint POST "/export"
+(defendpoint2 POST "/export"
   "Serialize and retrieve Metabase instance.
 
   Parameters:
@@ -128,27 +129,25 @@
 
   Outputs .tar.gz file with serialization results and an `export.log` file.
   On error just returns serialization logs."
-  [:as {{:strs [all_collections collection settings data_model field_values database_secrets dirname]
-         :or   {all_collections true
-                settings        true
-                data_model      true}}
-        :query-params}]
-  {collection       [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ms/PositiveInt]]
-   all_collections  [:maybe ms/BooleanValue]
-   settings         [:maybe ms/BooleanValue]
-   data_model       [:maybe ms/BooleanValue]
-   field_values     [:maybe ms/BooleanValue]
-   database_secrets [:maybe ms/BooleanValue]}
+  [{:query-params {collection       [:maybe {:description "This is collection id"}
+                                     [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ms/PositiveInt]]
+                   all_collections  [:and {:default true} ms/BooleanValue]
+                   settings         [:and {:default true} ms/BooleanValue]
+                   data_model       [:and {:default true} ms/BooleanValue]
+                   field_values     [:maybe ms/BooleanValue]
+                   database_secrets [:maybe ms/BooleanValue]
+                   dirname          [:maybe string?]
+                   :as              query}}]
   (api/check-superuser)
   (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)
-                                                            collection)
+                                                        collection)
                             :no-collections           (and (empty? collection)
-                                                           (not all_collections))
+                                                        (not all_collections))
                             :no-data-model            (not data_model)
                             :no-settings              (not settings)
-                            :include-field-values     field_values
-                            :include-database-secrets database_secrets
+                            :include-field-values     (boolean field_values)
+                            :include-database-secrets (boolean database_secrets)
                             :dirname                  dirname}
         {:keys [archive
                 log-file
@@ -156,18 +155,18 @@
                 error-message
                 callback]} (serialize&pack opts)]
     (snowplow/track-event! ::snowplow/serialization-export api/*current-user-id*
-                           {:source          "api"
-                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                            :count           (count (:seen report))
-                            :collection      (str/join "," (map str collection))
-                            :all_collections (and (empty? collection)
-                                                  (not (:no-collections opts)))
-                            :data_model      (not (:no-data-model opts))
-                            :settings        (not (:no-settings opts))
-                            :field_values    (:include-field-values opts)
-                            :secrets         (:include-database-secrets opts)
-                            :success         (boolean archive)
-                            :error_message   error-message})
+      {:source          "api"
+       :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+       :count           (count (:seen report))
+       :collection      (str/join "," (map str collection))
+       :all_collections (and (empty? collection)
+                          (not (:no-collections opts)))
+       :data_model      (not (:no-data-model opts))
+       :settings        (not (:no-settings opts))
+       :field_values    (:include-field-values opts)
+       :secrets         (:include-database-secrets opts)
+       :success         (boolean archive)
+       :error_message   error-message})
     (if archive
       {:status  200
        :headers {"Content-Type"        "application/gzip"
@@ -177,36 +176,35 @@
        :headers {"Content-Type" "text/plain"}
        :body    (on-response! log-file callback)})))
 
-(api/defendpoint ^:multipart POST "/import"
+(defendpoint2 ^:multipart POST "/import"
   "Deserialize Metabase instance from an archive generated by /export.
 
   Parameters:
   - `file`: archive encoded as `multipart/form-data` (required).
 
   Returns logs of deserialization."
-  [:as {raw-params :params}]
+  [{:multipart-params {file ms/FormFile}}]
   (api/check-superuser)
   (try
     (let [start              (System/nanoTime)
           {:keys [log-file
                   error-message
                   report
-                  callback]} (unpack&import (get-in raw-params ["file" :tempfile])
-                                            (get-in raw-params ["file" :size]))
+                  callback]} (unpack&import (:tempfile file) (:size file))
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
       (snowplow/track-event! ::snowplow/serialization-import api/*current-user-id*
-                             {:source        "api"
-                              :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
-                              :models        (str/join "," imported)
-                              :count         (if (contains? imported "Setting")
-                                               (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
-                                               (count (:seen report)))
-                              :success       (not error-message)
-                              :error_message error-message})
+        {:source        "api"
+         :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+         :models        (str/join "," imported)
+         :count         (if (contains? imported "Setting")
+                          (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                          (count (:seen report)))
+         :success       (not error-message)
+         :error_message error-message})
       {:status  200
        :headers {"Content-Type" "text/plain"}
        :body    (on-response! log-file callback)})
     (finally
-      (io/delete-file (get-in raw-params ["file" :tempfile])))))
+      (io/delete-file (:tempfile file)))))
 
 (api/define-routes +auth)

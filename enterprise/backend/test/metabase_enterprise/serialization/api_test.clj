@@ -188,7 +188,9 @@
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :post 403 "ee/serialization/export")))
                 (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 "ee/serialization/import"))))))))
+                       (mt/user-http-request :rasta :post 403 "ee/serialization/import"
+                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                         {:file (byte-array 1 [64])}))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream. Or `future` is taking too long
         ;; in `api/on-response!`, so maybe add some Thread/sleep here.

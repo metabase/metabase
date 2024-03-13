@@ -6,7 +6,7 @@
    [malli.experimental.describe :as med]))
 
 (defn describe
-  "Given a schema, returns a string explaiaing the required shape in English"
+  "Given a schema, returns a string explaining the required shape in English"
   ([?schema]
    (describe ?schema nil))
   ([?schema options]

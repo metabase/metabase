@@ -1,6 +1,5 @@
 (ns metabase.api.routes
   (:require
-   [compojure.core :refer [context defroutes]]
    [compojure.route :as route]
    [metabase.api.action :as api.action]
    [metabase.api.activity :as api.activity]
@@ -10,6 +9,7 @@
    [metabase.api.bookmark :as api.bookmark]
    [metabase.api.card :as api.card]
    [metabase.api.collection :as api.collection]
+   [metabase.api.common :refer [defroutes context]]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.database :as api.database]
    [metabase.api.dataset :as api.dataset]
@@ -61,8 +61,10 @@
 (def ^:private ^{:arglists '([request respond raise])} ee-routes
   ;; resolve the var for every request so we pick up any changes to it in interactive development
   (if-let [ee-handler-var (resolve 'metabase-enterprise.api.routes/routes)]
-    (fn [request respond raise]
-      ((var-get ee-handler-var) request respond raise))
+    (with-meta
+     (fn [request respond raise]
+       ((var-get ee-handler-var) request respond raise))
+     (meta ee-handler-var))
     (fn [_request respond _raise]
       (respond nil))))
 
