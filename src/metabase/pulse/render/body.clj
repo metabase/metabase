@@ -1038,8 +1038,11 @@
         raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
         rows           (cond->> raw-rows
-                         funnel-rows (mapv (fn [[idx val]]
-                                             [(get-in funnel-rows [(dec idx) :key]) val])))
+                         funnel-rows (mapv (fn [[row-num-or-key val]]
+                                             [(get-in funnel-rows [(if (number? row-num-or-key)
+                                                                     (dec row-num-or-key)
+                                                                     row-num-or-key)
+                                                                   :key]) val])))
         [x-col y-col]  cols
         settings       (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
                          (assoc jsviz-settings :step    {:name   (:display_name x-col)
