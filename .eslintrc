@@ -42,7 +42,14 @@
           "orderImportKind": "asc",
           "caseInsensitive": false
         },
-        "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
+        "groups": [
+          "builtin",
+          "external",
+          "internal",
+          "parent",
+          "sibling",
+          "index"
+        ],
         "warnOnUnassignedImports": false
       }
     ],
@@ -193,7 +200,10 @@
         "*.unit.spec.jsx"
       ],
       "rules": {
-        "jest/valid-title": ["error", { "ignoreTypeOfDescribeName": true }]
+        "jest/valid-title": ["error", { "ignoreTypeOfDescribeName": true }],
+        // In unit tests, you should use `act(() => {})` to invoke things causing state updates
+        // and rerenders to remove lengthy warnings from jest. Disabling the rule allows this.
+        "testing-library/no-unnecessary-act": "off"
       }
     }
   ]
