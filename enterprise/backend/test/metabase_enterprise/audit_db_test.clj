@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-db :as audit-db]
+   [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
@@ -132,6 +133,17 @@
         (testing "No exception is thrown when db has 'duplicate' entries."
           (is (= :metabase-enterprise.audit-db/no-op
                  (audit-db/ensure-audit-db-installed!))))))))
+
+(deftest checksum-not-recorded-when-load-fails-test
+  (mt/test-drivers #{:postgres :h2 :mysql}
+    (t2/delete! :model/Database :is_audit true)
+    (testing "If audit content loading throws an exception, the checksum should not be stored"
+      (audit-db/last-analytics-checksum! 0)
+      (with-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
+        (is (thrown-with-msg? Exception
+                              #"Audit loading failed"
+                              (audit-db/ensure-audit-db-installed!)))
+        (is (= 0 (audit-db/last-analytics-checksum)))))))
 
 (deftest should-load-audit?-test
   (testing "load-analytics-content + checksums dont match => load"
