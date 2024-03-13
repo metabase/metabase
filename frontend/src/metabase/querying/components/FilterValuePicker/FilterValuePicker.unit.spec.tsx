@@ -242,6 +242,31 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith(["t", "p"]);
     });
 
+    it("should elevate select field values", async () => {
+      await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["p"],
+        fieldValues: createMockFieldValues({
+          field_id: PRODUCTS.CATEGORY,
+          values: [
+            ["t", "To-do"],
+            ["p", "In-progress"],
+            ["c", "Completed"],
+          ],
+        }),
+      });
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toBeChecked();
+      expect(checkboxes[1]).toHaveAccessibleName("To-do");
+      expect(checkboxes[1]).not.toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).not.toBeChecked();
+    });
+
     it("should handle empty field values", async () => {
       const { onChange, onFocus, onBlur } = await setupStringPicker({
         query,
