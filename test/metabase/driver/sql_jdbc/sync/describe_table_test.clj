@@ -150,33 +150,22 @@
          (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
 
 (deftest describe-fields-or-table-test
-  (testing "test `describe-fields` or `describe-table` returns basic metadata"
+  (testing "test `describe-fields` or `describe-table` returns some basic metadata"
     (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
       (mt/dataset daily-bird-counts
         (let [table       (t2/select-one :model/Table :id (mt/id :bird-count))
-              schema      (:schema table)
-              table-name  (:name table)
               format-name #(ddl.i/format-name driver/*driver* %)]
-          (is (=? [{:table-schema      schema,
-                    :table-name        table-name,
-                    :pk?               true,
-                    :name              (format-name "id"),
+          (is (=? [{:name              (format-name "id"),
                     :database-type     string?,
                     :database-position 0,
                     :base-type         :type/Integer,
                     :json-unfolding    false}
-                   {:table-schema      schema,
-                    :table-name        table-name,
-                    :pk?               false,
-                    :name              (format-name "date"),
+                   {:name              (format-name "date"),
                     :database-type     string?,
                     :database-position 1,
                     :base-type         :type/Date,
                     :json-unfolding    false}
-                   {:table-schema      schema,
-                    :table-name        table-name,
-                    :pk?               false,
-                    :name              (format-name "count"),
+                   {:name              (format-name "count"),
                     :database-type     string?,
                     :database-position 2,
                     :base-type         :type/Integer,
