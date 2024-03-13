@@ -13,6 +13,7 @@ import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
+  trackLicenseTokenStepSubmitted,
   trackTrackingChanged,
   trackUsageReasonSelected,
 } from "./analytics";
@@ -22,6 +23,7 @@ import {
   getInvite,
   getIsTrackingAllowed,
   getLocale,
+  getNextStep,
   getSetupToken,
   getUsageReason,
   getUser,
@@ -32,6 +34,15 @@ import { getDefaultLocale, getLocales, getUserToken } from "./utils";
 interface ThunkConfig {
   state: State;
 }
+
+export const goToNextStep = createAsyncThunk(
+  "metabase/setup/goToNextStep",
+  async (_, { getState, dispatch }) => {
+    const state = getState() as State;
+    const nextStep = getNextStep(state);
+    dispatch(selectStep(nextStep));
+  },
+);
 
 export const LOAD_USER_DEFAULTS = "metabase/setup/LOAD_USER_DEFAULTS";
 export const loadUserDefaults = createAsyncThunk(
@@ -84,13 +95,24 @@ export const submitLanguage = createAction(SUBMIT_LANGUAGE);
 
 export const submitUser = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_INFO",
-  (_: UserInfo) => undefined,
+  (_: UserInfo, { dispatch }) => {
+    dispatch(goToNextStep());
+  },
 );
 
 export const submitUsageReason = createAsyncThunk(
   "metabase/setup/SUBMIT_USAGE_REASON",
-  (usageReason: UsageReason) => {
+  (usageReason: UsageReason, { dispatch }) => {
     trackUsageReasonSelected(usageReason);
+    dispatch(goToNextStep());
+  },
+);
+
+export const submitLicenseToken = createAsyncThunk(
+  "metabase/setup/SUBMIT_LICENSE_TOKEN",
+  (token: string | null, { dispatch }) => {
+    dispatch(goToNextStep());
+    trackLicenseTokenStepSubmitted(Boolean(token));
   },
 );
 
@@ -118,7 +140,7 @@ export const submitDatabase = createAsyncThunk<
   ThunkConfig
 >(
   SUBMIT_DATABASE,
-  async (database: DatabaseData, { getState, rejectWithValue }) => {
+  async (database: DatabaseData, { getState, dispatch, rejectWithValue }) => {
     const token = getSetupToken(getState());
     const sslDetails = { ...database.details, ssl: true };
     const sslDatabase = { ...database, details: sslDetails };
@@ -131,10 +153,12 @@ export const submitDatabase = createAsyncThunk<
 
     try {
       await validateDatabase(token, sslDatabase);
+      dispatch(goToNextStep());
       return sslDatabase;
     } catch (error1) {
       try {
         await validateDatabase(token, nonSslDatabase);
+        dispatch(goToNextStep());
         return nonSslDatabase;
       } catch (error2) {
         return rejectWithValue(error2);
@@ -146,14 +170,17 @@ export const submitDatabase = createAsyncThunk<
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
-  (_: InviteInfo) => undefined,
+  (_: InviteInfo, { dispatch }) => {
+    dispatch(goToNextStep());
+  },
 );
 
 export const SKIP_DATABASE = "metabase/setup/SKIP_DATABASE";
 export const skipDatabase = createAsyncThunk(
   SKIP_DATABASE,
-  (engine?: string) => {
+  (engine: string | undefined, { dispatch }) => {
     trackAddDataLaterClicked(engine);
+    dispatch(goToNextStep());
   },
 );
 
@@ -178,6 +205,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     const invite = getInvite(getState());
     const isTrackingAllowed = getIsTrackingAllowed(getState());
     const usageReason = getUsageReason(getState());
+    const licenseToken = getState().setup.licenseToken;
 
     try {
       await SetupApi.create({
@@ -190,6 +218,7 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
           site_locale: locale?.code,
           allow_tracking: isTrackingAllowed.toString(),
         },
+        license_token: licenseToken ?? undefined,
       });
 
       if (usageReason === "embedding" || usageReason === "both") {

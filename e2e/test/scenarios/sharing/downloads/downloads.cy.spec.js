@@ -281,7 +281,7 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
 
   it("should allow you to download a PDF of a dashboard", () => {
     cy.createDashboardWithQuestions({
-      dashboardName: `test dashboard`,
+      dashboardName: "test dashboard",
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);

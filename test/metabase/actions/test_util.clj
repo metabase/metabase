@@ -103,11 +103,18 @@
   `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
 
 (defmacro with-temp-test-data
-  "Sets the current dataset to a freshly created dataset-definition that gets destroyed at the conclusion of `body`.
-   Use this to test destructive actions that may modify the data."
+  "Sets the current dataset to a freshly created table-definitions that gets destroyed at the conclusion of `body`.
+   Use this to test destructive actions that may modify the data.
+    (with-temp-test-data [[\"product\"
+                           [{:field-name \"name\" :base-type :type/Text}]
+                           [[\"Tesla Model S\"]]]
+                          [\"rating\"
+                           [{:field-name \"score\" :base-type :type/Integer}]
+                           [[5]]]]
+      ...)"
   {:style/indent :defn}
-  [dataset-definition & body]
-  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body)))
+  [table-definitions & body]
+  `(do-with-dataset-definition (apply tx/dataset-definition ~(str (gensym)) ~table-definitions) (fn [] ~@body)))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
@@ -192,6 +199,7 @@
                                                                                 :required     false}}}}}
                               options-map))]
         {:action-id action-id :model-id model-id})
+
       :implicit
       (let [action-id (action/insert! (merge
                                        {:type :implicit
@@ -237,7 +245,7 @@
   the created action and model card respectively. The options-map overrides the defaults in
   `do-with-action`.
 
-  (with-actions [{model-card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+  (with-actions [{model-card-id :id} {:type :model :dataset_query (mt/mbql-query types)}
                  {id :action-id} {}
                  {:keys [action-id model-id]} {:type :http :name \"Temp HTTP Action\"}]
     (assert (= model-card-id model-id))
@@ -252,10 +260,10 @@
         [_ maybe-model-def :as model-part] (subvec binding-forms-and-option-maps 0 2)
         [[custom-binding model-def] binding-forms-and-option-maps]
         (if (and (map? maybe-model-def)
-                 (:dataset maybe-model-def)
+                 (= (:type maybe-model-def) :model)
                  (contains? maybe-model-def :dataset_query))
           [model-part (drop 2 binding-forms-and-option-maps)]
-          ['[_ {:dataset true :dataset_query (mt/mbql-query categories)}]
+          ['[_ {:type :model, :dataset_query (mt/mbql-query categories)}]
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
@@ -271,7 +279,7 @@
   (with-actions [{id :action-id} {:type :implicit :kind "row/create"}
                  {:keys [action-id model-id]} {:type :http}]
     (something id action-id model-id))
-  (with-actions [{model-card-id :id} {:dataset true :dataset_query (data/mbql-query types)}
+  (with-actions [{model-card-id :id} {:type :model, :dataset_query (data/mbql-query types)}
                  {id :action-id} {:type :implicit :kind "row/create"}
                  {:keys [action-id model-id]} {}]
     (something model-card-id id action-id model-id))

@@ -88,9 +88,8 @@ function shouldTemplateTagEditorBeVisible({
     return true;
   } else if (nextTags.length === 0) {
     return false;
-  } else {
-    return isVisible;
   }
+  return isVisible;
 }
 
 export type UpdateQuestionOpts = {
@@ -134,10 +133,7 @@ export const updateQuestion = (
     }
 
     const queryResult = getFirstQueryResult(getState());
-    newQuestion = newQuestion.syncColumnsAndSettings(
-      currentQuestion,
-      queryResult,
-    );
+    newQuestion = newQuestion.syncColumnsAndSettings(queryResult);
 
     if (!newQuestion.canAutoRun()) {
       run = false;

@@ -8,8 +8,8 @@ import { checkNotNull } from "metabase/lib/types";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";

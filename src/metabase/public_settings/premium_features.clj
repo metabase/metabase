@@ -407,6 +407,10 @@
   "Enable restrict email recipients?"
   :email-restrict-recipients)
 
+(define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
+  "Enable automatic descriptions of questions and dashboards by LLMs?"
+  :llm-autodescription)
+
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"
   :type       :boolean
@@ -415,6 +419,11 @@
   :audit      :never
   :getter     (fn [] (boolean ((*token-features*) "hosting")))
   :doc        false)
+
+(defn log-enabled?
+  "Returns true when we should record audit data into the audit log."
+  []
+  (or (is-hosted?) (has-feature? :audit-app)))
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the

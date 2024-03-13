@@ -18,9 +18,10 @@
   {:pre [(integer? pulse-creator-id)]}
   (let [card-id (u/the-id card-or-id)]
     (try
-      (when-let [{query :dataset_query
-                  :keys [dataset result_metadata]
-                  :as card} (t2/select-one :model/Card :id card-id, :archived false)]
+      (when-let [{query     :dataset_query
+                  metadata  :result_metadata
+                  card-type :type
+                  :as       card} (t2/select-one :model/Card :id card-id, :archived false)]
         (let [query         (assoc query :async? false)
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
@@ -29,12 +30,11 @@
                                   (assoc query :middleware {:skip-results-metadata? true
                                                             :process-viz-settings?  true
                                                             :js-int-to-string?      false})
-                                  (merge (cond->
-                                           {:executed-by               pulse-creator-id
-                                            :context                   :pulse
-                                            :card-id                   card-id}
-                                           dataset
-                                           (assoc :metadata/dataset-metadata result_metadata))
+                                  (merge (cond-> {:executed-by pulse-creator-id
+                                                  :context     :pulse
+                                                  :card-id     card-id}
+                                           (= card-type :model)
+                                           (assoc :metadata/model-metadata metadata))
                                          options)))))
               result        (if pulse-creator-id
                               (mw.session/with-current-user pulse-creator-id

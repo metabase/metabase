@@ -47,6 +47,7 @@
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"
    "DashboardBookmark"
+   "DataPermissions"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"

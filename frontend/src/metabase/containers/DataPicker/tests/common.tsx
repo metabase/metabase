@@ -1,10 +1,10 @@
 /* istanbul ignore file */
 import {
+  setupCollectionByIdEndpoint,
   setupCollectionVirtualSchemaEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
-  setupCollectionByIdEndpoint,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";

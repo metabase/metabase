@@ -85,7 +85,7 @@
    refreshable with the feature flag disabled."
   metabase-enterprise.advanced-config.caching
   []
-  #{"creating" "persisted" "error" "off"})
+  #{"refreshing" "creating" "persisted" "error" "off"})
 
 (defenterprise prunable-states
   "States of `persisted_info` records which can be pruned."
@@ -139,7 +139,7 @@
   (let [cards (t2/select :model/Card
                          {:where [:and
                                   [:= :database_id database-id]
-                                  [:= :dataset true]
+                                  [:= :type "model"]
                                   [:not [:exists {:select [1]
                                                   :from [:persisted_info]
                                                   :where [:= :persisted_info.card_id :report_card.id]}]]]})]

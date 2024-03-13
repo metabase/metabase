@@ -370,6 +370,65 @@ describe("StringFilterValuePicker", () => {
 
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
     });
+
+    it("should allow free-form input without waiting for search results", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        searchValues: {
+          "a@b.com": createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["testa@b.com"]],
+          }),
+        },
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Search by Email"), "a@b.com");
+      userEvent.hover(screen.getByText("a@b.com"));
+      userEvent.click(screen.getByText("a@b.com"));
+      expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
+    });
+
+    it("should not be able to create duplicates with free-form input", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["a@b.com"],
+        searchValues: {
+          "a@b.com": createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["testa@b.com"]],
+          }),
+        },
+      });
+
+      userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
+      expect(screen.getByText("a@b.com")).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should not allow to create a value when there is the exact match in search results", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["a@b.com"],
+        searchValues: {
+          "a@b.com": createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["a@b.com"]],
+          }),
+        },
+      });
+
+      userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
+      act(() => jest.advanceTimersByTime(1000));
+      expect(screen.getByText("a@b.com")).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 
   describe("no values", () => {

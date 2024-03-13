@@ -141,11 +141,11 @@
                            Metric metric {:name       "Metric B"
                                           :table_id   (mt/id :venues)
                                           :definition (:query (mt/mbql-query venues
-                                                                {:aggregation [[:sum $category_id->categories.name]]
+                                                                {:aggregation [[:sum $category_id->categories.id]]
                                                                  :filter      [:and
                                                                                [:= $price 4]
                                                                                [:segment segment-id]]}))}]
-    (is (= "Venues, Sum of Category → Name, Filtered by Price is equal to 4 and Checkins with ID = 1"
+    (is (= "Venues, Sum of Category → ID, Filtered by Price is equal to 4 and Checkins with ID = 1"
            (:definition_description (t2/hydrate metric :definition_description))))))
 
 (deftest definition-description-missing-source-table-test
@@ -153,9 +153,9 @@
     (t2.with-temp/with-temp [Metric metric {:name       "Metric B"
                                             :table_id   (mt/id :venues)
                                             :definition (mt/$ids venues
-                                                          {:aggregation [[:sum $category_id->categories.name]]
+                                                          {:aggregation [[:sum $category_id->categories.id]]
                                                            :filter      [:= $price 4]})}]
-      (is (= "Venues, Sum of Category → Name, Filtered by Price is equal to 4"
+      (is (= "Venues, Sum of Category → ID, Filtered by Price is equal to 4"
              (:definition_description (t2/hydrate metric :definition_description)))))))
 
 (deftest definition-description-invalid-query-test

@@ -3,7 +3,7 @@ import type { DashboardId, DashboardWidth } from "metabase-types/api";
 
 import type { SectionId } from "./sections";
 
-const DASHBOARD_SCHEMA_VERSION = "1-1-3";
+const DASHBOARD_SCHEMA_VERSION = "1-1-4";
 
 export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
@@ -94,6 +94,13 @@ export const trackDashcardDuplicated = (dashboardId: DashboardId) => {
 export const trackTabDuplicated = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
     event: "dashboard_tab_duplicated",
+    dashboard_id: dashboardId,
+  });
+};
+
+export const trackFilterRequired = (dashboardId: DashboardId) => {
+  trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
+    event: "dashboard_filter_required",
     dashboard_id: dashboardId,
   });
 };

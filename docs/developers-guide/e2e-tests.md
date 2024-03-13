@@ -77,7 +77,30 @@ Cypress has a set of similar commands for selecting elements. Here are some tips
 - [`find`](https://docs.cypress.io/api/commands/find) will let you search within your previous selection.
 - [`get`](https://docs.cypress.io/api/commands/get) will search the entire page even if chained, unless you explicitly tweak the `withinSubject` option.
 
+### How to access Sample Database tables and field IDs?
+The Sample Database that we use in E2E tests can change at any time, and with it the references to its tables and fields. Never **ever** use hard coded numeric references to those IDs. We provide a helpful mechanism to achieve this that is guaranteed to produce correct results. Every time you spin Cypress up, it fetches the information about the Sample Database, extracts table and field IDs and writes that to the `e2e/support/cypress_sample_database` JSON that we then re-export and make available to all tests.
+
+```js
+// Don't
+const query = {
+  "source-table": 1,
+  aggregation: [["count"]],
+  breakout: [["field", 7, null]],
+}
+
+// Do this instead
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+
+const query = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"]],
+  breakout: [["field", PRODUCTS.CATEGORY, null]],
+}
+```
+
 ### Increase viewport size to avoid scrolling
+
 Sometimes Metabase views are a bit large for Cypress’ default 1280x800 viewport. This can require you to scroll for tests to work. For example, virtualized tables will not even render the contents outside of the viewport. To avoid these problems, increase the viewport size for a specific test. Unless you're specifically testing how the application behaves on a window resize, please avoid using the `cy.viewport(width, height);` in the middle of the test. Set the viewport width/height using the optional Cypress test config instead. This config works with both `describe` and `it` blocks.
 
 ```js

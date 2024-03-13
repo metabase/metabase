@@ -1,12 +1,12 @@
 import type { Location, LocationDescriptor } from "history";
 import type * as React from "react";
-import { useEffect, useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { NotFound } from "metabase/containers/ErrorPages";
+import { NotFound } from "metabase/components/ErrorPages";
 import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";

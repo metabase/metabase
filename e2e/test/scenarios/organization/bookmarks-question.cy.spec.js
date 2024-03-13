@@ -23,6 +23,7 @@ describe("scenarios > question > bookmarks", () => {
     navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/);
       cy.findByText("Orders");
+      cy.icon("model").should("not.exist");
     });
 
     // Rename bookmarked question

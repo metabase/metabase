@@ -2,7 +2,7 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
 import Questions from "metabase/entities/questions";

@@ -35,7 +35,11 @@ import type {
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
-import type { GetAuthProviders, PluginGroupManagersType } from "./types";
+import type {
+  GetAuthProviders,
+  PluginGroupManagersType,
+  PluginLLMAutoDescription,
+} from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -129,7 +133,8 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessage: (_state: State) => t`Doing science...`,
+  getLoadingMessage: (_state: State) => (isSlow: boolean) =>
+    isSlow ? t`Waiting for results...` : t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
@@ -147,6 +152,11 @@ export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,
+};
+
+export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
+  isEnabled: () => false,
+  LLMSuggestQuestionInfo: PluginPlaceholder,
 };
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {

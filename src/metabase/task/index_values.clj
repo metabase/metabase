@@ -29,7 +29,7 @@
   Will deindex if the model or model_index do not exist, if the model is no longer a model, or if archived."
   [model model-index]
   (or (nil? model) (nil? model-index)
-      (not (:dataset model))
+      (not= (:type model) :model)
       (:archived model)))
 
 (defn- model-index-trigger-key
@@ -41,9 +41,9 @@
   "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
   etc, (see [[should-deindex?]])) will delete the indexing job."
   [model-index-id]
-  (let [model-index              (t2/select-one ModelIndex :id model-index-id)
-        model                    (when model-index
-                                   (t2/select-one Card :id (:model_id model-index)))]
+  (let [model-index (t2/select-one ModelIndex :id model-index-id)
+        model       (when model-index
+                      (t2/select-one Card :id (:model_id model-index)))]
     (if (should-deindex? model model-index)
       (u/ignore-exceptions
        (let [trigger-key (model-index-trigger-key model-index-id)]

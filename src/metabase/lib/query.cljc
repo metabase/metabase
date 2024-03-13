@@ -14,6 +14,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -84,21 +85,27 @@
     :database     database-id
     :stages       stages}))
 
-(mu/defn query-with-stage
-  "Create a query from a specific stage."
-  ([metadata-providerable stage]
-   (query-with-stages metadata-providerable [stage]))
+(defn- query-from-legacy-query
+  [metadata-providerable legacy-query]
+  (let [pmbql-query (lib.convert/->pMBQL (mbql.normalize/normalize legacy-query))]
+    (merge
+     pmbql-query
+     (query-with-stages metadata-providerable (:stages pmbql-query)))))
 
-  ([database-id           :- ::lib.schema.id/database
-    metadata-providerable :- lib.metadata/MetadataProviderable
-    stage]
-   (query-with-stages database-id metadata-providerable [stage])))
+(defn- query-from-unknown-query [metadata-providerable query]
+  (assoc (lib.convert/->pMBQL query)
+         :lib/type     :mbql/query
+         :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
 
 (mu/defn ^:private query-from-existing :- ::lib.schema/query
+  "Create a pMBQL query from either an existing pMBQL query (attaching metadata provider as needed), or from a legacy MBQL
+  query (converting it to pMBQL)."
   [metadata-providerable :- lib.metadata/MetadataProviderable
-   query                 :- lib.util/LegacyOrPMBQLQuery]
-  (let [query (lib.convert/->pMBQL query)]
-    (query-with-stages metadata-providerable (:stages query))))
+   query                 :- :map]
+  (let [f (if (some #(get query %) [:type "type"])
+            query-from-legacy-query
+            query-from-unknown-query)]
+    (f metadata-providerable query)))
 
 (defmulti ^:private query-method
   "Implementation for [[query]]."
@@ -130,14 +137,14 @@
               (map (fn [[stage-number stage]]
                      (mbql.u/replace stage
                        [:field
-                        (opts :guard (complement (some-fn :base-type :effective-type)))
+                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
                         (field-id :guard (every-pred number? pos?))]
                        (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
                                            (select-keys [:base-type :effective-type]))]
                          ;; Fallback if metadata is missing
                          [:field (merge found-ref opts) field-id])
                        [:expression
-                        (opts :guard (complement (some-fn :base-type :effective-type)))
+                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
                         expression-name]
                        (let [found-ref (try
                                          (m/remove-vals

@@ -42,9 +42,13 @@ const BABEL_CONFIG = {
 };
 
 const CSS_CONFIG = {
-  localIdentName: devMode
-    ? "[name]__[local]___[hash:base64:5]"
-    : "[hash:base64:5]",
+  modules: {
+    auto: filename =>
+      !filename.includes("node_modules") && !filename.includes("vendor.css"),
+    localIdentName: devMode
+      ? "[name]__[local]___[hash:base64:5]"
+      : "[hash:base64:5]",
+  },
   importLoaders: 1,
 };
 
@@ -58,7 +62,8 @@ const config = (module.exports = {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
-    styles: "./css/index.css",
+    "vendor-styles": "./css/vendor.css",
+    styles: "./css/index.module.css",
   },
 
   externals: {
@@ -69,6 +74,7 @@ const config = (module.exports = {
   // output to "dist"
   output: {
     path: BUILD_PATH + "/app/dist",
+    // for production, dev mode is overridden below
     filename: "[name].[contenthash].js",
     publicPath: "app/dist/",
     hashFunction: "sha256",
@@ -228,19 +234,19 @@ const config = (module.exports = {
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-main"],
+      chunks: ["vendor", "vendor-styles", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../public.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-public"],
+      chunks: ["vendor", "vendor-styles", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-embed"],
+      chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new webpack.BannerPlugin({
@@ -265,7 +271,7 @@ const config = (module.exports = {
 if (WEBPACK_BUNDLE === "hot") {
   config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
-  config.output.filename = "[name].hot.bundle.js?[contenthash]";
+  config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
@@ -295,21 +301,8 @@ if (WEBPACK_BUNDLE === "hot") {
       "Access-Control-Allow-Origin": "*",
     },
     // tweak stats to make the output in the console more legible
-    // TODO - once we update webpack to v4+ we can just use `errors-warnings` preset
     devMiddleware: {
-      stats: {
-        assets: false,
-        cached: false,
-        cachedAssets: false,
-        chunks: false,
-        chunkModules: false,
-        chunkOrigins: false,
-        modules: false,
-        color: true,
-        hash: false,
-        warnings: true,
-        errorDetails: false,
-      },
+      stats: "errors-warnings",
       writeToDisk: true,
     },
     // if webpack doesn't reload UI after code change in development

@@ -1,0 +1,36 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Schema for tracking clicks on the Browse Data page",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "browse_data",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "browse_data_model_clicked",
+        "browse_data_table_clicked"
+      ],
+      "maxLength": 1024
+    },
+    "model_id": {
+      "description": "Unique identifier for the model within the Metabase instance",
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "table_id": {
+      "description": "Unique identifier for the table within the Metabase instance",
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "required": ["event"],
+  "additionalProperties": true
+}

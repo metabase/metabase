@@ -1,6 +1,5 @@
 import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
-import _ from "underscore";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Questions from "metabase/entities/questions";
@@ -35,8 +34,8 @@ import { cancelQuery, runQuestionQuery } from "../querying";
 
 import { resetQB } from "./core";
 import {
-  propagateDashboardParameters,
   getParameterValuesForQuestion,
+  propagateDashboardParameters,
 } from "./parameterUtils";
 
 type BlankQueryOptions = {

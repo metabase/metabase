@@ -93,6 +93,7 @@ e2e_ci: &e2e_ci
 
 e2e_specs: &e2e_specs
   - "**/*.cy.*.js"
+  - "**/*.cy.*.ts"
   - "e2e/runner/**"
   - "e2e/support/**"
   - "e2e/snapshot*/**"

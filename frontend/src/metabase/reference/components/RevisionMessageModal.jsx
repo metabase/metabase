@@ -6,7 +6,7 @@ import { t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
-import S from "./RevisionMessageModal.css";
+import S from "./RevisionMessageModal.module.css";
 
 export default class RevisionMessageModal extends Component {
   static propTypes = {

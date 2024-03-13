@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import type { SectionLayout } from "metabase/dashboard/sections";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
-import { Box } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { DashboardCardLayoutAttrs } from "metabase-types/api";
 
-const WIDTH = 160;
-const SPACING = 6;
+const WIDTH = 70;
+const SPACING = 2;
+const CELL_WIDTH = 1;
 const CELL_HEIGHT = 3;
 
 interface SectionLayoutPreviewProps {
@@ -15,15 +15,17 @@ interface SectionLayoutPreviewProps {
 }
 
 export function SectionLayoutPreview({ layout }: SectionLayoutPreviewProps) {
-  const layoutItems = useMemo(
-    () => layout.getLayout({ col: 0, row: 0 }),
-    [layout],
-  );
-
-  const cellWidth = Math.max(
-    Math.round((WIDTH - SPACING * (GRID_WIDTH - 1)) / GRID_WIDTH),
-    1,
-  );
+  const layoutItems = useMemo(() => {
+    const items = layout.getLayout({ col: 0, row: 0 });
+    return items.map((item, index) => {
+      // Makes the first "heading" item taller to look better,
+      // and moves the rest of the items down
+      if (index === 0) {
+        return { ...item, size_y: 2 };
+      }
+      return { ...item, row: item.row + 1 };
+    });
+  }, [layout]);
 
   const height = useMemo(() => {
     const maxY = _.max(layoutItems.map(item => item.row + item.size_y));
@@ -31,17 +33,19 @@ export function SectionLayoutPreview({ layout }: SectionLayoutPreviewProps) {
   }, [layoutItems]);
 
   return (
-    <Box pos="relative" p="sm" w={WIDTH} h={height}>
-      {layoutItems.map(item => (
-        <PreviewCard
-          key={item.id}
-          layout={item}
-          cellWidth={cellWidth}
-          cellHeight={CELL_HEIGHT}
-          spacing={SPACING}
-        />
-      ))}
-    </Box>
+    <Flex align="center" justify="center">
+      <Box pos="relative" w={WIDTH} mih={height}>
+        {layoutItems.map(item => (
+          <PreviewCard
+            key={item.id}
+            layout={item}
+            cellWidth={CELL_WIDTH}
+            cellHeight={CELL_HEIGHT}
+            spacing={SPACING}
+          />
+        ))}
+      </Box>
+    </Flex>
   );
 }
 
@@ -71,7 +75,7 @@ function PreviewCard({
       h={`${height}px`}
       top={`${top}px`}
       left={`${left}px`}
-      bg="bg-light"
+      bg="white"
       style={{ borderRadius: "2px" }}
     />
   );

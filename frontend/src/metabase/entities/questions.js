@@ -13,7 +13,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
-} from "metabase/query_builder/actions";
+} from "metabase/query_builder/actions/core/types";
 import {
   getMetadata,
   getMetadataUnfiltered,

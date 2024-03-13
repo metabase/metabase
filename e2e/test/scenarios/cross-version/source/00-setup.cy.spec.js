@@ -1,8 +1,9 @@
 import {
-  version,
   setupLanguage,
   setupInstance,
-} from "./helpers/cross-version-source-helpers";
+} from "e2e/test/scenarios/cross-version/helpers/cross-version-helpers.js";
+
+import { version } from "./helpers/cross-version-source-helpers";
 
 describe(`setup on ${version}`, () => {
   it("should set up metabase", () => {
@@ -14,10 +15,12 @@ describe(`setup on ${version}`, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Let's get started").click();
 
-    setupLanguage();
+    setupLanguage(version);
     setupInstance(version);
 
     cy.visit("/admin");
-    cy.icon("store");
+    // Find an element on the admin page so we know we've landed.
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Setup");
   });
 });

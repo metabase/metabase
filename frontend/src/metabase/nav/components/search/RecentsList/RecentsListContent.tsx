@@ -9,10 +9,10 @@ import {
   SearchLoadingSpinner,
   EmptyStateContainer,
 } from "metabase/nav/components/search/SearchResults";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   ItemIcon,
   LoadingSection,
-  ModerationIcon,
   ResultNameSection,
   ResultTitle,
   SearchResultContainer,
@@ -85,7 +85,7 @@ export const RecentsListContent = ({
                   >
                     {getItemName(item)}
                   </ResultTitle>
-                  <ModerationIcon
+                  <PLUGIN_MODERATION.ModerationStatusIcon
                     status={getModeratedStatus(item)}
                     filled
                     size={14}

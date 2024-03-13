@@ -16,6 +16,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
@@ -82,14 +83,26 @@
     (js.metadata/metadata-provider database-id metadata)))
 
 (defn ^:export query
-  "Coerce a plain map `query` to an actual query object that you can use with MLv2."
+  "Coerce a plain map `query` to an actual query object that you can use with MLv2.
+
+  Attaches a cache to `metadata-provider` so that subsequent calls with the same `database-id` and `query-map` return
+  the same query object."
   ([metadata-provider table-or-card-metadata]
    (lib.core/query metadata-provider table-or-card-metadata))
 
-  ([database-id metadata query-map]
-   (let [query-map (lib.convert/js-legacy-query->pMBQL query-map)]
-     (log/debugf "query map: %s" (pr-str query-map))
-     (lib.core/query (metadataProvider database-id metadata) query-map))))
+  ([database-id metadata-provider query-map]
+   ;; Since the query-map is possibly `Object.freeze`'d, we can't mutate it to attach the query.
+   ;; Therefore, we attach a two-level cache to the metadata-provider:
+   ;; The outer key is the database-id; the inner one i a weak ref to the legacy query-map (a JS object).
+   ;; This should achieve efficient caching of legacy queries without retaining garbage.
+   ;; (Except possibly for a few empty WeakMaps, if queries are cached and then GC'd.)
+   ;; If the metadata changes, the metadata-provider is replaced, so all these caches are destroyed.
+   (lib.cache/side-channel-cache-weak-refs
+     (str database-id) metadata-provider query-map
+     #(->> %
+           lib.convert/js-legacy-query->pMBQL
+           (lib.core/query metadata-provider))
+     {:force? true})))
 
 (defn- fix-namespaced-values
   "This converts namespaced keywords to strings as `\"foo/bar\"`.
@@ -331,6 +344,17 @@
    a-query stage-number
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))
    (lib.core/normalize (js->clj new-clause :keywordize-keys true))))
+
+(defn ^:export swap-clauses
+  "Exchanges the positions of two clauses in a list. Can be used for filters, aggregations, breakouts, and expressions.
+
+  Returns the updated query. If it can't find both clauses in a single list (therefore also in the same stage), emits a
+  warning and returns the query unchanged."
+  [a-query stage-number source-clause target-clause]
+  (lib.core/swap-clauses
+   a-query stage-number
+   (lib.core/normalize (js->clj source-clause :keywordize-keys true))
+   (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (-> a-query
@@ -647,9 +671,15 @@
 (defn- returned-columns*
   "Inner implementation for [[returned-columns]], which wraps this with caching."
   [a-query stage-number]
-  (let [stage (lib.util/query-stage a-query stage-number)]
+  (let [stage          (lib.util/query-stage a-query stage-number)
+        unique-name-fn (lib.util/unique-name-generator)]
     (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
-         (map #(assoc % :selected? true))
+         (map #(-> %
+                   (assoc :selected? true)
+                   ;; Unique names are required by the FE for compatibility.
+                   ;; This applies only for JS; Clojure usage should prefer `:lib/desired-column-alias` to `:name`, and
+                   ;; that's already unique by construction.
+                   (update :name unique-name-fn)))
          to-array)))
 
 (defn ^:export returned-columns
@@ -732,7 +762,7 @@
 
 (defn ^:export available-join-strategies
   "Get available join strategies for the current Database (based on the Database's
-  supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
+  supported [[metabase.driver/features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
   (to-array (lib.core/available-join-strategies a-query stage-number)))
 
@@ -894,7 +924,7 @@
     :metadata/card  #js {:databaseId (:database a-query)
                          :tableId (str "card__" (:id metadata))
                          :cardId (:id metadata)
-                         :isModel (:dataset metadata)}
+                         :isModel (= (keyword (:type metadata)) :model)}
     (do
       (log/warn "Cannot provide picker-info for" (:lib/type metadata))
       nil)))
@@ -1216,6 +1246,28 @@
                       (#{:aggregation-options :value} (first legacy-expr)))
                  (get 1))))))
 
+(defn ^:export diagnose-expression
+  "Checks `legacy-expression` for type errors and, if `expression-mode` is \"expression\" and
+  `expression-position` is provided, for cyclic references with other expressions.
+
+  - `expr` is a legacy MBQL expression created using the custom column editor in the FE.
+  - `expression-mode` specifies what type of thing `expr` is: an \"expression\" (custom column),
+    an \"aggregation\" expression, or a \"filter\" condition.
+  - `expression-position` is only defined when editing an existing custom column, and in that case
+    it is the index of that expression in (expressions query stage-number).
+
+  The function returns nil, if the expression is valid, otherwise it returns an i18n message
+  describing the problem."
+  [a-query stage-number expression-mode legacy-expression expression-position]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (let [expr (js->clj legacy-expression :keywordize-keys true)
+          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
+      (-> (lib.expression/diagnose-expression a-query stage-number
+                                              (keyword expression-mode)
+                                              (lib.convert/->pMBQL expr)
+                                              expression-position)
+          clj->js))))
+
 (defn ^:export field-values-search-info
   "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
   widget in the QB filter modals."
@@ -1259,4 +1311,7 @@
 (defn ^:export can-run
   "Returns true if the query is runnable."
   [a-query]
-  (lib.core/can-run a-query))
+  (lib.cache/side-channel-cache
+    :can-run a-query
+    (fn [_]
+      (lib.core/can-run a-query))))

@@ -31,24 +31,23 @@ import {
   getIsResultDirty,
   getOriginalQuestion,
   getQuestion,
-  getResultsMetadata,
-  getTransformedSeries,
   isBasedOnExistingQuestion,
   getParameters,
+  getSubmittableQuestion,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
 
+import { SOFT_RELOAD_CARD, API_UPDATE_QUESTION } from "./types";
 import { updateQuestion } from "./updateQuestion";
-import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
 // refreshes the card without triggering a run of the card's query
-export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
+export { SOFT_RELOAD_CARD };
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
@@ -194,20 +193,9 @@ export const setDatasetQuery =
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = question => {
   return async (dispatch, getState) => {
-    // Needed for persisting visualization columns for pulses/alerts, see #6749
-    const series = getTransformedSeries(getState());
-    const questionWithVizSettings = series
-      ? getQuestionWithDefaultVisualizationSettings(question, series)
-      : question;
-
-    const resultsMetadata = getResultsMetadata(getState());
-    const isResultDirty = getIsResultDirty(getState());
-    const cleanQuery = Lib.dropEmptyStages(question.query());
-    const questionToCreate = questionWithVizSettings
-      .setQuery(cleanQuery)
-      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
+    const submittableQuestion = getSubmittableQuestion(getState(), question);
     const createdQuestion = await reduxCreateQuestion(
-      questionToCreate,
+      submittableQuestion,
       dispatch,
     );
 
@@ -242,13 +230,12 @@ export const apiCreateQuestion = question => {
   };
 };
 
-export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
+export { API_UPDATE_QUESTION };
 export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
@@ -265,22 +252,13 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       rerunQuery = rerunQuery ?? isResultDirty;
     }
 
-    // Needed for persisting visualization columns for pulses/alerts, see #6749
-    const series = getTransformedSeries(getState());
-    const questionWithVizSettings = series
-      ? getQuestionWithDefaultVisualizationSettings(question, series)
-      : question;
-
-    const cleanQuery = Lib.dropEmptyStages(question.query());
-    const questionToUpdate = questionWithVizSettings
-      .setQuery(cleanQuery)
-      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
+    const submittableQuestion = getSubmittableQuestion(getState(), question);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
     // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
     const updatedQuestion = await reduxUpdateQuestion(
-      questionToUpdate,
+      submittableQuestion,
       dispatch,
       {
         excludeDatasetQuery: isAdHocModelQuestion(question, originalQuestion),

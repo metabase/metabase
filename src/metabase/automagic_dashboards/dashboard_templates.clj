@@ -4,40 +4,83 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.query-processor.util :as qp.util]
    [metabase.shared.dashboards.constants :as dashboards.constants]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [metabase.util.yaml :as yaml]
-   [schema.coerce :as sc]
-   [schema.core :as s]
-   [schema.spec.core :as spec])
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.yaml :as yaml])
   (:import
    (java.nio.file Files Path)))
 
 (set! *warn-on-reflection* true)
 
+(def ^:private LocalizedString
+  [:schema
+   {:decode/dashboard-template (fn [s]
+                                 (if (i18n/localized-string? s)
+                                   s
+                                   (i18n/->UserLocalizedString s nil {})))}
+   i18n/LocalizedString])
+
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
   100)
 
-(def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
-                                    (deferred-trs "0 <= score <= {0}" max-score)))
+(def ^:private Score
+  [:int {:min 0, :max max-score}])
 
-(def ^:private MBQL [s/Any])
+(def ^:private MBQL [:maybe [:sequential :any]])
 
-(def ^:private Identifier s/Str)
+(def ^:private Identifier
+  [:string
+   {:decode/dashboard-template (fn [x]
+                                 (if (keyword? x)
+                                   (name x)
+                                   x))}])
 
-(def ^:private Metric {Identifier {(s/required-key :metric) MBQL
-                                   (s/required-key :score)  Score
-                                   (s/optional-key :name)   LocalizedString}})
+(defn- with-defaults
+  [defaults]
+  (fn [identifier->definition]
+    (update-vals identifier->definition
+                 (fn [definition]
+                   (merge defaults definition)))))
 
-(def ^:private Filter {Identifier {(s/required-key :filter) MBQL
-                                   (s/required-key :score)  Score}})
+(defn- shorthand-definition
+  "Expand definition of the form {identifier value} with regards to key `k` into
+   {identifier {k value}}."
+  [k]
+  (fn [x]
+    (let [[identifier definition] (first x)]
+      (if (map? definition)
+        x
+        {identifier {k definition}}))))
+
+(def ^:private Metric
+  [:map-of
+   {:decode/dashboard-template
+    (comp (with-defaults {:score max-score})
+          (shorthand-definition :metric))}
+   Identifier
+   [:map
+    [:metric MBQL]
+    [:score  Score]
+    [:name {:optional true} LocalizedString]]])
+
+(def ^:private Filter
+  [:map-of
+   {:decode/dashboard-template
+    (comp (with-defaults {:score max-score})
+          (shorthand-definition :filter))}
+   Identifier
+   [:map
+    [:filter MBQL]
+    [:score  Score]]])
 
 (defn ga-dimension?
   "Does string `t` denote a Google Analytics dimension?"
@@ -70,54 +113,130 @@
   [t]
   (isa? t :entity/*))
 
-(def ^:private TableType (s/constrained s/Keyword table-type?))
-(def ^:private FieldType (s/cond-pre (s/constrained s/Str ga-dimension?)
-                                     (s/constrained s/Keyword field-type?)))
+(def ^:private TableType
+  [:and
+   {:decode/dashboard-template ->entity}
+   :keyword
+   [:fn {:error/message "valid table type"} table-type?]])
 
-(def ^:private AppliesTo (s/either [FieldType]
-                                   [TableType]
-                                   [(s/one TableType "table") FieldType]))
+(def ^:private FieldType
+  [:or
+   {:decode/dashboard-template ->type}
+   [:and
+    :string
+    [:fn {:error/message "Google Analytics dimension"} ga-dimension?]]
+   [:and
+    :keyword
+    [:fn {:error/message "Valid Field type"} field-type?]]])
 
-(def ^:private Dimension {Identifier {(s/required-key :field_type)      AppliesTo
-                                      (s/required-key :score)           Score
-                                      (s/optional-key :links_to)        TableType
-                                      (s/optional-key :named)           s/Str
-                                      (s/optional-key :max_cardinality) s/Int}})
+(def ^:private AppliesTo
+  [:or
+   {:decode/dashboard-template
+    (fn [x]
+      (if (string? x)
+        (let [[table-type field-type] (str/split x #"\.")]
+          (if field-type
+            [(->entity table-type) (->type field-type)]
+            [(if (-> table-type ->entity table-type?)
+               (->entity table-type)
+               (->type table-type))]))
+        x))}
+   [:sequential FieldType]
+   [:sequential TableType]
+   [:cat TableType [:* FieldType]]])
 
-(def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
+(def ^:private Dimension
+  [:map-of
+   {:decode/dashboard-template
+    (comp (with-defaults {:score max-score})
+          (shorthand-definition :field_type))}
+   Identifier
+   [:map
+    [:field_type AppliesTo]
+    [:score      Score]
+    [:links_to        {:optional true} TableType]
+    [:named           {:optional true} :string]
+    [:max_cardinality {:optional true} :int]]])
 
-(def ^:private Visualization [(s/one s/Str "visualization") su/Map])
+(def ^:private OrderByPair
+  [:map-of
+   {:decode/dashboard-template (fn [x]
+                                 (if (string? x)
+                                   {x "ascending"}
+                                   x))}
+   Identifier
+   [:enum "descending" "ascending"]])
 
-(def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
-                                     (deferred-trs "1 <= width <= {0}" populate/grid-width)))
-(def ^:private Height (s/constrained s/Int pos?))
+(def ^:private Visualization
+  [:cat
+   {:decode/dashboard-template (fn [x]
+                                 (cond
+                                   (string? x) [x {}]
+                                   ;; for malformed YAML when this comes back as a map
+                                   (map? x)    (first x)
+                                   :else       x))}
+   [:string {:decode/dashboard-template (fn [x]
+                                          (if (string? x)
+                                            x
+                                            (u/qualified-name x)))}]
+   [:* :map]])
 
-(def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
+(def ^:private Width
+  [:int {:min 1, :max populate/grid-width}])
+
+(def ^:private Height pos-int?)
+
+(def ^:private CardDimension
+  [:map-of
+   {:decode/dashboard-template (fn [x]
+                                 (if (string? x)
+                                   {x {}}
+                                   x))}
+   Identifier
+   [:map [:aggregation {:optional true} :string]]])
 
 (def ^:private Card
-  {Identifier {(s/required-key :title)         LocalizedString
-               (s/required-key :card-score)    Score
-               (s/optional-key :visualization) Visualization
-               (s/optional-key :text)          LocalizedString
-               (s/optional-key :dimensions)    [CardDimension]
-               (s/optional-key :filters)       [s/Str]
-               (s/optional-key :metrics)       [s/Str]
-               (s/optional-key :limit)         su/IntGreaterThanZero
-               (s/optional-key :order_by)      [OrderByPair]
-               (s/optional-key :description)   LocalizedString
-               (s/optional-key :query)         s/Str
-               (s/optional-key :width)         Width
-               (s/optional-key :height)        Height
-               (s/optional-key :group)         s/Str
-               (s/optional-key :y_label)       LocalizedString
-               (s/optional-key :x_label)       LocalizedString
-               (s/optional-key :series_labels) [LocalizedString]}})
+  [:map-of
+   {:decode/dashboard-template
+    (with-defaults {:card-score max-score
+                    :width      populate/default-card-width
+                    :height     populate/default-card-height})}
+   Identifier
+   [:map
+    {:decode/dashboard-template (fn [x]
+                                  (if (sequential? x)
+                                    (into {} x)
+                                    x))}
+    [:title      LocalizedString]
+    [:card-score Score]
+    [:visualization {:optional true} Visualization]
+    [:text          {:optional true} LocalizedString]
+    [:dimensions    {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} CardDimension]]]
+    [:filters       {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} :string]]]
+    [:metrics       {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} :string]]]
+    [:limit         {:optional true} pos-int?]
+    [:order_by      {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} OrderByPair]]]
+    [:description   {:optional true} LocalizedString]
+    [:query         {:optional true} :string]
+    [:width         {:optional true} Width]
+    [:height        {:optional true} Height]
+    [:group         {:optional true} :string]
+    [:y_label       {:optional true} LocalizedString]
+    [:x_label       {:optional true} LocalizedString]
+    [:series_labels {:optional true} [:maybe [:sequential LocalizedString]]]]])
 
 (def ^:private Groups
-  {Identifier {(s/required-key :title)            LocalizedString
-               (s/required-key :score)            s/Int
-               (s/optional-key :comparison_title) LocalizedString
-               (s/optional-key :description)      LocalizedString}})
+  [:map-of
+   {:decode/dashboard-template (fn [x]
+                                 (if (map? x)
+                                   x
+                                   (apply merge x)))}
+   Identifier
+   [:map
+    [:title LocalizedString]
+    [:score :int]
+    [:comparison_title {:optional true} LocalizedString]
+    [:description      {:optional true} LocalizedString]]])
 
 (def ^{:arglists '([definition])} identifier
   "Return `key` in `{key {}}`."
@@ -131,14 +250,18 @@
   (mapcat (comp k val first) cards))
 
 (def ^:private DimensionForm
-  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword) (comp #{:dimension} qp.util/normalize-token))
-          "dimension")
-   (s/one s/Str "identifier")
-   su/Map])
+  [:cat
+   [:and
+    [:or :string :keyword]
+    [:fn
+     {:error/message ":dimension"}
+     (comp #{:dimension} qp.util/normalize-token)]]
+   :string
+   [:* :map]])
 
 (def ^{:arglists '([form])} dimension-form?
   "Does form denote a dimension reference?"
-  (complement (s/checker DimensionForm)))
+  (mr/validator DimensionForm))
 
 (defn collect-dimensions
   "Return all dimension references in form."
@@ -188,95 +311,30 @@
        (map identifier)
        (every? (identifiers dimensions))))
 
-(defn- constrained-all
-  [schema & constraints]
-  (reduce (partial apply s/constrained)
-          schema
-          (partition 2 constraints)))
-
 (def DashboardTemplate
   "Specification defining an automagic dashboard."
-  (constrained-all
-    {(s/required-key :title)                   LocalizedString
-     (s/required-key :dashboard-template-name) s/Str
-     (s/required-key :specificity)             s/Int
-     (s/optional-key :cards)                   [Card]
-     (s/optional-key :dimensions)              [Dimension]
-     (s/optional-key :applies_to)              AppliesTo
-     (s/optional-key :transient_title)         LocalizedString
-     (s/optional-key :description)             LocalizedString
-     (s/optional-key :metrics)                 [Metric]
-     (s/optional-key :filters)                 [Filter]
-     (s/optional-key :groups)                  Groups
-     (s/optional-key :indepth)                 [s/Any]
-     (s/optional-key :dashboard_filters)       [s/Str]}
-    valid-metrics-references? (deferred-trs "Valid metrics references")
-    valid-filters-references? (deferred-trs "Valid filters references")
-    valid-group-references? (deferred-trs "Valid group references")
-    valid-order-by-references? (deferred-trs "Valid order_by references")
-    valid-dashboard-filters-references? (deferred-trs "Valid dashboard filters references")
-    valid-dimension-references? (deferred-trs "Valid dimension references")
-    valid-breakout-dimension-references? (deferred-trs "Valid card dimension references")))
-
-(defn- with-defaults
-  [defaults]
-  (fn [x]
-    (let [[identifier definition] (first x)]
-      {identifier (merge defaults definition)})))
-
-(defn- shorthand-definition
-  "Expand definition of the form {identifier value} with regards to key `k` into
-   {identifier {k value}}."
-  [k]
-  (fn [x]
-    (let [[identifier definition] (first x)]
-      (if (map? definition)
-        x
-        {identifier {k definition}}))))
-
-(def ^:private dashboard-template-validator
-  (sc/coercer!
-    DashboardTemplate
-    {[s/Str]         u/one-or-many
-     [OrderByPair]   u/one-or-many
-     OrderByPair     (fn [x]
-                       (if (string? x)
-                         {x "ascending"}
-                         x))
-     Visualization   (fn [x]
-                       (if (string? x)
-                         [x {}]
-                         (first x)))
-     Metric          (comp (with-defaults {:score max-score})
-                           (shorthand-definition :metric))
-     Dimension       (comp (with-defaults {:score max-score})
-                           (shorthand-definition :field_type))
-     Filter          (comp (with-defaults {:score max-score})
-                           (shorthand-definition :filter))
-     Card            (with-defaults {:card-score max-score
-                                     :width      populate/default-card-width
-                                     :height     populate/default-card-height})
-     [CardDimension] u/one-or-many
-     CardDimension   (fn [x]
-                       (if (string? x)
-                         {x {}}
-                         x))
-     TableType       ->entity
-     FieldType       ->type
-     Identifier      (fn [x]
-                       (if (keyword? x)
-                         (name x)
-                         x))
-     Groups          (partial apply merge)
-     AppliesTo       (fn [x]
-                       (let [[table-type field-type] (str/split x #"\.")]
-                         (if field-type
-                           [(->entity table-type) (->type field-type)]
-                           [(if (-> table-type ->entity table-type?)
-                              (->entity table-type)
-                              (->type table-type))])))
-     LocalizedString (fn [s]
-                       (i18n/->UserLocalizedString s nil {}))}))
+  [:and
+   [:map
+    [:title                   LocalizedString]
+    [:dashboard-template-name :string]
+    [:specificity             :int]
+    [:cards             {:optional true} [:maybe [:sequential Card]]]
+    [:dimensions        {:optional true} [:maybe [:sequential Dimension]]]
+    [:applies_to        {:optional true} AppliesTo]
+    [:transient_title   {:optional true} LocalizedString]
+    [:description       {:optional true} LocalizedString]
+    [:metrics           {:optional true} [:maybe [:sequential Metric]]]
+    [:filters           {:optional true} [:maybe [:sequential Filter]]]
+    [:groups            {:optional true} Groups]
+    [:indepth           {:optional true} [:maybe [:sequential :any]]]
+    [:dashboard_filters {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} :string]]]]
+   [:fn {:error/message "Valid metrics references"}           valid-metrics-references?]
+   [:fn {:error/message "Valid filters references"}           valid-filters-references?]
+   [:fn {:error/message "Valid group references"}             valid-group-references?]
+   [:fn {:error/message "Valid order_by references"}          valid-order-by-references?]
+   [:fn {:error/message "Valid dashboard filters references"} valid-dashboard-filters-references?]
+   [:fn {:error/message "Valid dimension references"}         valid-dimension-references?]
+   [:fn {:error/message "Valid card dimension references"}    valid-breakout-dimension-references?]])
 
 (def ^:private dashboard-templates-dir "automagic_dashboards/")
 
@@ -302,6 +360,14 @@
   [dashboard-template]
   (update dashboard-template :cards #(mapv ensure-default-card-sizes %)))
 
+(defn- coerce-to-dashboard-template [template]
+  (mc/coerce DashboardTemplate
+             template
+             (mtx/transformer
+              mtx/string-transformer
+              mtx/json-transformer
+              (mtx/transformer {:name :dashboard-template}))))
+
 (defn- make-dashboard-template
   [entity-type {:keys [cards] :as r}]
   (-> (cond-> r
@@ -311,10 +377,10 @@
              :specificity 0)
       (update :applies_to #(or % entity-type))
       set-default-card-dimensions
-      dashboard-template-validator
+      coerce-to-dashboard-template
       (as-> dashboard-template
             (assoc dashboard-template
-              :specificity (specificity dashboard-template)))))
+                   :specificity (specificity dashboard-template)))))
 
 (defn- trim-trailing-slash
   [s]
@@ -323,7 +389,9 @@
     s))
 
 (defn- load-dashboard-template-dir
-  ([dir] (load-dashboard-template-dir dir [] {}))
+  ([dir]
+   (load-dashboard-template-dir dir [] {}))
+
   ([dir path dashboard-templates]
    (with-open [ds (Files/newDirectoryStream dir)]
      (reduce
@@ -334,7 +402,13 @@
             (load-dashboard-template-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) acc)
 
             entity-type
-            (assoc-in acc (concat path [entity-type ::leaf]) (yaml/load (partial make-dashboard-template entity-type) f))
+            (let [template (try
+                             (yaml/load (partial make-dashboard-template entity-type) f)
+                             (catch Throwable e
+                               (throw (ex-info (format "Error loading template %s: %s" (str f) (ex-message e))
+                                               {:path path, :f f}
+                                               e))))]
+              (assoc-in acc (concat path [entity-type ::leaf]) template))
 
             :else
             acc)))
@@ -344,7 +418,7 @@
 (def ^:private dashboard-templates
   (delay
     (u.files/with-open-path-to-resource [path dashboard-templates-dir]
-                                        (into {} (load-dashboard-template-dir path)))))
+      (into {} (load-dashboard-template-dir path)))))
 
 (defn get-dashboard-templates
   "Get all dashboard templates with prefix `prefix`.
@@ -362,17 +436,14 @@
 
 (defn- extract-localized-strings
   [[path dashboard-template]]
-  (let [strings (atom [])]
-    ((spec/run-checker
-       (fn [s params]
-        (let [walk (spec/checker (s/spec s) params)]
-          (fn [x]
-            (when (= LocalizedString s)
-              (swap! strings conj x))
-            (walk x))))
-       false
-       DashboardTemplate)
-     dashboard-template)
+  (let [strings      (atom [])
+        template     (coerce-to-dashboard-template dashboard-template)
+        i18n-string? (mr/validator LocalizedString)]
+    (walk/postwalk
+     (fn [form]
+       (when (i18n-string? form)
+         (swap! strings conj (str form))))
+     template)
     (map vector (distinct @strings) (repeat path))))
 
 (defn- make-pot
@@ -396,13 +467,16 @@
                  (all-dashboard-templates (conj path k) v)))
              dashboard-templates))))
 
+(defn- generate-templates! []
+  (->> (all-dashboard-templates)
+       (mapcat extract-localized-strings)
+       make-pot
+       (spit "locales/metabase-automatic-dashboards.pot")))
+
 (defn -main
   "Entry point for Clojure CLI task `generate-automagic-dashboards-pot`. Run it with
 
     clojure -M:generate-automagic-dashboards-pot"
-  [& _]
-  (->> (all-dashboard-templates)
-       (mapcat extract-localized-strings)
-       make-pot
-       (spit "locales/metabase-automatic-dashboards.pot"))
+  [& _options]
+  (generate-templates!)
   (System/exit 0))

@@ -8,7 +8,9 @@ import CreateCollectionModal from "metabase/collections/containers/CreateCollect
 import EntityMenu from "metabase/components/EntityMenu";
 import Modal from "metabase/components/Modal";
 import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getSetting } from "metabase/selectors/settings";
 import type { CollectionId, WritebackAction } from "metabase-types/api";
 
 type ModalType = "new-action" | "new-dashboard" | "new-collection";
@@ -53,6 +55,10 @@ const NewItemMenu = ({
 }: NewItemMenuProps) => {
   const [modal, setModal] = useState<ModalType>();
 
+  const lastUsedDatabaseId = useSelector(state =>
+    getSetting(state, "last-used-native-database-id"),
+  );
+
   const handleModalClose = useCallback(() => {
     setModal(undefined);
   }, []);
@@ -91,6 +97,7 @@ const NewItemMenu = ({
           creationType: "native_question",
           collectionId,
           cardType: "question",
+          databaseId: lastUsedDatabaseId || undefined,
         }),
         onClose: onCloseNavbar,
       });
@@ -152,6 +159,7 @@ const NewItemMenu = ({
     collectionId,
     onCloseNavbar,
     hasDatabaseWithJsonEngine,
+    lastUsedDatabaseId,
   ]);
 
   return (
@@ -162,6 +170,11 @@ const NewItemMenu = ({
         trigger={trigger}
         triggerIcon={triggerIcon}
         tooltip={triggerTooltip}
+        // I've disabled this transition, since it results in the menu
+        // sometimes not appearing until content finishes loading on complex
+        // dashboards and questions #39303
+        // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+        transitionDuration={0}
       />
       {modal && (
         <>

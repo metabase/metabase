@@ -124,13 +124,9 @@ export class ParameterWidget extends Component {
     );
 
     if (isFullscreen) {
-      if (parameter.value != null) {
-        return (
-          <div style={{ fontSize: "0.833em" }}>{renderFieldInNormalMode()}</div>
-        );
-      } else {
-        return <span className="hide" />;
-      }
+      return (
+        <div style={{ fontSize: "0.833em" }}>{renderFieldInNormalMode()}</div>
+      );
     } else if (isEditing && setEditingParameter) {
       return renderEditing();
     } else {

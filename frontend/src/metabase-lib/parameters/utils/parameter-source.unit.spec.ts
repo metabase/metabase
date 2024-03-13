@@ -6,6 +6,7 @@ import { createMockField } from "metabase-types/api/mocks";
 import {
   canListParameterValues,
   canSearchParameterValues,
+  getQueryType,
 } from "./parameter-source";
 
 const LIST_FIELD_ID = 1;
@@ -29,6 +30,54 @@ const listField2 = metadata.field(LIST_FIELD_2_ID) as Field;
 const searchField = metadata.field(SEARCH_FIELD_ID) as Field;
 const searchField2 = metadata.field(SEARCH_FIELD_2_ID) as Field;
 const noValuesField = metadata.field(NO_VALUES_FIELD_ID) as Field;
+
+describe("getQueryType", () => {
+  describe.each(["string", "location"])("parameter type %s", type => {
+    it.each([
+      ["=", "list"],
+      ["!=", "list"],
+      ["contains", "none"],
+      ["does-not-contain", "none"],
+      ["starts-with", "none"],
+      ["ends-with", "none"],
+    ])(
+      "and %s operator should return %s query type by default",
+      (operator, queryType) => {
+        const parameter = createMockUiParameter({
+          type: `${type}/${operator}`,
+        });
+        expect(getQueryType(parameter)).toBe(queryType);
+      },
+    );
+  });
+
+  describe.each(["number"])("parameter type %s", type => {
+    it.each([
+      ["=", "list"],
+      ["!=", "list"],
+      [">", "none"],
+      ["<", "none"],
+      [">=", "none"],
+      ["<=", "none"],
+      ["between", "none"],
+    ])(
+      "and %s operator should return %s query type by default",
+      (operator, queryType) => {
+        const parameter = createMockUiParameter({
+          type: `${type}/${operator}`,
+        });
+        expect(getQueryType(parameter)).toBe(queryType);
+      },
+    );
+  });
+
+  it('should return "list" query type by default for legacy parameter types', () => {
+    const parameter = createMockUiParameter({
+      type: "category",
+    });
+    expect(getQueryType(parameter)).toBe("list");
+  });
+});
 
 describe("canListParameterValues", () => {
   it("should not list when it is disabled", () => {
@@ -144,5 +193,55 @@ describe("canSearchParameterValues", () => {
     });
 
     expect(canSearchParameterValues(parameter)).toBeFalsy();
+  });
+
+  it.each([
+    "=",
+    "!=",
+    "contains",
+    "does-not-contain",
+    "starts-with",
+    "ends-with",
+  ])("should allow to search for %s string operator", operator => {
+    const parameter = createMockUiParameter({
+      type: `string/${operator}`,
+      fields: [searchField],
+      values_query_type: "search",
+    });
+
+    expect(canSearchParameterValues(parameter)).toBe(true);
+  });
+
+  it.each(["=", "!="])(
+    "should allow to search for %s numeric operator",
+    operator => {
+      const parameter = createMockUiParameter({
+        type: `number/${operator}`,
+        fields: [searchField],
+      });
+
+      expect(canSearchParameterValues(parameter)).toBe(true);
+    },
+  );
+
+  it.each([">", "<", ">=", "<=", "between"])(
+    "should not allow to search for %s numeric operator",
+    operator => {
+      const parameter = createMockUiParameter({
+        type: `number/${operator}`,
+        fields: [searchField],
+      });
+
+      expect(canSearchParameterValues(parameter)).toBe(false);
+    },
+  );
+
+  it("should allow to search for legacy parameter operators", () => {
+    const parameter = createMockUiParameter({
+      type: "location/state",
+      fields: [searchField],
+    });
+
+    expect(canSearchParameterValues(parameter)).toBe(true);
   });
 });

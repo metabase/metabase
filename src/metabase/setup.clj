@@ -2,7 +2,7 @@
   (:require
    [environ.core :as env]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
@@ -36,7 +36,6 @@
       (t2/select-one-fn :value Setting :key "setup-token")
       (setting/set-value-of-type! :string :setup-token (str (random-uuid)))))
 
-
 (defsetting has-user-setup
   (deferred-tru "A value that is true iff the metabase instance has one or more users registered.")
   :visibility :public
@@ -60,9 +59,9 @@
                     ;; override could be false so have to check non-nil
                     (if (some? possible-override)
                       possible-override
-                      (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
+                      (or (get @app-db-id->user-exists? (mdb/unique-identifier))
                           (let [exists? (boolean (seq (t2/select :model/User {:where [:not= :id config/internal-mb-user-id]})))]
-                            (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
+                            (swap! app-db-id->user-exists? assoc (mdb/unique-identifier) exists?)
                             exists?))))))
   :doc        false
   :audit      :never)

@@ -13,8 +13,8 @@ import { equals } from "metabase/lib/utils";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import {
-  getVisualizationTransformed,
   extractRemappings,
+  getVisualizationTransformed,
 } from "metabase/visualizations";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -23,11 +23,11 @@ import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
-  MinRowsError,
   ChartSettingsError,
+  MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { isSameSeries, getCardKey } from "metabase/visualizations/lib/utils";
+import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import { isRegularClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/Question";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
@@ -38,15 +38,16 @@ import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
-  VisualizationRoot,
-  VisualizationHeader,
   VisualizationActionButtonsContainer,
+  VisualizationHeader,
+  VisualizationRoot,
   VisualizationSlowSpinner,
 } from "./Visualization.styled";
 
 const defaultProps = {
   errorMessageOverride: undefined,
   showTitle: false,
+  isAction: false,
   isDashboard: false,
   isEditing: false,
   isSettings: false,
@@ -62,6 +63,8 @@ const mapStateToProps = state => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
 });
+
+const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
 class Visualization extends PureComponent {
   state = {
@@ -335,6 +338,7 @@ class Visualization extends PureComponent {
       height,
       headerIcon,
       errorIcon,
+      isAction,
       isSlow,
       isMobile,
       expectedDuration,
@@ -343,7 +347,7 @@ class Visualization extends PureComponent {
       onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
-    const small = width < 330;
+    const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
@@ -457,7 +461,7 @@ class Visualization extends PureComponent {
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      (replacementContent && (dashcard.size_y !== 1 || isMobile));
+      (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
     return (
       <ErrorBoundary>

@@ -31,13 +31,7 @@ export const CollectionMenu = ({
     isInstanceAnalyticsCustomCollection(collection);
   const canWrite = collection.can_write;
 
-  if (
-    isAdmin &&
-    !isRoot &&
-    !isPersonal &&
-    !isPersonalCollectionChild &&
-    canWrite
-  ) {
+  if (isAdmin && !isRoot && canWrite) {
     items.push(
       ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
         collection,

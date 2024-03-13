@@ -61,7 +61,7 @@
                                  {:database (mt/id)
                                   :type     :query
                                   :query    {:source-table (mt/id :people)}}
-                                 :dataset true}]
+                                 :type :model}]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
           (let [{:keys [result_metadata]} (metabot-util/denormalize-model model)]
             (is (zero? (count (filter :possible_values result_metadata))))))
@@ -79,7 +79,7 @@
                                  {:database (mt/id)
                                   :type     :query
                                   :query    {:source-table (mt/id :people)}}
-                                 :dataset true}]
+                                 :type :model}]
         (let [{:keys [create_table_ddl inner_query sql_name result_metadata]} (metabot-util/denormalize-model model)]
           (is (string? create_table_ddl))
           (is (string? sql_name))
@@ -102,11 +102,11 @@
                              {:database (mt/id)
                               :type     :query
                               :query    {:source-table (mt/id :orders)}}
-                             :dataset true}]
+                             :type :model}]
         (let [database (t2/select-one Database :id (mt/id))
               {:keys [models sql_name model_json_summary]} (metabot-util/denormalize-database database)]
           (is (=
-               (count (t2/select Card :database_id (mt/id) :dataset true))
+               (count (t2/select Card :database_id (mt/id) :type :model))
                (count models)))
           (is (string? model_json_summary))
           (is (string? sql_name)))))))
@@ -166,7 +166,7 @@
                                                           {:database (mt/id)
                                                            :type     :query
                                                            :query    {:source-table (mt/id :people)}}
-                                                          :dataset true}]
+                                                          :type :model}]
           (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
                 sql     (metabot-util/bot-sql->final-sql
                          denormalized-model
@@ -190,7 +190,7 @@
                              {:database (mt/id)
                               :type     :query
                               :query    {:source-table (mt/id :orders)}}
-                             :dataset true}]
+                             :type :model}]
          (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
            (is (= 9 (count (re-seq #"\s+AS\s+" column_aliases))))
            (is (= 10 (count (re-seq #"\s+AS\s+" inner_query))))
@@ -217,7 +217,7 @@
           [Card orders-model {:name            "Orders Model"
                               :dataset_query   q
                               :result_metadata result-metadata
-                              :dataset         true}]
+                              :type            :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -246,7 +246,7 @@
           [Card orders-model {:name            "Orders Model"
                               :dataset_query   q
                               :result_metadata result-metadata
-                              :dataset         true}]
+                              :type            :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -270,7 +270,7 @@
           [Card orders-model {:name            "Orders Model"
                               :dataset_query   q
                               :result_metadata result-metadata
-                              :dataset         true}]
+                              :type            :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -286,7 +286,7 @@
   (testing "Models with joins work"
     (mt/dataset test-data
       (t2.with-temp/with-temp
-       [Card joined-model {:dataset     true
+       [Card joined-model {:type        :model
                            :database_id (mt/id)
                            :query_type  :query
                            :dataset_query
@@ -309,7 +309,7 @@
   (testing "A model with joins on the same table will produce distinct aliases"
     (mt/dataset test-data
       (t2.with-temp/with-temp
-       [Card joined-model {:dataset     true
+       [Card joined-model {:type        :model
                            :database_id (mt/id)
                            :query_type  :query
                            :dataset_query
@@ -336,7 +336,7 @@
   (testing "A model with aggregations will produce column names only (no AS aliases)"
     (mt/dataset test-data
       (t2.with-temp/with-temp
-       [Card aggregated-model {:dataset     true
+       [Card aggregated-model {:type        :model
                                :database_id (mt/id)
                                :query_type  :query
                                :dataset_query
@@ -362,7 +362,7 @@
                              {:database (mt/id)
                               :type     :query
                               :query    {:source-table (mt/id :orders)}}
-                             :dataset true}]
+                             :type :model}]
          (let [orders-model (update orders-model :result_metadata
                                     (fn [v]
                                       (map #(assoc % :display_name "ABC") v)))
@@ -376,7 +376,7 @@
     (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 10]
         (t2.with-temp/with-temp
-          [Card model {:dataset     true
+          [Card model {:type        :model
                        :database_id (mt/id)
                        :query_type  :query
                        :dataset_query

@@ -5,6 +5,7 @@
 
 ;; TODO - this whole fake driver is used in exactly one test. Can definitely remove a lot of the stuff here since it's
 ;; not used.
+;; Tech debt issue: #39338
 
 (def ^:private moviedb-tables
   {"movies"
