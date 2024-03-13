@@ -176,13 +176,38 @@
   [metadata-providerable native-stage]
   (query-with-stages metadata-providerable [native-stage]))
 
+(defn- convert-metric-query
+  [a-query]
+  (if-let [card-id (get-in a-query [:stages 0 :source-card])]
+    (let [{card-type :type} (lib.metadata/card a-query card-id)]
+      (cond-> a-query
+        (= card-type :metric)
+        (lib.util/update-query-stage 0 (fn [stage]
+                                         (-> stage
+                                             (dissoc :source-card)
+                                             (assoc :sources [{:lib/type :source/metric
+                                                               :id card-id}]))))))
+    a-query))
+
+(defn- revert-metric-query
+  [a-query]
+  ;; handle single metric for now
+  (if-let [{source-type :lib/type, card-id :id} (first (get-in a-query [:stages 0 :sources]))]
+    (cond-> a-query
+      (= source-type :source/metric)
+      (lib.util/update-query-stage 0 (fn [stage]
+                                       (-> stage
+                                           (dissoc :sources)
+                                           (assoc :source-card card-id)))))
+    a-query))
+
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
-  (query-method metadata-providerable x))
+  (convert-metric-query (query-method metadata-providerable x)))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
@@ -192,6 +217,11 @@
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->pMBQL
        (query metadata-providerable)))
+
+(defn ->legacy-MBQL
+  "Convert the pMBQL `a-query` into a legacy MBQL query."
+  [a-query]
+  (-> a-query revert-metric-query lib.convert/->legacy-MBQL))
 
 (mu/defn with-different-table :- ::lib.schema/query
   "Changes an existing query to use a different source table or card.

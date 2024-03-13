@@ -475,6 +475,18 @@
   [query :- :map]
   (= (first-stage-type query) :mbql.stage/native))
 
+(defn first-metric-id
+  "Return the ID of the first metric source in `sources`, if any."
+  [sources]
+  (some #(when (= (:lib/type %) :source/metric)
+           (:id %))
+        sources))
+
+(mu/defn source-metric-id :- [:maybe ::lib.schema.id/metric]
+  "If this query has a metric in `:sources`, return its ID."
+  [query]
+  (-> query :stages first :sources first-metric-id))
+
 (mu/defn unique-name-generator :- [:=>
                                    [:cat ::lib.schema.common/non-blank-string]
                                    ::lib.schema.common/non-blank-string]

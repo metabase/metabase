@@ -404,7 +404,10 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
+                   (if dataset?
+                     [:= :c.type (h2x/literal "model")]
+                     [:in :c.type [(h2x/literal "question")
+                                   (h2x/literal "metric")]])]}
       (cond-> dataset?
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))

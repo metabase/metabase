@@ -186,16 +186,19 @@
   - Similarly, the card specified by `:source-card` is missing from the metadata.
   If metadata for the `:source-table` or `:source-card` can be found, then the query is editable."
   [query :- ::lib.schema/query]
-  (let [{:keys [source-table source-card] :as stage0} (lib.util/query-stage query 0)]
+  (let [{:keys [source-table source-card sources] :as stage0} (lib.util/query-stage query 0)
+        ;; handle a single metric for now
+        metric-card (lib.util/first-metric-id sources)]
     (boolean (and (when-let [{:keys [id]} (database query)]
                     (= (:database query) id))
                   (or (and source-table (table query source-table))
                       (and source-card  (card  query source-card))
+                      (and metric-card  (card  query metric-card))
                       (and
-                        (= (:lib/type stage0) :mbql.stage/native)
-                        ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
-                        ;; TODO Find a way to unify has-write-permissions and this function?
-                        (= :write (:native-permissions (database query)))))))))
+                       (= (:lib/type stage0) :mbql.stage/native)
+                       ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
+                       ;; TODO Find a way to unify has-write-permissions and this function?
+                       (= :write (:native-permissions (database query)))))))))
 
 (mu/defn fetch-bulk-metadata-with-non-bulk-provider :- [:maybe [:sequential :map]]
   "Adapter to use a non-BulkMetadataProvider like one by calling the single-instance methods repeatedly. This is

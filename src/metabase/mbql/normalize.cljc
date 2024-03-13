@@ -782,6 +782,9 @@
     (not native?) canonicalize-inner-mbql-query
     native?       canonicalize-native-query))
 
+(defn- canonicalize-sources [sources]
+  (mapv #(update % :lib/type keyword) sources))
+
 (defn- non-empty? [x]
   (if (coll? x)
     (seq x)
@@ -795,7 +798,8 @@
     (non-empty? (:breakout     mbql-query)) (update :breakout     canonicalize-breakouts)
     (non-empty? (:fields       mbql-query)) (update :fields       (partial mapv wrap-implicit-field-id))
     (non-empty? (:order-by     mbql-query)) (update :order-by     canonicalize-order-by)
-    (non-empty? (:source-query mbql-query)) (update :source-query canonicalize-source-query)))
+    (non-empty? (:source-query mbql-query)) (update :source-query canonicalize-source-query)
+    (non-empty? (:sources      mbql-query)) (update :sources      canonicalize-sources)))
 
 (def ^:private ^{:arglists '([query])} canonicalize-inner-mbql-query
   (comp canonicalize-mbql-clauses canonicalize-top-level-mbql-clauses))
