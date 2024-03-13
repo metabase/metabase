@@ -70,15 +70,12 @@
   margin: auto;
   margin-inline-start: 1rem;
   color: var(--color-text-light);
-
-  [dir="rtl"] & {
-    left: 1rem;
-  }
+  inset-inline-start: 0;
 }
 
 :global(.AdminList-search .AdminInput) {
-  padding: 0.5em;
-  padding-left: 2em;
+  padding: 0.5rem;
+  padding-inline-start: 2.5rem;
   font-size: 18px;
   width: 100%;
   border-top-left-radius: var(--default-border-radius);
