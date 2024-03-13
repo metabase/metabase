@@ -231,7 +231,7 @@
           type->check (#'upload/settings->type->check settings)
           value-type  (#'upload/value->type type->check string-value)
           ;; get the type of the column, if it were filled with only that value
-          col-type    (first (upload/column-types-from-rows settings 1 [[string-value]]))
+          col-type    (first (upload/column-types-from-rows settings nil [[string-value]]))
           parser      (upload-parsing/upload-type->parser col-type settings)]
       (testing (format "\"%s\" is a %s" string-value type)
         (is (= expected-type
