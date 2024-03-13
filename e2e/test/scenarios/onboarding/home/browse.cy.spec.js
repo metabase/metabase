@@ -36,7 +36,6 @@ describeWithSnowplow("scenarios > browse data", () => {
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
     cy.go("back");
-    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
     cy.findByRole("gridcell", { name: "Rustic Paper Wallet" });
