@@ -12,8 +12,8 @@ import {
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
-import type Database from "metabase-lib/metadata/Database";
-import type Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { DatabaseId, TableId } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 

@@ -23,8 +23,8 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
-import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import {
   EmptyStateContainer,

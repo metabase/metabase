@@ -26,8 +26,8 @@ import ColumnSettings, {
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
-import { isFK } from "metabase-lib/types/utils/isa";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
+import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 

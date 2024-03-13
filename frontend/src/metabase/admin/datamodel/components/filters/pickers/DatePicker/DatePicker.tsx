@@ -3,7 +3,7 @@ import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   getAfterDateFilter,
   getBeforeDateFilter,
@@ -21,8 +21,8 @@ import {
   isNextDateFilter,
   isOnDateFilter,
   isPreviousDateFilter,
-} from "metabase-lib/queries/utils/date-filters";
-import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
+} from "metabase-lib/v1/queries/utils/date-filters";
+import { isStartingFrom } from "metabase-lib/v1/queries/utils/query-time";
 
 import CurrentPicker from "./CurrentPicker";
 import DatePickerFooter from "./DatePickerFooter";

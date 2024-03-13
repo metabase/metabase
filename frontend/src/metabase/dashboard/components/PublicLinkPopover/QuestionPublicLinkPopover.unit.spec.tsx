@@ -8,7 +8,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 

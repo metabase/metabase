@@ -1,4 +1,4 @@
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 import {
   compactifyValue,

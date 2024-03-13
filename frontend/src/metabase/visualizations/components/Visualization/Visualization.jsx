@@ -29,9 +29,9 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import { isRegularClickAction } from "metabase/visualizations/types";
-import Question from "metabase-lib/Question";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
-import { memoizeClass } from "metabase-lib/utils";
+import Question from "metabase-lib/v1/Question";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import { memoizeClass } from "metabase-lib/v1/utils";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";

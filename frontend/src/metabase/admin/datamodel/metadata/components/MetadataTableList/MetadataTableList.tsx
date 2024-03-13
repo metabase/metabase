@@ -13,8 +13,8 @@ import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Icon } from "metabase/ui";
-import type Table from "metabase-lib/metadata/Table";
-import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   DatabaseId,
   SchemaId,

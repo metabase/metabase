@@ -20,9 +20,9 @@ import { FilterApplyButton } from "metabase/parameters/components/FilterApplyBut
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard as IDashboard,
   DashboardId,

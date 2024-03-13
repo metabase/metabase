@@ -17,13 +17,13 @@ import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
-import Query from "metabase-lib/queries/Query";
+import Question from "metabase-lib/v1/Question";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import Query from "metabase-lib/v1/queries/Query";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
-} from "metabase-lib/queries/utils/card";
+} from "metabase-lib/v1/queries/utils/card";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {

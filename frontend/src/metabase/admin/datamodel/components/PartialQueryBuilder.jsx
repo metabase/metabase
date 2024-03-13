@@ -9,11 +9,11 @@ import Link from "metabase/core/components/Link";
 import Tables from "metabase/entities/tables";
 import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
-import Query from "metabase-lib/queries/Query";
+import Query from "metabase-lib/v1/queries/Query";
 import {
   getSegmentOrMetricQuestion,
   getDefaultSegmentOrMetricQuestion,
-} from "metabase-lib/queries/utils/segments";
+} from "metabase-lib/v1/queries/utils/segments";
 
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 

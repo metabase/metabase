@@ -30,7 +30,7 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   BaseDashboardCard,
   Card,

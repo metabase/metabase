@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import Subhead from "metabase/components/type/Subhead";
 import type { updateQuestion } from "metabase/query_builder/actions";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import QuestionDataSelector from "../../QuestionDataSelector";
 

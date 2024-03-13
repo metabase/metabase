@@ -7,7 +7,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getFilterOptions,
   setFilterOptions,
-} from "metabase-lib/queries/utils/filter";
+} from "metabase-lib/v1/queries/utils/filter";
 
 const OPTION_NAMES = {
   "include-current": filter => {

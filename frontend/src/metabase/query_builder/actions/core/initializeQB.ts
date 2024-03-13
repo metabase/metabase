@@ -14,12 +14,12 @@ import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
-import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
-import { normalize } from "metabase-lib/queries/utils/normalize";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
+import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, MetricId, SegmentId } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
 import type {
