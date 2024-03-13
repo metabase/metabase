@@ -11,7 +11,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ClickObject } from "metabase-lib";
-import { isID, isFK } from "metabase-lib/types/utils/isa";
+import { isID, isFK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,

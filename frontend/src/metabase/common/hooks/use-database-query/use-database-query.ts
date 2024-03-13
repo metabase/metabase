@@ -4,7 +4,7 @@ import type {
 } from "metabase/common/hooks/use-entity-query";
 import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
 import Databases from "metabase/entities/databases";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, DatabaseQuery } from "metabase-types/api";
 
 export const useDatabaseQuery = (

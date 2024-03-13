@@ -4,7 +4,7 @@ import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { Icon } from "metabase/ui";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import {
   TableFooterRoot,

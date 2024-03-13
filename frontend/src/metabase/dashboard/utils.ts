@@ -12,7 +12,7 @@ import {
   isDateParameter,
   isNumberParameter,
   isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   Card,
   CardId,

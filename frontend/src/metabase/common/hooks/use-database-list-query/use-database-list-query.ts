@@ -4,7 +4,7 @@ import type {
 } from "metabase/common/hooks/use-entity-list-query";
 import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
 import Databases from "metabase/entities/databases";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseListQuery } from "metabase-types/api";
 
 export const useDatabaseListQuery = (

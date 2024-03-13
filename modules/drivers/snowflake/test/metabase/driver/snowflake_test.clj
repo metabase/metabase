@@ -300,6 +300,7 @@
       (is (= #{{:fk-column-name   "category_id"
                 :dest-table       {:name "categories", :schema "PUBLIC"}
                 :dest-column-name "id"}}
+             #_{:clj-kondo/ignore [:deprecated-var]}
              (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :venues))))))))
 
 (defn- format-env-key ^String [env-key]

@@ -1,5 +1,5 @@
 import { getEngineNativeType } from "metabase/lib/engine";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 export const getHasDataAccess = (databases: Database[]) => {
   return databases.some(d => !d.is_saved_questions);
