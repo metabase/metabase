@@ -71,6 +71,8 @@
         (lib.metadata.calculation/display-info query stage-number table))
       (when-let [card (some->> (:source-card stage) (lib.metadata/card query))]
         (lib.metadata.calculation/display-info query stage-number card))
+      (when-let [metric (some->> (:sources stage) lib.util/first-metric-id (lib.metadata/card query))]
+        (lib.metadata.calculation/display-info query stage-number metric))
       ;; for multi-stage queries return an empty string (#30108)
       (when (next (:stages query))
         {:display-name ""})

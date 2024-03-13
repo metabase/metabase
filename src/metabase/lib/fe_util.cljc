@@ -168,7 +168,11 @@
          {:type :field, :id id}))
      ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       [{:type :table, :id (str "card__" card-id)}])
+       [{:type :table, :id (str "card__" card-id)}
+        {:type :card,  :id card-id}])
+     (for [source (:sources base-stage)
+           :when (= (:lib/type source) :source/metric)]
+       {:type :table, :id (str "card__" (:id source))})
      (when-let [table-id (:source-table base-stage)]
        [{:type :table, :id table-id}])
      (for [stage (:stages query-or-join)
@@ -179,11 +183,12 @@
 (def ^:private DependentItem
   [:and
    [:map
-    [:type [:enum :database :schema :table :field]]]
+    [:type [:enum :database :schema :table :card :field]]]
    [:multi {:dispatch :type}
     [:database [:map [:id ::lib.schema.id/database]]]
     [:schema   [:map [:id ::lib.schema.id/database]]]
     [:table    [:map [:id [:or ::lib.schema.id/table :string]]]]
+    [:card     [:map [:id ::lib.schema.id/card]]]
     [:field    [:map [:id ::lib.schema.id/field]]]]])
 
 (mu/defn dependent-metadata :- [:sequential DependentItem]
