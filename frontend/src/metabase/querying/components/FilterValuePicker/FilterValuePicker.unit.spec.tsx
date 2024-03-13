@@ -91,7 +91,7 @@ async function setupNumberPicker({
     setupFieldValuesEndpoints(fieldValues);
   }
 
-  renderWithProviders(
+  const { rerender } = renderWithProviders(
     <NumberFilterValuePicker
       query={query}
       stageIndex={stageIndex}
@@ -106,7 +106,7 @@ async function setupNumberPicker({
 
   await waitForLoaderToBeRemoved();
 
-  return { onChange, onFocus, onBlur };
+  return { rerender, onChange, onFocus, onBlur };
 }
 
 describe("StringFilterValuePicker", () => {
@@ -267,7 +267,7 @@ describe("StringFilterValuePicker", () => {
       expect(checkboxes[2]).not.toBeChecked();
     });
 
-    it("should not elevate selected field values after the initial render", async () => {
+    it("should not elevate selected field values after checking an item", async () => {
       const { rerender, onChange } = await setupStringPicker({
         query,
         stageIndex,
@@ -292,7 +292,6 @@ describe("StringFilterValuePicker", () => {
           onChange={onChange}
         />,
       );
-
       const checkboxes = screen.getAllByRole("checkbox");
       expect(checkboxes[0]).toHaveAccessibleName("In-progress");
       expect(checkboxes[0]).toBeChecked();
@@ -300,6 +299,40 @@ describe("StringFilterValuePicker", () => {
       expect(checkboxes[1]).not.toBeChecked();
       expect(checkboxes[2]).toHaveAccessibleName("Completed");
       expect(checkboxes[2]).toBeChecked();
+    });
+
+    it("should not elevate selected field values after unchecking an item", async () => {
+      const { rerender, onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["p", "c"],
+        fieldValues: createMockFieldValues({
+          field_id: PRODUCTS.CATEGORY,
+          values: [
+            ["t", "To-do"],
+            ["p", "In-progress"],
+            ["c", "Completed"],
+          ],
+        }),
+      });
+
+      rerender(
+        <StringFilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          values={["c"]}
+          onChange={onChange}
+        />,
+      );
+      const checkboxes = screen.getAllByRole("checkbox");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).not.toBeChecked();
+      expect(checkboxes[1]).toHaveAccessibleName("Completed");
+      expect(checkboxes[1]).toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("To-do");
+      expect(checkboxes[2]).not.toBeChecked();
     });
 
     it("should handle empty field values", async () => {
@@ -668,6 +701,31 @@ describe("NumberFilterValuePicker", () => {
 
       userEvent.click(screen.getByText("In-progress"));
       expect(onChange).toHaveBeenCalledWith([10, 20]);
+    });
+
+    it("should elevate selected field values on initial render", async () => {
+      await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [20],
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.QUANTITY,
+          values: [
+            [10, "To-do"],
+            [20, "In-progress"],
+            [30, "Completed"],
+          ],
+        }),
+      });
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toBeChecked();
+      expect(checkboxes[1]).toHaveAccessibleName("To-do");
+      expect(checkboxes[1]).not.toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).not.toBeChecked();
     });
   });
 

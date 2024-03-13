@@ -55,16 +55,16 @@ export function getEffectiveOptions(
     ...getSelectedOptions(selectedValues),
   ];
 
-  const mapping = options.reduce((map: Record<string, string>, option) => {
+  const mapping = options.reduce((map: Map<string, string>, option) => {
     if (option.label) {
-      map[option.value] = option.label;
-    } else {
-      map[option.value] ??= option.value;
+      map.set(option.value, option.label);
+    } else if (!map.has(option.value)) {
+      map.set(option.value, option.value);
     }
     return map;
-  }, {});
+  }, new Map<string, string>());
 
-  return Object.entries(mapping).map(([value, label]) => ({ value, label }));
+  return [...mapping.entries()].map(([value, label]) => ({ value, label }));
 }
 
 export function isKeyColumn(column: Lib.ColumnMetadata) {
