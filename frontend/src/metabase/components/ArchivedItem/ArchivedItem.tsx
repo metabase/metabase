@@ -5,7 +5,7 @@ import CheckBox from "metabase/core/components/CheckBox";
 import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color as c } from "metabase/lib/colors";
-import type { IconName } from "metabase/ui";
+import { Box, type IconName } from "metabase/ui";
 import type { CollectionItemModel } from "metabase-types/api";
 
 import { ActionIcon, ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
@@ -53,7 +53,7 @@ export const ArchivedItem = ({
     />
     {name}
     {(onUnarchive || onDelete) && (
-      <span className="ml-auto mr2">
+      <Box ms="auto" me="1rem">
         {onUnarchive && (
           <Tooltip
             tooltip={t`Unarchive this ${getTranslatedEntityName(
@@ -80,7 +80,7 @@ export const ArchivedItem = ({
             />
           </Tooltip>
         )}
-      </span>
+      </Box>
     )}
   </div>
 );

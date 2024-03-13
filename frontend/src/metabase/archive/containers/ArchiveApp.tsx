@@ -11,7 +11,7 @@ import PageHeading from "metabase/components/type/PageHeading";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getIsNavbarOpen, getWritingDirection } from "metabase/selectors/app";
 import { Button } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -29,6 +29,7 @@ import {
 export function ArchiveApp() {
   const dispatch = useDispatch();
   const isNavbarOpen = useSelector(getIsNavbarOpen);
+  const writingDirection = useSelector(getWritingDirection);
 
   const { data, isLoading, error } = useSearchListQuery({
     query: { archived: true },
@@ -61,7 +62,7 @@ export function ArchiveApp() {
   }
 
   return (
-    <ArchiveRoot>
+    <ArchiveRoot dir={writingDirection}>
       <ArchiveHeader>
         <PageHeading>{t`Archive`}</PageHeading>
       </ArchiveHeader>
