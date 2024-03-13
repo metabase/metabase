@@ -72,8 +72,8 @@
   "Sync the Fields in the Metabase application database for a specific `table`."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
-    (let [schema-names   (sync-util/db->sync-schemas database)
-          field-metadata (fetch-metadata/field-metadata database :schema-names schema-names)]
+    (let [schema-names    (sync-util/db->sync-schemas database)
+          fields-metadata (fetch-metadata/fields-metadata database :schema-names schema-names)]
       (transduce (comp
                   (partition-by (juxt :table-name :table-schema))
                   (map (fn [table-metadata]
@@ -94,7 +94,7 @@
                  (partial merge-with +)
                  {:total-fields   0
                   :updated-fields 0}
-                 field-metadata))))
+                 fields-metadata))))
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
@@ -104,9 +104,7 @@
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-     (let [db-metadata (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
-                         (set (fetch-metadata/field-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
-                         (our-metadata/db-metadata database table))]
+     (let [db-metadata (our-metadata/db-metadata database table)]
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! table db-metadata)}))))
 

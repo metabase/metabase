@@ -1,5 +1,5 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
-  "SQL JDBC impl for `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
+  "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
   `describe-table-fks` is deprecated and will be replaced by `describe-fks` in the future."
   (:require
    [cheshire.core :as json]
@@ -217,7 +217,9 @@
   The PKs should be ordered by column names if there are multiple PKs.
   Ref: https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getPrimaryKeys-java.lang.String-java.lang.String-java.lang.String-
 
-  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access."
+  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access.
+
+  This does not need to be implemented for drivers that support the [[driver/describe-fields]] multimethod."
   {:changelog-test/ignore true
    :added    "0.45.0"
    :arglists '([driver ^Connection conn db-name-or-nil table])}

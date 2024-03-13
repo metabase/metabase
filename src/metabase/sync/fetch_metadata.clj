@@ -16,13 +16,7 @@
   [database :- i/DatabaseInstance]
   (driver/describe-database (driver.u/database->driver database) database))
 
-(mu/defn table-metadata :- i/TableMetadata
-  "Get more detailed information about a `table` belonging to `database`. Includes information about the Fields."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance]
-  (driver/describe-table (driver.u/database->driver database) database table))
-
-(mu/defn field-metadata
+(mu/defn fields-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema."
   [database :- i/DatabaseInstance & {:as args}]
   (cond->> (driver/describe-fields (driver.u/database->driver database) database args)
@@ -30,6 +24,14 @@
     ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
     (not config/is-prod?)
     (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))
+
+(mu/defn table-fields-metadata :- [:set i/FieldMetadataEntry]
+  "Get more detailed information about a `table` belonging to `database`. Includes information about the Fields."
+  [database :- i/DatabaseInstance
+   table    :- i/TableInstance]
+  (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
+    (set (fields-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
+    (:fields (driver/describe-table (driver.u/database->driver database) database table))))
 
 (mu/defn fk-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema."

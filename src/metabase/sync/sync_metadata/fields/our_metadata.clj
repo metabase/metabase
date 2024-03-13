@@ -7,7 +7,6 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -93,8 +92,6 @@
   implementation of `describe-table` or `describe-fields` if supported."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
-    (cond-> (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
-              (set (fetch-metadata/field-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
-              (:fields (fetch-metadata/table-metadata database table)))
+    (cond-> (fetch-metadata/table-fields-metadata database table)
       (driver/database-supports? (:engine database) :nested-field-columns database)
       (set/union (fetch-metadata/nfc-metadata database table))))
