@@ -140,7 +140,7 @@ type InputResetButtonProps = {
 };
 
 export const InputResetButton = styled(InputButton)<InputResetButtonProps>`
-  right: ${props => (props.hasRightIcon ? "1.25rem" : 0)};
+  end: ${props => (props.hasRightIcon ? "1.25rem" : 0)};
 `;
 
 export const InputSubtitle = styled.div`
