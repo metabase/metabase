@@ -214,7 +214,7 @@ export default class CustomGeoJSONWidget extends Component {
 
 const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
   <section>
-    <table className={cx(AdminS.ContentTable)}>
+    <table className={AdminS.ContentTable}>
       <thead>
         <tr>
           <th>{t`Name`}</th>
@@ -232,7 +232,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
               <td className="cursor-pointer" onClick={() => onEditMap(map)}>
                 <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
               </td>
-              <td className="Table-actions">
+              <td className={AdminS.TableActions}>
                 <Confirm
                   action={() => onDeleteMap(map)}
                   title={t`Delete custom map`}
@@ -329,7 +329,11 @@ const EditMap = ({
           <div className="flex">
             <input
               type="text"
-              className="SettingsInput AdminInput bordered rounded h3"
+              className={cx(
+                "bordered rounded h3",
+                AdminS.AdminInput,
+                AdminS.SettingsInput,
+              )}
               placeholder={t`e.g. United Kingdom, Brazil, Mars`}
               value={map.name}
               onChange={e => onMapChange({ ...map, name: e.target.value })}
@@ -342,7 +346,11 @@ const EditMap = ({
           <div className="flex">
             <input
               type="text"
-              className="SettingsInput AdminInput bordered rounded h3"
+              className={cx(
+                AdminS.AdminInput,
+                AdminS.SettingsInput,
+                "bordered rounded h3",
+              )}
               placeholder={t`Like https://my-mb-server.com/maps/my-map.json`}
               value={map.url}
               onChange={e => onMapChange({ ...map, url: e.target.value })}

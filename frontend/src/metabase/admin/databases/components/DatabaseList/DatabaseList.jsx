@@ -76,7 +76,7 @@ export default class DatabaseList extends Component {
 
     return (
       <div className={CS.wrapper} data-testid="database-list">
-        <section className="PageHeader px2 clearfix">
+        <section className={cx("clearfix", AdminS.PageHeader, CS.px2)}>
           {isAdmin && (
             <Link
               to="/admin/databases/create"
@@ -87,7 +87,7 @@ export default class DatabaseList extends Component {
               )}
             >{t`Add database`}</Link>
           )}
-          <h2 className="PageTitle">{t`Databases`}</h2>
+          <h2 className={AdminS.PageTitle}>{t`Databases`}</h2>
         </section>
         {error && (
           <section>
@@ -95,7 +95,7 @@ export default class DatabaseList extends Component {
           </section>
         )}
         <section>
-          <table className={cx(AdminS.ContentTable)}>
+          <table className={AdminS.ContentTable}>
             <thead>
               <tr>
                 <th>{t`Name`}</th>

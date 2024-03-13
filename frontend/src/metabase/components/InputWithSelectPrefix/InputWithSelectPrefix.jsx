@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 
 import Select, { Option } from "metabase/core/components/Select";
+import AdminS from "metabase/css/admin.module.css";
 import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
 
@@ -72,7 +73,7 @@ export default class InputWithSelectPrefix extends Component {
         className={cx(
           CS.flex,
           "align-stretch",
-          "SettingsInput",
+          AdminS.SettingsInput,
           FormS.FormInput,
           CS.p0,
         )}

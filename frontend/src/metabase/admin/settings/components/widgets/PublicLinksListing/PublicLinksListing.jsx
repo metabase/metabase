@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -68,7 +67,7 @@ class PublicLinksListing extends Component {
         {() => (
           <table
             data-testId={this.props["data-testId"]}
-            className={cx(AdminS.ContentTable)}
+            className={AdminS.ContentTable}
           >
             <thead>
               <tr>

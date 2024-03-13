@@ -15,6 +15,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import UserAvatar from "metabase/components/UserAvatar";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -124,7 +125,7 @@ function ActionsPopover({
       className="block"
       triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
-      <ul className="UserActionsSelect py1">
+      <ul className={cx(AdminS.UserActionsSelect, "py1")}>
         <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
           {t`Edit Name`}
         </EditGroupButton>

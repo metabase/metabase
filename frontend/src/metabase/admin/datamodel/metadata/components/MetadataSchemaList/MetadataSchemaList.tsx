@@ -5,6 +5,7 @@ import { push, replace } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import AdminS from "metabase/css/admin.module.css";
 import Schemas from "metabase/entities/schemas";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -76,11 +77,16 @@ const MetadataSchemaList = ({
   }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
 
   return (
-    <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
-      <div className="AdminList-search">
+    <aside
+      className={cx(
+        "MetadataEditor-table-list flex-no-shrink",
+        AdminS.AdminList,
+      )}
+    >
+      <div className={AdminS.AdminListSearch}>
         <Icon name="search" size={16} />
         <input
-          className="AdminInput pl4 border-bottom"
+          className={cx("pl4 border-bottom", AdminS.AdminList)}
           type="text"
           placeholder={t`Find a schema`}
           value={searchText}
@@ -88,7 +94,7 @@ const MetadataSchemaList = ({
         />
       </div>
       <ul className="AdminList-items">
-        <div className="AdminList-section">
+        <div className={AdminS.AdminListSection}>
           {ngettext(
             msgid`${schemas.length} schema`,
             `${schemas.length} schemas`,
@@ -123,7 +129,8 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
     <li key={schema.id}>
       <a
         className={cx(
-          "AdminList-item flex align-center no-decoration text-wrap",
+          "flex align-center no-decoration text-wrap",
+          AdminS.AdminListItem,
           { selected: isSelected },
         )}
         onClick={handleSelect}
