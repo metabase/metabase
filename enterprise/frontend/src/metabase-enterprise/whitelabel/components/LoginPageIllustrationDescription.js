@@ -20,6 +20,7 @@ export function LoginPageIllustrationDescription() {
             </Stack>
           </HoverCard.Dropdown>
         </HoverCard>
+        <Text color="error" id="test-error-id"></Text>
       </Flex>
     </Text>
   );

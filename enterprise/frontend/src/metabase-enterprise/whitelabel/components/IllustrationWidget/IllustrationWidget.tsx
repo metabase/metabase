@@ -1,5 +1,6 @@
 import type { ChangeEvent } from "react";
 import { useMemo, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -32,6 +33,8 @@ type IllustrationWidgetProps = {
     | "no-search-results-illustration-custom";
 };
 
+const MB = 1024 * 1024;
+
 export function IllustrationWidget({
   id,
   setting,
@@ -43,6 +46,7 @@ export function IllustrationWidget({
 }: IllustrationWidgetProps) {
   const value = setting.value ?? setting.default;
   const [fileName, setFileName] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const data = useMemo(
     () => [
@@ -54,6 +58,7 @@ export function IllustrationWidget({
   );
 
   function handleChange(value: IllustrationValue) {
+    setErrorMessage("");
     // Avoid saving the same value
     // When setting.value is set to the default value its value would be `null`
     if (value === (setting.value ?? setting.default)) {
@@ -72,6 +77,12 @@ export function IllustrationWidget({
   function handleFileUpload(fileEvent: ChangeEvent<HTMLInputElement>) {
     if (fileEvent.target.files && fileEvent.target.files.length > 0) {
       const file = fileEvent.target.files[0];
+      if (file.size > 2 * MB) {
+        setErrorMessage(
+          t`The image you chose is larger than 2MB. Please choose another one.`,
+        );
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = async readerEvent => {
@@ -98,6 +109,7 @@ export function IllustrationWidget({
   }
 
   const isCustomIllustration = value === "custom";
+  const errorMessageContainer = document.getElementById("test-error-id");
 
   return (
     <Paper withBorder shadow="none">
@@ -120,6 +132,7 @@ export function IllustrationWidget({
             style={{
               flexShrink: isCustomIllustration && fileName ? 0 : undefined,
             }}
+            error={Boolean(errorMessage)}
           />
           {isCustomIllustration && (
             <Text truncate="end" ml="auto">
@@ -151,6 +164,9 @@ export function IllustrationWidget({
           />
         </Flex>
       </Flex>
+      {errorMessage &&
+        errorMessageContainer &&
+        createPortal(errorMessage, errorMessageContainer)}
     </Paper>
   );
 }
