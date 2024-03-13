@@ -64,10 +64,11 @@ describe("DataSelectorTablePicker", () => {
   });
 
   it("show tables in the database", () => {
-    const table = createMockTable();
+    const table = createMockTable({ description: "This a table description" });
     const database = createMockDatabase({ tables: [table] });
     setup({ database });
     expect(screen.getByText(database.name)).toBeInTheDocument();
     expect(screen.getByText(table.display_name)).toBeInTheDocument();
+    expect(screen.getByLabelText("More info")).toBeInTheDocument();
   });
 });

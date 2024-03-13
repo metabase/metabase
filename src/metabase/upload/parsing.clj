@@ -5,7 +5,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [tru]])
   (:import
-   (java.text NumberFormat)
+   (java.text NumberFormat ParsePosition)
    (java.time LocalDate)
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder ResolverStyle)
    (java.util Locale)))
@@ -139,11 +139,19 @@
   (defn- parse-plain-number [number-separators s]
     (let [has-parens?       (re-matches #"\(.*\)" s)
           deparenthesized-s (str/replace s #"[()]" "")
+          parse-pos         (ParsePosition. 0)
           parsed-number     (case number-separators
-                              ("." ".,") (. us parse deparenthesized-s)
-                              ",."       (. de parse deparenthesized-s)
-                              ", "       (. fr parse (str/replace deparenthesized-s \space \u00A0)) ; \u00A0 is a non-breaking space
-                              ".’"       (. ch parse deparenthesized-s))]
+                              ("." ".,") (. us parse deparenthesized-s parse-pos)
+                              ",."       (. de parse deparenthesized-s parse-pos)
+                              ", "       (. fr parse (str/replace deparenthesized-s \space \u00A0) parse-pos) ; \u00A0 is a non-breaking space
+                              ".’"       (. ch parse deparenthesized-s parse-pos))]
+      (let [parsed-idx (.getIndex parse-pos)]
+        (when-not (= parsed-idx (count deparenthesized-s))
+          (throw (ex-info "Unexpected trailing characters - this is probably not a number"
+                          {:full-string    s
+                           :parsed-number  parsed-number
+                           :parsed-string  (.substring deparenthesized-s 0 parsed-idx)
+                           :ignored-string (.substring deparenthesized-s parsed-idx)}))))
       (if has-parens?
         (- parsed-number)
         parsed-number))))
@@ -156,8 +164,8 @@
          (str/trim)
          (remove-currency-signs)
          (parse-plain-number number-separators))
-    (catch Exception _
-      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable number" s))))))
+    (catch Exception e
+      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable number" s) e)))))
 
 (defn- parse-as-biginteger
   "Parses a string representing a number as a java.math.BigInteger, rounding down if necessary."

@@ -38,7 +38,7 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
   getDefaultAlert,
-} from "metabase-lib/Alert";
+} from "metabase-lib/v1/Alert";
 
 import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
 

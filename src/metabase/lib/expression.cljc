@@ -21,7 +21,7 @@
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
    [metabase.util.malli :as mu]
@@ -254,6 +254,7 @@
 (lib.common/defop get-minute [t])
 (lib.common/defop get-second [t])
 (lib.common/defop get-quarter [t])
+(lib.common/defop get-day-of-week [t])
 (lib.common/defop datetime-add [t i unit])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
@@ -408,7 +409,7 @@
   [expr]
   (into #{}
         (map #(get % 2))
-        (mbql.u/match expr :expression)))
+        (mbql.match/match expr :expression)))
 
 (defn- cyclic-definition
   ([node->children]

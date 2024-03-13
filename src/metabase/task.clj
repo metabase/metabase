@@ -16,7 +16,6 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -102,7 +101,7 @@
     ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
     ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
     ;; Now that would be a useful macro!
-    (.getConnection mdb.connection/*application-db*))
+    (.getConnection (mdb/app-db)))
   (shutdown [_]))
 
 (when-not *compile-files*

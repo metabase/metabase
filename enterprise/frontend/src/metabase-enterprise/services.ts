@@ -6,7 +6,7 @@ export const AuditApi = {
 };
 
 export const AutoDescribeApi = {
-  summarizeCard: POST("/api/ee/auto-describe/summarize-card"),
+  summarizeCard: POST("/api/ee/autodescribe/card/summarize"),
 };
 
 export const ImpersonationApi = {

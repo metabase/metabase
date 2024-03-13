@@ -4,7 +4,7 @@ import { t } from "ttag";
 import Modal from "metabase/components/Modal";
 import Tooltip from "metabase/core/components/Tooltip";
 import { Button, Flex, Radio, Stack } from "metabase/ui";
-import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
+import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
   Parameter,
   ValuesQueryType,

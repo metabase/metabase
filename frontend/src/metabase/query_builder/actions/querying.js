@@ -9,8 +9,8 @@ import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
   getIsResultDirty,

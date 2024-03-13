@@ -46,7 +46,7 @@ import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Bookmark as IBookmark,
   DashboardId,
@@ -518,13 +518,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
       });
 
       extraButtons.push({
-        title: t`Duplicate`,
-        icon: "clone",
-        link: `${location.pathname}/copy`,
-        event: "Dashboard;Copy",
-      });
-
-      extraButtons.push({
         title:
           Array.isArray(dashboard.tabs) && dashboard.tabs.length > 1
             ? t`Export tab as PDF`
@@ -543,6 +536,17 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           link: `${location.pathname}/move`,
           event: "Dashboard;Move",
         });
+      }
+
+      extraButtons.push({
+        title: t`Duplicate`,
+        icon: "clone",
+        link: `${location.pathname}/copy`,
+        event: "Dashboard;Copy",
+      });
+
+      if (canEdit) {
+        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
         extraButtons.push({
           title: t`Archive`,
@@ -550,8 +554,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
-
-        extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
       }
     }
 
@@ -590,6 +592,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
+            // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+            transitionDuration={0}
           />,
         );
       }

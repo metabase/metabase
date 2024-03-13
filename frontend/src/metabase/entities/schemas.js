@@ -8,11 +8,11 @@ import { MetabaseApi } from "metabase/services";
 import {
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   generateSchemaId,
   parseSchemaId,
-} from "metabase-lib/metadata/utils/schema";
+} from "metabase-lib/v1/metadata/utils/schema";
 
 // This is a weird entity because we don't have actual schema objects
 

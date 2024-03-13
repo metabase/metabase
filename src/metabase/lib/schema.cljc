@@ -144,8 +144,8 @@
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
    [:fn
-    {:error/message "A query cannot have both a :source-table and a :source-card."}
-    (complement (every-pred :source-table :source-card))]
+    {:error/message "A query must have exactly one of :source-table, :source-card, or :sources"}
+    (complement (comp #(= (count %) 1) #{:source-table :source-card :sources}))]
    [:ref ::stage.valid-refs]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
@@ -161,18 +161,30 @@
    [:map
     [:source-card [:ref ::id/card]]]])
 
+(mr/def ::source
+  [:map
+   [:lib/type [:enum :source/metric]]
+   [:id [:ref ::id/metric]]])
+
+(mr/def ::stage.mbql.with-sources
+  [:merge
+   [:ref ::stage.mbql]
+   [:map
+     [:sources [:sequential {:min 1} [:ref ::source]]]]])
+
 (mr/def ::stage.mbql.with-source
   [:or
    [:ref ::stage.mbql.with-source-table]
-   [:ref ::stage.mbql.with-source-card]])
+   [:ref ::stage.mbql.with-source-card]
+   [:ref ::stage.mbql.with-sources]])
 
 ;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
 (mr/def ::stage.mbql.without-source
   [:and
    [:ref ::stage.mbql]
    [:fn
-    {:error/message "Only the initial stage of a query can have a :source-table or :source-card."}
-    (complement (some-fn :source-table :source-card))]])
+    {:error/message "Only the initial stage of a query can have a :source-table, :source-card, or :sources"}
+    (complement (some-fn :source-table :source-card :sources))]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
@@ -264,5 +276,6 @@
     [:database [:or
                 ::id/database
                 ::id/saved-questions-virtual-database]]
+    ;;; TODO -- `:parameters`. Legacy MBQL schema has it
     [:stages   [:ref ::stages]]]
    lib.schema.util/UniqueUUIDs])

@@ -332,7 +332,7 @@
   driver has difference escaping rules for table or schema names when used from metadata.
 
   For example, oracle treats slashes differently when querying versus when used with `.getTables` or `.getColumns`"
-  {:arglists '([driver table-name]), :added "0.37.0"}
+  {:arglists '([driver entity-name]), :added "0.37.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -918,6 +918,13 @@
   `args` is an optional map with an optional key `primary-key`. The `primary-key` value is a vector of column names
   that make up the primary key. Currently only a single primary key is supported."
   {:added "0.49.0", :arglists '([driver db-id table-name column-definitions & args])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti alter-columns!
+  "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
+  Currently we do not currently support changing the the primary key, or take any guidance on how to coerce values."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

@@ -13,8 +13,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Field]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -23,6 +23,7 @@
    [metabase.upload :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
+   [metabase.util.ordered-hierarchy :as ordered-hierarchy]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -268,7 +269,7 @@
            [datetime-type    text-type        text-type]
            [offset-dt-type   text-type        text-type]
            [vchar-type       text-type        text-type]]]
-    (is (= expected (#'upload/most-specific-common-ancestor type-a type-b))
+    (is (= expected (#'ordered-hierarchy/first-common-ancestor @#'upload/h type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
 (defn csv-file-with
@@ -295,7 +296,7 @@
   [rows]
   (with-open [reader (io/reader (csv-file-with rows))]
     (let [[header & rows] (csv/read-csv reader)]
-      (#'upload/detect-schema header rows))))
+      (#'upload/detect-schema (upload-parsing/get-settings) header rows))))
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -430,6 +431,11 @@
             names (repeatedly n (partial #'upload/unique-table-name driver/*driver* ""))]
         (is (= 50 (count (distinct names))))))))
 
+(defn last-audit-event [topic]
+  (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
+                 :topic topic
+                 {:order-by [[:id :desc]]}))
+
 (defn upload-example-csv!
   "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
   current user is granted data permissions to the database."
@@ -459,17 +465,16 @@
             grant?            (and db
                                    (not (mi/can-read? db))
                                    grant-permission?)]
-        (when grant?
-          (perms/grant-permissions! group-id (perms/data-perms-path db-id)))
-        (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
-                   (upload/create-csv-upload! {:collection-id collection-id
-                                               :filename      csv-file-prefix
-                                               :file          file
-                                               :db-id         db-id
-                                               :schema-name   schema-name
-                                               :table-prefix  table-prefix}))
+        (mt/with-restored-data-perms-for-group! group-id
           (when grant?
-            (perms/revoke-data-perms! group-id db-id)))))))
+            (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted))
+          (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
+                     (upload/create-csv-upload! {:collection-id collection-id
+                                                 :filename      csv-file-prefix
+                                                 :file          file
+                                                 :db-id         db-id
+                                                 :schema-name   schema-name
+                                                 :table-prefix  table-prefix}))))))))
 
 (defn do-with-uploads-allowed
   "Set uploads-enabled to true, and uses an admin user, run the thunk"
@@ -1126,6 +1131,28 @@
                   :user-id (str (mt/user->id :rasta))}
                  (last (snowplow-test/pop-event-data-and-user-id!)))))))))
 
+
+(deftest csv-upload-audit-log-test
+  ;; Just test with h2 because these events are independent of the driver
+  (mt/test-driver :h2
+    (mt/with-premium-features #{:audit-app}
+      (with-upload-table!
+       [_table (card->table (upload-example-csv!))]
+       (is (=? {:topic    :upload-create
+                :user_id  (:id (mt/fetch-user :rasta))
+                :model    "Table"
+                :model_id pos?
+                :details  {:db-id       pos?
+                           :schema-name "PUBLIC"
+                           :table-name  string?
+                           :model-id    pos?
+                           :stats       {:num-rows          2
+                                         :num-columns       2
+                                         :generated-columns 1
+                                         :size-mb           3.910064697265625E-5
+                                         :upload-seconds    pos?}}}
+               (last-audit-event :upload-create)))))))
+
 (deftest create-csv-upload!-failure-test
   ;; Just test with postgres because failure should be independent of the driver
   (mt/test-driver :postgres
@@ -1205,15 +1232,15 @@
         db-id (mt/id)
         schema+table-name (#'upload/table-identifier {:schema schema-name :name table-name})
         insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
-        col-definitions (#'upload/column-definitions driver col->upload-type)
-        _ (driver/create-table! driver/*driver*
-                                db-id
-                                schema+table-name
-                                col-definitions
-                                (if (contains? col-definitions upload/auto-pk-column-keyword)
-                                  {:primary-key [upload/auto-pk-column-keyword]}
-                                  {}))
-        _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)]
+        col-definitions (#'upload/column-definitions driver col->upload-type)]
+    (driver/create-table! driver/*driver*
+                          db-id
+                          schema+table-name
+                          col-definitions
+                          (if (contains? col-definitions upload/auto-pk-column-keyword)
+                            {:primary-key [upload/auto-pk-column-keyword]}
+                            {}))
+    (driver/insert-into! driver db-id schema+table-name insert-col-names rows)
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
 
 (defmacro maybe-apply-macro
@@ -1282,7 +1309,7 @@
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
     (testing "The CSV file must not be empty"
-      (is (= {:message "The CSV file is missing columns that are in the table: \"name\".",
+      (is (= {:message "The CSV file is missing columns that are in the table:\n- name",
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
@@ -1313,19 +1340,34 @@
                      (rows-for-table table))))
             (io/delete-file file)))))))
 
+(defn- trim-lines [s]
+  (->> (str/split-lines s)
+       (map str/trim)
+       (str/join "\n")))
+
 (deftest append-column-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should fail if there are extra or missing columns in the CSV file"
         (doseq [[csv-rows error-message]
                 {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
+                 (trim-lines "The CSV file contains extra columns that are not in the table:
+                              - extra_column_two
+                              - extra_column_one")
 
                  [""]
-                 "The CSV file is missing columns that are in the table: \"id\", \"name\"."
+                 (trim-lines "The CSV file is missing columns that are in the table:
+                              - id
+                              - name")
 
                  ["_mb_row_id,extra 1, extra 2"]
-                 "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]
+                 (trim-lines "The CSV file contains extra columns that are not in the table:
+                              - extra_2
+                              - extra_1
+
+                              The CSV file is missing columns that are in the table:
+                              - id
+                              - name")}]
           (with-upload-table!
             [table (create-upload-table!
                     {:col->upload-type (ordered-map/ordered-map
@@ -1466,6 +1508,32 @@
             (is (= [[1 "Obi-Wan Kenobi"]
                     [2 "Luke Skywalker"]]
                    (rows-for-table table))))
+          (io/delete-file file))))))
+
+
+(deftest csv-append-audit-log-test
+  ;; Just test with h2 because these events are independent of the driver
+  (mt/test-driver :h2
+    (mt/with-premium-features #{:audit-app}
+      (with-upload-table! [table (create-upload-table!)]
+        (let [csv-rows ["name" "Luke Skywalker"]
+              file     (csv-file-with csv-rows (mt/random-name))]
+          (append-csv! {:file file, :table-id (:id table)})
+
+          (is (=? {:topic    :upload-append
+                   :user_id  (:id (mt/fetch-user :crowberto))
+                   :model    "Table"
+                   :model_id (:id table)
+                   :details  {:db-id       pos?
+                              :schema-name "PUBLIC"
+                              :table-name  string?
+                              :stats       {:num-rows          1
+                                            :num-columns       1
+                                            :generated-columns 0
+                                            :size-mb           1.811981201171875E-5
+                                            :upload-seconds    pos?}}}
+                  (last-audit-event :upload-append)))
+
           (io/delete-file file))))))
 
 (deftest append-mb-row-id-csv-and-table-test
@@ -1634,12 +1702,13 @@
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                  [{:upload-type ::upload/int,     :uncoerced "2.1", :fail-msg "'2.1' is not an integer"}
-                   {:upload-type ::upload/int,     :uncoerced "2.0", :coerced 2}
-                   {:upload-type ::upload/float,   :uncoerced "2",   :coerced 2.0}
-                   {:upload-type ::upload/boolean, :uncoerced "0",   :coerced false}
-                   {:upload-type ::upload/boolean, :uncoerced "1.0", :fail-msg "'1.0' is not a recognizable boolean"}
-                   {:upload-type ::upload/boolean, :uncoerced "0.0", :fail-msg "'0.0' is not a recognizable boolean"}]]
+                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2.0} ;; column is promoted to float
+                   {:upload-type ::upload/int,     :uncoerced "2.1",        :coerced 2.1} ;; column is promoted to float
+                   {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
+                   {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
+                   {:upload-type ::upload/boolean, :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
+                   {:upload-type ::upload/boolean, :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}
+                   {:upload-type ::upload/int,     :uncoerced "01/01/2012", :fail-msg "'01/01/2012' is not a recognizable number"}]]
             (with-upload-table!
               [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
                                                                upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk

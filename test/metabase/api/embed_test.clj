@@ -22,8 +22,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -539,15 +538,16 @@
               (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest embedding-logs-view-test
-  (with-embedding-enabled-and-new-secret-key
-    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
-      (testing "Viewing an embedding logs the correct view log event."
-        (client/client :get 200 (dashboard-url dash))
-        (is (partial=
-             {:model      "dashboard"
-              :model_id   (:id dash)
-              :has_access true}
-             (view-log-test/latest-view nil (:id dash))))))))
+  (when (premium-features/log-enabled?)
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
+        (testing "Viewing an embedding logs the correct view log event."
+          (client/client :get 200 (dashboard-url dash))
+          (is (partial=
+               {:model      "dashboard"
+                :model_id   (:id dash)
+                :has_access true}
+               (view-log-test/latest-view nil (:id dash)))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key
@@ -1285,19 +1285,19 @@
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
-        (t2/update! Dashboard (:id dashboard)
-          {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
-        (testing "Should work if the param we're fetching values for is enabled"
-          (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-            (is (= {:values          [[2] [3] [4] [5] [6]]
-                    :has_more_values false}
-                   (chain-filer-test/take-n-values 5 (mt/user-http-request :rasta :get 200 (values-url))))))
-          (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-            (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
-                    :has_more_values false}
-                   (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
+      (mt/with-no-data-perms-for-all-users!
+        (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+          (t2/update! Dashboard (:id dashboard)
+                      {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
+          (testing "Should work if the param we're fetching values for is enabled"
+            (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+              (is (= {:values          [[2] [3] [4] [5] [6]]
+                      :has_more_values false}
+                     (chain-filer-test/take-n-values 5 (mt/user-http-request :rasta :get 200 (values-url))))))
+            (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+              (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
+                      :has_more_values false}
+                     (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url))))))))))))
 
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]

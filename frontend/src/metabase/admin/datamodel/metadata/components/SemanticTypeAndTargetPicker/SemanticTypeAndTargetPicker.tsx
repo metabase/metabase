@@ -8,7 +8,7 @@ import Select, { Option } from "metabase/core/components/Select";
 import { trackStructEvent } from "metabase/lib/analytics";
 import * as MetabaseCore from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFormattingSettings, FieldId } from "metabase-types/api";
 
 import FieldSeparator from "../FieldSeparator";

@@ -14,11 +14,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { GTAPApi } from "metabase/services";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import {
   getTargetsForDashboard,
   getTargetsForQuestion,
-} from "metabase-lib/parameters/utils/click-behavior";
+} from "metabase-lib/v1/parameters/utils/click-behavior";
 
 import { TargetTrigger } from "./ClickMappings.styled";
 

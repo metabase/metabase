@@ -5,8 +5,10 @@
    [clojure.string :as str]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings.premium-features :refer [defenterprise-schema]]
+   [metabase.public-settings.premium-features
+    :refer [defenterprise-schema]]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -51,14 +53,21 @@
   [ldap-connection                 :- (ms/InstanceOfClass LDAPConnectionPool)
    username                        :- ms/NonBlankString
    {:keys [user-base user-filter]} :- LDAPSettings]
-  (some-> (first
-           (ldap/search
-            ldap-connection
-            user-base
-            {:scope      :sub
-             :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
-             :size-limit 1}))
-          u/lower-case-map-keys))
+  (let [options {:scope      :sub
+                 :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
+                 :size-limit 1}]
+    (log/debugf "Searching for LDAP user %s with user search base %s and options %s"
+                username
+                user-base
+                (u/pprint-to-str options))
+    (let [search-result (ldap/search
+                         ldap-connection
+                         user-base
+                         {:scope      :sub
+                          :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
+                          :size-limit 1})]
+      (log/debugf "LDAP search results: %s" (u/pprint-to-str search-result))
+      (some-> (first search-result) u/lower-case-map-keys))))
 
 (mu/defn ^:private process-group-membership-filter :- ms/NonBlankString
   "Replace DN and UID placeholders with values returned by the LDAP server."

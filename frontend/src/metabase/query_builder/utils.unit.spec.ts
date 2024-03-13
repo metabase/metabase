@@ -3,7 +3,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,

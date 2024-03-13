@@ -33,14 +33,14 @@ import {
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
 
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
-import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameters,
   normalizeParameterValue,
-} from "metabase-lib/parameters/utils/parameter-values";
-import Question from "metabase-lib/Question";
-import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/parameters/utils/parameter-values";
+import Question from "metabase-lib/v1/Question";
+import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 

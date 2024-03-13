@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.api.common :as api]
    [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.comparison :as comparison]
    [metabase.automagic-dashboards.core :as magic]
@@ -341,24 +340,25 @@
 
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [source-query {:native   {:query "select * from venues"}
-                        :type     :native
-                        :database (mt/id)}]
-      (mt/with-temp [Collection {collection-id :id} {}
-                     Card       {source-id :id}     {:table_id        nil
-                                                     :collection_id   collection-id
-                                                     :dataset_query   source-query
-                                                     :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
-                     Card       {card-id :id}       {:table_id      nil
-                                                     :collection_id collection-id
-                                                     :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
-                                                                                :source-table (str "card__" source-id)}
-                                                                     :type     :query
-                                                                     :database lib.schema.id/saved-questions-virtual-database-id}}]
-        (mt/with-test-user :rasta
-          (automagic-dashboards.test/with-dashboard-cleanup
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (t2/select-one Card :id card-id) 8)))))))
+    (mt/with-full-data-perms-for-all-users!
+      (let [source-query {:native   {:query "select * from venues"}
+                          :type     :native
+                          :database (mt/id)}]
+        (mt/with-temp [Collection {collection-id :id} {}
+                       Card       {source-id :id}     {:table_id        nil
+                                                       :collection_id   collection-id
+                                                       :dataset_query   source-query
+                                                       :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}
+                       Card       {card-id :id}       {:table_id      nil
+                                                       :collection_id collection-id
+                                                       :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
+                                                                                  :source-table (str "card__" source-id)}
+                                                                       :type     :query
+                                                                       :database lib.schema.id/saved-questions-virtual-database-id}}]
+          (mt/with-test-user :rasta
+            (automagic-dashboards.test/with-dashboard-cleanup
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+              (test-automagic-analysis (t2/select-one Card :id card-id) 8))))))))
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
@@ -946,13 +946,11 @@
                  Field    _ {:table_id table-id}
                  Metric   _ {:table_id table-id}]
     (mt/with-test-user :rasta
-      ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
-      @api/*current-user-permissions-set*
       (automagic-dashboards.test/with-dashboard-cleanup
         (let [database (t2/select-one Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            (is (= 5
+            (is (= 6
                    (call-count)))))))))
 
 (deftest empty-table-test
@@ -1242,7 +1240,7 @@
         (mt/with-temp [Card card {:table_id        nil
                                   :dataset_query   source-query
                                   :result_metadata (->> (result-metadata-for-query source-query)
-                                                        (mt/with-test-user :rasta)
+                                                        (mt/with-test-user :crowberto)
                                                         (mapv (fn [m]
                                                                 (assoc m
                                                                        :display_name "Frooby"
@@ -1562,7 +1560,7 @@
 (deftest compare-to-the-rest-25278+32557-test
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
     (mt/dataset test-data
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (let [left                 (query/adhoc-query
                                      {:database (mt/id)
                                       :type     :query
@@ -1614,7 +1612,7 @@
 (deftest compare-to-the-rest-with-expression-16680-test
   (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
     (mt/dataset test-data
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (let [left                 (query/adhoc-query
                                      {:database (mt/id)
                                       :type     :query
@@ -1713,7 +1711,7 @@
 (deftest compare-to-the-rest-15655-test
   (testing "Questions based on native questions should produce a valid dashboard."
     (mt/dataset test-data
-      (mt/with-test-user :rasta
+      (mt/with-test-user :crowberto
         (let [native-query {:native   {:query "select * from people"}
                             :type     :native
                             :database (mt/id)}]
@@ -1721,7 +1719,7 @@
             [Card {native-card-id :id :as native-card} {:table_id        nil
                                                         :name            "15655"
                                                         :dataset_query   native-query
-                                                        :result_metadata (mt/with-test-user :rasta (result-metadata-for-query native-query))}
+                                                        :result_metadata (mt/with-test-user :crowberto (result-metadata-for-query native-query))}
              ;card__19169
              Card card {:table_id      (mt/id :orders)
                         :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
