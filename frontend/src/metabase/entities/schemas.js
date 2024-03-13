@@ -91,7 +91,6 @@ export default createEntity({
         isDatasets: card.type === "model",
       });
       const virtualSchemaName = getCollectionVirtualSchemaName(card.collection);
-
       const virtualQuestionId = getQuestionVirtualTableId(card.id);
       const previousSchemaContainingTheQuestion =
         getPreviousSchemaContainingTheQuestion(
