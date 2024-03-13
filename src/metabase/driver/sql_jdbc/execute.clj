@@ -124,7 +124,7 @@
 
 ;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statment]] and [[statement]]
 ;; with `do-with-prepared-statement` and `do-with-statement` methods -- that way you can't accidentally forget to wrap
-;; things in a `try-catch` and call `.close`
+;; things in a `try-catch` and call `.close` (metabase#40010)
 
 (defmulti ^PreparedStatement prepared-statement
   "Create a PreparedStatement with `sql` query, and set any `params`. You shouldn't need to override the default
@@ -230,7 +230,7 @@
   metabase-enterprise.advanced-permissions.driver.impersonation
   [_ _ _])
 
-;; TODO - since we're not running the queries in a transaction, does this make any difference at all?
+;; TODO - since we're not running the queries in a transaction, does this make any difference at all? (metabase#40012)
 (defn set-best-transaction-level!
   "Set the connection transaction isolation level to the least-locking level supported by the DB. See
   https://docs.oracle.com/cd/E19830-01/819-4721/beamv/index.html for an explanation of these levels."
@@ -360,11 +360,10 @@
     ;; If this is (supposedly) a read-only connection, we would prefer enable auto-commit
     ;; so this IS NOT ran inside of a transaction, but without transaction the read-only
     ;; flag has no effect for most of the drivers.
-    ;; TODO Enable auto-commit after having communicated this change in behvaior to our users.
     ;;
     ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
     ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
-    ;; manually.
+    ;; manually. (metabase#40014)
     (when-not write?
       (try
         (log/trace (pr-str '(.setAutoCommit conn true)))
