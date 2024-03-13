@@ -7,7 +7,7 @@ import Button from "metabase/core/components/Button";
 
 const StyledPaginationButton = styled(Button)`
   [dir="rtl"] & {
-    transform: rotate(180deg);
+    transform: scaleX(-1);
   }
 `;
 

@@ -103,9 +103,9 @@ export const PaginationMessage = styled.span`
 export const PaginationButton = styled.button<{
   direction: "next" | "previous";
 }>`
-  padding-left: ${props =>
+  padding-inline-start: ${props =>
     props.direction === "previous" ? "0.5rem" : "unset"};
-  padding-right: 0.5rem;
+  padding-inline-end: 0.5rem;
 
   cursor: pointer;
 

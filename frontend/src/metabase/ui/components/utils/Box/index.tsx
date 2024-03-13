@@ -1,17 +1,7 @@
-import type { AnchorHTMLAttributes, CSSProperties, ReactNode } from "react";
+import type { BoxProps as MantineBoxProps } from "@mantine/core";
+import { Box as MantineBox } from "@mantine/core";
 
-import type { TooltipProps } from "metabase/core/components/Tooltip/Tooltip";
-
-export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
-  to: string;
-  variant?: "default" | "brand" | "brandBold";
-  disabled?: boolean;
-  className?: string;
-  children?: ReactNode;
-  tooltip?: string | TooltipProps;
-  activeClassName?: string;
-  activeStyle?: CSSProperties;
-  onlyActiveOnIndex?: boolean;
+export type BoxProps = MantineBoxProps & {
   /** margin-inline-start */
   ms?: string;
   /** margin-inline-end */
@@ -28,4 +18,20 @@ export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   pld?: string;
   /** alias for padding-inline-end, short for "Padding-Right but Direction-sensitive", */
   prd?: string;
-}
+};
+
+export const Box = (props: BoxProps) => {
+  return (
+    <MantineBox
+      {...props}
+      style={{
+        marginInlineStart: props.ms ?? props.mld,
+        marginInlineEnd: props.me ?? props.mrd,
+        paddingInlineStart: props.ps ?? props.pld,
+        paddingInlineEnd: props.pe ?? props.prd,
+      }}
+    />
+  );
+};
+
+export type BoxComponent = typeof Box;

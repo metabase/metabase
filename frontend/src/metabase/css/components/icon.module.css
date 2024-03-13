@@ -1,0 +1,9 @@
+:global(.Icon.flip-in-rtl) {
+  [dir="rtl"] & {
+    transform: scaleX(-1);
+  }
+
+  [dir="ltr"] & {
+    transform: unset;
+  }
+}

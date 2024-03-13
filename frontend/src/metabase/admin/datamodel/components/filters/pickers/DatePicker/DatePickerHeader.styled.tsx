@@ -7,7 +7,7 @@ import { space } from "metabase/styled-components/theme";
 export const Container = styled.div`
   display: flex;
   flex-wrap: nowrap;
-  padding-left: ${space(1)};
+  padding-inline-start: ${space(1)};
   border-bottom: 1px solid ${color("border")};
 `;
 
@@ -19,10 +19,10 @@ type TabButtonProps = {
 export const TabButton = styled(Button)<TabButtonProps>`
   border: none;
   border-radius: 0;
-  padding-left: 0;
-  padding-right: 0;
-  margin-left: ${space(2)};
-  margin-right: ${space(2)};
+  padding-inline-start: 0;
+  padding-inline-end: 0;
+  margin-inline-start: ${space(2)};
+  margin-inline-end: ${space(2)};
   border-bottom: ${({ primaryColor = color("brand"), selected }) =>
     selected ? `2px solid ${primaryColor}` : "2px solid transparent"};
 
@@ -39,7 +39,7 @@ export const TabButton = styled(Button)<TabButtonProps>`
 export const BackButton = styled(TabButton)`
   border: none;
   border-radius: 0;
-  margin-left: ${space(1)};
+  margin-inline-start: ${space(1)};
   color: ${color("text-medium")};
 
   &:hover {

@@ -4,7 +4,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 
 export const HelpRoot = styled.div`
-  padding-left: 1rem;
+  padding-inline-start: 1rem;
 `;
 
 export const HelpBody = styled.div`
@@ -23,7 +23,7 @@ export const InfoBlockRoot = styled.div`
 export const InfoBlockButton = styled.div`
   position: absolute;
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
   margin: 1rem;
   cursor: pointer;
 

@@ -10,6 +10,6 @@ export const SecretKeyWidgetRoot = styled.div`
 `;
 
 export const GenerateButton = styled(Button)`
-  margin-left: 1rem;
+  margin-inline-start: 1rem;
   height: 100%;
 `;
