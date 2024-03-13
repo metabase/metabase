@@ -63,24 +63,9 @@ export const HelpLinkSettings = ({
             // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
             label={t`Link to Metabase help`}
             value="metabase"
-            styles={{
-              labelWrapper: { marginInlineStart: ".5rem" },
-            }}
           />
-          <Radio
-            label={t`Hide it`}
-            value="hidden"
-            styles={{
-              labelWrapper: { marginInlineStart: ".5rem" },
-            }}
-          />
-          <Radio
-            label={t`Go to a custom destination...`}
-            value="custom"
-            styles={{
-              labelWrapper: { marginInlineStart: ".5rem" },
-            }}
-          />
+          <Radio label={t`Hide it`} value="hidden" />
+          <Radio label={t`Go to a custom destination...`} value="custom" />
         </Stack>
       </Radio.Group>
       {isTextInputVisible && (
