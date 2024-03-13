@@ -12,6 +12,9 @@ export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100%;
   padding: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-direction: column;
   background-color: ${color("bg-light")};
 
   ${breakpointMinMedium} {
@@ -56,7 +59,7 @@ export const LayoutIllustration = styled.div`
 export const LayoutEditButton = styled(Button)`
   position: absolute;
   top: 0.75rem;
-  right: 1rem;
+  inset-inline-end: 1rem;
 
   &:hover {
     color: ${color("brand")};

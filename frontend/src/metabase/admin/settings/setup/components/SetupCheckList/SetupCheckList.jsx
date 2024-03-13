@@ -49,7 +49,7 @@ const TaskDescription = ({ description }) => (
 
 const CompletionBadge = ({ completed }) => (
   <div
-    className="mr2 flex align-center justify-center flex-no-shrink"
+    className="flex align-center justify-center flex-no-shrink"
     style={{
       borderWidth: 1,
       borderStyle: "solid",

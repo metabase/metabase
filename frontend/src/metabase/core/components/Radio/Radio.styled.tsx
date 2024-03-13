@@ -33,7 +33,7 @@ export const RadioLabel = styled.label<RadioLabelProps>`
 
 export const RadioLabelNormal = styled(RadioLabel)`
   &:not(:last-child) {
-    margin-right: ${props => (!props.vertical ? "2rem" : "")};
+    margin-inline-end: ${props => (!props.vertical ? "2rem" : "")};
     margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
   }
 `;
@@ -125,7 +125,7 @@ export const RadioButton = styled.span<RadioButtonProps>`
   flex: 0 0 auto;
   width: 0.75rem;
   height: 0.75rem;
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
   border: 2px solid white;
   border-radius: 0.75rem;
   box-shadow: 0 0 0 2px

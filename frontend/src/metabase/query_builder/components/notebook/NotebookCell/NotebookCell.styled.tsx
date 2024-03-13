@@ -81,15 +81,15 @@ export const NotebookCellItemContentContainer = styled.div<{
   ${props =>
     props.roundedCorners.includes("left") &&
     css`
-      border-top-left-radius: 6px;
-      border-bottom-left-radius: 6px;
+      border-start-start-radius: 6px;
+      border-end-start-radius: 6px;
     `}
 
   ${props =>
     props.roundedCorners.includes("right") &&
     css`
-      border-top-right-radius: 6px;
-      border-bottom-right-radius: 6px;
+      border-start-end-radius: 6px;
+      border-end-end-radius: 6px;
     `}
 
   transition: background 300ms linear;

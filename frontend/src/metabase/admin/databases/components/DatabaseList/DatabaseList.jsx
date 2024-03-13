@@ -73,14 +73,21 @@ export default class DatabaseList extends Component {
 
     return (
       <div className="wrapper" data-testid="database-list">
-        <section className="PageHeader px2 clearfix">
+        <section
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+          className="PageHeader px2"
+        >
+          <h2 className="PageTitle">{t`Databases`}</h2>
           {isAdmin && (
             <Link
               to="/admin/databases/create"
-              className="Button Button--primary float-right"
+              className="Button Button--primary"
             >{t`Add database`}</Link>
           )}
-          <h2 className="PageTitle">{t`Databases`}</h2>
         </section>
         {error && (
           <section>

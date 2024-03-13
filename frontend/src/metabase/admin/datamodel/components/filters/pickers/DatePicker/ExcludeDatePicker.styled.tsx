@@ -36,7 +36,7 @@ export const ExcludeCheckBox = styled(CheckBox)`
 
 export const ExcludeLabel = styled.div`
   font-size: 1rem;
-  margin-left: ${space(2)};
+  margin-inline-start: ${space(2)};
 `;
 
 export const ExcludeContainer = styled.div`

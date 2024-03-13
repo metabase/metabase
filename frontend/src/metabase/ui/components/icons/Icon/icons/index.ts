@@ -368,7 +368,14 @@ import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
 import zoom_out_source from "./zoom_out.svg?source";
 
-export const Icons = {
+type IconData = {
+  component: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  source: string;
+  /** Should the icon be flipped horizontally when the language is written right-to-left? */
+  flipInRtl?: boolean;
+};
+
+export const Icons: Record<string, IconData> = {
   add: {
     component: add_component,
     source: add_source,
@@ -504,10 +511,12 @@ export const Icons = {
   chevronleft: {
     component: chevronleft_component,
     source: chevronleft_source,
+    flipInRtl: true,
   },
   chevronright: {
     component: chevronright_component,
     source: chevronright_source,
+    flipInRtl: true,
   },
   chevronup: {
     component: chevronup_component,
@@ -568,6 +577,7 @@ export const Icons = {
   dashboard: {
     component: dashboard_component,
     source: dashboard_source,
+    flipInRtl: true,
   },
   curve: {
     component: curve_component,
@@ -900,10 +910,12 @@ export const Icons = {
   share: {
     component: share_component,
     source: share_source,
+    flipInRtl: true,
   },
   sql: {
     component: sql_component,
     source: sql_source,
+    flipInRtl: true,
   },
   subscription: {
     component: subscription_component,
@@ -1028,6 +1040,7 @@ export const Icons = {
   table: {
     component: table_component,
     source: table_source,
+    flipInRtl: true,
   },
   table2: {
     component: table2_component,

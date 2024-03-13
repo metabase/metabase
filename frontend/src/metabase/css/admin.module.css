@@ -6,7 +6,6 @@
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
-  text-align: left;
 }
 
 :global(.ContentTable thead) {
@@ -69,13 +68,14 @@
   top: 0;
   bottom: 0;
   margin: auto;
-  margin-left: 1em;
+  margin-inline-start: 1rem;
   color: var(--color-text-light);
+  inset-inline-start: 0;
 }
 
 :global(.AdminList-search .AdminInput) {
-  padding: 0.5em;
-  padding-left: 2em;
+  padding: 0.5rem;
+  padding-inline-start: 2.5rem;
   font-size: 18px;
   width: 100%;
   border-top-left-radius: var(--default-border-radius);
@@ -174,7 +174,6 @@
 :global(.AdminTable) {
   border-collapse: collapse;
   border-spacing: 0;
-  text-align: left;
 }
 
 :global(.AdminTable th) {

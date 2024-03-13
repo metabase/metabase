@@ -55,14 +55,14 @@ export class GuiQueryEditor extends Component {
     if (onClick) {
       return (
         <a className={className} onClick={onClick}>
-          {text && <span className="mr1">{text}</span>}
+          {text && <span style={{ marginInlineEnd: ".5rem" }}>{text}</span>}
           {this.renderAddIcon(targetRefName)}
         </a>
       );
     } else {
       return (
         <span className={className}>
-          {text && <span className="mr1">{text}</span>}
+          {text && <span style={{ marginInlineEnd: ".5rem" }}>{text}</span>}
           {this.renderAddIcon(targetRefName)}
         </span>
       );

@@ -16,6 +16,10 @@ const openSidebarCSS = css`
   width: ${NAV_SIDEBAR_WIDTH};
 
   border-right: 1px solid ${color("border")};
+  [dir="rtl"] & {
+    border-right: none;
+    border-left: 1px solid ${color("border")};
+  }
 
   ${breakpointMaxSmall} {
     width: 90vw;

@@ -48,6 +48,7 @@ export default class SettingsSetting extends Component {
     const settingId = settingToFormFieldId(setting);
 
     let Widget = setting.widget || SETTING_WIDGET_MAP[setting.type];
+
     if (!Widget) {
       console.warn(
         "No render method for setting type " +

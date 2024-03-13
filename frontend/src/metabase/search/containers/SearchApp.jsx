@@ -9,7 +9,7 @@ import EmptyState from "metabase/components/EmptyState";
 import PaginationControls from "metabase/components/PaginationControls";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchContextTypes,
@@ -27,6 +27,7 @@ import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
 } from "metabase/search/utils";
+import { getWritingDirection } from "metabase/selectors/app";
 import { Box, Text, Group, Paper } from "metabase/ui";
 
 function SearchApp({ location }) {
@@ -68,6 +69,8 @@ function SearchApp({ location }) {
     [onChangeLocation, searchText],
   );
 
+  const writingDirection = useSelector(getWritingDirection);
+
   return (
     <SearchMain
       direction="column"
@@ -75,6 +78,7 @@ function SearchApp({ location }) {
       p="1.5rem 1rem"
       m="auto"
       data-testid="search-app"
+      dir={writingDirection}
     >
       <Text size="xl" weight={700}>
         {jt`Results for "${searchText}"`}

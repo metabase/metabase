@@ -16,7 +16,7 @@ export const LinkText = styled.div`
 
 export const LinkIcon = styled(Icon)`
   color: ${color("white")};
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   width: 0.75rem;
   height: 0.75rem;
 `;

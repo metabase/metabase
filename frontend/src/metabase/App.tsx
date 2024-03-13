@@ -23,12 +23,15 @@ import {
   getIsAdminApp,
   getIsAppBarVisible,
   getIsNavBarEnabled,
+  getWritingDirection,
 } from "metabase/selectors/app";
 import StatusListing from "metabase/status/components/StatusListing";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
+import { useSelector } from "./lib/redux";
+import { Direction } from "./ui";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -89,6 +92,7 @@ function App({
   location,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
+  const writingDirection = useSelector(getWritingDirection);
 
   useEffect(() => {
     initializeIframeResizer();
@@ -97,21 +101,27 @@ function App({
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
-        <AppContainer className="spread">
-          <KeyboardTriggeredErrorModal />
-          <AppBanner location={location} />
-          {isAppBarVisible && <AppBar />}
-          <AppContentContainer isAdminApp={isAdminApp}>
-            {isNavBarEnabled && <Navbar />}
-            <AppContent ref={setViewportElement}>
-              <ContentViewportContext.Provider value={viewportElement ?? null}>
-                {errorPage ? getErrorComponent(errorPage) : children}
-              </ContentViewportContext.Provider>
-            </AppContent>
-            <UndoListing />
-            <StatusListing />
-          </AppContentContainer>
-        </AppContainer>
+        <Direction dir={writingDirection}>
+          <AppContainer className="spread">
+            <KeyboardTriggeredErrorModal />
+            <AppBanner location={location} />
+            {isAppBarVisible && <AppBar />}
+            <AppContentContainer isAdminApp={isAdminApp}>
+              {isNavBarEnabled && <Navbar />}
+              <AppContent ref={setViewportElement}>
+                <ContentViewportContext.Provider
+                  value={viewportElement ?? null}
+                >
+                  <Direction dir="ltr">
+                    {errorPage ? getErrorComponent(errorPage) : children}
+                  </Direction>
+                </ContentViewportContext.Provider>
+              </AppContent>
+              <UndoListing />
+              <StatusListing />
+            </AppContentContainer>
+          </AppContainer>
+        </Direction>
       </ScrollToTop>
     </ErrorBoundary>
   );

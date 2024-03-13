@@ -49,3 +49,4 @@ export const SpinnerIcon = styled.div<SpinnerIconProps>`
     left: ${props => `-${props.borderWidth}px`};
   }
 `;
+SpinnerIcon.defaultProps = { dir: "ltr" };

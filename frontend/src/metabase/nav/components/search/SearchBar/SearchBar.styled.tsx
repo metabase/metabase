@@ -133,6 +133,10 @@ export const SearchIcon = styled(Icon)<{
 
   ${breakpointMinSmall} {
     margin-left: ${ICON_MARGIN};
+    [dir="rtl"] & {
+      margin-right: ${ICON_MARGIN};
+      margin-left: 0;
+    }
   }
 `;
 

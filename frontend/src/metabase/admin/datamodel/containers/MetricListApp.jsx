@@ -18,7 +18,7 @@ class MetricListAppInner extends Component {
       <div className="px3 pb2">
         <div className="flex py2">
           {tableSelector}
-          <Link to="/admin/datamodel/metric/create" className="ml-auto">
+          <Link to="/admin/datamodel/metric/create" mld="auto">
             <Button primary>{t`New metric`}</Button>
           </Link>
         </div>

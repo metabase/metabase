@@ -177,7 +177,7 @@ export const HeaderDivider = styled.span`
 export const ViewHeaderActionPanel = styled.div`
   display: flex;
   align-items: center;
-  margin-left: auto;
+  margin-inline-start: auto;
   gap: 0.5rem;
 
   ${breakpointMaxSmall} {
@@ -187,6 +187,9 @@ export const ViewHeaderActionPanel = styled.div`
     border-top: 1px solid ${color("border")};
     margin-top: 1rem;
     padding: 0.5rem 2.5rem 0 2rem;
+    [dir="rtl"] & {
+      padding: 0.5rem 2rem 0 2.5rem;
+    }
   }
 `;
 

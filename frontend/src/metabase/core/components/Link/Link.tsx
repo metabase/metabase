@@ -19,6 +19,12 @@ const Link = ({
       tabIndex={disabled ? -1 : undefined}
       aria-disabled={disabled}
       variant={variant}
+      style={{
+        marginInlineStart: props.ms ?? props.mld,
+        marginInlineEnd: props.me ?? props.mrd,
+        paddingInlineStart: props.ps ?? props.pld,
+        paddingInlineEnd: props.pe ?? props.prd,
+      }}
     >
       {children}
     </LinkRoot>

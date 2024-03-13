@@ -24,11 +24,14 @@ export const ModelFilterControls = ({
       onChange={e => {
         handleModelFilterChange("onlyShowVerifiedModels", e.target.checked);
       }}
-      ml="auto"
       size="sm"
       labelPosition="left"
       styles={{
-        root: { display: "flex", alignItems: "center" },
+        root: {
+          marginInlineStart: "auto",
+          display: "flex",
+          alignItems: "center",
+        },
         body: {
           alignItems: "center",
           // Align with tab labels:

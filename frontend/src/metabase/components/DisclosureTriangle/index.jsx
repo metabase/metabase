@@ -1,1 +1,1 @@
-export { default } from "./DisclosureTriangle";
+export { DisclosureTriangle } from "./DisclosureTriangle";

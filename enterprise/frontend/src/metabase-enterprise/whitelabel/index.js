@@ -167,6 +167,7 @@ if (hasPremiumFeature("whitelabel")) {
             props: {
               label: t`Show lighthouse illustration on the home and login pages`,
               mt: "-0.5rem",
+              styles: { labelWrapper: { marginInlineStart: ".5rem" } },
             },
           },
           {
@@ -180,6 +181,7 @@ if (hasPremiumFeature("whitelabel")) {
                 <MetabaseLinksToggleDescription key="show-metabase-links-description-tooltip" />
               )}`,
               mt: "-1rem",
+              styles: { labelWrapper: { marginInlineStart: ".5rem" } },
             },
           },
           {
@@ -192,6 +194,7 @@ if (hasPremiumFeature("whitelabel")) {
             props: {
               label: t`Show metabot and greeting on the homepage`,
               mt: "-1rem",
+              styles: { labelWrapper: { marginInlineStart: ".5rem" } },
             },
           },
           {

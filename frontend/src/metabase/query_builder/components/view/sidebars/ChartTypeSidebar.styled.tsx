@@ -88,7 +88,12 @@ export const OptionLabel = styled.h4`
   font-weight: bold;
   font-size: 0.75rem;
   text-transform: uppercase;
-  margin: 1rem 0 1rem 1.5rem;
+  [dir="ltr"] & {
+    margin: 1rem 0 1rem 1.5rem;
+  }
+  [dir="rtl"] & {
+    margin: 1rem 1.5rem 1rem 0;
+  }
 `;
 
 export const OptionList = styled.div`

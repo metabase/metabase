@@ -31,7 +31,7 @@ export const InputContainer = styled.div`
 
 export const InfoIcon = styled(Icon)`
   position: absolute;
-  right: 1rem;
+  inset-inline-end: 1rem;
   top: 33%;
 
   color: ${color("text-medium")};

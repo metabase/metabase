@@ -130,7 +130,7 @@ function GroupMappingsWidget({
         </Header>
 
         <div>
-          <div>
+          <div style={{ position: "relative" }}>
             {!showAddRow && (
               <AddMappingButton primary small onClick={handleShowAddRow}>
                 {t`New mapping`}

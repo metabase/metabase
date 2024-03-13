@@ -4,7 +4,10 @@ import Input from "metabase/core/components/Input";
 import { Icon } from "metabase/ui";
 
 const SearchInput = styled(Input)`
-  min-width: 286px;
+  & input {
+    min-width: 17rem;
+  }
+  margin-inline-end: 1rem;
 `;
 
 SearchInput.defaultProps = {

@@ -35,9 +35,10 @@ export const AddRow = forwardRef(function AddRow(
         {t`Cancel`}
       </span>
       <button
-        className={cx("Button ml2", { "Button--primary": !!isValid })}
+        className={cx("Button", { "Button--primary": !!isValid })}
         disabled={!isValid}
         onClick={onDone}
+        style={{ marginInlineStart: "1rem" }}
       >
         {t`Add`}
       </button>

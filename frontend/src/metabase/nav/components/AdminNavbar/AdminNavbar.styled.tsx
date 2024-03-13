@@ -26,8 +26,8 @@ export const AdminNavbarRoot = styled.nav`
 export const AdminNavbarItems = styled.ul`
   display: flex;
   flex: 1 0 auto;
-  margin-right: auto;
-  margin-left: 2rem;
+  margin-inline-end: auto;
+  margin-inline-start: 2rem;
 `;
 
 export const MobileHide = styled.div`
@@ -51,11 +51,15 @@ export const AdminMobileNavBarItems = styled.ul`
   display: flex;
   flex-direction: column;
   text-align: right;
+  [dir="rtl"] & {
+    text-align: left;
+  }
   padding: 1rem;
   gap: 2rem;
-  border-radius: 0 0 0 0.5rem;
+  border-radius: 0;
+  border-end-start-radius: 0.5rem;
   top: ${ADMIN_NAVBAR_HEIGHT};
-  right: 0;
+  inset-inline-end: 0;
   background: ${color("admin-navbar")};
 `;
 
@@ -83,10 +87,10 @@ export const AdminLogoContainer = styled.div`
   height: 32px;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
 `;
 
 export const AdminLogoText = styled.div`
-  margin-left: 1rem;
   font-weight: 700;
 
   ${breakpointMaxLarge} {

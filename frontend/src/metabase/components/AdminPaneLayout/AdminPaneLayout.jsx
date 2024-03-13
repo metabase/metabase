@@ -15,20 +15,25 @@ const AdminPaneTitle = ({
   buttonLink,
   headingContent,
 }) => {
-  const buttonClassName = "ml-auto flex-no-shrink";
+  const buttonClassName = "flex-no-shrink";
   return (
     <Container>
       <HeadingContainer>
         {headingContent && <Fragment>{headingContent}</Fragment>}
         {title && <h2 className="PageTitle">{title}</h2>}
         {buttonText && buttonLink && (
-          <Link to={buttonLink} className={buttonClassName}>
+          <Link
+            to={buttonLink}
+            className={buttonClassName}
+            style={{ marginInlineStart: "auto" }}
+          >
             <Button primary>{buttonText}</Button>
           </Link>
         )}
         {buttonText && buttonAction && (
           <Button
             className={buttonClassName}
+            style={{ marginInlineStart: "auto" }}
             primary={!buttonDisabled}
             disabled={buttonDisabled}
             onClick={buttonAction}

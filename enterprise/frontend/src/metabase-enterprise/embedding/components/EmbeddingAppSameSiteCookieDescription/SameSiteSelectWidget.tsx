@@ -30,7 +30,6 @@ export function SameSiteSelectWidget({
   const selectedOption = setting.options.find(
     ({ value }) => value === selectedValue,
   );
-
   return (
     <Menu
       opened={opened}

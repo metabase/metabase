@@ -23,6 +23,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   ${inputPadding()}
   cursor: pointer;
   display: flex;
+  gap: 0.5rem;
   width: ${props => (props.fullWidth ? "100%" : "unset")};
   align-items: center;
   border: 1px solid
@@ -72,6 +73,4 @@ export const SelectButtonIcon = styled(
     hasValue && highlighted ? color("text-white") : color("text-medium")};
 `;
 
-export const SelectButtonContent = styled.span`
-  margin-right: 0.5rem;
-`;
+export const SelectButtonContent = styled.span``;

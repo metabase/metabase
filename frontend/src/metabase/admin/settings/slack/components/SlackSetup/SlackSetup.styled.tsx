@@ -6,7 +6,7 @@ import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const SetupRoot = styled.div`
   max-width: 42rem;
-  padding-left: 1rem;
+  padding-inline-start: 1rem;
 `;
 
 export const HeaderRoot = styled.header`
@@ -47,7 +47,8 @@ export const SectionHeader = styled.header`
 
 export const SectionTitle = styled.h3`
   flex: 1 1 auto;
-  margin: 0 1rem 0 0;
+  margin: 0;
+  margin-inline-end: 1rem;
   color: ${color("brand")};
   font-size: 1rem;
   font-weight: bold;

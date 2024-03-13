@@ -1,6 +1,6 @@
 import isPropValid from "@emotion/is-prop-valid";
 import cx from "classnames";
-import type { SVGAttributes, MouseEvent } from "react";
+import type { MouseEvent, SVGAttributes } from "react";
 import { forwardRef } from "react";
 
 import { Tooltip } from "../../overlays/Tooltip";
@@ -22,7 +22,8 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   { name, className, size = defaultSize, tooltip, ...restProps }: IconProps,
   ref,
 ) {
-  const IconComponent = (Icons[name] ?? Icons["unknown"]).component;
+  const iconData = Icons[name] ?? Icons["unknown"];
+  const IconComponent = iconData.component;
   const validProps = Object.fromEntries(
     Object.entries(restProps).filter(([key]) => isPropValid(key)),
   );
@@ -32,7 +33,9 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
       role="img"
       ref={ref}
       aria-label={`${name} icon`}
-      className={cx(`Icon Icon-${name}`, className)}
+      className={cx(`Icon Icon-${name}`, className, {
+        "flip-in-rtl": iconData.flipInRtl,
+      })}
       width={size}
       height={size}
       {...validProps}

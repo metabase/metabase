@@ -49,12 +49,12 @@ ol {
 }
 
 /*
-  explicitly set the th text alignment to left. this is required for IE
-  which follows the suggested rendering and defaults to center, whereas
-  chrome and others do not
+  explicitly set the th text alignment to start (which is the same as left in
+  LTR languages). this is required for IE which follows the suggested rendering
+  and defaults to center, whereas chrome and others do not
 */
 th {
-  text-align: left;
+  text-align: start;
 }
 
 /* reset button element */

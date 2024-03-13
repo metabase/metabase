@@ -22,7 +22,6 @@ export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
 
     border: none;
     font-size: 1em;
-    margin-left: 0.75em;
   }
 
   .Button--primary {
@@ -38,7 +37,7 @@ export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
 
 export const EditIcon = styled(Icon)`
   color: ${color("text-white")};
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
 `;
 
 export const Title = styled.span`
@@ -54,4 +53,5 @@ export const Subtitle = styled.span`
 
 export const ButtonsContainer = styled.div`
   display: flex;
+  gap: 1rem;
 `;

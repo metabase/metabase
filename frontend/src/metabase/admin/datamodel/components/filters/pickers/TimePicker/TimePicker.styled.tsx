@@ -5,8 +5,8 @@ export const TimePickerRoot = styled.div`
 `;
 
 export const BetweenConnector = styled.span`
-  margin-right: 1.5rem;
-  margin-left: 1rem;
+  margin-inline-end: 1.5rem;
+  margin-inline-start: 1rem;
   font-weight: 700;
 `;
 

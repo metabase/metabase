@@ -47,5 +47,5 @@ export const FormFooterContent = styled.div`
 `;
 
 export const FormSubmitButton = styled(Button)`
-  margin-right: 1rem;
+  margin-inline-end: 1rem;
 `;
