@@ -79,7 +79,7 @@ describe("extract action", () => {
       });
     });
 
-    describe("should add a new column next to the selected column", () => {
+    describe("should add a new column after the selected column", () => {
       it("ad-hoc question", () => {
         openOrdersTable();
         extractColumnAndCheck({
