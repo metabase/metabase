@@ -20,9 +20,10 @@ export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
   PopoverDropdown: {
     defaultProps: {
       onMouseDownCapture: (event: SyntheticEvent) => {
-        // prevent nested popovers from closing each other
-        // see useClickOutside in @mantine/hooks for the reference
-        event.nativeEvent.stopImmediatePropagation();
+        //   // HACK: prevent nested popovers from closing each other
+        //   // see useClickOutside in @mantine/hooks for the reference
+        const target = event.target as HTMLElement;
+        target.setAttribute("data-ignore-outside-clicks", "true");
       },
     },
   },

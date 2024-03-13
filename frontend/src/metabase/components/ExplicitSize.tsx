@@ -43,7 +43,9 @@ function ExplicitSize<T extends BaseInnerProps>({
   wrapped = false,
   refreshMode = "throttle",
 }: ExplicitSizeProps<T> = {}) {
-  return (ComposedComponent: ComponentType<T & SizeState>) => {
+  return (
+    ComposedComponent: ComponentType<React.PropsWithChildren<T & SizeState>>,
+  ) => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
     class WrappedComponent extends Component<T> {

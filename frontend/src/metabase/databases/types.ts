@@ -10,7 +10,9 @@ export interface EngineOption {
 
 export interface EngineFieldOverride {
   name?: string;
-  type?: EngineFieldType | ComponentType<EngineFieldProps>;
+  type?:
+    | EngineFieldType
+    | ComponentType<React.PropsWithChildren<EngineFieldProps>>;
   title?: string;
   description?: ReactNode;
   placeholder?: unknown;

@@ -47,7 +47,7 @@ export const CollectionPickerModal = ({
   }>();
 
   const searchFilter = useCallback(
-    searchResults =>
+    (searchResults: SearchResult[]) =>
       searchResults.filter((result: SearchResult) => result.can_write),
     [],
   );

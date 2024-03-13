@@ -15,7 +15,10 @@ const VerticalRadio = (props: FormRadioProps) => (
   <FormRadioWidget {...props} vertical />
 );
 
-const WIDGETS: Record<InputComponentType, FunctionComponent<any>> = {
+const WIDGETS: Record<
+  InputComponentType,
+  FunctionComponent<React.PropsWithChildren<any>>
+> = {
   text: FormInputWidget,
   date: FormInputWidget,
   time: FormInputWidget,

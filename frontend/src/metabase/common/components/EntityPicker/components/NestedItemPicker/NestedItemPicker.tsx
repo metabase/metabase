@@ -58,6 +58,7 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
           const { query, selectedItem } = level;
 
           return (
+            // @ts-expect-error -- we need to upgrade mantine to fix this type error
             <ListBox
               key={generateKey(query)}
               data-testid={`item-picker-level-${index}`}

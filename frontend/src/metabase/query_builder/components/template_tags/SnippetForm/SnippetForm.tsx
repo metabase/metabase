@@ -127,7 +127,7 @@ function SnippetForm({
   );
 
   const handleSubmit = useCallback(
-    async values => {
+    async (values: any) => {
       if (isEditing) {
         await handleUpdate({ ...values, id: snippet.id });
       } else {

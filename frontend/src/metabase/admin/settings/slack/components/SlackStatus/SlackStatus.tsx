@@ -28,11 +28,7 @@ export interface SlackStatusProps {
   onDelete: () => void;
 }
 
-const SlackStatus = ({
-  Form,
-  isValid,
-  onDelete,
-}: SlackStatusProps): JSX.Element => {
+const SlackStatus = ({ Form, isValid, onDelete }: SlackStatusProps) => {
   const [isOpened, setIsOpened] = useState(false);
 
   const handleOpen = useCallback(() => {

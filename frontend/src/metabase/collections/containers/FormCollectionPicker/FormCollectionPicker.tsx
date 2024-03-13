@@ -11,6 +11,7 @@ import {
   type CollectionPickerOptions,
   CollectionPickerModal,
 } from "metabase/common/components/EntityPicker";
+import type { CollectionPickerItem } from "metabase/common/components/EntityPicker/types";
 import CollectionName from "metabase/containers/CollectionName";
 import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
@@ -31,6 +32,8 @@ export interface FormCollectionPickerProps
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   zIndex?: number;
+  className?: string | undefined;
+  style?: React.CSSProperties | undefined;
 }
 
 function ItemName({
@@ -88,7 +91,7 @@ function FormCollectionPicker({
   );
 
   const handleChange = useCallback(
-    ({ id }) => {
+    ({ id }: CollectionPickerItem) => {
       setValue(canonicalCollectionId(id));
       setIsPickerOpen(false);
     },

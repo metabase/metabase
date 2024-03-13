@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
+import { useMount } from "react-use";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 
@@ -15,11 +16,13 @@ const mapDispatchToProps = {
 };
 
 const RedirectToAllowedSettings = ({ adminItems, replace }) => {
-  if (adminItems.length === 0) {
-    replace("/unauthorized");
-  } else {
-    replace(adminItems[0].path);
-  }
+  useMount(() => {
+    if (adminItems.length === 0) {
+      replace("/unauthorized");
+    } else {
+      replace(adminItems[0].path);
+    }
+  });
 
   return null;
 };

@@ -6,8 +6,8 @@ import type { Member, User } from "metabase-types/api";
 
 export interface AuthProvider {
   name: string;
-  Button: ComponentType<AuthProviderButtonProps>;
-  Panel?: ComponentType<AuthProviderPanelProps>;
+  Button: ComponentType<React.PropsWithChildren<AuthProviderButtonProps>>;
+  Panel?: ComponentType<React.PropsWithChildren<AuthProviderPanelProps>>;
 }
 
 export interface AuthProviderButtonProps {

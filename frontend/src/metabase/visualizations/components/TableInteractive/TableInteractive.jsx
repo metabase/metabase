@@ -2,7 +2,8 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, forwardRef, Component } from "react";
-import ReactDOM from "react-dom";
+import { findDOMNode } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -257,10 +258,14 @@ class TableInteractive extends Component {
     const {
       data: { cols, rows },
     } = this.props;
+    const root = createRoot(this._div);
 
-    ReactDOM.render(
+    root.render(
       <EmotionCacheProvider>
-        <div style={{ display: "flex" }}>
+        <div
+          style={{ display: "flex" }}
+          ref={() => this.onMeasureHeaderRender(root)}
+        >
           {cols.map((column, columnIndex) => (
             <div className="fake-column" key={"column-" + columnIndex}>
               {this.tableHeaderRenderer({
@@ -282,42 +287,43 @@ class TableInteractive extends Component {
           ))}
         </div>
       </EmotionCacheProvider>,
-      this._div,
-      () => {
-        const contentWidths = [].map.call(
-          this._div.getElementsByClassName("fake-column"),
-          columnElement => columnElement.offsetWidth,
-        );
-
-        const columnWidths = cols.map((col, index) => {
-          if (this.columnNeedsResize) {
-            if (
-              this.columnNeedsResize[index] &&
-              !this.columnHasResized[index]
-            ) {
-              this.columnHasResized[index] = true;
-              return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
-            } else if (this.state.columnWidths[index]) {
-              return this.state.columnWidths[index];
-            } else {
-              return 0;
-            }
-          } else {
-            return contentWidths[index] + 1;
-          }
-        });
-
-        // Doing this on next tick makes sure it actually gets removed on initial measure
-        setTimeout(() => {
-          ReactDOM.unmountComponentAtNode(this._div);
-        }, 0);
-
-        delete this.columnNeedsResize;
-
-        this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
-      },
     );
   }
+
+  onMeasureHeaderRender = root => {
+    const {
+      data: { cols },
+    } = this.props;
+
+    const contentWidths = [].map.call(
+      this._div.getElementsByClassName("fake-column"),
+      columnElement => columnElement.offsetWidth,
+    );
+
+    const columnWidths = cols.map((col, index) => {
+      if (this.columnNeedsResize) {
+        if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
+          this.columnHasResized[index] = true;
+          return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
+        } else if (this.state.columnWidths[index]) {
+          return this.state.columnWidths[index];
+        } else {
+          return 0;
+        }
+      } else {
+        return contentWidths[index] + 1;
+      }
+    });
+
+    // Doing this on next tick makes sure it actually gets removed on initial measure
+    setTimeout(() => {
+      root.unmount();
+    }, 0);
+
+    delete this.columnNeedsResize;
+
+    this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
+  };
 
   recomputeGridSize = () => {
     if (this.header && this.grid) {
@@ -917,7 +923,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = ReactDOM.findDOMNode(this.grid)?.scrollTop || 0;
+    const scrollOffset = findDOMNode(this.grid)?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1055,7 +1061,7 @@ class TableInteractive extends Component {
                   columnWidth={this.getDisplayColumnWidth}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.tableHeaderRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,
@@ -1084,7 +1090,7 @@ class TableInteractive extends Component {
                   rowHeight={ROW_HEIGHT}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.cellRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,
@@ -1108,7 +1114,7 @@ class TableInteractive extends Component {
   }
 
   _benchmark() {
-    const grid = ReactDOM.findDOMNode(this.grid);
+    const grid = findDOMNode(this.grid);
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();

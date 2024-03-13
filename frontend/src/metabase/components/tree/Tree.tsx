@@ -45,7 +45,7 @@ function BaseTree({
   }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
 
   const handleToggleExpand = useCallback(
-    itemId => {
+    (itemId: ITreeNodeItem["id"]) => {
       if (expandedIds.has(itemId)) {
         setExpandedIds(prev => new Set([...prev].filter(id => id !== itemId)));
       } else {

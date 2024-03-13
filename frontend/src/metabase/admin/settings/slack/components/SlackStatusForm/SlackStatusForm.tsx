@@ -6,7 +6,7 @@ export interface SlackStatusFormProps {
   settings: SlackSettings;
 }
 
-const SlackStatusForm = ({ settings }: SlackStatusFormProps): JSX.Element => {
+const SlackStatusForm = ({ settings }: SlackStatusFormProps) => {
   return <SlackForm initialValues={settings} isReadOnly />;
 };
 

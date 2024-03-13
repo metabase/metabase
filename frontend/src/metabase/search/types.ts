@@ -76,8 +76,12 @@ interface SearchFilter<T extends FilterTypeKeys = any> {
 export interface SearchFilterDropdown<T extends FilterTypeKeys = any>
   extends SearchFilter {
   type: "dropdown";
-  DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
-  ContentComponent: ComponentType<SearchFilterComponentProps<T>>;
+  DisplayComponent: ComponentType<
+    React.PropsWithChildren<Pick<SearchFilterComponentProps<T>, "value">>
+  >;
+  ContentComponent: ComponentType<
+    React.PropsWithChildren<SearchFilterComponentProps<T>>
+  >;
 }
 
 export interface SearchFilterToggle extends SearchFilter {

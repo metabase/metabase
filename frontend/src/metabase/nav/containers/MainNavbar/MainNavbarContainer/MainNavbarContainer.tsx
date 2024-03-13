@@ -119,7 +119,7 @@ function MainNavbarContainer({
   }, [rootCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
-    ({ newIndex, oldIndex }) => {
+    ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {
       const newBookmarks = [...bookmarks];
       const movedBookmark = newBookmarks[oldIndex];
 

@@ -169,9 +169,12 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
   return (
     <DatabaseEditRoot>
       <Breadcrumbs className="py4" crumbs={crumbs} />
-
       <DatabaseEditMain>
-        <ErrorBoundary errorComponent={GenericError as ComponentType}>
+        <ErrorBoundary
+          errorComponent={
+            GenericError as ComponentType<React.PropsWithChildren<unknown>>
+          }
+        >
           <div>
             <div className="pt0">
               <LoadingAndErrorWrapper
@@ -209,7 +212,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
           />
         )}
       </DatabaseEditMain>
-
       <LeaveConfirmationModal
         isEnabled={isDirty && !isCallbackScheduled}
         route={route}

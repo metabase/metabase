@@ -26,7 +26,7 @@ export const CreateApiKeyModal = ({
   const [secretKey, setSecretKey] = useState<string>("");
 
   const handleSubmit = useCallback(
-    async vals => {
+    async (vals: { name: string; group_id: string }) => {
       const response = await ApiKeysApi.create(vals);
       setSecretKey(response.unmasked_key);
       setModal("secretKey");

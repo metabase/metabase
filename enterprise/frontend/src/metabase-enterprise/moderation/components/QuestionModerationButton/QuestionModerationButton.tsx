@@ -24,7 +24,7 @@ interface Props {
   verifyCard: (id: number) => void;
   removeCardReview: (id: number) => void;
   isModerator: boolean;
-  VerifyButton: React.FC;
+  VerifyButton: React.FC<React.PropsWithChildren<unknown>>;
   verifyButtonProps: any;
 }
 

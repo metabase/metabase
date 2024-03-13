@@ -64,7 +64,7 @@ function RawCustomFormField(
   });
 
   const handleChange = useCallback(
-    e => {
+    (e: unknown) => {
       field.onChange(e);
       onChange?.(e);
     },

@@ -7,13 +7,12 @@ import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { WrappedResult } from "metabase/search/types";
-import { Group, Loader, Icon } from "metabase/ui";
+import { Group, Loader, Icon, Box } from "metabase/ui";
 
 import { InfoText } from "../InfoText";
 
 import {
   DescriptionDivider,
-  DescriptionSection,
   LoadingSection,
   ResultNameSection,
   ResultTitle,
@@ -119,7 +118,7 @@ export function SearchResult({
         </Group>
         <InfoText showLinks={!onClick} result={result} isCompact={compact} />
         {description && showDescription && (
-          <DescriptionSection>
+          <Box mt="0.5rem">
             <Group noWrap spacing="sm" data-testid="result-description">
               <DescriptionDivider
                 size="md"
@@ -135,7 +134,7 @@ export function SearchResult({
                 {description}
               </SearchResultDescription>
             </Group>
-          </DescriptionSection>
+          </Box>
         )}
       </ResultNameSection>
       {isLoading && (

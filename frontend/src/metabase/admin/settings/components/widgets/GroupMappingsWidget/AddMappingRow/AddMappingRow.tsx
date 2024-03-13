@@ -43,10 +43,7 @@ function AddMappingRow({
   return (
     <tr>
       <td colSpan={3} style={{ padding: 0 }}>
-        <form
-          className="m2 p1 bordered border-brand justify-between rounded relative flex align-center"
-          onSubmit={isMappingNameUnique ? handleSubmit : undefined}
-        >
+        <div className="m2 p1 bordered border-brand justify-between rounded relative flex align-center">
           <input
             aria-label="new-group-mapping-name-input"
             className="input--borderless h3 ml1 flex-full"
@@ -61,12 +58,12 @@ function AddMappingRow({
             <Button borderless onClick={handleCancelClick}>{t`Cancel`}</Button>
             <Button
               className="ml2"
-              type="submit"
               primary={!!isMappingNameUnique}
               disabled={!isMappingNameUnique}
+              onClick={() => (isMappingNameUnique ? handleSubmit() : undefined)}
             >{t`Add`}</Button>
           </div>
-        </form>
+        </div>
       </td>
     </tr>
   );

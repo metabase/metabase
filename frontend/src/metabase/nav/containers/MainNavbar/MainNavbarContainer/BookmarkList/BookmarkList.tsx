@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import {
   restrictToVerticalAxis,
@@ -125,7 +126,7 @@ const BookmarkList = ({
     activationConstraint: { distance: 0 },
   });
 
-  const onToggleBookmarks = useCallback(isVisible => {
+  const onToggleBookmarks = useCallback((isVisible: boolean) => {
     localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
   }, []);
 
@@ -135,10 +136,10 @@ const BookmarkList = ({
   }, []);
 
   const handleSortEnd = useCallback(
-    input => {
+    (input: DragEndEvent) => {
       document.body.classList.remove("grabbing");
       setIsSorting(false);
-      const newIndex = bookmarks.findIndex(b => b.id === input.over.id);
+      const newIndex = bookmarks.findIndex(b => b.id === input.over?.id);
       const oldIndex = bookmarks.findIndex(b => b.id === input.active.id);
       reorderBookmarks({ newIndex, oldIndex });
     },

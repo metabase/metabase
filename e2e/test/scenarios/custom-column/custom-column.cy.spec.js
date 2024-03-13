@@ -14,6 +14,7 @@ import {
   getNotebookStep,
   checkExpressionEditorHelperPopoverPosition,
   queryBuilderMain,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -592,7 +593,7 @@ describe("scenarios > question > custom column", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("CustomDate").click();
+    tableHeaderClick("CustomDate");
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();

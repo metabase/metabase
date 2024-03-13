@@ -66,7 +66,7 @@ export function TableClickBehaviorView({
   }, [columns, getClickBehaviorForColumn]);
 
   const renderColumn = useCallback(
-    ({ column, clickBehavior }, index) => {
+    ({ column, clickBehavior }: any, index: number) => {
       return (
         <Column
           key={index}
@@ -80,7 +80,7 @@ export function TableClickBehaviorView({
   );
 
   const renderColumnGroup = useCallback(
-    group => {
+    (group: any) => {
       const [clickBehaviorType, columnsWithClickBehavior] = group;
       return (
         <div key={clickBehaviorType} className="mb2 px4">

@@ -97,7 +97,12 @@ function CollectionsPermissionsPageView({
   }, [initialize]);
 
   const handlePermissionChange = useCallback(
-    (item, _permission, value, toggleState) => {
+    (
+      item: { id: GroupId },
+      _permission: unknown,
+      value: unknown,
+      toggleState: boolean,
+    ) => {
       updateCollectionPermission({
         groupId: item.id,
         collection,

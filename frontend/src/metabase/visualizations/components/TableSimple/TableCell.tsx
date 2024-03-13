@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type React from "react";
 import { useCallback, useMemo, isValidElement } from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -149,7 +150,7 @@ export function TableCell({
   const isClickable = !isLink;
 
   const onClick = useCallback(
-    e => {
+    (e: React.MouseEvent<HTMLSpanElement>) => {
       if (checkIsVisualizationClickable(clicked)) {
         onVisualizationClick?.({
           ...clicked,

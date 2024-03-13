@@ -48,7 +48,9 @@ interface WrappedModalRouteProps {
 }
 
 const ModalWithRoute = (
-  ComposedModal: React.ComponentType<ComposedModalProps>,
+  ComposedModal: React.ComponentType<
+    React.PropsWithChildren<ComposedModalProps>
+  >,
   modalProps = {},
 ) => {
   class ModalRouteComponent extends Component<WrappedModalRouteProps> {
@@ -77,7 +79,7 @@ const ModalWithRoute = (
 
 interface ModalRouteProps {
   path: string;
-  modal: React.ComponentType<ComposedModalProps>;
+  modal: React.ComponentType<React.PropsWithChildren<ComposedModalProps>>;
   modalProps?: unknown;
 }
 
@@ -102,5 +104,6 @@ class _ModalRoute extends Route {
 // Casting ModalRoute as there's no way to properly type its props
 // ModalRoute extends react-router's Route which is not generic,
 // so it's impossible to extend Route's props.
-export const ModalRoute =
-  _ModalRoute as unknown as React.ComponentType<ModalRouteProps>;
+export const ModalRoute = _ModalRoute as unknown as React.ComponentType<
+  React.PropsWithChildren<ModalRouteProps>
+>;

@@ -50,6 +50,8 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
   }
 `;
 
-function getComponent<P>(component: (props: P) => ReactElement): FC<P> {
+function getComponent<P>(
+  component: (props: P) => ReactElement,
+): FC<React.PropsWithChildren<P>> {
   return component;
 }

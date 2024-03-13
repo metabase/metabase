@@ -60,7 +60,7 @@ export const SMTPConnectionForm = ({
   }, [dispatch]);
 
   const handleUpdateEmailSettings = useCallback(
-    async formData => {
+    async (formData: object) => {
       await dispatch(updateEmailSettings(formData));
 
       if (!isEmailConfigured) {
@@ -71,7 +71,7 @@ export const SMTPConnectionForm = ({
   );
 
   const handleSendTestEmail = useCallback(
-    async e => {
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
 
       setSendingEmail("working");
