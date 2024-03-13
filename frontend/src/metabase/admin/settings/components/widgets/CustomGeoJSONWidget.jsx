@@ -9,6 +9,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Modal from "metabase/components/Modal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Select, { Option } from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/utils";
 import { SettingsApi, GeoJSONApi } from "metabase/services";
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
@@ -382,7 +383,7 @@ const EditMap = ({
             error={geoJsonError}
           >
             {() => (
-              <div className="spread relative">
+              <div className={cx(CS.spread, CS.relative)}>
                 <ChoroplethPreview geoJson={geoJson} />
               </div>
             )}

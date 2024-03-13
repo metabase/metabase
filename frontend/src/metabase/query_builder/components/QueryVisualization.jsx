@@ -51,7 +51,7 @@ export default function QueryVisualization(props) {
         />
       )}
       <div
-        className={cx("spread Visualization z1", {
+        className={cx(CS.spread, "Visualization z1", {
           "Visualization--loading": isRunning,
         })}
       >
