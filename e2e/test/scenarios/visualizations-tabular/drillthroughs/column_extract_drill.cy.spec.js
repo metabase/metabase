@@ -193,5 +193,5 @@ function extractColumnAndCheck({ column, option, newColumn = option, value }) {
 function checkColumnIndex({ column, columnIndex }) {
   cy.findAllByRole("columnheader")
     .eq(columnIndex)
-    .should("contain.text", column);
+    .should("have.text", column);
 }
