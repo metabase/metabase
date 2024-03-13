@@ -58,7 +58,7 @@ export const GroupSelect = ({
 }: GroupSelectProps) => {
   const triggerElement = (
     <div className="flex align-center">
-      <Text mine="1rem" color="text-medium">
+      <Text me="1rem" color="text-medium">
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </Text>
       <Icon className="text-light" name="chevrondown" size={10} />
