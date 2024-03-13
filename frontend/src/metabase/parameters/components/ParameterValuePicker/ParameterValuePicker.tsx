@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter, TemplateTag } from "metabase-types/api";
 
 import { OwnDatePicker } from "./OwnDatePicker";

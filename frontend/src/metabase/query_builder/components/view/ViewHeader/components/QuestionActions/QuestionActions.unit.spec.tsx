@@ -8,7 +8,7 @@ import {
   screen,
 } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Card, Database } from "metabase-types/api";
 import {
   createMockCard,

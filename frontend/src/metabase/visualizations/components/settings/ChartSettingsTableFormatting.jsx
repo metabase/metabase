@@ -22,7 +22,11 @@ import {
   getStatusColorRanges,
 } from "metabase/lib/colors/groups";
 import { Icon } from "metabase/ui";
-import { isNumeric, isString, isBoolean } from "metabase-lib/types/utils/isa";
+import {
+  isNumeric,
+  isString,
+  isBoolean,
+} from "metabase-lib/v1/types/utils/isa";
 
 const COMMON_OPERATOR_NAMES = {
   "is-null": t`is null`,

@@ -8,8 +8,8 @@ import type { SelectChangeEvent } from "metabase/core/components/Select/Select";
 import Select from "metabase/core/components/Select/Select";
 import Fields from "metabase/entities/fields";
 import * as MetabaseCore from "metabase/lib/core";
-import type Field from "metabase-lib/metadata/Field";
-import type Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, FieldValuesType } from "metabase-types/api";
 
 import { discardFieldValues, rescanFieldValues } from "../../actions";

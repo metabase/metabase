@@ -15,7 +15,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isNumeric } from "metabase-lib/types/utils/isa";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { GaugeArcPath } from "./Gauge.styled";
 import { getValue } from "./utils";

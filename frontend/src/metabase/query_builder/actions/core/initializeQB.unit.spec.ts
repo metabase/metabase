@@ -11,9 +11,9 @@ import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   DatabaseId,

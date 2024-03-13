@@ -32,8 +32,8 @@ import * as Lib from "metabase-lib";
 import {
   checkCanBeModel,
   getSortedModelFields,
-} from "metabase-lib/metadata/utils/models";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+} from "metabase-lib/v1/metadata/utils/models";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
   Root,

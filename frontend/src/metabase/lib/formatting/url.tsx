@@ -1,6 +1,6 @@
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { getDataFromClicked } from "metabase-lib/parameters/utils/click-behavior";
-import { isURL } from "metabase-lib/types/utils/isa";
+import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
+import { isURL } from "metabase-lib/v1/types/utils/isa";
 
 import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
 import type { OptionsType } from "./types";

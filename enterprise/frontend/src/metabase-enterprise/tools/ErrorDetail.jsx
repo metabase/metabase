@@ -10,7 +10,7 @@ import Link from "metabase/core/components/Link";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { getMetadata } from "metabase/selectors/metadata";
 import { CardApi } from "metabase/services";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 import { columnNameToUrl } from "../audit_app/lib/mode";
 
