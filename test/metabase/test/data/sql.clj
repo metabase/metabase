@@ -241,7 +241,7 @@
     (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
 
 (defn fielddefs->pk-field-names
-  "Find the pks field name in fieldefs"
+  "Find the pk field names in fieldefs"
   [fieldefs]
   (->> fieldefs (filter :pk?) (map :field-name)))
 
