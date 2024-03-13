@@ -75,7 +75,8 @@
     #'lib.schema.util/distinct-refs?]])
 
 ;;; this is just for enabling round-tripping filters with named segment references, i.e. Google Analytics segments.
-;;; TODO -- does this belong here, or should it be part of the normal `:mbql.clause/segment` schema? Or `::expression/boolean`?
+;;;
+;;; TODO -- we should just add this to the schema `:mbql.clause/segment`
 (mr/def ::named-segment-reference
   [:tuple
    #_tag  [:= :segment]

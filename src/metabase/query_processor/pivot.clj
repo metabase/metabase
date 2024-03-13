@@ -1,6 +1,8 @@
 (ns metabase.query-processor.pivot
-  "Pivot table actions for the query processor"
+  "Pivot table query processor. Runs a bunch of subqueries separately and stitches results together. TODO -- this whole
+  thing is dumb, why don't we just generate a big ol' UNION query? -- Cam"
   (:require
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -131,11 +133,10 @@
      (fn [query i]
        (lib/breakout query (nth all-breakouts i)))
      (-> (lib/remove-all-breakouts query)
-         ;; this is just for info/debugging purposes
          (assoc :qp.pivot/breakout-combination breakout-indecies-to-keep))
      breakout-indecies-to-keep)))
 
-(mu/defn ^:private add-grouping-field :- ::lib.schema/query
+(mu/defn ^:private add-pivot-group-breakout :- ::lib.schema/query
   "Add the grouping field and expression to the query"
   [query   :- ::lib.schema/query
    bitmask :- ::bitmask]
@@ -177,7 +178,7 @@
         (-> query
             remove-non-aggregation-order-bys
             (keep-breakouts-at-indecies breakout-indices)
-            (add-grouping-field group-bitmask))))
+            (add-pivot-group-breakout group-bitmask))))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")
                       {:type qp.error-type/qp, :query query}
@@ -371,18 +372,76 @@
     {:pivot-rows pivot-rows
      :pivot-cols pivot-cols}))
 
+(mu/defn ^:private column-mapping-for-subquery :- ::pivot-column-mapping
+  [num-canonical-cols            :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+   num-canonical-breakouts       :- ::num-breakouts
+   subquery-breakout-combination :- ::breakout-combination]
+  ;; all pivot queries consist of *breakout columns* + *other columns*. Breakout columns are always first, and the only
+  ;; thing that can change between subqueries. The other columns will always be the same, and in the same order.
+  (let [;; one of the breakouts will always be for the pivot group breakout added by [[add-pivot-group-breakout]],
+        ;; always added last, but this is not included in the breakout combination, so add it in so we make sure it's
+        ;; mapped properly
+        subquery-breakout-combination
+        (conj subquery-breakout-combination (dec num-canonical-breakouts))
+
+        ;; First, let's build a map of the canonical column index to the index in the current subquery. To build the
+        ;; map, we build it in two parts:
+        canonical-index->subquery-index
+        (merge
+         ;; 1. breakouts remapping, based on the `:qp.pivot/breakout-combination`
+         (into {}
+               (map (fn [[subquery-index canonical-index]]
+                      [canonical-index subquery-index]))
+               (m/indexed subquery-breakout-combination))
+         ;; 2. other columns remapping, which just takes the other columns offset in the subquery and moves that column
+         ;;    so it matches up with the position it is in the canonical query.
+         (let [canonical-other-columns-offset num-canonical-breakouts
+               subquery-other-columns-offset  (count subquery-breakout-combination)
+               num-other-columns              (- num-canonical-cols num-canonical-breakouts)]
+           (into {}
+                 (map (fn [i]
+                        [(+ canonical-other-columns-offset i) (+ subquery-other-columns-offset i)]))
+                 (range num-other-columns))))]
+    ;; e.g.
+    ;;
+    ;;    ;; column 1 in the subquery results corresponds to 2 in the canonical results, 3 corresponds to 0
+    ;;    {1 2, 3 0}
+    ;;
+    ;; next, let's use that map to make a vector of like
+    ;;
+    ;;    [nil 2 nil 0]
+    ;;
+    ;; e.g.
+    ;;
+    ;; * canonical column 0 has no corresponding column in the subquery
+    ;; * canonical column 2 corresponds to subquery column 1
+    (mapv (fn [i]
+            (get canonical-index->subquery-index i))
+          (range num-canonical-cols))))
+
 (mu/defn ^:private make-column-mapping-fn :- ::column-mapping-fn
+  "This returns a function with the signature
+
+    (f query) => column-remapping
+
+  Where `column-remapping` looks something like
+
+    {0 2, 1 3, 2 4}
+
+  `column-remapping` is a map of
+
+    column number in subquery results => column number in the UNION-style overall pivot results
+
+  Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
+  results -- "
   [query :- ::lib.schema/query]
-  (let [col-determination-query (add-grouping-field query 0)
-        all-expected-cols       (lib/returned-columns col-determination-query)]
-    (fn column-mapping-fn* [query]
-      (let [query-cols (map-indexed vector (lib/returned-columns query))]
-        (mapv (fn [expected-col]
-                (some (fn [[i query-col]]
-                        (when (= (:lib/desired-column-alias expected-col) (:lib/desired-column-alias query-col))
-                          i))
-                      query-cols))
-              all-expected-cols)))))
+  (let [canonical-query         (add-pivot-group-breakout query 0) ; a query that returns ALL the result columns.
+        canonical-cols          (lib/returned-columns canonical-query)
+        num-canonical-cols      (count canonical-cols)
+        num-canonical-breakouts (count (filter #(= (:lib/source %) :source/breakouts)
+                                               canonical-cols))]
+    (fn column-mapping-fn* [subquery]
+      (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts (:qp.pivot/breakout-combination subquery)))))
 
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
