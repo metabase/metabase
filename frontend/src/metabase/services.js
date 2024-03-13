@@ -233,6 +233,7 @@ export const CollectionsApi = {
   getRoot: GET("/api/collection/root"),
   update: PUT("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
+  graphForCollection: GET("api/collection/graph/collection/:collectionId"),
   updateGraph: PUT("/api/collection/graph"),
 };
 

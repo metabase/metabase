@@ -29,6 +29,7 @@ import { CollectionsApi, PermissionsApi } from "metabase/services";
 
 import { trackPermissionChange } from "./analytics";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
+import { _ } from "cljs/cljs.core";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -82,6 +83,10 @@ export const initializeCollectionPermissions = createThunkAction(
 
 const LOAD_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/LOAD_COLLECTION_PERMISSIONS";
+
+export const LOAD_COLLECTION_PERMISSIONS_FOR_COLLECTION =
+  "metabase/admin/permissions/LOAD_COLLECTION_PERMISSIONS_FOR_COLLECTION";
+
 export const loadCollectionPermissions = createThunkAction(
   LOAD_COLLECTION_PERMISSIONS,
   namespace => async () => {
@@ -379,6 +384,9 @@ const collectionPermissions = handleActions(
     [LOAD_COLLECTION_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
+    [LOAD_COLLECTION_PERMISSIONS_FOR_COLLECTION]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
     [UPDATE_COLLECTION_PERMISSION]: {
       next: (state, { payload }) => {
         const { groupId, collection, value, shouldPropagate } = payload;
@@ -408,6 +416,9 @@ const originalCollectionPermissions = handleActions(
     [LOAD_COLLECTION_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
+    [LOAD_COLLECTION_PERMISSIONS_FOR_COLLECTION]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
     [SAVE_COLLECTION_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
@@ -421,6 +432,9 @@ const collectionPermissionsRevision = handleActions(
       next: (_state, { payload }) => payload.revision,
     },
     [SAVE_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+    [LOAD_COLLECTION_PERMISSIONS_FOR_COLLECTION]: {
       next: (_state, { payload }) => payload.revision,
     },
   },

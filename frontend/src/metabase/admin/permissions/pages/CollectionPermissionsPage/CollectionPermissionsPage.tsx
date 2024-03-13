@@ -22,6 +22,7 @@ import {
   updateCollectionPermission,
   saveCollectionPermissions,
   loadCollectionPermissions,
+  LOAD_COLLECTION_PERMISSIONS_FOR_COLLECTION,
 } from "../../permissions";
 import type {
   CollectionIdProps,
@@ -35,6 +36,9 @@ import {
   getIsDirty,
   collectionsQuery,
 } from "../../selectors/collection-permissions";
+import { CollectionsApi } from "metabase/services";
+import { useAsync } from "react-use";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
@@ -48,7 +52,7 @@ const mapDispatchToProps = {
 const mapStateToProps = (state: State, props: CollectionIdProps) => {
   return {
     sidebar: getCollectionsSidebar(state, props),
-    permissionEditor: getCollectionsPermissionEditor(state, props),
+    //permissionEditor: getCollectionsPermissionEditor(state, props),
     isDirty: getIsDirty(state),
     collection: getCollectionEntity(state, props),
   };
@@ -64,7 +68,7 @@ type UpdateCollectionPermissionParams = {
 type CollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
   sidebar: CollectionSidebarType;
-  permissionEditor: CollectionPermissionEditorType;
+  //permissionEditor: CollectionPermissionEditorType;
   collection: Collection;
   navigateToItem: (item: any) => void;
   updateCollectionPermission: ({
@@ -82,7 +86,7 @@ type CollectionPermissionsPageProps = {
 
 function CollectionsPermissionsPageView({
   sidebar,
-  permissionEditor,
+  //permissionEditor,
   collection,
   isDirty,
   savePermissions,
@@ -91,10 +95,18 @@ function CollectionsPermissionsPageView({
   navigateToItem,
   initialize,
   route,
+  params,
 }: CollectionPermissionsPageProps) {
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  // useEffect(() => {
+  //   initialize();
+  // }, [initialize]);
+  const dispatch = useDispatch();
+
+  const permissionEditor = useSelector(state =>
+    getCollectionsPermissionEditor(state, { params }),
+  );
+
+  console.log(permissionEditor);
 
   const handlePermissionChange = useCallback(
     (item, _permission, value, toggleState) => {
@@ -107,6 +119,30 @@ function CollectionsPermissionsPageView({
     },
     [collection, updateCollectionPermission],
   );
+
+  const { collectionId } = params;
+
+  const { loading } = useAsync(async () => {
+    console.log(collectionId);
+    if (collectionId) {
+      const response = await CollectionsApi.graphForCollection({
+        collectionId,
+      });
+      console.log(response);
+      const temp = await dispatch({
+        type: LOAD_COLLECTION_PERMISSIONS_FOR_COLLECTION,
+        payload: response,
+      });
+      console.log("dispatched", temp);
+    }
+  }, [collectionId]);
+
+  useAsync(async () => {
+    if (collectionId) {
+      const response = await CollectionsApi.graph();
+      console.log(response);
+    }
+  }, [collectionId]);
 
   return (
     <PermissionsPageLayout
@@ -126,7 +162,7 @@ function CollectionsPermissionsPageView({
         />
       )}
 
-      {permissionEditor && (
+      {permissionEditor && !loading && (
         <PermissionsEditor
           isLoading={undefined}
           error={undefined}
