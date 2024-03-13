@@ -42,6 +42,12 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   sum: {
     icon: "sum",
   },
+  combine: {
+    icon: "add",
+  },
+  "combine-popover": {
+    icon: "add",
+  },
   extract: {
     icon: "extract",
   },

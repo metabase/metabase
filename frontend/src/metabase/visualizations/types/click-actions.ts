@@ -27,6 +27,8 @@ export type ClickActionSection =
   | "auto-popover"
   | "breakout"
   | "breakout-popover"
+  | "combine"
+  | "combine-popover"
   | "details"
   | "extract"
   | "extract-popover"
