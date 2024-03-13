@@ -422,6 +422,7 @@ export type DrillThruType =
   | "drill-thru/automatic-insights"
   | "drill-thru/column-extract"
   | "drill-thru/column-filter"
+  | "drill-thru/combine-columns"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
@@ -453,6 +454,13 @@ export type ColumnExtractDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/column-extract"> & {
     displayName: string;
     extractions: ColumnExtraction[];
+  };
+
+export type CombineColumnsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/combine-columns"> & {
+    defaultSeparator: string;
+    column: ColumnMetadata;
+    availableColumns: ColumnMetadata[];
   };
 
 export type QuickFilterDrillThruOperator =
@@ -520,6 +528,7 @@ export type ZoomTimeseriesDrillThruInfo =
 
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
+  | CombineColumnsDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
