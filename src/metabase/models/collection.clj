@@ -444,7 +444,7 @@
                             [:children [:set [:ref ::children]]]]]}}
    [:ref ::children]])
 
-(mu/defn ^:private descendants :- [:set Children]
+(mu/defn descendants :- [:set Children]
   "Return all descendant Collections of a `collection`, including children, grandchildren, and so forth. This is done
   primarily to power the `effective-children` feature below, and thus the descendants are returned in a hierarchy,
   rather than as a flat set. e.g. results will be something like:
@@ -922,7 +922,7 @@
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
 ;;; Return the required set of permissions to `read-or-write` `collection-or-id`.
-(defmethod mi/perms-objects-set Collection
+(defmethod mi/perms-objects-set :model/Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
                      (t2/select-one [Collection :id :namespace] :id (collection-or-id))

@@ -122,6 +122,54 @@
             (into {} (for [[group-id group-graph] groups]
                        [group-id (select-keys group-graph [collection-id])])))))
 
+(mu/defn calculate-subcollection-warning
+  "When do we show warnings? When a user has permissions on a collection, but not on a subcollection, we want to
+  include a warning, keyed the same way as the graph.
+
+  ;; parent | descendant
+  ;; ----------------------
+  ;; none   | read or write
+  ;; read   | write "
+  [parent-perms :- [:enum :read :write :none]
+   child-perms  :- [:enum :read :write :none]]
+  (cond
+    (and (= :read parent-perms) (= :write child-perms)) :warning/write
+    (and (= :none parent-perms) (= :write child-perms)) :warning/write
+    (and (= :none parent-perms) (= :read child-perms)) :warning/read
+    :else nil))
+
+(defn- build-warnings [group-ids descendants collection-id]
+  ;; for each Group, and for each collection's subcollections:
+  ;; if the group has 'less' permissions on the collection than on the subcollection, include a warning.
+  ;; 'less' permissions means:
+  ;; - if the group has `:none` on the collection, but `:read` or `:write` on a subcollection, put a warning on the _parent_.
+  (reduce
+   (fn [warnings [group-id child-coll]]
+     (let [parent-coll       collection-id
+           group-perms  ((group-id->permissions-set) group-id)
+           parent-perms (perms-type-for-collection group-perms parent-coll)
+           child-perms  (perms-type-for-collection group-perms child-coll)
+           warning (calculate-subcollection-warning parent-perms child-perms)]
+       (if warning
+         (assoc-in warnings [group-id parent-coll] warning)
+         warnings)))
+   {}
+   (for [group-id group-ids
+         child-coll (map :id descendants)]
+     [group-id child-coll])))
+
+(defn- include-subcollection-warnings
+  "When a user has permissions on a collection, but not on a subcollection, we want to include a warning, keyed the same way as the graph."
+  [graph]
+  (let [group-ids      (keys (:groups graph))
+        collection-ids (distinct (mapcat keys (vals (:groups graph))))
+        _              (assert (= 1 (count collection-ids)) "The graph should only contain permissions for a single collection.")
+        collection-id  (first collection-ids)
+        collection     (into {} (t2/select :model/Collection :id collection-id))
+        descendants    (collection/descendants collection)
+        warnings       (build-warnings group-ids descendants collection-id)]
+    (assoc graph :warnings warnings)))
+
 (mu/defn graph-for-coll-id
   "Fetch a graph corresponding to the current permissions status for a single collection with ID `collection-id`.
   This works just like [[metabase.models.permissions/graph-for-db-id]], but for Collections."
@@ -129,14 +177,15 @@
                       [:revision :int]
                       [:groups :map]
                       [:warnings [:maybe [:map]]]]
+  ;; This might be too slow, but The bottleneck is the size of the returned graph, not the query-time. (Also this DOES
+  ;; solve a perf issue so: :shrug:)
   (t2/with-transaction [_conn]
-    (-> (if (= collection-id :root)
-          ;; TODO: This might be too slow, but we can use it to iterative quickly for now.
-          ;; (Also it solves a perf issue so :shrug:)
-          (graph :root)
-          (collection-permission-graph [collection-id] nil))
-        (narrow-to-collection collection-id)
-        (assoc :warnings (if (> 0.1 (rand)) {:greeting "hi Nick"} {})))))
+    (let [full-graph (if (= collection-id :root)
+                       (graph :root)
+                       (collection-permission-graph [collection-id] nil))]
+      (-> full-graph
+          (narrow-to-collection collection-id)
+          include-subcollection-warnings))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
