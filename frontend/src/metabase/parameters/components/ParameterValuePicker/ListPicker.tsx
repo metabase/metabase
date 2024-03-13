@@ -35,7 +35,9 @@ export function ListPicker(props: ListPickerProps) {
   } = props;
 
   const icon = isLoading ? (
-    <Loader size="xs" />
+    <div data-testid="listpicker-loader">
+      <Loader size="xs" />
+    </div>
   ) : value ? (
     <PickerIcon name="close" onClick={onClear} />
   ) : null;
