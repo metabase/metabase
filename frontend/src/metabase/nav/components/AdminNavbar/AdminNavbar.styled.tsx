@@ -51,11 +51,15 @@ export const AdminMobileNavBarItems = styled.ul`
   display: flex;
   flex-direction: column;
   text-align: right;
+  [dir="rtl"] & {
+    text-align: left;
+  }
   padding: 1rem;
   gap: 2rem;
-  border-radius: 0 0 0 0.5rem;
+  border-radius: 0;
+  border-end-start-radius: 0.5rem;
   top: ${ADMIN_NAVBAR_HEIGHT};
-  right: 0;
+  inset-inline-end: 0;
   background: ${color("admin-navbar")};
 `;
 
