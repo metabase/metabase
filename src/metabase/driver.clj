@@ -339,13 +339,30 @@
 (defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
 (defmulti describe-table-fks
-  "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
-  should match the [[metabase.sync.interface/FKMetadata]] schema."
-  {:added "0.32.0" :arglists '([driver database table])}
+  "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys` but not
+  `:describe-fks`. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
+  {:added "0.32.0" :deprecated "0.50.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod describe-table-fks ::driver [_ _ _]
+  nil)
+
+(defmulti describe-fks
+  "Returns a reducible collection of maps, each containing information about foreign keys.
+  Takes keyword arguments to narrow down the results to a set of `schema-names` or `table-names`.
+
+  Results match [[metabase.sync.interface/FKMetadataEntry]].
+  Results are optionally filtered by `schema-names` and `table-names` provided.
+  Results are ordered by `fk-table-schema` and `fk-table-name` in ascending order.
+
+  Required for drivers that support `:describe-fks`."
+  {:added "0.50.0" :arglists '([driver database & {:keys [schema-names table-names]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod describe-fks ::driver [_ _]
   nil)
 
 ;;; this is no longer used but we can leave it around for not for documentation purposes. Maybe we can actually do
@@ -547,7 +564,10 @@
     :native-requires-specified-collection
 
     ;; Does the driver support column(s) support storing index info
-    :index-info})
+    :index-info
+
+    ;; Does the driver support a faster `sync-fks` step by fetching all FK metadata in a single collection?
+    :describe-fks})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
