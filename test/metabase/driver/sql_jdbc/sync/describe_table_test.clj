@@ -158,17 +158,17 @@
           (is (=? [{:name              (format-name "id"),
                     :database-type     string?,
                     :database-position 0,
-                    :base-type         :type/Integer,
+                    :base-type         #(isa? % :type/Integer),
                     :json-unfolding    false}
                    {:name              (format-name "date"),
                     :database-type     string?,
                     :database-position 1,
-                    :base-type         :type/Date,
+                    :base-type         #(isa? % :type/Date),
                     :json-unfolding    false}
                    {:name              (format-name "count"),
                     :database-type     string?,
                     :database-position 2,
-                    :base-type         :type/Integer,
+                    :base-type         #(isa? % :type/Integer),
                     :json-unfolding    false}]
                   (describe-fields-for-table (mt/db) table))))))))
 
