@@ -21,6 +21,7 @@ import {
   getDefaultIsHistogram,
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
+  getDefaultStackDisplayValue,
   getDefaultStackingValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
@@ -127,18 +128,22 @@ export const computeStaticComboChartSettings = (
     seriesVizSettingsKeys,
   );
 
+  const seriesDisplays = seriesModels.map(
+    seriesModel =>
+      settings.series(seriesModel.legacySeriesSettingsObjectKey).display,
+  );
+
   fillWithDefaultValue(
     settings,
     "stackable.stack_type",
     getDefaultStackingValue(settings, mainCard),
-    isStackingValueValid(
-      mainCard.display,
-      settings,
-      seriesModels.map(
-        seriesModel =>
-          settings.series(seriesModel.legacySeriesSettingsObjectKey).display,
-      ),
-    ),
+    isStackingValueValid(mainCard.display, settings, seriesDisplays),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "stackable.stack_display",
+    getDefaultStackDisplayValue(mainCard.display, seriesDisplays),
   );
 
   fillWithDefaultValue(

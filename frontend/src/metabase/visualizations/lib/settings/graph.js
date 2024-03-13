@@ -24,6 +24,7 @@ import {
   getDefaultIsHistogram,
   getDefaultScatterColumns,
   getDefaultStackingValue,
+  getDefaultStackDisplayValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
   getDefaultYAxisTitle,
@@ -314,16 +315,7 @@ export const STACKABLE_SETTINGS = {
     },
     getDefault: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
-      const firstStackable = _.find(displays, display =>
-        STACKABLE_DISPLAY_TYPES.has(display),
-      );
-      if (firstStackable) {
-        return firstStackable;
-      }
-      if (STACKABLE_DISPLAY_TYPES.has(series[0].card.display)) {
-        return series[0].card.display;
-      }
-      return "bar";
+      return getDefaultStackDisplayValue(series[0].card.display, displays);
     },
     getHidden: (series, settings) => settings["stackable.stack_type"] == null,
     readDependencies: ["stackable.stack_type", "series"],
