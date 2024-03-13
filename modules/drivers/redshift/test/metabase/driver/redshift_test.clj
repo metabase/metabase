@@ -420,54 +420,56 @@
               conn-spec       (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               get-privileges  (fn []
                                 (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                 [spec [:redshift (assoc (:details (mt/db)) :user username)]]
+                                  [spec [:redshift (assoc (:details (mt/db)) :user username)]]
                                   (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                     (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
-            (execute! (format
-                       (str
-                        "CREATE TABLE %1$s (id INTEGER);\n"
-                        "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
-                        "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
-                        "CREATE USER \"%4$s\" WITH PASSWORD '%5$s';\n"
-                        "GRANT SELECT ON %1$s TO \"%4$s\";\n"
-                        "GRANT UPDATE ON %1$s TO \"%4$s\";\n"
-                        "GRANT SELECT ON %2$s TO \"%4$s\";\n"
-                        "GRANT SELECT ON %3$s TO \"%4$s\";")
-                       qual-tbl-name
-                       qual-view-name
-                       qual-mview-name
-                       username
-                       (get-in (mt/db) [:details :password])))
-            (testing "check that without USAGE privileges on the schema, nothing is returned"
-              (is (= #{}
-                     (get-privileges))))
-            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
-              (jdbc/execute! conn-spec (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";" schema-name username))
-              (is (= #{{:role   nil
-                        :schema schema-name
-                        :table  table-name
-                        :update true
-                        :select true
-                        :insert false
-                        :delete false}
-                       {:role   nil
-                        :schema schema-name
-                        :table  view-nm
-                        :update false
-                        :select true
-                        :insert false
-                        :delete false}
-                       {:role   nil
-                        :schema schema-name
-                        :table  mview-name
-                        :select true
-                        :update false
-                        :insert false
-                        :delete false}}
-                     (get-privileges))))
-            (finally
-              (execute! (format
+           (execute! (format
+                      (str
+                       "CREATE TABLE %1$s (id INTEGER);\n"
+                       "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
+                       "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
+                       "CREATE USER \"%4$s\" WITH PASSWORD '%5$s';\n"
+                       "GRANT SELECT ON %1$s TO \"%4$s\";\n"
+                       "GRANT UPDATE ON %1$s TO \"%4$s\";\n"
+                       "GRANT SELECT ON %2$s TO \"%4$s\";\n"
+                       "GRANT SELECT ON %3$s TO \"%4$s\";")
+                      qual-tbl-name
+                      qual-view-name
+                      qual-mview-name
+                      username
+                      (get-in (mt/db) [:details :password])))
+           (testing "check that without USAGE privileges on the schema, nothing is returned"
+             (is (= #{}
+                    (get-privileges))))
+           (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
+             (jdbc/execute! conn-spec (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";" schema-name username))
+             (is (= #{{:role   nil
+                       :schema schema-name
+                       :table  table-name
+                       :update true
+                       :select true
+                       :insert false
+                       :delete false}
+                      {:role   nil
+                       :schema schema-name
+                       :table  view-nm
+                       :update false
+                       :select true
+                       :insert false
+                       :delete false}
+                      {:role   nil
+                       :schema schema-name
+                       :table  mview-name
+                       :select true
+                       :update false
+                       :insert false
+                       :delete false}}
+                    (get-privileges))))
+           (finally
+            ;; comment out since it's causing flake
+            ;; can uncomment after we tackle #40058
+            #_(execute! (format
                          (str
                           "DROP TABLE IF EXISTS %2$s CASCADE;\n"
                           "DROP VIEW IF EXISTS %3$s CASCADE;\n"
