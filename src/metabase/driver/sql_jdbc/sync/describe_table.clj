@@ -275,8 +275,7 @@
 (defmulti describe-fks-sql
  "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fks]],
  i.e. [[describe-fks]]."
- {:added    "0.50.0"
-  :arglists '([driver & {:keys [schema-names table-names]}])}
+ {:added "0.49.0" :arglists '([driver & {:keys [schema-names table-names]}])}
  driver/dispatch-on-initialized-driver
  :hierarchy #'driver/hierarchy)
 
