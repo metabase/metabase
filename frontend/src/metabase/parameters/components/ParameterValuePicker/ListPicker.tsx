@@ -17,7 +17,7 @@ interface ListPickerProps {
   errorMessage?: string;
 }
 
-// TODO show "remove" button when typing in search
+// TODO show "remove" button when typing in search for static list parameters
 // TODO dropdown position + change of size doesn't work well
 export function ListPicker(props: ListPickerProps) {
   const {

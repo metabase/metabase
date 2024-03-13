@@ -87,14 +87,14 @@ function getAnotherStaticListParam() {
   });
 }
 
-function getCardBoundParam() {
+function getCardBoundParam(def: any = null) {
   return createMockParameter({
     id: "card-param",
     type: "category",
     target: ["variable", ["template-tag", "state"]],
     name: "State",
     slug: "state",
-    default: null,
+    default: def,
     required: false,
     values_query_type: "list",
     values_source_type: "card",
