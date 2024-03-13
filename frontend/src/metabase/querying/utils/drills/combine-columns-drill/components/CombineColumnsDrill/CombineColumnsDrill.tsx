@@ -19,9 +19,10 @@ export const CombineColumnsDrill = ({
   stageIndex,
   drillInfo,
 }: Props) => {
+  const { availableColumns, defaultSeparator } = drillInfo;
   const options = useMemo(() => {
-    return getColumnOptions(query, stageIndex, drillInfo.availableColumns);
-  }, [query, stageIndex, drillInfo.availableColumns]);
+    return getColumnOptions(query, stageIndex, availableColumns);
+  }, [query, stageIndex, availableColumns]);
 
   const [columnsAndSeparators, setColumnsAndSeparators] = useState([
     getInitialColumnAndSeparator(drillInfo),
@@ -43,6 +44,10 @@ export const CombineColumnsDrill = ({
     ]);
   };
 
+  const handleEditSeparators = () => {
+    setIsUsingDefaultSeparator(false);
+  };
+
   return (
     <Card px="lg">
       <Stack spacing="sm">
@@ -50,16 +55,28 @@ export const CombineColumnsDrill = ({
 
         {columnsAndSeparators.map(({ column, separator }, index) => (
           <ColumnAndSeparatorRow
-            canEditSeparator={!isUsingDefaultSeparator}
-            canRemove={columnsAndSeparators.length > 1}
             column={column}
             index={index}
             key={index}
             options={options}
             separator={separator}
+            showLabels={index === 0 && !isUsingDefaultSeparator}
+            showRemove={columnsAndSeparators.length > 1}
+            showSeparator={!isUsingDefaultSeparator}
             onChange={handleChange}
           />
         ))}
+
+        {isUsingDefaultSeparator && (
+          <Button
+            leftIcon={<Icon name="add" />}
+            variant="subtle"
+            onClick={handleEditSeparators}
+          >
+            Separated by{" "}
+            {defaultSeparator === " " ? <>({t`space`})</> : defaultSeparator}
+          </Button>
+        )}
       </Stack>
 
       <Button
