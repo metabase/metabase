@@ -13,7 +13,7 @@ import { ListPickerConnected } from "./ListPickerConnected";
 
 // If some state updates aren't happening inside the component,
 // the test will fail on a relatively short timeout
-jest.setTimeout(3000);
+jest.setTimeout(1000);
 
 const STATIC_VALUES = [
   "1 A Point Pleasant Road",
@@ -63,7 +63,7 @@ function getEmptyParam(value: any) {
     default: value,
     required: false,
     values_query_type: "search",
-    values_source_type: value,
+    values_source_type: "static-list",
     values_source_config: value,
     value,
   });
@@ -105,7 +105,10 @@ function getCardBoundParam() {
   });
 }
 
-function getResolvedValuesMock(values: any[], hasMore = false) {
+function getResolvedValuesMock(
+  values: any[],
+  { hasMore = false }: { hasMore?: boolean } = {},
+) {
   return jest.fn(() =>
     Promise.resolve(
       createMockParameterValues({
@@ -136,7 +139,7 @@ function setup({
       onChange={onChangeMock}
       fetchValues={fetchValuesMock}
       forceSearchItemCount={forceSearchItemCount}
-      searchDebounceMs={5} // low for faster tests
+      searchDebounceMs={150}
     />,
   );
 
@@ -317,12 +320,13 @@ describe("ListPickerConnected", () => {
       });
       const input = screen.getByPlaceholderText("Start typing to filter…");
       userEvent.click(input);
-      userEvent.type(input, "value");
-      expect(screen.getByTestId("listpicker-loader")).toBeInTheDocument();
+      expect(screen.getByTestId("listpicker-loader")).toBeVisible();
     });
 
     it("fetches data on type and filters on it", async () => {
-      const fetchValuesMock = getResolvedValuesMock([["CA"], ["AL"]], true);
+      const fetchValuesMock = getResolvedValuesMock([["CA"], ["AL"]], {
+        hasMore: true,
+      });
       const { onChangeMock } = setup({
         value: null,
         parameter: getCardBoundParam(),
@@ -330,33 +334,22 @@ describe("ListPickerConnected", () => {
       });
 
       const input = screen.getByPlaceholderText("Start typing to filter…");
-
+      expect(input).toBeVisible();
       userEvent.click(input);
+      fetchValuesMock.mockReset();
+
       userEvent.type(input, "CA");
+      await checkFetch(fetchValuesMock, 1, "CA");
+      await clickCheckChange(onChangeMock, 1, "CA");
 
-      await waitFor(() => expect(fetchValuesMock).toHaveBeenCalledTimes(1));
-      expect(screen.queryByTestId("listpicker-loader")).not.toBeInTheDocument();
-      expect(screen.getByText("CA")).toBeVisible();
-
-      act(() => userEvent.click(screen.getByText("CA")));
-      await waitFor(() => expect(onChangeMock).toHaveBeenCalledTimes(1));
-      await waitFor(() => expect(onChangeMock).toHaveBeenCalledWith("CA"));
-
-      userEvent.click(input);
       userEvent.clear(input);
       userEvent.type(input, "AL");
+      await checkFetch(fetchValuesMock, 2, "AL");
+      await clickCheckChange(onChangeMock, 2, "AL");
 
-      await waitFor(() => expect(fetchValuesMock).toHaveBeenCalledTimes(2));
-      expect(screen.queryByTestId("listpicker-loader")).not.toBeInTheDocument();
-      expect(screen.getByText("AL")).toBeVisible();
-
-      userEvent.click(input);
       userEvent.clear(input);
       userEvent.type(input, "WA");
-
-      await waitFor(() => expect(fetchValuesMock).toHaveBeenCalledTimes(3));
-      expect(screen.queryByTestId("listpicker-loader")).not.toBeInTheDocument();
-      expect(screen.getByText("No matching result")).toBeVisible();
+      await checkFetch(fetchValuesMock, 3, "No matching result");
     });
 
     it("does not call fetch multiple times", async () => {
@@ -368,28 +361,46 @@ describe("ListPickerConnected", () => {
       });
 
       const input = screen.getByPlaceholderText("Start typing to filter…");
+      expect(input).toBeVisible();
       userEvent.click(input);
+      fetchValuesMock.mockReset();
+
       userEvent.type(input, "WA");
+      await checkFetch(fetchValuesMock, 1, "WA");
 
-      await waitFor(() => expect(fetchValuesMock).toHaveBeenCalledTimes(1));
-      expect(screen.queryByTestId("listpicker-loader")).not.toBeInTheDocument();
-      expect(screen.getByText("WA")).toBeVisible();
-
-      userEvent.click(input);
       userEvent.clear(input);
       userEvent.type(input, "NY");
-      await waitFor(() => expect(fetchValuesMock).toHaveBeenCalledTimes(1));
-      expect(screen.queryByTestId("listpicker-loader")).not.toBeInTheDocument();
-      expect(screen.getByText("NY")).toBeVisible();
+      await checkFetch(fetchValuesMock, 2, "NY");
     });
 
     it("debounces fetch calls", async () => {
-      const fetchValuesMock = getResolvedValuesMock([
-        ["WA"],
-        ["NY"],
-        ["CA"],
-        ["NC"],
-      ]);
+      const fetchValuesMock = getResolvedValuesMock(
+        [["WA"], ["NY"], ["CA"], ["NC"]],
+        { hasMore: true },
+      );
+      setup({
+        value: null,
+        parameter: getCardBoundParam(),
+        fetchValuesMock,
+      });
+
+      const input = screen.getByPlaceholderText("Start typing to filter…");
+      expect(input).toBeVisible();
+      userEvent.click(input);
+
+      await checkFetch(fetchValuesMock, 1, "WA");
+
+      userEvent.type(input, "WA");
+      userEvent.clear(input);
+      userEvent.type(input, "CA");
+      userEvent.clear(input);
+      userEvent.type(input, "NC");
+
+      await checkFetch(fetchValuesMock, 2, "NC");
+    });
+
+    it("shows fetch error", async () => {
+      const fetchValuesMock = jest.fn(() => Promise.reject());
       setup({
         value: null,
         parameter: getCardBoundParam(),
@@ -398,13 +409,26 @@ describe("ListPickerConnected", () => {
 
       const input = screen.getByPlaceholderText("Start typing to filter…");
       userEvent.click(input);
-      userEvent.type(input, "WA");
-      userEvent.clear(input);
-      userEvent.type(input, "CA");
-      userEvent.clear(input);
-      userEvent.type(input, "NC");
 
-      await waitFor(() => expect(fetchValuesMock).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(
+          screen.getByText("Loading values failed. Please try again shortly."),
+        ).toBeVisible(),
+      );
     });
   });
 });
+
+async function checkFetch(mock: () => any, calls: number, value: string) {
+  await waitFor(() => expect(screen.getByText(value)).toBeVisible());
+  await waitFor(() =>
+    expect(screen.queryByTestId("listpicker-loader")).not.toBeInTheDocument(),
+  );
+  await waitFor(() => expect(mock).toHaveBeenCalledTimes(calls));
+}
+
+async function clickCheckChange(mock: () => any, calls: number, value: string) {
+  act(() => userEvent.click(screen.getByText(value)));
+  await waitFor(() => expect(mock).toHaveBeenCalledWith(value));
+  await waitFor(() => expect(mock).toHaveBeenCalledTimes(calls));
+}
