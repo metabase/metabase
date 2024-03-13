@@ -10,6 +10,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -20,7 +21,7 @@
    [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
-  [_query _stage-number _query]
+  [_query _stage-number _likely-the-same-query]
   ;; not i18n'ed because this shouldn't be developer-facing.
   (throw (ex-info "You can't calculate a metadata map for a query! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
