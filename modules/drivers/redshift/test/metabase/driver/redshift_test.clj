@@ -241,8 +241,8 @@
                view-nm))
           (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
               ;; and its columns' :base_type should have been identified correctly
-            (is (= [{:name "numeric_col",   :database_type "numeric",         :base_type :type/Decimal}
-                    {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
+            (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
+                    {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
                    (map
                     mt/derecordize
                     (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
