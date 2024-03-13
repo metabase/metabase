@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.case-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [LegacyMetric Segment]]
+   [metabase.models :refer [#_LegacyMetric Segment]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -52,7 +52,8 @@
                                                                       :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
         (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))))
 
-(deftest ^:parallel test-case-aggregations-in-metric
+;; TODO TB legacy macro test, delete or port
+#_(deftest ^:parallel test-case-aggregations-in-metric
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use case in metric"
       (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
