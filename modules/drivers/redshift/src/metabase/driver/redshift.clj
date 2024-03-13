@@ -88,7 +88,6 @@
                         [[:not= :pk.column_name nil] "pk?"]
                         [[:case [:not= :c.remarks ""] :c.remarks :else nil] "field-comment"]]
                :from [[:svv_all_columns :c]]
-               ;; TODO: test composite PKs
                :left-join [[{:select [:tc.table_schema
                                       :tc.table_name
                                       :kc.column_name]
