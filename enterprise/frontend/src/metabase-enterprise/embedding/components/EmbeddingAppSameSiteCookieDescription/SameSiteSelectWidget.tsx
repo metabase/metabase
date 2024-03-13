@@ -1,8 +1,6 @@
 import { useState } from "react";
 
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
-import { getWritingDirection } from "metabase/selectors/app";
 import { Button, Group, Menu, Text, Icon } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
 
@@ -32,13 +30,11 @@ export function SameSiteSelectWidget({
   const selectedOption = setting.options.find(
     ({ value }) => value === selectedValue,
   );
-  const writingDirection = useSelector(getWritingDirection);
-
   return (
     <Menu
       opened={opened}
       onChange={setOpened}
-      position={writingDirection === "ltr" ? "bottom-start" : "bottom-end"}
+      position="bottom-start"
       shadow="sm"
     >
       <Menu.Target>
