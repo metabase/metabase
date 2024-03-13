@@ -72,7 +72,7 @@ describe("issue 39812", () => {
   });
 });
 
-function moveToCollection(collection) {
+function moveToCollection(collection: string) {
   openQuestionActions();
   popover().findByTextEnsureVisible("Move").click();
   cy.findByRole("dialog").within(() => {
@@ -90,14 +90,14 @@ function openDataSelector() {
   cy.findByTestId("data-step-cell").click();
 }
 
-function assertItemSelected(item) {
+function assertItemSelected(item: string) {
   cy.findByLabelText(item).should("have.attr", "aria-selected", "true");
 }
 
-function assertSourceCollection(collection) {
+function assertSourceCollection(collection: string) {
   return assertItemSelected(collection);
 }
 
-function assertDataSource(questionOrModel) {
+function assertDataSource(questionOrModel: string) {
   return assertItemSelected(questionOrModel);
 }
