@@ -20,30 +20,16 @@ describe("issue 39812", () => {
   it("moving the model to another collection should immediately be reflected in the data selector (metabase#39812-1)", () => {
     visitModel(ORDERS_MODEL_ID);
     openNotebook();
-    cy.findByTestId("data-step-cell").click();
-    cy.findByLabelText("Our analytics").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    cy.findByLabelText("Orders Model").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+
+    openDataSelector();
+    assertSourceCollection("Our analytics");
+    assertDataSource("Orders Model");
+
     moveToCollection("First collection");
 
-    cy.findByTestId("data-step-cell").click();
-    cy.findByLabelText("First collection").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    cy.findByLabelText("Orders Model").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    openDataSelector();
+    assertSourceCollection("First collection");
+    assertDataSource("Orders Model");
   });
 
   it("moving the source question should immediately reflect in the data selector for the nested question that depends on it (metabase#39812-2)", () => {
@@ -66,17 +52,10 @@ describe("issue 39812", () => {
 
     visitQuestion("@nestedQuestionId");
     openNotebook();
-    cy.findByTestId("data-step-cell").click();
-    cy.findByLabelText("Our analytics").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    cy.findByLabelText(sourceQuestionName).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+
+    openDataSelector();
+    assertSourceCollection("Our analytics");
+    assertDataSource(sourceQuestionName);
 
     cy.log("Move the source question to another collection");
     visitQuestion(SOURCE_QUESTION_ID);
@@ -87,17 +66,9 @@ describe("issue 39812", () => {
     visitQuestion("@nestedQuestionId");
     openNotebook();
 
-    cy.findByTestId("data-step-cell").click();
-    cy.findByLabelText("First collection").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    cy.findByLabelText(sourceQuestionName).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    openDataSelector();
+    assertSourceCollection("First collection");
+    assertDataSource(sourceQuestionName);
   });
 });
 
@@ -113,4 +84,20 @@ function moveToCollection(collection) {
     cy.button("Move").click();
     cy.wait("@updateCollectionTree");
   });
+}
+
+function openDataSelector() {
+  cy.findByTestId("data-step-cell").click();
+}
+
+function assertItemSelected(item) {
+  cy.findByLabelText(item).should("have.attr", "aria-selected", "true");
+}
+
+function assertSourceCollection(collection) {
+  return assertItemSelected(collection);
+}
+
+function assertDataSource(questionOrModel) {
+  return assertItemSelected(questionOrModel);
 }
