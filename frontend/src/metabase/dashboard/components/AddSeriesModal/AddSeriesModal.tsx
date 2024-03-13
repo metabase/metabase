@@ -3,6 +3,7 @@ import { getIn } from "icepick";
 import { Component } from "react";
 import { t } from "ttag";
 
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
@@ -169,12 +170,15 @@ export class AddSeriesModal extends Component<Props, State> {
           </div>
           <div className="flex-no-shrink pl4 pb4 pt1">
             <button
-              className="Button Button--primary"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
               onClick={this.handleDone}
             >
               {t`Done`}
             </button>
-            <button className="Button ml2" onClick={this.props.onClose}>
+            <button
+              className={cx(ButtonsS.Button, CS.ml2)}
+              onClick={this.props.onClose}
+            >
               {t`Cancel`}
             </button>
           </div>

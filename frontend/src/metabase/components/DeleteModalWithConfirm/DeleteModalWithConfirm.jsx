@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";
 import CheckBox from "metabase/core/components/CheckBox";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 
 import { CheckboxLabel } from "./DeleteModalWithConfirm.styled";
@@ -68,13 +69,13 @@ export default class DeleteModalWithConfirm extends Component {
         </div>
         <div className="Form-actions ml-auto">
           <button
-            className="Button"
+            className={ButtonsS.Button}
             onClick={this.props.onClose}
           >{t`Cancel`}</button>
           <button
-            className={cx("Button ml2", {
-              "Button--danger": confirmed,
+            className={cx(ButtonsS.Button, CS.ml2, {
               [CS.disabled]: !confirmed,
+              [ButtonsS.ButtonDanger]: confirmed,
             })}
             onClick={this.onDelete}
           >

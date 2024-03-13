@@ -6,6 +6,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
@@ -231,9 +232,15 @@ export default class PinMap extends Component {
         >
           {isEditing || !isDashboard ? (
             <div
-              className={cx("PinMapUpdateButton Button Button--small mb1", {
-                "PinMapUpdateButton--disabled": disableUpdateButton,
-              })}
+              className={cx(
+                "PinMapUpdateButton",
+                ButtonsS.Button,
+                ButtonsS.ButtonSmall,
+                CS.mb1,
+                {
+                  "PinMapUpdateButton--disabled": disableUpdateButton,
+                },
+              )}
               onClick={this.updateSettings}
             >
               {t`Save as default view`}
@@ -241,7 +248,12 @@ export default class PinMap extends Component {
           ) : null}
           {!isDashboard && (
             <div
-              className={cx("PinMapUpdateButton Button Button--small mb1")}
+              className={cx(
+                "PinMapUpdateButton",
+                ButtonsS.Button,
+                ButtonsS.ButtonSmall,
+                CS.mb1,
+              )}
               onClick={() => {
                 if (
                   !this.state.filtering &&
