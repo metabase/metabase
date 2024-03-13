@@ -51,7 +51,7 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/v1/Alert";
 
-import type { Query } from "./types";
+import type { Query } from "../types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
