@@ -173,6 +173,7 @@ const Tables = createEntity({
       const virtualQuestionId = getQuestionVirtualTableId(card.id);
       const virtualCollectionSchemaId = getCollectionVirtualSchemaId(
         card.collection,
+        { isDatasets: card.type === "model" },
       );
 
       if (card.archived && state[virtualQuestionId]) {
