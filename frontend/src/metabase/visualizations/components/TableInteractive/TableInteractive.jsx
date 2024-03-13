@@ -30,9 +30,9 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
-import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
-import { memoizeClass } from "metabase-lib/utils";
+import { isAdHocModelQuestionCard } from "metabase-lib/v1/metadata/utils/models";
+import { isID, isPK, isFK } from "metabase-lib/v1/types/utils/isa";
+import { memoizeClass } from "metabase-lib/v1/utils";
 
 import MiniBar from "../MiniBar";
 

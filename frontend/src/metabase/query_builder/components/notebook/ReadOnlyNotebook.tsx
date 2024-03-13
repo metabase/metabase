@@ -1,5 +1,5 @@
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import { ReadOnlyNotebookContainer } from "./ReadOnlyNotebook.styled";
 

@@ -6,10 +6,10 @@ import _ from "underscore";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import type Question from "metabase-lib/Question";
-import type Database from "metabase-lib/metadata/Database";
-import type Field from "metabase-lib/metadata/Field";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   DatabaseId,

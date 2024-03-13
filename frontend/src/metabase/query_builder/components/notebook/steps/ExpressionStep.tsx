@@ -1,6 +1,6 @@
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import * as Lib from "metabase-lib";
-import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
+import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
 import type { NotebookStepUiComponentProps } from "../types";
 

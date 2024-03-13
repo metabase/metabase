@@ -3,7 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/parameters/constants";
+import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/v1/parameters/constants";
 
 type Shortcut = {
   name: string;

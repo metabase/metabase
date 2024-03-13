@@ -4,7 +4,7 @@ import type {
 } from "metabase/common/hooks/use-entity-list-query";
 import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
 import Metrics from "metabase/entities/metrics";
-import type Metric from "metabase-lib/metadata/Metric";
+import type Metric from "metabase-lib/v1/metadata/Metric";
 
 export const useMetricListQuery = (
   props: UseEntityListQueryProps = {},

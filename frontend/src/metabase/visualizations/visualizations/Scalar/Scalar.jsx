@@ -14,7 +14,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";

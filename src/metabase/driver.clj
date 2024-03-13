@@ -347,7 +347,7 @@
   driver has difference escaping rules for table or schema names when used from metadata.
 
   For example, oracle treats slashes differently when querying versus when used with `.getTables` or `.getColumns`"
-  {:arglists '([driver table-name]), :added "0.37.0"}
+  {:arglists '([driver entity-name]), :added "0.37.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

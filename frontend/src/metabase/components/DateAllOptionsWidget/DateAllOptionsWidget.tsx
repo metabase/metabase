@@ -4,7 +4,7 @@ import DatePicker from "metabase/admin/datamodel/components/filters/pickers/Date
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { WidgetRoot } from "metabase/parameters/components/widgets/Widget.styled";
 import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
-import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
+import { dateParameterValueToMBQL } from "metabase-lib/v1/parameters/utils/mbql";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;

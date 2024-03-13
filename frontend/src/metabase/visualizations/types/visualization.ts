@@ -2,8 +2,8 @@ import type { OptionsType } from "metabase/lib/formatting/types";
 import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import type { IconName, IconProps } from "metabase/ui";
 import type { ClickObject } from "metabase/visualizations/types";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Query from "metabase-lib/queries/Query";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Query from "metabase-lib/v1/queries/Query";
 import type {
   Card,
   DatasetColumn,

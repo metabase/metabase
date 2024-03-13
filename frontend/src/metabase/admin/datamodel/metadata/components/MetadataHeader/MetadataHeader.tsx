@@ -9,7 +9,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 

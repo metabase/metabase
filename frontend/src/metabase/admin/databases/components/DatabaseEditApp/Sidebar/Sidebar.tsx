@@ -7,7 +7,7 @@ import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/core/components/Button";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
 import ModelActionsSection from "./ModelActionsSection";

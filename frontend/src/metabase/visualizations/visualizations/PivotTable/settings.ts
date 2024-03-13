@@ -16,7 +16,7 @@ import { formatColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { isDimension } from "metabase-lib/types/utils/isa";
+import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
