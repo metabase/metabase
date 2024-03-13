@@ -25,7 +25,7 @@
     (not config/is-prod?)
     (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))
 
-(mu/defn table-fields-metadata :- [:set i/FieldMetadataEntry]
+(mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Get more detailed information about a `table` belonging to `database`. Includes information about the Fields."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
