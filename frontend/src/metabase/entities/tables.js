@@ -171,15 +171,15 @@ const Tables = createEntity({
 
     if (type === Questions.actionTypes.UPDATE && !error) {
       const card = payload.question;
-      const virtualQuestionId = getQuestionVirtualTableId(card.id);
+      const virtualTableId = getQuestionVirtualTableId(card.id);
 
-      if (card.archived && state[virtualQuestionId]) {
-        delete state[virtualQuestionId];
+      if (card.archived && state[virtualTableId]) {
+        delete state[virtualTableId];
         return state;
       }
 
-      if (state[virtualQuestionId]) {
-        const virtualTable = state[virtualQuestionId];
+      if (state[virtualTableId]) {
+        const virtualTable = state[virtualTableId];
         const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
           isDatasets: card.type === "model",
         });
@@ -194,7 +194,7 @@ const Tables = createEntity({
           virtualTable.schema !== virtualSchemaId ||
           virtualTable.schema_name !== virtualSchemaName
         ) {
-          state = updateIn(state, [virtualQuestionId], table => ({
+          state = updateIn(state, [virtualTableId], table => ({
             ...table,
             display_name: card.name,
             moderated_status: card.moderated_status,
@@ -209,7 +209,7 @@ const Tables = createEntity({
 
       return {
         ...state,
-        [virtualQuestionId]: convertSavedQuestionToVirtualTable(card),
+        [virtualTableId]: convertSavedQuestionToVirtualTable(card),
       };
     }
 
