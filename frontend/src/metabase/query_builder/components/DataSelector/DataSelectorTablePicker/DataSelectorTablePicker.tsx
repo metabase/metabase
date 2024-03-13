@@ -164,11 +164,16 @@ const Header = ({
   <HeaderContainer>
     <HeaderClickable onClick={onBack}>
       {onBack && <Icon name="chevronleft" size={18} />}
-      <HeaderDatabaseName>{selectedDatabase.name}</HeaderDatabaseName>
+      <HeaderDatabaseName data-testid="source-database">
+        {selectedDatabase.name}
+      </HeaderDatabaseName>
     </HeaderClickable>
 
     {selectedSchema?.name && schemas.length > 1 && (
-      <HeaderSchemaName>- {selectedSchema.displayName()}</HeaderSchemaName>
+      <HeaderSchemaName>
+        {"- "}
+        <span data-testid="source-schema">{selectedSchema.displayName()}</span>
+      </HeaderSchemaName>
     )}
   </HeaderContainer>
 );
