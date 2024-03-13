@@ -9,6 +9,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Modal from "metabase/components/Modal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Select, { Option } from "metabase/core/components/Select";
+import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/utils";
@@ -213,7 +214,7 @@ export default class CustomGeoJSONWidget extends Component {
 
 const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
   <section>
-    <table className="ContentTable">
+    <table className={cx(AdminS.ContentTable)}>
       <thead>
         <tr>
           <th>{t`Name`}</th>

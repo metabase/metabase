@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Fragment, useEffect } from "react";
 import { connect } from "react-redux";
@@ -6,6 +7,8 @@ import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import PaginationControls from "metabase/components/PaginationControls";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Group from "metabase/entities/groups";
 import User from "metabase/entities/users";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
@@ -177,7 +180,7 @@ const PeopleList = ({
 
   return (
     <section className="pb4">
-      <table className="ContentTable border-bottom">
+      <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
         <thead>
           <tr>
             <th>{t`Name`}</th>
