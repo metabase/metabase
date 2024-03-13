@@ -89,7 +89,7 @@ function CheckboxListPicker({
   };
 
   return (
-    <Stack mah="min(25vh, 14rem)">
+    <Stack>
       <TextInput
         value={searchValue}
         placeholder={placeholder}
