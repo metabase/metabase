@@ -10,21 +10,18 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RowValue, SeriesSettings } from "metabase-types/api";
+import type { SeriesSettings } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
+import {
+  TREND_LINE_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { applySquareRootScaling, replaceValues } from "../model/dataset";
-import type { CartesianChartModel, DataKey } from "../model/types";
+import type { CartesianChartModel } from "../model/types";
 import { CHART_STYLE } from "../constants/style";
 import { getSeriesYAxisIndex } from "./utils";
-
-const TREND_LINE_DATA_KEY = "trend-line";
-
-type TrendDataset = {
-  [key: DataKey]: RowValue;
-  [TREND_LINE_DATA_KEY]: number;
-}[];
+import type { TrendDataset } from "./types";
 
 /**
  * Computes the dataset for a single series, based on its `insight` object.
@@ -144,15 +141,25 @@ export function getTrendLineOptionsAndDatasets(
   options: RegisteredSeriesOption["line"][] | null;
   datasets: EChartsOption["dataset"][] | null;
 } {
-  // The trend line can only be shown when the question has only
-  // a single aggregation on a time field. When this is not the case,
-  // the backend will return null for the insights object, so our array
-  // will have length 0.
+  // The trend line can only be shown when the question has only a single
+  // aggregation on a time field. When this is not the case, the backend will
+  // return null for the insights object, so our array will have length 0.
   const canShowTrendLine = chartModel.insights.length !== 0;
   if (!settings["graph.show_trendline"] || !canShowTrendLine) {
     return { options: null, datasets: null };
   }
-  if (chartModel.insights.length !== chartModel.seriesModels.length) {
+
+  // Filter out insight objects that are not used for any series (e.g. columns
+  // not visualized)
+  const legacySeriesKeys = new Set(
+    chartModel.seriesModels.map(
+      seriesModel => seriesModel.legacySeriesSettingsObjectKey.card._seriesKey,
+    ),
+  );
+  const insights = chartModel.insights.filter(insight =>
+    legacySeriesKeys.has(insight.col),
+  );
+  if (insights.length !== chartModel.seriesModels.length) {
     throw Error("Number of insight objects does not match number of series");
   }
 
@@ -179,7 +186,7 @@ export function getTrendLineOptionsAndDatasets(
   );
 
   // compute datasets for each trend line series
-  const rawDatasets = chartModel.insights.map(insight =>
+  const rawDatasets = insights.map(insight =>
     getSingleSeriesTrendDataset(insight, chartModel),
   );
 

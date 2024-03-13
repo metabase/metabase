@@ -372,6 +372,13 @@ NullCategoryValueFormatting.args = {
   renderingContext,
 };
 
+export const NumberOfInsightsError39608 = Template.bind({});
+NumberOfInsightsError39608.args = {
+  rawSeries: data.numberOfInsightsError39608 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const AreaStackInterpolateMissingValues = Template.bind({});
 AreaStackInterpolateMissingValues.args = {
   rawSeries: data.areaStackInterpolateMissingValues as any,
