@@ -502,7 +502,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-analyzer/update-field-usages-for-card! card)))
+    (query-analyzer/update-query-fields-for-card! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -527,7 +527,7 @@
       ;; TODO: this should go in after-update once camsaul/toucan2#129 is fixed
       ;; It's at the end for now so that all the before-update validations have a chance to run
       ;; TODO the Second: No reason this couldn't be async, especially once it's in the after-update
-      (u/prog1 (query-analyzer/update-field-usages-for-card! <>))
+      (u/prog1 (query-analyzer/update-query-fields-for-card! <>))
       (dissoc :id)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests

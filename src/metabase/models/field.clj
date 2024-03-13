@@ -140,7 +140,7 @@
         (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
                                                                     :fk_target_field_id nil}))
       (when (boolean? active?)
-        (t2/update! :model/FieldUsage :field_id (:id field) {:is_currently_valid active?})))))
+        (t2/update! :model/QueryField :field_id (:id field) {:valid active?})))))
 
 (defn- field->db-id
   [{table-id :table_id, {db-id :db_id} :table}]

@@ -1,4 +1,4 @@
-(ns macros.metabase.models.field-usage-test
+(ns macros.metabase.models.query-field-test
   (:require [macros.common]))
 
 (defmacro with-test-setup [& body]

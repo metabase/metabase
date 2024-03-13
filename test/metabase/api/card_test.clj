@@ -296,18 +296,18 @@
       ;; *query-analyzer/*parse-queries-in-test?* is not relevant since we're not doing the parsing here
       (mt/with-temp [:model/Card         relevant-card   {:name "Card with stale query"}
                      :model/Card         not-stale-card  {:name "Card whose columns are up to date"}
-                     :model/Card         irrelevant-card {:name "Card with no FieldUsages at all"}
-                     :model/FieldUsage   _ {:is_currently_valid false ;; This is what matters
-                                            :card_id (u/the-id relevant-card) :field_id field-id
-                                            :column_name "OLD_COLUMN" :table_name "TABLE"}
-                     :model/FieldUsage   _ {:is_currently_valid true
-                                            :card_id (u/the-id not-stale-card) :field_id field-id
-                                            :column_name "FRESH_COLUMN" :table_name "TABLE"}]
+                     :model/Card         irrelevant-card {:name "Card with no QueryFields at all"}
+                     :model/QueryField   _ {:valid    false
+                                            :card_id  (u/the-id relevant-card)
+                                            :field_id field-id}
+                     :model/QueryField   _ {:valid    true
+                                            :card_id  (u/the-id not-stale-card)
+                                            :field_id field-id}]
         (with-cards-in-readable-collection [relevant-card not-stale-card irrelevant-card]
-          (is (=? [{:name "Card with stale query"
-                    :field_usages [{:is_currently_valid false
-                                    :card_id (u/the-id relevant-card) :field_id field-id
-                                    :column_name "OLD_COLUMN" :table_name "TABLE"}]}]
+          (is (=? [{:name         "Card with stale query"
+                    :query_fields [{:valid    false
+                                    :card_id  (u/the-id relevant-card)
+                                    :field_id field-id}]}]
                   (mt/user-http-request :rasta :get 200 "card", :f :stale))))))))
 
 (deftest filter-by-using-model-segment-metric

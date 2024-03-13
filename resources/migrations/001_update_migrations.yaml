@@ -5827,11 +5827,11 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-02-29T15:06:43
       author: tsmacdonald
-      comment: Add the field_usage join table
+      comment: Add the query_field join table
       changes:
         - createTable:
-            tableName: field_usage
-            remarks: Fields used by a card
+            tableName: query_field
+            remarks: Fields used by a card's query
             columns:
               - column:
                   name: id
@@ -5849,7 +5849,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: report_card
                     referencedColumnNames: id
-                    foreignKeyName: fk_field_usage_card_id
+                    foreignKeyName: fk_query_field_card_id
                     deleteCascade: true
               - column:
                   name: field_id
@@ -5859,23 +5859,11 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: metabase_field
                     referencedColumnNames: id
-                    foreignKeyName: fk_field_usage_field_id
+                    foreignKeyName: fk_query_field_field_id
                     deleteCascade: true
               - column:
-                  remarks: Name of the used column, as it is in the query
-                  name: column_name
-                  type: varchar(254)
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: Name of the used table, as it is in the query
-                  name: table_name
-                  type: varchar(254)
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: Is this field usage still valid?
-                  name: is_currently_valid
+                  remarks: Is the query's field still current, or does it refer to a column no longer in the DB?
+                  name: valid
                   type: ${boolean.type}
                   defaultValueBoolean: true
                   constraints:
@@ -5884,28 +5872,28 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-02-29T15:07:43
       author: tsmacdonald
-      comment: Index field_usage.card_id
+      comment: Index query_field.card_id
       rollback: # not necessary, will be removed with the table
       changes:
         - createIndex:
-            tableName: field_usage
+            tableName: query_field
             columns:
               - column:
                   name: card_id
-            indexName: idx_field_usage_card_id
+            indexName: idx_query_field_card_id
 
   - changeSet:
       id: v50.2024-02-29T15:08:43
       author: tsmacdonald
-      comment: Index field_usage.field_id
+      comment: Index query_field.field_id
       rollback: # not necessary, will be removed with the table
       changes:
         - createIndex:
-            tableName: field_usage
+            tableName: query_field
             columns:
               - column:
                   name: field_id
-            indexName: idx_field_usage_field_id
+            indexName: idx_query_field_field_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

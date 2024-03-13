@@ -47,7 +47,6 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
-    :model/FieldUsage
     :model/FieldValues
     :model/MetricImportantField
     :model/ModelIndex
@@ -65,6 +64,7 @@
     :model/Query
     :model/QueryCache
     :model/QueryExecution
+    :model/QueryField
     :model/RecentViews
     :model/Revision
     :model/Secret

@@ -130,18 +130,18 @@
 
 (defmethod cards-for-filter-option* :stale
   [_]
-  (let [card-id->field-usages (group-by :card_id
-                                        (t2/select :model/FieldUsage
-                                                   {:select [:fu.* [:f.name :new_column_name] [:t.name :new_table_name]]
-                                                    :from   [[(t2/table-name :model/FieldUsage) :fu]]
-                                                    :join   [[(t2/table-name :model/Field) :f] [:= :f.id :fu.field_id]
+  (let [card-id->query-fields (group-by :card_id
+                                        (t2/select :model/QueryField
+                                                   {:select [:qf.* [:f.name :column_name] [:t.name :table_name]]
+                                                    :from   [[(t2/table-name :model/QueryField) :qf]]
+                                                    :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
                                                              [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                    :where  [:= false :fu.is_currently_valid]}))
-        card-ids              (keys card-id->field-usages)
-        add-field-usage (fn [{:keys [id] :as card}]
-                          (assoc card :field_usages (card-id->field-usages id)))]
+                                                    :where  [:= :qf.valid false]}))
+        card-ids              (keys card-id->query-fields)
+        add-query-fields      (fn [{:keys [id] :as card}]
+                                (assoc card :query_fields (card-id->query-fields id)))]
     (when (seq card-ids)
-      (map add-field-usage (t2/select Card :id [:in card-ids] order-by-name)))))
+      (map add-query-fields (t2/select Card :id [:in card-ids] order-by-name)))))
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
