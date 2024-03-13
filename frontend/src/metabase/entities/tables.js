@@ -179,22 +179,28 @@ const Tables = createEntity({
       }
 
       if (state[virtualQuestionId]) {
-        const virtualQuestion = state[virtualQuestionId];
+        const virtualTable = state[virtualQuestionId];
+        const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
+          isDatasets: card.type === "model",
+        });
+        const virtualSchemaName = getCollectionVirtualSchemaName(
+          card.collection,
+        );
+
         if (
-          virtualQuestion.display_name !== card.name ||
-          virtualQuestion.moderated_status !== card.moderated_status ||
-          virtualQuestion.description !== card.description ||
-          virtualQuestion.schema_name !== card.collection?.name
+          virtualTable.display_name !== card.name ||
+          virtualTable.moderated_status !== card.moderated_status ||
+          virtualTable.description !== card.description ||
+          virtualTable.schema !== virtualSchemaId ||
+          virtualTable.schema_name !== virtualSchemaName
         ) {
           state = updateIn(state, [virtualQuestionId], table => ({
             ...table,
             display_name: card.name,
             moderated_status: card.moderated_status,
             description: card.description,
-            schema_name: getCollectionVirtualSchemaName(card.collection),
-            schema: getCollectionVirtualSchemaId(card.collection, {
-              isDatasets: card.type === "model",
-            }),
+            schema: virtualSchemaId,
+            schema_name: virtualSchemaName,
           }));
         }
 

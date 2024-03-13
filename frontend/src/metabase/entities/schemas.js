@@ -87,16 +87,16 @@ export default createEntity({
 
     if (type === Questions.actionTypes.UPDATE && !error) {
       const { question: card } = payload;
-      const schemaId = getCollectionVirtualSchemaId(card.collection, {
+      const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
         isDatasets: card.type === "model",
       });
-      const schemaName = getCollectionVirtualSchemaName(card.collection);
+      const virtualSchemaName = getCollectionVirtualSchemaName(card.collection);
 
       const virtualQuestionId = getQuestionVirtualTableId(card.id);
       const previousSchemaContainingTheQuestion =
         getPreviousSchemaContainingTheQuestion(
           state,
-          schemaId,
+          virtualSchemaId,
           virtualQuestionId,
         );
 
@@ -107,9 +107,9 @@ export default createEntity({
           virtualQuestionId,
         );
       } else {
-        state = assocIn(state, [schemaId], {
-          id: schemaId,
-          name: schemaName,
+        state = assocIn(state, [virtualSchemaId], {
+          id: virtualSchemaId,
+          name: virtualSchemaName,
           database: {
             id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
             is_saved_questions: true,
@@ -117,11 +117,11 @@ export default createEntity({
         });
       }
 
-      if (!state[schemaId]) {
+      if (!state[virtualSchemaId]) {
         return state;
       }
 
-      return updateIn(state, [schemaId, "tables"], tables => {
+      return updateIn(state, [virtualSchemaId, "tables"], tables => {
         if (!tables) {
           return tables;
         }
