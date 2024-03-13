@@ -1,4 +1,5 @@
 /* eslint-disable jest/no-conditional-expect */
+/* eslint-disable testing-library/no-unnecessary-act */
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -135,6 +136,7 @@ function setup({
       onChange={onChangeMock}
       fetchValues={fetchValuesMock}
       forceSearchItemCount={forceSearchItemCount}
+      searchDebounceMs={5} // low for faster tests
     />,
   );
 
@@ -358,7 +360,7 @@ describe("ListPickerConnected", () => {
     });
 
     it("does not call fetch multiple times", async () => {
-      const fetchValuesMock = getResolvedValuesMock([["WA"], ["NY"]], false);
+      const fetchValuesMock = getResolvedValuesMock([["WA"], ["NY"]]);
       setup({
         value: null,
         parameter: getCardBoundParam(),
@@ -379,6 +381,30 @@ describe("ListPickerConnected", () => {
       await waitFor(() => expect(fetchValuesMock).toHaveBeenCalledTimes(1));
       expect(screen.queryByTestId("listpicker-loader")).not.toBeInTheDocument();
       expect(screen.getByText("NY")).toBeVisible();
+    });
+
+    it("debounces fetch calls", async () => {
+      const fetchValuesMock = getResolvedValuesMock([
+        ["WA"],
+        ["NY"],
+        ["CA"],
+        ["NC"],
+      ]);
+      setup({
+        value: null,
+        parameter: getCardBoundParam(),
+        fetchValuesMock,
+      });
+
+      const input = screen.getByPlaceholderText("Start typing to filter…");
+      userEvent.click(input);
+      userEvent.type(input, "WA");
+      userEvent.clear(input);
+      userEvent.type(input, "CA");
+      userEvent.clear(input);
+      userEvent.type(input, "NC");
+
+      await waitFor(() => expect(fetchValuesMock).toHaveBeenCalledTimes(1));
     });
   });
 });
