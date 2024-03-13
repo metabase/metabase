@@ -167,6 +167,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByText(
             "The image you chose is larger than 2MB. Please choose another one.",
           ).should("be.visible");
+          cy.findByText("big-file.jpg").should("not.exist");
 
           /**
            * 1. This doesn't actually open the file browser on Cypress,
@@ -178,28 +179,29 @@ describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", { name: "Login page" }).click();
         });
         mantinePopover().findByText("Custom").click();
+        cy.log("test uploading a corrupted file");
         cy.findByTestId("login-page-illustration-setting").within(() => {
           cy.findByTestId("file-input").selectFile(
             {
               contents: Cypress.Buffer.from("a".repeat(2 * MB)),
-              fileName: "big-file.jpg",
+              fileName: "corrupted-file.jpg",
               mimeType: "image/jpeg",
             },
             { force: true },
           );
           cy.findByText(
-            "The image you chose is larger than 2MB. Please choose another one.",
-          ).should("not.exist");
-          cy.findByText("big-file.jpg").should("be.visible");
+            "The image you chose is corrupted. Please choose another one.",
+          ).should("be.visible");
+          cy.findByText("corrupted-file.jpg").should("not.exist");
         });
 
         cy.log("test removing the custom illustration");
+        /**
+         * I opted for uploading the same file twice rather than uploading once,
+         * testing the login page, and revisiting the settings page to test removing it.
+         * Since visiting multiple pages should make the test runs slower.
+         */
         cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.button("Remove custom illustration").click();
-          cy.log(
-            "the default option should be selected once removing the custom illustration",
-          );
-          cy.findByDisplayValue("Lighthouse").should("be.visible");
           cy.findByTestId("file-input").selectFile(
             {
               contents: "e2e/support/assets/logo.jpeg",
@@ -207,6 +209,28 @@ describeEE("formatting > whitelabel", () => {
             },
             { force: true },
           );
+          cy.findByText("logo.jpeg").should("be.visible");
+        });
+        undoToast().findByText("Changes saved").should("be.visible");
+
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.button("Remove custom illustration").click();
+          cy.log(
+            "the default option should be selected once removing the custom illustration",
+          );
+          cy.findByDisplayValue("Lighthouse").should("be.visible");
+        });
+
+        cy.log("test uploading a valid image file");
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.findByTestId("file-input").selectFile(
+            {
+              contents: "e2e/support/assets/logo.jpeg",
+              mimeType: "image/jpeg",
+            },
+            { force: true },
+          );
+          cy.findByText("logo.jpeg").should("be.visible");
         });
         undoToast().findByText("Changes saved").should("be.visible");
 

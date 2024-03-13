@@ -88,13 +88,17 @@ export function IllustrationWidget({
 
       const reader = new FileReader();
       reader.onload = async readerEvent => {
+        const dataUri = readerEvent.target?.result as string;
+        if (!(await isFileIntact(dataUri))) {
+          setErrorMessage(
+            t`The image you chose is corrupted. Please choose another one.`,
+          );
+          return;
+        }
         setFileName(file.name);
         // Setting 2 setting values at the same time could result in one of them not being saved
         await onChange("custom");
-        onChangeSetting(
-          customIllustrationSetting,
-          readerEvent.target?.result as string,
-        );
+        onChangeSetting(customIllustrationSetting, dataUri);
       };
       reader.readAsDataURL(file);
     }
@@ -124,7 +128,10 @@ export function IllustrationWidget({
           w="7.5rem"
           style={{ borderRight: `1px solid ${color("border")}` }}
         >
-          {getPreviewImage(value, settingValues[customIllustrationSetting])}
+          {getPreviewImage({
+            value,
+            customSource: settingValues[customIllustrationSetting] ?? undefined,
+          })}
         </Flex>
         <Flex p="lg" w="25rem" align="center" gap="sm">
           <Select
@@ -176,7 +183,21 @@ export function IllustrationWidget({
   );
 }
 
-function getPreviewImage(value: IllustrationValue, customSource?: string) {
+interface GetPreviewImageProps {
+  value: IllustrationValue;
+  customSource: string | undefined;
+}
+
+async function isFileIntact(dataUri: string) {
+  return new Promise(resolve => {
+    const image = document.createElement("img");
+    image.src = dataUri;
+    image.onerror = () => resolve(false);
+    image.onload = () => resolve(true);
+  });
+}
+
+function getPreviewImage({ value, customSource }: GetPreviewImageProps) {
   if (value === "default") {
     return <LighthouseImage />;
   }
