@@ -17,6 +17,16 @@ const getInitialColumnAndSeparator = (
   separator: drillInfo.defaultSeparator,
 });
 
+// hack due to Mantine Select being non-generic
+const fromSelectValue = (value: string | null): Lib.ColumnMetadata => {
+  return value as unknown as Lib.ColumnMetadata;
+};
+
+// hack due to Mantine Select being non-generic
+const toSelectValue = (value: Lib.ColumnMetadata): string | null => {
+  return value as unknown as string | null;
+};
+
 export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   query,
   stageIndex,
@@ -26,7 +36,7 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
 }) => {
   const options = drillInfo.availableColumns.map(column => {
     const info = Lib.displayInfo(query, stageIndex, column);
-    return { label: info.displayName, value: column as unknown as string };
+    return { label: info.displayName, value: toSelectValue(column) };
   });
 
   const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
@@ -66,11 +76,10 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
                 <Select
                   key={index}
                   data={options}
-                  value={column as unknown as string}
-                  onChange={column => {
-                    handleChange(index, {
-                      column: column as unknown as Lib.ColumnMetadata,
-                    });
+                  value={toSelectValue(column)}
+                  onChange={value => {
+                    const column = fromSelectValue(value);
+                    handleChange(index, { column });
                   }}
                 />
               );
