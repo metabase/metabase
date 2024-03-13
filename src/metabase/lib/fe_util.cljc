@@ -170,9 +170,13 @@
      (when-let [card-id (:source-card base-stage)]
        [{:type :table, :id (str "card__" card-id)}
         {:type :card,  :id card-id}])
+     ;; support metric sources for now
      (for [source (:sources base-stage)
-           :when (= (:lib/type source) :source/metric)]
-       {:type :table, :id (str "card__" (:id source))})
+           :when (= (:lib/type source) :source/metric)
+           :let [card-id (:id source)]
+           item [{:type :table, :id (str "card__" card-id)}
+                 {:type :card, :id card-id}]]
+       item)
      (when-let [table-id (:source-table base-stage)]
        [{:type :table, :id table-id}])
      (for [stage (:stages query-or-join)
