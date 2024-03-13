@@ -17,6 +17,7 @@ import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
   ORDERS,
   PEOPLE,
+  PEOPLE_STATE_VALUES,
   PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
@@ -154,6 +155,24 @@ describe("StringFilterValuePicker", () => {
 
       userEvent.click(screen.getByText("Gadget"));
       expect(onChange).toHaveBeenCalledWith(["Gadget"]);
+    });
+
+    it("should allow to search the list of values in compact mode", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("PEOPLE", "STATE"),
+        values: [],
+        compact: true,
+        fieldValues: PEOPLE_STATE_VALUES,
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Search the list"), "CA");
+      expect(screen.getByText("CA")).toBeInTheDocument();
+      expect(screen.queryByText("GA")).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByText("CA"));
+      expect(onChange).toHaveBeenCalledWith(["CA"]);
     });
 
     it("should allow to update selected values", async () => {
