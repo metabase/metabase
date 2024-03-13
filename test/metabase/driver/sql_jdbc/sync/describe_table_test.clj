@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -100,38 +101,6 @@
                                                              :table-names [(:name table)])))
       (:fields (sql-jdbc.describe-table/describe-table driver db {:name "VENUES"})))))
 
-(deftest describe-fields-test
-  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
-    (mt/dataset daily-bird-counts
-      (let [table (t2/select-one :model/Table :id (mt/id :bird_count))
-            schema (:schema table)
-            table-name (:name table)]
-        (is (= [{:table-schema      schema,
-                 :table-name        table-name,
-                 :pk?               true,
-                 :name              "id",
-                 :database-type     "integer",
-                 :database-position 0,
-                 :base-type         :type/Integer,
-                 :json-unfolding    false}
-                {:table-schema      schema,
-                 :table-name        table-name,
-                 :pk?               false,
-                 :name              "date",
-                 :database-type     "date",
-                 :database-position 1,
-                 :base-type         :type/Date,
-                 :json-unfolding    false}
-                {:table-schema      schema,
-                 :table-name        table-name,
-                 :pk?               false,
-                 :name              "count",
-                 :database-type     "integer",
-                 :database-position 2,
-                 :base-type         :type/Integer,
-                 :json-unfolding    false}]
-               (describe-fields-for-table (mt/db) table)))))))
-
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
     (one-off-dbs/with-blank-db
@@ -178,6 +147,39 @@
   (is (= #{{:fk-column-name "USER_ID", :dest-table {:name "USERS", :schema "PUBLIC"}, :dest-column-name "ID"}
            {:fk-column-name "VENUE_ID", :dest-table {:name "VENUES", :schema "PUBLIC"}, :dest-column-name "ID"}}
          (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
+
+(deftest describe-fields-or-table-test
+  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+    (mt/dataset daily-bird-counts
+      (let [table (t2/select-one :model/Table :id (mt/id :bird-count))
+            schema (:schema table)
+            table-name (:name table)
+            format-name #(ddl.i/format-name driver/*driver* %)]
+        (is (=? [{:table-schema      schema,
+                  :table-name        table-name,
+                  :pk?               true,
+                  :name              (format-name "id"),
+                  :database-type     string?,
+                  :database-position 0,
+                  :base-type         :type/Integer,
+                  :json-unfolding    false}
+                 {:table-schema      schema,
+                  :table-name        table-name,
+                  :pk?               false,
+                  :name              (format-name "date"),
+                  :database-type     string?,
+                  :database-position 1,
+                  :base-type         :type/Date,
+                  :json-unfolding    false}
+                 {:table-schema      schema,
+                  :table-name        table-name,
+                  :pk?               false,
+                  :name              (format-name "count"),
+                  :database-type     string?,
+                  :database-position 2,
+                  :base-type         :type/Integer,
+                  :json-unfolding    false}]
+                (describe-fields-for-table (mt/db) table)))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
