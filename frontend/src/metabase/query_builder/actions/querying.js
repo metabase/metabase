@@ -139,7 +139,7 @@ export const runQuestionQuery = ({
         );
         return dispatch(
           queryCompleted(question, queryResults, {
-            prevQueryResults,
+            prevQueryResults: prevQueryResults ?? getQueryResults(getState()),
             settingsSyncOptions,
           }),
         );
@@ -182,7 +182,6 @@ export const queryCompleted = (
 ) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
-    prevQueryResults ??= getQueryResults(getState());
     const [{ data: prevData }] = prevQueryResults ?? [{}];
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const { isEditable } = Lib.queryDisplayInfo(question.query());

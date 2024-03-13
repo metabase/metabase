@@ -131,7 +131,7 @@ function moveNewTableColumnsAfterColumn(
   return {
     ...settings,
     "table.columns": [
-      ...existingColumnSettings.slice(0, columnSettingIndex + 1), // before the selected column
+      ...existingColumnSettings.slice(0, columnSettingIndex + 1), // before and including the selected column
       ...addedColumnSettings,
       ...existingColumnSettings.slice(columnSettingIndex + 1), // after the selected column
     ],
