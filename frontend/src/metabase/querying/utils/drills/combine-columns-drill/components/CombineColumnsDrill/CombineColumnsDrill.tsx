@@ -73,7 +73,7 @@ export const CombineColumnsDrill = ({
             variant="subtle"
             onClick={handleEditSeparators}
           >
-            Separated by{" "}
+            {t`Separated by`}{" "}
             {defaultSeparator === " " ? <>({t`space`})</> : defaultSeparator}
           </Button>
         )}
