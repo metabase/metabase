@@ -419,12 +419,14 @@ function DatasetEditor(props) {
     const isEmpty = !isNative
       ? Lib.databaseID(dataset.query()) == null
       : dataset.legacyQuery().isEmpty();
-
-    if (isEmpty) {
-      return false;
-    }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);
-    return everyFieldHasDisplayName && isDirty && !isResultDirty;
+
+    return (
+      !isEmpty &&
+      isDirty &&
+      (!isNative || !isResultDirty) &&
+      everyFieldHasDisplayName
+    );
   }, [dataset, fields, isDirty, isResultDirty]);
 
   const sidebar = getSidebar(
