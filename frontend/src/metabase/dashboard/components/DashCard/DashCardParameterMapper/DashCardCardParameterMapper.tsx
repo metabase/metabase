@@ -23,9 +23,9 @@ import {
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
-import { isParameterVariableTarget } from "metabase-lib/parameters/utils/targets";
+import type Question from "metabase-lib/v1/Question";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
   CardId,

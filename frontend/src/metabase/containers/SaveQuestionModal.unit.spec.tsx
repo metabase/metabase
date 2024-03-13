@@ -21,8 +21,8 @@ import {
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Question from "metabase-lib/v1/Question";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type { CollectionId } from "metabase-types/api";
 import {
   createMockCollection,

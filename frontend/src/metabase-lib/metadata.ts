@@ -2,8 +2,6 @@ import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type { DatabaseId, DatasetColumn, TableId } from "metabase-types/api";
 
-import type Field from "./metadata/Field";
-import type Metadata from "./metadata/Metadata";
 import type {
   AggregationClause,
   AggregationClauseDisplayInfo,
@@ -42,6 +40,8 @@ import type {
   TableMetadata,
   QueryDisplayInfo,
 } from "./types";
+import type Field from "./v1/metadata/Field";
+import type Metadata from "./v1/metadata/Metadata";
 
 export function metadataProvider(
   databaseId: DatabaseId | null,

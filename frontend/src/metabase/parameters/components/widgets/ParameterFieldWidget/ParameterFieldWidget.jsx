@@ -13,8 +13,8 @@ import {
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
-} from "metabase-lib/operators/utils";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
+} from "metabase-lib/v1/operators/utils";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 
 import { normalizeValue } from "./normalizeValue";
 

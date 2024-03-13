@@ -14,7 +14,7 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { capitalize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
-import { checkCanRefreshModelCache } from "metabase-lib/metadata/utils/models";
+import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import {

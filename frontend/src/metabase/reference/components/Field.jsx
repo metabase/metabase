@@ -10,7 +10,7 @@ import S from "metabase/components/List/List.module.css";
 import Select from "metabase/core/components/Select";
 import * as MetabaseCore from "metabase/lib/core";
 import { Icon } from "metabase/ui";
-import { isTypeFK } from "metabase-lib/types/utils/isa";
+import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
 import F from "./Field.module.css";
 

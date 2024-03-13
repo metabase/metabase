@@ -1,7 +1,7 @@
 import {
   getParameterSubType,
   isNumberParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter } from "metabase-types/api";
 
 export function shouldShowPlainInput(parameter: Parameter) {

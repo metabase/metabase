@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import { useEffect, useState } from "react";
 
 import { formatNativeQuery } from "metabase/lib/engine";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { NativeQueryForm } from "metabase-types/api";
 
 interface UseNativeQuery {

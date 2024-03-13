@@ -3,19 +3,19 @@ import _ from "underscore";
 import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { slugify } from "metabase/lib/formatting";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
-import Question from "metabase-lib/Question";
-import type Field from "metabase-lib/metadata/Field";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   UiParameter,
   FieldFilterUiParameter,
   ParameterWithTarget,
-} from "metabase-lib/parameters/types";
-import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
+} from "metabase-lib/v1/parameters/types";
+import { isFieldFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   getParameterTargetField,
   isParameterVariableTarget,
-} from "metabase-lib/parameters/utils/targets";
+} from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
   Dashboard,

@@ -95,12 +95,6 @@
                                   (prepare-update-event-data object-details previous-details)
                                   object-details))})))
 
-(defn- log-enabled?
-  "Returns true when we should record audit data into the audit log."
-  []
-  (or (premium-features/is-hosted?)
-      (premium-features/has-feature? :audit-app)))
-
 (mu/defn record-event!
   "Records an event in the Audit Log.
 
@@ -124,7 +118,7 @@
   - Otherwise, returns the audit logged row."
   [topic :- :keyword
    params :- ::event-params]
-  (when (log-enabled?)
+  (when (premium-features/log-enabled?)
     (span/with-span!
       {:name       "record-event!"
        :attributes (cond-> {}

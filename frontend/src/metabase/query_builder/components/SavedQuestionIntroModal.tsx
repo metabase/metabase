@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 interface Props {
   isShowingNewbModal: boolean;
