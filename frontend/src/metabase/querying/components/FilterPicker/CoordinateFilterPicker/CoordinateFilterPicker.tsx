@@ -134,7 +134,7 @@ function CoordinateValueInput({
 }: CoordinateValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
+      <Box p="md" style={{ overflow: "auto" }}>
         <NumberFilterValuePicker
           query={query}
           stageIndex={stageIndex}

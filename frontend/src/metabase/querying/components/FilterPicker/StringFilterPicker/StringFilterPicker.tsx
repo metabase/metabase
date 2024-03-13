@@ -124,7 +124,7 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <Box p="md" mah="min(25vh, 16rem)" style={{ overflow: "auto" }}>
+      <Box p="md" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}
