@@ -6,7 +6,7 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button/Button";
 import Fields from "metabase/entities/fields";
 import * as Urls from "metabase/lib/urls";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 import FieldVisibilityPicker from "../FieldVisibilityPicker";

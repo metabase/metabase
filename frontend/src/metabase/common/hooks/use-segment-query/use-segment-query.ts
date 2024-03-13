@@ -4,7 +4,7 @@ import type {
 } from "metabase/common/hooks/use-entity-query";
 import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
 import Segments from "metabase/entities/segments";
-import type Segment from "metabase-lib/metadata/Segment";
+import type Segment from "metabase-lib/v1/metadata/Segment";
 import type { SegmentId } from "metabase-types/api";
 
 export const useSegmentQuery = (

@@ -10,7 +10,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import { Timeline, Header } from "./QuestionActivityTimeline.styled";
 

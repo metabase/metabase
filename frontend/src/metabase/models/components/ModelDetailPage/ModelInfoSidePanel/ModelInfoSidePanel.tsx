@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type Table from "metabase-lib/metadata/Table";
-import * as ML_Urls from "metabase-lib/urls";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
 import {

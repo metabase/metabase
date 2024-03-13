@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 
 /**

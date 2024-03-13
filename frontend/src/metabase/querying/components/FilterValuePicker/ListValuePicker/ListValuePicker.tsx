@@ -155,6 +155,7 @@ export function SelectValuePicker({
       value={selectedValues}
       placeholder={placeholder}
       autoFocus={autoFocus}
+      searchable
       aria-label={t`Filter value`}
       onChange={onChange}
     />

@@ -13,7 +13,7 @@ import {
   slugify,
   getCurrencySymbol,
 } from "metabase/lib/formatting";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 describe("formatting", () => {
   describe("capitalize", () => {

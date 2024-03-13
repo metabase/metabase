@@ -3,7 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 const SETTING_TYPES = [
   {

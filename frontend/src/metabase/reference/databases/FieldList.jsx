@@ -17,7 +17,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
 import * as actions from "metabase/reference/reference";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
+import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 
 import {
   getError,

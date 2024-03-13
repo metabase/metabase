@@ -9,8 +9,8 @@ import Modal from "metabase/components/Modal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import { ALERT_TYPE_ROWS } from "metabase-lib/Alert";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
+import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 
 const ALLOWED_VISUALIZATION_PROPS = [
   // Table
