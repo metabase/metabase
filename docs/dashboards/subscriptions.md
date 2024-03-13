@@ -29,11 +29,11 @@ Let's say we want to email a dashboard. We'll click on the **Email it** option i
 
 For emails, we can:
 
-- **Add subscribers**. Add email addresses to register subscribers. On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), Admins can limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
+- **Add subscribers**. Add email addresses to register subscribers. On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), admins can limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
 - **Determine frequency and timing**. Tell Metabase how often it should send the dashboard (daily, weekly, or monthly), and what time of day to send the dashboard.
 - **Send email now** sends an email to all subscribers.
 - **Skip updates without results**. If there are no results, we can tell Metabase to skip sending the email.
-- **Attach results**. Tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body. You can choose between CSV and XLSX file formats. The attached file will include up to 2000 rows by default, but you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit).
+- **Attach results**. Tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body. You can choose between CSV and XLSX file formats. The attached file will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit).
 
 If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
 
