@@ -179,14 +179,21 @@
 (defn- convert-metric-query
   [a-query]
   (if-let [card-id (get-in a-query [:stages 0 :source-card])]
-    (let [{card-type :type} (lib.metadata/card a-query card-id)]
+    (let [{card-type :type} (lib.metadata/card a-query card-id)
+          metric-meta (lib.metadata/metric a-query card-id)]
       (cond-> a-query
         (= card-type :metric)
         (lib.util/update-query-stage 0 (fn [stage]
                                          (-> stage
                                              (dissoc :source-card)
                                              (assoc :sources [{:lib/type :source/metric
-                                                               :id card-id}]))))))
+                                                               :id card-id}]))))
+
+        (and (= card-type :metric)
+             (not-any? #(= (peek %) card-id)
+                       ;; using lib.aggregation/aggregations would result in a cyclic dep
+                       (:aggregation (lib.util/query-stage a-query 0))))
+        (lib.util/add-summary-clause 0 :aggregation (lib.ref/ref metric-meta))))
     a-query))
 
 (defn- revert-metric-query

@@ -99,13 +99,17 @@
   ([query :- ::lib.schema/query
     stage-number :- :int]
    (when (zero? (lib.util/canonical-stage-index query stage-number))
-     (when-let [source-table-id (lib.util/source-table-id query)]
-       (let [metrics (lib.metadata.protocols/metrics (lib.metadata/->metadata-provider query) source-table-id)
-             metric-aggregations (into {}
-                                       (keep-indexed (fn [index aggregation-clause]
-                                                       (when (lib.util/clause-of-type? aggregation-clause :metric)
-                                                         [(get aggregation-clause 2) index])))
-                                       (lib.aggregation/aggregations query stage-number))]
+     (let [metric-aggregations (into {}
+                                     (keep-indexed (fn [index aggregation-clause]
+                                                     (when (lib.util/clause-of-type? aggregation-clause :metric)
+                                                       [(get aggregation-clause 2) index])))
+                                     (lib.aggregation/aggregations query stage-number))
+           metadata-provider (lib.metadata/->metadata-provider query)
+           metric-id (lib.util/source-metric-id query)
+           source-table-id (lib.util/source-table-id query)]
+       (when-let [metrics (cond
+                            metric-id [(lib.metadata.protocols/metric metadata-provider metric-id)]
+                            source-table-id (lib.metadata.protocols/metrics metadata-provider source-table-id))]
          (cond
            (empty? metrics)             nil
            (empty? metric-aggregations) (vec metrics)
