@@ -74,6 +74,7 @@
             :dest-table       {:name   "CATEGORIES"
                                :schema "PUBLIC"}
             :dest-column-name "ID"}}
+         #_{:clj-kondo/ignore [:deprecated-var]}
          (driver/describe-table-fks :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
 
 (deftest ^:parallel table-rows-sample-test
