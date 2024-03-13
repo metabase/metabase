@@ -116,7 +116,7 @@
    site_locale        [:maybe ms/ValidLocale]}
   (letfn [(create! []
             (try
-              (t2/with-transaction [_conn]
+              (t2/with-transaction []
                 (let [user-info (setup-create-user! {:email email
                                                      :first-name first_name
                                                      :last-name last_name
@@ -288,12 +288,5 @@
     (api/check-404 config-token)
     (api/check-403 (= token config-token))
     (dissoc defaults :token)))
-
-(api/defendpoint GET "/token-check"
-  "Check if the token is valid, only available before the initial setup as it's an unauthenticated endpoint"
-  [token]
-  (api/check-superuser)
-  (let [status (premium-features/fetch-token-status token)]
-    {:valid (:valid status)}))
 
 (api/define-routes)

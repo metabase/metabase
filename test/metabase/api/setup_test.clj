@@ -14,7 +14,6 @@
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.setup :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -486,29 +485,3 @@
         (is (= "You don't have permissions to do that." (client/client :get "setup/user_defaults?token=987654"))))
       (testing "with valid token"
         (is (= {:email "john.doe@example.com"} (client/client :get "setup/user_defaults?token=123456")))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         GET /api/setup/token-check                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest token-check-valid
-  (testing "GET /api/setup/token-check"
-    (testing "Check that returns {valid: true} for valid token"
-      (mt/with-temporary-setting-values [has-user-setup false]
-        (with-redefs [premium-features/fetch-token-status (fn [_x]
-                                                            {:valid    true
-                                                             :status   "fake"
-                                                             :features ["test" "fixture"]
-                                                             :trial    false})]
-          (is (= {:valid true}
-                 (mt/user-http-request :crowberto :get 200 (str "setup/token-check?license_token=" random-fake-token)))))
-        (testing "Check that returns {valid: false} for invalid token"
-          (mt/with-temporary-setting-values [has-user-setup false]
-            (with-redefs [premium-features/fetch-token-status (fn [_x] {:valid false})]
-              (is (= {:valid false}
-                     (mt/user-http-request :crowberto :get 200 (str "setup/token-check?license_token=" (random-uuid))))))))
-        (testing "Non-admins cannot access the endpoint"
-          (mt/with-temporary-setting-values [has-user-setup true]
-            (is (= "You don't have permissions to do that."
-                   (client/client :get (str "setup/token-check?license_token=" random-fake-token))))))))))
