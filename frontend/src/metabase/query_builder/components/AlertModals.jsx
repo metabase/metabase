@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable  react/jsx-key */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt, ngettext, msgid } from "ttag";
@@ -14,6 +15,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 import User from "metabase/entities/users";
 import { alertIsValid } from "metabase/lib/alert";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -380,7 +382,7 @@ export class DeleteAlertSection extends Component {
     return (
       <DangerZone className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
         <h3
-          className="text-error absolute top bg-white px1"
+          className={cx(CS.textError, CS.absolute, CS.top, CS.bgWhite, CS.px1)}
           style={{ marginTop: "-12px" }}
         >{jt`Danger Zone`}</h3>
         <div className="ml1">

@@ -5,6 +5,7 @@ import { Component } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import { IconContainer } from "./LegendItem.styled";
@@ -50,10 +51,13 @@ export default class LegendItem extends Component {
         className={cx(
           className,
           "LegendItem",
-          "no-decoration flex align-center fullscreen-normal-text fullscreen-night-text",
+          "fullscreen-normal-text fullscreen-night-text",
+          CS.noDecoration,
+          CS.flex,
+          CS.alignCenter,
           {
-            mr1: showTitle,
-            "cursor-pointer": onClick,
+            [CS.mr1]: showTitle,
+            [CS.cursorPointer]: onClick,
           },
         )}
         style={{
