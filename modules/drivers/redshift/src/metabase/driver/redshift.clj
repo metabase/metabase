@@ -120,17 +120,16 @@
 
 ;; custom Redshift type handling
 
-(defn- database-type->base-type [column-type]
-  (or ((sql-jdbc.sync/pattern-based-database-type->base-type
-        [[#"(?i)CHARACTER VARYING" :type/Text]       ; Redshift uses CHARACTER VARYING (N) as a synonym for VARCHAR(N)
-         [#"(?i)NUMERIC"           :type/Decimal]])  ; and also has a NUMERIC(P,S) type, which is the same as DECIMAL(P,S)
-       column-type)
-      {:super       :type/*    ; (requested support in metabase#36642)
-       :varbyte     :type/*    ; represents variable-length binary strings
-       :geometry    :type/*    ; spatial data
-       :geography   :type/*    ; spatial data
-       :intervaly2m :type/*    ; interval literal
-       :intervald2s :type/*})) ; interval literal
+(def ^:private database-type->base-type
+  (some-fn (sql-jdbc.sync/pattern-based-database-type->base-type
+            [[#"(?i)CHARACTER VARYING" :type/Text]       ; Redshift uses CHARACTER VARYING (N) as a synonym for VARCHAR(N)
+             [#"(?i)NUMERIC"           :type/Decimal]])
+           {:super       :type/*    ; (requested support in metabase#36642)
+            :varbyte     :type/*    ; represents variable-length binary strings
+            :geometry    :type/*    ; spatial data
+            :geography   :type/*    ; spatial data
+            :intervaly2m :type/*    ; interval literal
+            :intervald2s :type/*})) ; interval literal
 
 (defmethod sql-jdbc.sync/database-type->base-type :redshift
   [driver column-type]
