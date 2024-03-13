@@ -165,11 +165,11 @@ You can preview appearance settings from your question or dashboard's [embedded 
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-### Download results
+### Allow people to download the results of an embedded question
 
 {% include plans-blockquote.html feature="Downloading results" %}
 
-You can enable or disable downloading results for embedded questions by setting the `hide_download_button` parameter in the embedding URL to `false` or `true`.
+By default, Metabase will include a **Download** button on embedded questions. You can remove the download button by setting `hide_download_button=true` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](#customizing-the-appearance-of-static-embeds).
 
 If the download button is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `hide_download_button=false`.
 
