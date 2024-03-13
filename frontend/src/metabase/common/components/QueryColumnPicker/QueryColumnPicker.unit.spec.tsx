@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, within } from "__support__/ui";
+import { render, screen, within, fireEvent } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 
@@ -130,5 +130,18 @@ describe("QueryColumnPicker", () => {
         within(createdAt).queryByLabelText("Temporal bucket"),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("should allow searching using displayName (#39622)", () => {
+    setup();
+
+    screen.getByText("User").click();
+    fireEvent.change(screen.getByTestId("list-search-field"), {
+      target: { value: "Birth Date" },
+    });
+
+    expect(
+      screen.getByRole("option", { name: "Birth Date" }),
+    ).toBeInTheDocument();
   });
 });
