@@ -207,13 +207,17 @@ if (hasPremiumFeature("whitelabel")) {
           {
             key: "login-page-illustration",
             tab: "conceal-metabase",
-            display_name: <LoginPageIllustrationDescription />,
+            display_name: (
+              <LoginPageIllustrationDescription errorMessageContainerId="login-page-illustration-error-container" />
+            ),
             description: null,
             type: "string",
             widget: IllustrationWidget,
             props: {
               defaultIllustrationLabel: t`Lighthouse`,
               customIllustrationSetting: "login-page-illustration-custom",
+              errorMessageContainerId:
+                "login-page-illustration-error-container",
             },
           },
         ],

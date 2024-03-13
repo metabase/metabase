@@ -31,6 +31,7 @@ type IllustrationWidgetProps = {
     | "landing-page-illustration-custom"
     | "no-question-results-illustration-custom"
     | "no-search-results-illustration-custom";
+  errorMessageContainerId: string;
 };
 
 const MB = 1024 * 1024;
@@ -43,6 +44,7 @@ export function IllustrationWidget({
   settingValues,
   defaultIllustrationLabel,
   customIllustrationSetting,
+  errorMessageContainerId,
 }: IllustrationWidgetProps) {
   const value = setting.value ?? setting.default;
   const [fileName, setFileName] = useState("");
@@ -109,7 +111,9 @@ export function IllustrationWidget({
   }
 
   const isCustomIllustration = value === "custom";
-  const errorMessageContainer = document.getElementById("test-error-id");
+  const errorMessageContainer = document.getElementById(
+    errorMessageContainerId,
+  );
 
   return (
     <Paper withBorder shadow="none">

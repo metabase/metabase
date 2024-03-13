@@ -2,7 +2,12 @@ import { t } from "ttag";
 
 import { Flex, Icon, Stack, Text, HoverCard } from "metabase/ui";
 
-export function LoginPageIllustrationDescription() {
+interface LoginPageIllustrationDescriptionProps {
+  errorMessageContainerId: string;
+}
+export function LoginPageIllustrationDescription({
+  errorMessageContainerId,
+}: LoginPageIllustrationDescriptionProps) {
   return (
     <Text fw="bold" transform="none">
       <Flex align="center">
@@ -20,7 +25,7 @@ export function LoginPageIllustrationDescription() {
             </Stack>
           </HoverCard.Dropdown>
         </HoverCard>
-        <Text color="error" id="test-error-id"></Text>
+        <Text color="error" id={errorMessageContainerId}></Text>
       </Flex>
     </Text>
   );
