@@ -24,6 +24,7 @@ import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
+  getIsResultDirty,
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
@@ -60,6 +61,7 @@ const propTypes = {
   result: PropTypes.object,
   height: PropTypes.number,
   isDirty: PropTypes.bool.isRequired,
+  isResultDirty: PropTypes.bool.isRequired,
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
@@ -90,6 +92,7 @@ function mapStateToProps(state) {
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
+    isResultDirty: getIsResultDirty(state),
   };
 }
 
@@ -193,6 +196,7 @@ function DatasetEditor(props) {
     isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
+    isResultDirty,
     setQueryBuilderMode,
     runQuestionQuery,
     setDatasetEditorTab,
@@ -420,8 +424,8 @@ function DatasetEditor(props) {
       return false;
     }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);
-    return everyFieldHasDisplayName && isDirty;
-  }, [dataset, fields, isDirty]);
+    return everyFieldHasDisplayName && isDirty && !isResultDirty;
+  }, [dataset, fields, isDirty, isResultDirty]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
