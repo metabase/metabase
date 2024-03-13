@@ -1,5 +1,8 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
+import { fetchParameterValues } from "metabase/parameters/actions";
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter, TemplateTag } from "metabase-types/api";
@@ -8,8 +11,6 @@ import { ListPickerConnected } from "./ListPickerConnected";
 import { OwnDatePicker } from "./OwnDatePicker";
 import { PlainValueInput } from "./PlainValueInput";
 import { shouldUsePlainInput, shouldUseListPicker } from "./core";
-import { useDispatch } from "metabase/lib/redux";
-import { fetchParameterValues } from "metabase/parameters/actions";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
@@ -29,8 +30,11 @@ interface ParameterValuePickerProps {
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
   const { tag, parameter, value, onValueChange } = props;
   const dispatch = useDispatch();
-  const fetchParamValues = (parameter: Parameter, query: string) =>
-    dispatch(fetchParameterValues({ parameter, query }));
+
+  const fetchParamValues = useCallback(
+    (query: string) => dispatch(fetchParameterValues({ parameter, query })),
+    [parameter, dispatch],
+  );
 
   if (!parameter) {
     return null;

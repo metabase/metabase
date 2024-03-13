@@ -23,10 +23,7 @@ interface ListPickerConnectedProps {
   value: string | null;
   parameter: Parameter;
   onChange: (value: string | null) => void;
-  fetchValues: (
-    parameter: Parameter,
-    query: string,
-  ) => Promise<ParameterValues>;
+  fetchValues: (query: string) => Promise<ParameterValues>;
   forceSearchItemCount: number;
   searchDebounceMs?: number;
 }
@@ -50,7 +47,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   const fetchAndUpdate = useCallback(
     async (query: string) => {
       try {
-        const res = await fetchValues(parameter, query);
+        const res = await fetchValues(query);
         dispatch({
           type: "SET_VALUES",
           payload: {
@@ -81,9 +78,6 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   };
 
   const ownOnSearch = (query: string) => {
-    // console.log(
-    //   `search hasMoreValues=${hasMoreValues} query="${searchQuery}" lastSearch="${searchQuery}"`,
-    // );
     // Trigger fetch only when search is different from the current value
     if (shouldFetchOnSearch(state, parameter, query)) {
       fetchUpdateDebounced.cancel();
@@ -98,6 +92,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
 
   const ownOnChange = (value: string | null) => {
     cancelFetch();
+    dispatch({ type: "SET_LAST_CHANGE", payload: { value } });
     onChange(value);
   };
 
