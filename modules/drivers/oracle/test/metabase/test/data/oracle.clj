@@ -206,13 +206,6 @@
                (update 0 str/split-lines))))))
 
 
-#_(set/union
-     (original-excluded-schemas :oracle)
-     ;; This is similar hack we do for Redshift, see the explanation there we just want to ignore all the test
-     ;; "session schemas" that don't match the current test
-     (non-session-schemas))
-
-
 ;;; Clear out the session schema before and after tests run
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (defn- execute! [format-string & args]
