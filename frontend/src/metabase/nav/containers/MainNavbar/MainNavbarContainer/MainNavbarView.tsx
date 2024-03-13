@@ -101,6 +101,14 @@ function MainNavbarView({
             </PaddedSidebarLink>
             {hasDataAccess && (
               <>
+                <PaddedSidebarLink
+                  icon="database"
+                  url={BROWSE_URL}
+                  isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
+                  onClick={onItemSelect}
+                >
+                  {t`Browse data`}
+                </PaddedSidebarLink>
                 {!hasOwnDatabase && isAdmin && (
                   <AddYourOwnDataLink
                     icon="add"
@@ -143,18 +151,6 @@ function MainNavbarView({
             aria-label="collection-tree"
           />
         </SidebarSection>
-        {hasDataAccess && (
-          <SidebarSection>
-            <PaddedSidebarLink
-              icon="database"
-              url={BROWSE_URL}
-              isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
-              onClick={onItemSelect}
-            >
-              {t`Browse data`}
-            </PaddedSidebarLink>
-          </SidebarSection>
-        )}
       </div>
       <WhatsNewNotification />
     </SidebarContentRoot>
