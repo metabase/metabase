@@ -1,16 +1,12 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Card, Icon, Select, Stack, Title } from "metabase/ui";
+import { Button, Card, Icon, Stack, Title } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import {
-  fromSelectValue,
-  getColumnOptions,
-  getInitialColumnAndSeparator,
-  toSelectValue,
-} from "./lib";
-import type { ColumnAndSeparator } from "./types";
+import { getColumnOptions, getInitialColumnAndSeparator } from "../../lib";
+import type { ColumnAndSeparator } from "../../types";
+import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 
 interface Props {
   query: Lib.Query;
@@ -31,7 +27,6 @@ export const CombineColumnsDrill = ({
     getInitialColumnAndSeparator(drillInfo),
   ]);
   const [isUsingDefaultSeparator, setIsUsingDefaultSeparator] = useState(true);
-  const canRemove = columnsAndSeparators.length > 1;
 
   const handleChange = (index: number, change: Partial<ColumnAndSeparator>) => {
     setColumnsAndSeparators(value => [
@@ -53,23 +48,18 @@ export const CombineColumnsDrill = ({
       <Stack spacing="sm">
         <Title order={4}>{t`Combine with`}</Title>
 
-        {columnsAndSeparators.map(({ column, separator }, index) => {
-          if (isUsingDefaultSeparator) {
-            return (
-              <Select
-                key={index}
-                data={options}
-                value={toSelectValue(column)}
-                onChange={value => {
-                  const column = fromSelectValue(value);
-                  handleChange(index, { column });
-                }}
-              />
-            );
-          }
-
-          throw new Error("Implement me");
-        })}
+        {columnsAndSeparators.map(({ column, separator }, index) => (
+          <ColumnAndSeparatorRow
+            canEditSeparator={!isUsingDefaultSeparator}
+            canRemove={columnsAndSeparators.length > 1}
+            column={column}
+            index={index}
+            key={index}
+            options={options}
+            separator={separator}
+            onChange={handleChange}
+          />
+        ))}
       </Stack>
 
       <Button

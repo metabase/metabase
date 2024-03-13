@@ -2,12 +2,12 @@ import * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator } from "./types";
 
-// hack due to Mantine Select being non-generic
+// reusable casting hack due to Mantine Select being non-generic
 export const fromSelectValue = (value: string | null): Lib.ColumnMetadata => {
   return value as unknown as Lib.ColumnMetadata;
 };
 
-// hack due to Mantine Select being non-generic
+// reusable casting hack due to Mantine Select being non-generic
 export const toSelectValue = (value: Lib.ColumnMetadata): string => {
   return value as unknown as string;
 };
