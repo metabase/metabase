@@ -57,7 +57,7 @@ async function setupStringPicker({
     setupFieldSearchValuesEndpoints(result.field_id, value, result.values);
   });
 
-  renderWithProviders(
+  const { rerender } = renderWithProviders(
     <StringFilterValuePicker
       query={query}
       stageIndex={stageIndex}
@@ -72,7 +72,7 @@ async function setupStringPicker({
 
   await waitForLoaderToBeRemoved();
 
-  return { onChange, onFocus, onBlur };
+  return { rerender, onChange, onFocus, onBlur };
 }
 
 async function setupNumberPicker({
@@ -242,7 +242,7 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith(["t", "p"]);
     });
 
-    it("should elevate select field values", async () => {
+    it("should elevate selected field values on initial render", async () => {
       await setupStringPicker({
         query,
         stageIndex,
@@ -265,6 +265,41 @@ describe("StringFilterValuePicker", () => {
       expect(checkboxes[1]).not.toBeChecked();
       expect(checkboxes[2]).toHaveAccessibleName("Completed");
       expect(checkboxes[2]).not.toBeChecked();
+    });
+
+    it("should not elevate selected field values after the initial render", async () => {
+      const { rerender, onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["p"],
+        fieldValues: createMockFieldValues({
+          field_id: PRODUCTS.CATEGORY,
+          values: [
+            ["t", "To-do"],
+            ["p", "In-progress"],
+            ["c", "Completed"],
+          ],
+        }),
+      });
+
+      rerender(
+        <StringFilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          values={["p", "c"]}
+          onChange={onChange}
+        />,
+      );
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toBeChecked();
+      expect(checkboxes[1]).toHaveAccessibleName("To-do");
+      expect(checkboxes[1]).not.toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).toBeChecked();
     });
 
     it("should handle empty field values", async () => {
