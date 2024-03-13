@@ -59,7 +59,9 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
     ) => {
       return {
         labelWrapper: {
-          [labelPosition === "left" ? "paddingRight" : "paddingLeft"]: getSize({
+          [labelPosition === "left"
+            ? "paddingInlineEnd"
+            : "paddingInlineStart"]: getSize({
             size,
             sizes: SWITCH_PADDING,
           }),
