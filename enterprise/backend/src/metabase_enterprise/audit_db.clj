@@ -249,16 +249,18 @@
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
       (when (should-load-audit? (load-analytics-content) last-checksum current-checksum)
-        (last-analytics-checksum! current-checksum)
         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
         (let [report (log/with-no-logs
                        (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
                                                             {:backfill? false}
                                                             :token-check? false))]
+
           (if (not-empty (:errors report))
             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-            (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))))
+            (do
+              (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
+              (last-analytics-checksum! current-checksum))))))
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       (adjust-audit-db-to-host! audit-db))))
 
