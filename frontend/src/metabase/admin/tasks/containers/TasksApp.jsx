@@ -2,6 +2,8 @@
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core";
 
 import AdminHeader from "metabase/components/AdminHeader";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -17,7 +19,7 @@ import {
   SectionRoot,
   SectionTitle,
 } from "./TasksApp.styled";
-
+import cx from "classnames";
 // Please preserve the following 2 @ calls in this order.
 // Otherwise @Database.loadList overrides pagination props
 // that come from @Task.LoadList
@@ -60,7 +62,7 @@ class TasksAppInner extends Component {
           </SectionControls>
         </SectionHeader>
 
-        <table className="ContentTable mt2">
+        <table className={cx(AdminS.ContentTable, CS.mt2)}>
           <thead>
             <tr>
               <th>{t`Task`}</th>

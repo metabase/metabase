@@ -2,7 +2,7 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-
+import cx from "classnames";
 import AdminHeader from "metabase/components/AdminHeader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
@@ -14,6 +14,8 @@ import {
   JobInfoRoot,
   JobSchedulerInfo,
 } from "./JobInfoApp.styled";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 
 const renderSchedulerInfo = scheduler => {
   return (
@@ -28,7 +30,7 @@ const renderSchedulerInfo = scheduler => {
 const renderJobsTable = jobs => {
   return (
     jobs && (
-      <table className="ContentTable mt2">
+        <table className={cx(AdminS.ContentTable, CS.mt2)}>
         <thead>
           <tr>
             <th>{t`Key`}</th>

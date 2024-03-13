@@ -22,6 +22,9 @@ import {
   IconButtonContainer,
   PaginationControlsContainer,
 } from "./ModelCacheRefreshJobs.styled";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import cx from "classnames";
 
 type JobTableItemProps = {
   job: ModelCacheRefreshStatus;
@@ -145,7 +148,7 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
 
           return (
             <div data-testid="model-cache-logs">
-              <table className="ContentTable border-bottom">
+              <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
                 <colgroup>
                   <col style={{ width: "30%" }} />
                   <col style={{ width: "40%" }} />

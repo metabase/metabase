@@ -9,10 +9,12 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 
 import { fetchJobInfo } from "../jobInfo";
-
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import cx from "classnames";
 const renderTriggersTable = triggers => {
   return (
-    <table className="ContentTable mt2">
+      <table className={cx(AdminS.ContentTable, CS.mt2)}>
       <thead>
         <tr>
           <th>{t`Key`}</th>
