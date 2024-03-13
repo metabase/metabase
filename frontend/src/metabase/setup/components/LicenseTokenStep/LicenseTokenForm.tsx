@@ -33,15 +33,21 @@ export const LicenseTokenForm = ({
       initialValues={{ license_token: initialValue }}
       validationSchema={LICENSE_TOKEN_SCHEMA}
       onSubmit={values => onSubmit(values.license_token)}
-      isInitialValid={false}
     >
-      {({ touched, errors }) => (
+      {({ errors, setValues }) => (
         <Form>
           <Box mb="md">
             <FormTextInput
               aria-label={t`Token`}
               placeholder={t`Paste your token here`}
               name="license_token"
+              onChange={e => {
+                const val = e.target.value;
+                const trimmed = val.trim();
+                if (val !== trimmed) {
+                  setValues({ license_token: trimmed });
+                }
+              }}
             />
             <FormErrorMessage />
           </Box>
@@ -50,7 +56,7 @@ export const LicenseTokenForm = ({
             <FormSubmitButton
               title={t`Activate`}
               activeTitle={t`Activating`}
-              disabled={!touched.license_token || !!errors.license_token}
+              disabled={!!errors.license_token}
             />
           </Flex>
         </Form>

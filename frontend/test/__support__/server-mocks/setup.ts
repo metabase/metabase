@@ -11,7 +11,6 @@ export function setupAdminCheckListEndpoint(items: SetupCheckListItem[]) {
 }
 
 export function setupForTokenCheckEndpoint(response: { valid: boolean }) {
-  fetchMock.get("path:/api/setup/token-check", response);
   fetchMock.put(
     "path:/api/setting/premium-embedding-token",
     response.valid ? 204 : 400,

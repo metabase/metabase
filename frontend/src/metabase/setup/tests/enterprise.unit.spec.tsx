@@ -71,101 +71,39 @@ describe("setup (EE, no token)", () => {
 
     it("should display an error in case of invalid token", async () => {
       await setupForLicenseStep();
-
       setupForTokenCheckEndpoint({ valid: false });
 
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        sampleToken,
-      );
+      inputToken(sampleToken);
+      await submit();
 
-      screen.getByRole("button", { name: "Activate" }).click();
-
-      expect(
-        await screen.findByText(
-          "This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working",
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("should not send the token if it's invalid", async () => {
-      await setupForLicenseStep();
-
-      setupForTokenCheckEndpoint({ valid: false });
-
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        sampleToken,
-      );
-
-      screen.getByRole("button", { name: "Activate" }).click();
-
-      await screen.findByText(
-        "This token doesn’t seem to be valid. Double-check it, then contact support if you think it should be working",
-      );
-
-      userEvent.type(
-        screen.getByRole("textbox", { name: "Token" }),
-        "{backspace}b",
-      );
-
-      expect(
-        screen.queryByText("This token doesn’t seem to be valid.", {
-          exact: false,
-        }),
-      ).not.toBeInTheDocument();
-
-      clickOnSkip();
-
-      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
-
-      screen.getByRole("button", { name: "Finish" }).click();
-
-      const setupCall = fetchMock.lastCall(`path:/api/setup`);
-      expect(await setupCall?.request?.json()).not.toHaveProperty(
-        "license_token",
-      );
+      expect(await errMsg()).toBeInTheDocument();
     });
 
     it("should have the Activate button disabled when the token is not 64 characters long", async () => {
       await setupForLicenseStep();
 
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        "a".repeat(63),
-      );
+      inputToken("a".repeat(63));
+      expect(await submitBtn()).toBeDisabled();
 
-      expect(screen.getByRole("button", { name: "Activate" })).toBeDisabled();
+      userEvent.type(input(), "a"); //64 characters
+      expect(await submitBtn()).toBeEnabled();
 
-      userEvent.type(screen.getByRole("textbox", { name: "Token" }), "a"); //64 characters
-
-      expect(screen.getByRole("button", { name: "Activate" })).toBeEnabled();
-
-      userEvent.type(screen.getByRole("textbox", { name: "Token" }), "a"); //65 characters
-
-      expect(screen.getByRole("button", { name: "Activate" })).toBeDisabled();
+      userEvent.type(input(), "a"); //65 characters
+      expect(await submitBtn()).toBeDisabled();
     });
 
     it("should ignore whitespace around the token", async () => {
       await setupForLicenseStep();
-
-      const token = "a".repeat(64);
-
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        `    ${token}   `,
-      );
-
-      expect(screen.getByRole("button", { name: "Activate" })).toBeEnabled();
-
       setupForTokenCheckEndpoint({ valid: true });
 
-      screen.getByRole("button", { name: "Activate" }).click();
+      inputToken(`    ${sampleToken}   `);
+      expect(input()).toHaveValue(sampleToken);
+      expect(await submitBtn()).toBeEnabled();
+      const submitCall = await submit();
 
-      const url = fetchMock.lastCall(`path:/api/setup/token-check`)?.request
-        ?.url;
-      const sentToken = url?.split("token=")[1];
-      expect(sentToken).toMatch(token);
+      expect(await submitCall?.request?.json()).toEqual({
+        value: sampleToken,
+      });
     });
 
     it("should go to the next step when activating a valid token", async () => {
@@ -173,30 +111,14 @@ describe("setup (EE, no token)", () => {
 
       setupForTokenCheckEndpoint({ valid: true });
 
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        sampleToken,
-      );
-
-      screen.getByRole("button", { name: "Activate" }).click();
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: "Activate" }),
-        ).not.toHaveProperty("data-loading", true);
-      });
+      inputToken(sampleToken);
+      await submit();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(true);
 
       expect(getSection("Usage data preferences")).toHaveAttribute(
         "aria-current",
         "step",
-      );
-
-      screen.getByText("Commercial license active").click();
-
-      expect(screen.getByRole("textbox", { name: "Token" })).toHaveValue(
-        sampleToken,
       );
     });
 
@@ -217,27 +139,31 @@ describe("setup (EE, no token)", () => {
       await setupForLicenseStep();
       setupForTokenCheckEndpoint({ valid: true });
 
-      userEvent.paste(
-        screen.getByRole("textbox", { name: "Token" }),
-        sampleToken,
-      );
-      screen.getByRole("button", { name: "Activate" }).click();
-      const finishButton = await screen.findByRole("button", {
-        name: "Finish",
-      });
-      finishButton.click();
-      await waitFor(() => expect(finishButton).not.toBeInTheDocument());
+      inputToken(sampleToken);
+      const submitCall = await submit();
 
-      const tokenSaveCall = fetchMock.lastCall(
-        "path:/api/setting/premium-embedding-token",
-      );
-
-      expect(await tokenSaveCall?.request?.json()).toMatchObject({
+      expect(await submitCall?.request?.json()).toEqual({
         value: sampleToken,
       });
     });
   });
 });
+
+const input = () => screen.getByRole("textbox", { name: "Token" });
+
+const inputToken = (token: string) => userEvent.paste(input(), token);
+
+const errMsg = () => screen.findByText(/This token doesn’t seem to be valid/);
+
+const submitBtn = () => screen.findByRole("button", { name: "Activate" });
+
+const submit = async () => {
+  (await submitBtn()).click();
+
+  const settingEndpoint = "path:/api/setting/premium-embedding-token";
+  await waitFor(() => expect(fetchMock.done(settingEndpoint)).toBe(true));
+  return fetchMock.lastCall(settingEndpoint);
+};
 
 const clickOnSkip = () =>
   userEvent.click(screen.getByRole("button", { name: "Skip" }));
