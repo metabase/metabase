@@ -1,8 +1,8 @@
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
-} from "metabase-lib/queries/utils/dataset";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+} from "metabase-lib/v1/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   Dataset,
   DatasetColumn,
