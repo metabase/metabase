@@ -23,13 +23,26 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn- sql-jdbc-drivers-with-default-describe-table-impl
+(defn- sql-jdbc-drivers-using-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
   all of them.)"
   []
   (set
    (filter
-    #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
+    (fn [driver]
+      (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
+           (not (driver/database-supports? driver :describe-fields nil))))
+    (descendants driver/hierarchy :sql-jdbc))))
+
+(defn- sql-jdbc-drivers-using-default-describe-fields-impl
+  "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
+  all of them.)"
+  []
+  (set
+   (filter
+    (fn [driver]
+      (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
+           (driver/database-supports? driver :describe-fields nil)))
     (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest ^:parallel describe-table-test
@@ -79,6 +92,39 @@
              :json-unfolding             false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
+(deftest describe-fields-test
+  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-fields-impl)
+    (mt/dataset daily-bird-counts
+      (let [table (t2/select-one :model/Table :id (mt/id :bird_count))
+            schema (:schema table)
+            table-name (:name table)]
+        (is (= [{:table-schema      schema,
+                 :table-name        table-name,
+                 :pk?               true,
+                 :name              "id",
+                 :database-type     "integer",
+                 :database-position 0,
+                 :base-type         :type/Integer,
+                 :json-unfolding    false}
+                {:table-schema      schema,
+                 :table-name        table-name,
+                 :pk?               false,
+                 :name              "date",
+                 :database-type     "date",
+                 :database-position 1,
+                 :base-type         :type/Date,
+                 :json-unfolding    false}
+                {:table-schema      schema,
+                 :table-name        table-name,
+                 :pk?               false,
+                 :name              "count",
+                 :database-type     "integer",
+                 :database-position 2,
+                 :base-type         :type/Integer,
+                 :json-unfolding    false}]
+               (sort-by :database-position
+                        (into [] (sql-jdbc.describe-table/describe-fields driver/*driver* (mt/db) :schema-names [schema] :table-names [table-name])))))))))
+
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
     (one-off-dbs/with-blank-db
@@ -127,7 +173,7 @@
          (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
 
 (deftest database-types-fallback-test
-  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
+  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-impl)
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
@@ -148,7 +194,7 @@
                     set)))))))
 
 (deftest calculated-semantic-type-test
-  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
+  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-impl)
     (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_ _ column-name]
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
