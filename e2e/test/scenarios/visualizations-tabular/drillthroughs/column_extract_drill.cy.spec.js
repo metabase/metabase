@@ -79,7 +79,7 @@ describe("extract action", () => {
       });
     });
 
-    describe("should add a new column next to the selected column", () => {
+    describe("should add a new column after the selected column", () => {
       it("ad-hoc question", () => {
         openOrdersTable();
         extractColumnAndCheck({
@@ -193,5 +193,5 @@ function extractColumnAndCheck({ column, option, newColumn = option, value }) {
 function checkColumnIndex({ column, columnIndex }) {
   cy.findAllByRole("columnheader")
     .eq(columnIndex)
-    .should("contain.text", column);
+    .should("have.text", column);
 }
