@@ -511,7 +511,7 @@ describe("scenarios > visualizations > line chart", () => {
 
     function renameSeries(series) {
       cy.icon("pencil").click();
-      cy.get(".Card").realHover();
+      cy.findByTestId("dashcard").realHover();
       cy.icon("palette").click();
       series.forEach(serie => {
         const [old_name, new_name] = serie;

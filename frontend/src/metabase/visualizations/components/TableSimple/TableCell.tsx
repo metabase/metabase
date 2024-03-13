@@ -2,8 +2,10 @@ import cx from "classnames";
 import { useCallback, useMemo, isValidElement } from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -168,11 +170,16 @@ export function TableCell({
 
   const classNames = useMemo(
     () =>
-      cx("fullscreen-normal-text fullscreen-night-text", {
-        "Table-ID": value != null && isID(column),
-        "Table-FK": value != null && isFK(column),
-        link: isClickable && isID(column),
-      }),
+      cx(
+        DashboardS.fullscreenNormalText,
+        DashboardS.fullscreenNightText,
+        EmbedFrameS.fullscreenNightText,
+        {
+          "Table-ID": value != null && isID(column),
+          "Table-FK": value != null && isFK(column),
+          link: isClickable && isID(column),
+        },
+      ),
     [value, column, isClickable],
   );
 

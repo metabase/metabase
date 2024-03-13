@@ -97,7 +97,7 @@ describe("scenarios > question > null", () => {
       cy.findByDisplayValue("13626D");
 
       cy.log("Reported failing in v0.37.0.2");
-      cy.get(".DashCard").within(() => {
+      cy.findByTestId("dashcard-container").within(() => {
         cy.findByTestId("loading-spinner").should("not.exist");
         cy.findByTestId("legend-caption-title").should("have.text", "13626");
         cy.findByTestId("pie-chart").should("be.visible");

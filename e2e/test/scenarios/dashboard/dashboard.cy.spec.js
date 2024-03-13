@@ -620,7 +620,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("All Options").click();
     });
     // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Created At");
+    selectDashboardFilter(cy.findByTestId("dashcard-container"), "Created At");
 
     // add second filter
     cy.icon("filter").click();
@@ -628,7 +628,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("ID").click();
     });
     // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Product ID");
+    selectDashboardFilter(cy.findByTestId("dashcard-container"), "Product ID");
 
     // add third filter
     cy.icon("filter").click();
@@ -637,7 +637,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("Starts with").click();
     });
     // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Category");
+    selectDashboardFilter(cy.findByTestId("dashcard-container"), "Category");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
