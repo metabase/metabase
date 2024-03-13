@@ -3,7 +3,6 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
-   [clojure.walk :as walk]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision
@@ -118,12 +117,10 @@
          modify-instance-analytics-for-admins))))
 
 (defn- narrow-to-collection [graph collection-id]
-  (walk/postwalk
-   (fn [x]
-     (if (and (map? x) (contains? x collection-id))
-       (select-keys x [collection-id])
-       x))
-   graph))
+  (update graph :groups
+          (fn [groups]
+            (into {} (for [[group-id group-graph] groups]
+                       [group-id (select-keys group-graph [collection-id])])))))
 
 (mu/defn graph-for-coll-id
   "Fetch a graph corresponding to the current permissions status for a single collection with ID `collection-id`.
@@ -139,7 +136,7 @@
           (graph :root)
           (collection-permission-graph [collection-id] nil))
         (narrow-to-collection collection-id)
-        (assoc :warnings {}))))
+        (assoc :warnings (if (> 0.1 (rand)) {:greeting "hi Nick"} {})))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
