@@ -84,6 +84,7 @@
       (update :fields (partial map-indexed (fn [idx field]
                                              (assoc field :database-position idx))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks ::moviedb [_ _ table]
   (-> (get moviedb-tables (:name table))
       :fks

@@ -226,32 +226,26 @@
             qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
             view-nm      "late_binding_view"
             qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
-        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
-          (try
-            ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
-            (execute!
-             (str "DROP TABLE IF EXISTS %1$s;%n"
-                  "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
-                  "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;")
-             qual-tbl-nm
-             qual-view-nm)
+        (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
+          ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
+          (execute!
+           (str "DROP TABLE IF EXISTS %1$s;%n"
+                "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
+                "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;")
+           qual-tbl-nm
+           qual-view-nm)
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
-            (sync/sync-database! database {:scan :schema})
-            (is (contains?
-                 (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
-                 view-nm))
-            (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
+          (sync/sync-database! database {:scan :schema})
+          (is (contains?
+               (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
+               view-nm))
+          (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
               ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
-                      {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
-                     (map
-                      mt/derecordize
-                      (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
-            (finally
-              (execute! (str "DROP TABLE IF EXISTS %s;%n"
-                             "DROP VIEW IF EXISTS %s;")
-                        qual-tbl-nm
-                        qual-view-nm))))))))
+            (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
+                    {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
+                   (map
+                    mt/derecordize
+                    (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
 
 (deftest redshift-lbv-sync-error-test
   (mt/test-driver
