@@ -21,7 +21,8 @@ const fallbackImage = `url("data:image/svg+xml,${encodeURI(
 export const PreviewImage = styled.img`
   position: relative;
   width: 100px;
-  height: 100%;
+  height: 90px;
+  object-fit: cover;
 
   &::before {
     content: "";
