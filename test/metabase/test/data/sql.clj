@@ -287,11 +287,11 @@
 
 (defmethod add-fk-sql :sql/test-extensions
   [driver {:keys [database-name] :as dbdef} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
-  (let [quot                #(sql.u/quote-name driver %1 (ddl.i/format-name driver %2))
-        dest-table-name     (name dest-table-name)
-        pk-names            (->> (get-tabledef dbdef dest-table-name)
-                                 :field-definitions
-                                 fielddefs->pk-field-names)
+  (let [quot            #(sql.u/quote-name driver %1 (ddl.i/format-name driver %2))
+        dest-table-name (name dest-table-name)
+        pk-names        (->> (get-tabledef dbdef dest-table-name)
+                             :field-definitions
+                             fielddefs->pk-field-names)
         _ (when (< 1 (count pk-names))
             (throw (IllegalArgumentException. "`add-fk-sql` only works with tables with a single PK field")))
         pk-name             (first pk-names)]
