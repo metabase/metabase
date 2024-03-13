@@ -6,7 +6,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def query-field-keys [:card_id :field_id :valid])
+(def ^:private query-field-keys [:card_id :field_id])
 
 (defn- query-fields-for-card
   [card-id]
@@ -42,18 +42,17 @@
 
 (deftest query-fields-created-by-queries-test
   (with-test-setup
-    (let [default-query-field {:card_id card-id
-                               :valid   true}
-          total-qf            (merge default-query-field
-                                     {:field_id total-id})]
+    (let [total-qf {:card_id  card-id
+                    :field_id total-id}
+          tax-qf   {:card_id  card-id
+                    :field_id tax-id}]
       (testing "A freshly created card has relevant corresponding QueryFields"
         (is (= #{total-qf}
                (query-fields-for-card card-id))))
 
       (testing "Updating a query keeps the QueryFields in sync"
         (trigger-parse! card-id)
-        (is (= #{(merge default-query-field {:field_id tax-id})
-                 total-qf}
+        (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id)))))))
 
 (deftest bogus-queries-test
@@ -61,15 +60,3 @@
     (testing "Updating a query with bogus columns does not create QueryFields"
       (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query "SELECT DOES, NOT_EXIST FROM orders"})})
       (is (empty? (t2/select :model/QueryField :card_id card-id))))))
-
-(deftest field-deactivation-test
-  (with-test-setup
-    (testing "deactivating a field twiddles query_field.valid"
-      (try
-        (trigger-parse! card-id)
-        (t2/update! :model/Field tax-id {:active false})
-        (is (= #{{:field_id tax-id   :valid false}
-                 {:field_id total-id :valid true}}
-               (t2/select-fn-set #(select-keys % [:field_id :valid]) :model/QueryField :card_id card-id)))
-        (finally
-          (t2/update! :model/Field tax-id {:active true}))))))

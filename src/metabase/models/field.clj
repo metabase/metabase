@@ -135,12 +135,9 @@
 (t2/define-before-update :model/Field
   [field]
   (u/prog1 (t2/changes field)
-    (let [active? (:active <>)]
-      (when (false? active?)
-        (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
-                                                                    :fk_target_field_id nil}))
-      (when (boolean? active?)
-        (t2/update! :model/QueryField :field_id (:id field) {:valid active?})))))
+    (when (false? (:active <>))
+      (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
+                                                                  :fk_target_field_id nil}))))
 
 (defn- field->db-id
   [{table-id :table_id, {db-id :db_id} :table}]

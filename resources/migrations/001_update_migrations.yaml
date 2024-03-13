@@ -5861,13 +5861,6 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_query_field_field_id
                     deleteCascade: true
-              - column:
-                  remarks: Is the query's field still current, or does it refer to a column no longer in the DB?
-                  name: valid
-                  type: ${boolean.type}
-                  defaultValueBoolean: true
-                  constraints:
-                    nullable: false
 
   - changeSet:
       id: v50.2024-02-29T15:07:43
