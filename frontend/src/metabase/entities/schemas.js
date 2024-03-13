@@ -1,4 +1,4 @@
-import { updateIn } from "icepick";
+import { assocIn, updateIn } from "icepick";
 
 import Questions from "metabase/entities/questions";
 import { createEntity } from "metabase/lib/entities";
@@ -7,7 +7,9 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
 import {
   getCollectionVirtualSchemaId,
+  getCollectionVirtualSchemaName,
   getQuestionVirtualTableId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   generateSchemaId,
@@ -84,12 +86,13 @@ export default createEntity({
     }
 
     if (type === Questions.actionTypes.UPDATE && !error) {
-      const { question } = payload;
-      const schemaId = getCollectionVirtualSchemaId(question.collection, {
-        isDatasets: question.type === "model",
+      const { question: card } = payload;
+      const schemaId = getCollectionVirtualSchemaId(card.collection, {
+        isDatasets: card.type === "model",
       });
+      const schemaName = getCollectionVirtualSchemaName(card.collection);
 
-      const virtualQuestionId = getQuestionVirtualTableId(question.id);
+      const virtualQuestionId = getQuestionVirtualTableId(card.id);
       const previousSchemaContainingTheQuestion =
         getPreviousSchemaContainingTheQuestion(
           state,
@@ -103,6 +106,15 @@ export default createEntity({
           previousSchemaContainingTheQuestion.id,
           virtualQuestionId,
         );
+      } else {
+        state = assocIn(state, [schemaId], {
+          id: schemaId,
+          name: schemaName,
+          database: {
+            id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+            is_saved_questions: true,
+          },
+        });
       }
 
       if (!state[schemaId]) {
@@ -114,7 +126,7 @@ export default createEntity({
           return tables;
         }
 
-        if (question.archived) {
+        if (card.archived) {
           return tables.filter(id => id !== virtualQuestionId);
         }
         return addTableAvoidingDuplicates(tables, virtualQuestionId);
