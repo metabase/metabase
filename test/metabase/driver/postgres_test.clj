@@ -213,7 +213,20 @@
                    (mt/rows (qp/process-query
                              {:database (u/the-id database)
                               :type     :query
-                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
+                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))
+    (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
+      (mt/with-empty-db
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+          (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
+                        "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
+                        "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
+            (jdbc/execute! conn-spec stmt))
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (is (= [[42]]
+                 (mt/rows (qp/process-query
+                           {:database (u/the-id (mt/db))
+                            :type     :query
+                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (:id (mt/db)))}})))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
