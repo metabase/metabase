@@ -27,6 +27,7 @@ import { MetabaseApi } from "metabase/services";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
+  getCollectionVirtualSchemaId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 const listTablesForDatabase = async (...args) =>
@@ -170,6 +171,9 @@ const Tables = createEntity({
     if (type === Questions.actionTypes.UPDATE && !error) {
       const card = payload.question;
       const virtualQuestionId = getQuestionVirtualTableId(card.id);
+      const virtualCollectionSchemaId = getCollectionVirtualSchemaId(
+        card.collection,
+      );
 
       if (card.archived && state[virtualQuestionId]) {
         delete state[virtualQuestionId];
@@ -181,13 +185,16 @@ const Tables = createEntity({
         if (
           virtualQuestion.display_name !== card.name ||
           virtualQuestion.moderated_status !== card.moderated_status ||
-          virtualQuestion.description !== card.description
+          virtualQuestion.description !== card.description ||
+          virtualQuestion.schema_name !== card.collection.name
         ) {
           state = updateIn(state, [virtualQuestionId], table => ({
             ...table,
             display_name: card.name,
             moderated_status: card.moderated_status,
             description: card.description,
+            schema_name: card.collection.name,
+            schema: `${virtualCollectionSchemaId}:${card.collection.name}`,
           }));
         }
 
