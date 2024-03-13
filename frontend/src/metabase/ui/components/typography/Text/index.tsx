@@ -1,7 +1,7 @@
 import type { TextProps as MantineTextProps } from "@mantine/core";
-import { Text as MantineText } from "@mantine/core";
+import { Text as MantineText, createPolymorphicComponent } from "@mantine/core";
 
-export type TextProps = MantineTextProps & {
+export interface TextProps extends MantineTextProps {
   /** margin-inline-start */
   ms?: string;
   /** margin-inline-end */
@@ -18,22 +18,24 @@ export type TextProps = MantineTextProps & {
   pld?: string;
   /** alias for padding-inline-end, short for "Padding-Right but Direction-sensitive", */
   prd?: string;
-};
+}
 
-export const Text = (props: TextProps) => {
-  return (
-    <MantineText
-      {...props}
-      style={{
-        marginInlineStart: props.ms ?? props.mld,
-        marginInlineEnd: props.me ?? props.mrd,
-        paddingInlineStart: props.ps ?? props.pld,
-        paddingInlineEnd: props.pe ?? props.prd,
-        ...props.style,
-      }}
-    />
-  );
-};
+export const Text = createPolymorphicComponent<"div", TextProps>(
+  (props: TextProps) => {
+    return (
+      <MantineText
+        {...props}
+        style={{
+          marginInlineStart: props.ms ?? props.mld,
+          marginInlineEnd: props.me ?? props.mrd,
+          paddingInlineStart: props.ps ?? props.pld,
+          paddingInlineEnd: props.pe ?? props.prd,
+          ...props.style,
+        }}
+      />
+    );
+  },
+);
 
 export type TextComponent = typeof Text;
 export { getTextOverrides } from "./Text.styled";

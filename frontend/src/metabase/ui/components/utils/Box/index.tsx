@@ -1,7 +1,7 @@
 import type { BoxProps as MantineBoxProps } from "@mantine/core";
-import { Box as MantineBox } from "@mantine/core";
+import { Box as MantineBox, createPolymorphicComponent } from "@mantine/core";
 
-export type BoxProps = MantineBoxProps & {
+interface BoxProps extends MantineBoxProps {
   /** margin-inline-start */
   ms?: string;
   /** margin-inline-end */
@@ -18,21 +18,23 @@ export type BoxProps = MantineBoxProps & {
   pld?: string;
   /** alias for padding-inline-end, short for "Padding-Right but Direction-sensitive", */
   prd?: string;
-};
+}
 
-export const Box = (props: BoxProps) => {
-  return (
-    <MantineBox
-      {...props}
-      style={{
-        marginInlineStart: props.ms ?? props.mld,
-        marginInlineEnd: props.me ?? props.mrd,
-        paddingInlineStart: props.ps ?? props.pld,
-        paddingInlineEnd: props.pe ?? props.prd,
-        ...props.style,
-      }}
-    />
-  );
-};
+export const Box = createPolymorphicComponent<"div", BoxProps>(
+  (props: BoxProps) => {
+    return (
+      <MantineBox
+        {...props}
+        style={{
+          marginInlineStart: props.ms ?? props.mld,
+          marginInlineEnd: props.me ?? props.mrd,
+          paddingInlineStart: props.ps ?? props.pld,
+          paddingInlineEnd: props.pe ?? props.prd,
+          ...props.style,
+        }}
+      />
+    );
+  },
+);
 
 export type BoxComponent = typeof Box;
