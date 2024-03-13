@@ -358,7 +358,7 @@
   Results are ordered by `fk-table-schema` and `fk-table-name` in ascending order.
 
   Required for drivers that support `:describe-fks`."
-  {:added "0.50.0" :arglists '([driver database & {:keys [schema-names table-names]}])}
+  {:added "0.49.0" :arglists '([driver database & {:keys [schema-names table-names]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
