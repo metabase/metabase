@@ -3,6 +3,7 @@ import {
   appBar,
   describeEE,
   main,
+  mantinePopover,
   popover,
   restore,
   setTokenFeatures,
@@ -20,6 +21,8 @@ function checkLogo() {
     cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`).should("exist");
   });
 }
+
+const MB = 1024 * 1024;
 
 describeEE("formatting > whitelabel", () => {
   beforeEach(() => {
@@ -143,13 +146,68 @@ describeEE("formatting > whitelabel", () => {
          * which would respect the `accept` attribute (which specifies the accepted MIME types).
          */
         cy.visit("/admin/settings/whitelabel/conceal-metabase");
-        cy.findByTestId("file-input").selectFile(
-          {
-            contents: "e2e/support/assets/logo.jpeg",
-            mimeType: "image/jpeg",
-          },
-          { force: true },
-        );
+
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.log("test error message for file size > 2MB");
+          /**
+           * This makes sure we scroll to the component which sits at the bottom of the page.
+           */
+          cy.findByLabelText("Login page").click();
+        });
+        mantinePopover().findByText("Custom").click();
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.findByTestId("file-input").selectFile(
+            {
+              contents: Cypress.Buffer.from("a".repeat(2 * MB + 1)),
+              fileName: "big-file.jpg",
+              mimeType: "image/jpeg",
+            },
+            { force: true },
+          );
+          cy.findByText(
+            "The image you chose is larger than 2MB. Please choose another one.",
+          ).should("be.visible");
+
+          /**
+           * 1. This doesn't actually open the file browser on Cypress,
+           * but I did this to simulate selecting an option because
+           * doing this would clear the error message.
+           *
+           * 2. For some reason, `cy.findByLabelText("Login page").click()` doesn't work here.
+           */
+          cy.findByRole("searchbox", { name: "Login page" }).click();
+        });
+        mantinePopover().findByText("Custom").click();
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.findByTestId("file-input").selectFile(
+            {
+              contents: Cypress.Buffer.from("a".repeat(2 * MB)),
+              fileName: "big-file.jpg",
+              mimeType: "image/jpeg",
+            },
+            { force: true },
+          );
+          cy.findByText(
+            "The image you chose is larger than 2MB. Please choose another one.",
+          ).should("not.exist");
+          cy.findByText("big-file.jpg").should("be.visible");
+        });
+
+        cy.log("test removing the custom illustration");
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.button("Remove custom illustration").click();
+          cy.log(
+            "the default option should be selected once removing the custom illustration",
+          );
+          cy.findByDisplayValue("Lighthouse").should("be.visible");
+          cy.findByTestId("file-input").selectFile(
+            {
+              contents: "e2e/support/assets/logo.jpeg",
+              mimeType: "image/jpeg",
+            },
+            { force: true },
+          );
+        });
         undoToast().findByText("Changes saved").should("be.visible");
 
         cy.signOut();

@@ -25,7 +25,7 @@ export function LoginPageIllustrationDescription({
             </Stack>
           </HoverCard.Dropdown>
         </HoverCard>
-        <Text color="error" id={errorMessageContainerId}></Text>
+        <Text color="error" aria-hidden id={errorMessageContainerId}></Text>
       </Flex>
     </Text>
   );

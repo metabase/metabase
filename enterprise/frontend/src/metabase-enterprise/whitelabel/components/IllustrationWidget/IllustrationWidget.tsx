@@ -155,6 +155,7 @@ export function IllustrationWidget({
               c="text-dark"
               compact
               onClick={handleRemoveCustomIllustration}
+              aria-label={t`Remove custom illustration`}
             />
           )}
           <input
