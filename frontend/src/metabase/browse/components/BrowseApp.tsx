@@ -179,15 +179,7 @@ const LearnAboutDataLink = () => (
     <Link to="reference">
       <BrowseHeaderIconContainer>
         <LearnAboutDataIcon size={14} name="reference" />
-        <Text
-          size="md"
-          lh="1"
-          fw="bold"
-          c="inherit"
-          style={{
-            marginInlineStart: ".5rem",
-          }}
-        >
+        <Text size="md" lh="1" fw="bold" c="inherit" ms=".5rem">
           {t`Learn about our data`}
         </Text>
       </BrowseHeaderIconContainer>

@@ -1,7 +1,7 @@
-import type { BoxProps as MantineBoxProps } from "@mantine/core";
-import { Box as MantineBox } from "@mantine/core";
+import type { FlexProps as MantineFlexProps } from "@mantine/core";
+import { Flex as MantineFlex } from "@mantine/core";
 
-export type BoxProps = MantineBoxProps & {
+export type FlexProps = MantineFlexProps & {
   /** margin-inline-start */
   ms?: string;
   /** margin-inline-end */
@@ -20,9 +20,9 @@ export type BoxProps = MantineBoxProps & {
   prd?: string;
 };
 
-export const Box = (props: BoxProps) => {
+export const Flex = (props: FlexProps) => {
   return (
-    <MantineBox
+    <MantineFlex
       {...props}
       style={{
         marginInlineStart: props.ms ?? props.mld,
@@ -35,4 +35,4 @@ export const Box = (props: BoxProps) => {
   );
 };
 
-export type BoxComponent = typeof Box;
+export type FlexComponent = typeof Flex;
