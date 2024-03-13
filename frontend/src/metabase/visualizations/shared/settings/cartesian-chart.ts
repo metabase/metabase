@@ -50,6 +50,22 @@ export const getDefaultStackingValue = (
   return shouldStack ? "stacked" : null;
 };
 
+export const getDefaultStackDisplayValue = (
+  cardDisplay: string,
+  seriesDisplays: string[],
+) => {
+  const firstStackable = _.find(seriesDisplays, display =>
+    STACKABLE_DISPLAY_TYPES.has(display),
+  );
+  if (firstStackable) {
+    return firstStackable;
+  }
+  if (STACKABLE_DISPLAY_TYPES.has(cardDisplay)) {
+    return cardDisplay;
+  }
+  return "bar";
+};
+
 export const getSeriesOrderVisibilitySettings = (
   settings: ComputedVisualizationSettings,
   seriesKeys: string[],
