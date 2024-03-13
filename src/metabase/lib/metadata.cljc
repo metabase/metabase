@@ -73,7 +73,7 @@
   [metadata-providerable :- MetadataProviderable]
   (if (lib.metadata.protocols/metadata-provider? metadata-providerable)
     metadata-providerable
-    (:lib/metadata metadata-providerable)))
+    (some-> metadata-providerable :lib/metadata ->metadata-provider)))
 
 (mu/defn database :- DatabaseMetadata
   "Get metadata about the Database we're querying."
@@ -218,6 +218,9 @@
                   (f provider id)))
           ids)))
 
+;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
+;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use
+;;; this (like QP middleware). Maybe we should only have a throwing version.
 (mu/defn bulk-metadata :- [:maybe [:sequential [:map
                                                 [:lib/type :keyword]
                                                 [:id pos-int?]]]]

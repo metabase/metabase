@@ -23,10 +23,10 @@
   in [[clause-schema-registry]]."
   []
   (into [:multi
-         {:dispatch #(keyword (first %))
+         {:dispatch common/mbql-clause-tag
           :error/fn (fn [{:keys [value]} _]
-                      (if (vector? value)
-                        (str "Invalid " (pr-str (first value)) " clause: " (pr-str value))
+                      (if-let [tag (common/mbql-clause-tag value)]
+                        (str "Invalid " tag " clause: " (pr-str value))
                         "not an MBQL clause"))}
          [::mc/default [:fn {:error/message "not a known MBQL clause"} (constantly false)]]]
         (map (fn [tag]

@@ -78,6 +78,13 @@
    [:schema [:ref ::common/options]]
    [:repeat {:min 2} [:schema [:ref ::expression/number]]]])
 
+(defn- type-of-numeric-arithmetic-arg [expr]
+  (let [expr-type (expression/type-of expr)]
+    (if (and (isa? expr-type ::expression/type.unknown)
+             (mr/validate :metabase.lib.schema.ref/ref expr))
+      :type/Number
+      expr-type)))
+
 (defn- type-of-numeric-arithmetic-args
   "Given a sequence of args to a numeric arithmetic expression like `:+`, determine the type returned by the expression
   by calculating the most-specific common ancestor type of all the args. E.g. `[:+ ... 2.0 2.0]` has two `:type/Float`
@@ -85,17 +92,14 @@
   `:type/Integer` arg; the most-specific common ancestor type is `:type/Number`. For refs without type
   information (e.g. `:field` clauses), assume `:type/Number`."
   [args]
-  ;; Okay to use reduce without an init value here since we know we have >= 2 args
-  #_{:clj-kondo/ignore [:reduce-without-init]}
-  (reduce
-   types/most-specific-common-ancestor
-   (map (fn [expr]
-          (let [expr-type (expression/type-of expr)]
-            (if (and (isa? expr-type ::expression/type.unknown)
-                     (mc/validate :metabase.lib.schema.ref/ref expr))
-              :type/Number
-              expr-type)))
-        args)))
+  (transduce
+   (map type-of-numeric-arithmetic-arg)
+   (completing (fn [x y]
+                 (if (nil? x)
+                   y
+                   (types/most-specific-common-ancestor x y))))
+   nil
+   args))
 
 (defn- type-of-temporal-arithmetic-args
   "Given a temporal value plus one or more intervals `args` passed to an arithmetic expression like `:+`, determine the
@@ -135,25 +139,35 @@
     ;; fall back to numeric args
     :else (type-of-numeric-arithmetic-args args)))
 
-(def ^:private temporal-difference-schema
+(mr/def ::temporal-difference-schema
   [:cat
    {:error/message ":- clause taking the difference of two temporal expressions"}
-   [:= :-]
+   [:= {:decode/normalize common/normalize-keyword} :-]
    [:schema [:ref ::common/options]]
    [:schema [:ref ::expression/temporal]]
    [:schema [:ref ::expression/temporal]]])
 
 (mbql-clause/define-mbql-clause :+
-  [:or
-   (plus-minus-temporal-interval-schema :+)
-   (plus-minus-numeric-schema :+)])
+  [:and
+   [:cat
+    [:= {:decode/normalize common/normalize-keyword} :+]
+    [:schema [:ref ::common/options]]
+    [:* [:schema :any]]]
+   [:or
+    (plus-minus-temporal-interval-schema :+)
+    (plus-minus-numeric-schema :+)]])
 
 ;;; TODO -- should `:-` support just a single arg (for numbers)? What about `:+`?
 (mbql-clause/define-mbql-clause :-
-  [:or
-   (plus-minus-temporal-interval-schema :-)
-   temporal-difference-schema
-   (plus-minus-numeric-schema :-)])
+  [:and
+   [:cat
+    [:= {:decode/normalize common/normalize-keyword} :-]
+    [:schema [:ref ::common/options]]
+    [:* [:schema :any]]]
+   [:or
+    (plus-minus-temporal-interval-schema :-)
+    ::temporal-difference-schema
+    (plus-minus-numeric-schema :-)]])
 
 (mbql-clause/define-catn-mbql-clause :*
   [:args ::args.numbers])

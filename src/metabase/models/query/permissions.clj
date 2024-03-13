@@ -8,7 +8,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.data-permissions :as data-perms]
@@ -100,11 +99,11 @@
     ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)))
 
 (defn- legacy-mbql-required-perms
-  [query {:keys [throw-exceptions? already-preprocessed?], :as _perms-opts}]
+  [query {:keys [throw-exceptions? already-preprocessed?]}]
   (try
-    (let [query (lib/normalize query)]
+    (let [query (mbql.normalize/normalize query)]
       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
-      (if-let [source-card-id (lib.util/source-card-id query)]
+      (if-let [source-card-id (qp.util/query->source-card-id query)]
         {:paths (source-card-read-perms source-card-id)}
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (let [{:keys [query]}     (cond-> query
@@ -125,20 +124,18 @@
                                    query)}
                        e)]
         (if throw-exceptions? (throw e) (log/error e)))
-      {:perms/data-access {0 :unrestricted}})))
-                                        ;
+      {:perms/data-access {0 :unrestricted}}))) ; table 0 will never exist
+
 (defn- pmbql-required-perms
   "For pMBQL queries: for now, just convert it to legacy by running it thru the QP preprocessor, then hand off to the
   legacy implementation(s) of [[required-perms]]."
   [query perms-opts]
-  (let [query (lib/normalize query)]
-    (if (lib.util/first-stage-is-native? query)
-      {:perms/native-query-editing :yes}
-      ;; convert it to legacy by running it thru the QP preprocessor.
-      (let [legacy-query (preprocess-query query)]
-        (assert (= (:type legacy-query) :query)
-                (format "Expected QP preprocessing to return legacy MBQL query, got: %s" (pr-str legacy-query)))
-        (legacy-mbql-required-perms legacy-query perms-opts)))))
+  (let [query        (lib/normalize query)
+        ;; convert it to legacy by running it thru the QP preprocessor.
+        legacy-query (preprocess-query query)]
+    (assert (= (:type legacy-query) :query)
+            (format "Expected QP preprocessing to return legacy MBQL query, got: %s" (pr-str legacy-query)))
+    (legacy-mbql-required-perms legacy-query perms-opts)))
 
 (defn required-perms
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys

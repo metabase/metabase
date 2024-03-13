@@ -13,6 +13,9 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
@@ -567,7 +570,42 @@
                                                        :id                   "abc"}})))))))))
 
 (deftest ^:parallel adhoc-mlv2-query-test
-  (testing "Should be able to run an ad-hoc MLv2 query (#39024)"))
+  (testing "POST /api/dataset"
+    (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
+                                  (lib/limit 2))]
+        (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
+                               ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
 (deftest ^:parallel mlv2-query-convert-to-native-test
-  (testing "Should be able to convert an MLv2 query to native (#39024)"))
+  (testing "POST /api/dataset/native"
+    (testing "Should be able to convert an MLv2 query to native (#39024)"
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
+                                  (lib/limit 2))]
+        (is (=? {:query
+                 ["SELECT"
+                  "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\","
+                  "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\","
+                  "  \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\","
+                  "  \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\","
+                  "  \"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\","
+                  "  \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\""
+                  "FROM"
+                  "  \"PUBLIC\".\"VENUES\""
+                  "ORDER BY"
+                  "  \"PUBLIC\".\"VENUES\".\"ID\" ASC"
+                  "LIMIT"
+                  "  2"],
+                 :params nil}
+                (-> (mt/user-http-request :crowberto :post 200 "dataset/native" query)
+                    (update :query (fn [s]
+                                     (some->> s
+                                              (driver/prettify-native-form :h2)
+                                              str/split-lines))))))))))

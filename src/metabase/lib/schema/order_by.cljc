@@ -17,10 +17,7 @@
 
 (mr/def ::order-by
   [:multi
-   {:dispatch (fn [x]
-                (when (and (vector? x)
-                           ((some-fn keyword? string?) (first x)))
-                  (keyword (first x))))}
+   {:dispatch common/mbql-clause-tag}
    [:asc  :mbql.clause/asc]
    [:desc :mbql.clause/desc]])
 

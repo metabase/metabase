@@ -21,10 +21,8 @@
   currently still allowed for backwards-compatibility purposes -- currently the FE client will just parrot back the
   `:widget-type` in some cases. In these cases, the backend is just supposed to infer the actual type of the parameter
   value."
-
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.malli.registry :as mr]))
 
 (def types
@@ -155,43 +153,49 @@
 ;; supposed to work, but we have test #18747 that attempts to set it. I'm not convinced this should actually be
 ;; allowed.
 
+;;; These are all legacy-style MBQL clauses FOR NOW, obviously at some point in the future we need to
+;;; update [[metabase.lib.convert]] to convert `:parameters` back and forth and add UUIDs and what not. But parameters
+;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
+
+(mr/def ::field
+  [:ref :metabase.mbql.schema/field])
+
 (mr/def ::dimension.target
-  [:and
-   [:ref ::mbql-clause/clause]
-   [:multi {:dispatch (fn [[tag :as _clause]]
-                        (keyword tag))}
-    [:field        :mbql.clause/field]
-    [:template-tag :mbql.clause/template-tag]]])
+  [:multi {:dispatch lib.schema.common/mbql-clause-tag
+           :error/fn (fn [{:keys [value]} _]
+                       (str "Invalid :dimension target: must be either a :field or a :template-tag, got: "
+                            (pr-str value)))}
+   [:field        [:ref ::field]]
+   [:template-tag [:ref ::template-tag]]])
 
-(mbql-clause/define-tuple-mbql-clause :dimension
-  #_target [:ref ::dimension.target])
-
-;;; TODO -- `:template-tag` and `:variable` should probably get options like LITERALLY EVERY OTHER MBQL CLAUSE, but
-;;; parameters is not ported to MLv2 yet, so there's no code in [[metabase.lib.convert]] to handle these.
+(mr/def ::dimension
+  [:tuple
+   #_tag    [:= {:decode/normalize lib.schema.common/normalize-keyword} :dimension]
+   #_target [:ref ::dimension.target]])
 
 ;;; this is the reference like [:template-tag <whatever>], not the schema for native query template tags -- that lives
 ;;; in [[metabase.lib.schema.template-tag]]
-(mbql-clause/define-mbql-clause :template-tag
+(mr/def ::template-tag
   [:tuple
    #_tag      [:= {:decode/normalize lib.schema.common/normalize-keyword} :template-tag]
-   #_tag-name [:or
-               ::lib.schema.common/non-blank-string
-               [:map
-                [:id ::lib.schema.common/non-blank-string]]]])
+   #_tag-name [:multi {:dispatch map?}
+               [true  [:map
+                       [:id ::lib.schema.common/non-blank-string]]]
+               [false ::lib.schema.common/non-blank-string]]])
 
-(mbql-clause/define-mbql-clause :variable
+(mr/def ::variable
   [:tuple
    #_tag    [:= {:decode/normalize lib.schema.common/normalize-keyword} :variable]
-   #_target [:ref :mbql.clause/template-tag]])
+   #_target [:ref ::template-tag]])
 
 (mr/def ::target
-  [:and
-   [:ref ::mbql-clause/clause]
-   [:multi {:dispatch (fn [[tag :as _clause]]
-                        (keyword tag))}
-    [:field     :mbql.clause/field]
-    [:dimension :mbql.clause/dimension]
-    [:variable  :mbql.clause/variable]]])
+  [:multi {:dispatch lib.schema.common/mbql-clause-tag
+           :error/fn (fn [{:keys [value]} _]
+                       (str "Invalid parameter :target, must be either :field, :dimension, or :variable; got: "
+                            (pr-str value)))}
+   [:field     [:ref ::field]]
+   [:dimension [:ref ::dimension]]
+   [:variable  [:ref ::variable]]])
 
 (mr/def ::parameter
   [:map

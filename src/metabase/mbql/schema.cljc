@@ -51,9 +51,6 @@
 (def ^:private FieldID
   [:ref ::lib.schema.id/field])
 
-(def ^:private CardID
-  [:ref ::lib.schema.id/card])
-
 (def ^:private TableID
   [:ref ::lib.schema.id/table])
 

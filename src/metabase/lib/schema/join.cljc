@@ -22,11 +22,12 @@
 ;;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
 ;;; with appropriate aliases.
 (mr/def ::fields
-  [:or
-   [:enum {:decode/normalize common/normalize-keyword} :all :none]
+  [:multi
+   {:dispatch (some-fn keyword? string?)}
+   [true  [:enum {:decode/normalize common/normalize-keyword} :all :none]]
    ;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
    ;; twice. (#32489)
-   [:sequential {:min 1} [:ref :mbql.clause/field]]])
+   [false [:sequential {:min 1} [:ref :mbql.clause/field]]]])
 
 ;;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
 ;;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
@@ -34,7 +35,7 @@
 ;;;
 ;;; Driver implementations: This is guaranteed to be present after pre-processing.
 (mr/def ::alias
-  [:or
+  [:schema
    {:gen/fmap #(str % "-" (random-uuid))}
    ::common/non-blank-string])
 

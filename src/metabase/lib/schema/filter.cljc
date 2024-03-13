@@ -107,10 +107,11 @@
    [:= {:decode/normalize common/normalize-keyword} :time-interval]
    [:merge ::common/options time-interval-options]
    #_expr [:ref ::expression/temporal]
-   #_n    [:or
-           [:enum {:decode/normalize common/normalize-keyword} :current :last :next]
+   #_n    [:multi
+           {:dispatch (some-fn keyword? string?)}
+           [true  [:enum {:decode/normalize common/normalize-keyword} :current :last :next]]
            ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
-           [:ref ::expression/integer]]
+           [false [:ref ::expression/integer]]]
    #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
 
 ;; segments are guaranteed to return valid filter clauses and thus booleans, right?
@@ -118,7 +119,10 @@
   [:tuple
    [:= {:decode/normalize common/normalize-keyword} :segment]
    ::common/options
-   [:or ::id/segment ::common/non-blank-string]])
+   [:multi
+    {:dispatch string?}
+    [true  ::common/non-blank-string]
+    [false ::id/segment]]])
 
 (mr/def ::operator
   [:map

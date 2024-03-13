@@ -74,9 +74,13 @@
     {:error/message ":fields must be distinct"}
     #'lib.schema.util/distinct-refs?]])
 
-;; this is just for enabling round-tripping filters with named segment references
+;;; this is just for enabling round-tripping filters with named segment references, i.e. Google Analytics segments.
+;;; TODO -- does this belong here, or should it be part of the normal `:mbql.clause/segment` schema? Or `::expression/boolean`?
 (mr/def ::named-segment-reference
-  [:tuple [:= :segment] :map :string])
+  [:tuple
+   #_tag  [:= :segment]
+   #_opts :map
+   #_name :string])
 
 (mr/def ::filterable
   [:or
@@ -137,6 +141,7 @@
 ;;; TODO -- should `::page` have a `:lib/type`, like all the other maps in pMBQL?
 (mr/def ::page
   [:map
+   {:decode/normalize common/normalize-map}
    [:page  pos-int?]
    [:items pos-int?]])
 
@@ -163,32 +168,6 @@
     (complement (every-pred :source-table :source-card))]
    [:ref ::stage.valid-refs]])
 
-;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
-(mr/def ::stage.mbql.with-source-table
-  [:merge
-   [:ref ::stage.mbql]
-   [:map
-    [:source-table [:ref ::id/table]]]])
-
-(mr/def ::stage.mbql.with-source-card
-  [:merge
-   [:ref ::stage.mbql]
-   [:map
-    [:source-card [:ref ::id/card]]]])
-
-(mr/def ::stage.mbql.with-source
-  [:or
-   [:ref ::stage.mbql.with-source-table]
-   [:ref ::stage.mbql.with-source-card]])
-
-;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
-(mr/def ::stage.mbql.without-source
-  [:and
-   [:ref ::stage.mbql]
-   [:fn
-    {:error/message "Only the initial stage of a query can have a :source-table or :source-card."}
-    (complement (some-fn :source-table :source-card))]])
-
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
   [:enum
@@ -211,16 +190,22 @@
     [:mbql.stage/mbql   [:ref ::stage.mbql]]]])
 
 (mr/def ::stage.initial
-  [:and
-   {:decode/normalize common/normalize-map}
-   [:map
-    [:lib/type [:ref ::stage.type]]]
-   [:multi {:dispatch lib-type}
-    [:mbql.stage/native [:ref ::stage.native]]
-    [:mbql.stage/mbql   [:ref ::stage.mbql.with-source]]]])
+  [:multi {:dispatch      lib-type
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
+   [:mbql.stage/native :map]
+   [:mbql.stage/mbql   [:fn
+                        {:error/message "An initial MBQL stage of a query must have either a :source-table or :source-card"}
+                        (some-fn :source-table :source-card)]]])
 
 (mr/def ::stage.additional
-  [:ref ::stage.mbql.without-source])
+  [:multi {:dispatch      lib-type
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
+   [:mbql.stage/native [:fn
+                        {:error/message "Native stages are only allowed as the first stage of a query or join."}
+                        (constantly false)]]
+   [:mbql.stage/mbql   [:fn
+                        {:error/message "Only the initial stage of a query can have a :source-table or :source-card."}
+                        (complement (some-fn :source-table :source-card))]]])
 
 (defn- visible-join-alias?-fn
   "Apparently you're allowed to use a join alias for a join that appeared in any previous stage or the current stage, or
@@ -277,6 +262,7 @@
 
 (mr/def ::stages
   [:and
+   [:sequential {:min 1} [:ref ::stage]]
    [:cat
     [:schema [:ref ::stage.initial]]
     [:* [:schema [:ref ::stage.additional]]]]
@@ -296,13 +282,13 @@
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword}
                 :mbql/query]]
-    [:database [:or
-                ::id/database
-                ::id/saved-questions-virtual-database]]
+    [:database [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
+                [true  ::id/saved-questions-virtual-database]
+                [false ::id/database]]]
     [:stages   [:ref ::stages]]
-    [:constraints {:optional true} [:ref ::constraints]]
-    [:parameters  {:optional true} [:ref ::parameter/parameters]]
-    [:info        {:optional true} [:ref ::info/info]]
+    [:constraints {:optional true} [:maybe [:ref ::constraints]]]
+    [:parameters  {:optional true} [:maybe [:ref ::parameter/parameters]]]
+    [:info        {:optional true} [:maybe [:ref ::info/info]]]
     ;; TODO -- `:viz-settings` ?
     ;;
     ;; TODO -- `:middleware`?

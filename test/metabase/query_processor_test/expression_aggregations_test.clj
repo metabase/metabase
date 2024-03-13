@@ -110,7 +110,7 @@
                    {:aggregation [[:+ [:count $id] [:avg $id]]]
                     :breakout    [$price]}))))))))
 
-(deftest ^:parallel nested-post-aggregation-mat-test
+(deftest ^:parallel nested-post-aggregation-math-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "nested post-aggregation math: count + (count * sum)"
       (is (= [[1  506]

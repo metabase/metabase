@@ -46,7 +46,7 @@
   [:and
    [:tuple
     [:= {:decode/normalize common/normalize-keyword} :field]
-    ::field.options
+    [:ref ::field.options]
     [:or ::id/field ::common/non-blank-string]]
    [:multi {:dispatch      (fn [clause]
                              ;; apparently it still tries to dispatch when humanizing errors even if the `:tuple`

@@ -133,15 +133,15 @@
                [:ref ::literal/string.year-month]
                [:ref ::literal/string.year]]]
      [:schema [:or
-               [:= :default]
+               [:= {:decode/normalize common/normalize-keyword} :default]
                [:ref ::temporal-bucketing/unit.date]]]]
     [:cat
      {:error/message ":absolute-datetime literal and unit for :type/DateTime"}
      [:schema [:or
-               [:= :current]
+               [:= {:decode/normalize common/normalize-keyword} :current]
                [:ref ::literal/datetime]]]
      [:schema [:or
-               [:= :default]
+               [:= {:decode/normalize common/normalize-keyword} :default]
                [:ref ::temporal-bucketing/unit.date-time]]]]]])
 
 (defmethod expression/type-of-method :absolute-datetime
@@ -172,9 +172,9 @@
        value-type))))
 
 (mr/def ::relative-datetime.amount
-  [:or
-   [:= {:decode/normalize common/normalize-keyword} :current]
-   :int])
+  [:multi {:dispatch (some-fn keyword? string?)}
+   [true  [:= {:decode/normalize common/normalize-keyword} :current]]
+   [false :int]])
 
 (mbql-clause/define-catn-mbql-clause :relative-datetime :- :type/DateTime
   [:n    [:schema [:ref ::relative-datetime.amount]]]
@@ -184,8 +184,24 @@
   #_:timestr [:schema [:ref ::expression/string]]
   #_:unit [:ref ::temporal-bucketing/unit.time.interval])
 
+;;; this has some stuff that's missing from [[::temporal-bucketing/unit.date-time.extract]], like `:week-of-year-iso`
+(mr/def ::temporal-extract.unit
+  [:enum
+   {:decode/normalize common/normalize-keyword}
+   :year-of-era
+   :quarter-of-year
+   :month-of-year
+   :week-of-year-iso
+   :week-of-year-us
+   :week-of-year-instance
+   :day-of-month
+   :day-of-week
+   :hour-of-day
+   :minute-of-hour
+   :second-of-minute])
+
 ;;; TODO -- this should make sure unit agrees with the type of expression we're extracting from.
 (mbql-clause/define-catn-mbql-clause :temporal-extract :- :type/Integer
   [:datetime [:schema [:ref ::expression/temporal]]]
-  [:unit     [:schema [:ref ::temporal-bucketing/unit.date-time.extract]]]
+  [:unit     [:schema [:ref ::temporal-extract.unit]]]
   [:mode     [:? [:schema [:ref ::week-mode]]]])

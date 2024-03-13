@@ -23,10 +23,16 @@
 (mr/def ::boolean
   :boolean)
 
+#?(:clj
+   (defn- big-int? [x]
+     (or (instance? java.math.BigInteger x)
+         (instance? clojure.lang.BigInt x))))
+
 (mr/def ::integer
-  #?(:clj [:or
-           :int
-           :metabase.lib.schema.literal.jvm/big-integer]
+  #?(:clj [:multi
+           {:dispatch big-int?}
+           [true  :metabase.lib.schema.literal.jvm/big-integer]
+           [false :int]]
      :cljs :int))
 
 (defmethod expression/type-of-method :dispatch-type/integer

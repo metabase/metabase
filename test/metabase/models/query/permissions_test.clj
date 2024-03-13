@@ -246,8 +246,9 @@
              (query-perms/required-perms query))))))
 
 (deftest ^:parallel pmbql-native-query-test
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        query             (lib/query metadata-provider {:lib/type :mbql.stage/native
-                                                        :native   "SELECT *;"})]
-    (is (= {:perms/native-query-editing :yes}
-           (query-perms/required-perms query)))))
+  (testing "Should be able to calculate permissions for a pMBQL native query (#39024)"
+    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          query             (lib/query metadata-provider {:lib/type :mbql.stage/native
+                                                          :native   "SELECT *;"})]
+      (is (= {:perms/native-query-editing :yes}
+             (query-perms/required-perms query))))))
