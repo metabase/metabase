@@ -28,6 +28,7 @@ import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
   getCollectionVirtualSchemaId,
+  getCollectionVirtualSchemaName,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 const listTablesForDatabase = async (...args) =>
@@ -171,10 +172,6 @@ const Tables = createEntity({
     if (type === Questions.actionTypes.UPDATE && !error) {
       const card = payload.question;
       const virtualQuestionId = getQuestionVirtualTableId(card.id);
-      const virtualCollectionSchemaId = getCollectionVirtualSchemaId(
-        card.collection,
-        { isDatasets: card.type === "model" },
-      );
 
       if (card.archived && state[virtualQuestionId]) {
         delete state[virtualQuestionId];
@@ -187,15 +184,17 @@ const Tables = createEntity({
           virtualQuestion.display_name !== card.name ||
           virtualQuestion.moderated_status !== card.moderated_status ||
           virtualQuestion.description !== card.description ||
-          virtualQuestion.schema_name !== card.collection.name
+          virtualQuestion.schema_name !== card.collection?.name
         ) {
           state = updateIn(state, [virtualQuestionId], table => ({
             ...table,
             display_name: card.name,
             moderated_status: card.moderated_status,
             description: card.description,
-            schema_name: card.collection.name,
-            schema: `${virtualCollectionSchemaId}:${card.collection.name}`,
+            schema_name: getCollectionVirtualSchemaName(card.collection),
+            schema: getCollectionVirtualSchemaId(card.collection, {
+              isDatasets: card.type === "model",
+            }),
           }));
         }
 
