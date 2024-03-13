@@ -49,10 +49,16 @@
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-     (cond-> [(assoc (sync-metadata/sync-db-metadata! database) :name "metadata")]
-       (= scan :full)
-       (conj (assoc (analyze/analyze-db! database) :name "analyze")
-             (assoc (field-values/update-field-values! database) :name "field-values"))))))
+     (mapv (fn [[thunk step-name]]
+             (let [r (thunk)]
+               (if (instance? Throwable r)
+                 (throw r)
+                 (assoc r :name step-name))))
+           (cond-> [[#(sync-metadata/sync-db-metadata! database) "metadata"]]
+             (= scan :full)
+             (conj
+              [#(analyze/analyze-db! database) "analyze"]
+              [#(field-values/update-field-values! database) "field-values"]))))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
