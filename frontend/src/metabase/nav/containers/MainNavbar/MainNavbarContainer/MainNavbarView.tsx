@@ -143,16 +143,18 @@ function MainNavbarView({
             aria-label="collection-tree"
           />
         </SidebarSection>
-        <SidebarSection>
-          <PaddedSidebarLink
-            icon="database"
-            url={BROWSE_URL}
-            isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
-            onClick={onItemSelect}
-          >
-            {t`Browse data`}
-          </PaddedSidebarLink>
-        </SidebarSection>
+        {hasDataAccess && (
+          <SidebarSection>
+            <PaddedSidebarLink
+              icon="database"
+              url={BROWSE_URL}
+              isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
+              onClick={onItemSelect}
+            >
+              {t`Browse data`}
+            </PaddedSidebarLink>
+          </SidebarSection>
+        )}
       </div>
       <WhatsNewNotification />
     </SidebarContentRoot>
