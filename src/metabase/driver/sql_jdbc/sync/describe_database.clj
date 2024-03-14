@@ -95,17 +95,16 @@
 (defn- jdbc-get-tables
   "Moved to its own function so we can reused in tests."
   [driver ^Connection conn catalog schema-pattern tablename-pattern types]
-  (with-open [rset (.getTables (.getMetaData conn) catalog (some->> schema-pattern (driver/escape-entity-name-for-metadata driver)) tablename-pattern
-                               (when (seq types) (into-array String types)))]
-    (loop [acc []]
-      (if-not (.next rset)
-        acc
-        (recur (conj acc {:name        (.getString rset "TABLE_NAME")
-                          :schema      (.getString rset "TABLE_SCHEM")
-                          :description (when-let [remarks (.getString rset "REMARKS")]
-                                         (when-not (str/blank? remarks)
-                                           remarks))
-                          :type        (.getString rset "TABLE_TYPE")}))))))
+  (sql-jdbc.sync.common/reducible-results
+   #(.getTables (.getMetaData conn) catalog (some->> schema-pattern (driver/escape-entity-name-for-metadata driver)) tablename-pattern
+                (when (seq types) (into-array String types)))
+   (fn [^ResultSet rset]
+     (fn [] {:name        (.getString rset "TABLE_NAME")
+             :schema      (.getString rset "TABLE_SCHEM")
+             :description (when-let [remarks (.getString rset "REMARKS")]
+                            (when-not (str/blank? remarks)
+                              remarks))
+             :type        (.getString rset "TABLE_TYPE")}))))
 
 (defmethod sql-jdbc.sync.interface/get-tables :sql-jdbc
   [& args]
@@ -168,9 +167,10 @@
                                                                                      schema-inclusion-filters schema-exclusion-filters)
         have-select-privilege-fn? (have-select-privilege-fn driver conn)]
     (eduction (mapcat (fn [schema]
-                        (->> (db-tables driver conn schema db-name-or-nil)
-                             (filter have-select-privilege-fn?)
-                             (map #(dissoc % :type))))) syncable-schemas)))
+                        (eduction
+                         (comp (filter have-select-privilege-fn?) (map #(dissoc % :type)))
+                         (db-tables driver conn schema db-name-or-nil))))
+              syncable-schemas)))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
   [driver connection schema-inclusion-filters schema-exclusion-filters]

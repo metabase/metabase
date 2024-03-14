@@ -143,7 +143,7 @@
                      :dialect (sql.qp/quote-style driver))))
 
 (defmulti get-tables
-  "A."
+  "Return a reducible collection of table info."
   {:added "0.50.0" :arglists '([driver conn catalog schema-pattern tablename-pattern types])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

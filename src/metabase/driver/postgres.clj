@@ -1028,8 +1028,8 @@
     :dialect :ansi}))
 
 (defmethod sql-jdbc.sync.interface/get-tables :postgres
-  [_driver conn _catalog schema-pattern tablename-pattern types]
-  (jdbc/query {:connection conn} (get-table-sql schema-pattern tablename-pattern types)))
+  [driver conn _catalog schema-pattern tablename-pattern types]
+  (sql-jdbc.execute/reducible-query driver conn (get-table-sql schema-pattern tablename-pattern types)))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
