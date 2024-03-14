@@ -8,6 +8,7 @@ import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import FormMessage from "metabase/components/form/FormMessage";
+import CS from "metabase/css/core/index.css";
 import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -72,7 +73,7 @@ export default class DatabaseList extends Component {
     const error = deletionError || addSampleDatabaseError;
 
     return (
-      <div className="wrapper" data-testid="database-list">
+      <div className={CS.wrapper} data-testid="database-list">
         <section className="PageHeader px2 clearfix">
           {isAdmin && (
             <Link
@@ -142,7 +143,7 @@ export default class DatabaseList extends Component {
             <div className="pt4">
               <span
                 className={cx("p2 text-italic", {
-                  "border-top": databases && databases.length > 0,
+                  [CS.borderTop]: databases && databases.length > 0,
                 })}
               >
                 {isAddingSampleDatabase ? (

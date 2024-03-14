@@ -4,6 +4,7 @@ import type { ButtonHTMLAttributes, ReactNode, Ref, ElementType } from "react";
 import { forwardRef } from "react";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
@@ -91,7 +92,7 @@ const BaseButton = forwardRef(function BaseButton(
       as={as}
       {..._.omit(props, ...BUTTON_VARIANTS)}
       className={cx("Button", className, variantClasses, {
-        p1: !children,
+        [CS.p1]: !children,
       })}
       purple={props.purple}
     >
