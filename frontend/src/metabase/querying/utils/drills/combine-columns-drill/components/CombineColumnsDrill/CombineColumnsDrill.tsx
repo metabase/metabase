@@ -46,6 +46,13 @@ export const CombineColumnsDrill = ({
     ]);
   };
 
+  const handleRemove = (index: number) => {
+    setColumnsAndSeparators(value => [
+      ...value.slice(0, index),
+      ...value.slice(index + 1),
+    ]);
+  };
+
   const handleEditSeparators = () => {
     setIsUsingDefaultSeparator(false);
   };
@@ -69,6 +76,7 @@ export const CombineColumnsDrill = ({
               showRemove={columnsAndSeparators.length > 1}
               showSeparator={!isUsingDefaultSeparator}
               onChange={handleChange}
+              onRemove={handleRemove}
             />
           ))}
 

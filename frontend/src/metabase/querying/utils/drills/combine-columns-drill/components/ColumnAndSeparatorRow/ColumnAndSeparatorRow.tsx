@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Box, Flex, Select, TextInput } from "metabase/ui";
+import { Button, Flex, Icon, Select, TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { fromSelectValue, toSelectValue } from "../../lib";
@@ -17,6 +17,7 @@ interface Props {
   showRemove: boolean;
   showSeparator: boolean;
   onChange: (index: number, change: Partial<ColumnAndSeparator>) => void;
+  onRemove: (index: number) => void;
 }
 
 export const ColumnAndSeparatorRow = ({
@@ -28,9 +29,10 @@ export const ColumnAndSeparatorRow = ({
   showRemove,
   showSeparator,
   onChange,
+  onRemove,
 }: Props) => {
   return (
-    <Flex gap={12}>
+    <Flex align="flex-end" gap={12}>
       {showSeparator && (
         <TextInput
           className={styles.separator}
@@ -60,6 +62,22 @@ export const ColumnAndSeparatorRow = ({
           onChange(index, { column });
         }}
       />
+
+      {showRemove && (
+        <Button
+          aria-label={t`Remove column`}
+          leftIcon={<Icon name="close" />}
+          styles={{
+            root: {
+              borderColor: "transparent",
+            },
+          }}
+          variant="default"
+          onClick={() => {
+            onRemove(index);
+          }}
+        />
+      )}
     </Flex>
   );
 };
