@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.test-metadata :as meta]
@@ -1356,3 +1357,41 @@
     ;; Special characters
     (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
     (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))
+
+(deftest get-tables-parity-with-jdbc-test
+  (testing "make sure our get-tables return result consistent with jdbc getTables"
+    (mt/test-driver :postgres
+      (mt/with-empty-db
+        (sql-jdbc.execute/do-with-connection-with-options
+         :postgres
+         (mt/db)
+         nil
+         (fn [conn]
+           (let [do-test (fn [& {:keys [schema-pattern table-pattern types]
+                                 :or   {schema-pattern "%"
+                                        table-pattern  "%"
+                                        types          nil}
+                                 :as _opts}]
+                           (is (= (into #{} (#'sql-jdbc.describe-database/jdbc-get-tables
+                                             :postgres conn nil schema-pattern table-pattern types))
+                                  (into #{} (sql-jdbc.sync/get-tables
+                                             :postgres conn nil schema-pattern table-pattern types)))))]
+             (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
+                           "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
+                           "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
+                           "CREATE UNIQUE INDEX idx_partition_table_id ON public.partition_table(id);"
+                           "CREATE SEQUENCE public.table_id_seq;"
+                           "CREATE VIEW public.view AS SELECT * FROM public.table;"
+                           "CREATE TYPE public.enum_type AS ENUM ('a', 'b', 'c');"
+                           "CREATE MATERIALIZED VIEW public.materialized_view AS SELECT * FROM public.table;"
+                           "CREATE SCHEMA private;"
+                           "CREATE TABLE private.table (id INTEGER);"]]
+               (next.jdbc/execute! conn [stmt]))
+             (testing "without any filters"
+               (do-test))
+             (testing "filter by schema"
+               (do-test :schema-pattern "private"))
+             (testing "filter by table name"
+               (do-test :table-pattern "table%"))
+             (testing "filter by type"
+               (do-test :types ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))))))))
