@@ -108,16 +108,15 @@
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! table db-metadata)}))))
 
- (mu/defn sync-fields! :- [:maybe
+(mu/defn sync-fields! :- [:maybe
                           [:map
                            [:updated-fields ms/IntGreaterThanOrEqualToZero]
                            [:total-fields   ms/IntGreaterThanOrEqualToZero]]]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
-  (let [tables (sync-util/db->sync-tables database)]
-    (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
-      (sync-fields-for-db! database)
-      (->> tables
-           (map (partial sync-fields-for-table! database))
-           (remove (partial instance? Throwable))
-           (apply merge-with +)))))
+  (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
+    (sync-fields-for-db! database)
+    (->> (sync-util/db->sync-tables database)
+         (map (partial sync-fields-for-table! database))
+         (remove (partial instance? Throwable))
+         (apply merge-with +))))
