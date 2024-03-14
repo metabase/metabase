@@ -5957,13 +5957,14 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - sql: >
-            CREATE INDEX idx_activity_entity_qualified_id
-            ON activity (
-              CASE
-                WHEN model = 'Dataset' THEN CONCAT('card_', model_id)
-                WHEN model_id IS NULL THEN NULL
-                ELSE CONCAT(LOWER(model), '_', model_id)
-              END
+            CREATE index idx_activity_entity_qualified_id ON activity (
+              (
+                CASE
+                  WHEN model = 'Dataset' THEN (concat('card_', model_id))
+                  WHEN model_id IS NULL THEN NULL
+                  ELSE (concat(lower(model), '_', model_id))
+                END
+              )
             );
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
