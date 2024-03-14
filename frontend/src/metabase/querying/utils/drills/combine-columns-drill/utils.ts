@@ -1,35 +1,41 @@
 import { t } from "ttag";
 
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator, ColumnOption } from "./types";
-
-export const formatSeparator = (separator: string) => {
-  if (separator === " ") {
-    return `(${t`space`})`;
-  }
-  return separator;
-};
-
-// reusable casting hack due to Mantine Select being non-generic
-export const fromSelectValue = (value: string | null): Lib.ColumnMetadata => {
-  return value as unknown as Lib.ColumnMetadata;
-};
-
-// reusable casting hack due to Mantine Select being non-generic
-export const toSelectValue = (value: Lib.ColumnMetadata): string => {
-  return value as unknown as string;
-};
 
 export const getColumnOptions = (
   query: Lib.Query,
   stageIndex: number,
   columns: Lib.ColumnMetadata[],
 ) => {
-  return columns.map(column => {
+  return columns.map((column, index) => {
     const info = Lib.displayInfo(query, stageIndex, column);
-    return { label: info.displayName, value: toSelectValue(column) };
+
+    return {
+      column,
+      label: info.displayName,
+      value: String(index),
+    };
   });
+};
+
+export const fromSelectValue = (
+  options: ColumnOption[],
+  value: string | null,
+): Lib.ColumnMetadata => {
+  const index = Number(checkNotNull(value));
+  const { column } = options[index];
+  return column;
+};
+
+export const toSelectValue = (
+  options: ColumnOption[],
+  column: Lib.ColumnMetadata,
+): string => {
+  const index = options.findIndex(option => option.column === column);
+  return String(index);
 };
 
 export const getInitialColumnAndSeparator = (
@@ -46,15 +52,13 @@ export const getNextColumnAndSeparator = (
 ): ColumnAndSeparator => {
   const lastSeparator = columnsAndSeparators.at(-1)?.separator;
   const separator = lastSeparator ?? drillInfo.defaultSeparator;
-  const [nextUnusedOption] = options.filter(option => {
-    return columnsAndSeparators.every(
-      ({ column }) => column !== fromSelectValue(option.value),
-    );
+  const nextUnusedOption = options.find(option => {
+    return columnsAndSeparators.every(({ column }) => column !== option.column);
   });
 
   if (nextUnusedOption) {
     return {
-      column: fromSelectValue(nextUnusedOption.value),
+      column: nextUnusedOption.column,
       separator,
     };
   }
@@ -63,4 +67,11 @@ export const getNextColumnAndSeparator = (
     column: drillInfo.availableColumns[0],
     separator,
   };
+};
+
+export const formatSeparator = (separator: string) => {
+  if (separator === " ") {
+    return `(${t`space`})`;
+  }
+  return separator;
 };

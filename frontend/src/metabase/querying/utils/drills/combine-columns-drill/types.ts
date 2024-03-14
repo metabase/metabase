@@ -8,4 +8,5 @@ export type ColumnAndSeparator = {
 export type ColumnOption = {
   label: string;
   value: string;
+  column: Lib.ColumnMetadata;
 };

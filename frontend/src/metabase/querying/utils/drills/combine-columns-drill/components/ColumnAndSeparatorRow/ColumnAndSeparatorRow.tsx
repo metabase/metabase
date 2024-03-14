@@ -50,7 +50,6 @@ export const ColumnAndSeparatorRow = ({
         className={styles.column}
         data={options}
         label={showLabels ? t`Column` : undefined}
-        value={toSelectValue(column)}
         styles={{
           wrapper: {
             "&:not(:only-child)": {
@@ -58,8 +57,9 @@ export const ColumnAndSeparatorRow = ({
             },
           },
         }}
+        value={toSelectValue(options, column)}
         onChange={value => {
-          const column = fromSelectValue(value);
+          const column = fromSelectValue(options, value);
           onChange(index, { column });
         }}
       />
