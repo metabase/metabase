@@ -78,7 +78,6 @@
                  :private-key-options "uploaded"
                  :private-key-source nil
                  :port nil
-                 :subname "//ls10467.us-east-2.aws.snowflakecomputing.com/"
                  :advanced-options true
                  :private-key-id 1
                  :schema-filters-type "all"
@@ -89,20 +88,27 @@
                  :private-key-creator-id 3
                  :user "SNOWFLAKE_DEVELOPER"
                  :private-key-created-at "2024-01-05T19:10:30.861839Z"
-                 :alternative-hostname ""}]
+                 :host ""}]
     (testing "Database name is quoted if quoting is requested (#27856)"
       (are [quote? result] (=? {:db result}
                                (let [details (assoc details :quote-db-name quote?)]
                                  (sql-jdbc.conn/connection-details->spec :snowflake details)))
         true "\"v3_sample-dataset\""
         false "v3_sample-dataset"))
-    (testing "Subname is replaced if alternative is provided (#22133)"
-      (are [alternative? result] (=? {:subname result}
-                               (let [details (assoc details :alternative-hostname alternative?)]
-                                 (sql-jdbc.conn/connection-details->spec :snowflake details)))
-        nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        "snowflake.example.com" "//snowflake.example.com/"))))
+    (testing "Subname is replaced if hostname is provided (#22133)"
+      (are [use-account-name alternative-host expected-subname] (=? expected-subname
+                               (:subname (let [details (-> details
+                                                           (assoc :host alternative-host)
+                                                           (assoc :use-account-name use-account-name))]
+                                 (sql-jdbc.conn/connection-details->spec :snowflake details))))
+        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "snowflake.example.com/" "//snowflake.example.com/"
+        false "snowflake.example.com" "//snowflake.example.com/"
+        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))))
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"

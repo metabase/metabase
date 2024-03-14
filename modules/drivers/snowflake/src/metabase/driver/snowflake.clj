@@ -123,7 +123,7 @@
     (str "\"" (str/replace raw-name "\"" "\"\"") "\"")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
-  [_ {:keys [account additional-options], :as details}]
+  [_ {:keys [account additional-options host use-account-name], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
     (log/warn (trs "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect results. Set the Start of Week Setting instead.")))
   (let [upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
@@ -131,7 +131,13 @@
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
                 :subprotocol                                "snowflake"
-                :subname                                    (str "//" account ".snowflakecomputing.com/")
+                ;; see https://github.com/metabase/metabase/issues/22133
+                :subname                                    (let [base-url (if (and (not use-account-name) (string? host) (not (empty? host)))
+                                                                              (if-not (= (last host) \/)
+                                                                                (str host "/")
+                                                                                host)
+                                                                              (str account ".snowflakecomputing.com/"))]
+                                                              (str "//" base-url ))
                 :client_metadata_request_use_connection_ctx true
                 :ssl                                        true
                 ;; keep open connections open indefinitely instead of closing them. See #9674 and
@@ -151,13 +157,6 @@
                    ;; see https://github.com/metabase/metabase/issues/27856
                    (cond-> (:quote-db-name details)
                      (update :db quote-name))
-                   ;; see https://github.com/metabase/metabase/issues/22133
-                   (update :subname (fn [existing-subname]
-                    (if-let [alt-hostname (:alternative-hostname details)]
-                      (if (not (empty? alt-hostname))
-                        (str "//" alt-hostname "/")
-                      existing-subname)
-                    existing-subname)))
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (update :schema upcase-not-nil)
