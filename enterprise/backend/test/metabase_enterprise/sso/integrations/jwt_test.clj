@@ -18,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -334,3 +335,62 @@
           clojure.lang.ExceptionInfo
           #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
           (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
+
+(deftest jwt-token-test
+  (testing "should return a session token when token=true"
+    (with-jwt-default-setup
+      (mt/with-temporary-setting-values [enable-embedding true]
+        (let [jwt-iat-time (buddy-util/now)
+              jwt-exp-time (+ (buddy-util/now) 3600)
+              jwt-payload  (jwt/sign {:email      "rasta@metabase.com"
+                                      :first_name "Rasta"
+                                      :last_name  "Toucan"
+                                      :extra      "keypairs"
+                                      :are        "also present"
+                                      :iat        jwt-iat-time
+                                      :exp        jwt-exp-time}
+                                     default-jwt-secret)
+              result       (saml-test/client-full-response :get 200 "/auth/sso"
+                                                           :token true
+                                                           :jwt jwt-payload)]
+          (is (=? {:id  (mt/malli=? ms/NonBlankString)
+                   :iat jwt-iat-time
+                   :exp jwt-exp-time}
+                  (:body result)))))))
+
+  (testing "should not return a session token when embedding is disabled"
+    (with-jwt-default-setup
+      (mt/with-temporary-setting-values [enable-embedding false]
+        (let [jwt-iat-time (buddy-util/now)
+              jwt-exp-time (+ (buddy-util/now) 3600)
+              jwt-payload  (jwt/sign {:email      "rasta@metabase.com"
+                                      :first_name "Rasta"
+                                      :last_name  "Toucan"
+                                      :extra      "keypairs"
+                                      :are        "also present"
+                                      :iat        jwt-iat-time
+                                      :exp        jwt-exp-time}
+                                     default-jwt-secret)
+              result       (saml-test/client-full-response :get 400 "/auth/sso"
+                                                           :token true
+                                                           :jwt jwt-payload)]
+          (is result nil)))))
+
+  (testing "should not return a session token when token=false"
+    (with-jwt-default-setup
+      (mt/with-temporary-setting-values [enable-embedding true]
+        (let [jwt-iat-time (buddy-util/now)
+              jwt-exp-time (+ (buddy-util/now) 3600)
+              jwt-payload  (jwt/sign {:email      "rasta@metabase.com"
+                                      :first_name "Rasta"
+                                      :last_name  "Toucan"
+                                      :extra      "keypairs"
+                                      :are        "also present"
+                                      :iat        jwt-iat-time
+                                      :exp        jwt-exp-time}
+                                     default-jwt-secret)
+              result       (saml-test/client-full-response :get 302 "/auth/sso"
+                                                           {:request-options {:redirect-strategy :none}}
+                                                           :return_to default-redirect-uri
+                                                           :jwt jwt-payload)]
+          (is result nil))))))

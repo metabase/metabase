@@ -222,18 +222,6 @@
                        (filter #((type->check %) trimmed))
                        first)))))
 
-(defn- type-relaxer
-  "Given a map of {value-type -> predicate}, return a reducing fn which updates our inferred schema using the next row."
-  [type->check]
-  (fn [value-types row]
-    ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
-    (vec (u/map-all (partial relax-type type->check) value-types row))))
-
-(defn- relax-types [settings current-types rows]
-  (let [type->check (settings->type->check settings)]
-    (->> (reduce (type-relaxer type->check) current-types rows)
-         (map column-type))))
-
 (defn- normalize-column-name
   [raw-name]
   (if (str/blank? raw-name)
@@ -253,10 +241,18 @@
                    (= (normalize-column-name (:name field)) auto-pk-column-name))
                  (t2/select :model/Field :table_id table-id :active true))))
 
+(defn- type-relaxer
+  "Given a map of {value-type -> predicate}, return a reducing fn which updates our inferred schema using the next row."
+  [settings]
+  (let [relax (partial relax-type (settings->type->check settings))]
+    (fn [value-types row]
+      ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
+      (vec (u/map-all relax value-types row)))))
+
 (mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
-  "Returns a sequence of types, given the unparsed rows in the CSV file"
-  [settings column-count rows]
-  (relax-types settings (repeat column-count nil) rows))
+  "Given the types of the existing columns (if there are any), and rows to be added, infer the best supporting types."
+  [settings existing-types rows]
+  (map column-type (reduce (type-relaxer settings) existing-types rows)))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
@@ -272,7 +268,8 @@
   (let [normalized-header   (map normalize-column-name header)
         unique-header       (map keyword (mbql.u/uniquify-names normalized-header))
         column-count        (count normalized-header)
-        col-name+type-pairs (->> (column-types-from-rows settings column-count rows)
+        initial-types       (repeat column-count nil)
+        col-name+type-pairs (->> (column-types-from-rows settings initial-types rows)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
      :generated-columns (ordered-map/ordered-map auto-pk-column-keyword ::auto-incrementing-int-pk)}))
@@ -652,14 +649,14 @@
           ;; in the happy, and most common, case all the values will match the existing types
           ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
           ;; we can come back and optimize this to an optimistic-with-fallback approach later.
-          relaxed-types      (relax-types settings old-column-types rows)
-          new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types relaxed-types)
+          detected-types     (column-types-from-rows settings old-column-types rows)
+          new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types detected-types)
           _                  (when (and (not= old-column-types new-column-types)
                                         ;; if we cannot coerce all the columns, don't bother coercing any of them
                                         ;; we will instead throw an error when we try to parse as the old type
-                                        (= relaxed-types new-column-types))
+                                        (= detected-types new-column-types))
                                (let [fields (map normed-name->field normed-header)]
-                                 (->> (changed-field->new-type fields old-column-types relaxed-types)
+                                 (->> (changed-field->new-type fields old-column-types detected-types)
                                       (alter-columns! driver database table))))
           ;; this will fail if any of our required relaxations were rejected.
           parsed-rows        (parse-rows settings new-column-types rows)

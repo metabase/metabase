@@ -57,8 +57,8 @@ export const popState = createThunkAction(
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!equals(card, location.state.card)) {
-        const shouldRefreshUrl = location.state.card.type === "model";
-        await dispatch(setCardAndRun(location.state.card, shouldRefreshUrl));
+        const shouldUpdateUrl = location.state.card.type === "model";
+        await dispatch(setCardAndRun(location.state.card, { shouldUpdateUrl }));
         await dispatch(setCurrentState(location.state));
         await dispatch(resetUIControls());
       }
