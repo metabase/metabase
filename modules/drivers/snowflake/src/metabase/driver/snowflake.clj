@@ -123,7 +123,7 @@
     (str "\"" (str/replace raw-name "\"" "\"\"") "\"")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
-  [_ {:keys [account additional-options host use-account-name], :as details}]
+  [_ {:keys [account additional-options host use-hostname], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
     (log/warn (trs "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect results. Set the Start of Week Setting instead.")))
   (let [upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
@@ -132,7 +132,7 @@
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
                 :subprotocol                                "snowflake"
                 ;; see https://github.com/metabase/metabase/issues/22133
-                :subname                                    (let [base-url (if (and (not use-account-name) (string? host) (not (str/blank? host)))
+                :subname                                    (let [base-url (if (and use-hostname (string? host) (not (str/blank? host)))
                                                                               (cond-> host
                                                                                 (not= (last host) \/) (str "/"))
                                                                               (str account ".snowflakecomputing.com/"))]

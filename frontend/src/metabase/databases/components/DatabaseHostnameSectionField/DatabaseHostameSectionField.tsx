@@ -4,15 +4,15 @@ import { t } from "ttag";
 
 import FormField from "metabase/core/components/FormField";
 
-import { SectionButton } from "./DatabaseAccountNameSectionField.styled";
+import { SectionButton } from "./DatabaseHostameSectionField.styled";
 
-export interface DatabaseAccountNameSectionFieldProps {
+export interface DatabaseHostnameSectionFieldProps {
   name: string;
 }
 
-const DatabaseAccountNameSectionField = ({
+const DatabaseHostnameSectionField = ({
   name,
-}: DatabaseAccountNameSectionFieldProps): JSX.Element => {
+}: DatabaseHostnameSectionFieldProps): JSX.Element => {
   const [{ value }, , { setValue }] = useField(name);
 
   const handleClick = useCallback(() => {
@@ -29,4 +29,4 @@ const DatabaseAccountNameSectionField = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseAccountNameSectionField;
+export default DatabaseHostnameSectionField;
