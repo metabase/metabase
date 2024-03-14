@@ -49,6 +49,7 @@ import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
 import areaStackLinearXAxis from "./area-stack-linear-x-axis.json";
 import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import areaStackInterpolateMissingValues from "./area-stack-interpolate-missing-values.json";
+import barStackDisplayOverridesSeriesDisplays from "./bar-stack-display-overrides-series-displays.json";
 
 export const data = {
   lineLinearXScale,
@@ -102,4 +103,5 @@ export const data = {
   areaStackLinearXAxis,
   nullCategoryValueFormatting,
   areaStackInterpolateMissingValues,
+  barStackDisplayOverridesSeriesDisplays,
 };
