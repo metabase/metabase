@@ -459,8 +459,7 @@
 
 (def features
   "Set of all features a driver can support."
-  #{
-    ;; Does this database support foreign key relationships?
+  #{;; Does this database support foreign key relationships?
     :foreign-keys
 
     ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
@@ -582,9 +581,11 @@
     :index-info
 
     ;; Does the driver support a faster `sync-fks` step by fetching all FK metadata in a single collection?
+    ;; if so, `metabase.driver/describe-fks` must be implemented instead of `metabase.driver/describe-table-fks`
     :describe-fks
 
     ;; Does the driver support a faster `sync-fields` step by fetching all FK metadata in a single collection?
+    ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
     :describe-fields})
 
 (defmulti database-supports?
