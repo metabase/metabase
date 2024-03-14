@@ -1,14 +1,16 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 
+import { expressionClause } from "./expression";
 import type {
-  FilterDrillDetails,
-  ColumnMetadata,
   ClickObjectDataRow,
   ClickObjectDimension,
+  ColumnMetadata,
   DrillThru,
-  Query,
+  ExpressionClause,
+  FilterDrillDetails,
   PivotType,
+  Query,
 } from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!
@@ -54,4 +56,14 @@ export function pivotColumnsForType(
   pivotType: PivotType,
 ): ColumnMetadata[] {
   return ML.pivot_columns_for_type(drillThru, pivotType);
+}
+
+export function combineColumnsDrillExpression(
+  _query: Query,
+  _stageIndex: number,
+  _drillThru: DrillThru,
+  _columnsAndSeparators: { column: ColumnMetadata; separator: string }[],
+): ExpressionClause {
+  // TODO: remove this mock
+  return expressionClause("+", [1, 2]);
 }
