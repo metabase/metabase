@@ -147,15 +147,15 @@ export function IllustrationWidget({
             data={data}
             value={value}
             onChange={handleChange}
-            w={isCustomIllustration && fileName ? "8.25rem" : "100%"}
+            w={isCustomIllustration ? "8.25rem" : "100%"}
             style={{
-              flexShrink: isCustomIllustration && fileName ? 0 : undefined,
+              flexShrink: isCustomIllustration ? 0 : undefined,
             }}
             error={Boolean(errorMessage)}
           />
           {isCustomIllustration && (
             <Text truncate="end" ml="auto">
-              {fileName}
+              {fileName ? fileName : t`Remove uploaded image`}
             </Text>
           )}
           {/**
