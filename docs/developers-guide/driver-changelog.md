@@ -4,7 +4,7 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
-## Metabase 0.50.0
+## Metabase 0.49.0
 
 - The multimethod `metabase.driver/describe-fields` has been added. The method needs to be
   implemented if the database supports the `:fast-sync-fields` feature.
@@ -13,7 +13,7 @@ title: Driver interface changelog
   to be implemented if you want to use the default JDBC implementation of `metabase.driver/describe-fields`.
 
 - The multimethod `metabase.driver/describe-table-fks` has been deprecated in favor of `metabase.driver/describe-fks`.
-  `metabase.driver/describe-table-fks` will be removed in 0.53.0.
+  `metabase.driver/describe-table-fks` will be removed in 0.52.0.
 
 - The multimethod `metabase.driver/describe-fks` has been added. The method needs to be implemented if the database
   supports the `:foreign-keys` and `:describe-fks` features. It replaces the `metabase.driver/describe-table-fks`
@@ -21,8 +21,6 @@ title: Driver interface changelog
 
 - The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-fks-sql` has been added. The method needs
   to be implemented if you want to use the default JDBC implementation of `metabase.driver/describe-fks`.
-
-## Metabase 0.49.0
 
 - The multimethod `metabase.driver/alter-columns!` has been added. This method is used to alter a table's columns in the
   database. This is currently only required for drivers that support the `:uploads` feature, and has a default
