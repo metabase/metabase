@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema.binning :as binning]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
@@ -18,13 +19,15 @@
   [:merge
    ::common/options
    [:map
-    [:temporal-unit {:optional true} ::temporal-bucketing/unit]]])
+    [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]
+    [:binning                                    {:optional true} [:ref ::binning/binning]]
+    [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]]])
 
 (mr/def ::field.literal.options
   [:merge
    ::field.options
    [:map
-    [:base-type ::common/base-type]]])
+    [:base-type [:ref ::common/base-type]]]])
 
 ;;; `:field` clause
 (mr/def ::field.literal
@@ -42,8 +45,8 @@
 (mbql-clause/define-mbql-clause :field
   [:and
    [:tuple
-    [:= :field]
-    ::field.options
+    [:= {:decode/normalize common/normalize-keyword} :field]
+    [:ref ::field.options]
     [:or ::id/field ::common/non-blank-string]]
    [:multi {:dispatch      (fn [clause]
                              ;; apparently it still tries to dispatch when humanizing errors even if the `:tuple`
@@ -65,7 +68,7 @@
       ::expression/type.unknown))
 
 (mbql-clause/define-tuple-mbql-clause :expression
-  ::common/non-blank-string)
+  #_expression-name ::common/non-blank-string)
 
 (defmethod expression/type-of-method :expression
   [[_tag opts _expression-name]]
@@ -84,7 +87,7 @@
 
 (mbql-clause/define-mbql-clause :aggregation
   [:tuple
-   [:= :aggregation]
+   [:= {:decode/normalize common/normalize-keyword} :aggregation]
    ::aggregation-options
    :string])
 
@@ -105,7 +108,11 @@
   ;; (see metabase.lib.convert-test/round-trip-test for examples).
   ;; :string should be removed once the legacy questions don't have to be
   ;; supported.
-  #_metric-id [:schema [:ref ::id/metric]])
+  #_metric-id [:schema
+               [:or
+                [:ref ::id/metric]
+                ;; GA metric ref
+                ::common/non-blank-string]])
 
 (lib.hierarchy/derive :metric ::ref)
 

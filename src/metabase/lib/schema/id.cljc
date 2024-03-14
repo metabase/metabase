@@ -48,3 +48,15 @@
 
 (mr/def ::dimension
   pos-int?)
+
+(mr/def ::action
+  pos-int?)
+
+(mr/def ::dashboard
+  pos-int?)
+
+(mr/def ::user
+  pos-int?)
+
+(mr/def ::pulse
+  pos-int?)

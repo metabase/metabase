@@ -17,9 +17,11 @@
    [metabase.lib.schema.expression.temporal]
    [metabase.lib.schema.filter]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.info :as info]
    [metabase.lib.schema.join :as join]
    [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
+   [metabase.lib.schema.parameter :as parameter]
    [metabase.lib.schema.ref :as ref]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -36,7 +38,8 @@
 
 (mr/def ::stage.native
   [:map
-   [:lib/type [:= :mbql.stage/native]]
+   {:decode/normalize common/normalize-map}
+   [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
    ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
    ;; Only restriction is that it is non-nil.
    [:native some?]
@@ -49,7 +52,10 @@
    [:collection {:optional true} ::common/non-blank-string]
    ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
    ;; `:native` key), but their definition lives under this key.
-   [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]])
+   [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
+   ;;
+   ;; TODO -- parameters??
+   ])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -68,11 +74,19 @@
     {:error/message ":fields must be distinct"}
     #'lib.schema.util/distinct-refs?]])
 
-;; this is just for enabling round-tripping filters with named segment references
+;;; this is just for enabling round-tripping filters with named segment references, i.e. Google Analytics segments.
+;;;
+;;; TODO -- we should just add this to the schema `:mbql.clause/segment`
+(mr/def ::named-segment-reference
+  [:tuple
+   #_tag  [:= :segment]
+   #_opts :map
+   #_name :string])
+
 (mr/def ::filterable
   [:or
    [:ref ::expression/boolean]
-   [:tuple [:= :segment] :map :string]])
+   [:ref ::named-segment-reference]])
 
 (mr/def ::filters
   [:sequential {:min 1} ::filterable])
@@ -125,21 +139,34 @@
                      (ref-error-for-stage value))}
    (complement ref-error-for-stage)])
 
+;;; TODO -- should `::page` have a `:lib/type`, like all the other maps in pMBQL?
+(mr/def ::page
+  [:map
+   {:decode/normalize common/normalize-map}
+   [:page  pos-int?]
+   [:items pos-int?]])
+
+(mr/def ::source
+  [:map
+   [:lib/type [:enum :source/metric]]
+   [:id [:ref ::id/metric]]])
+
 (mr/def ::stage.mbql
   [:and
    [:map
-    [:lib/type     [:= :mbql.stage/mbql]]
+    {:decode/normalize common/normalize-map}
+    [:lib/type     [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
     [:joins        {:optional true} [:ref ::join/joins]]
     [:expressions  {:optional true} [:ref ::expression/expressions]]
-    [:breakout     {:optional true} ::breakouts]
+    [:breakout     {:optional true} [:ref ::breakouts]]
     [:aggregation  {:optional true} [:ref ::aggregation/aggregations]]
-    [:fields       {:optional true} ::fields]
-    [:filters      {:optional true} ::filters]
+    [:fields       {:optional true} [:ref ::fields]]
+    [:filters      {:optional true} [:ref ::filters]]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
     [:source-card  {:optional true} [:ref ::id/card]]
-    ;; TODO -- `:page` ???
-    ]
+    [:source       {:optional true} [:ref ::source]]
+    [:page         {:optional true} [:ref ::page]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
@@ -148,66 +175,44 @@
     (complement (comp #(= (count %) 1) #{:source-table :source-card :sources}))]
    [:ref ::stage.valid-refs]])
 
-;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
-(mr/def ::stage.mbql.with-source-table
-  [:merge
-   [:ref ::stage.mbql]
-   [:map
-    [:source-table [:ref ::id/table]]]])
-
-(mr/def ::stage.mbql.with-source-card
-  [:merge
-   [:ref ::stage.mbql]
-   [:map
-    [:source-card [:ref ::id/card]]]])
-
-(mr/def ::source
-  [:map
-   [:lib/type [:enum :source/metric]]
-   [:id [:ref ::id/metric]]])
-
-(mr/def ::stage.mbql.with-sources
-  [:merge
-   [:ref ::stage.mbql]
-   [:map
-     [:sources [:sequential {:min 1} [:ref ::source]]]]])
-
-(mr/def ::stage.mbql.with-source
-  [:or
-   [:ref ::stage.mbql.with-source-table]
-   [:ref ::stage.mbql.with-source-card]
-   [:ref ::stage.mbql.with-sources]])
-
-;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
-(mr/def ::stage.mbql.without-source
-  [:and
-   [:ref ::stage.mbql]
-   [:fn
-    {:error/message "Only the initial stage of a query can have a :source-table, :source-card, or :sources"}
-    (complement (some-fn :source-table :source-card :sources))]])
-
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
-  [:enum :mbql.stage/native :mbql.stage/mbql])
+  [:enum
+   {:decode/normalize common/normalize-keyword}
+   :mbql.stage/native
+   :mbql.stage/mbql])
+
+(defn- lib-type [x]
+  (when (map? x)
+    (keyword (some #(get x %) [:lib/type "lib/type"]))))
 
 (mr/def ::stage
   [:and
+   {:decode/normalize common/normalize-map}
    [:map
-    [:lib/type ::stage.type]]
-   [:multi {:dispatch :lib/type}
+    [:lib/type [:ref ::stage.type]]]
+   [:multi {:dispatch      lib-type
+            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
     [:mbql.stage/mbql   [:ref ::stage.mbql]]]])
 
 (mr/def ::stage.initial
-  [:and
-   [:map
-    [:lib/type ::stage.type]]
-   [:multi {:dispatch :lib/type}
-    [:mbql.stage/native [:ref ::stage.native]]
-    [:mbql.stage/mbql   [:ref ::stage.mbql.with-source]]]])
+  [:multi {:dispatch      lib-type
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
+   [:mbql.stage/native :map]
+   [:mbql.stage/mbql   [:fn
+                        {:error/message "An initial MBQL stage of a query must have either a :source-table or :source-card"}
+                        (some-fn :source-table :source-card)]]])
 
 (mr/def ::stage.additional
-  ::stage.mbql.without-source)
+  [:multi {:dispatch      lib-type
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
+   [:mbql.stage/native [:fn
+                        {:error/message "Native stages are only allowed as the first stage of a query or join."}
+                        (constantly false)]]
+   [:mbql.stage/mbql   [:fn
+                        {:error/message "Only the initial stage of a query can have a :source-table or :source-card."}
+                        (complement (some-fn :source-table :source-card))]]])
 
 (defn- visible-join-alias?-fn
   "Apparently you're allowed to use a join alias for a join that appeared in any previous stage or the current stage, or
@@ -258,24 +263,41 @@
 (mr/def ::stages.valid-refs
   [:fn
    {:error/message "Valid references for all query stages"
-    :error/fn      (fn [{:keys [value]} _]
-                     (ref-error-for-stages value))}
+    :error/fn      (fn [{stages :value} _]
+                     (ref-error-for-stages stages))}
    (complement ref-error-for-stages)])
 
 (mr/def ::stages
   [:and
+   [:sequential {:min 1} [:ref ::stage]]
    [:cat
     [:schema [:ref ::stage.initial]]
     [:* [:schema [:ref ::stage.additional]]]]
    [:ref ::stages.valid-refs]])
 
+;;; TODO -- move/copy this schema from the legacy schema to here
+(mr/def ::constraints
+  [:ref
+   ;; do not decode, since this should not get written to the app DB or come in from the REST API.
+   {:decode/normalize identity}
+   :metabase.mbql.schema/Constraints])
+
 (mr/def ::query
   [:and
    [:map
-    [:lib/type [:= :mbql/query]]
-    [:database [:or
-                ::id/database
-                ::id/saved-questions-virtual-database]]
-    ;;; TODO -- `:parameters`. Legacy MBQL schema has it
-    [:stages   [:ref ::stages]]]
+    {:decode/normalize common/normalize-map}
+    [:lib/type [:=
+                {:decode/normalize common/normalize-keyword}
+                :mbql/query]]
+    [:database [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
+                [true  ::id/saved-questions-virtual-database]
+                [false ::id/database]]]
+    [:stages   [:ref ::stages]]
+    [:constraints {:optional true} [:maybe [:ref ::constraints]]]
+    [:parameters  {:optional true} [:maybe [:ref ::parameter/parameters]]]
+    [:info        {:optional true} [:maybe [:ref ::info/info]]]
+    ;; TODO -- `:viz-settings` ?
+    ;;
+    ;; TODO -- `:middleware`?
+    ]
    lib.schema.util/UniqueUUIDs])
