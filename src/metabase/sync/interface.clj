@@ -82,7 +82,7 @@
     "Schema for the expected output of [[metabase.driver.sql-jdbc.sync/describe-nested-field-columns]]."
     [:maybe [:set TableMetadataField]]))
 
-(mr/def ::FKMetadataEntry
+(mr/def ::TableFKMetadataEntry
   [:map
    [:fk-column-name   ::lib.schema.common/non-blank-string]
    [:dest-table       [:map
@@ -90,16 +90,29 @@
                        [:schema [:maybe ::lib.schema.common/non-blank-string]]]]
    [:dest-column-name ::lib.schema.common/non-blank-string]])
 
-(def FKMetadataEntry
+(def TableFKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."
-  [:ref ::FKMetadataEntry])
+  [:ref ::TableFKMetadataEntry])
 
-(mr/def ::FKMetadata
-  [:maybe [:set FKMetadataEntry]])
+(mr/def ::TableFKMetadata
+  [:maybe [:set TableFKMetadataEntry]])
 
-(def FKMetadata
+(def TableFKMetadata
   "Schema for the expected output of `describe-table-fks`."
-  [:ref ::FKMetadata])
+  [:ref ::TableFKMetadata])
+
+(mr/def ::FKMetadataEntry
+  [:map
+   [:fk-table-name    ::lib.schema.common/non-blank-string]
+   [:fk-table-schema  [:maybe ::lib.schema.common/non-blank-string]]
+   [:fk-column-name   ::lib.schema.common/non-blank-string]
+   [:pk-table-name    ::lib.schema.common/non-blank-string]
+   [:pk-table-schema  [:maybe ::lib.schema.common/non-blank-string]]
+   [:pk-column-name   ::lib.schema.common/non-blank-string]])
+
+(def FKMetadataEntry
+  "Schema for an entry in the expected output of [[metabase.driver/describe-fks]]."
+  [:ref ::FKMetadataEntry])
 
 ;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
 ;; classes from the model namespaces also requires a `:require`, which `clj-refactor` seems more than happy to strip

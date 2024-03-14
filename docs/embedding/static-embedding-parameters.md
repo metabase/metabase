@@ -165,6 +165,17 @@ You can preview appearance settings from your question or dashboard's [embedded 
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
+### Allow people to download the results of an embedded question
+
+{% include plans-blockquote.html feature="Downloading results" %}
+
+By default, Metabase will include a **Download** button on embedded questions. You can remove the download button by setting `hide_download_button=true` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+
+If the download button is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `hide_download_button=false`.
+
+> Downloading results is available only for questions, not dashboards.
+
+
 ## Maximum request size
 
 The maximum length of a static embedding URL (including all parameters) is the value of your [`MB_JETTY_REQUEST_HEADER_SIZE`](../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. The default is 8192 bytes.

@@ -78,6 +78,7 @@
   [_ _ table]
   (get sync-test-tables (:name table)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks ::sync-test
   [_ _ table]
   (set (when (= "movie" (:name table))
