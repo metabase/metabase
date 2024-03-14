@@ -125,7 +125,7 @@
 (def ^:private database-type->base-type
   (some-fn (sql-jdbc.sync/pattern-based-database-type->base-type
             [[#"(?i)CHARACTER VARYING" :type/Text]       ; Redshift uses CHARACTER VARYING (N) as a synonym for VARCHAR(N)
-             [#"(?i)NUMERIC"           :type/Decimal]])
+             [#"(?i)NUMERIC"           :type/Decimal]])  ; and also has a NUMERIC(P,S) type, which is the same as DECIMAL(P,S)
            {:super       :type/*    ; (requested support in metabase#36642)
             :varbyte     :type/*    ; represents variable-length binary strings
             :geometry    :type/*    ; spatial data
