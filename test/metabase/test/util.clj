@@ -690,7 +690,8 @@
     [model (first (t2/primary-keys model))]))
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? #(isa? % :metabase/model) models)]}
+  {:pre [(sequential? models) (every? #(or (isa? % :metabase/model)
+                                           (isa? (first %) :metabase/model)) models)]}
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [models (map model->model&pk models)
