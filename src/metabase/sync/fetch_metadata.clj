@@ -3,7 +3,6 @@
   tables, schemas, and fields, and their types. For example, with SQL databases, these functions use the JDBC
   DatabaseMetaData to get this information."
   (:require
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
@@ -16,19 +15,28 @@
   [database :- i/DatabaseInstance]
   (driver/describe-database (driver.u/database->driver database) database))
 
-(mu/defn table-metadata :- i/TableMetadata
+(mu/defn fields-metadata
+  "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema."
+  [database :- i/DatabaseInstance & {:as args}]
+  (cond->> (driver/describe-fields (driver.u/database->driver database) database args)
+    ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
+    (mu.fn/instrument-ns? *ns*)
+    (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))
+
+(mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Get more detailed information about a `table` belonging to `database`. Includes information about the Fields."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
-  (driver/describe-table (driver.u/database->driver database) database table))
+  (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
+    (set (fields-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
+    (:fields (driver/describe-table (driver.u/database->driver database) database table))))
 
 (mu/defn fk-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema."
   [database :- i/DatabaseInstance & {:as args}]
   (cond->> (driver/describe-fks (driver.u/database->driver database) database args)
-    ;; Validate the output against the schema, except in prod.
     ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-    (not config/is-prod?)
+    (mu.fn/instrument-ns? *ns*)
     (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))
 
 (mu/defn table-fk-metadata :- [:maybe [:sequential i/FKMetadataEntry]]

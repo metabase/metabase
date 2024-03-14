@@ -31,6 +31,7 @@
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
+   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features
@@ -500,7 +501,8 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
+    (query-analyzer/update-query-fields-for-card! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -509,6 +511,7 @@
   ;;
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
+  ;; TODO: ^ that's been fixed, this could be refactored
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
@@ -521,6 +524,10 @@
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at
+      ;; TODO: this should go in after-update once camsaul/toucan2#129 is fixed
+      ;; It's at the end for now so that all the before-update validations have a chance to run
+      ;; TODO the Second: No reason this couldn't be async, especially once it's in the after-update
+      (u/prog1 (query-analyzer/update-query-fields-for-card! <>))
       (dissoc :id)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests

@@ -207,7 +207,7 @@ jobs:
         if: matrix.java-version != 21
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
-      - name: Run tests using Java 21 on `master` only
+      - name: If using Java 21, only run tests on `master`
         id: run-java-tests-21
         if: matrix.java-version == 21 && github.ref_name == 'master'
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
