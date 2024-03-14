@@ -2,6 +2,7 @@ import { Select, Loader } from "metabase/ui";
 
 import { PickerIcon } from "./ParameterValuePicker.styled";
 import { handleInputKeyup } from "./handleInputKeyup";
+import S from "./style.css";
 
 interface ListPickerProps {
   value: string;
@@ -44,6 +45,7 @@ export function ListPicker(props: ListPickerProps) {
 
   return (
     <Select
+      classNames={{ dropdown: S.dropdown }}
       error={errorMessage}
       value={value}
       data={values}
