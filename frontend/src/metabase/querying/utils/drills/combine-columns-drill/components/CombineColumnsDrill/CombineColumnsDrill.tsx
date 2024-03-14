@@ -71,25 +71,27 @@ export const CombineColumnsDrill = ({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className={styles.card} p="lg">
+      <Card className={styles.card} miw={340} p="lg">
+        <Title mb="md" order={4}>{t`Combine with`}</Title>
+
         <Stack spacing="lg">
           <Stack spacing="sm">
-            <Title mb="sm" order={4}>{t`Combine with`}</Title>
-
-            {columnsAndSeparators.map(({ column, separator }, index) => (
-              <ColumnAndSeparatorRow
-                column={column}
-                index={index}
-                key={index}
-                options={options}
-                separator={separator}
-                showLabels={index === 0 && !isUsingDefaultSeparator}
-                showRemove={columnsAndSeparators.length > 1}
-                showSeparator={!isUsingDefaultSeparator}
-                onChange={handleChange}
-                onRemove={handleRemove}
-              />
-            ))}
+            <Stack className={styles.inputs} mah="25vh" spacing="sm">
+              {columnsAndSeparators.map(({ column, separator }, index) => (
+                <ColumnAndSeparatorRow
+                  column={column}
+                  index={index}
+                  key={index}
+                  options={options}
+                  separator={separator}
+                  showLabels={index === 0 && !isUsingDefaultSeparator}
+                  showRemove={columnsAndSeparators.length > 1}
+                  showSeparator={!isUsingDefaultSeparator}
+                  onChange={handleChange}
+                  onRemove={handleRemove}
+                />
+              ))}
+            </Stack>
 
             {isUsingDefaultSeparator && (
               <Box>

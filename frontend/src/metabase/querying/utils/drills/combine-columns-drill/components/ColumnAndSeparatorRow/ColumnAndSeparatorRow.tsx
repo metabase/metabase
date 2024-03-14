@@ -38,6 +38,7 @@ export const ColumnAndSeparatorRow = ({
           className={styles.separator}
           label={showLabels ? t`Separator` : undefined}
           value={separator}
+          w={110}
           onChange={event => {
             const separator = event.target.value;
             onChange(index, { separator });
