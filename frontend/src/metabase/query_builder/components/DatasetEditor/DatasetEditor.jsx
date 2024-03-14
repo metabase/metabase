@@ -11,6 +11,7 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { modelIndexes } from "metabase/entities";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
@@ -32,8 +33,8 @@ import * as Lib from "metabase-lib";
 import {
   checkCanBeModel,
   getSortedModelFields,
-} from "metabase-lib/metadata/utils/models";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+} from "metabase-lib/v1/metadata/utils/models";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
   Root,
@@ -496,7 +497,7 @@ function DatasetEditor(props) {
             <DebouncedFrame className="flex-full" enabled>
               <QueryVisualization
                 {...props}
-                className="spread"
+                className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"
                 isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}

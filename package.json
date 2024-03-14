@@ -121,8 +121,7 @@
     "tippy.js": "^6.3.5",
     "ttag": "1.7.21",
     "underscore": "~1.13.3",
-    "yup": "^0.32.11",
-    "z-index": "0.0.1"
+    "yup": "^0.32.11"
   },
   "devDependencies": {
     "@babel/cli": "^7.23.0",
@@ -132,7 +131,7 @@
     "@babel/preset-react": "^7.23.3",
     "@babel/preset-typescript": "^7.23.3",
     "@bahmutov/cypress-esbuild-preprocessor": "^2.2.0",
-    "@cypress/grep": "^3.1.0",
+    "@cypress/grep": "^4.0.1",
     "@cypress/skip-test": "^2.6.1",
     "@emotion/babel-plugin": "^11.11.0",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",

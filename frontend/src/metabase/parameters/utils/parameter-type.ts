@@ -1,9 +1,9 @@
-import { SINGLE_OR_MULTI_SELECTABLE_TYPES } from "metabase-lib/parameters/constants";
-import type { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
+import { SINGLE_OR_MULTI_SELECTABLE_TYPES } from "metabase-lib/v1/parameters/constants";
+import type { ParameterWithTemplateTagTarget } from "metabase-lib/v1/parameters/types";
 import {
   getParameterSubType,
   getParameterType,
-} from "metabase-lib/parameters/utils/parameter-type";
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 
 export function isSingleOrMultiSelectable(
   parameter: ParameterWithTemplateTagTarget,

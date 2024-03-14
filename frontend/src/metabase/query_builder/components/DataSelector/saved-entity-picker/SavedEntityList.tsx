@@ -5,7 +5,7 @@ import EmptyState from "metabase/components/EmptyState";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import {

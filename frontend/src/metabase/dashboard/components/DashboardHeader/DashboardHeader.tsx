@@ -16,6 +16,7 @@ import Modal from "metabase/components/Modal";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link/Link";
+import CS from "metabase/css/core/index.css";
 import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
@@ -46,7 +47,7 @@ import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Bookmark as IBookmark,
   DashboardId,
@@ -630,7 +631,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   return (
     <>
       <DashboardHeaderComponent
-        headerClassName="wrapper"
+        headerClassName={CS.wrapper}
         location={location}
         dashboard={dashboard}
         collection={collection}

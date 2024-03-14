@@ -6,7 +6,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import { createMockColumn } from "metabase-types/api/mocks";
 import {
   ORDERS,

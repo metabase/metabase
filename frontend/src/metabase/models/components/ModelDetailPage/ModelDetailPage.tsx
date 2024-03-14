@@ -3,8 +3,8 @@ import { t } from "ttag";
 import TabContent from "metabase/core/components/TabContent";
 import TabLink from "metabase/core/components/TabLink";
 import * as Urls from "metabase/lib/urls";
-import type Question from "metabase-lib/Question";
-import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { Collection } from "metabase-types/api";
 
 import ModelActionDetails from "./ModelActionDetails";

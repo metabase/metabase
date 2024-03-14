@@ -12,18 +12,18 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import { isExpression } from "metabase-lib/expressions";
-import { diagnose } from "metabase-lib/expressions/diagnostics";
-import { format } from "metabase-lib/expressions/format";
-import { processSource } from "metabase-lib/expressions/process";
-import type { Suggestion } from "metabase-lib/expressions/suggest";
-import { suggest } from "metabase-lib/expressions/suggest";
-import { tokenize } from "metabase-lib/expressions/tokenizer";
+import { isExpression } from "metabase-lib/v1/expressions";
+import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
+import { format } from "metabase-lib/v1/expressions/format";
+import { processSource } from "metabase-lib/v1/expressions/process";
+import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
+import { suggest } from "metabase-lib/v1/expressions/suggest";
+import { tokenize } from "metabase-lib/v1/expressions/tokenizer";
 import type {
   ErrorWithMessage,
   HelpText,
-} from "metabase-lib/expressions/types";
-import type Metadata from "metabase-lib/metadata/Metadata";
+} from "metabase-lib/v1/expressions/types";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -406,6 +406,7 @@ class ExpressionEditorTextfield extends React.Component<
       query,
       stageIndex,
       expressionPosition,
+      metadata,
     } = this.props;
 
     if (!source || source.length === 0) {
@@ -419,6 +420,7 @@ class ExpressionEditorTextfield extends React.Component<
       query,
       stageIndex,
       expressionPosition,
+      metadata,
     });
   }
 

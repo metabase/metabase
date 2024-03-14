@@ -146,6 +146,11 @@
    [:page  pos-int?]
    [:items pos-int?]])
 
+(mr/def ::source
+  [:map
+   [:lib/type [:enum :source/metric]]
+   [:id [:ref ::id/metric]]])
+
 (mr/def ::stage.mbql
   [:and
    [:map
@@ -160,13 +165,14 @@
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
     [:source-card  {:optional true} [:ref ::id/card]]
+    [:source       {:optional true} [:ref ::source]]
     [:page         {:optional true} [:ref ::page]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
    [:fn
-    {:error/message "A query cannot have both a :source-table and a :source-card."}
-    (complement (every-pred :source-table :source-card))]
+    {:error/message "A query must have exactly one of :source-table, :source-card, or :sources"}
+    (complement (comp #(= (count %) 1) #{:source-table :source-card :sources}))]
    [:ref ::stage.valid-refs]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages

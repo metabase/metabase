@@ -7,14 +7,14 @@ import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
-import { TYPE } from "metabase-lib/types/constants";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isa,
   isID,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {

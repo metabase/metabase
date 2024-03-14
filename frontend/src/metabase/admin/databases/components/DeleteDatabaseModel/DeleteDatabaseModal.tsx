@@ -9,7 +9,7 @@ import Alert from "metabase/core/components/Alert";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input";
 import { MetabaseApi } from "metabase/services";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseUsageInfo } from "metabase-types/api";
 
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";

@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import { deleteAlert, unsubscribeFromAlert } from "metabase/alert/alert";
 import Modal from "metabase/components/Modal";
+import CS from "metabase/css/core/index.css";
 import {
   AM_PM_OPTIONS,
   getDayOfWeekOptions,
@@ -83,7 +84,7 @@ class AlertListPopoverContent extends Component {
           ))}
         </ul>
         {(!hasOwnAlerts || hasJustUnsubscribedFromOwnAlert) && (
-          <div className="border-top p2 bg-light-blue">
+          <div className={cx(CS.borderTop, CS.p2, "bg-light-blue")}>
             <a
               className="link flex align-center text-bold text-small"
               onClick={this.onAdd}

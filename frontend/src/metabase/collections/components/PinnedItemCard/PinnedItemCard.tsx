@@ -6,7 +6,7 @@ import ActionMenu from "metabase/collections/components/ActionMenu";
 import Tooltip from "metabase/core/components/Tooltip";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { IconName } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {

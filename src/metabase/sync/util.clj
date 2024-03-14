@@ -303,6 +303,17 @@
   (when (not= (:initial_sync_status table) "complete")
     (t2/update! :model/Table (u/the-id table) {:initial_sync_status "complete"})))
 
+(def ^:private sync-tables-kv-args
+  {:active          true
+   :visibility_type nil})
+
+(defn set-initial-table-sync-complete-for-db!
+  "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
+  set."
+  [database-or-id]
+  (t2/update! :model/Table (merge sync-tables-kv-args {:db_id (u/the-id database-or-id)})
+              {:initial_sync_status "complete"}))
+
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
@@ -319,12 +330,13 @@
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private sync-tables-clause
-  [:and [:= :active true]
-        [:= :visibility_type nil]])
+(def sync-tables-clause
+  "Returns a clause that can be used inside a HoneySQL :where clause to select all the Tables that should be synced"
+  (into [:and] (for [[k v] sync-tables-kv-args]
+                 [:= k v])))
 
 (defn db->sync-tables
-  "Return all the Tables that should go through the sync processes for `database-or-id`."
+  "Returns all the Tables that have their metadata sync'd for `database-or-id`."
   [database-or-id]
   (t2/select :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}))
 
@@ -332,6 +344,13 @@
   "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
   [database-or-id]
   (t2/reducible-select :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}))
+
+(defn db->sync-schemas
+  "Returns all the Schemas that have their metadata sync'd for `database-or-id`."
+  [database-or-id]
+  (vec (map :schema (t2/query {:select-distinct [:schema]
+                               :from            [:metabase_table]
+                               :where           [:and sync-tables-clause [:= :db_id (u/the-id database-or-id)]]}))))
 
 (defmulti name-for-logging
   "Return an appropriate string for logging an object in sync logging messages. Should be something like

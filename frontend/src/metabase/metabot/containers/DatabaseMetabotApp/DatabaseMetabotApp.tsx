@@ -7,7 +7,7 @@ import Databases from "metabase/entities/databases";
 import { checkNotNull } from "metabase/lib/types";
 import { extractEntityId } from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId } from "metabase-types/api";
 import type { MetabotEntityType, State } from "metabase-types/store";
 

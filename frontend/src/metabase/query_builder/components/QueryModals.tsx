@@ -26,7 +26,7 @@ import EditEventModal from "metabase/timelines/questions/containers/EditEventMod
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Alert, Card, Collection, User } from "metabase-types/api";
 import type {
   QueryBuilderMode,

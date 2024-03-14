@@ -17,7 +17,7 @@ import {
   getTable,
   leftSidebar,
   sidebar,
-  moveDnDKitColumnVertical,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -326,6 +326,25 @@ describe("scenarios > visualizations > table", () => {
       expect(isScrollableHorizontally($popover[0])).to.be.false;
     });
   });
+
+  it("should show the slow loading text when the query is taking too long", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    cy.intercept("POST", "/api/dataset", req => {
+      req.on("response", res => {
+        res.setDelay(10000);
+      });
+    });
+
+    cy.button("Visualize").click();
+
+    cy.clock();
+    cy.tick(1000);
+    cy.findByTestId("query-builder-main").findByText("Doing science...");
+
+    cy.tick(5000);
+    cy.findByTestId("query-builder-main").findByText("Waiting for results...");
+  });
 });
 
 describe("scenarios > visualizations > table > conditional formatting", () => {
@@ -412,10 +431,9 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         .first()
         .should("contain.text", "is less than 20");
 
-      moveDnDKitColumnVertical(
-        cy.findAllByTestId("formatting-rule-preview").eq(2),
-        -300,
-      );
+      moveDnDKitElement(cy.findAllByTestId("formatting-rule-preview").eq(2), {
+        vertical: -300,
+      });
 
       cy.findAllByTestId("formatting-rule-preview")
         .first()
