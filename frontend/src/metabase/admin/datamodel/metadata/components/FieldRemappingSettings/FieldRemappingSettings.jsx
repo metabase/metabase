@@ -13,8 +13,8 @@ import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import {
   hasSourceField,
   getFieldTargetId,
-} from "metabase-lib/queries/utils/field-ref";
-import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/queries/utils/field-ref";
+import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 
 import FieldSeparator from "../FieldSeparator";
 

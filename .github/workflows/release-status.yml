@@ -3,7 +3,7 @@ name: Release Status Check
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 13 * * *' # every day at 8am US eastern time
+    - cron: '0 11 * * 1-5' # every weekday at 6am US eastern time
 
 jobs:
   check-release-status:

@@ -31,9 +31,9 @@ import SnippetFormModal from "metabase/query_builder/components/template_tags/Sn
 import { getSetting } from "metabase/selectors/settings";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   CardId,
@@ -137,6 +137,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   toggleSnippetSidebar: () => void;
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
+  onSetDatabaseId?: (id: DatabaseId) => void;
 };
 
 interface StateProps {
@@ -682,11 +683,14 @@ export class NativeQueryEditor extends Component<
     this.props.setIsNativeEditorOpen?.(!this.props.isNativeEditorOpen);
   };
 
-  /// Change the Database we're currently editing a query for.
+  // Change the Database we're currently editing a query for.
   setDatabaseId = (databaseId: DatabaseId) => {
-    const { query, setDatasetQuery, question } = this.props;
+    const { query, setDatasetQuery, question, onSetDatabaseId } = this.props;
+
     if (question.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
+
+      onSetDatabaseId?.(databaseId);
       if (!this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor?.focus(), 50);

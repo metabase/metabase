@@ -1,6 +1,6 @@
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import * as Lib from "metabase-lib";
-import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
+import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
 import type { NotebookStepUiComponentProps } from "../types";
 
@@ -26,7 +26,7 @@ export const ExpressionStep = ({
       items={expressions}
       renderName={renderExpressionName}
       readOnly={readOnly}
-      renderPopover={({ item, index: expressionPosition }) => (
+      renderPopover={({ item, index: expressionPosition, onClose }) => (
         <ExpressionWidget
           query={query}
           stageIndex={stageIndex}
@@ -67,6 +67,7 @@ export const ExpressionStep = ({
             }
           }}
           reportTimezone={reportTimezone}
+          onClose={onClose}
         />
       )}
       isLastOpened={isLastOpened}
@@ -74,7 +75,6 @@ export const ExpressionStep = ({
         const nextQuery = Lib.removeClause(query, stageIndex, clause);
         updateQuery(nextQuery);
       }}
-      withLegacyPopover
     />
   );
 };

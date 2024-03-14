@@ -9,9 +9,9 @@ import {
 } from "metabase/lib/constants";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { parseTimestamp } from "metabase/lib/time";
-import { isNative } from "metabase-lib/queries/utils/card";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
-import { isNumeric } from "metabase-lib/types/utils/isa";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { computeNumericDataInverval, dimensionIsNumeric } from "./numeric";
 import { getLineAreaBarComparisonSettings } from "./settings";

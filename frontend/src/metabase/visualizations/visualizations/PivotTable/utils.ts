@@ -5,7 +5,7 @@ import _ from "underscore";
 import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   DatasetColumn,

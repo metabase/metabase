@@ -13,9 +13,9 @@ import {
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockDataset,

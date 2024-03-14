@@ -7,7 +7,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { isPositiveInteger } from "metabase/lib/number";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 import type { ClickObject } from "metabase-lib";
-import { isID } from "metabase-lib/types/utils/isa";
+import { isID } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,

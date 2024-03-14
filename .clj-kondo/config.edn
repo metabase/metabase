@@ -153,6 +153,7 @@
     honeysql.helpers                                                hh
     honeysql.types                                                  htypes
     java-time                                                       t
+    macaw.core                                                      mac
     malli.core                                                      mc
     malli.error                                                     me
     malli.experimental                                              mx
@@ -291,6 +292,7 @@
     metabase.models.setting.cache                                   setting.cache
     metabase.models.timeline                                        timeline
     metabase.models.timeline-event                                  timeline-event
+    metabase.native-query-analyzer                                  query-analyzer
     metabase.plugins.initialize                                     plugins.init
     metabase.public-settings                                        public-settings
     metabase.public-settings.premium-features                       premium-features
@@ -340,7 +342,7 @@
     metabase.server.middleware.security                             mw.security
     metabase.server.middleware.session                              mw.session
     metabase.server.middleware.ssl                                  mw.ssl
-    metabase.server.middleware.util                                 mw.util
+    metabase.server.request.util                                    req.util
     metabase.server.protocols                                       server.protocols
     metabase.shared.util                                            shared.u
     metabase.shared.util.currency                                   currency
@@ -355,7 +357,7 @@
     metabase.sync.field-values                                      field-values
     metabase.sync.interface                                         i
     metabase.sync.schedules                                         sync.schedules
-    metabase.sync.sync-metadata.fields.fetch-metadata               fetch-metadata
+    metabase.sync.sync-metadata.fields.our-metadata                 fields.our-metadata
     metabase.sync.util                                              sync-util
     metabase.sync.util-test                                         sync.util-test
     metabase.task.sync-databases                                    task.sync-databases
@@ -579,9 +581,9 @@
    clojurewerkz.quartzite.schedule.cron/schedule                                macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                              macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                        macros.quartz/build-trigger
-   metabase-enterprise.sandbox.test-util/with-gtaps                             macros.metabase-enterprise.sandbox.test-util/with-gtaps
+   metabase-enterprise.sandbox.test-util/with-gtaps!                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
-   metabase-enterprise.test/with-gtaps                                          macros.metabase-enterprise.sandbox.test-util/with-gtaps
+   metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
@@ -595,6 +597,7 @@
    metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
+   metabase.models.query-field-test/with-test-setup                             macros.metabase.models.query-field-test/with-test-setup
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
    metabase.query-processor.streaming/streaming-response                        macros.metabase.query-processor.streaming/streaming-response
    metabase.related-test/with-world                                             macros.metabase.related-test/with-world

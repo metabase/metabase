@@ -13,7 +13,7 @@
    [clojure.set :as set]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -147,7 +147,7 @@
   (when-let [table-ids (seq (map :table_id fields))]
     (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                 :table_id      [:in table-ids]
-                                :semantic_type (mdb.u/isa :type/Name))
+                                :semantic_type (mdb.query/isa :type/Name))
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)

@@ -530,16 +530,15 @@
 (defn- describe-table-fks
   "Stolen from [[sql-jdbc.describe-table]].
   The only change is that it calls the stolen function [[describe-table-fks*]]."
-  [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
-  (if (instance? Connection db-or-id-or-spec-or-conn)
-    (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db-or-id-or-spec-or-conn
-     nil
-     (fn [conn]
-       (describe-table-fks* driver conn table db-name-or-nil)))))
+  [driver db-or-id-or-spec table & [db-name-or-nil]]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db-or-id-or-spec
+   nil
+   (fn [conn]
+     (describe-table-fks* driver conn table db-name-or-nil))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]
   (describe-table-fks driver database table (db-name database)))
@@ -668,3 +667,10 @@
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
   (-> database :details :role))
+
+(defmethod driver/incorporate-ssh-tunnel-details :snowflake
+  [_driver {:keys [account host port] :as db-details}]
+  (let [details (cond-> db-details
+                  (not host) (assoc :host (str account ".snowflakecomputing.com"))
+                  (not port) (assoc :port 443))]
+    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))

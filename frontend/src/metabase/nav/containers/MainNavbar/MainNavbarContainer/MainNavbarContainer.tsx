@@ -21,7 +21,7 @@ import Databases from "metabase/entities/databases";
 import * as Urls from "metabase/lib/urls";
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

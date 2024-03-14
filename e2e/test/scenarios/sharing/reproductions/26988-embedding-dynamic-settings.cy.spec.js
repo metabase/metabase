@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
   getIframeBody,
@@ -7,7 +8,8 @@ import {
   setTokenFeatures,
   visitDashboard,
 } from "e2e/support/helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describeEE("issue 26988", () => {
   beforeEach(() => {

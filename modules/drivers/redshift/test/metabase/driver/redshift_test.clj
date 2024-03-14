@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -225,32 +226,26 @@
             qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
             view-nm      "late_binding_view"
             qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
-        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
-          (try
-            ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
-            (execute!
-             (str "DROP TABLE IF EXISTS %1$s;%n"
-                  "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
-                  "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;")
-             qual-tbl-nm
-             qual-view-nm)
+        (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
+          ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
+          (execute!
+           (str "DROP TABLE IF EXISTS %1$s;%n"
+                "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
+                "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;")
+           qual-tbl-nm
+           qual-view-nm)
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
-            (sync/sync-database! database)
-            (is (contains?
-                 (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
-                 view-nm))
-            (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
+          (sync/sync-database! database {:scan :schema})
+          (is (contains?
+               (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
+               view-nm))
+          (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
               ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
-                      {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
-                     (map
-                      mt/derecordize
-                      (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
-            (finally
-              (execute! (str "DROP TABLE IF EXISTS %s;%n"
-                             "DROP VIEW IF EXISTS %s;")
-                        qual-tbl-nm
-                        qual-view-nm))))))))
+            (is (= [{:name "numeric_col",   :database_type "numeric",           :base_type :type/Decimal}
+                    {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
+                   (map
+                    mt/derecordize
+                    (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
 
 (deftest redshift-lbv-sync-error-test
   (mt/test-driver
@@ -269,15 +264,15 @@
                   "CASE WHEN shop_status = 'open' THEN 11387.133 END AS case_when_numeric_inc_nulls "
                   "FROM test_data) WITH NO SCHEMA BINDING;")
              qual-view-nm)
-            (sync/sync-database! database)
+            (sync/sync-database! database {:scan :schema})
             (is (contains?
                  (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
                  view-nm))
             (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
               ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",              :base_type :type/Decimal}
-                      {:name "raw_null",                    :database_type "varchar",              :base_type :type/Text}
-                      {:name "raw_var",                     :database_type "character varying(5)", :base_type :type/Text}]
+              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
+                      {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
+                      {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
                      (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
             (finally
               (execute! (str "DROP VIEW IF EXISTS %s;")
@@ -409,7 +404,7 @@
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-temp [Database _database {:engine :redshift, :details (tx/dbdef->connection-details :redshift nil nil)}]
         (let [schema-name     (redshift.test/unique-session-schema)
-              username        "privilege_rows_test_example_role"
+              username        (str (sql.tu.unique-prefix/unique-prefix) "privilege_rows_test_role")
               table-name      "test_tp_table"
               qual-tbl-name   (format "\"%s\".\"%s\"" schema-name table-name)
               view-nm         "test_tp_view"
@@ -428,11 +423,11 @@
                        "CREATE TABLE %1$s (id INTEGER);\n"
                        "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
                        "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
-                       "CREATE USER %4$s WITH PASSWORD '%5$s';\n"
-                       "GRANT SELECT ON %1$s TO %4$s;\n"
-                       "GRANT UPDATE ON %1$s TO %4$s;\n"
-                       "GRANT SELECT ON %2$s TO %4$s;\n"
-                       "GRANT SELECT ON %3$s TO %4$s;")
+                       "CREATE USER \"%4$s\" WITH PASSWORD '%5$s';\n"
+                       "GRANT SELECT ON %1$s TO \"%4$s\";\n"
+                       "GRANT UPDATE ON %1$s TO \"%4$s\";\n"
+                       "GRANT SELECT ON %2$s TO \"%4$s\";\n"
+                       "GRANT SELECT ON %3$s TO \"%4$s\";")
                       qual-tbl-name
                       qual-view-name
                       qual-mview-name
@@ -442,7 +437,7 @@
              (is (= #{}
                     (get-privileges))))
            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
-             (jdbc/execute! conn-spec (format "GRANT USAGE ON SCHEMA \"%s\" TO %s;" schema-name username))
+             (jdbc/execute! conn-spec (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";" schema-name username))
              (is (= #{{:role   nil
                        :schema schema-name
                        :table  table-name
@@ -466,17 +461,19 @@
                        :delete false}}
                     (get-privileges))))
            (finally
-            (execute! (format
-                       (str
-                        "DROP TABLE IF EXISTS %2$s CASCADE;\n"
-                        "DROP VIEW IF EXISTS %3$s CASCADE;\n"
-                        "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
-                        "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM %5$s;\n"
-                        "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM %5$s;\n"
-                        "REVOKE USAGE ON SCHEMA \"%1$s\" FROM %5$s;\n"
-                        "DROP USER IF EXISTS %5$s;")
-                       schema-name
-                       qual-tbl-name
-                       qual-view-name
-                       qual-mview-name
-                       username)))))))))
+            ;; comment out since it's causing flake
+            ;; can uncomment after we tackle #40058
+            #_(execute! (format
+                         (str
+                          "DROP TABLE IF EXISTS %2$s CASCADE;\n"
+                          "DROP VIEW IF EXISTS %3$s CASCADE;\n"
+                          "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
+                          "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%5$s\";\n"
+                          "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%5$s\";\n"
+                          "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%5$s\";\n"
+                          "DROP USER IF EXISTS \"%5$s\";")
+                         schema-name
+                         qual-tbl-name
+                         qual-view-name
+                         qual-mview-name
+                         username)))))))))

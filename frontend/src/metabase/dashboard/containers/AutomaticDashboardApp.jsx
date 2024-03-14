@@ -24,7 +24,7 @@ import * as Urls from "metabase/lib/urls";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
 import { DashboardTabs } from "../components/DashboardTabs";
@@ -36,6 +36,7 @@ import {
   ListRoot,
   SidebarHeader,
   SidebarRoot,
+  SuggestionsSidebarWrapper,
   XrayIcon,
 } from "./AutomaticDashboardApp.styled";
 
@@ -195,9 +196,9 @@ class AutomaticDashboardAppInner extends Component {
           )}
         </div>
         {hasSidebar && (
-          <div className="Layout-sidebar absolute top right bottom">
+          <SuggestionsSidebarWrapper className="absolute top right bottom">
             <SuggestionsSidebar related={related} />
-          </div>
+          </SuggestionsSidebarWrapper>
         )}
       </div>
     );
@@ -285,6 +286,7 @@ const SuggestionSectionHeading = ({ children }) => (
     {children}
   </h5>
 );
+
 const SuggestionsSidebar = ({ related }) => (
   <SidebarRoot>
     <SidebarHeader>{t`More X-rays`}</SidebarHeader>

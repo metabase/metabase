@@ -199,7 +199,7 @@ Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#m
 Type: integer<br>
 Default: `20`<br>
 
-Limits the number of rows Metabase will include in tables sent as attachments with dashboard subscriptions and alerts. Range: 1-100.
+Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_UNAGGREGATED_QUERY_ROW_LIMIT](#mb_unaggregated_query_row_limit).
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
@@ -897,6 +897,13 @@ Type: string<br>
 Default: `"(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"`
 
 User lookup filter. The placeholder `{login}` will be replaced by the user supplied login.
+
+### `MB_LOAD_ANALYTICS_CONTENT`
+
+Type: Boolean<br>
+Default: True
+
+If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
 
 ### `MB_LOADING_MESSAGE`
 

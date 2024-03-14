@@ -43,6 +43,7 @@
     :model/CardBookmark
     :model/CollectionBookmark
     :model/DashboardBookmark
+    :model/DataPermissions
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
@@ -63,6 +64,7 @@
     :model/Query
     :model/QueryCache
     :model/QueryExecution
+    :model/QueryField
     :model/RecentViews
     :model/Revision
     :model/Secret

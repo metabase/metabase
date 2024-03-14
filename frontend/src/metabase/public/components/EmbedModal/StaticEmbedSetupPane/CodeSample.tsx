@@ -41,7 +41,7 @@ export const CodeSample = ({
           {title && <h4>{title}</h4>}
           {languageOptions.length > 1 ? (
             <Select
-              className="AdminSelect--borderless ml-auto"
+              className="ml-auto"
               value={selectedOptionId}
               onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                 onChangeOption(e.target.value)

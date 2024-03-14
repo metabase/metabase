@@ -3,9 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Icon, Text } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
-import type Field from "metabase-lib/metadata/Field";
-import type Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
 
 import {
   TextSchema,
@@ -80,7 +80,12 @@ export function FieldTrigger({
 
 export function DatabaseTrigger({ database }: { database: Database }) {
   return database ? (
-    <span className="text-wrap text-grey no-decoration">{database.name}</span>
+    <span
+      className="text-wrap text-grey no-decoration"
+      data-testid="selected-database"
+    >
+      {database.name}
+    </span>
   ) : (
     <span className="text-medium no-decoration">{t`Select a database`}</span>
   );

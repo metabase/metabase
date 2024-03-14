@@ -106,6 +106,9 @@ export const getUpgradeUrl = createSelector(
   },
 );
 
+/**
+ * ! The tokenStatus is only visible to admins
+ */
 export const getIsPaidPlan = createSelector(
   (state: State) => getSetting(state, "token-status"),
   (tokenStatus: TokenStatus | null) => {

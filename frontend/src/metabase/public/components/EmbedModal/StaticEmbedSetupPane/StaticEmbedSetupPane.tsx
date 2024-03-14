@@ -27,7 +27,7 @@ import type {
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Stack, Tabs } from "metabase/ui";
-import { getParameterValue } from "metabase-lib/parameters/utils/parameter-values";
+import { getParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { AppearanceSettings } from "./AppearanceSettings";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";

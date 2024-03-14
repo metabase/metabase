@@ -8,7 +8,7 @@ import { t } from "ttag";
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import * as metadataActions from "metabase/redux/metadata";
-import S from "metabase/reference/Reference.css";
+import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";

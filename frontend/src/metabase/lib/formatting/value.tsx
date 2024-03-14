@@ -10,8 +10,8 @@ import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
-} from "metabase-lib/parameters/utils/click-behavior";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
+} from "metabase-lib/v1/parameters/utils/click-behavior";
+import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
   isBoolean,
   isCoordinate,
@@ -20,7 +20,7 @@ import {
   isNumber,
   isTime,
   isURL,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 
 import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatEmail } from "./email";

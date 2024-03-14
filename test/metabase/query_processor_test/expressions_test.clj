@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -413,16 +412,12 @@
                                                                                            (mt/id :lots-of-fields :b)}]
                                                                       {:order-by [[:name :asc]]})]
                                           [:field id nil]))})]
-        ;; skip the MLv2 conversion tests here since they use
-        ;; the [[metabase.lib.metadata.jvm/application-database-metadata-provider]] which makes tons of DB calls
-        ;; that aren't actually done IRL, and we don't want to include that in the DB call count
-        (binding [qp-test.mlv2/*skip-conversion-tests* true]
-          (t2/with-call-count [call-count-fn]
-            (mt/with-native-query-testing-context query
-              (is (= 1
-                     (-> (qp/process-query query) mt/rows ffirst))))
-            (testing "# of app DB calls should not be some insane number"
-              (is (< (call-count-fn) 20)))))))))
+        (t2/with-call-count [call-count-fn]
+          (mt/with-native-query-testing-context query
+            (is (= 1
+                   (-> (qp/process-query query) mt/rows ffirst))))
+          (testing "# of app DB calls should not be some insane number"
+            (is (< (call-count-fn) 20))))))))
 
 (deftest ^:parallel expression-with-slashes
   (mt/test-drivers (disj

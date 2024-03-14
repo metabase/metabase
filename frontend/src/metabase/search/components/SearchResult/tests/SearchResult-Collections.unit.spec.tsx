@@ -87,7 +87,7 @@ describe("SearchResult > Collections", () => {
   describe("EE", () => {
     const resultInOfficalCollectionEE: WrappedResult = {
       ...resultInOfficalCollection,
-      getIcon: () => ({ name: "badge" }),
+      getIcon: () => ({ name: "table" }),
     };
 
     beforeAll(() => {

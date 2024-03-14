@@ -15,8 +15,8 @@ import { isJWT } from "metabase/lib/utils";
 import type { IconProps } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
@@ -257,7 +257,7 @@ function DashCardInner({
     <ErrorBoundary>
       <DashCardRoot
         data-testid="dashcard"
-        className="Card rounded flex flex-column hover-parent hover--visibility"
+        className="Card relative rounded flex flex-column hover-parent hover--visibility"
         hasHiddenBackground={hasHiddenBackground}
         shouldForceHiddenBackground={shouldForceHiddenBackground}
         isNightMode={isNightMode}
@@ -299,6 +299,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
+          isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
           isEditing={isEditing}

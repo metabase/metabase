@@ -4,12 +4,7 @@ import {
   setupFieldSearchValuesEndpoints,
   setupFieldValuesEndpoints,
 } from "__support__/server-mocks";
-import {
-  act,
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import type { FieldValuesResult } from "metabase-types/api";
@@ -141,7 +136,6 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("is"));
       userEvent.click(await screen.findByText("Starts with"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Enter some text"), "Ga");
       userEvent.tab();
 

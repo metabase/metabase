@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
-import type Question from "metabase-lib/Question";
-import { getUrl as ML_getUrl } from "metabase-lib/urls";
+import type Question from "metabase-lib/v1/Question";
+import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
 
 interface ExploreResultsLinkProps {
   question: Question;

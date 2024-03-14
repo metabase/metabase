@@ -27,10 +27,10 @@ import {
   getSubmittableQuestion,
 } from "metabase/query_builder/selectors";
 import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
-import "./SaveQuestionModal.css";
+import "./SaveQuestionModal.module.css";
 
 const getLabels = (question: Question, showSaveType: boolean) => {
   const type = question.type();

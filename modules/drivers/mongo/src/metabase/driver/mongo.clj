@@ -23,8 +23,8 @@
    [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
   (:import
-   (org.bson.types ObjectId)
-   (com.mongodb.client MongoClient MongoDatabase)))
+   (com.mongodb.client MongoClient MongoDatabase)
+   (org.bson.types ObjectId)))
 
 (set! *warn-on-reflection* true)
 
@@ -271,14 +271,6 @@
                               :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
-;; We say Mongo supports foreign keys so that the front end can use implicit
-;; joins. In reality, Mongo doesn't support foreign keys.
-;; Only define an implementation for `:foreign-keys` if none exists already.
-;; In test extensions we define an alternate implementation, and we don't want
-;; to stomp over that if it was loaded already.
-(when-not (get (methods driver/supports?) [:mongo :foreign-keys])
-  (defmethod driver/supports? [:mongo :foreign-keys] [_ _] true))
-
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
 (defmethod driver/database-supports? [:mongo :expressions]
@@ -315,7 +307,8 @@
   (mongo.qp/mbql->native query))
 
 (defmethod driver/execute-reducible-query :mongo
-  [_ query _context respond]
+  [_driver query _context respond]
+  (assert (string? (get-in query [:native :collection])) "Cannot execute MongoDB query without a :collection name")
   (mongo.connection/with-mongo-client [_ (lib.metadata/database (qp.store/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
 

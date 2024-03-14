@@ -24,8 +24,8 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { setOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/selectors/settings";
-import type Question from "metabase-lib/Question";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import type Question from "metabase-lib/v1/Question";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard,
   Parameter,
@@ -34,7 +34,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import "./EmbedFrame.css";
+import "./EmbedFrame.module.css";
 import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   ActionButtonsContainer,

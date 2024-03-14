@@ -17,7 +17,7 @@ import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import { useSelector } from "metabase/lib/redux";
 import { Icon, Select } from "metabase/ui";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
   DashboardId,

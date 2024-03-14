@@ -2,6 +2,7 @@ import type { UserId } from "metabase-types/api/user";
 
 import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
+import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
@@ -54,8 +55,15 @@ export type CollectionEssentials = Pick<
   "id" | "name" | "authority_level"
 >;
 
+export type SearchResultId =
+  | CollectionId
+  | CardId
+  | DatabaseId
+  | TableId
+  | DashboardId;
+
 export interface SearchResult {
-  id: number;
+  id: SearchResultId;
   name: string;
   model: SearchModelType;
   description: string | null;
@@ -85,6 +93,7 @@ export interface SearchResult {
   creator_id: UserId | null;
   creator_common_name: string | null;
   created_at: string | null;
+  can_write: boolean | null;
 }
 
 export interface SearchListQuery {
@@ -96,4 +105,5 @@ export interface SearchListQuery {
   offset?: number;
   collection?: CollectionId;
   filter_items_in_personal_collection?: "only" | "exclude";
+  namespace?: "snippets";
 }
