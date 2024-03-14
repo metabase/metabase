@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [honey.sql.pg-ops :refer [iregex regex]]
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -38,8 +39,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [next.jdbc :as next.jdbc])
+   [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
    (java.sql Connection ResultSet ResultSetMetaData Time Types)
@@ -901,11 +901,11 @@
 (def ^:private table-type-clauses
   {"TABLE"              [:and
                          [:= :c.relkind [:inline "r"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [iregex :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "PARTITIONED TABLE"  [:and
                          [:= :c.relkind [:inline "p"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [iregex :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "VIEW"               [:and
                          [:= :c.relkind [:inline "v"]]
@@ -913,16 +913,16 @@
                          [:<> :n.nspname [:inline "information_schema"]]]
    "INDEX"              [:and
                          [:= :c.relkind [:inline "i"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [iregex :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "PARTITIONED INDEX"  [:and
                          [:= :c.relkind [:inline "I"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [iregex :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "SEQUENCE"           [:= :c.relkind [:inline "S"]]
    "TYPE"               [:and
                          [:= :c.relkind [:inline "c"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
+                         [iregex :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "SYSTEM TABLE"       [:and
                          [:= :c.relkind [:inline "r"]]
@@ -944,25 +944,26 @@
                           [:<> :n.nspname [:inline "information_schema"]]]]
    "TEMPORARY TABLE"    [:and
                          [:in :c.relkind [[:inline "r"] [:inline "p"]]]
-                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
+                         [regex :n.nspname [:inline "^pg_temp_"]]]
    "TEMPORARY INDEX"    [:and
                          [:= :c.relkind [:inline "i"]]
-                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
+                         [regex :n.nspname [:inline "^pg_temp_"]]]
    "TEMPORARY VIEW"     [:and
                          [:= :c.relkind [:inline "v"]]
-                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
+                         [regex :n.nspname [:inline "^pg_temp_"]]]
    "TEMPORARY SEQUENCE" [:and
                          [:= :c.relkind [:inline "S"]]
-                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
+                         [regex :n.nspname [:inline "^pg_temp_"]]]
    "FOREIGN TABLE"      [:= :c.relkind [:inline "f"]]
    "MATERIALIZED VIEW"  [:= :c.relkind [:inline "m"]]})
 
-(defn get-table-sql
+(defn- get-table-sql
   [schema-pattern tablename-pattern types]
+  ;; Should track this implementation https://github.com/davecramer/pgjdbc/blob/a714bfd/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1272
   (sql/format
    (cond-> {:select    [[:n.nspname :schema]
                         [:c.relname :name]
-                        [[:case-expr [:or [(keyword "~") :n.nspname "^pg_"] [:= :n.nspname "information_schema"]]
+                        [[:case-expr [:or [regex :n.nspname "^pg_"] [:= :n.nspname "information_schema"]]
                           true ;; system tables
                           [:case
                            [:or [:= :n.nspname "pg_catalog"] [:= :n.nspname "information_schema"]]
