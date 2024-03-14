@@ -3,8 +3,8 @@ title: Driver interface changelog
 ---
 
 # Driver Interface Changelog
-
 ## Metabase 0.50.0
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/get-tables` has been added.
 
 - The multimethod `metabase.driver/describe-table-fks` has been deprecated in favor of `metabase.driver/describe-fks`.
   `metabase.driver/describe-table-fks` will be removed in 0.53.0.
