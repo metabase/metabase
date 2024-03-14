@@ -4,12 +4,12 @@ import { t } from "ttag";
 import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
 import type { Parameter, ParameterValues } from "metabase-types/api";
 
-import { ListPicker } from "./ListPicker";
+import { ListPicker } from "../ListPicker";
 import {
   getFlatValueList,
   getListParameterStaticValues,
   shouldEnableSearch,
-} from "./core";
+} from "../core";
 import {
   getDefaultState,
   getResetKey,
@@ -17,7 +17,7 @@ import {
   shouldFetchInitially,
   shouldFetchOnSearch,
   shouldReset,
-} from "./listPickerState";
+} from "../state";
 
 interface ListPickerConnectedProps {
   value: string | null;

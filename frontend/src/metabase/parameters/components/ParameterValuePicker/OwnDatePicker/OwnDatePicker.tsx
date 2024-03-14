@@ -13,7 +13,7 @@ import type {
   ParameterType,
 } from "metabase-types/api";
 
-import { PickerIcon, TextInputTrirgger } from "./ParameterValuePicker.styled";
+import { PickerIcon, TextInputTrirgger } from "../ParameterValuePicker.styled";
 
 interface OwnDatePickerProps {
   value: string;
