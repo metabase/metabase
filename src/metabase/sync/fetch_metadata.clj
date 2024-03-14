@@ -3,7 +3,6 @@
   tables, schemas, and fields, and their types. For example, with SQL databases, these functions use the JDBC
   DatabaseMetaData to get this information."
   (:require
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
@@ -20,9 +19,8 @@
   "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema."
   [database :- i/DatabaseInstance & {:as args}]
   (cond->> (driver/describe-fields (driver.u/database->driver database) database args)
-    ;; Validate the output against the schema, except in prod.
     ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-    (not config/is-prod?)
+    (mu.fn/instrument-ns? *ns*)
     (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
@@ -37,9 +35,8 @@
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema."
   [database :- i/DatabaseInstance & {:as args}]
   (cond->> (driver/describe-fks (driver.u/database->driver database) database args)
-    ;; Validate the output against the schema, except in prod.
     ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-    (not config/is-prod?)
+    (mu.fn/instrument-ns? *ns*)
     (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))
 
 (mu/defn table-fk-metadata :- [:maybe [:sequential i/FKMetadataEntry]]
