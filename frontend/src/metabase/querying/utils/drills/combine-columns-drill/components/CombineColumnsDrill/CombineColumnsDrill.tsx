@@ -71,7 +71,7 @@ export const CombineColumnsDrill = ({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className={styles.card} miw={340} p="lg">
+      <Card className={styles.card} maw="100vw" w={340} p="lg">
         <Title mb="md" order={4}>{t`Combine with`}</Title>
 
         <Stack spacing="lg">
