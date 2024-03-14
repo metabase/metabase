@@ -615,45 +615,32 @@
       (when-let [f (allowed-type-upgrades current-type)]
         (f relaxed-type))))
 
-(defn- changed-field->new-type
-  "Given some fields and old and new types, filter out fields with unchanged types, then pair with the new types."
-  [fields old-types new-types]
-  (let [new-if-changed #(when (and %1 (not= %1 %2)) %2)]
-    (->> (map new-if-changed old-types new-types)
-         (map vector fields)
-         (filter second)
-         (into {}))))
+(defn- field-changes
+  "Given the existing and newly inferred types for the given `fields`, return a map of the added and changed fields."
+  [field-keys existing-types new-types]
+  (reduce
+   (fn [m [f e n]]
+     (cond
+       (nil? e)   (assoc-in m [:added f] n)
+       (not= e n) (assoc-in m [:updated f] n)
+       :else      m))
+   {}
+   (map vector field-keys existing-types new-types)))
 
-(defn- add-columns! [driver database table field->type & args]
-  (when (seq field->type)
-    (apply driver/add-columns!
-           driver (:id database) (table-identifier table)
-           (m/map-kv (fn [field-or-name column-type]
-                       [(cond
-                          (keyword? field-or-name) field-or-name
-                          (string? field-or-name) (keyword field-or-name)
-                          (map? field-or-name) (keyword (:name field-or-name)))
-                        (driver/upload-type->database-type driver column-type)])
-                     field->type)
+(defn- field->db-type [driver field->col-type]
+  (m/map-vals (partial driver/upload-type->database-type driver) field->col-type))
+
+(defn- add-columns! [driver database table field-key->type & args]
+  (when (seq field-key->type)
+    (apply driver/add-columns! driver (:id database) (table-identifier table)
+           (field->db-type driver field-key->type)
            args)))
 
-(defn- alter-columns! [driver database table field->new-type]
-  (when (seq field->new-type)
-    (driver/alter-columns! driver (:id database) (table-identifier table)
-                           (m/map-kv (fn [field column-type]
-                                       [(keyword (:name field))
-                                        (driver/upload-type->database-type driver column-type)])
-                                     field->new-type))))
-
-(defn- added-field->new-type
-  "Given an old and new types of the column names, return a name->type map of the newly added types."
-  [header old-column-types new-column-types]
-  (->> (map (fn [column-name old-type new-type]
-              (when (nil? old-type) [column-name new-type]))
-            header old-column-types new-column-types)
-       (keep identity)
-       (into {})
-       (not-empty)))
+(defn- alter-columns! [driver database table field-key->new-type & args]
+  (when (seq field-key->new-type)
+    (apply driver/alter-columns! driver (:id database) (table-identifier table)
+           (field->db-type driver field-key->new-type)
+            args)))
 
 (defn- append-csv!*
   [database table file]
@@ -670,26 +657,26 @@
                                 (not (contains? normed-name->field auto-pk-column-name)))
             _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
             settings           (upload-parsing/get-settings)
-            old-column-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
+            old-types          (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
             ;; in the happy, and most common, case all the values will match the existing types
             ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
             ;; we can come back and optimize this to an optimistic-with-fallback approach later.
-            detected-types     (column-types-from-rows settings old-column-types rows)
-            new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types detected-types)
-            _                  (when (and (not= old-column-types new-column-types)
-                                          ;; if we cannot coerce all the columns, don't bother coercing any of them
-                                          ;; we will instead throw an error when we try to parse as the old type
-                                          (= detected-types new-column-types))
-                                 (let [fields (map normed-name->field normed-header)]
-                                   (->> (changed-field->new-type fields old-column-types detected-types)
-                                        (alter-columns! driver database table))
-                                   (->> (added-field->new-type normed-header old-column-types detected-types)
-                                        (add-columns! driver database table))))
+            detected-types     (column-types-from-rows settings old-types rows)
+            new-types          (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-types detected-types)
+            ;; avoid any schema modification unless we are able to fully upgrade to supporting the given file
+            ;; choosing to not upgrade means that we will defer failure until we hit the first value that cannot
+            ;; be parsed as its previous type - there is scope to improve these error messages in the future.
+            modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
+            _                  (when modify-schema?
+                                 (let [field-keys (map keyword normed-header)
+                                       changes    (field-changes field-keys old-types new-types)]
+                                   (add-columns! driver database table (:added changes))
+                                   (alter-columns! driver database table (:updated changes))))
             ;; this will fail if any of our required relaxations were rejected.
-            parsed-rows        (parse-rows settings new-column-types rows)
+            parsed-rows        (parse-rows settings new-types rows)
             row-count          (count parsed-rows)
             stats              {:num-rows          row-count
-                                :num-columns       (count new-column-types)
+                                :num-columns       (count new-types)
                                 :generated-columns (if create-auto-pk? 1 0)
                                 :size-mb           (file-size-mb file)
                                 :upload-seconds    (since-ms timer)}]
