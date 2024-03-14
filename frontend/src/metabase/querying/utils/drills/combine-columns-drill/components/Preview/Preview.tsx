@@ -9,9 +9,7 @@ import type * as Lib from "metabase-lib";
 import type { ColumnAndSeparator } from "../../types";
 import { extractQueryResults, getPreview } from "../../utils";
 
-// import styles from './Preview.module.css';
-
-const PREVIEW_COLORS = ["text-dark", "text-medium", "text-light"];
+const PREVIEW_LINE_COLORS = ["text-dark", "text-medium", "text-light"];
 
 interface Props {
   columnsAndSeparators: ColumnAndSeparator[];
@@ -31,7 +29,7 @@ export const Preview = ({
     () =>
       extractQueryResults(datasets)
         .filter(value => value !== null)
-        .slice(0, PREVIEW_COLORS.length),
+        .slice(0, PREVIEW_LINE_COLORS.length),
     [datasets],
   );
   const values = useMemo(
@@ -51,7 +49,7 @@ export const Preview = ({
       <Card bg="bg-light" py={12} radius="xs" shadow="none" withBorder>
         {values.map((value, index) => (
           <Box key={index}>
-            <Text color={PREVIEW_COLORS[index]} size="sm">
+            <Text color={PREVIEW_LINE_COLORS[index]} size="sm">
               {value}
             </Text>
           </Box>
