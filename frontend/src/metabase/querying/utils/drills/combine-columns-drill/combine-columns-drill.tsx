@@ -14,6 +14,7 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
 }) => {
   const DrillPopover = () => (
     <CombineColumnsDrill
+      drill={drill}
       drillInfo={drillInfo}
       query={query}
       stageIndex={stageIndex}

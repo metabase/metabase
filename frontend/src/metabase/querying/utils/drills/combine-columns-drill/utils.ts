@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import type { ColumnAndSeparator, ColumnOption } from "./types";
 
@@ -62,4 +63,36 @@ export const formatSeparator = (separator: string) => {
   }
 
   return separator;
+};
+
+export const extractQueryResults = (
+  datasets: Dataset[] | null,
+): RowValues[] => {
+  if (!datasets || datasets.length === 0) {
+    return [];
+  }
+
+  return datasets[0].data.rows;
+};
+
+export const getPreview = (
+  query: Lib.Query,
+  stageIndex: number,
+  drill: Lib.DrillThru,
+  columnsAndSeparators: ColumnAndSeparator[],
+  queryResults: RowValues[],
+): RowValue[] => {
+  const expression = Lib.combineColumnsDrillExpression(
+    query,
+    stageIndex,
+    drill,
+    columnsAndSeparators,
+  );
+  const preview = Lib.previewExpression(
+    query,
+    stageIndex,
+    expression,
+    queryResults,
+  );
+  return preview;
 };
