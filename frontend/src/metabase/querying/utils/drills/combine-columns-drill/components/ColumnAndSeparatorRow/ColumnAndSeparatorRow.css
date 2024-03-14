@@ -1,0 +1,12 @@
+.separator {
+  width: 110px;
+  flex: 0 0 auto;
+}
+
+.column {
+  flex: 1;
+}
+
+.remove {
+  flex: 0 0 auto;
+}
