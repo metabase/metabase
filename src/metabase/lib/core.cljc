@@ -105,8 +105,7 @@
   breakout-column
   breakoutable-columns
   breakouts
-  breakouts-metadata
-  remove-all-breakouts]
+  breakouts-metadata]
  [lib.column-group
   columns-group-columns
   group-columns]
