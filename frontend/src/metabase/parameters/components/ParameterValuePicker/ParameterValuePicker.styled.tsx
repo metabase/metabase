@@ -15,3 +15,7 @@ export const PickerIcon = styled(Icon)`
   cursor: pointer;
   color: ${color("text-dark")};
 `;
+
+export const ListPickerWrapper = styled.div`
+  margin-top: -0.25rem;
+`;

@@ -23,5 +23,5 @@ export const RadioLabelButton = styled(IconButtonWrapper)`
 
 export const ClickAreaExpander = styled.span`
   display: inline-block;
-  padding: 2px 0 2px 5px;
+  padding: 0 5px;
 `;
