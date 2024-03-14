@@ -6,7 +6,7 @@ import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescriptio
 import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
-import DatabaseAccountNameSectionField from "./components/DatabaseAccountNameSectionField";
+import DatabaseHostnameSectionField from "./components/DatabaseHostnameSectionField";
 import DatabaseScheduleToggleField from "./components/DatabaseScheduleToggleField";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
@@ -105,8 +105,8 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   "use-conn-uri": {
     type: DatabaseConnectionSectionField,
   },
-  "use-account-name": {
-    type: DatabaseAccountNameSectionField,
+  "use-hostname": {
+    type: DatabaseHostnameSectionField,
   },
   "let-user-control-scheduling": {
     type: DatabaseScheduleToggleField,
