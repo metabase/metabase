@@ -114,11 +114,11 @@
                                       (into {})
                                       (m/filter-keys (set (map :id parameters))))
         _                        (api/check (action/unique-field-slugs? table-fields)
-                                   400
-                                   (tru "Cannot execute implicit action on a table with ambiguous column names."))
+                                            400
+                                            (tru "Cannot execute implicit action on a table with ambiguous column names."))
         _                        (api/check (= (count pk-fields) 1)
-                                   400
-                                   (tru "Must execute implicit action on a table with a single primary key."))
+                                            400
+                                            (tru "Must execute implicit action on a table with a single primary key."))
         _                        (check-no-extra-parameters request-parameters (keys slug->field-name))
         pk-field                 (first pk-fields)
         ;; Ignore params with nil values; the client doesn't reliably omit blank, optional parameters from the
@@ -132,14 +132,13 @@
         requires-pk?             (contains? #{:row/delete :row/update} implicit-action)]
     (api/check (or (not requires-pk?)
                    (some? (get simple-parameters pk-field-name)))
-      400
-      (tru "Missing primary key parameter: {0}"
-           (pr-str (u/slugify (:name pk-field)))))
-    (cond->
-      {:query {:database database-id,
-               :type :query,
-               :query {:source-table table-id}}
-       :row-parameters row-parameters}
+               400
+               (tru "Missing primary key parameter: {0}"
+                    (pr-str (u/slugify (:name pk-field)))))
+    (cond-> {:query {:database database-id,
+                     :type :query,
+                     :query {:source-table table-id}}
+             :row-parameters row-parameters}
 
       requires-pk?
       (assoc-in [:query :query :filter]
