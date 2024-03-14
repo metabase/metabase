@@ -1,4 +1,4 @@
-import { isFieldFilterUiParameter } from "metabase-lib/parameters/utils/parameter-fields";
+import { isFieldFilterUiParameter } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   getParameterSubType,
   isNumberParameter,
