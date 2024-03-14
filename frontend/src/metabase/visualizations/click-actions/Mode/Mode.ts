@@ -25,7 +25,7 @@ export class Mode {
   }
 
   actionsForClick(
-    clicked: ClickObject | undefined,
+    clicked: ClickObject,
     settings: Record<string, any>,
     extraData?: Record<string, any>,
   ): ClickAction[] {
