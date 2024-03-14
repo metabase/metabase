@@ -13,7 +13,7 @@
 ;; - [Getting started with backend development](https://github.com/metabase/metabase/blob/master/docs/developers-guide/devenv.md#backend-development)
 ;; - [Additional notes on using tools.deps](https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps)
 ;; - [Use the dev-scripts repo to run various local DBs](https://github.com/metabase/dev-scripts)
-;; - [If you're on mac and need to debug on Windows, checkout UTM](https://getutm.app)
+;; - [If you're on mac and need to debug on Windows, checkout UTM](https://mac.getutm.app/)
 ;; - [Other tips](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
 ;;
 ;; ## Important Parts of the Codebase
