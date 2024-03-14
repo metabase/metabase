@@ -624,9 +624,7 @@
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
    ;; for determining whether a model is based on a csv-uploaded table
-   [:table_id :integer] [:is_upload :boolean] :query_type
-   ;; for cache configuration
-   :cache_strategy :cache_config])
+   [:table_id :integer] [:is_upload :boolean] :query_type])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."
