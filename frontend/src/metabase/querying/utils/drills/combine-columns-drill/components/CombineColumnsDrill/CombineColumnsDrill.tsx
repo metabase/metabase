@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Card, Icon, Stack, Title } from "metabase/ui";
+import { Box, Button, Card, Flex, Icon, Stack, Title } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { getColumnOptions, getInitialColumnAndSeparator } from "../../lib";
 import type { ColumnAndSeparator } from "../../types";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
+
+import styles from "./CombineColumnsDrill.css";
 
 interface Props {
   query: Lib.Query;
@@ -48,44 +50,57 @@ export const CombineColumnsDrill = ({
     setIsUsingDefaultSeparator(false);
   };
 
+  const handleSubmit = () => {};
+
   return (
-    <Card px="lg">
-      <Stack spacing="sm">
-        <Title order={4}>{t`Combine with`}</Title>
+    <Card className={styles.card} p="lg">
+      <Stack spacing="lg">
+        <Stack spacing="sm">
+          <Title mb="sm" order={4}>{t`Combine with`}</Title>
 
-        {columnsAndSeparators.map(({ column, separator }, index) => (
-          <ColumnAndSeparatorRow
-            column={column}
-            index={index}
-            key={index}
-            options={options}
-            separator={separator}
-            showLabels={index === 0 && !isUsingDefaultSeparator}
-            showRemove={columnsAndSeparators.length > 1}
-            showSeparator={!isUsingDefaultSeparator}
-            onChange={handleChange}
-          />
-        ))}
+          {columnsAndSeparators.map(({ column, separator }, index) => (
+            <ColumnAndSeparatorRow
+              column={column}
+              index={index}
+              key={index}
+              options={options}
+              separator={separator}
+              showLabels={index === 0 && !isUsingDefaultSeparator}
+              showRemove={columnsAndSeparators.length > 1}
+              showSeparator={!isUsingDefaultSeparator}
+              onChange={handleChange}
+            />
+          ))}
 
-        {isUsingDefaultSeparator && (
+          {isUsingDefaultSeparator && (
+            <Box>
+              <Button p={0} variant="subtle" onClick={handleEditSeparators}>
+                {t`Separated by`}{" "}
+                {defaultSeparator === " " ? (
+                  <>({t`space`})</>
+                ) : (
+                  defaultSeparator
+                )}
+              </Button>
+            </Box>
+          )}
+        </Stack>
+
+        <Flex align="center" gap="md" justify="space-between">
           <Button
             leftIcon={<Icon name="add" />}
+            p={0}
             variant="subtle"
-            onClick={handleEditSeparators}
+            onClick={handleAdd}
           >
-            {t`Separated by`}{" "}
-            {defaultSeparator === " " ? <>({t`space`})</> : defaultSeparator}
+            Add another column
           </Button>
-        )}
-      </Stack>
 
-      <Button
-        leftIcon={<Icon name="add" />}
-        variant="subtle"
-        onClick={handleAdd}
-      >
-        Add another column
-      </Button>
+          <Button type="submit" variant="filled" onClick={handleSubmit}>
+            Done
+          </Button>
+        </Flex>
+      </Stack>
     </Card>
   );
 };
