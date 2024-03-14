@@ -103,6 +103,7 @@
                                  (sql-jdbc.conn/connection-details->spec :snowflake details))))
         false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "snowflake.example.com/" "//snowflake.example.com/"
         false "snowflake.example.com" "//snowflake.example.com/"
         true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
