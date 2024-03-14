@@ -22,7 +22,9 @@ export function shouldUsePlainInput(parameter: Parameter) {
   if (
     parameter.type === "category" &&
     (parameter.values_query_type == null ||
-      parameter.values_query_type === "none")
+      parameter.values_query_type === "none" ||
+      // parameter with unset source config and no values
+      parameter.values_source_config === undefined)
   ) {
     return true;
   }
@@ -38,7 +40,9 @@ export function shouldUseListPicker(parameter: Parameter): boolean {
   return (
     parameter.type === "category" &&
     (parameter.values_query_type === "list" ||
-      parameter.values_query_type === "search")
+      parameter.values_query_type === "search") &&
+    // parameter with unset source config and no values
+    parameter.values_source_config !== undefined
   );
 }
 

@@ -18,7 +18,7 @@ interface ListPickerProps {
 }
 
 // TODO show "remove" button when typing in search for static list parameters
-// TODO dropdown position + change of size doesn't work well
+// TODO dropdown position + change of size doesn't work well, make maxDropdownHeight work (Select.styles.tsx)
 export function ListPicker(props: ListPickerProps) {
   const {
     value,
@@ -54,9 +54,9 @@ export function ListPicker(props: ListPickerProps) {
       onKeyUp={handleInputKeyup}
       nothingFound={noResultsText}
       onSearchChange={onSearchChange}
-      // TODO make dropdown maxHeight work (Select.styles.tsx)
-      // maxDropdownHeight={300}
       onDropdownOpen={onDropdownOpen}
+      selectOnBlur
+      inputWrapperOrder={["label", "input", "error", "description"]}
     />
   );
 }
