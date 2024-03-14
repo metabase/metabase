@@ -10,6 +10,7 @@ import type { Parameter, TemplateTag } from "metabase-types/api";
 
 import { ListPickerConnected } from "./ListPickerConnected";
 import { OwnDatePicker } from "./OwnDatePicker";
+import { ListPickerWrapper } from "./ParameterValuePicker.styled";
 import { PlainValueInput } from "./PlainValueInput";
 import { shouldUsePlainInput, shouldUseListPicker } from "./core";
 
@@ -63,14 +64,17 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
   }
 
   if (shouldUseListPicker(parameter)) {
+    // Wrapper is a hack to prevent 0.25rem added by mantine to its Select
     return (
-      <ListPickerConnected
-        value={Array.isArray(value) ? value[0] : value} // TODO
-        parameter={parameter}
-        onChange={onValueChange}
-        forceSearchItemCount={50}
-        fetchValues={fetchParamValues}
-      />
+      <ListPickerWrapper>
+        <ListPickerConnected
+          value={Array.isArray(value) ? value[0] : value} // TODO
+          parameter={parameter}
+          onChange={onValueChange}
+          forceSearchItemCount={50}
+          fetchValues={fetchParamValues}
+        />
+      </ListPickerWrapper>
     );
   }
 
