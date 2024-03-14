@@ -34,7 +34,6 @@ export const CombineColumnsDrill = ({
   const options = useMemo(() => {
     return getColumnOptions(query, stageIndex, availableColumns);
   }, [query, stageIndex, availableColumns]);
-
   const [columnsAndSeparators, setColumnsAndSeparators] = useState([
     getInitialColumnAndSeparator(drillInfo),
   ]);

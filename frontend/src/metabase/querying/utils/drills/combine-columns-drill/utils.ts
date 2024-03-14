@@ -12,12 +12,9 @@ export const getColumnOptions = (
 ) => {
   return columns.map((column, index) => {
     const info = Lib.displayInfo(query, stageIndex, column);
-
-    return {
-      column,
-      label: info.displayName,
-      value: String(index),
-    };
+    const label = info.displayName;
+    const value = String(index);
+    return { column, label, value };
   });
 };
 
@@ -26,8 +23,7 @@ export const fromSelectValue = (
   value: string | null,
 ): Lib.ColumnMetadata => {
   const index = Number(checkNotNull(value));
-  const { column } = options[index];
-  return column;
+  return options[index].column;
 };
 
 export const toSelectValue = (
@@ -52,26 +48,18 @@ export const getNextColumnAndSeparator = (
 ): ColumnAndSeparator => {
   const lastSeparator = columnsAndSeparators.at(-1)?.separator;
   const separator = lastSeparator ?? drillInfo.defaultSeparator;
+  const defaultColumn = drillInfo.availableColumns[0];
   const nextUnusedOption = options.find(option => {
     return columnsAndSeparators.every(({ column }) => column !== option.column);
   });
-
-  if (nextUnusedOption) {
-    return {
-      column: nextUnusedOption.column,
-      separator,
-    };
-  }
-
-  return {
-    column: drillInfo.availableColumns[0],
-    separator,
-  };
+  const column = nextUnusedOption ? nextUnusedOption.column : defaultColumn;
+  return { column, separator };
 };
 
 export const formatSeparator = (separator: string) => {
   if (separator === " ") {
     return `(${t`space`})`;
   }
+
   return separator;
 };
