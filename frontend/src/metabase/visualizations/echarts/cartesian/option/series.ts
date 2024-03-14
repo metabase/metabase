@@ -458,6 +458,28 @@ export const getStackTotalsSeries = (
   });
 };
 
+const getDisplaySeriesSettingsByDataKey = (
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+) => {
+  const seriesSettingsByKey = seriesModels.reduce((acc, seriesModel) => {
+    acc[seriesModel.dataKey] = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+    return acc;
+  }, {} as Record<DataKey, SeriesSettings>);
+
+  if (settings["stackable.stack_type"] === "stacked") {
+    const stackDisplay = settings["stackable.stack_display"];
+
+    Object.keys(seriesSettingsByKey).forEach(dataKey => {
+      seriesSettingsByKey[dataKey].display = stackDisplay;
+    });
+  }
+
+  return seriesSettingsByKey;
+};
+
 export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -465,14 +487,9 @@ export const buildEChartsSeries = (
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): EChartsSeriesOption[] => {
-  const seriesSettingsByDataKey = chartModel.seriesModels.reduce(
-    (acc, seriesModel) => {
-      acc[seriesModel.dataKey] = settings.series(
-        seriesModel.legacySeriesSettingsObjectKey,
-      );
-      return acc;
-    },
-    {} as Record<DataKey, SeriesSettings>,
+  const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
+    chartModel.seriesModels,
+    settings,
   );
 
   const seriesYAxisIndexByDataKey = chartModel.seriesModels.reduce(
