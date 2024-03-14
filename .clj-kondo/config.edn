@@ -356,7 +356,7 @@
     metabase.sync.field-values                                      field-values
     metabase.sync.interface                                         i
     metabase.sync.schedules                                         sync.schedules
-    metabase.sync.sync-metadata.fields.fetch-metadata               fetch-metadata
+    metabase.sync.sync-metadata.fields.our-metadata                 fields.our-metadata
     metabase.sync.util                                              sync-util
     metabase.sync.util-test                                         sync.util-test
     metabase.task.sync-databases                                    task.sync-databases
