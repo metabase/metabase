@@ -38,25 +38,35 @@
          metabase.lib.schema.filter/keep-me)
 
 (mr/def ::stage.native
-  [:map
-   {:decode/normalize common/normalize-map}
-   [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
-   ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
-   ;; Only restriction is that it is non-nil.
-   [:native some?]
-   ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
-   ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
-   ;; nil.
-   [:args {:optional true} [:sequential ::literal/literal]]
-   ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
-   ;; is required.
-   [:collection {:optional true} ::common/non-blank-string]
-   ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
-   ;; `:native` key), but their definition lives under this key.
-   [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
-   ;;
-   ;; TODO -- parameters??
-   ])
+  [:and
+   [:map
+    {:decode/normalize common/normalize-map}
+    [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
+    ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
+    ;; Only restriction is that it is non-nil.
+    [:native some?]
+    ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
+    ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
+    ;; nil.
+    [:args {:optional true} [:sequential ::literal/literal]]
+    ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
+    ;; is required.
+    [:collection {:optional true} ::common/non-blank-string]
+    ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
+    ;; `:native` key), but their definition lives under this key.
+    [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
+    ;;
+    ;; TODO -- parameters??
+    ]
+   [:fn
+    {:error/message ":source-table is not allowed in a native query stage."}
+    #(not (contains? % :source-table))]
+   [:fn
+    {:error/message ":source-card is not allowed in a native query stage."}
+    #(not (contains? % :source-card))]
+   [:fn
+    {:error/message ":sources is not allowed in a native query stage."}
+    #(not (contains? % :sources))]])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -175,6 +185,9 @@
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
+   [:fn
+    {:error/message ":native is not allowed in an MBQL stage."}
+    #(not (contains? % :native))]
    [:fn
     {:error/message "A query must have exactly one of :source-table, :source-card, or :sources"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card :sources}))]
