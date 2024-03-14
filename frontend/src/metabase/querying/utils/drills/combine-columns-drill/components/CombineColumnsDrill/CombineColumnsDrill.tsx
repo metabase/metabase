@@ -72,12 +72,12 @@ export const CombineColumnsDrill = ({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className={styles.card} maw="100vw" w={340} p="lg">
+      <Card className={styles.card} maw="100vw" miw={340} p="lg">
         <Title mb="md" order={4}>{t`Combine with`}</Title>
 
         <Stack spacing="lg">
           <Stack spacing="sm">
-            <Stack className={styles.inputs} mah="25vh" spacing="sm">
+            <Stack className={styles.inputs} mah="50vh" spacing="sm">
               {columnsAndSeparators.map(({ column, separator }, index) => (
                 <ColumnAndSeparatorRow
                   column={column}
