@@ -337,40 +337,17 @@ function getHistogramDataset(
   dataset: ChartDataset,
   histogramInterval: number | undefined,
 ) {
-  // Histograms do not display datums where the dimension value is null
-  const transformedToOriginalDataIndex = new Map<number, number>();
-  const nonNullDataset: ChartDataset = [];
-  dataset.forEach((datum, originalIndex) => {
-    if (datum[X_AXIS_DATA_KEY] == null) {
-      return;
-    }
-    nonNullDataset.push(datum);
-    // We are using `nonNullDataset.length` instead of `nonNullDataset.length -
-    // 1` because we will later add an element to the front of the array
-    transformedToOriginalDataIndex.set(nonNullDataset.length, originalIndex);
-  });
-
   const interval = histogramInterval ?? 1;
 
-  nonNullDataset.unshift({
-    [X_AXIS_DATA_KEY]:
-      checkNumber(nonNullDataset[0][X_AXIS_DATA_KEY]) - interval,
+  dataset.unshift({
+    [X_AXIS_DATA_KEY]: checkNumber(dataset[0][X_AXIS_DATA_KEY]) - interval,
   });
-  nonNullDataset.push({
+  dataset.push({
     [X_AXIS_DATA_KEY]:
-      checkNumber(nonNullDataset[nonNullDataset.length - 1][X_AXIS_DATA_KEY]) +
-      interval,
+      checkNumber(dataset[dataset.length - 1][X_AXIS_DATA_KEY]) + interval,
   });
 
-  return {
-    dataset: nonNullDataset,
-    getOriginalDatasetIndex: (index: number | undefined) => {
-      if (index === undefined) {
-        return index;
-      }
-      return transformedToOriginalDataIndex.get(index);
-    },
-  };
+  return dataset;
 }
 
 /**
@@ -395,8 +372,13 @@ export const applyVisualizationSettingsDataTransformations = (
     xAxisModel.isHistogram
   ) {
     dataset = filterNullDimensionValues(dataset);
+  }
 
-  const transformedDataset = transformDataset(dataset, [
+  if (xAxisModel.axisType === "category" && xAxisModel.isHistogram) {
+    dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
+  }
+
+  return transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
     {
       condition: settings["stackable.stack_type"] === "normalized",
@@ -440,8 +422,6 @@ export const applyVisualizationSettingsDataTransformations = (
       fn: getStackedAreasInterpolateTransform(seriesModels),
     },
   ]);
-
-  return { transformedDataset, getOriginalDatasetIndex };
 };
 
 export const sortDataset = (

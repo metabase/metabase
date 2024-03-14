@@ -105,13 +105,12 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const { transformedDataset, getOriginalDatasetIndex } =
-    applyVisualizationSettingsDataTransformations(
-      dataset,
-      xAxisModel,
-      seriesModels,
-      settings,
-    );
+  const transformedDataset = applyVisualizationSettingsDataTransformations(
+    dataset,
+    xAxisModel,
+    seriesModels,
+    settings,
+  );
 
   const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
     rawSeries[0].card.display,
@@ -139,6 +138,5 @@ export const getCartesianChartModel = (
     leftAxisModel,
     rightAxisModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
-    getOriginalDatasetIndex,
   };
 };

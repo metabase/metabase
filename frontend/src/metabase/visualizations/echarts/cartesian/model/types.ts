@@ -12,6 +12,7 @@ import type {
   X_AXIS_DATA_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
+  ORIGINAL_INDEX_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 export type BreakoutValue = RowValue;
@@ -78,7 +79,10 @@ export type DimensionModel = {
   columnByCardId: Record<CardId, DatasetColumn>;
 };
 
-export type Datum = Record<DataKey, RowValue> & { [X_AXIS_DATA_KEY]: RowValue };
+export type Datum = Record<DataKey, RowValue> & {
+  [X_AXIS_DATA_KEY]: RowValue;
+  [ORIGINAL_INDEX_DATA_KEY]?: number;
+};
 export type ChartDataset = Datum[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
@@ -171,8 +175,6 @@ export type BaseCartesianChartModel = {
   // Allows to use multiple ECharts series options to represent single data series
   // and map series ids to data keys for chart events
   seriesIdToDataKey?: Record<string, DataKey>;
-
-  getOriginalDatasetIndex: (index: number | undefined) => number | undefined;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {
