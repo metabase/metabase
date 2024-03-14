@@ -32,11 +32,12 @@ export const saveChartImage = async (selector: string, fileName: string) => {
     if (blob) {
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
-      link.href = url;
+      link.rel = "noopener";
       link.download = fileName;
+      link.href = url;
       link.click();
       link.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     }
   });
 };
