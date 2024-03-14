@@ -151,7 +151,7 @@ export type Drill<
   stageIndex: number;
   drill: Lib.DrillThru;
   drillInfo: T;
-  isDashboard: boolean;
+  clicked: Lib.ClickObject;
   applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
 }) => ClickAction[];
 
