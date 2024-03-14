@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "master"
+      - "parse-sql/main"
     paths-ignore:
       # config files
       - ".**"
