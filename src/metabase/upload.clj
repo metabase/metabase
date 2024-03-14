@@ -596,7 +596,9 @@
 (defn- check-schema
   "Throws an exception if:
     - the CSV file contains duplicate column names
-    - the schema of the CSV file does not match the schema of the table"
+    - the schema of the CSV file does not match the schema of the table
+
+    Note that we do not require the column ordering to be consistent between the header and the table schema."
   [fields-by-normed-name header]
   ;; Assumes table-cols are unique when normalized
   (let [normalized-field-names (keys fields-by-normed-name)
