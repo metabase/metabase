@@ -78,14 +78,15 @@
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :redshift
+  ;; The implementation is based on `getColumns` in https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java
+  ;; The `database-is-auto-increment` and `database-required` columns are currently missing because they are only
+  ;; needed for actions, which redshift doesn't support yet.
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select [[:c.column_name :name]
                         [:c.data_type :database-type]
                         [[:- :c.ordinal_position 1] :database-position]
                         [:c.schema_name :table-schema]
                         [:c.table_name :table-name]
-                        [nil :database-is-auto-increment] ; only needed for actions, which redshift doesn't support yet
-                        [nil :database-required]          ; only needed for actions, which redshift doesn't support yet
                         [[:not= :pk.column_name nil] :pk?]
                         [[:case [:not= :c.remarks ""] :c.remarks :else nil] :field-comment]]
                :from [[:svv_all_columns :c]]
