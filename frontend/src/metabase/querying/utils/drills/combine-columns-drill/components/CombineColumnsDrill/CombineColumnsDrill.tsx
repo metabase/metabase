@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
 import { Box, Button, Card, Flex, Icon, Stack, Title } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator } from "../../types";
 import {
@@ -29,7 +29,8 @@ export const CombineColumnsDrill = ({
   stageIndex,
   onSubmit,
 }: Props) => {
-  const { availableColumns, defaultSeparator } = drillInfo;
+  const { availableColumns, column, defaultSeparator } = drillInfo;
+  const columnInfo = Lib.displayInfo(query, stageIndex, column);
   const options = useMemo(() => {
     return getColumnOptions(query, stageIndex, availableColumns);
   }, [query, stageIndex, availableColumns]);
@@ -73,7 +74,10 @@ export const CombineColumnsDrill = ({
   return (
     <form onSubmit={handleSubmit}>
       <Card className={styles.card} maw="100vw" miw={340} p="lg">
-        <Title mb="md" order={4}>{t`Combine with`}</Title>
+        <Title
+          mb="md"
+          order={4}
+        >{jt`Combine ${columnInfo.displayName} with`}</Title>
 
         <Stack spacing="lg">
           <Stack spacing="sm">

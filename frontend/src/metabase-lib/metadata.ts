@@ -151,17 +151,18 @@ export const displayInfo: typeof DisplayInfoFn = (...args) => {
   // TODO: remove this mock
   if (result.displayName?.startsWith("Extract day, month")) {
     const [query, stageIndex] = args;
-    const columns = visibleColumns(query, stageIndex).slice(0, 5);
+    const columns = visibleColumns(query, stageIndex);
     const createdAtColumn = columns.find(column => {
       return (
         ML.display_info(query, stageIndex, column).displayName === "Created At"
       );
     });
+
     return {
       type: "drill-thru/combine-columns",
       defaultSeparator: "/",
       column: createdAtColumn!,
-      availableColumns: columns,
+      availableColumns: columns.slice(0, 5),
     };
   }
 
