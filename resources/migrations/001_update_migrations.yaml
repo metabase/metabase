@@ -5957,7 +5957,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - sql:
-            dbms: mysql,mariadb
+            dbms: mysql
             sql: >
               CREATE index idx_activity_entity_qualified_id ON activity (
                 (
