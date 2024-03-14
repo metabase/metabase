@@ -1350,7 +1350,7 @@
 (deftest append-column-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
-      (testing "Append should fail if there are extra or missing columns in the CSV file"
+      (testing "Append should fail if there are missing columns in the CSV file"
         (doseq [[csv-rows error-message]
                 {[""]
                  (trim-lines "The CSV file is missing columns that are in the table:
