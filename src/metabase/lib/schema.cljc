@@ -9,8 +9,8 @@
   (:refer-clojure :exclude [ref])
   (:require
    [medley.core :as m]
-   [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.actions :as actions]
+   [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]

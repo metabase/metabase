@@ -97,7 +97,7 @@
               :user-name     (field-id->name (mt/id :user :name))
               :user-group-id (field-id->name (mt/id :user :group-id))}))))))
 
-(deftest action-error-handling-not-null-constraint-test
+(deftest action-error-handling-not-null-constraint-creating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-name]}]
      (testing "violate not-null constraint"
@@ -110,7 +110,7 @@
                                                             :query      {:source-table $$group}
                                                             :type       :query}))))))))
 
-(deftest action-error-handling-not-null-constraint-test-2
+(deftest action-error-handling-not-null-constraint-creating-test-2
   (test-action-error-handling!
    (fn [{:keys [db-id group-name]}]
      (testing "violate not-null constraint"
@@ -124,7 +124,7 @@
                                                               :query      {:source-table $$group}
                                                               :type       :query})))))))))
 
-(deftest action-error-handling-not-null-constraint-test-3
+(deftest action-error-handling-not-null-constraint-updating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-ranking]}]
      (testing "violate not-null constraint"
@@ -139,7 +139,7 @@
                                                                            :source-table $$group}
                                                               :type       :query})))))))))
 
-(deftest action-error-handling-unique-constraint-test
+(deftest action-error-handling-unique-constraint-creating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-name group-ranking]}]
      (testing "violate unique constraint"
@@ -154,7 +154,7 @@
                                                               :query      {:source-table $$group}
                                                               :type       :query})))))))))
 
-(deftest action-error-handling-unique-constraint-test-2
+(deftest action-error-handling-unique-constraint-updating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-ranking]}]
      (testing "violate unique constraint"
@@ -169,7 +169,7 @@
                                                                            :source-table $$group}
                                                               :type       :query})))))))))
 
-(deftest action-error-handling-incorrect-type-test
+(deftest action-error-handling-incorrect-type-creating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-name group-ranking]}]
      (testing "incorrect type"
@@ -188,7 +188,7 @@
                                                               :query      {:source-table $$group}
                                                               :type       :query})))))))))
 
-(deftest action-error-handling-incorrect-type-test-2
+(deftest action-error-handling-incorrect-type-updating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-ranking]}]
      (testing "incorrect type"
@@ -207,7 +207,7 @@
                                                                            :source-table $$group}
                                                               :type       :query})))))))))
 
-(deftest action-error-handling-fk-constraint-test
+(deftest action-error-handling-fk-constraint-creating-test
   (test-action-error-handling!
    (fn [{:keys [db-id user-name user-group-id]}]
      (testing "violate fk constraint"
@@ -222,7 +222,7 @@
                                                               :query      {:source-table $$user}
                                                               :type       :query})))))))))
 
-(deftest action-error-handling-fk-constraint-test
+(deftest action-error-handling-fk-constraint-updating-test
   (test-action-error-handling!
    (fn [{:keys [db-id user-group-id]}]
      (testing "violate fk constraint"
@@ -237,7 +237,7 @@
                                                                            :source-table $$user}
                                                               :type       :query})))))))))
 
-(deftest action-error-handling-fk-constraint-test
+(deftest action-error-handling-fk-constraint-deleting-test
   (test-action-error-handling!
    (fn [{:keys [db-id]}]
      (testing "violate fk constraint"
