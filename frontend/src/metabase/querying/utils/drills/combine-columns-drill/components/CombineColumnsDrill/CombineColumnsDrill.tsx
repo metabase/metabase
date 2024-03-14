@@ -1,6 +1,6 @@
 import type { FormEventHandler } from "react";
 import { useMemo, useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { Box, Button, Card, Flex, Icon, Stack, Title } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -97,7 +97,7 @@ export const CombineColumnsDrill = ({
             {isUsingDefaultSeparator && (
               <Box>
                 <Button p={0} variant="subtle" onClick={handleEditSeparators}>
-                  {t`Separated by`} {formatSeparator(defaultSeparator)}
+                  {jt`Separated by ${formatSeparator(defaultSeparator)}`}
                 </Button>
               </Box>
             )}
@@ -110,11 +110,11 @@ export const CombineColumnsDrill = ({
               variant="subtle"
               onClick={handleAdd}
             >
-              Add another column
+              {t`Add another column`}
             </Button>
 
             <Button type="submit" variant="filled">
-              Done
+              {t`Done`}
             </Button>
           </Flex>
         </Stack>
