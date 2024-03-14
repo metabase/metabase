@@ -37,6 +37,7 @@ export const ColumnAndSeparatorRow = ({
         <TextInput
           className={styles.separator}
           label={showLabels ? t`Separator` : undefined}
+          placeholder={t`Separator`}
           value={separator}
           w={110}
           onChange={event => {
@@ -50,6 +51,7 @@ export const ColumnAndSeparatorRow = ({
         className={styles.column}
         data={options}
         label={showLabels ? t`Column` : undefined}
+        placeholder={t`Column`}
         styles={{
           wrapper: {
             "&:not(:only-child)": {

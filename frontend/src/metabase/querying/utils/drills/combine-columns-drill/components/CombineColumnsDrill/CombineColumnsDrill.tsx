@@ -88,7 +88,7 @@ export const CombineColumnsDrill = ({
                   key={index}
                   options={options}
                   separator={separator}
-                  showLabels={index === 0 && !isUsingDefaultSeparator}
+                  showLabels={!isUsingDefaultSeparator && index === 0}
                   showRemove={columnsAndSeparators.length > 1}
                   showSeparator={!isUsingDefaultSeparator}
                   onChange={handleChange}
