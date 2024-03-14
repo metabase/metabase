@@ -91,7 +91,7 @@
    [:multi
     {:dispatch vector?}
     [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
-    [false :any]]
+    [false [:ref :metabase.lib.schema.literal/literal]]]
    [:fn
     {:error/message description}
     #(type-of? % base-type)]])

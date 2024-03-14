@@ -39,31 +39,53 @@
     :else
     :any))
 
+(defn- default-error-fn
+  "If normalization errors somewhere, just log the error and return the partially-normalized result. Easier to debug
+  this way."
+  [error]
+  (log/warnf "Error normalizing pMBQL:\n%s" (u/pprint-to-str error))
+  (:value error))
+
+(def ^:private ^:dynamic *error-fn*
+  default-error-fn)
+
 (defn- coercer [schema]
-  (mr/cached ::coercer schema (fn []
-                                (let [respond identity
-                                      ;; if normalization errors somewhere, just log the error and return the
-                                      ;; partially-normalized result. Easier to debug this way
-                                      raise   (fn [error]
-                                                (log/warnf "Error normalizing pMBQL:\n%s" (u/pprint-to-str error))
-                                                (:value error))]
-                                  (mc/coercer schema (mtx/transformer {:name :normalize}) respond raise)))))
+  (mr/cached ::coercer
+             schema
+             (fn []
+               (let [respond identity
+                     raise   #'*error-fn*] ; capture var rather than the bound value at the time this is eval'ed
+                 (mc/coercer schema (mtx/transformer {:name :normalize}) respond raise)))))
 
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
   deserialized JSON (from the app DB or a REST API request). This is intended for things that are already in a
   generally correct pMBQL; to 'normalize' things from legacy MBQL, use [[metabase.lib.convert]].
 
+  Normalization logic is defined in various schemas; grep for `:decode/normalize` in the `metabase.lib.schema*`
+  namespaces.
+
   The default implementation will keywordize keys for maps, and convert some known keys
   using [[default-map-value-fns]]; for MBQL clauses, it will convert the clause name to a keyword and recursively
-  normalize its options and arguments. Implement this method if you need custom behavior for something."
+  normalize its options and arguments. Implement this method if you need custom behavior for something.
+
+  Pass in a `nil` schema to automatically attempt to infer the schema based on `x` itself.
+
+  By default, does not throw Exceptions -- just logs them and returns what it was able to normalize, but you can pass
+  in the option `{:throw? true}` to have it throw exceptions when normalization fails."
   ([x]
-   (normalize (infer-schema x) x))
+   (normalize nil x))
 
   ([schema x]
-   (try
-     ((coercer schema) x)
-     (catch #?(:clj Throwable :cljs :default) e
-       (throw (ex-info (i18n/tru "Normalization error: {0}" (ex-message e))
-                       {:x x, :schema schema}
-                       e))))))
+   (normalize schema x nil))
+
+  ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
+   (let [schema (or schema (infer-schema x))
+         thunk  (^:once fn* []
+                 ((coercer schema) x))]
+     (if throw?
+       (binding [*error-fn* (fn [error]
+                              (throw (ex-info (i18n/tru "Normalization error")
+                                              {:schema schema, :x x, :error error})))]
+         (thunk))
+       (thunk)))))

@@ -2,6 +2,7 @@
   "Malli schema for a Field, aggregation, or expression reference (etc.)"
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.binning :as binning]
@@ -17,6 +18,11 @@
 
 (mr/def ::field.options
   [:merge
+   {:encode/serialize (fn [opts]
+                        (m/filter-keys (fn [k]
+                                         (or (simple-keyword? k)
+                                             (= (namespace k) "lib")))
+                                       opts))}
    ::common/options
    [:map
     [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]

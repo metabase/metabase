@@ -1387,7 +1387,7 @@
 (deftest append-all-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-mysql-local-infile-on-and-off
-      (mt/with-report-timezone-id "UTC"
+      (mt/with-report-timezone-id! "UTC"
         (testing "Append should succeed for all possible CSV column types"
           (with-redefs [driver/db-default-timezone (constantly "Z")
                         upload/current-database    (constantly (mt/db))]

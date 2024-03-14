@@ -410,7 +410,6 @@
           query {:database (mt/id)
                  :type     :native
                  :native   {:query         sql
-                            :type          :native
                             :template-tags {"created_at" {:id           "a21ca6d2-f742-a94a-da71-75adf379069c"
                                                           :name         "created_at"
                                                           :display-name "Created At"

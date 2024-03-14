@@ -8,6 +8,7 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:refer-clojure :exclude [ref])
   (:require
+   [medley.core :as m]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
@@ -19,7 +20,7 @@
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.info :as info]
    [metabase.lib.schema.join :as join]
-   [metabase.lib.schema.literal]
+   [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.parameter :as parameter]
    [metabase.lib.schema.ref :as ref]
@@ -33,8 +34,7 @@
          metabase.lib.schema.expression.conditional/keep-me
          metabase.lib.schema.expression.string/keep-me
          metabase.lib.schema.expression.temporal/keep-me
-         metabase.lib.schema.filter/keep-me
-         metabase.lib.schema.literal/keep-me)
+         metabase.lib.schema.filter/keep-me)
 
 (mr/def ::stage.native
   [:map
@@ -46,7 +46,7 @@
    ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
    ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
    ;; nil.
-   [:args {:optional true} [:sequential any?]]
+   [:args {:optional true} [:sequential ::literal/literal]]
    ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
    ;; is required.
    [:collection {:optional true} ::common/non-blank-string]
@@ -148,8 +148,12 @@
 
 (mr/def ::source
   [:map
-   [:lib/type [:enum :source/metric]]
+   {:decode/normalize common/normalize-map}
+   [:lib/type [:enum {:decode/normalize common/normalize-keyword} :source/metric]]
    [:id [:ref ::id/metric]]])
+
+(mr/def ::sources
+  [:sequential {:min 1} ::source])
 
 (mr/def ::stage.mbql
   [:and
@@ -165,7 +169,7 @@
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
     [:source-card  {:optional true} [:ref ::id/card]]
-    [:source       {:optional true} [:ref ::source]]
+    [:sources      {:optional true} [:ref ::sources]]
     [:page         {:optional true} [:ref ::page]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
@@ -188,7 +192,13 @@
 
 (mr/def ::stage
   [:and
-   {:decode/normalize common/normalize-map}
+   {:decode/normalize common/normalize-map
+    :encode/serialize #(dissoc %
+                               ;; this stuff is all added at runtime by QP middleware.
+                               :params
+                               :parameters
+                               :lib/stage-metadata
+                               :middleware)}
    [:map
     [:lib/type [:ref ::stage.type]]]
    [:multi {:dispatch      lib-type
@@ -201,8 +211,8 @@
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
    [:mbql.stage/native :map]
    [:mbql.stage/mbql   [:fn
-                        {:error/message "An initial MBQL stage of a query must have either a :source-table or :source-card"}
-                        (some-fn :source-table :source-card)]]])
+                        {:error/message "An initial MBQL stage of a query must have :source-table, :source-card, or :sources."}
+                        (some-fn :source-table :source-card :sources)]]])
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type
@@ -211,8 +221,8 @@
                         {:error/message "Native stages are only allowed as the first stage of a query or join."}
                         (constantly false)]]
    [:mbql.stage/mbql   [:fn
-                        {:error/message "Only the initial stage of a query can have a :source-table or :source-card."}
-                        (complement (some-fn :source-table :source-card))]]])
+                        {:error/message "Only the initial stage of a query can have a :source-table, :source-card, or :sources."}
+                        (complement (some-fn :source-table :source-card :sources))]]])
 
 (defn- visible-join-alias?-fn
   "Apparently you're allowed to use a join alias for a join that appeared in any previous stage or the current stage, or
@@ -282,10 +292,29 @@
    {:decode/normalize identity}
    :metabase.mbql.schema/Constraints])
 
+(defn- serialize-query [query]
+  ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
+  ;; to be part of the query itself. Some of these do affect the results however, and should be considered relevant
+  ;; for query hashing purposes
+  (let [keys-to-remove #{:lib/metadata
+                         :info
+                         :middleware
+                         :constraints
+                         :parameters
+                         :viz-settings}]
+    (m/filter-keys (fn [k]
+                     (and (not (contains? keys-to-remove k))
+                          (or (simple-keyword? k)
+                              ;; remove all random namespaced keys like `:metabase.models.query.permissions/perms`.
+                              ;; Keep `:lib` keys like `:lib/type`
+                              (= (namespace k) "lib"))))
+                   query)))
+
 (mr/def ::query
   [:and
    [:map
-    {:decode/normalize common/normalize-map}
+    {:decode/normalize common/normalize-map
+     :encode/serialize serialize-query}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword}
                 :mbql/query]]
