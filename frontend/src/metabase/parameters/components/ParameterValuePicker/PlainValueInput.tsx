@@ -1,5 +1,7 @@
 import type { ChangeEvent } from "react";
+
 import { TextInput } from "metabase/ui";
+
 import { PickerIcon } from "./ParameterValuePicker.styled";
 import { handleInputKeyup } from "./handleInputKeyup";
 

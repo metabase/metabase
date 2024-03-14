@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
 import { fetchParameterValues } from "metabase/parameters/actions";
