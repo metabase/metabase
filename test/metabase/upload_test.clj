@@ -1111,12 +1111,13 @@
     (snowplow-test/with-fake-snowplow-collector
       (with-upload-table!
         [_table (card->table (upload-example-csv!))]
-        (is (=? {:data {"model_id"        pos?
-                        "size_mb"         3.910064697265625E-5
-                        "num_columns"     2
-                        "num_rows"        2
-                        "upload_seconds"  pos?
-                        "event"           "csv_upload_successful"}
+        (is (=? {:data    {"model_id"          pos?
+                           "size_mb"           3.910064697265625E-5
+                           "num_columns"       2
+                           "num_rows"          2
+                           "generated_columns" 1
+                           "upload_seconds"    pos?
+                           "event"             "csv_upload_successful"}
                  :user-id (str (mt/user->id :rasta))}
                 (last (snowplow-test/pop-event-data-and-user-id!))))
         (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
@@ -1520,11 +1521,12 @@
              file     (csv-file-with csv-rows (mt/random-name))]
          (append-csv! {:file file, :table-id (:id table)})
 
-         (is (=? {:data {"size_mb"         1.811981201171875E-5
-                         "num_columns"     1
-                         "num_rows"        1
-                         "upload_seconds"  pos?
-                         "event"           "csv_append_successful"}
+         (is (=? {:data    {"size_mb"           1.811981201171875E-5
+                            "num_columns"       1
+                            "num_rows"          1
+                            "generated_columns" 0
+                            "upload_seconds"    pos?
+                            "event"             "csv_append_successful"}
                   :user-id (str (mt/user->id :crowberto))}
                  (last (snowplow-test/pop-event-data-and-user-id!))))
 
