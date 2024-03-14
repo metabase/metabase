@@ -132,7 +132,7 @@
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
                 :subprotocol                                "snowflake"
                 ;; see https://github.com/metabase/metabase/issues/22133
-                :subname                                    (let [base-url (if (and (not use-account-name) (string? host) (not (empty? host)))
+                :subname                                    (let [base-url (if (and (not use-account-name) (string? host) (not (str/blank? host)))
                                                                               (if-not (= (last host) \/)
                                                                                 (str host "/")
                                                                                 host)
