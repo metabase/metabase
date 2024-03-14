@@ -59,7 +59,7 @@ export function DashboardHeaderComponent({
   editingButtons = [],
   editWarning,
   headerButtons = [],
-  headerClassName = `py1 lg-py2 xl-py3 ${CS.wrapper}`,
+  headerClassName = cx(`py1 lg-py2 xl-py3`, CS.wrapper),
   location,
   isEditing,
   isNavBarOpen,

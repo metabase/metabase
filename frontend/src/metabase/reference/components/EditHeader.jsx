@@ -17,7 +17,7 @@ const EditHeader = ({
   onSubmit,
   revisionMessageFormField,
 }) => (
-  <div className={cx("EditHeader", CS.wrapper, "py1 px3", S.editHeader)}>
+  <div className={cx(CS.wrapper, CS.py1, CS.px3, S.editHeader)}>
     <div>{t`You are editing this page`}</div>
     <div className={S.editHeaderButtons}>
       <button

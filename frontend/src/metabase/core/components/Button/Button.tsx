@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 import _ from "underscore";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import CS from "metabase/css/core/index.css";
+import CS from "metabase/css/core/spacing.module.css";
 import { isNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
