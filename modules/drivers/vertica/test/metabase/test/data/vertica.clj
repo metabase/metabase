@@ -100,8 +100,8 @@
   "Dump a sequence of rows (as vectors) to a CSV file."
   [{:keys [field-definitions rows]} ^String filename]
   (try
-   (let [has-custom-pk? (when-let [pk (sql.tx/fielddefs->pk-field-name field-definitions)]
-                          (not= "id" pk))
+   (let [has-custom-pk? (when-let [pk (not-empty (sql.tx/fielddefs->pk-field-names field-definitions))]
+                          (not= ["id"] pk))
          column-names   (cond->> (mapv :field-name field-definitions)
                           (not has-custom-pk?)
                           (cons "id"))
