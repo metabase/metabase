@@ -28,14 +28,15 @@ export const saveChartImage = async (selector: string, fileName: string) => {
 
   node.classList.remove(SAVING_DOM_IMAGE_CLASS);
 
-  const link = document.createElement("a");
-
-  link.setAttribute("download", fileName);
-  link.setAttribute(
-    "href",
-    canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"),
-  );
-
-  link.click();
-  link.remove();
+  canvas.toBlob(blob => {
+    if (blob) {
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+  });
 };
