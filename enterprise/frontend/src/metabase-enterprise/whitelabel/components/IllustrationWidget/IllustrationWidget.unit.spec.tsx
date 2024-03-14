@@ -29,6 +29,7 @@ function setup({
       settingValues={{}}
       defaultIllustrationLabel={defaultIllustrationLabel}
       customIllustrationSetting={customIllustrationSetting}
+      errorMessageContainerId="does-not-matter-in-unit-tests"
     />,
   );
 
@@ -97,34 +98,11 @@ describe("IllustrationWidget", () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
-    it("should allow uploading a PNG file", async () => {
-      /**
-       * Since `userEvent.upload` seem to bypass input's `accept` which accepts MIME types,
-       * we wouldn't be able to test that we shouldn't be able to select files with MIME type
-       * not specified in `accept`.
-       */
-      const customOption = { label: "Custom", value: "custom" };
-
-      const { onChange, onChangeSetting } = setup({
-        setting: defaultSetting,
-        defaultIllustrationLabel,
-        customIllustrationSetting,
-      });
-
-      userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText(customOption.label));
-
-      const file = new File(["hello"], "hello.png", { type: "image/png" });
-      const input = screen.getByTestId("file-input");
-      userEvent.upload(input, file);
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(customOption.value);
-      });
-      expect(onChangeSetting).toHaveBeenCalledWith(
-        customIllustrationSetting,
-        expect.stringMatching(/^data:image\/png;base64,/),
-      );
-    });
+    /**
+     * We couldn't test uploading an image because it relies on image.onerror and image.onload
+     * which don't seem to be supported by jsdom. However the file upload test cases has already
+     * been covered in E2E tests.
+     */
 
     it("should not remove the custom uploaded image after changing the option to 'No illustration'", async () => {
       const noIllustrationOption = {
