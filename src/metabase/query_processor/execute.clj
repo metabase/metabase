@@ -17,7 +17,7 @@
   (fn [query rff]
     (letfn [(rff* [metadata]
               {:pre [(map? metadata)]}
-              (rff (assoc metadata :native_form (:native query))))]
+              (rff (assoc metadata :native_form ((some-fn :native :qp/compiled) query))))]
       (qp query rff*))))
 
 (def ^:private middleware

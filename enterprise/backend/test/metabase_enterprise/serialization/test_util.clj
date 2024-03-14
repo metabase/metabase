@@ -202,8 +202,8 @@
                                                  :name root-card-name
                                                  :dataset_query {:type :query
                                                                  :database db-id
-                                                                 :query {:source-table table-id}
-                                                                 :expressions {"Price Known" [:> [:field numeric-field-id nil] 0]}}}
+                                                                 :query {:source-table table-id
+                                                                         :expressions  {"Price Known" [:> [:field numeric-field-id nil] 0]}}}}
                   Card       {card-id-nested :id} {:table_id table-id
                                                    :name "My Nested Card"
                                                    :collection_id collection-id

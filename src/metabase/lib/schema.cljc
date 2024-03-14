@@ -319,14 +319,8 @@
 
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
-  ;; to be part of the query itself. Some of these do affect the results however, and should be considered relevant
-  ;; for query hashing purposes
-  (let [keys-to-remove #{:lib/metadata
-                         :info
-                         :middleware
-                         :constraints
-                         :parameters
-                         :viz-settings}]
+  ;; to be part of the query itself. It doesn't get saved along with the query in the app DB.
+  (let [keys-to-remove #{:lib/metadata :info :parameters :viz-settings}]
     (m/filter-keys (fn [k]
                      (and (not (contains? keys-to-remove k))
                           (or (simple-keyword? k)
@@ -371,4 +365,7 @@
     [:update-row {:optional true} [:maybe [:ref ::actions/row]]]]
    ;;
    ;; CONSTRAINTS
-   [:ref ::lib.schema.util/unique-uuids]])
+   [:ref ::lib.schema.util/unique-uuids]
+   [:fn
+    {:error/message ":expressions is not allowed in the top level of a query -- it is only allowed in MBQL stages"}
+    #(not (contains? % :expressions))]])
