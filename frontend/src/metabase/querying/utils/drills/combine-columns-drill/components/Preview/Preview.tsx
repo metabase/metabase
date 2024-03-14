@@ -1,8 +1,9 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { getQueryResults } from "metabase/query_builder/selectors";
-import { Box } from "metabase/ui";
+import { Box, Card, Stack, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator } from "../../types";
@@ -10,7 +11,7 @@ import { extractQueryResults, getPreview } from "../../utils";
 
 // import styles from './Preview.module.css';
 
-const PREVIEW_SIZE = 3;
+const PREVIEW_COLORS = ["text-dark", "text-medium", "text-light"];
 
 interface Props {
   columnsAndSeparators: ColumnAndSeparator[];
@@ -27,7 +28,10 @@ export const Preview = ({
 }: Props) => {
   const datasets = useSelector(getQueryResults);
   const queryResults = useMemo(
-    () => extractQueryResults(datasets).slice(0, PREVIEW_SIZE),
+    () =>
+      extractQueryResults(datasets)
+        .filter(value => value !== null)
+        .slice(0, PREVIEW_COLORS.length),
     [datasets],
   );
   const values = useMemo(
@@ -41,10 +45,18 @@ export const Preview = ({
   }
 
   return (
-    <Box>
-      {values.map((value, index) => (
-        <Box key={index}>{value}</Box>
-      ))}
-    </Box>
+    <Stack spacing="xs">
+      <Text color="text-medium" lh={1} weight="bold">{t`Preview`}</Text>
+
+      <Card bg="bg-light" py={12} radius="xs" shadow="none" withBorder>
+        {values.map((value, index) => (
+          <Box key={index}>
+            <Text color={PREVIEW_COLORS[index]} size="sm">
+              {value}
+            </Text>
+          </Box>
+        ))}
+      </Card>
+    </Stack>
   );
 };
