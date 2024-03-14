@@ -236,7 +236,8 @@ export const getSeriesHoverData = (
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
 ) => {
-  const { dataIndex, seriesId } = event;
+  const { dataIndex: echartsDataIndex, seriesId } = event;
+  const dataIndex = chartModel.getOriginalDatasetIndex(echartsDataIndex);
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
 
   if (seriesIndex < 0 || dataIndex == null) {
@@ -337,7 +338,8 @@ export const getSeriesClickData = (
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
 ): ClickObject | undefined => {
-  const { seriesId, dataIndex } = event;
+  const { seriesId, dataIndex: echartsDataIndex } = event;
+  const dataIndex = chartModel.getOriginalDatasetIndex(echartsDataIndex);
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
   const seriesModel = chartModel.seriesModels[seriesIndex];
 

@@ -171,6 +171,8 @@ export type BaseCartesianChartModel = {
   // Allows to use multiple ECharts series options to represent single data series
   // and map series ids to data keys for chart events
   seriesIdToDataKey?: Record<string, DataKey>;
+
+  getOriginalDatasetIndex: (index: number | undefined) => number | undefined;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {

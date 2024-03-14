@@ -337,12 +337,21 @@ function getHistogramDataset(
   dataset: ChartDataset,
   histogramInterval: number | undefined,
 ) {
+  // Histograms do not display datums where the dimension value is null
+  const transformedToOriginalDataIndex = new Map<number, number>();
+  const nonNullDataset: ChartDataset = [];
+  dataset.forEach((datum, originalIndex) => {
+    if (datum[X_AXIS_DATA_KEY] == null) {
+      return;
+    }
+    nonNullDataset.push(datum);
+    // We are using `nonNullDataset.length` instead of `nonNullDataset.length -
+    // 1` because we will later add an element to the front of the array
+    transformedToOriginalDataIndex.set(nonNullDataset.length, originalIndex);
+  });
+
   const interval = histogramInterval ?? 1;
 
-  // Histograms do not display datums where the dimension value is null
-  const nonNullDataset = dataset.filter(
-    datum => datum[X_AXIS_DATA_KEY] != null,
-  );
   nonNullDataset.unshift({
     [X_AXIS_DATA_KEY]:
       checkNumber(nonNullDataset[0][X_AXIS_DATA_KEY]) - interval,
@@ -352,7 +361,16 @@ function getHistogramDataset(
       checkNumber(nonNullDataset[nonNullDataset.length - 1][X_AXIS_DATA_KEY]) +
       interval,
   });
-  return nonNullDataset;
+
+  return {
+    dataset: nonNullDataset,
+    getOriginalDatasetIndex: (index: number | undefined) => {
+      if (index === undefined) {
+        return index;
+      }
+      return transformedToOriginalDataIndex.get(index);
+    },
+  };
 }
 
 /**
@@ -368,7 +386,7 @@ export const applyVisualizationSettingsDataTransformations = (
   xAxisModel: XAxisModel,
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
-): ChartDataset => {
+) => {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   if (
@@ -377,9 +395,8 @@ export const applyVisualizationSettingsDataTransformations = (
     xAxisModel.isHistogram
   ) {
     dataset = filterNullDimensionValues(dataset);
-  }
 
-  return transformDataset(dataset, [
+  const transformedDataset = transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
     {
       condition: settings["stackable.stack_type"] === "normalized",
@@ -423,6 +440,8 @@ export const applyVisualizationSettingsDataTransformations = (
       fn: getStackedAreasInterpolateTransform(seriesModels),
     },
   ]);
+
+  return { transformedDataset, getOriginalDatasetIndex };
 };
 
 export const sortDataset = (
