@@ -7,6 +7,7 @@ import type * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator } from "../../types";
 import {
+  formatSeparator,
   getColumnOptions,
   getInitialColumnAndSeparator,
   getNextColumnAndSeparator,
@@ -96,12 +97,7 @@ export const CombineColumnsDrill = ({
             {isUsingDefaultSeparator && (
               <Box>
                 <Button p={0} variant="subtle" onClick={handleEditSeparators}>
-                  {t`Separated by`}{" "}
-                  {defaultSeparator === " " ? (
-                    <>({t`space`})</>
-                  ) : (
-                    defaultSeparator
-                  )}
+                  {t`Separated by`} {formatSeparator(defaultSeparator)}
                 </Button>
               </Box>
             )}

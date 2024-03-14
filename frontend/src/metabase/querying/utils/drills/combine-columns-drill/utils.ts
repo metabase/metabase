@@ -1,6 +1,15 @@
+import { t } from "ttag";
+
 import * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator, ColumnOption } from "./types";
+
+export const formatSeparator = (separator: string) => {
+  if (separator === " ") {
+    return `(${t`space`})`;
+  }
+  return separator;
+};
 
 // reusable casting hack due to Mantine Select being non-generic
 export const fromSelectValue = (value: string | null): Lib.ColumnMetadata => {
