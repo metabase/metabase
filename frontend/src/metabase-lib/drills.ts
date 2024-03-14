@@ -1,6 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 
+import { availableDrillThrusTS, drillThruTS, isTSDrill } from "./drill-thru";
+
 import type {
   FilterDrillDetails,
   ColumnMetadata,
@@ -28,7 +30,7 @@ export function availableDrillThrus(
     value,
     row,
     dimensions,
-  );
+  ).concat(availableDrillThrusTS(query, stageIndex, column, value, row, dimensions));
 }
 
 // TODO: Precise types for each of the various extra args?
@@ -38,7 +40,11 @@ export function drillThru(
   drillThru: DrillThru,
   ...args: unknown[]
 ): Query {
-  return ML.drill_thru(query, stageIndex, drillThru, ...args);
+  // If the drillThru is a vanilla TS objects, this drill is implemented in TS.
+  return isTSDrill(drillThru) ?
+    drillThruTS(query, stageIndex, drillThru, ...args) :
+    // If it's another class (eg. a CLJS map), then it's implemented in CLJS.
+    ML.drill_thru(query, stageIndex, drillThru, ...args);
 }
 
 export function filterDrillDetails(drillThru: DrillThru): FilterDrillDetails {

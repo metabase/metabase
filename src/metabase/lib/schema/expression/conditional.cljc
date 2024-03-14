@@ -50,13 +50,14 @@
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
 (mr/def ::case-subclause
   [:tuple
-   {:error/message "Valid :case [pred expr] pair"}
+   {:error/message    "Valid :case [pred expr] pair"
+    :decode/normalize vec}
    #_pred [:ref ::expression/boolean]
    #_expr [:ref ::expression/expression]])
 
 (mbql-clause/define-catn-mbql-clause :case
   ;; TODO -- we should further constrain this so all of the exprs are of the same type
-  [:pred-expr-pairs [:sequential {:min 1} [:ref ::case-subclause]]]
+  [:pred-expr-pairs [:sequential {:min 1, :decode/normalize vec} [:ref ::case-subclause]]]
   [:default [:? [:schema [:ref ::expression/expression]]]])
 
 (defmethod expression/type-of-method :case

@@ -229,9 +229,13 @@
   ;; Attaches a cached display-info blob to `x`, in case it gets called again for the same object.
   ;; TODO: Keying by stage is probably unnecessary - if we eg. fetched a column from different stages, it would be a
   ;; different object. Test that idea and remove the stage from the cache key.
-  (lib.cache/side-channel-cache
-    (keyword "display-info-outer" (str "stage-" stage-number)) x
-    #(display-info* a-query stage-number %)))
+  (if (object? x)
+    ;; If the input is a vanilla JS object, simply return it as-is.
+    ;; This allows TS values to slot in next to CLJS ones and be treated as opaque.
+    x
+    (lib.cache/side-channel-cache
+      (keyword "display-info-outer" (str "stage-" stage-number)) x
+      #(display-info* a-query stage-number %))))
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
