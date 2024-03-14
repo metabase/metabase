@@ -330,7 +330,8 @@
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private sync-tables-clause
+(def sync-tables-clause
+  "Returns a clause that can be used inside a HoneySQL :where clause to select all the Tables that should be synced"
   (into [:and] (for [[k v] sync-tables-kv-args]
                  [:= k v])))
 

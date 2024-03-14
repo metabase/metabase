@@ -27,6 +27,8 @@
 
  [sql-jdbc.describe-table
   add-table-pks
+  describe-fields
+  describe-fields-sql
   describe-fks
   describe-fks-sql
   describe-table

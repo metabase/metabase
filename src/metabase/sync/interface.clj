@@ -2,6 +2,7 @@
   "Schemas and constants used by the sync code."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -38,7 +39,7 @@
    [:effective-type             {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:coercion-strategy          {:optional true} [:maybe ms/CoercionStrategy]]
    [:field-comment              {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:pk?                        {:optional true} :boolean]
+   [:pk?                        {:optional true} :boolean] ; optional for databases that don't support PKs
    [:nested-fields              {:optional true} [:set [:ref ::TableMetadataField]]]
    [:json-unfolding             {:optional true} :boolean]
    [:nfc-path                   {:optional true} [:any]]
@@ -65,16 +66,14 @@
   "Schema for a given Table as provided in [[metabase.driver/describe-table-indexes]]."
   [:ref ::TableIndexMetadata])
 
-(mr/def ::TableMetadata
-  [:map
-   [:name                         ::lib.schema.common/non-blank-string]
-   [:schema                       [:maybe ::lib.schema.common/non-blank-string]]
-   [:fields                       [:set TableMetadataField]]
-   [:description {:optional true} [:maybe :string]]])
+(mr/def ::FieldMetadataEntry
+  (-> (mr/schema ::TableMetadataField)
+      (mut/assoc :table-schema [:maybe ::lib.schema.common/non-blank-string])
+      (mut/assoc :table-name   ::lib.schema.common/non-blank-string)))
 
-(def TableMetadata
-  "Schema for the expected output of [[metabase.driver/describe-table]]."
-  [:ref ::TableMetadata])
+(def FieldMetadataEntry
+  "Schema for an item in the expected output of [[metabase.driver/describe-fields]]."
+  [:ref ::FieldMetadataEntry])
 
 ;;; not actually used; leaving here for now because it serves as documentation
 (comment
