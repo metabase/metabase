@@ -19,11 +19,14 @@
     ;; lots of extra keys get added and moved around that we don't need to worry about normalizing.
     (when-not (qp.store/miscellaneous-value [::tested])
       (qp.store/store-miscellaneous-value! [::tested] true)
-      (testing "Test pMBQL normalization from JSON-serialized queries"
+      (testing (str "\n\n"
+                    `test-mlv2-normalization
+                    "\nTest pMBQL normalization from JSON-serialized queries")
         ;; remove keys that aren't supposed to get serialized anyway (these are added at runtime by the QP or things
         ;; that call it)
         (let [query        (lib.serialize/prepare-for-serialization query)
               deserialized (json/parse-string (json/generate-string query))
               normalized   (lib/normalize :metabase.lib.schema/query deserialized {:throw? true})]
-          (is (= query
-                 normalized)))))))
+          (testing (str "\nquery = \n" (u/pprint-to-str query))
+            (is (= query
+                   normalized))))))))

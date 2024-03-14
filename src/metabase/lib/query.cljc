@@ -80,7 +80,7 @@
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
   (try
-    (let [pmbql-query (lib.convert/->pMBQL (mbql.normalize/normalize legacy-query))]
+    (let [pmbql-query (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query))]
       (merge
        pmbql-query
        (query-with-stages metadata-providerable (:stages pmbql-query))))

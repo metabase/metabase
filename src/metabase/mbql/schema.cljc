@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -1492,11 +1493,14 @@
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------
 
-(def ^:private Settings
-  "Options that tweak the behavior of the query processor."
+(mr/def ::Settings
   [:map
    ;; The timezone the query should be ran in, overriding the default report timezone for the instance.
    [:report-timezone {:optional true} TimezoneId]])
+
+(def ^:private Settings
+  "Options that tweak the behavior of the query processor."
+  [:ref ::Settings])
 
 (mr/def ::Constraints
   [:and
@@ -1520,8 +1524,7 @@
   override these values."
   [:ref ::Constraints])
 
-(def ^:private MiddlewareOptions
-  "Additional options that can be used to toggle middleware on or off."
+(mr/def ::MiddlewareOptions
   [:map
    ;; should we skip adding results_metadata to query results after running the query? Used by
    ;; [[metabase.query-processor.middleware.results-metadata]]; default `false`
@@ -1547,6 +1550,10 @@
    ;; Whether to process a question's visualization settings and include them in the result metadata so that they can
    ;; incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default `false`.
    [:process-viz-settings? {:optional true} [:maybe :boolean]]])
+
+(def ^:private MiddlewareOptions
+  "Additional options that can be used to toggle middleware on or off."
+  [:ref ::MiddlewareOptions])
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
@@ -1578,11 +1585,9 @@
    [:ref ::lib.schema.id/saved-questions-virtual-database]
    [:ref ::lib.schema.id/database]])
 
-(defn- check-keys-for-query-type
-  "Make sure we have the combo of query `:type` and `:native`/`:query`"
-  [schema]
+;;; Make sure we have the combo of query `:type` and `:native`/`:query`
+(mr/def ::check-keys-for-query-type
   [:and
-   schema
    [:fn
     {:error/message "Query must specify either `:native` or `:query`, but not both."}
     (every-pred
@@ -1595,22 +1600,19 @@
         :native native
         :query  mbql))]])
 
-(defn- check-query-does-not-have-source-metadata
-  "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
-  columns in the source query.
-
-   Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved, the
-  middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has been
-  changed so it is always added at the same level the resolved `:source-query` is added.
-
-   This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning
-  properly."
-  [schema]
-  [:and
-   schema
-   [:fn
-    {:error/message "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}
-    (complement :source-metadata)]])
+;;; `:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
+;;; columns in the source query.
+;;;
+;;; Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved,
+;;; the middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has
+;;; been changed so it is always added at the same level the resolved `:source-query` is added.
+;;;
+;;; This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning
+;;; properly.
+(mr/def ::check-query-does-not-have-source-metadata
+  [:fn
+   {:error/message "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}
+   (complement :source-metadata)])
 
 (def Query
   "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in
@@ -1618,32 +1620,38 @@
   [:ref ::Query])
 
 (mr/def ::Query
-  (-> [:map
-       [:database DatabaseID]
-       ;; Type of query. `:query` = MBQL; `:native` = native.
-       [:type [:enum :query :native]]
-       [:native     {:optional true} NativeQuery]
-       [:query      {:optional true} MBQLQuery]
-       [:parameters {:optional true} ParameterList]
-       ;;
-       ;; OPTIONS
-       ;;
-       ;; These keys are used to tweak behavior of the Query Processor.
-       ;; TODO - can we combine these all into a single `:options` map?
-       ;;
-       [:settings    {:optional true} [:maybe Settings]]
-       [:constraints {:optional true} [:maybe Constraints]]
-       [:middleware  {:optional true} [:maybe MiddlewareOptions]]
-       ;;
-       ;; INFO
-       ;;
-       ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
-       ;; User who ran it
-       [:info {:optional true} [:maybe [:ref ::lib.schema.info/info]]]]
-      ;;
-      ;; CONSTRAINTS
-      check-keys-for-query-type
-      check-query-does-not-have-source-metadata))
+  [:and
+   [:map
+    [:database DatabaseID]
+    ;; Type of query. `:query` = MBQL; `:native` = native.
+    [:type [:enum :query :native]]
+    [:native     {:optional true} NativeQuery]
+    [:query      {:optional true} MBQLQuery]
+    [:parameters {:optional true} ParameterList]
+    ;;
+    ;; OPTIONS
+    ;;
+    ;; These keys are used to tweak behavior of the Query Processor.
+    ;;
+    [:settings    {:optional true} [:maybe Settings]]
+    [:constraints {:optional true} [:maybe Constraints]]
+    [:middleware  {:optional true} [:maybe MiddlewareOptions]]
+    ;;
+    ;; INFO
+    ;;
+    ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
+    ;; User who ran it
+    [:info {:optional true} [:maybe [:ref ::lib.schema.info/info]]]
+    ;;
+    ;; ACTIONS
+    ;;
+    ;; This stuff is only used for Actions.
+    [:create-row {:optional true} [:maybe [:ref ::lib.schema.actions/row]]]
+    [:update-row {:optional true} [:maybe [:ref ::lib.schema.actions/row]]]]
+   ;;
+   ;; CONSTRAINTS
+   [:ref ::check-keys-for-query-type]
+   [:ref ::check-query-does-not-have-source-metadata]])
 
 (def ^{:arglists '([query])} valid-query?
   "Is this a valid outer query? (Pre-compling a validator is more efficient.)"

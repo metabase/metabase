@@ -10,6 +10,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -26,24 +27,10 @@
      (binding [*current-user-permissions-set* (delay #{"/"})]
        ~@body)))
 
-(deftest normalize-as-mbql-query-test
-  (testing "Make sure normalize-as-mbql-query can exclude certain keys from normalization"
-    (is (= {:database    1
-            :type        :query
-            :updated-row {:my_snake_case_column 1000
-                          "CamelCaseColumn"     {:ABC 200}}
-            :query       {:source-table 2}}
-           (#'actions/normalize-as-mbql-query
-            {"database"   1
-             :updated_row {:my_snake_case_column 1000
-                           "CamelCaseColumn"     {:ABC 200}}
-             :query       {"source_table" 2}}
-            :exclude #{:updated-row})))))
-
-(defn- format-field-name
+(mu/defn ^:private format-field-name :- :string
   "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
   [field-name]
-  (keyword (mt/format-name (name field-name))))
+  (mt/format-name (name field-name)))
 
 (defn- categories-row-count []
   (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]}))))

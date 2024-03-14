@@ -6,6 +6,9 @@
    [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.lib.schema.actions :as lib.schema.actions]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.models :refer [Card DashboardCard Database Table]]
    [metabase.models.action :as action]
    [metabase.models.persisted-info :as persisted-info]
@@ -18,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (defn- execute-query-action!
@@ -96,7 +100,10 @@
                 :parameters             request-parameters
                 :destination-parameters destination-param-ids})))
 
-(defn- build-implicit-query
+(mu/defn ^:private build-implicit-query :- [:map
+                                            [:query          ::mbql.s/Query]
+                                            [:row-parameters ::lib.schema.actions/row]
+                                            [:prefetch-parameters {:optional true} [:tuple ::lib.schema.parameter/parameter]]]
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
   (let [{database-id :db_id
          table-id :id :as table} (implicit-action-table model_id)
@@ -122,23 +129,23 @@
         pk-field-name            (keyword (:name pk-field))
         row-parameters           (cond-> simple-parameters
                                    (not= implicit-action :row/create) (dissoc pk-field-name))
-        requires_pk              (contains? #{:row/delete :row/update} implicit-action)]
-    (api/check (or (not requires_pk)
+        requires-pk?             (contains? #{:row/delete :row/update} implicit-action)]
+    (api/check (or (not requires-pk?)
                    (some? (get simple-parameters pk-field-name)))
-               400
-               (tru "Missing primary key parameter: {0}"
-                    (pr-str (u/slugify (:name pk-field)))))
+      400
+      (tru "Missing primary key parameter: {0}"
+           (pr-str (u/slugify (:name pk-field)))))
     (cond->
       {:query {:database database-id,
                :type :query,
                :query {:source-table table-id}}
        :row-parameters row-parameters}
 
-      requires_pk
+      requires-pk?
       (assoc-in [:query :query :filter]
                 [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
 
-      requires_pk
+      requires-pk?
       (assoc :prefetch-parameters [{:target [:dimension [:field (:id pk-field) nil]]
                                     :type "id"
                                     :value [(get simple-parameters pk-field-name)]}]))))

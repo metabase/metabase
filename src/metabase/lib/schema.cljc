@@ -10,6 +10,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.schema.aggregation :as aggregation]
+   [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
@@ -286,10 +287,21 @@
    [:ref ::stages.valid-refs]])
 
 ;;; TODO -- move/copy this schema from the legacy schema to here
+(mr/def ::settings
+  [:ref
+   {:decode/normalize common/normalize-map}
+   :metabase.mbql.schema/Settings])
+
+;;; TODO -- move/copy this schema from the legacy schema to here
+(mr/def ::middleware-options
+  [:ref
+   {:decode/normalize common/normalize-map}
+   :metabase.mbql.schema/MiddlewareOptions])
+
+;;; TODO -- move/copy this schema from the legacy schema to here
 (mr/def ::constraints
   [:ref
-   ;; do not decode, since this should not get written to the app DB or come in from the REST API.
-   {:decode/normalize identity}
+   {:decode/normalize common/normalize-map}
    :metabase.mbql.schema/Constraints])
 
 (defn- serialize-query [query]
@@ -322,11 +334,28 @@
                 [true  ::id/saved-questions-virtual-database]
                 [false ::id/database]]]
     [:stages   [:ref ::stages]]
+    [:parameters {:optional true} [:maybe [:ref ::parameter/parameters]]]
+    ;;
+    ;; OPTIONS
+    ;;
+    ;; These keys are used to tweak behavior of the Query Processor.
+    ;;
+    [:settings    {:optional true} [:maybe [:ref ::settings]]]
     [:constraints {:optional true} [:maybe [:ref ::constraints]]]
-    [:parameters  {:optional true} [:maybe [:ref ::parameter/parameters]]]
-    [:info        {:optional true} [:maybe [:ref ::info/info]]]
+    [:middleware  {:optional true} [:maybe [:ref ::middleware-options]]]
     ;; TODO -- `:viz-settings` ?
     ;;
-    ;; TODO -- `:middleware`?
-    ]
-   lib.schema.util/UniqueUUIDs])
+    ;; INFO
+    ;;
+    ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
+    ;; User who ran it
+    [:info {:optional true} [:maybe [:ref ::info/info]]]
+    ;;
+    ;; ACTIONS
+    ;;
+    ;; This stuff is only used for Actions.
+    [:create-row {:optional true} [:maybe [:ref ::actions/row]]]
+    [:update-row {:optional true} [:maybe [:ref ::actions/row]]]]
+   ;;
+   ;; CONSTRAINTS
+   [:ref ::lib.schema.util/unique-uuids]])
