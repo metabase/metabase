@@ -8,7 +8,7 @@
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [honey.sql.pg-ops :refer [iregex regex]]
+   [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -53,7 +53,8 @@
 (comment
   ;; method impls live in these namespaces.
   postgres.actions/keep-me
-  postgres.ddl/keep-me)
+  postgres.ddl/keep-me
+  sql.pg-ops/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
@@ -901,11 +902,11 @@
 (def ^:private table-type-clauses
   {"TABLE"              [:and
                          [:= :c.relkind [:inline "r"]]
-                         [iregex :n.nspname [:inline "^pg_"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "PARTITIONED TABLE"  [:and
                          [:= :c.relkind [:inline "p"]]
-                         [iregex :n.nspname [:inline "^pg_"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "VIEW"               [:and
                          [:= :c.relkind [:inline "v"]]
@@ -913,16 +914,16 @@
                          [:<> :n.nspname [:inline "information_schema"]]]
    "INDEX"              [:and
                          [:= :c.relkind [:inline "i"]]
-                         [iregex :n.nspname [:inline "^pg_"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "PARTITIONED INDEX"  [:and
                          [:= :c.relkind [:inline "I"]]
-                         [iregex :n.nspname [:inline "^pg_"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "SEQUENCE"           [:= :c.relkind [:inline "S"]]
    "TYPE"               [:and
                          [:= :c.relkind [:inline "c"]]
-                         [iregex :n.nspname [:inline "^pg_"]]
+                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
                          [:<> :n.nspname [:inline "information_schema"]]]
    "SYSTEM TABLE"       [:and
                          [:= :c.relkind [:inline "r"]]
@@ -944,16 +945,16 @@
                           [:<> :n.nspname [:inline "information_schema"]]]]
    "TEMPORARY TABLE"    [:and
                          [:in :c.relkind [[:inline "r"] [:inline "p"]]]
-                         [regex :n.nspname [:inline "^pg_temp_"]]]
+                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
    "TEMPORARY INDEX"    [:and
                          [:= :c.relkind [:inline "i"]]
-                         [regex :n.nspname [:inline "^pg_temp_"]]]
+                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
    "TEMPORARY VIEW"     [:and
                          [:= :c.relkind [:inline "v"]]
-                         [regex :n.nspname [:inline "^pg_temp_"]]]
+                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
    "TEMPORARY SEQUENCE" [:and
                          [:= :c.relkind [:inline "S"]]
-                         [regex :n.nspname [:inline "^pg_temp_"]]]
+                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
    "FOREIGN TABLE"      [:= :c.relkind [:inline "f"]]
    "MATERIALIZED VIEW"  [:= :c.relkind [:inline "m"]]})
 
@@ -963,7 +964,7 @@
   (sql/format
    (cond-> {:select    [[:n.nspname :schema]
                         [:c.relname :name]
-                        [[:case-expr [:or [regex :n.nspname "^pg_"] [:= :n.nspname "information_schema"]]
+                        [[:case-expr [:or [(keyword "~") :n.nspname "^pg_"] [:= :n.nspname "information_schema"]]
                           true ;; system tables
                           [:case
                            [:or [:= :n.nspname "pg_catalog"] [:= :n.nspname "information_schema"]]
@@ -1014,10 +1015,10 @@
             :where     [:= :c.relnamespace :n.oid]
             :order-by  [:type :schema :name]}
     (not (str/blank? schema-pattern))
-;; TODO escape quotes?
+    ;; TODO escape quotes?
     (sql.helpers/where [:like :n.nspname schema-pattern])
 
-;; TODO do privilege check
+    ;; TODO do privilege check
     (not (str/blank? tablename-pattern))
     (sql.helpers/where [:like :c.relname tablename-pattern])
 

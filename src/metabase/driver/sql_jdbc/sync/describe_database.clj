@@ -92,7 +92,8 @@
          (.rollback conn))
        false))))
 
-(defmethod sql-jdbc.sync.interface/get-tables :sql-jdbc
+(defn- jdbc-get-tables
+  "Moved to its own function so we can reused in tests."
   [driver ^Connection conn catalog schema-pattern tablename-pattern types]
   (with-open [rset (.getTables (.getMetaData conn) catalog (some->> schema-pattern (driver/escape-entity-name-for-metadata driver)) tablename-pattern
                                (when (seq types) (into-array String types)))]
@@ -105,6 +106,10 @@
                                          (when-not (str/blank? remarks)
                                            remarks))
                           :type        (.getString rset "TABLE_TYPE")}))))))
+
+(defmethod sql-jdbc.sync.interface/get-tables :sql-jdbc
+  [& args]
+  (apply jdbc-get-tables args))
 
 (defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
