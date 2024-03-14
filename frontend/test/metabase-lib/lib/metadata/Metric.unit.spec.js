@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
-import Metric from "metabase-lib/metadata/Metric";
-import Table from "metabase-lib/metadata/Table";
+import Metric from "metabase-lib/v1/metadata/Metric";
+import Table from "metabase-lib/v1/metadata/Table";
 import { createMockMetric } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,

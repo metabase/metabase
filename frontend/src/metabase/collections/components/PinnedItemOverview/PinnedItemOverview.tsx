@@ -7,7 +7,7 @@ import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItem
 import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {

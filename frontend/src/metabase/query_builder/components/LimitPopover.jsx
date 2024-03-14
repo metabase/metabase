@@ -5,7 +5,7 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import { formatNumber } from "metabase/lib/formatting";
 import LimitInput from "metabase/query_builder/components/LimitInput";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
   return (

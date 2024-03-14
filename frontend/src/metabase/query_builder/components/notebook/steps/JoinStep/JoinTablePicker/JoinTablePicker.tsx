@@ -9,7 +9,7 @@ import { DataSourceSelector } from "metabase/query_builder/components/DataSelect
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { TableId } from "metabase-types/api";
 
 import { NotebookCellItem } from "../../../NotebookCell";

@@ -7,7 +7,7 @@ import {
   computeTimeseriesTicksInterval,
 } from "metabase/visualizations/lib/timeseries";
 import registerVisualizations from "metabase/visualizations/register";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 registerVisualizations();
 

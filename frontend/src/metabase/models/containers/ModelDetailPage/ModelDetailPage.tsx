@@ -19,8 +19,8 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import { getSetting } from "metabase/selectors/settings";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { Card, Collection, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

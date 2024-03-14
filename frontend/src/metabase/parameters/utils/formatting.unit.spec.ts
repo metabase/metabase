@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
-import { createMockUiParameter } from "metabase-lib/parameters/mock";
+import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,

@@ -11,7 +11,7 @@ import ParametersList from "metabase/parameters/components/ParametersList";
 import {
   getDefaultValuePopulatedParameters,
   PULSE_PARAM_USE_DEFAULT,
-} from "metabase-lib/parameters/utils/parameter-values";
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 
 function MutableParametersSection({
   className,

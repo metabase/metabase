@@ -5,7 +5,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import { SqlButton, SqlIcon } from "./ConvertQueryButton.styled";
 

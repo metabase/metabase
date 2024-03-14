@@ -13,7 +13,7 @@ import type {
 } from "metabase/public/lib/types";
 import type { IconName } from "metabase/ui";
 import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 import type { EmbedResourceParameterWithValue } from "./types";

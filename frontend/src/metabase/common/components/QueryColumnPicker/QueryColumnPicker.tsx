@@ -198,6 +198,7 @@ export function QueryColumnPicker({
         color={color}
         maxHeight={Infinity}
         data-testid={dataTestId}
+        searchProp={["name", "displayName"]}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
