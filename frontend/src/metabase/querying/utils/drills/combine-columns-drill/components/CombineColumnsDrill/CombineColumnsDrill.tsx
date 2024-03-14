@@ -1,3 +1,4 @@
+import type { FormEventHandler } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -11,15 +12,17 @@ import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 import styles from "./CombineColumnsDrill.css";
 
 interface Props {
+  drillInfo: Lib.CombineColumnsDrillThruInfo;
   query: Lib.Query;
   stageIndex: number;
-  drillInfo: Lib.CombineColumnsDrillThruInfo;
+  onSubmit: (columnsAndSeparators: ColumnAndSeparator[]) => void;
 }
 
 export const CombineColumnsDrill = ({
+  drillInfo,
   query,
   stageIndex,
-  drillInfo,
+  onSubmit,
 }: Props) => {
   const { availableColumns, defaultSeparator } = drillInfo;
   const options = useMemo(() => {
@@ -57,7 +60,10 @@ export const CombineColumnsDrill = ({
     setIsUsingDefaultSeparator(false);
   };
 
-  const handleSubmit = () => {};
+  const handleSubmit: FormEventHandler = event => {
+    event.preventDefault();
+    onSubmit(columnsAndSeparators);
+  };
 
   return (
     <Card className={styles.card} p="lg">
