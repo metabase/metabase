@@ -386,6 +386,13 @@ AreaStackInterpolateMissingValues.args = {
   renderingContext,
 };
 
+export const BarStackDisplayOverridesSeriesDisplays = Template.bind({});
+BarStackDisplayOverridesSeriesDisplays.args = {
+  rawSeries: data.barStackDisplayOverridesSeriesDisplays as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
