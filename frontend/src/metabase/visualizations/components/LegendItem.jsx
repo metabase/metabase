@@ -51,8 +51,8 @@ export default class LegendItem extends Component {
         className={cx(
           className,
           "LegendItem",
-          "fullscreen-normal-text fullscreen-night-text",
           CS.noDecoration,
+          "fullscreen-normal-text fullscreen-night-text",
           CS.flex,
           CS.alignCenter,
           {

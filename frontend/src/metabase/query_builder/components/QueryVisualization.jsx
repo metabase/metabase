@@ -51,7 +51,7 @@ export default function QueryVisualization(props) {
         />
       )}
       <div
-        className={cx(CS.spread, "Visualization z1", {
+        className={cx(CS.spread, "Visualization", CS.z1, {
           "Visualization--loading": isRunning,
         })}
       >
@@ -101,7 +101,7 @@ export function VisualizationRunningState({ className = "" }) {
       )}
     >
       <LoadingSpinner />
-      <h2 className="text-brand text-uppercase my3">{message}</h2>
+      <h2 className={cx(CS.textBrand, CS.textUppercase, CS.my3)}>{message}</h2>
     </div>
   );
 }

@@ -73,8 +73,8 @@ export default class DeleteModalWithConfirm extends Component {
           >{t`Cancel`}</button>
           <button
             className={cx("Button ml2", {
-              "Button--danger": confirmed,
               [CS.disabled]: !confirmed,
+              "Button--danger": confirmed,
             })}
             onClick={this.onDelete}
           >
