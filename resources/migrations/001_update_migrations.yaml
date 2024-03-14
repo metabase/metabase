@@ -5824,6 +5824,71 @@ databaseChangeLog:
             sql: >-
               DROP VIEW IF EXISTS v_content;
 
+  - changeSet:
+      id: v50.2024-02-29T15:06:43
+      author: tsmacdonald
+      comment: Add the query_field join table
+      changes:
+        - createTable:
+            tableName: query_field
+            remarks: Fields used by a card's query
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_card_id
+                    deleteCascade: true
+              - column:
+                  name: field_id
+                  remarks: referenced field
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_field_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v50.2024-02-29T15:07:43
+      author: tsmacdonald
+      comment: Index query_field.card_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: query_field
+            columns:
+              - column:
+                  name: card_id
+            indexName: idx_query_field_card_id
+
+  - changeSet:
+      id: v50.2024-02-29T15:08:43
+      author: tsmacdonald
+      comment: Index query_field.field_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: query_field
+            columns:
+              - column:
+                  name: field_id
+            indexName: idx_query_field_field_id
+
+  - changeSet:
       id: v50.2024-02-28T16:00:00
       author: piranha
       comment: 'Effective caching #36847'

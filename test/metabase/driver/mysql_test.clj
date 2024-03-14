@@ -522,7 +522,7 @@
         (testing "When the query takes longer that the timeout, it is killed."
           (is (thrown-with-msg?
                 Exception
-                #"Killed mysql process id [\d,]+ due to timeout."
+                #"Killed MySQL process id [\d,]+ due to timeout."
                 (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 10 ["select sleep(5)"]))))
         (testing "When the query takes less time than the timeout, it is successful."
           (is (some? (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))

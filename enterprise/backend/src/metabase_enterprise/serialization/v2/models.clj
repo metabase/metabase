@@ -70,6 +70,7 @@
    "QueryAction"
    "QueryCache"
    "QueryExecution"
+   "QueryField"
    "RecentViews"
    "Revision"
    "Secret"

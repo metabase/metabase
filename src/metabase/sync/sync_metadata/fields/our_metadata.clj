@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata.fields.fetch-metadata
+(ns metabase.sync.sync-metadata.fields.our-metadata
   "Logic for constructing a map of metadata from the Metabase application database that matches the form of DB metadata
   about Fields in a Table, and for fetching the DB metadata itself. This metadata is used by the logic in other
   `metabase.sync.sync-metadata.fields.*` namespaces to determine what sync operations need to be performed by
@@ -89,9 +89,9 @@
 
 (mu/defn db-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
-  implementation of `describe-table`."
+  implementation of `describe-table` or `describe-fields` if supported."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
-  (cond-> (:fields (fetch-metadata/table-metadata database table))
-    (driver/database-supports? (:engine database) :nested-field-columns database)
-    (set/union (fetch-metadata/nfc-metadata database table))))
+    (cond-> (fetch-metadata/table-fields-metadata database table)
+      (driver/database-supports? (:engine database) :nested-field-columns database)
+      (set/union (fetch-metadata/nfc-metadata database table))))

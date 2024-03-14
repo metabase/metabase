@@ -369,6 +369,13 @@
    [:re u/uuid-regex]
    (deferred-tru "value must be a valid UUID.")))
 
+(defn CollectionOf
+  "Helper for creating schemas to check whether something is an instance of a collection."
+  [item-schema]
+  [:fn
+   {:error/message (format "Collection of %s" item-schema)}
+   #(and (coll? %) (every? (partial mc/validate item-schema) %))])
+
 (defn QueryVectorOf
   "Helper for creating a schema that coerces single-value to a vector."
   [schema]
