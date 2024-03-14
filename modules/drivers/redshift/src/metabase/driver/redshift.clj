@@ -68,6 +68,7 @@
                         [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
                         [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
                :where  [:and
+                        [:raw "fk_ns.nspname !~ '^information_schema|catalog_history|pg_'"]
                         [:= :c.contype [:raw "'f'::char"]]
                         [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
                         [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
@@ -78,15 +79,15 @@
 
 (defmethod sql-jdbc.sync/describe-fields-sql :redshift
   [driver & {:keys [schema-names table-names]}]
-  (sql/format {:select [[:c.column_name "name"]
-                        [:c.data_type "database-type"]
-                        [[:- :c.ordinal_position 1] "database-position"]
-                        [:c.schema_name "table-schema"]
-                        [:c.table_name "table-name"]
-                        [[:raw "NULL"] "database-is-auto-increment"] ; only needed for actions, which redshift doesn't support yet
-                        [[:raw "NULL"] "database-required"]          ; only needed for actions, which redshift doesn't support yet
-                        [[:not= :pk.column_name nil] "pk?"]
-                        [[:case [:not= :c.remarks ""] :c.remarks :else nil] "field-comment"]]
+  (sql/format {:select [[:c.column_name :name]
+                        [:c.data_type :database-type]
+                        [[:- :c.ordinal_position 1] :database-position]
+                        [:c.schema_name :table-schema]
+                        [:c.table_name :table-name]
+                        [nil :database-is-auto-increment] ; only needed for actions, which redshift doesn't support yet
+                        [nil :database-required]          ; only needed for actions, which redshift doesn't support yet
+                        [[:not= :pk.column_name nil] :pk?]
+                        [[:case [:not= :c.remarks ""] :c.remarks :else nil] :field-comment]]
                :from [[:svv_all_columns :c]]
                :left-join [[{:select [:tc.table_schema
                                       :tc.table_name
@@ -104,7 +105,7 @@
                             [:= :c.table_name :pk.table_name]
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
-                       [:not-in :c.schema_name ["pg_catalog" "information_schema"]]
+                       [:raw "c.schema_name !~ '^information_schema|catalog_history|pg_'"]
                        (when schema-names [:in :c.schema_name schema-names])
                        (when table-names [:in :c.table_name table-names])]
                :order-by [:table-schema :table-name :database-position]}
