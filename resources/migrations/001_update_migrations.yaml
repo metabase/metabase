@@ -5956,16 +5956,18 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
-        - sql: >
-            CREATE index idx_activity_entity_qualified_id ON activity (
-              (
-                CASE
-                  WHEN model = 'Dataset' THEN (concat('card_', model_id))
-                  WHEN model_id IS NULL THEN NULL
-                  ELSE (concat(lower(model), '_', model_id))
-                END
-              )
-            );
+        - sql:
+            dbms: mysql,mariadb
+            sql: >
+              CREATE index idx_activity_entity_qualified_id ON activity (
+                (
+                  CASE
+                    WHEN model = 'Dataset' THEN (concat('card_', model_id))
+                    WHEN model_id IS NULL THEN NULL
+                    ELSE (concat(lower(model), '_', model_id))
+                  END
+                )
+              );
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
