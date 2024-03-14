@@ -329,7 +329,7 @@
   Results match [[metabase.sync.interface/FieldMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.
   Results are ordered by `table-schema`, `table-name`, and `database-position` in ascending order."
-  {:added    "0.50.0"
+  {:added    "0.49.1"
    :arglists '([driver database & {:keys [schema-names table-names]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

@@ -266,7 +266,7 @@
 (defmulti describe-fields-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
  i.e. [[describe-fields]]."
-  {:added    "0.50.0"
+  {:added    "0.49.1"
    :arglists '([driver & {:keys [schema-names table-names]}])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
