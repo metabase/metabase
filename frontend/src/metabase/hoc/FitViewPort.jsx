@@ -1,5 +1,7 @@
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
+
 /**
  * fitViewport allows you to modify the top level classes on the react root node
  * to set certain display properties that make it easier to create a view that will always
@@ -64,7 +66,7 @@ function fitViewport(ComposedComponent) {
 export function isFitViewportMode() {
   const root = document.getElementById("root");
   if (root && root.firstChild) {
-    return root.firstChild.classList.contains("spread");
+    return root.firstChild.classList.contains(CS.spread);
   }
   return false;
 }

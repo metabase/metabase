@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
 /* flow */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 
 import { PasswordCopyButton } from "./PasswordReveal.styled";
@@ -17,7 +19,10 @@ const styles = {
 };
 
 const Label = () => (
-  <div style={{ top: -12 }} className="absolute text-centered left right">
+  <div
+    style={{ top: -12 }}
+    className={cx(CS.absolute, CS.textCentered, CS.left, CS.right)}
+  >
     <span className="px1 bg-white h6 text-bold text-medium text-uppercase">
       {t`Temporary Password`}
     </span>
