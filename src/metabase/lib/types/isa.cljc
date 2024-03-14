@@ -20,7 +20,11 @@
   "Returns if `column` is of category `category`.
   The possible categories are the keys in [[metabase.lib.types.constants/type-hierarchies]]."
   [category column]
-  (let [type-definition (lib.types.constants/type-hierarchies category)]
+  (let [type-definition (lib.types.constants/type-hierarchies category)
+        column          (cond-> column
+                          (and (map? column)
+                               (not (:effective-type column)))
+                          (assoc :effective-type (:base-type column)))]
     (cond
       (nil? column) false
 
