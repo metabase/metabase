@@ -323,6 +323,13 @@ NumericXAxisIncludesZero37082.args = {
   renderingContext,
 };
 
+export const WrongYAxisRange37306 = Template.bind({});
+WrongYAxisRange37306.args = {
+  rawSeries: data.wrongYAxisRange37306 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const LongDimensionNameCutOff37420 = Template.bind({});
 LongDimensionNameCutOff37420.args = {
   rawSeries: data.longDimensionNameCutOff37420 as any,
