@@ -1,6 +1,6 @@
 import type { Parameter } from "metabase-types/api";
 
-import { isStaticListParam } from "./core";
+import { isStaticListParam } from "../core";
 
 type Action =
   | {
