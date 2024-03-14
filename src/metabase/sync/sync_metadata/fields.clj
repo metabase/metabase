@@ -44,7 +44,7 @@
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
-   [metabase.sync.sync-metadata.fields.our-metadata :as our-metadata]
+   [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
@@ -62,11 +62,11 @@
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
   [table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  (+ (sync-instances/sync-instances! table db-metadata (our-metadata/our-metadata table))
+  (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
      ;; Re-fetch our metadata because there might be somethings that have changed after calling
      ;; `sync-instances`
-     (sync-metadata/update-metadata! table db-metadata (our-metadata/our-metadata table))))
+     (sync-metadata/update-metadata! table db-metadata (fields.our-metadata/our-metadata table))))
 
 (mu/defn sync-fields-for-db!
   "Sync the Fields in the Metabase application database for a specific `table`."
@@ -104,7 +104,7 @@
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-     (let [db-metadata (our-metadata/db-metadata database table)]
+     (let [db-metadata (fields.our-metadata/db-metadata database table)]
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! table db-metadata)}))))
 
