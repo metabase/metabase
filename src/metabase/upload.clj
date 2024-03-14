@@ -616,7 +616,7 @@
         (f relaxed-type))))
 
 (defn- field-changes
-  "Given the existing and newly inferred types for the given `fields`, return a map of the added and changed fields."
+  "Given existing and newly inferred types for the given `fields`, calculate the added and changed fields."
   [field-keys existing-types new-types]
   (reduce
    (fn [m [f e n]]
@@ -624,7 +624,7 @@
        (nil? e)   (assoc-in m [:added f] n)
        (not= e n) (assoc-in m [:updated f] n)
        :else      m))
-   {}
+   {:added {}, :updated {}}
    (map vector field-keys existing-types new-types)))
 
 (defn- field->db-type [driver field->col-type]
