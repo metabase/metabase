@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -82,6 +82,23 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
 
   const hasTabs = tabs.length > 1 || searchQuery;
   const tabModels = useMemo(() => tabs.map(t => t.model), [tabs]);
+
+  useEffect(() => {
+    const handleEscapeModal = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscapeModal, true);
+
+    const cleanup = () => {
+      document.removeEventListener("keydown", handleEscapeModal, true);
+    };
+
+    return cleanup;
+  }, [onClose]);
 
   return (
     <Modal.Root
