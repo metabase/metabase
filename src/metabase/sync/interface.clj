@@ -39,7 +39,7 @@
    [:effective-type             {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:coercion-strategy          {:optional true} [:maybe ms/CoercionStrategy]]
    [:field-comment              {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:pk?                        {:optional true} :boolean]
+   [:pk?                        {:optional true} :boolean] ; optional for databases that don't support PKs
    [:nested-fields              {:optional true} [:set [:ref ::TableMetadataField]]]
    [:json-unfolding             {:optional true} :boolean]
    [:nfc-path                   {:optional true} [:any]]
@@ -69,8 +69,7 @@
 (mr/def ::FieldMetadataEntry
   (-> (mr/schema ::TableMetadataField)
       (mut/assoc :table-schema [:maybe ::lib.schema.common/non-blank-string])
-      (mut/assoc :table-name   ::lib.schema.common/non-blank-string)
-      (mut/assoc :pk?          :boolean)))
+      (mut/assoc :table-name   ::lib.schema.common/non-blank-string)))
 
 (def FieldMetadataEntry
   "Schema for an item in the expected output of [[metabase.driver/describe-fields]]."
