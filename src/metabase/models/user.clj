@@ -100,7 +100,7 @@
   (when (and sso_source (not (setup/has-user-setup)))
     ;; Only allow SSO users to be provisioned if the setup flow has been completed and an admin has been created
     (throw (Exception. (trs "Instance has not been initialized"))))
-  (when-let [max-users (premium-features/max-users)]
+  (when-let [max-users (premium-features/max-users-allowed)]
     ;; If you add a new usery thing that is not a user, this must be updated
     (when (> max-users
              (t2/count :model/User {:where [:and
