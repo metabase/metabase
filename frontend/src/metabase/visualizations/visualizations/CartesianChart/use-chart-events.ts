@@ -10,6 +10,7 @@ import type {
 import {
   canBrush,
   getBrushData,
+  getGoalLineHoverData,
   getSeriesClickData,
   getSeriesHoverData,
   getTimelineEventsForEvent,
@@ -81,6 +82,16 @@ export const useChartEvents = (
               timelineEventsModel,
               event,
             );
+
+            onHoverChange?.(eventData);
+            return;
+          }
+
+          if (
+            event.name === "goal-line" &&
+            event.event?.target?.style?.text === settings["graph.goal_label"]
+          ) {
+            const eventData = getGoalLineHoverData(settings, event);
 
             onHoverChange?.(eventData);
             return;
