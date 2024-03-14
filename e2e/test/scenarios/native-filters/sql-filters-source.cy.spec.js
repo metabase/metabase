@@ -97,9 +97,11 @@ describe("scenarios > filters > sql filters > values source", () => {
       cy.findByText("Showing 51 rows").should("exist");
 
       SQLFilter.toggleRequired();
-      FieldFilter.openEntryForm(true);
-      FieldFilter.selectFilterValueFromList("Gadget", {
-        buttonLabel: "Add filter",
+      cy.findByTestId("sidebar-content")
+        .findByPlaceholderText("Start typing to filter…")
+        .click();
+      popover().within(() => {
+        cy.findByText("Gadget").click();
       });
     });
 
