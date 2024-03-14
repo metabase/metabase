@@ -43,6 +43,7 @@ import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sort
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
 import longDimensionNameCutOff37420 from "./long-dimension-name-cut-off-37420.json";
 import compactXAxisDoesNotWork38917 from "./compact-x-axis-does-not-work-38917.json";
+import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short-range.json";
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
@@ -95,6 +96,7 @@ export const data = {
   combinedBarTimeSeriesDifferentGranularityWithBreakout,
   longDimensionNameCutOff37420,
   compactXAxisDoesNotWork38917,
+  numberOfInsightsError39608,
   numericXAxisIncludesZero37082,
   ticksNativeWeekWithGapShortRange,
   ticksNativeWeekWithGapLongRange,
