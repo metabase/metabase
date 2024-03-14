@@ -10,6 +10,7 @@ import {
   getNotebookStep,
   hovercard,
   join,
+  moveDnDKitElement,
   openNotebook,
   openOrdersTable,
   openProductsTable,
@@ -706,6 +707,68 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByDisplayValue("5").type("{selectall}50");
       cy.button("Refresh").click();
       assertTableRowCount(10);
+    });
+  });
+
+  it("should be able to drag-n-drop query clauses", () => {
+    function moveElement({ name, horizontal, vertical, index }) {
+      moveDnDKitElement(cy.findByText(name), {
+        horizontal,
+        vertical,
+      });
+      cy.findAllByTestId("notebook-cell-item")
+        .eq(index)
+        .should("have.text", name);
+    }
+
+    const questionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          E1: ["+", ["field", ORDERS.ID, null], 1],
+          E2: ["+", ["field", ORDERS.ID, null], 2],
+        },
+        filter: [
+          "and",
+          ["=", ["field", ORDERS.ID, null], 1],
+          ["=", ["field", ORDERS.ID, null], 2],
+          ["=", ["field", ORDERS.ID, null], 3],
+        ],
+        breakout: [
+          ["field", ORDERS.ID, null],
+          ["field", ORDERS.PRODUCT_ID, null],
+        ],
+        aggregation: [
+          ["count"],
+          ["sum", ["field", ORDERS.TAX, null]],
+          ["sum", ["field", ORDERS.SUBTOTAL, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
+          ["avg", ["field", ORDERS.TOTAL, null]],
+        ],
+        "order-by": [
+          ["asc", ["aggregation", 0]],
+          ["asc", ["aggregation", 4]],
+        ],
+      },
+    };
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+    openNotebook();
+    getNotebookStep("expression").within(() => {
+      moveElement({ name: "E1", horizontal: 100, index: 1 });
+    });
+    getNotebookStep("filter").within(() => {
+      moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
+    });
+    getNotebookStep("summarize").within(() => {
+      cy.findByTestId("aggregate-step").within(() => {
+        moveElement({ name: "Count", vertical: 100, index: 3 });
+      });
+      cy.findByTestId("breakout-step").within(() => {
+        moveElement({ name: "ID", horizontal: 100, index: 1 });
+      });
+    });
+    getNotebookStep("sort").within(() => {
+      moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
     });
   });
 });
