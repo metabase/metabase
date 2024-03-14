@@ -6,7 +6,7 @@ import type * as Lib from "metabase-lib";
 import type { ColumnAndSeparator, ColumnOption } from "../../types";
 import { fromSelectValue, toSelectValue } from "../../utils";
 
-import styles from "./ColumnAndSeparatorRow.css";
+import styles from "./ColumnAndSeparatorRow.module.css";
 
 interface Props {
   column: Lib.ColumnMetadata;

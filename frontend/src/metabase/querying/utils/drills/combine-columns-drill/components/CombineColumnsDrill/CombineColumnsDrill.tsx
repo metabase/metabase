@@ -14,7 +14,7 @@ import {
 } from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 
-import styles from "./CombineColumnsDrill.css";
+import styles from "./CombineColumnsDrill.module.css";
 
 interface Props {
   drillInfo: Lib.CombineColumnsDrillThruInfo;
