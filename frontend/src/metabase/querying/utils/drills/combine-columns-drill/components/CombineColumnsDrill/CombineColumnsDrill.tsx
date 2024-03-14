@@ -70,55 +70,57 @@ export const CombineColumnsDrill = ({
   };
 
   return (
-    <Card className={styles.card} p="lg">
-      <Stack spacing="lg">
-        <Stack spacing="sm">
-          <Title mb="sm" order={4}>{t`Combine with`}</Title>
+    <form onSubmit={handleSubmit}>
+      <Card className={styles.card} p="lg">
+        <Stack spacing="lg">
+          <Stack spacing="sm">
+            <Title mb="sm" order={4}>{t`Combine with`}</Title>
 
-          {columnsAndSeparators.map(({ column, separator }, index) => (
-            <ColumnAndSeparatorRow
-              column={column}
-              index={index}
-              key={index}
-              options={options}
-              separator={separator}
-              showLabels={index === 0 && !isUsingDefaultSeparator}
-              showRemove={columnsAndSeparators.length > 1}
-              showSeparator={!isUsingDefaultSeparator}
-              onChange={handleChange}
-              onRemove={handleRemove}
-            />
-          ))}
+            {columnsAndSeparators.map(({ column, separator }, index) => (
+              <ColumnAndSeparatorRow
+                column={column}
+                index={index}
+                key={index}
+                options={options}
+                separator={separator}
+                showLabels={index === 0 && !isUsingDefaultSeparator}
+                showRemove={columnsAndSeparators.length > 1}
+                showSeparator={!isUsingDefaultSeparator}
+                onChange={handleChange}
+                onRemove={handleRemove}
+              />
+            ))}
 
-          {isUsingDefaultSeparator && (
-            <Box>
-              <Button p={0} variant="subtle" onClick={handleEditSeparators}>
-                {t`Separated by`}{" "}
-                {defaultSeparator === " " ? (
-                  <>({t`space`})</>
-                ) : (
-                  defaultSeparator
-                )}
-              </Button>
-            </Box>
-          )}
+            {isUsingDefaultSeparator && (
+              <Box>
+                <Button p={0} variant="subtle" onClick={handleEditSeparators}>
+                  {t`Separated by`}{" "}
+                  {defaultSeparator === " " ? (
+                    <>({t`space`})</>
+                  ) : (
+                    defaultSeparator
+                  )}
+                </Button>
+              </Box>
+            )}
+          </Stack>
+
+          <Flex align="center" gap="md" justify="space-between">
+            <Button
+              leftIcon={<Icon name="add" />}
+              p={0}
+              variant="subtle"
+              onClick={handleAdd}
+            >
+              Add another column
+            </Button>
+
+            <Button type="submit" variant="filled">
+              Done
+            </Button>
+          </Flex>
         </Stack>
-
-        <Flex align="center" gap="md" justify="space-between">
-          <Button
-            leftIcon={<Icon name="add" />}
-            p={0}
-            variant="subtle"
-            onClick={handleAdd}
-          >
-            Add another column
-          </Button>
-
-          <Button type="submit" variant="filled" onClick={handleSubmit}>
-            Done
-          </Button>
-        </Flex>
-      </Stack>
-    </Card>
+      </Card>
+    </form>
   );
 };
