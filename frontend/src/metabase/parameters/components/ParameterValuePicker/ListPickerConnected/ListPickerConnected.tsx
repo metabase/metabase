@@ -10,6 +10,7 @@ import {
   getListParameterStaticValues,
   shouldEnableSearch,
 } from "../core";
+
 import {
   getDefaultState,
   getResetKey,
@@ -17,7 +18,7 @@ import {
   shouldFetchInitially,
   shouldFetchOnSearch,
   shouldReset,
-} from "../state";
+} from "./state";
 
 interface ListPickerConnectedProps {
   value: string | null;
