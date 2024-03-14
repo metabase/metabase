@@ -1,5 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
+import { forwardRef } from "react";
 import { ResizableBox } from "react-resizable";
 
 import CS from "metabase/css/core/index.css";
@@ -22,7 +23,7 @@ const propTypes = {
  */
 const getOverflow = isResizing => (isResizing ? "hidden" : "scroll");
 
-const Handle = () => (
+const Handle = forwardRef((props, ref) => (
   <Flex
     align="center"
     justify="center"
@@ -33,6 +34,8 @@ const Handle = () => (
     style={{
       cursor: "row-resize",
     }}
+    ref={ref}
+    {...props}
   >
     <Box
       w="100px"
@@ -43,7 +46,9 @@ const Handle = () => (
       }}
     ></Box>
   </Flex>
-);
+));
+
+Handle.displayName = "Handle";
 
 function ResizableNotebook({
   isResizing,
