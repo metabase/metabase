@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { Button, Flex, Icon, Select, TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import { fromSelectValue, toSelectValue } from "../../lib";
 import type { ColumnAndSeparator, ColumnOption } from "../../types";
+import { fromSelectValue, toSelectValue } from "../../utils";
 
 import styles from "./ColumnAndSeparatorRow.css";
 

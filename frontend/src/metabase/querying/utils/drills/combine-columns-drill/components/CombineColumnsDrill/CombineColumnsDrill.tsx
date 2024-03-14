@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { Box, Button, Card, Flex, Icon, Stack, Title } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import { getColumnOptions, getInitialColumnAndSeparator } from "../../lib";
 import type { ColumnAndSeparator } from "../../types";
+import { getColumnOptions, getInitialColumnAndSeparator } from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 
 import styles from "./CombineColumnsDrill.css";
