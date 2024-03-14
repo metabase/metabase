@@ -143,7 +143,15 @@
                      :dialect (sql.qp/quote-style driver))))
 
 (defmulti get-tables
-  "Return a reducible collection of table info."
+  "Return a reducible collection of table info.
+
+  Each row should have the following keys:
+  - name                   : the table name
+  - schema                 : the schema name
+  - description (optional) : table remark if any
+  - type                   : table type (table, view, materialized view... etc)
+
+  Optionally can be filtered by catalog, schema-pattern, tablename-pattern and table types."
   {:added "0.50.0" :arglists '([driver conn catalog schema-pattern tablename-pattern types])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

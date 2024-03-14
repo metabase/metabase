@@ -93,10 +93,11 @@
        false))))
 
 (defn- jdbc-get-tables
-  "Moved to its own function so we can reused in tests."
   [driver ^Connection conn catalog schema-pattern tablename-pattern types]
   (sql-jdbc.sync.common/reducible-results
-   #(.getTables (.getMetaData conn) catalog (some->> schema-pattern (driver/escape-entity-name-for-metadata driver)) tablename-pattern
+   #(.getTables (.getMetaData conn) catalog
+                (some->> schema-pattern (driver/escape-entity-name-for-metadata driver))
+                (some->> tablename-pattern (driver/escape-entity-name-for-metadata driver))
                 (when (seq types) (into-array String types)))
    (fn [^ResultSet rset]
      (fn [] {:name        (.getString rset "TABLE_NAME")

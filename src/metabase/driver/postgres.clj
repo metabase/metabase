@@ -900,63 +900,11 @@
        (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 (def ^:private table-type-clauses
-  {"TABLE"              [:and
-                         [:= :c.relkind [:inline "r"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
-                         [:<> :n.nspname [:inline "information_schema"]]]
-   "PARTITIONED TABLE"  [:and
-                         [:= :c.relkind [:inline "p"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
-                         [:<> :n.nspname [:inline "information_schema"]]]
-   "VIEW"               [:and
-                         [:= :c.relkind [:inline "v"]]
-                         [:<> :n.nspname [:inline "pg_catalog"]]
-                         [:<> :n.nspname [:inline "information_schema"]]]
-   "INDEX"              [:and
-                         [:= :c.relkind [:inline "i"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
-                         [:<> :n.nspname [:inline "information_schema"]]]
-   "PARTITIONED INDEX"  [:and
-                         [:= :c.relkind [:inline "I"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
-                         [:<> :n.nspname [:inline "information_schema"]]]
-   "SEQUENCE"           [:= :c.relkind [:inline "S"]]
-   "TYPE"               [:and
-                         [:= :c.relkind [:inline "c"]]
-                         [(keyword "!~") :n.nspname [:inline "^pg_"]]
-                         [:<> :n.nspname [:inline "information_schema"]]]
-   "SYSTEM TABLE"       [:and
-                         [:= :c.relkind [:inline "r"]]
-                         [:or
-                          [:= :n.nspname [:inline "pg_catalog"]]
-                          [:<> :n.nspname [:inline "information_schema"]]]]
-   "SYSTEM TOAST TABLE" [:and
-                         [:= :c.relkind [:inline "i"]]
-                         [:= :n.nspname [:inline "pg_toast"]]]
-   "SYSTEM VIEW"        [:and
-                         [:= :c.relkind [:inline "v"]]
-                         [:or
-                          [:= :n.nspname [:inline "pg_catalog"]]
-                          [:<> :n.nspname [:inline "information_schema"]]]]
-   "SYSTEM INDEX"       [:and
-                         [:= :c.relkind [:inline "i"]]
-                         [:or
-                          [:= :n.nspname [:inline "pg_catalog"]]
-                          [:<> :n.nspname [:inline "information_schema"]]]]
-   "TEMPORARY TABLE"    [:and
-                         [:in :c.relkind [[:inline "r"] [:inline "p"]]]
-                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
-   "TEMPORARY INDEX"    [:and
-                         [:= :c.relkind [:inline "i"]]
-                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
-   "TEMPORARY VIEW"     [:and
-                         [:= :c.relkind [:inline "v"]]
-                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
-   "TEMPORARY SEQUENCE" [:and
-                         [:= :c.relkind [:inline "S"]]
-                         [(keyword "~") :n.nspname [:inline "^pg_temp_"]]]
-   "FOREIGN TABLE"      [:= :c.relkind [:inline "f"]]
-   "MATERIALIZED VIEW"  [:= :c.relkind [:inline "m"]]})
+  {"TABLE"              [:raw "c.relkind = 'r' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'"]
+   "PARTITIONED TABLE"  [:raw "c.relkind = 'p' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'"]
+   "VIEW"               [:raw "c.relkind = 'v' AND n.nspname <> 'pg_catalog' AND n.nspname <> 'information_schema'"]
+   "FOREIGN TABLE"      [:raw "c.relkind = 'f'"]
+   "MATERIALIZED VIEW"  [:raw "c.relkind = 'm'"]})
 
 (defn- get-table-sql
   [schema-pattern tablename-pattern types]
