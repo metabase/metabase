@@ -6,7 +6,11 @@ import { Box, Button, Card, Flex, Icon, Stack, Title } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator } from "../../types";
-import { getColumnOptions, getInitialColumnAndSeparator } from "../../utils";
+import {
+  getColumnOptions,
+  getInitialColumnAndSeparator,
+  getNextColumnAndSeparator,
+} from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 
 import styles from "./CombineColumnsDrill.css";
@@ -45,7 +49,7 @@ export const CombineColumnsDrill = ({
   const handleAdd = () => {
     setColumnsAndSeparators(value => [
       ...value,
-      getInitialColumnAndSeparator(drillInfo),
+      getNextColumnAndSeparator(drillInfo, options, columnsAndSeparators),
     ]);
   };
 

@@ -1,6 +1,6 @@
 import * as Lib from "metabase-lib";
 
-import type { ColumnAndSeparator } from "./types";
+import type { ColumnAndSeparator, ColumnOption } from "./types";
 
 // reusable casting hack due to Mantine Select being non-generic
 export const fromSelectValue = (value: string | null): Lib.ColumnMetadata => {
@@ -29,3 +29,29 @@ export const getInitialColumnAndSeparator = (
   column: drillInfo.availableColumns[0],
   separator: drillInfo.defaultSeparator,
 });
+
+export const getNextColumnAndSeparator = (
+  drillInfo: Lib.CombineColumnsDrillThruInfo,
+  options: ColumnOption[],
+  columnsAndSeparators: ColumnAndSeparator[],
+): ColumnAndSeparator => {
+  const lastSeparator = columnsAndSeparators.at(-1)?.separator;
+  const separator = lastSeparator ?? drillInfo.defaultSeparator;
+  const [nextUnusedOption] = options.filter(option => {
+    return columnsAndSeparators.every(
+      ({ column }) => column !== fromSelectValue(option.value),
+    );
+  });
+
+  if (nextUnusedOption) {
+    return {
+      column: fromSelectValue(nextUnusedOption.value),
+      separator,
+    };
+  }
+
+  return {
+    column: drillInfo.availableColumns[0],
+    separator,
+  };
+};
