@@ -9,6 +9,7 @@ import type * as Lib from "metabase-lib";
 export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   drill,
   drillInfo,
+  clicked,
   applyDrill,
 }) => {
   const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
@@ -19,6 +20,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
         section: "extract-popover",
         buttonType: "horizontal",
         question: () => applyDrill(drill, extraction.key),
+        extra: () => ({ settingsSyncOptions: { column: clicked.column } }),
       }),
     );
 

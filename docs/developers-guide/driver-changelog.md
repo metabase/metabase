@@ -6,6 +6,23 @@ title: Driver interface changelog
 
 ## Metabase 0.49.0
 
+- The multimethod `metabase.driver/describe-table-fks` has been deprecated in favor of `metabase.driver/describe-fks`.
+  `metabase.driver/describe-table-fks` will be removed in 0.52.0.
+
+- The multimethod `metabase.driver/describe-fks` has been added. The method needs to be implemented if the database
+  supports the `:foreign-keys` and `:describe-fks` features. It replaces the `metabase.driver/describe-table-fks`
+  method, which is now deprecated.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-fks-sql` has been added. The method needs
+  to be implemented if you want to use the default JDBC implementation of `metabase.driver/describe-fks`.
+
+- The multimethod `metabase.driver/alter-columns!` has been added. This method is used to alter a table's columns in the
+  database. This is currently only required for drivers that support the `:uploads` feature, and has a default
+  implementation for JDBC-based drivers.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/alter-columns-sql` has been added. The method
+  allows you to customize the query used by the default JDBC implementation of `metabase.driver/alter-columns!`.
+
 - The multimethod `metabase.driver.sql-jdbc.sync.interface/current-user-table-privileges` has been added.
   JDBC-based drivers can implement this to improve the performance of the default SQL JDBC implementation of
   `metabase.driver/describe-database`. It needs to be implemented if the database supports the `:table-privileges`

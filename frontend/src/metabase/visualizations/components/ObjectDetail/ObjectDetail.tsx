@@ -19,7 +19,7 @@ import {
   getZoomedObjectId,
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
-import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type { State } from "metabase-types/store";
 
 import { ObjectDetailWrapper } from "./ObjectDetailWrapper";

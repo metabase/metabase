@@ -11,9 +11,9 @@ import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
 import { Icon, DelayGroup } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
-import type Schema from "metabase-lib/metadata/Schema";
-import type Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type Table from "metabase-lib/v1/metadata/Table";
 
 import { DataSelectorSection as Section } from "../DataSelector.styled";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
@@ -104,7 +104,7 @@ const DataSelectorTablePicker = ({
       table ? <Icon name="table" /> : null;
 
     const renderItemExtra = ({ table }: { table: Table }) =>
-      table && <TableInfoIcon table={table} position="right" />;
+      table && <TableInfoIcon table={table} position="right" showIfEmpty />;
 
     const renderItemWrapper = (content: ReactNode) => (
       <HoverParent>{content}</HoverParent>
@@ -180,11 +180,16 @@ const Header = ({
   <HeaderContainer>
     <HeaderClickable onClick={onBack}>
       {onBack && <Icon name="chevronleft" size={18} />}
-      <HeaderDatabaseName>{selectedDatabase.name}</HeaderDatabaseName>
+      <HeaderDatabaseName data-testid="source-database">
+        {selectedDatabase.name}
+      </HeaderDatabaseName>
     </HeaderClickable>
 
     {selectedSchema?.name && schemas.length > 1 && (
-      <HeaderSchemaName>- {selectedSchema.displayName()}</HeaderSchemaName>
+      <HeaderSchemaName>
+        {"- "}
+        <span data-testid="source-schema">{selectedSchema.displayName()}</span>
+      </HeaderSchemaName>
     )}
   </HeaderContainer>
 );

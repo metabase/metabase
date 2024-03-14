@@ -85,7 +85,7 @@
    refreshable with the feature flag disabled."
   metabase-enterprise.caching.config
   []
-  #{"creating" "persisted" "error" "off"})
+  #{"refreshing" "creating" "persisted" "error" "off"})
 
 (defenterprise prunable-states
   "States of `persisted_info` records which can be pruned."

@@ -8,7 +8,7 @@
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
@@ -78,6 +78,12 @@
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
+
+(defmethod driver/escape-entity-name-for-metadata :postgres [_driver entity-name]
+  (when entity-name
+    ;; these entities names are used as a pattern for LIKE queries in jdbc
+    ;; so we need to double escape it, first for java, then for sql
+    (str/replace entity-name "\\" "\\\\")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -714,7 +720,7 @@
                 (merge disable-ssl-params props))
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
-                (mdb.spec/spec :postgres it)
+                (mdb/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
@@ -790,6 +796,15 @@
   [driver]
   (= driver :postgres))
 
+(defmethod sql-jdbc.sync/alter-columns-sql :postgres
+  [driver table-name column-definitions]
+  (first (sql/format {:alter-table  (keyword table-name)
+                      :alter-column (map (fn [[column-name type-and-constraints]]
+                                           (vec (cons column-name (cons :type type-and-constraints))))
+                                         column-definitions)}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
   ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
@@ -853,8 +868,8 @@
   ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
   ;; result in a operation not supported error
   (->> (jdbc/query
-         conn-spec
-         (str/join
+        conn-spec
+        (str/join
          "\n"
          ["with table_privileges as ("
           " select"

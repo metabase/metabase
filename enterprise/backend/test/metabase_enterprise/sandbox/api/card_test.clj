@@ -95,4 +95,5 @@
       (t2.with-temp/with-temp [:model/Card card {:database_id   (mt/id)
                                                  :table_id      (mt/id :categories)
                                                  :dataset_query (mt/mbql-query categories)}]
-        (is (get-in (qp/process-query (qp/userland-query (:dataset_query card))) [:data :is_sandboxed]))))))
+        (is (=? {:data {:is_sandboxed true}}
+                (qp/process-query (qp/userland-query (:dataset_query card)))))))))

@@ -50,7 +50,7 @@ describe("getLoadingMessage", () => {
 
     const expectedLoadingMessage = "Doing science...";
 
-    expect(getLoadingMessage(states)).toBe(expectedLoadingMessage);
+    expect(getLoadingMessage(states)(false)).toBe(expectedLoadingMessage);
   });
 
   it('should show correct loading message when "loading-message" is set to "running-query"', () => {
@@ -63,7 +63,7 @@ describe("getLoadingMessage", () => {
     const expectedLoadingMessage = "Loading results...";
     ("");
 
-    expect(getLoadingMessage(states)).toBe(expectedLoadingMessage);
+    expect(getLoadingMessage(states)(false)).toBe(expectedLoadingMessage);
   });
 
   it('should show correct loading message when "loading-message" is set to "loading-results"', () => {
@@ -75,7 +75,7 @@ describe("getLoadingMessage", () => {
 
     const expectedLoadingMessage = "Running query...";
 
-    expect(getLoadingMessage(states)).toBe(expectedLoadingMessage);
+    expect(getLoadingMessage(states)(false)).toBe(expectedLoadingMessage);
   });
 });
 

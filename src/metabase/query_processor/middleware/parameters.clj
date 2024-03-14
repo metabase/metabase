@@ -62,13 +62,18 @@
        ;; now recursively expand any remaining maps that contain `:parameters`
        (expand-all outer-query expanded)))))
 
-(defn- move-top-level-params-to-inner-query
+(mu/defn ^:private move-top-level-params-to-inner-query
   "Move any top-level parameters to the same level (i.e., 'inner query') as the query they affect."
-  [{:keys [parameters], query-type :type, :as outer-query}]
-  {:pre [(#{:query :native} query-type)]}
+  [{:keys [info parameters], query-type :type, :as outer-query} :- [:map [:type [:enum :query :native]]]]
   (cond-> (set/rename-keys outer-query {:parameters :user-parameters})
-    (seq parameters)
-    (assoc-in [query-type :parameters] parameters)))
+    ;; TODO: Native models should be within scope of dashboard filters, by applying the filter on an outer stage.
+    ;; That doesn't work, so the logic below requires MBQL queries only to fix the regression.
+    ;; Native models don't actual get filtered even when linked to dashboard filters, but that's not a regression.
+    ;; This can be fixed properly once this middleware is powered by MLv2. See #40011.
+    (and (seq parameters)
+         (:metadata/model-metadata info)
+         (= query-type :query))          (update query-type (fn [inner-query] {:source-query inner-query}))
+    (seq parameters)                     (assoc-in [query-type :parameters] parameters)))
 
 (defn- expand-parameters
   "Expand parameters in the `outer-query`, and if the query is using a native source query, expand params in that as

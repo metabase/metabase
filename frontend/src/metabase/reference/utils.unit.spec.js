@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { separateTablesBySchema } from "metabase/reference/databases/TableList";
 import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockDatabase,
   createMockField,

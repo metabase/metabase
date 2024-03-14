@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   QuestionDashboardCard,
   ClickBehavior,

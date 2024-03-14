@@ -282,7 +282,7 @@
 
 ;; TODO: move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and frontend
 ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
-;; If this function moves you should update the comment that links to this one
+;; If this function moves you should update the comment that links to this one (#40013)
 (defn template-tag-parameters
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
@@ -348,7 +348,7 @@
                         {:status-code 400})))))
   nil)
 
-;; TODO -- consider whether we should validate the Card query when you save/update it??
+;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
                   :parameter_mappings []}
@@ -357,7 +357,7 @@
       ;; make sure this Card doesn't have circular source query references
       (check-for-circular-source-query-references card)
       (check-field-filter-fields-are-from-correct-database card)
-      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
+      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
@@ -431,7 +431,7 @@
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
-  ;; does that happen in the `PUT` endpoint?
+  ;; does that happen in the `PUT` endpoint? (#40013)
   (u/prog1 changes
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
           old-card-info (when (or (contains? changes :type)

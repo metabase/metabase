@@ -9,7 +9,7 @@ import {
   createQuery as _createQuery,
   columnFinder,
 } from "metabase-lib/test-helpers";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,

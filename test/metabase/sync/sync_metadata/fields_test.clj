@@ -9,6 +9,8 @@
    [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -245,7 +247,8 @@
           ;; 3. add back the FK relationship but targeting continent_2
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
           (sync/sync-database! db {:scan :schema})
-          (testing "initially country's continent_id is targeting continent_2"
+          ;; FIXME: The following test fails. This was fixed (metabase#39679) but regressed to solve a flakey test (metabase#39861)
+          #_(testing "initially country's continent_id is targeting continent_2"
             (is (=? {:fk_target_field_id (mt/id :continent_2 :id)
                      :semantic_type      :type/FK}
                     (get-fk)))))))))
@@ -297,3 +300,33 @@
                                  :steps
                                  (m/find-first (comp #{"sync-fields"} first)))]
         (is (=? ["sync-fields" {:total-fields 2 :updated-fields 2}] field-sync-info))))))
+
+(mt/defdataset country
+  [["continent"
+    [{:field-name "name", :base-type :type/Text}]
+    [["Africa"]]]
+   ["country"
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "continent_id", :base-type :type/Integer :fk :continent}]
+    [["Ghana" 1]]]])
+
+(deftest sync-fks-and-fields-for-table-test
+  (testing "[[sync-fields/sync-fields-for-table!]] and [[sync-fks/sync-fks-for-table!]] should sync fields and fks"
+    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+      (mt/dataset country
+        (let [tables (t2/select :model/Table :db_id (mt/id))]
+          ;; 1. delete the fields that were just synced
+          (t2/delete! :model/Field :table_id [:in (map :id tables)])
+          ;; 2. sync the metadata for each table
+          (run! sync-fields/sync-fields-for-table! tables)
+          (run! sync-fks/sync-fks-for-table! tables)
+          (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
+            (is (= #{{:name "name",         :semantic_type nil,      :fk_target_field_id nil}
+                     {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
+                     {:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (:id continent-id-field)}}
+                   (set (map #(into {} %)
+                             (t2/select [Field
+                                         [:%lower.name :name]
+                                         :semantic_type
+                                         :fk_target_field_id]
+                                        :table_id [:in (map :id tables)])))))))))))

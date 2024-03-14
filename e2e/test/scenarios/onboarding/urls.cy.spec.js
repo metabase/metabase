@@ -12,7 +12,7 @@ import {
   popover,
   getFullName,
 } from "e2e/support/helpers";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 const { admin, normal } = USERS;
 
@@ -25,7 +25,6 @@ describe("URLs", () => {
   describe("browse databases", () => {
     it('should slugify database name when opening it from /browse/databases"', () => {
       cy.visit("/browse/databases");
-      cy.findByRole("tab", { name: "Databases" }).click();
       cy.findByTextEnsureVisible("Sample Database").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sample Database");

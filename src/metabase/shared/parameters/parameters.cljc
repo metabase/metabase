@@ -251,12 +251,12 @@
       first
       (update-keys keyword)))
 
-(defn ^:export substitute_tags
+(defn ^:export substitute-tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
   formatted and escaped appropriately if escape-markdown is true. Specifically escape-markdown should be false when the
   output isn't being rendered directly as markdown, such as in header cards."
   ([text tag->param]
-   (substitute_tags text tag->param "en" true))
+   (substitute-tags text tag->param "en" true))
   ([text tag->param locale escape-markdown]
    (when text
      (let [tag->param #?(:clj tag->param

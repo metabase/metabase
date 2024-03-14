@@ -14,7 +14,6 @@
    [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.models
     :refer [Card
             Dimension
@@ -233,6 +232,7 @@
               :table_id    (data/id :checkins)}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
+   ;; Tech debt issue: #39329
 
    :model/Table
    (fn [_] (default-timestamped
@@ -278,9 +278,6 @@
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
-    ;; TODO -- we shouldn't need to ignore this, but it's a product of the custom hook defined for Methodical
-    ;; `defmethod`. Fix the hook upstream
-    #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
     (methodical/defmethod t2.with-temp/with-temp-defaults model
       [model]
       (defaults-fn model))))
@@ -693,8 +690,7 @@
     [model (first (t2/primary-keys model))]))
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? #(or (mdb.u/toucan-model? %)
-                                           (mdb.u/toucan-model? (first %))) models)]}
+  {:pre [(sequential? models) (every? #(isa? % :metabase/model) models)]}
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [models (map model->model&pk models)
@@ -799,7 +795,6 @@
                          :moderated_item_id card-id
                          :moderated_item_type "card"))))))
 
-;; TODO - not 100% sure I understand
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
   needed to orchestrate a query cancellation.

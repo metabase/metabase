@@ -121,7 +121,7 @@
    :min-duration   (public-settings/query-caching-min-ttl)})
 
 (defn- test-query [query-kvs]
-  (merge {:cache-strategy (ttl-strategy), :type :query, :query :abc} query-kvs))
+  (merge {:cache-strategy (ttl-strategy), :lib/type :mbql/query, :stages [{:abc :def}]} query-kvs))
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels

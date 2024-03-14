@@ -4,7 +4,7 @@ import { BoldCode } from "metabase/components/Code";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { isEmpty } from "metabase/lib/validate";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 import { ImpersonationAlert } from "./ImpersonationWarning.styled";
 

@@ -1,6 +1,7 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
   blockSnowplow,
+  describeEE,
   describeWithSnowplow,
   expectGoodSnowplowEvent,
   expectGoodSnowplowEvents,
@@ -24,7 +25,7 @@ describe("scenarios > setup", () => {
       `should allow you to sign up using "${locale}" browser locale`,
       { tags: ["@external"] },
       () => {
-        // intial redirection and welcome page
+        // initial redirection and welcome page
         cy.visit("/", {
           // set the browser language as per:
           // https://glebbahmutov.com/blog/cypress-tips-and-tricks/index.html#control-navigatorlanguage
@@ -287,7 +288,6 @@ describe("scenarios > setup", () => {
     });
 
     cy.visit("/browse");
-    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByTestId("database-browser").findByText(dbName);
   });
 
@@ -364,6 +364,48 @@ describe("scenarios > setup", () => {
     main()
       .findByText("Get started with Embedding Metabase in your app")
       .should("not.exist");
+  });
+});
+
+describeEE("scenarios > setup (EE)", () => {
+  beforeEach(() => restore("blank"));
+
+  it("should ask for a license token on self-hosted", () => {
+    cy.visit("/setup");
+
+    skipWelcomePage();
+
+    selectPreferredLanguageAndContinue();
+
+    cy.findByTestId("setup-forms").within(() => {
+      fillUserAndContinue({
+        ...admin,
+        company_name: "Epic team",
+      });
+
+      cy.button("Next").click();
+
+      cy.findByText("I'll add my data later").click();
+
+      cy.findByText("Activate your commercial license").should("exist");
+
+      typeToken(Cypress.env("NO_FEATURES_TOKEN"));
+
+      cy.button("Activate").click();
+
+      cy.findByText("Finish").click();
+      cy.findByText("Take me to Metabase").click();
+    });
+
+    cy.intercept("/api/premium-features/token/status").as("tokenStatus");
+
+    cy.visit("/admin/settings/license");
+
+    main().findByText("Looking for more?").should("exist");
+
+    cy.wait("@tokenStatus").then(request => {
+      expect(request.response?.body.valid).to.equal(true);
+    });
   });
 });
 
@@ -484,7 +526,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit("/setup");
     skipWelcomePage();
 
-    // 1 event is sent from the BE, which isn't blocked by blockSnoplow()
+    // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
     expectGoodSnowplowEvents(1);
   });
 });
@@ -540,6 +582,16 @@ const fillUserAndContinue = ({
 
 const skipLicenseStepOnEE = () => {
   if (isEE) {
+    cy.findByText("Activate your commercial license").should("exist");
     cy.button("Skip").click();
   }
+};
+
+const typeToken = (token: string) => {
+  // hides the requests from the logs as the token is passed as a GET param
+  cy.intercept({ resourceType: "xhr" }, { log: false });
+  cy.findByLabelText("Token")
+    // hides the token from failure screenshots
+    .invoke("attr", "type", "password")
+    .type(token, { log: false });
 };

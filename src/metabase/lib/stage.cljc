@@ -254,9 +254,7 @@
     (->> (concat
            existing-columns
            ;; add implicitly joinable columns if desired
-           (when (and include-implicitly-joinable?
-                      (or (not (:source-card (lib.util/query-stage query stage-number)))
-                          (:include-implicitly-joinable-for-source-card? options)))
+           (when include-implicitly-joinable?
              (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 

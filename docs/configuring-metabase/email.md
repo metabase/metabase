@@ -104,7 +104,7 @@ You can also set this property using the environment variable [`MB_SUBSCRIPTION_
 
 ## Suggest recipients on dashboard subscriptions and alerts
 
-{% include plans-blockquote.html feature="Approved domains for notifications" %}
+{% include plans-blockquote.html feature="Configuring suggested recipients" %}
 
 Control which recipients people can see when they create a new [dashboard subscription](../dashboards/subscriptions.md) or [alert](../questions/sharing/alerts.md). For example, you may want to restrict people to viewing potential recipients that belong to the same [groups](../people-and-groups/managing.md#groups) they are a member of.
 

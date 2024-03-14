@@ -7,11 +7,11 @@ import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

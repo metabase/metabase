@@ -28,11 +28,16 @@
                                                                        result
                                                                        (if (java.util.Arrays/equals qe-hash original-hash)
                                                                          query-execution
+                                                                         ;; if you're seeing this there is probably some
+                                                                         ;; bug that is causing query hashes to get
+                                                                         ;; calculated in an inconsistent manner; check
+                                                                         ;; `:query` vs `:query-execution-query`
                                                                          (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution)
-                                                                                  {:query                query
-                                                                                   :original-hash        (some-> original-hash codecs/bytes->hex)
-                                                                                   :query-execution      query-execution
-                                                                                   :query-execution-hash (some-> qe-hash codecs/bytes->hex)})))))]
+                                                                                  {:query                 query
+                                                                                   :original-hash         (some-> original-hash codecs/bytes->hex)
+                                                                                   :query-execution       query-execution
+                                                                                   :query-execution-hash  (some-> qe-hash codecs/bytes->hex)
+                                                                                   :query-execution-query (:json_query query-execution)})))))]
         (run
          (fn qe-result* []
            (let [qe (deref result 1000 ::timed-out)]
@@ -75,7 +80,7 @@
                :cached                 false}
               (process-userland-query query))
           "Result should have query execution info")
-      (is (=? {:hash         "310be80813db561159a218a09fa84afb4bec04ae1f9e1a1d036c944dabcdbdb0"
+      (is (=? {:hash         "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
                :database_id  nil
                :result_rows  0
                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
@@ -103,7 +108,7 @@
              clojure.lang.ExceptionInfo
              #"Oops!"
              (process-userland-query query))))
-      (is (=? {:hash         "8d5080dfc63b7f1c46537cf9ec915a4353b2aa9ca6069c6d5db56e087f027209"
+      (is (=? {:hash         "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
                :database_id  nil
                :error        "Oops!"
                :result_rows  0

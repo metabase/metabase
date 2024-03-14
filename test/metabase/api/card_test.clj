@@ -17,24 +17,15 @@
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
-            CardBookmark
-            Collection
-            Dashboard
-            Database
-            ModerationReview
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            Table
-            Timeline
+    :refer [Card CardBookmark Collection Dashboard Database ModerationReview
+            Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.permissions.util :as perms.u]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -1073,7 +1064,7 @@
       (is (=? {:type "question"}
               (mt/user-http-request :crowberto :post 200 "card" (card-with-name-and-query (mt/random-name))))))))
 
-(deftest ^:parallel update-card-with-type-and-dataset-test
+(deftest update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"
     (mt/with-temp [:model/Card card {:dataset_query {}}]
       (is (=? {:type "model"}
@@ -3333,15 +3324,16 @@
                  (upload-example-csv-via-api!))))))))
 
 (deftest card-read-event-test
-  (testing "Card reads (views) via the API are recorded in the view_log"
-    (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
-      (testing "GET /api/card/:id"
-        (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
-        (is (partial=
-             {:user_id  (mt/user->id :crowberto)
-              :model    "card"
-              :model_id (u/id card)}
-             (view-log-test/latest-view (mt/user->id :crowberto) (u/id card))))))))
+  (when (premium-features/log-enabled?)
+    (testing "Card reads (views) via the API are recorded in the view_log"
+      (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
+        (testing "GET /api/card/:id"
+          (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
+          (is (partial=
+               {:user_id  (mt/user->id :crowberto)
+                :model    "card"
+                :model_id (u/id card)}
+               (view-log-test/latest-view (mt/user->id :crowberto) (u/id card)))))))))
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"
