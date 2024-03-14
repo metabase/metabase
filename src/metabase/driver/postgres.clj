@@ -1015,17 +1015,14 @@
             :where     [:= :c.relnamespace :n.oid]
             :order-by  [:type :schema :name]}
     (not (str/blank? schema-pattern))
-    ;; TODO escape quotes?
-    (sql.helpers/where [:like :n.nspname schema-pattern])
+    (sql.helpers/where [:like :n.nspname (driver/escape-entity-name-for-metadata :postgres schema-pattern)])
 
-    ;; TODO do privilege check
     (not (str/blank? tablename-pattern))
-    (sql.helpers/where [:like :c.relname tablename-pattern])
+    (sql.helpers/where [:like :c.relname (driver/escape-entity-name-for-metadata :postgres tablename-pattern)])
 
     (seq types)
     (sql.helpers/where (into [:or] (map #(get table-type-clauses %) types))))
-   {#_:inline #_true
-    :dialect :ansi}))
+   {:dialect :ansi}))
 
 (defmethod sql-jdbc.sync.interface/get-tables :postgres
   [driver conn _catalog schema-pattern tablename-pattern types]
