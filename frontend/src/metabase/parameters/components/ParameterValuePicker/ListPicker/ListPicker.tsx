@@ -1,8 +1,9 @@
 import { Select, Loader } from "metabase/ui";
 
-import { PickerIcon } from "./ParameterValuePicker.styled";
-import { handleInputKeyup } from "./handleInputKeyup";
-import S from "./style.css";
+import { PickerIcon } from "../ParameterValuePicker.styled";
+import { handleInputKeyup } from "../util";
+
+import S from "./ListPicker.css";
 
 interface ListPickerProps {
   value: string;
@@ -19,7 +20,6 @@ interface ListPickerProps {
 }
 
 // TODO show "remove" button when typing in search for static list parameters
-// TODO dropdown position + change of size doesn't work well, make maxDropdownHeight work (Select.styles.tsx)
 export function ListPicker(props: ListPickerProps) {
   const {
     value,
@@ -45,6 +45,7 @@ export function ListPicker(props: ListPickerProps) {
 
   return (
     <Select
+      // This is required until we fix the Select to support maxDropdownHeight
       classNames={{ dropdown: S.dropdown }}
       error={errorMessage}
       value={value}

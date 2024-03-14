@@ -2,8 +2,8 @@ import type { ChangeEvent } from "react";
 
 import { TextInput } from "metabase/ui";
 
-import { PickerIcon } from "./ParameterValuePicker.styled";
-import { handleInputKeyup } from "./handleInputKeyup";
+import { PickerIcon } from "../ParameterValuePicker.styled";
+import { handleInputKeyup } from "../util";
 
 interface PlainValueInputProps {
   value: string | null;
