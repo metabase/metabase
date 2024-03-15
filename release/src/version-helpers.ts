@@ -178,6 +178,10 @@ export const getNextVersions = (versionString: string): string[] => {
   return [];
 };
 
-export const getMilestoneName = (versionString: string) => {
-  return getOSSVersion(versionString).replace(/^v/, "").replace(/\.0$/, "");
+// our milestones don't have the v prefix or a .0 suffix
+export const getMilestoneName = (version: string) => {
+  return getOSSVersion(version)
+    .replace(/^v/, "")
+    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
+    .replace(/\.0$/, "");
 };

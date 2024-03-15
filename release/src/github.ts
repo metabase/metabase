@@ -1,13 +1,11 @@
 /* eslint-disable no-console */
+import type { Issue, ReleaseProps } from "./types";
 import {
-  getOSSVersion,
-  isLatestVersion,
-  getNextVersions,
-  isValidVersionString,
   getMilestoneName,
+  getNextVersions,
+  isLatestVersion,
+  isValidVersionString,
 } from "./version-helpers";
-
-import type { ReleaseProps, Issue } from "./types";
 
 const getMilestones = async ({
   github,
@@ -30,12 +28,7 @@ export const findMilestone = async ({
   repo,
 }: ReleaseProps) => {
   const milestones = await getMilestones({ github, owner, repo });
-
-  // our milestones don't have the v prefix or a .0 suffix
-  const expectedMilestoneName = getOSSVersion(version)
-    .replace(/^v/, "")
-    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
-    .replace(/\.0$/, "");
+  const expectedMilestoneName = getMilestoneName(version);
 
   return milestones.find(
     (milestone: { title: string; number: number }) =>
