@@ -1,7 +1,6 @@
 [
   {
     "card": {
-      "description": null,
       "archived": false,
       "collection_position": null,
       "table_id": 5,
@@ -107,7 +106,6 @@
       "enable_embedding": false,
       "collection_id": null,
       "query_type": "query",
-      "name": "messed up area smaller",
       "last_query_start": "2024-03-15T00:45:48.104882Z",
       "dashboard_count": 0,
       "type": "question",
@@ -156,7 +154,6 @@
           ]
         }
       },
-      "id": 81,
       "parameter_mappings": [],
       "display": "bar",
       "entity_id": "j7dk3aziTKmyTnKIxwgc_",
@@ -173,7 +170,7 @@
           },
           "Widget": {
             "display": "area",
-            "line.missing": "interpolate"
+            "line.missing": "none"
           },
           "Gadget": {
             "display": "area",
