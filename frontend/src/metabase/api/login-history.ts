@@ -11,3 +11,5 @@ export const loginHistoryApi = Api.injectEndpoints({
     }),
   }),
 });
+
+export const { useGetLoginHistoryQuery } = loginHistoryApi;
