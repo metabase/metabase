@@ -43,7 +43,10 @@ describe("issue 37009", () => {
         cy.findByLabelText("Name").type("Model");
         cy.findByText("Save").click();
       });
-    cy.wait("@saveCard");
+    cy.wait("@saveCard")
+      .its("request.body")
+      .its("result_metadata")
+      .should("not.be.null");
 
     openQuestionActions();
     popover().findByText("Edit query definition").click();
@@ -63,6 +66,9 @@ describe("issue 37009", () => {
       .button("Save changes")
       .should("be.enabled")
       .click();
-    cy.wait("@updateCard");
+    cy.wait("@updateCard")
+      .its("request.body")
+      .its("result_metadata")
+      .should("not.be.null");
   });
 });
