@@ -105,19 +105,14 @@ export default createEntity({
           previousSchemaContainingTheQuestion.id,
           virtualQuestionId,
         );
-      } else {
-        state = assocIn(state, [virtualSchemaId], {
-          id: virtualSchemaId,
-          name: virtualSchemaName,
-          database: {
-            id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-            is_saved_questions: true,
-          },
-        });
       }
 
       if (!state[virtualSchemaId]) {
-        return state;
+        state = assocIn(state, [virtualSchemaId], {
+          id: virtualSchemaId,
+          name: virtualSchemaName,
+          database: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        });
       }
 
       return updateIn(state, [virtualSchemaId, "tables"], tables => {
