@@ -1030,6 +1030,21 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- all-unique?
+  [funnel-rows]
+  (let [ks (into #{} (map :key funnel-rows))]
+    (= (count ks) (count funnel-rows))))
+
+(defn- build-funnel-rows
+  [funnel-rows raw-rows]
+  (let [funnel-rows (map-indexed (fn [idx row] (assoc row :idx (inc idx))) funnel-rows)
+        xf-rows     (into {} (map (fn [row] (vec (take-last 2 row))) raw-rows))]
+    (for [{idx     :idx
+           k       :key
+           enabled :enabled} funnel-rows]
+      (when enabled
+        [k (or (get xf-rows k) (get xf-rows idx))]))))
+
 (mu/defmethod render :funnel :- formatter/RenderedPulseCard
   [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
@@ -1037,12 +1052,9 @@
         funnel-rows    (:funnel.rows viz-settings)
         raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
-        rows           (cond->> raw-rows
-                         funnel-rows (mapv (fn [[row-num-or-key val]]
-                                             [(get-in funnel-rows [(if (number? row-num-or-key)
-                                                                     (dec row-num-or-key)
-                                                                     row-num-or-key)
-                                                                   :key]) val])))
+        rows           (if (and funnel-rows (all-unique? funnel-rows))
+                         (build-funnel-rows funnel-rows raw-rows)
+                         raw-rows)
         [x-col y-col]  cols
         settings       (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
                          (assoc jsviz-settings :step    {:name   (:display_name x-col)
