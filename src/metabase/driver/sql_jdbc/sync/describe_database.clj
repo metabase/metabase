@@ -145,7 +145,7 @@
               [schema table]))
        set))
 
-(defn- have-select-privilege-fn
+(defn have-select-privilege-fn
   "Returns a function that take a map with 3 keys [:schema, :name, :type], return true if we can do a select query on the table.
 
   This function shouldn't be called a `map` or anything alike, instead use it as a cache function like so:

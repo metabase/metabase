@@ -333,7 +333,7 @@
 (deftest partitioned-table-test
   (mt/test-driver :postgres
     (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are
-                   synced properly (#15049")
+                   synced properly (#15049)")
       (let [db-name "partitioned_table_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]

@@ -294,8 +294,12 @@
     database
     nil
     (fn [^Connection conn]
-      (into #{} (get-tables conn (sql-jdbc.describe-database/syncable-schemas-for-db database) nil
-                            ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))))})
+      (if-let [syncable-schemas (seq (sql-jdbc.describe-database/syncable-schemas-for-db database))]
+        (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn :postgres conn)]
+          (into #{} (comp (filter have-select-privilege?) (map #(dissoc % :type)))
+                (get-tables conn syncable-schemas nil
+                            ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))
+        #{})))})
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var
