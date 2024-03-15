@@ -23,32 +23,32 @@ const propTypes = {
  */
 const getOverflow = isResizing => (isResizing ? "hidden" : "scroll");
 
-const Handle = forwardRef((props, ref) => (
-  <Flex
-    align="center"
-    justify="center"
-    w="100%"
-    h="8px"
-    pos="absolute"
-    bottom="-4px"
-    style={{
-      cursor: "row-resize",
-    }}
-    ref={ref}
-    {...props}
-  >
-    <Box
-      w="100px"
-      h="5px"
-      bg={darken(color("border"), 0.03)}
+const Handle = forwardRef(function Handle(props, ref) {
+  return (
+    <Flex
+      align="center"
+      justify="center"
+      w="100%"
+      h="sm"
+      pos="absolute"
+      bottom="-0.25rem"
       style={{
-        borderRadius: "4px",
+        cursor: "row-resize",
       }}
-    ></Box>
-  </Flex>
-));
-
-Handle.displayName = "Handle";
+      ref={ref}
+      {...props}
+    >
+      <Box
+        w="6.25rem"
+        h="xs"
+        bg={darken(color("border"), 0.03)}
+        style={{
+          borderRadius: "xs",
+        }}
+      ></Box>
+    </Flex>
+  );
+});
 
 function ResizableNotebook({
   isResizing,
