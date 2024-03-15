@@ -34,7 +34,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.util.match :as lib.schema.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -707,7 +707,7 @@
   "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
   multiple-aggregation syntax (e.g. `{:aggregation [[:count]]}`)."
   [aggregations]
-  (lib.schema.match/replace aggregations
+  (lib.util.match/replace aggregations
     seq? (recur (vec &match))
 
     ;; something like {:aggregations :count} -- MBQL 95 single aggregation
@@ -744,7 +744,7 @@
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"
   [clauses]
-  (lib.schema.match/replace clauses
+  (lib.util.match/replace clauses
     seq? (recur (vec &match))
 
     ;; MBQL 95 reversed [<field> <direction>] clause
@@ -854,7 +854,7 @@
     query
     ;; get a set of all Field clauses (of any type) in the breakout. For temporal-bucketed fields, we'll include both
     ;; the bucketed `[:datetime-field <field> ...]` clause and the `<field>` clause it wraps
-    (let [breakout-fields (into #{} cat (lib.schema.match/match breakout
+    (let [breakout-fields (into #{} cat (lib.util.match/match breakout
                                           [:field id-or-name opts]
                                           [&match
                                            [:field id-or-name (dissoc opts :temporal-unit)]]))]
