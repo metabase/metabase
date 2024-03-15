@@ -32,6 +32,7 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
@@ -382,7 +383,9 @@
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
-   :viz-settings    maybe-normalize-token})
+   :viz-settings    maybe-normalize-token
+   :create-row      identity
+   :update-row      identity})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.
@@ -466,6 +469,7 @@
 
 (defmethod canonicalize-mbql-clause :field
   [[_ id-or-name opts]]
+  {:pre [((some-fn map? nil?) opts)]}
   (if (is-clause? :field id-or-name)
     (let [[_ nested-id-or-name nested-opts] id-or-name]
       (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
@@ -906,7 +910,9 @@
    :query        {:source-query remove-empty-clauses-in-source-query
                   :joins        {::sequence remove-empty-clauses-in-join}}
    :parameters   {::sequence remove-empty-clauses-in-parameter}
-   :viz-settings identity})
+   :viz-settings identity
+   :create-row   identity
+   :update-row   identity})
 
 (defn- remove-empty-clauses
   "Remove any empty or `nil` clauses in a query."
@@ -947,6 +953,12 @@
           (throw (ex-info (i18n/tru "Error normalizing query: {0}" (ex-message e))
                           {:query query}
                           e)))))))
+
+(mu/defn normalize-or-throw :- ::mbql.s/Query
+  "Like [[normalize]], but checks the result against the Malli schema for a legacy query, which will cause it to throw
+  if it fails (at least in dev)."
+  [query :- :map]
+  (normalize query))
 
 (mu/defn normalize-fragment
   "Normalize just a specific fragment of a query, such as just the inner MBQL part or just a filter clause. `path` is

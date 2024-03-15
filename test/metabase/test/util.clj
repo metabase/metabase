@@ -519,6 +519,8 @@
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
 
+;;; TODO -- we can make this parallel test safe pretty easily by doing stuff inside a transaction
+;;; unless [[metabase.test/test-helpers-set-global-values!]] is in effect
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
   original values. This is useful for cases when you want to test how something behaves with slightly different values

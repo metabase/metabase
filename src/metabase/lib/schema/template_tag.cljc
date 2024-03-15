@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.schema :as mbql.s]
    [metabase.util.malli.registry :as mr]))
 
@@ -11,13 +12,17 @@
   (into
    [:enum
     ;; this will be a nicer error message than Malli trying to list every single possible allowed type.
-    {:error/message "Valid template tag :widget-type"}
+    {:decode/normalize common/normalize-keyword
+     :error/message    "Valid template tag :widget-type"}
     :none]
-   (keys mbql.s/parameter-types)))
+   ;; TODO -- move this stuff into `metabase.lib`
+   (keys lib.schema.parameter/types)))
 
 ;; Schema for valid values of template tag `:type`.
 (mr/def ::type
-  [:enum :snippet :card :dimension :number :text :date])
+  [:enum
+   {:decode/normalize common/normalize-keyword}
+   :snippet :card :dimension :number :text :date])
 
 ;;; Things required by all template tag types.
 (mr/def ::common
@@ -26,7 +31,9 @@
    [:display-name ::common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   [:id {:optional true} [:or ::common/non-blank-string :uuid]]])
+   [:id {:optional true} [:multi {:dispatch uuid?}
+                          [true  :uuid]
+                          [false ::common/non-blank-string]]]])
 
 ;;; Stuff shared between the Field filter and raw value template tag schemas.
 (mr/def ::value.common
@@ -58,6 +65,12 @@
     ;; optional map to be appended to filter clause
     [:options {:optional true} [:maybe :map]]]])
 
+(mr/def ::disallow-dimension
+  [:fn
+   {:decode/normalize #(dissoc % :dimension)
+    :error/message    ":dimension is only allowed for :type :dimension template tags"}
+   #(not (contains? % :dimension))])
+
 ;; Example:
 ;;
 ;;    {:id           "c2fc7310-44eb-4f21-c3a0-63806ffb7ddd"
@@ -67,14 +80,16 @@
 ;;     :snippet-name "select"
 ;;     :snippet-id   1}
 (mr/def ::snippet
-  [:merge
-   [:ref ::common]
-   [:map
-    [:type         [:= :snippet]]
-    [:snippet-name ::common/non-blank-string]
-    [:snippet-id {:optional true} ::id/snippet]
-    ;; database to which this Snippet belongs. Doesn't always seem to be specified.
-    [:database {:optional true} ::id/database]]])
+  [:and
+   [:merge
+    [:ref ::common]
+    [:map
+     [:type         [:= :snippet]]
+     [:snippet-name ::common/non-blank-string]
+     [:snippet-id {:optional true} ::id/snippet]
+     ;; database to which this Snippet belongs. Doesn't always seem to be specified.
+     [:database {:optional true} ::id/database]]]
+   [:ref ::disallow-dimension]])
 
 ;; Example:
 ;;
@@ -84,11 +99,13 @@
 ;;     :type         :card
 ;;     :card-id      1635}
 (mr/def ::source-query
-  [:merge
-   [:ref ::common]
-   [:map
-    [:type    [:= :card]]
-    [:card-id ::id/card]]])
+  [:and
+   [:merge
+    [:ref ::common]
+    [:map
+     [:type    [:= :card]]
+     [:card-id ::id/card]]]
+   [:ref ::disallow-dimension]])
 
 ;; Valid values of `:type` for raw value template tags.
 (mr/def ::raw-value.type
@@ -103,18 +120,21 @@
 ;;     :required     true
 ;;     :default      "1"}
 (mr/def ::raw-value
-  [:merge
-   [:ref ::value.common]
-   ;; `:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
-   ;; which types of parameters are allowed to be passed in for this template tag.
-   [:map
-    [:type [:ref ::raw-value.type]]]])
+  [:and
+   [:merge
+    [:ref ::value.common]
+    ;; `:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
+    ;; which types of parameters are allowed to be passed in for this template tag.
+    [:map
+     [:type [:ref ::raw-value.type]]]]
+   [:ref ::disallow-dimension]])
 
 (mr/def ::template-tag
   [:and
+   {:decode/normalize common/normalize-map}
    [:map
     [:type [:ref ::type]]]
-   [:multi {:dispatch :type}
+   [:multi {:dispatch #(keyword (:type %))}
     [:dimension   [:ref ::field-filter]]
     [:snippet     [:ref ::snippet]]
     [:card        [:ref ::source-query]]

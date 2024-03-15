@@ -260,7 +260,7 @@
           (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
             (is (= expected
                    (table-rows-sample))))
-          (mt/with-system-timezone-id "America/Chicago"
+          (mt/with-system-timezone-id! "America/Chicago"
             (is (= expected
                    (table-rows-sample)))))))))
 

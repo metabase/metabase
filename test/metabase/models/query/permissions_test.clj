@@ -222,12 +222,7 @@
             (mt/mbql-query venues
               {:filter [:WOW 100 200]}))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   JOINS 2.0                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest joins-test
+(deftest ^:parallel joins-test
   (testing "Are permissions calculated correctly for JOINs?"
     (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                                  (mt/mbql-query checkins
