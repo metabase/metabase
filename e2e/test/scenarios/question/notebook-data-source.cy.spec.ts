@@ -1,5 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { popover, restore } from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { popover, restore, startNewQuestion } from "e2e/support/helpers";
+const { REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
   describe("empty app db", () => {
@@ -26,6 +28,31 @@ describe("scenarios > notebook > data source", () => {
           .each(table => {
             cy.wrap(table).should("have.attr", "aria-selected", "false");
           });
+      });
+    });
+
+    it("should not show saved questions if only models exist (metabase#25142)", () => {
+      cy.createQuestion({
+        name: "GUI Model",
+        query: { "source-table": REVIEWS_ID, limit: 1 },
+        display: "table",
+        type: "model",
+      });
+
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByPlaceholderText("Search for some data…");
+        cy.findAllByTestId("data-bucket-list-item")
+          .as("sources")
+          .should("have.length", 2);
+        cy.get("@sources")
+          .first()
+          .should("contain", "Models")
+          .and("have.attr", "aria-selected", "false");
+        cy.get("@sources")
+          .last()
+          .should("contain", "Raw Data")
+          .and("have.attr", "aria-selected", "false");
       });
     });
   });
