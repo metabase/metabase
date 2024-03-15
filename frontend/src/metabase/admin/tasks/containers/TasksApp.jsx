@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,6 +8,7 @@ import AdminHeader from "metabase/components/AdminHeader";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
+import AdminS from "metabase/css/admin.module.css";
 import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";
 
@@ -60,7 +62,7 @@ class TasksAppInner extends Component {
           </SectionControls>
         </SectionHeader>
 
-        <table className="ContentTable mt2">
+        <table className={cx(AdminS.ContentTable, "mt2")}>
           <thead>
             <tr>
               <th>{t`Task`}</th>

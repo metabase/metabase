@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -7,6 +8,7 @@ import { t } from "ttag";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { getMetadata } from "metabase/selectors/metadata";
 import { CardApi } from "metabase/services";
@@ -115,7 +117,7 @@ function ErrorDetailDisplay(props) {
       >
         {resRow[nameToResCol.error_str]}
       </div>,
-      <table key="table" className="mt4 half ContentTable">
+      <table key="table" className={cx("mt4 half", AdminS.ContentTable)}>
         <tbody>{[ordinaryRows, dashIdRows]}</tbody>
       </table>,
     ];
