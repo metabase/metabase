@@ -136,7 +136,7 @@ export function DefaultPicker({
         return (
           <FieldValuesWidget
             key={index}
-            className={cx(InputS.input)}
+            className={InputS.input}
             value={values}
             onChange={onValuesChange}
             multi={operator.multi}

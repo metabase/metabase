@@ -1,9 +1,11 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
 import type { MappingsType } from "metabase/admin/types";
 import Button from "metabase/core/components/Button";
+import InputS from "metabase/css/core/inputs.module.css";
 
 type AddMappingRowProps = {
   mappings: MappingsType;
@@ -49,7 +51,7 @@ function AddMappingRow({
         >
           <input
             aria-label="new-group-mapping-name-input"
-            className="input--borderless h3 ml1 flex-full"
+            className={cx(InputS.InputBorderless, "h3 ml1 flex-full")}
             type="text"
             value={value}
             placeholder={placeholder}

@@ -3,7 +3,6 @@
   --input-border-radius: 8px;
 }
 
-:global(.input),
 .input {
   color: var(--color-text-dark);
   font-size: 1.12em;
@@ -14,13 +13,12 @@
 }
 
 /* React doesn't receive events from IE11:s input clear button so don't show it */
-:global(.input::-ms-clear) {
+.input::-ms-clear {
   display: none;
   width: 0;
   height: 0;
 }
 
-:global(.input:focus),
 .input:focus {
   outline: none;
   border: 1px solid var(--color-brand);
@@ -28,20 +26,20 @@
   color: var(--color-text-dark);
 }
 
-:global(.input--borderless),
-:global(.input--borderless:focus) {
+.InputBorderless,
+.InputBorderless:focus {
   box-shadow: none;
   outline: 0;
   border: none !important;
   background: transparent;
 }
 
-:global(.input:disabled) {
+.input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-:global(.no-focus:focus) {
+.noFocus:focus {
   outline: 0;
 }
 

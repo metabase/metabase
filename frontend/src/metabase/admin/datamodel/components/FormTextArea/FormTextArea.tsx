@@ -20,7 +20,7 @@ const FormTextArea = forwardRef(function FormTextArea(
     <FormTextAreaRoot
       {...props}
       ref={ref}
-      className={cx(InputS, className)}
+      className={cx(InputS.input, className)}
       touched={touched}
       error={error}
     />
