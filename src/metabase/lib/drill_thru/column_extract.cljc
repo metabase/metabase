@@ -48,6 +48,23 @@
   ;; Skip www  domain   maybe short tail  TLD
   #"(?:www\.)?([^\.]+)\.(?:[^\.]{1,3}\.)?[^\.]+$")
 
+(def ^:private email->domain-regex
+  ;; See [[host->domain-regex]] on the challenges of parsing domains with regexes.
+  ;; Referencing the indexes below:
+  ;; 1. Positive lookbehind: Starting after @ or .
+  ;; 2. Negative lookahead: Don't capture www as the domain
+  ;; 3. One domain segment
+  ;; 4. Positive lookahead:
+  ;;      Either:
+  ;; 5.     Short final segment (eg. .co.uk)
+  ;; 6.     Top-level domain
+  ;; 7.     Anchor to end
+  ;;      Or:
+  ;; 8.     Top-level domain
+  ;; 9.     Anchor to end
+  ;;1         2        3      (4   5            6      7|  8      9)
+  #"(?<=[@\.])(?!www\.)[^@\.]+(?=\.[^@\.]{1,3}\.[^@\.]+$|\.[^@\.]+$)")
+
 (def ^:private host->subdomain-regex
   ;; This grabs the first segment that isn't "www", AND excludes the main domain name.
   ;; See [[host->domain-regex]] for more details about how those are matched.
@@ -65,13 +82,13 @@
   ;;12         34        5  6       7                8       9      10
   #"^(?:www\.)?((?!www\.)(?![^\.]+\.(?:[^\.]{1,3}\.)?[^\.]+$)[^\.]+)\.")
 
-;; Full size, I think we can get away with a simpler one - just the first match that isn't the main domain or www.
-#_#"^(?:www\.)?((?!www\.)(?!(?:[^\.]+\.[^\.]{1,3}\.)?[^\.]+$)[^\.]+)\.(?:[^\.]+\.)+(?:[^\.]{1,3}\.)?[^\.]+$"
-
 (defn- column-extract-drill-for-column [column]
   (cond
     (lib.types.isa/temporal? column) {:display-name (i18n/tru "Extract day, month…")
                                       :extractions  (column-extract-temporal-units column)}
+    (lib.types.isa/email? column)    {:display-name (i18n/tru "Extract domain")
+                                      :extractions  [{:key          :email-domain
+                                                      :display-name (i18n/tru "Domain")}]}
     (lib.types.isa/URL? column)      {:display-name (i18n/tru "Extract domain, subdomain…")
                                       :extractions  [{:key          :domain
                                                       :display-name (i18n/tru "Domain")}
@@ -120,7 +137,9 @@
                          (lib.expression/regex-match-first host->domain-regex))
     :subdomain       (-> column
                          (lib.expression/regex-match-first url->host-regex)
-                         (lib.expression/regex-match-first host->subdomain-regex))))
+                         (lib.expression/regex-match-first host->subdomain-regex))
+    ;; Emails
+    :email-domain    (lib.expression/regex-match-first column email->domain-regex)))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-extract
   [_query _stage-number {:keys [query stage-number column extractions]} & [tag]]
