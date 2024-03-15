@@ -11,3 +11,5 @@ export const billingInfoApi = Api.injectEndpoints({
     }),
   }),
 });
+
+export const { useGetBillingInfoQuery } = billingInfoApi;

@@ -14,7 +14,7 @@ import { ExplorePlansIllustration } from "metabase/admin/settings/components/Set
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { billingInfoApi } from "metabase-enterprise/api";
+import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 import type { TokenStatus } from "metabase-enterprise/settings/hooks/use-license";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
@@ -99,7 +99,7 @@ const LicenseAndBillingSettings = ({
     isLoading: billingLoading,
     error: billingError,
     data: billingInfo,
-  } = billingInfoApi.useGetBillingInfoQuery(undefined, {
+  } = useGetBillingInfoQuery(undefined, {
     skip: !shouldFetchBillingInfo,
   });
 
