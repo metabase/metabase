@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { useUpdate } from "react-use";
+import { useState } from "react";
 
 import {
   useDatabaseListQuery,
@@ -22,7 +21,6 @@ import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
-  const update = useUpdate();
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
@@ -33,7 +31,9 @@ export const HomeContent = (): JSX.Element | null => {
   const { data: popularItems, error: popularItemsError } =
     usePopularItemListQuery({ reload: true });
   const error = databasesError || recentItemsError || popularItemsError;
-  const showEmbedHomepage = useMemo(() => shouldShowEmbedHomepage(), []);
+  const [showEmbedHomepage, setShowEmbedHomepage] = useState(() =>
+    shouldShowEmbedHomepage(),
+  );
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;
@@ -57,7 +57,9 @@ export const HomeContent = (): JSX.Element | null => {
         <HomeXraySection />
         {isAdmin && showEmbedHomepage && (
           <Box mt={64}>
-            <EmbedMinimalHomepage onDismiss={update} />
+            <EmbedMinimalHomepage
+              onDismiss={() => setShowEmbedHomepage(false)}
+            />
           </Box>
         )}
       </>
