@@ -4,7 +4,9 @@ import type { ButtonHTMLAttributes, ReactNode, Ref, ElementType } from "react";
 import { forwardRef } from "react";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/spacing.module.css";
+import { isNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
@@ -24,12 +26,27 @@ const BUTTON_VARIANTS = [
   "warning",
   "cancel",
   "success",
-  "purple",
   "white",
   "borderless",
   "onlyIcon",
   "fullWidth",
 ] as const;
+
+const VARIANT_TO_CLASS_MAP: { [key: string]: string } = {
+  small: ButtonsS.ButtonSmall,
+  medium: ButtonsS.ButtonMedium,
+  large: ButtonsS.ButtonLarge,
+  round: ButtonsS.ButtonRound,
+  primary: ButtonsS.ButtonPrimary,
+  danger: ButtonsS.ButtonDanger,
+  warning: ButtonsS.ButtonWarning,
+  cancel: ButtonsS.ButtonCancel,
+  success: ButtonsS.ButtonSuccess,
+  white: ButtonsS.ButtonWhite,
+  borderless: ButtonsS.ButtonBorderless,
+  onlyIcon: ButtonsS.ButtonOnlyIcon,
+  fullWidth: ButtonsS.ButtonFullWidth,
+};
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   as?: ElementType;
@@ -82,16 +99,16 @@ const BaseButton = forwardRef(function BaseButton(
   }: ButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
-    variant => "Button--" + variant,
-  );
+  const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant])
+    .map(variant => VARIANT_TO_CLASS_MAP[variant])
+    .filter(isNotNull);
 
   return (
     <ButtonRoot
       ref={ref}
       as={as}
       {..._.omit(props, ...BUTTON_VARIANTS)}
-      className={cx("Button", className, variantClasses, {
+      className={cx(ButtonsS.Button, className, variantClasses, {
         [CS.p1]: !children,
       })}
       purple={props.purple}
