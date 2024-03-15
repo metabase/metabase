@@ -49,13 +49,12 @@
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
 (deftest test-fingerprint-skipped-for-ga
-  (mt/test-driver :googleanalytics
-    (testing "Google Analytics doesn't support fingerprinting fields"
-      (let [fake-db (-> (mt/db)
-                        (assoc :engine :googleanalytics))]
-        (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
-          (is (= (fingerprint/empty-stats-map 0)
-                 (fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (mt/id :venues))] (fn [_ _])))))))))
+  (testing "Google Analytics doesn't support fingerprinting fields"
+    (let [fake-db (-> (mt/db)
+                      (assoc :engine :googleanalytics))]
+      (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
+        (is (= (fingerprint/empty-stats-map 0)
+               (fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (mt/id :venues))] (fn [_ _]))))))))
 
 (deftest ^:parallel basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
