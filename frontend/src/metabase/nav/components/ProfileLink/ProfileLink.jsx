@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { connect } from "react-redux";
@@ -9,6 +10,7 @@ import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
@@ -134,7 +136,13 @@ function ProfileLink({ adminItems, onLogout }) {
           {showTrademark && (
             <div
               style={{ borderWidth: "2px" }}
-              className="p2 h5 text-centered text-medium border-top"
+              className={cx(
+                CS.p2,
+                CS.h5,
+                CS.textCentered,
+                CS.textMedium,
+                CS.borderTop,
+              )}
             >
               <span className="block">
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { merge } from "icepick";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -12,6 +13,8 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
@@ -477,7 +480,11 @@ function DatasetEditor(props) {
             activeText={t`Saving…`}
             failedText={t`Save failed`}
             successText={t`Saved`}
-            className="Button Button--primary Button--small"
+            className={cx(
+              ButtonsS.Button,
+              ButtonsS.ButtonPrimary,
+              ButtonsS.ButtonSmall,
+            )}
           />,
         ]}
       />
@@ -504,7 +511,7 @@ function DatasetEditor(props) {
             <DebouncedFrame className="flex-full" enabled>
               <QueryVisualization
                 {...props}
-                className="spread"
+                className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"
                 isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}

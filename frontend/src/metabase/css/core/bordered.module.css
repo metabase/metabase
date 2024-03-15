@@ -11,7 +11,8 @@
 }
 
 :global(.border-bottom),
-.border-bottom {
+.border-bottom,
+.borderBottom {
   border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
@@ -21,7 +22,8 @@
 }
 
 :global(.border-top),
-.border-top {
+.border-top,
+.borderTop {
   border-top: var(--border-size) var(--border-style) var(--color-border);
 }
 

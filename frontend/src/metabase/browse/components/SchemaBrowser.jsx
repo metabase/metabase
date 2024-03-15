@@ -6,6 +6,7 @@ import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid } from "metabase/components/Grid";
+import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import Schema from "metabase/entities/schemas";
 import { color } from "metabase/lib/colors";
@@ -53,7 +54,7 @@ function SchemaBrowser(props) {
                       schema.name,
                     )}`}
                   >
-                    <Card hoverable className="px1">
+                    <Card hoverable className={CS.px1}>
                       <EntityItem
                         name={schema.name}
                         iconName="folder"

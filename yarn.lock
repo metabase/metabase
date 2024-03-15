@@ -22907,11 +22907,6 @@ yup@^0.32.11:
     property-expr "^2.0.4"
     toposort "^2.0.2"
 
-z-index@0.0.1:
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/z-index/-/z-index-0.0.1.tgz#4f3d257a36869dabd990572b70494291cb3eab8f"
-  integrity sha1-Tz0lejaGnavZkFcrcElCkcs+q48=
-
 zwitch@^1.0.0:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/zwitch/-/zwitch-1.0.5.tgz#d11d7381ffed16b742f6af7b3f223d5cd9fe9920"

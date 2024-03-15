@@ -7,6 +7,7 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import * as dashboardActions from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
@@ -193,7 +194,7 @@ class PublicDashboard extends Component {
                 {...this.props}
                 dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                 isPublic
-                className="spread"
+                className={CS.spread}
                 mode={PublicMode}
                 metadata={this.props.metadata}
                 navigateToNewCardFromDashboard={() => {}}

@@ -1,6 +1,8 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { ResizableBox } from "react-resizable";
 
+import CS from "metabase/css/core/index.css";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 
 import { NotebookContainer, Handle } from "./ResizableNotebook.styled";
@@ -19,7 +21,7 @@ function ResizableNotebook({
 }) {
   return (
     <ResizableBox
-      className="border-top flex"
+      className={cx(CS.borderTop, CS.flex)}
       axis="y"
       handle={<Handle />}
       {...resizableBoxProps}

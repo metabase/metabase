@@ -26,6 +26,7 @@ import {
   DataSelectorTablePickerHeaderSchemaName as HeaderSchemaName,
   LinkToDocsContainer,
   NoTablesFound,
+  DataSelectorHeaderDivider,
 } from "./DataSelectorTablePicker.styled";
 
 type DataSelectorTablePickerProps = {
@@ -186,10 +187,12 @@ const Header = ({
     </HeaderClickable>
 
     {selectedSchema?.name && schemas.length > 1 && (
-      <HeaderSchemaName>
-        {"- "}
-        <span data-testid="source-schema">{selectedSchema.displayName()}</span>
-      </HeaderSchemaName>
+      <>
+        <DataSelectorHeaderDivider>/</DataSelectorHeaderDivider>
+        <HeaderSchemaName data-testid="source-schema">
+          {selectedSchema.displayName()}
+        </HeaderSchemaName>
+      </>
     )}
   </HeaderContainer>
 );

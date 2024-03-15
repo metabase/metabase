@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import type { InputProps } from "metabase/core/components/Input";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { parseTimestamp } from "metabase/lib/time";
@@ -94,7 +95,7 @@ const TimelineDetailsModal = ({
           />
           {canWrite && !isArchive && (
             <ModalToolbarLink
-              className="Button"
+              className={ButtonsS.Button}
               to={Urls.newEventInCollection(timeline)}
             >{t`Add an event`}</ModalToolbarLink>
           )}

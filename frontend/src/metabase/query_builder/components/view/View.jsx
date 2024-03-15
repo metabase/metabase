@@ -7,6 +7,7 @@ import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
+import CS from "metabase/css/core/index.css";
 import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
@@ -220,7 +221,7 @@ class View extends Component {
         />
         {/*This is used so that the New Question Header is unmounted after the animation*/}
         <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
-          {style => <NewQuestionHeader className="spread" style={style} />}
+          {style => <NewQuestionHeader className={CS.spread} style={style} />}
         </Transition>
       </QueryBuilderViewHeaderContainer>
     );
@@ -305,7 +306,7 @@ class View extends Component {
           <QueryVisualization
             {...this.props}
             noHeader
-            className="spread"
+            className={CS.spread}
             mode={queryMode}
           />
         </StyledDebouncedFrame>
