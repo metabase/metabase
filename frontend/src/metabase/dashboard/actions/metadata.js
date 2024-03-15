@@ -2,7 +2,6 @@ import Questions from "metabase/entities/questions";
 import { getLinkTargets } from "metabase/lib/click-behavior";
 import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
 import { isVirtualDashCard } from "../utils";
@@ -25,10 +24,9 @@ const loadMetadataForCards = cards => (dispatch, getState) => {
     .filter(card => card.dataset_query) // exclude queries without perms
     .map(card => new Question(card, metadata));
 
-  const dependentItems = questions.flatMap(question => [
-    ...question.dependentMetadata(),
-    ...Lib.dependentMetadata(question.query()),
-  ]);
+  const dependentItems = questions.flatMap(question =>
+    question.dependentMetadata(),
+  );
 
   return dispatch(loadMetadataForDependentItems(dependentItems));
 };

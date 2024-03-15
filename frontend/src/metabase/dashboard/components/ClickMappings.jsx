@@ -293,7 +293,7 @@ function loadQuestionMetadata(getQuestion) {
       fetch() {
         const { question, loadMetadataForDependentItems } = this.props;
         if (question) {
-          const dependentItems = Lib.dependentMetadata(question.query());
+          const dependentItems = question.dependentMetadata();
           loadMetadataForDependentItems(dependentItems);
         }
       }
