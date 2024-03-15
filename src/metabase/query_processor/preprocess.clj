@@ -1,6 +1,5 @@
 (ns metabase.query-processor.preprocess
   (:require
-   [metabase.config :as config]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
