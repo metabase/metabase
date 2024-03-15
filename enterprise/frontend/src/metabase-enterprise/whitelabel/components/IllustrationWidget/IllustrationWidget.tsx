@@ -21,7 +21,7 @@ export interface StringSetting {
 type IllustrationWidgetProps = {
   id?: string;
   setting: StringSetting;
-  onChange: (value: string) => void;
+  onChange: (value: IllustrationSettingValue) => void;
   onChangeSetting: (key: EnterpriseSettingKey, value: unknown) => void;
   settingValues: Partial<EnterpriseSettings>;
   defaultIllustrationLabel: string;
@@ -183,11 +183,6 @@ export function IllustrationWidget({
   );
 }
 
-interface GetPreviewImageProps {
-  value: IllustrationSettingValue;
-  customSource: string | undefined;
-}
-
 async function isFileIntact(dataUri: string) {
   return new Promise(resolve => {
     const image = document.createElement("img");
@@ -195,6 +190,11 @@ async function isFileIntact(dataUri: string) {
     image.onerror = () => resolve(false);
     image.onload = () => resolve(true);
   });
+}
+
+interface GetPreviewImageProps {
+  value: IllustrationSettingValue;
+  customSource: string | undefined;
 }
 
 function getPreviewImage({ value, customSource }: GetPreviewImageProps) {
