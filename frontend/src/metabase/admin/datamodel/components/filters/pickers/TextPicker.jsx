@@ -5,6 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import InputS from "metabase/css/core/inputs.module.css";
 
 import { TextPickerArea, TextPickerInput } from "./TextPicker.styled";
@@ -84,7 +85,7 @@ export default class TextPicker extends Component {
           )}
           {!isSingleLine && (
             <TextPickerArea
-              className={cx("block full", InputS.input)}
+              className={cx(CS.block, CS.full, InputS.input)}
               type="text"
               value={this.state.fieldString}
               onChange={e => this.setValue(e.target.value)}
@@ -99,7 +100,7 @@ export default class TextPicker extends Component {
 
           {isSingleLine && (
             <TextPickerInput
-              className={cx("block full", InputS.input)}
+              className={cx(CS.block, CS.full, InputS.input)}
               style={{
                 paddingLeft: this.props.prefix
                   ? `${this.props.prefix.length}.2rem`

@@ -44,6 +44,6 @@
 }
 
 /* prevent safari from forcing type="search" styles - metabase#5225 */
-:global(.input[type="search"]) {
+.input[type="search"] {
   -webkit-appearance: none;
 }

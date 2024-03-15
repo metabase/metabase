@@ -42,7 +42,7 @@ export default class ObjectRetireModal extends Component {
             <p className="text-paragraph">{t`If you're sure you want to retire this ${objectType}, please write a quick explanation of why it's being retired:`}</p>
             <textarea
               ref={this.revisionMessage}
-              className={cx(InputS.input, "full")}
+              className={cx(InputS.input, CS.full)}
               placeholder={t`This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this ${objectType}.`}
               onChange={e => this.setState({ valid: !!e.target.value })}
             />
