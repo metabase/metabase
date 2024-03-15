@@ -316,6 +316,10 @@ export const getGoalLineHoverData = (
 ) => {
   const element = event.event.event.target as Element;
 
+  if (element?.nodeName !== "text") {
+    return null;
+  }
+
   return {
     element,
     data: [

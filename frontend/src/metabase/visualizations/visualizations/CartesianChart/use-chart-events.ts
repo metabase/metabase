@@ -87,10 +87,7 @@ export const useChartEvents = (
             return;
           }
 
-          if (
-            event.name === "goal-line" &&
-            event.event?.target?.style?.text === settings["graph.goal_label"]
-          ) {
+          if (event.name === "goal-line") {
             const eventData = getGoalLineHoverData(settings, event);
 
             onHoverChange?.(eventData);
