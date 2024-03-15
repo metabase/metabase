@@ -12,7 +12,7 @@ If you've opted in to provide us with anonymous usage data (thank you!), Metabas
 
 The data helps us understand how people are actually using Metabase, which in turn helps us prioritize what to work on next.
 
-## Opting out of anonymous usage data
+## Opting out of anonymous usage data collection
 
 To opt out of providing us with your anonymous usage data:
 
