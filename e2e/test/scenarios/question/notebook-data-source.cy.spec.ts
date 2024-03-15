@@ -32,6 +32,10 @@ describe("scenarios > notebook > data source", () => {
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByTextEnsureVisible("Question").click();
+      cy.findByTestId("data-step-cell").should(
+        "have.text",
+        "Pick your starting data",
+      );
 
       popover().within(() => {
         cy.findByTestId("source-database").should(
