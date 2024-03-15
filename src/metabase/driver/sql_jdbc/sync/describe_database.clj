@@ -44,7 +44,7 @@
        driver
        database
        nil
-       (fn [conn]
+       (fn [^Connection conn]
          (into [] (sql-jdbc.sync.interface/filtered-syncable-schemas
                    driver conn (.getMetaData conn)
                    (first schema-filter-patterns) (second schema-filter-patterns))))))))
