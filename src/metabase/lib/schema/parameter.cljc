@@ -157,15 +157,19 @@
 ;;; update [[metabase.lib.convert]] to convert `:parameters` back and forth and add UUIDs and what not. But parameters
 ;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
 
-(mr/def ::field
+(mr/def ::legacy-field-ref
   [:ref :metabase.mbql.schema/field])
+
+(mr/def ::legacy-expression-ref
+  [:ref :metabase.mbql.schema/expression])
 
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag
            :error/fn (fn [{:keys [value]} _]
                        (str "Invalid :dimension target: must be either a :field or a :template-tag, got: "
                             (pr-str value)))}
-   [:field        [:ref ::field]]
+   [:field        [:ref ::legacy-field-ref]]
+   [:expression   [:ref ::legacy-expression-ref]]
    [:template-tag [:ref ::template-tag]]])
 
 (mr/def ::dimension
@@ -193,7 +197,7 @@
            :error/fn (fn [{:keys [value]} _]
                        (str "Invalid parameter :target, must be either :field, :dimension, or :variable; got: "
                             (pr-str value)))}
-   [:field     [:ref ::field]]
+   [:field     [:ref ::legacy-field-ref]]
    [:dimension [:ref ::dimension]]
    [:variable  [:ref ::variable]]])
 
