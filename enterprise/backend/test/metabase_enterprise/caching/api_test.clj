@@ -12,7 +12,7 @@
   caching.api/keep-me)
 
 (defn last-audit-event []
-  (t2/select-one [:model/AuditLog :topic :user_id :model :details]
+  (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
                  :topic :caching-update
                  {:order-by [[:id :desc]]}))
 
@@ -47,17 +47,18 @@
                                         {:model    "root"
                                          :model_id 0
                                          :strategy {:type "nocache" :name "root"}}))
-              (is (=? {:items [{:model "root" :model_id 0}]}
-                      (mt/user-http-request :crowberto :get 200 "ee/caching/")))
+              (is (=? {:data [{:model "root" :model_id 0}]}
+                      (mt/user-http-request :crowberto :get 200 "ee/caching/"
+                                            :model "root")))
               (testing "Is audited"
-                (is (=? {:topic   :caching-update
-                         :user_id (:id (mt/fetch-user :crowberto))
-                         :model   "CacheConfig"
-                         :details {:id             int?
-                                   :model          "root"
-                                   :model_id       0
-                                   :previous-value nil
-                                   :next-value     {:strategy "nocache" :config {:name "root"}}}}
+                (is (=? {:topic    :caching-update
+                         :user_id  (:id (mt/fetch-user :crowberto))
+                         :model    "CacheConfig"
+                         :model_id int?
+                         :details  {:model     "root"
+                                    :model-id  0
+                                    :old-value nil
+                                    :new-value {:strategy "nocache" :config {:name "root"}}}}
                         (last-audit-event)))))
 
             (testing "Can configure others"
@@ -75,12 +76,12 @@
                                          :strategy {:type "nocache" :name "card1"}})))
 
             (testing "HTTP responds with correct listings"
-              (is (=? {:items [{:model "root" :model_id 0}]}
+              (is (=? {:data [{:model "root" :model_id 0}]}
                       (mt/user-http-request :crowberto :get 200 "ee/caching/")))
-              (is (=? {:items [{:model "database" :model_id (:id db)}]}
+              (is (=? {:data [{:model "database" :model_id (:id db)}]}
                       (mt/user-http-request :crowberto :get 200 "ee/caching/" {}
                                             :model :database)))
-              (is (=? {:items [{:model "dashboard" :model_id (:id dash1)}
+              (is (=? {:data [{:model "dashboard" :model_id (:id dash1)}
                                {:model "question" :model_id (:id card1)}]}
                       (mt/user-http-request :crowberto :get 200 "ee/caching/" {}
                                             :collection (:id col1) :model :dashboard :model :question))))
@@ -104,6 +105,10 @@
               (is (nil? (mt/user-http-request :crowberto :delete 204 "ee/caching"
                                               {:model    "database"
                                                :model_id (:id db)})))
-              (testing "And then card2 gets db config"
+              (testing "Listing for databases becomes empty"
+                (is (=? {:data []}
+                        (mt/user-http-request :crowberto :get 200 "ee/caching/" {}
+                                              :model :database))))
+              (testing "And card2 gets root config"
                 (is (=? {:type :nocache :name "root"}
                         (:cache-strategy (#'qp.card/query-for-card card2 {} {} {} {}))))))))))))

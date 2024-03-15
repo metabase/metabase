@@ -62,8 +62,8 @@
 (defn fetch-cache-stmt-ttl
   "Make a prepared statement for :ttl caching strategy"
   ^PreparedStatement [strategy query-hash ^Connection conn]
-  (when (and (= :ttl (:type strategy))
-             (:avg-execution-ms strategy)) ;; no cache when it was never executed before
+  (if-not (:avg-execution-ms strategy)
+    (log/debugf "Caching strategy %s needs :avg-execution-ms to work" (pr-str strategy))
     (let [max-age-seconds (math/round (/ (* (:multiplier strategy)
                                             (:avg-execution-ms strategy))
                                          1000.0))]
@@ -73,7 +73,8 @@
   "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
   metabase-enterprise.caching.strategies
   [strategy hash conn]
-  (fetch-cache-stmt-ttl strategy hash conn))
+  (when (= :ttl (:type strategy))
+    (fetch-cache-stmt-ttl strategy hash conn)))
 
 (defn- cached-results [query-hash strategy respond]
   ;; VERY IMPORTANT! Open up a connection (which internally binds [[toucan2.connection/*current-connectable*]] so it

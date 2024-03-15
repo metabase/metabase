@@ -27,6 +27,7 @@
             User]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions.graph :as data-perms.graph]
+   [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -670,7 +671,7 @@
   "Additional conditions applied to the query to find the max ID for a model prior to a test run. This can be used to
   exclude rows which intentionally use non-sequential IDs, like the internal user."
   {:arglists '([model])}
-  identity)
+  mi/model)
 
 (defmethod with-max-model-id-additional-conditions :default
   [_]
@@ -691,6 +692,7 @@
 
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? #(or (isa? % :metabase/model)
+                                           ;; to support [[:model/Model :updated_at]] syntax
                                            (isa? (first %) :metabase/model)) models)]}
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)

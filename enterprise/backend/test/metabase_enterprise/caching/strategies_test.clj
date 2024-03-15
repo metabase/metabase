@@ -66,9 +66,9 @@
                      :status        :completed})]
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
           (testing "strategy = ttl"
-            (let [query (assoc query :cache-strategy {:type           :ttl
-                                                      :multiplier     10
-                                                      :min_duration   0
+            (let [query (assoc query :cache-strategy {:type             :ttl
+                                                      :multiplier       10
+                                                      :min_duration     0
                                                       :avg-execution-ms 500})]
               (testing "Results are stored and available immediately"
                 (mt/with-clock #t "2024-02-13T10:00:00Z"
@@ -105,9 +105,9 @@
                           (-> (qp/process-query query) (dissoc :data)))))))))
 
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
-          (testing "strategy = schedule || query"
-            (let [query (assoc query :cache-strategy {:type       :schedule
-                                                      :schedule   "0/2 * * * *"
+          (testing "strategy = schedule"
+            (let [query (assoc query :cache-strategy {:type            :schedule
+                                                      :schedule        "0/2 * * * *"
                                                       :last-expired-at (t/offset-date-time #t "2024-02-13T10:00:00Z")})]
               (testing "Results are stored and available immediately"
                 (mt/with-clock #t "2024-02-13T10:01:00Z"
@@ -123,6 +123,29 @@
                 (testing "schedule did not run - cache is still intact"
                   (mt/with-clock #t "2024-02-13T10:08:00Z"
                     (is (=? (mkres #t "2024-02-13T10:03:00Z")
+                            (-> (qp/process-query query) (dissoc :data))))))))))
+
+        (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
+          (testing "strategy = query"
+            (let [query (assoc query :cache-strategy {:type            :query
+                                                      :field_id        0
+                                                      :aggregation     "max"
+                                                      :schedule        "0/2 * * * *"
+                                                      :last-expired-at (t/offset-date-time #t "2024-02-13T11:00:00Z")})]
+              (testing "Results are stored and available immediately"
+                (mt/with-clock #t "2024-02-13T11:01:00Z"
+                  (is (=? (mkres nil)
+                          (-> (qp/process-query query) (dissoc :data))))
+                  (is (=? (mkres #t "2024-02-13T11:01:00Z")
+                          (-> (qp/process-query query) (dissoc :data))))))
+              (let [query (assoc-in query [:cache-strategy :last-expired-at] (t/offset-date-time #t "2024-02-13T11:02:00Z"))]
+                (testing "Cache is invalidated when schedule ran after the query"
+                  (mt/with-clock #t "2024-02-13T11:03:00Z"
+                    (is (=? (mkres nil)
+                            (-> (qp/process-query query) (dissoc :data))))))
+                (testing "schedule did not run - cache is still intact"
+                  (mt/with-clock #t "2024-02-13T11:08:00Z"
+                    (is (=? (mkres #t "2024-02-13T11:03:00Z")
                             (-> (qp/process-query query) (dissoc :data))))))))))))))
 
 (deftest e2e-advanced-caching
@@ -203,7 +226,7 @@
             (testing "strategy = schedule"
               (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                 (mt/with-clock (t 0)
-                  (is (pos? (#'task.caching/refresh-schedule-configs)))
+                  (is (pos? (#'task.caching/refresh-schedule-configs!)))
                   (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
                     (is (=? {:type :schedule}
                             (:cache-strategy q)))
@@ -214,7 +237,7 @@
                               (-> (qp/process-query q) (dissoc :data)))))))
                 (testing "No cache after job ran again"
                   (mt/with-clock (t 121)
-                    (is (pos? (#'task.caching/refresh-schedule-configs)))
+                    (is (pos? (#'task.caching/refresh-schedule-configs!)))
                     (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
                       (is (=? (mkres nil)
                               (-> (qp/process-query q) (dissoc :data)))))))))
@@ -222,7 +245,7 @@
             (testing "strategy = query"
               (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                 (mt/with-clock (t 0)
-                  (is (pos? (#'task.caching/refresh-query-configs)))
+                  (is (pos? (#'task.caching/refresh-query-configs!)))
                   (let [q (#'qp.card/query-for-card card4 {} {} {} {})]
                     (is (=? {:type :query}
                             (:cache-strategy q)))
@@ -234,19 +257,23 @@
                               (-> (qp/process-query q) (dissoc :data)))))))
 
                 (mt/with-clock (t 121)
-                  (is (pos? (#'task.caching/refresh-query-configs)))
+                  (is (pos? (#'task.caching/refresh-query-configs!)))
                   (testing "Nothing to run, because it's already scheduled for later"
-                    (is (zero? (#'task.caching/refresh-query-configs))))
+                    (is (nil? (#'task.caching/refresh-query-configs!))))
                   (testing "Job ran again, but state has not changed, so there's still cache"
                     (let [q (#'qp.card/query-for-card card4 {} {} {} {})]
                       (is (=? (mkres (t 0))
                               (-> (qp/process-query q) (dissoc :data)))))))
 
                 (mt/with-clock (t 242)
-                  (t2/update! :model/CacheConfig {:id (:id c4)} {:config (assoc (:config c4)
-                                                                                :field_id (mt/id :table :value))})
-                  (is (pos? (#'task.caching/refresh-query-configs)))
-                  (testing "But no cache after the data has changed"
+                  (let [state (:state (t2/select-one :model/CacheConfig :id (:id c4)))]
+                    (t2/update! :model/CacheConfig {:id (:id c4)} {:config (assoc (:config c4)
+                                                                                  :field_id (mt/id :table :value))})
+                    (is (pos? (#'task.caching/refresh-query-configs!)))
+                    (testing "Marker has changed"
+                      (is (not= state
+                                (:state (t2/select-one :model/CacheConfig :id (:id c4)))))))
+                  (testing "No cache after the data has changed"
                     (let [q (#'qp.card/query-for-card card4 {} {} {} {})]
                       (is (=? (mkres nil)
                               (-> (qp/process-query q) (dissoc :data)))))))))
