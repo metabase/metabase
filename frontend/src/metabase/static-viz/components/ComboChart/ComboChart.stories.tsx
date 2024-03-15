@@ -393,6 +393,13 @@ BarStackDisplayOverridesSeriesDisplays.args = {
   renderingContext,
 };
 
+export const AreaStackAllSeriesWithoutInterpolation = Template.bind({});
+AreaStackAllSeriesWithoutInterpolation.args = {
+  rawSeries: data.areaStackAllSeriesWithoutInterpolation as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
