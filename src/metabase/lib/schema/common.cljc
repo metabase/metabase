@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.types]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -26,6 +27,13 @@
             (update-keys keyword))]
     (cond-> m
       (string? (:lib/type m)) (update :lib/type keyword))))
+
+(defn normalize-string-key
+  "Base normalization behavior for things that should be string map keys. Converts keywords to strings if needed. This
+  is mostly to work around the REST API recursively keywordizing the entire request body by default."
+  [x]
+  (cond-> x
+    (keyword? x) u/qualified-name))
 
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
