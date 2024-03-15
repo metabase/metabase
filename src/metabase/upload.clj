@@ -617,7 +617,7 @@
 
 (defn- field-changes
   "Given existing and newly inferred types for the given `fields`, calculate the added and updated fields."
-  [field-keys existing-types new-types]
+  [field-names existing-types new-types]
   (reduce
    (fn [m [f e n]]
      (cond
@@ -625,21 +625,25 @@
        (not= e n) (assoc-in m [:updated f] n)
        :else      m))
    {:added {}, :updated {}}
-   (map vector field-keys existing-types new-types)))
+   (map vector field-names existing-types new-types)))
 
 (defn- field->db-type [driver field->col-type]
-  (m/map-vals (partial driver/upload-type->database-type driver) field->col-type))
+  (m/map-kv
+   (fn [field-name col-type]
+     [(keyword field-name)
+      (driver/upload-type->database-type driver col-type)])
+   field->col-type))
 
-(defn- add-columns! [driver database table field-key->type & args]
-  (when (seq field-key->type)
+(defn- add-columns! [driver database table field->type & args]
+  (when (seq field->type)
     (apply driver/add-columns! driver (:id database) (table-identifier table)
-           (field->db-type driver field-key->type)
+           (field->db-type driver field->type)
            args)))
 
-(defn- alter-columns! [driver database table field-key->new-type & args]
-  (when (seq field-key->new-type)
+(defn- alter-columns! [driver database table field->new-type & args]
+  (when (seq field->new-type)
     (apply driver/alter-columns! driver (:id database) (table-identifier table)
-           (field->db-type driver field-key->new-type)
+           (field->db-type driver field->new-type)
             args)))
 
 (defn- append-csv!*
@@ -668,8 +672,7 @@
             ;; be parsed as its previous type - there is scope to improve these error messages in the future.
             modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
             _                  (when modify-schema?
-                                 (let [field-keys (map keyword normed-header)
-                                       changes    (field-changes field-keys old-types new-types)]
+                                 (let [changes (field-changes normed-header old-types new-types)]
                                    (add-columns! driver database table (:added changes))
                                    (alter-columns! driver database table (:updated changes))))
             ;; this will fail if any of our required relaxations were rejected.
