@@ -385,7 +385,13 @@ export class DeleteAlertSection extends Component {
       <DangerZone
         className={cx(
           AlertModalsS.AlertModalsBorder,
-          "DangerZone bordered mt4 pt4 mb2 p3 rounded relative",
+          CS.bordered,
+          CS.mt4,
+          CS.pt4,
+          CS.mb2,
+          CS.p3,
+          CS.rounded,
+          CS.relative,
         )}
       >
         <h3
@@ -642,13 +648,22 @@ function RawDataAlertTipInner(props) {
     <div
       className={cx(
         AlertModalsS.AlertModalsBorder,
-        "border-row-divider p3 flex align-center",
+        CS.borderRowDivider,
+        CS.p3,
+        CS.flex,
+        CS.alignCenter,
       )}
     >
       <div
         className={cx(
           AlertModalsS.AlertModalsBorder,
-          "circle flex align-center justify-center bg-light p2 mr2 text-medium",
+          CS.flex,
+          CS.alignCenter,
+          CS.justifyCenter,
+          CS.p2,
+          CS.mr2,
+          CS.textMedium,
+          "circle bg-light",
         )}
       >
         <Icon name="lightbulb" size="20" />
