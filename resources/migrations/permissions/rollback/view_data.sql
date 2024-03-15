@@ -58,7 +58,8 @@ SELECT pg.id AS group_id,
                      AND dp.db_id = md.id
                      AND dp.table_id IS NULL
                      AND dp.perm_type = 'perms/view-data'
-                     AND dp.perm_value = 'unrestricted' )
+                     AND (dp.perm_value = 'unrestricted'
+                          OR dp.perm_value = 'legacy-no-self-service') )
                 AND EXISTS
                   (SELECT 1
                    FROM data_permissions dp
