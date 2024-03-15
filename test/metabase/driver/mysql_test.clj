@@ -216,7 +216,7 @@
     ;; 08:00:00+00:00, which when truncated is still 2018-08-17. That same scenario in Hong Kong is 2018-08-17
     ;; 00:00:00+08:00, which then becomes 2018-08-16 16:00:00+00:00 when converted to UTC, which will truncate to
     ;; 2018-08-16, instead of 2018-08-17
-    (mt/with-system-timezone-id "Asia/Hong_Kong"
+    (mt/with-system-timezone-id! "Asia/Hong_Kong"
       (letfn [(run-query-with-report-timezone [report-timezone]
                 (mt/with-temporary-setting-values [report-timezone report-timezone]
                   (mt/first-row
@@ -611,9 +611,9 @@
                         :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
                         :status-code 400}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {:id      3
-                                                           :column1 "A"
-                                                           :column2 "A"}
+                        :row/create (mt/$ids {:create-row {"id"      3
+                                                           "column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable}
                                               :type       :query})))))
@@ -624,14 +624,14 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {:column1 "A"
-                                                           :column2 "A"}
+                        :row/update (mt/$ids {:update-row {"column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable
                                                            :filter       [:= $mytable.id 2]}
                                               :type       :query}))))))))))))
 
-(deftest parse-grant-test
+(deftest ^:parallel parse-grant-test
   (testing "`parse-grant` should work correctly"
     (is (= {:type            :privileges
             :privilege-types #{:select :insert :update :delete}
@@ -658,7 +658,7 @@
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
     (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
 
-(deftest table-name->privileges-test
+(deftest ^:parallel table-name->privileges-test
   (testing "table-names->privileges should work correctly"
     (is (= {"foo" #{:select}, "bar" #{:select}}
            (#'mysql/table-names->privileges [{:type            :privileges
