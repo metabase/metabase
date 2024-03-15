@@ -42,7 +42,7 @@
 
 (defn- process-query** [query rff]
   (let [preprocessed (qp.preprocess/preprocess query)
-        compiled     (assoc preprocessed :native (qp.compile/compile-preprocessed preprocessed))
+        compiled     (qp.compile/attach-compiled-query preprocessed)
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]
     (qp.execute/execute compiled rff)))
 

@@ -7,21 +7,17 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.shared.util.internal.time-common :as shared.ut.common]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   #?@(:clj
+       ([java-time.api :as t]))))
 
 (defmethod expression/type-of-method :dispatch-type/nil
   [_nil]
   :type/*)
 
-(mr/def ::boolean
-  :boolean)
-
 (defmethod expression/type-of-method :dispatch-type/boolean
   [_bool]
   :type/Boolean)
-
-(mr/def ::boolean
-  :boolean)
 
 #?(:clj
    (defn- big-int? [x]
@@ -52,9 +48,6 @@
   [_non-integer-real]
   ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types]] =(
   :type/Float)
-
-(mr/def ::string
-  :string)
 
 ;;; TODO -- these temporal literals could be a little stricter, right now they are pretty permissive, you shouldn't be
 ;;; allowed to have month `13` or `02-29` for example
@@ -96,23 +89,35 @@
 
 (mr/def ::date
   #?(:clj  [:or
-            [:time/local-date {:error/message "instance of java.time.LocalDate"}]
+            [:time/local-date
+             {:error/message    "instance of java.time.LocalDate"
+              :encode/serialize str}]
             ::string.date]
      :cljs ::string.date))
 
 (mr/def ::time
   #?(:clj [:or
            ::string.time
-           [:time/local-time {:error/message "instance of java.time.LocalTime"}]
-           [:time/offset-time {:error/message "instance of java.time.OffsetTime"}]]
+           [:time/local-time
+            {:error/message    "instance of java.time.LocalTime"
+             :encode/serialize str}]
+           [:time/offset-time
+            {:error/message    "instance of java.time.OffsetTime"
+             :encode/serialize str}]]
      :cljs ::string.time))
 
 (mr/def ::datetime
   #?(:clj [:or
            ::string.datetime
-           [:time/local-date-time {:error/message "instance of java.time.LocalDateTime"}]
-           [:time/offset-date-time {:error/message "instance of java.time.OffsetDateTime"}]
-           [:time/zoned-date-time {:error/message "instance of java.time.ZonedDateTime"}]]
+           [:time/local-date-time
+            {:error/message    "instance of java.time.LocalDateTime"
+             :encode/serialize str}]
+           [:time/offset-date-time
+            {:error/message    "instance of java.time.OffsetDateTime"
+             :encode/serialize str}]
+           [:time/zoned-date-time
+            {:error/message    "instance of java.time.ZonedDateTime"
+             :encode/serialize #(str (t/offset-date-time %))}]]
      :cljs ::string.datetime))
 
 (mr/def ::temporal
@@ -158,3 +163,12 @@
    #_tag   [:= {:decode/normalize common/normalize-keyword} :value]
    #_opts  [:ref ::value.options]
    #_value any?])
+
+(mr/def ::literal
+  [:or
+   :nil
+   :boolean
+   :string
+   ::integer
+   ::non-integer-real
+   ::temporal])

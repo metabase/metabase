@@ -216,7 +216,7 @@
     ;; 08:00:00+00:00, which when truncated is still 2018-08-17. That same scenario in Hong Kong is 2018-08-17
     ;; 00:00:00+08:00, which then becomes 2018-08-16 16:00:00+00:00 when converted to UTC, which will truncate to
     ;; 2018-08-16, instead of 2018-08-17
-    (mt/with-system-timezone-id "Asia/Hong_Kong"
+    (mt/with-system-timezone-id! "Asia/Hong_Kong"
       (letfn [(run-query-with-report-timezone [report-timezone]
                 (mt/with-temporary-setting-values [report-timezone report-timezone]
                   (mt/first-row

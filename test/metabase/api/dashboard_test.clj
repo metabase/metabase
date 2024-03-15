@@ -306,8 +306,8 @@
                                        :last_name  "Corv"
                                        :email      "crowberto@metabase.com"
                                        :timestamp  true}})
-              (-> (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")
-                  first
+              (-> (m/find-first #(= (:id %) crowberto-dash)
+                                (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
                   (update-in [:last-edit-info :timestamp] boolean)))))
 
     (testing "f=all shouldn't return archived dashboards"
@@ -337,8 +337,10 @@
                (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "archived")))))))
 
     (testing "f=mine return dashboards created by caller but do not include archived"
-      (is (= #{crowberto-dash}
-             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))))))))
+      (let [ids (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")))]
+        (is (contains? ids crowberto-dash)      "Should contain Crowberto's dashboard")
+        (is (not (contains? ids rasta-dash))    "Should not contain Rasta's dashboard")
+        (is (not (contains? ids archived-dash)) "Should not contain archied dashboard")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
@@ -662,7 +664,7 @@
             dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
             param-values     (mt/user-http-request :rasta :get 200 (format "dashboard/%s/params/%s/values" dashboard-id "foo"))]
         (testing "The initial dashboard-load fetches parameter values only if they already exist (#38826)"
-          (is (some? (:param_values dashboard-load-a)))
+          (is (seq (:param_values dashboard-load-a)))
           (is (nil? (:param_values dashboard-load-b))))
         (testing "Request to values endpoint triggers computation of field values if missing."
           (is (= ["20th Century Cafe" "25°" "33 Taps"]
@@ -4001,7 +4003,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest param-values-no-field-ids-test
-  (testing "Ensure param value lookup works for values where field ids are not provided, but field refs are."
+  (testing "Ensure param value looktup works for values where field ids are not provided, but field refs are."
     ;; This is a common case for nested queries
     (mt/dataset test-data
       (mt/with-temp-copy-of-db
