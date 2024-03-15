@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useUpdate } from "react-use";
 
 import {
@@ -9,6 +10,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { Box } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
 
@@ -31,6 +33,7 @@ export const HomeContent = (): JSX.Element | null => {
   const { data: popularItems, error: popularItemsError } =
     usePopularItemListQuery({ reload: true });
   const error = databasesError || recentItemsError || popularItemsError;
+  const showEmbedHomepage = useMemo(() => shouldShowEmbedHomepage(), []);
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;
@@ -38,10 +41,6 @@ export const HomeContent = (): JSX.Element | null => {
 
   if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
-  }
-
-  if (isAdmin && shouldShowEmbedHomepage()) {
-    return <EmbedMinimalHomepage onDismiss={update} />;
   }
 
   if (isPopularSection(user, recentItems, popularItems)) {
@@ -53,7 +52,16 @@ export const HomeContent = (): JSX.Element | null => {
   }
 
   if (isXraySection(databases, isXrayEnabled)) {
-    return <HomeXraySection />;
+    return (
+      <>
+        <HomeXraySection />
+        {isAdmin && showEmbedHomepage && (
+          <Box mt={64}>
+            <EmbedMinimalHomepage onDismiss={update} />
+          </Box>
+        )}
+      </>
+    );
   }
 
   return null;
