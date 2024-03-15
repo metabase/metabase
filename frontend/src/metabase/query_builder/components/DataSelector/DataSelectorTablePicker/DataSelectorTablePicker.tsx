@@ -110,7 +110,7 @@ const DataSelectorTablePicker = ({
 
     return (
       <DelayGroup>
-        <Box component="span" w="300px" style={{ overflowY: "auto" }}>
+        <Box component="span" w="18.75rem" style={{ overflowY: "auto" }}>
           <AccordionList
             id="TablePicker"
             key="tablePicker"
@@ -150,8 +150,8 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
   <Box
     p="md"
     ta="center"
+    bg={color("bg-light")}
     style={{
-      backgroundColor: color("bg-light"),
       borderTop: `1px solid ${color("border")}`,
     }}
   >
